@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+.vercel
+dist
+coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
