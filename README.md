@@ -2,17 +2,17 @@
 
 Enterprise control plane for DSG agents.
 
-## Stack
-- Next.js
-- Vercel
-- Supabase
-- Trigger.dev
-- WorkOS
-- Stripe
-- Resend
+## Features
+- Next.js app router
+- Stripe checkout route
+- Stripe webhook route
+- Supabase admin insert
+- Resend email send
+- WorkOS client setup
+- Health check route
 
-## Goals
-- Policy-bound agent execution
-- Auditability
-- Billing and webhook automation
-- Enterprise auth
+## Run locally
+
+npm install
+cp .env.example .env.local
+npm run dev
