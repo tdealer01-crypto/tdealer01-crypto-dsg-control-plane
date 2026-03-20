@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-
 export async function POST(req: Request) {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
     const body = await req.json()
     const amount = body.amount || 10
 
@@ -16,16 +16,13 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/cancel`,
+      mode: "subscription",
+      success_url: process.env.NEXT_PUBLIC_APP_URL + "/success",
+      cancel_url: process.env.NEXT_PUBLIC_APP_URL + "/cancel",
     })
 
     return NextResponse.json({ url: session.url })
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
