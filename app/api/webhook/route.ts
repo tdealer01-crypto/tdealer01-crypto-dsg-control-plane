@@ -6,6 +6,15 @@ import { resend } from "@/lib/resend";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { jsonError } from "@/lib/utils";
 
+export async function GET() {
+  return Response.json({
+    ok: true,
+    service: "dsg-control-plane-webhook",
+    method: "GET",
+    message: "Webhook endpoint is reachable. Stripe should send POST requests here."
+  });
+}
+
 export async function POST(req: Request) {
   if (!stripe) return jsonError("Stripe is not configured", 500);
   if (!env.stripeWebhookSecret) return jsonError("Missing webhook secret", 500);
@@ -33,13 +42,11 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        const customerEmail =
-          session.customer_details?.email || session.customer_email || null;
-
         const payload = {
           stripe_event_id: event.id,
           checkout_session_id: session.id,
-          customer_email: customerEmail,
+          customer_email:
+            session.customer_details?.email || session.customer_email || null,
           customer_id: typeof session.customer === "string" ? session.customer : null,
           payment_status: session.payment_status,
           amount_total: session.amount_total,
@@ -53,10 +60,10 @@ export async function POST(req: Request) {
           await supabaseAdmin.from("payments").insert(payload);
         }
 
-        if (resend && customerEmail && env.resendFromEmail) {
+        if (resend && payload.customer_email && env.resendFromEmail) {
           await resend.emails.send({
             from: env.resendFromEmail,
-            to: [customerEmail],
+            to: [payload.customer_email],
             subject: "Payment received",
             html: `
               <h1>ชำระเงินสำเร็จ</h1>
