@@ -1,4 +1,5 @@
 import Stripe from "stripe"
+import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
@@ -8,11 +9,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const email = body.email
+    const { email } = await req.json()
 
     if (!email) {
-      return new Response("Missing email", { status: 400 })
+      return NextResponse.json({ error: "No email" }, { status: 400 })
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -28,11 +28,9 @@ export async function POST(req: Request) {
       cancel_url: process.env.NEXT_PUBLIC_URL + "/pay",
     })
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { "Content-Type": "application/json" },
-    })
+    return NextResponse.json({ url: session.url })
   } catch (err: any) {
-    console.log("ERROR:", err.message)
-    return new Response(err.message || "error", { status: 500 })
+    console.error(err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
