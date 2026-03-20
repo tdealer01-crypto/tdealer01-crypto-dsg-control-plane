@@ -21,6 +21,12 @@ export default function HomePage() {
             Open Dashboard
           </a>
           <a
+            href="/pricing"
+            className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200"
+          >
+            View Pricing
+          </a>
+          <a
             href="/api/health"
             className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200"
           >
