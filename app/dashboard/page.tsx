@@ -15,10 +15,17 @@ export default function DashboardPage() {
         method: "POST"
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        throw new Error(`Checkout API returned non-JSON response (${res.status})`);
+      }
 
       if (!res.ok) {
-        throw new Error(data?.error || "Checkout failed");
+        throw new Error(data?.error || `Checkout failed (${res.status})`);
       }
 
       if (!data?.url) {
