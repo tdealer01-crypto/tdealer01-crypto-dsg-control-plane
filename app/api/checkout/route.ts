@@ -1,24 +1,38 @@
-import Stripe from "stripe";
+import Stripe from "stripe"
+
+export const runtime = "nodejs"
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
+})
 
 export async function POST(req: Request) {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2025-02-24.acacia",
-  });
+  try {
+    const body = await req.json()
+    const email = body.email
 
-  const { email } = await req.json();
+    if (!email) {
+      return new Response("Missing email", { status: 400 })
+    }
 
-  const session = await stripe.checkout.sessions.create({
-    customer_email: email,
-    line_items: [
-      {
-        price: process.env.STRIPE_PRICE_ID!,
-        quantity: 1,
-      },
-    ],
-    mode: "subscription",
-    success_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/success",
-    cancel_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/cancel",
-  });
+    const session = await stripe.checkout.sessions.create({
+      customer_email: email,
+      line_items: [
+        {
+          price: process.env.STRIPE_PRICE_ID!,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: process.env.NEXT_PUBLIC_URL + "/dashboard",
+      cancel_url: process.env.NEXT_PUBLIC_URL + "/pay",
+    })
 
-  return Response.json({ url: session.url });
+    return new Response(JSON.stringify({ url: session.url }), {
+      headers: { "Content-Type": "application/json" },
+    })
+  } catch (err: any) {
+    console.log("ERROR:", err.message)
+    return new Response(err.message || "error", { status: 500 })
+  }
 }
