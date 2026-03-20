@@ -1,6 +1,3 @@
-mkdir -p app/api/checkout
-
-cat << 'EOF' > app/api/checkout/route.ts
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
