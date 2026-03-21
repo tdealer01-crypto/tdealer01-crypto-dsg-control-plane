@@ -5,21 +5,21 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const {
-      data: { claims },
-      error: claimsError,
-    } = await supabase.auth.getClaims();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (claimsError || !claims?.sub) {
+    if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: profile, error: profileError } = await supabase
       .from("users")
       .select("org_id, is_active")
-      .eq("auth_user_id", claims.sub)
+      .eq("auth_user_id", user.id)
       .maybeSingle();
 
     if (profileError || !profile?.org_id || !profile.is_active) {
