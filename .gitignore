@@ -11,3 +11,5 @@ yarn-error.log*
 pnpm-debug.log*
 coverage
 .env*.local
+.env*
+.env*
