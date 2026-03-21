@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { createHash } from "crypto";
-import { getSupabaseAdmin } from "../../../lib/supabase-server";
+import { NextResponse } from 'next/server';
+import { createHash } from 'crypto';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-type Decision = "ALLOW" | "STABILIZE" | "BLOCK";
+type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
 
 function decideFromRisk(riskScore: number): {
   decision: Decision;
@@ -14,36 +14,36 @@ function decideFromRisk(riskScore: number): {
 } {
   if (riskScore >= 0.8) {
     return {
-      decision: "BLOCK",
-      reason: "Blocked by risk threshold",
+      decision: 'BLOCK',
+      reason: 'Blocked by risk threshold',
       latency_ms: 5,
-      policy_version: "v1",
+      policy_version: 'v1',
     };
   }
 
   if (riskScore >= 0.4) {
     return {
-      decision: "STABILIZE",
-      reason: "Requires stabilization review",
+      decision: 'STABILIZE',
+      reason: 'Requires stabilization review',
       latency_ms: 7,
-      policy_version: "v1",
+      policy_version: 'v1',
     };
   }
 
   return {
-    decision: "ALLOW",
-    reason: "Policy checks passed",
+    decision: 'ALLOW',
+    reason: 'Policy checks passed',
     latency_ms: 4,
-    policy_version: "v1",
+    policy_version: 'v1',
   };
 }
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization") || "";
-    if (!authHeader.startsWith("Bearer ")) {
+    const authHeader = request.headers.get('authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: "Missing Bearer token" },
+        { error: 'Missing Bearer token' },
         { status: 401 }
       );
     }
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const apiKey = authHeader.slice(7).trim();
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Empty API key" },
+        { error: 'Empty API key' },
         { status: 401 }
       );
     }
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     if (!body || !body.agent_id) {
       return NextResponse.json(
-        { error: "agent_id is required" },
+        { error: 'agent_id is required' },
         { status: 400 }
       );
     }
@@ -70,25 +70,25 @@ export async function POST(request: Request) {
     const riskScore = Number(context.risk_score ?? 0);
 
     const supabase = getSupabaseAdmin();
-    const apiKeyHash = createHash("sha256").update(apiKey).digest("hex");
+    const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
 
     const { data: agent, error: agentError } = await supabase
-      .from("agents")
-      .select("id, org_id, policy_id, status, monthly_limit")
-      .eq("id", agentId)
-      .eq("api_key_hash", apiKeyHash)
+      .from('agents')
+      .select('id, org_id, policy_id, status, monthly_limit')
+      .eq('id', agentId)
+      .eq('api_key_hash', apiKeyHash)
       .single();
 
     if (agentError || !agent) {
       return NextResponse.json(
-        { error: "Invalid agent_id or API key" },
+        { error: 'Invalid agent_id or API key' },
         { status: 401 }
       );
     }
 
-    if (agent.status !== "active") {
+    if (agent.status !== 'active') {
       return NextResponse.json(
-        { error: "Agent is not active" },
+        { error: 'Agent is not active' },
         { status: 403 }
       );
     }
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     const billingPeriod = nowIso.slice(0, 7);
 
     const { data: execution, error: executionError } = await supabase
-      .from("executions")
+      .from('executions')
       .insert({
         org_id: agent.org_id,
         agent_id: agent.id,
@@ -110,18 +110,18 @@ export async function POST(request: Request) {
         reason: result.reason,
         created_at: nowIso,
       })
-      .select("id, decision, latency_ms, policy_version, reason, created_at")
+      .select('id, decision, latency_ms, policy_version, reason, created_at')
       .single();
 
     if (executionError || !execution) {
       return NextResponse.json(
-        { error: executionError?.message || "Failed to insert execution" },
+        { error: executionError?.message || 'Failed to insert execution' },
         { status: 500 }
       );
     }
 
     const { data: auditRow, error: auditError } = await supabase
-      .from("audit_logs")
+      .from('audit_logs')
       .insert({
         org_id: agent.org_id,
         agent_id: agent.id,
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
         evidence: { risk_score: riskScore, input, context },
         created_at: nowIso,
       })
-      .select("id")
+      .select('id')
       .single();
 
     if (auditError) {
@@ -143,14 +143,14 @@ export async function POST(request: Request) {
     }
 
     const { error: usageEventError } = await supabase
-      .from("usage_events")
+      .from('usage_events')
       .insert({
         org_id: agent.org_id,
         agent_id: agent.id,
         execution_id: execution.id,
-        event_type: "execution",
+        event_type: 'execution',
         quantity: 1,
-        unit: "execution",
+        unit: 'execution',
         amount_usd: 0.001,
         metadata: { decision: result.decision },
         created_at: nowIso,
@@ -164,20 +164,20 @@ export async function POST(request: Request) {
     }
 
     const { data: counter } = await supabase
-      .from("usage_counters")
-      .select("id, executions")
-      .eq("agent_id", agent.id)
-      .eq("billing_period", billingPeriod)
+      .from('usage_counters')
+      .select('id, executions')
+      .eq('agent_id', agent.id)
+      .eq('billing_period', billingPeriod)
       .maybeSingle();
 
     if (counter?.id) {
       const { error: counterUpdateError } = await supabase
-        .from("usage_counters")
+        .from('usage_counters')
         .update({
           executions: Number(counter.executions || 0) + 1,
           updated_at: nowIso,
         })
-        .eq("id", counter.id);
+        .eq('id', counter.id);
 
       if (counterUpdateError) {
         return NextResponse.json(
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
       }
     } else {
       const { error: counterInsertError } = await supabase
-        .from("usage_counters")
+        .from('usage_counters')
         .insert({
           org_id: agent.org_id,
           agent_id: agent.id,
@@ -205,12 +205,12 @@ export async function POST(request: Request) {
     }
 
     const { error: agentUpdateError } = await supabase
-      .from("agents")
+      .from('agents')
       .update({
         last_used_at: nowIso,
         updated_at: nowIso,
       })
-      .eq("id", agent.id);
+      .eq('id', agent.id);
 
     if (agentUpdateError) {
       return NextResponse.json(
@@ -234,7 +234,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Unexpected error",
+      error: error instanceof Error ? error.message : 'Unexpected error',
       },
       { status: 500 }
     );
