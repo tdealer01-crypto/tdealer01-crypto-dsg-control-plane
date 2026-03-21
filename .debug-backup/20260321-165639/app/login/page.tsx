@@ -1,67 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  getSupabaseBrowserClient,
-  getSupabaseBrowserConfig,
-} from "../../lib/supabase";
+import { useState } from "react";
+import { getSupabaseBrowserClient } from "../../lib/supabase";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    const config = getSupabaseBrowserConfig();
-    if (!config.ok) {
-      setMessage(config.reason);
-      return;
-    }
-
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setMessage("Supabase browser client could not be created.");
-      return;
-    }
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        router.replace("/dashboard");
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        router.replace("/dashboard");
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
-
   const login = async () => {
-    const config = getSupabaseBrowserConfig();
-    if (!config.ok) {
-      setMessage(config.reason);
-      return;
-    }
-
     const supabase = getSupabaseBrowserClient();
+
     if (!supabase) {
-      setMessage("Supabase browser client could not be created.");
+      setMessage("Supabase client is not configured correctly.");
       return;
     }
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`,
-      },
     });
 
     if (error) {
