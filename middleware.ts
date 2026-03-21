@@ -1,48 +1,49 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import type { NextRequest } from "next/server"
 
-export async function middleware(req: any) {
-const token = req.cookies.get("sb-access-token")?.value
+export async function middleware(req: NextRequest) {
+  const token = req.cookies.get("sb-access-token")?.value
 
-if (!token) {
-return NextResponse.redirect(new URL("/login", req.url))
-}
+  if (!token) {
+    return NextResponse.redirect(new URL("/login", req.url))
+  }
 
-const userRes = await fetch(
-process.env.SUPABASE_URL + "/auth/v1/user",
-{
-headers: {
-Authorization: "Bearer ${token}",
-apiKey: process.env.SUPABASE_SERVICE_ROLE_KEY!
-}
-}
-)
+  // ดึง user จาก supabase
+  const res = await fetch(
+    process.env.NEXT_PUBLIC_SUPABASE_URL + "/auth/v1/user",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apiKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      },
+    }
+  )
 
-if (!userRes.ok) {
-return NextResponse.redirect(new URL("/login", req.url))
-}
+  if (!res.ok) {
+    return NextResponse.redirect(new URL("/login", req.url))
+  }
 
-const user = await userRes.json()
-const email = user.email
+  const user = await res.json()
+  const email = user.email
 
-const supabase = createClient(
-process.env.SUPABASE_URL!,
-process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+  // เรียก API ตรวจ active
+  const check = await fetch(
+    process.env.NEXT_PUBLIC_URL + "/api/check-active",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }
+  )
 
-const { data } = await supabase
-.from("users")
-.select("is_active")
-.eq("email", email)
-.single()
+  const result = await check.json()
 
-if (!data?.is_active) {
-return NextResponse.redirect(new URL("/pay", req.url))
-}
+  if (!result.active) {
+    return NextResponse.redirect(new URL("/pay", req.url))
+  }
 
-return NextResponse.next()
+  return NextResponse.next()
 }
 
 export const config = {
-matcher: ["/dashboard/:path*"]
+  matcher: ["/dashboard/:path*"],
 }
