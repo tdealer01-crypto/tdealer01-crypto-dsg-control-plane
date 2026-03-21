@@ -1,43 +1,114 @@
-import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import Stripe from "stripe";
+import { getSupabaseAdmin } from "../../../lib/supabase-server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-})
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2022-11-15",
+});
 
 export async function POST(req: Request) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    return Response.json(
+      {
+        error: {
+          code: "missing_env",
+          message: "STRIPE_WEBHOOK_SECRET is missing",
+        },
+      },
+      { status: 500 }
+    );
+  }
+
+  const signature = req.headers.get("stripe-signature");
+
+  if (!signature) {
+    return Response.json(
+      {
+        error: {
+          code: "missing_signature",
+          message: "Missing stripe-signature header",
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  const rawBody = await req.text();
+
+  let event: Stripe.Event;
+
   try {
-    const body = await req.json()
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  } catch (err: any) {
+    return Response.json(
+      {
+        error: {
+          code: "invalid_signature",
+          message: err.message,
+        },
+      },
+      { status: 400 }
+    );
+  }
 
-    console.log("WEBHOOK:", body)
+  const supabase = getSupabaseAdmin();
 
-    if (body.type === "checkout.session.completed") {
-      const email = body?.data?.object?.customer_email
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
 
-      if (!email) {
-        return Response.json({ error: "no email" })
+        await supabase.from("subscriptions").upsert(
+          {
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+            status: "active",
+          },
+          { onConflict: "stripe_customer_id" }
+        );
+        break;
       }
 
-      const { error } = await supabase
-        .from("users")
-        .upsert({ email, is_active: true })
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
 
-      if (error) {
-        console.log("DB ERROR:", error.message)
-        return new Response(error.message, { status: 500 })
+        await supabase
+          .from("subscriptions")
+          .update({ status: "active" })
+          .eq("stripe_subscription_id", invoice.subscription as string);
+
+        break;
       }
 
-      console.log("USER ACTIVATED:", email)
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+
+        await supabase
+          .from("subscriptions")
+          .update({ status: "canceled" })
+          .eq("stripe_subscription_id", subscription.id);
+
+        break;
+      }
+
+      default:
+        break;
     }
 
-    return Response.json({ ok: true })
+    return new Response(null, { status: 200 });
   } catch (err: any) {
-    console.log("ERROR:", err.message)
-    return new Response(err.message, { status: 500 })
+    return Response.json(
+      {
+        error: {
+          code: "internal_error",
+          message: err.message,
+        },
+      },
+      { status: 500 }
+    );
   }
 }
