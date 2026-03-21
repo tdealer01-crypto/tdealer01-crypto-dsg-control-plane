@@ -1,9 +1,9 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let browserClient: SupabaseClient | null = null;
 
 function cleanEnv(value?: string) {
-  return (value || "").trim().replace(/^['"]|['"]$/g, "");
+  return (value || '').trim().replace(/^['"]|['"]$/g, '');
 }
 
 export function getSupabaseBrowserConfig() {
@@ -13,7 +13,7 @@ export function getSupabaseBrowserConfig() {
   if (!url) {
     return {
       ok: false,
-      reason: "NEXT_PUBLIC_SUPABASE_URL is empty",
+      reason: 'NEXT_PUBLIC_SUPABASE_URL is empty',
       url,
       anonKey,
     };
@@ -22,7 +22,7 @@ export function getSupabaseBrowserConfig() {
   if (!anonKey) {
     return {
       ok: false,
-      reason: "NEXT_PUBLIC_SUPABASE_ANON_KEY is empty",
+      reason: 'NEXT_PUBLIC_SUPABASE_ANON_KEY is empty',
       url,
       anonKey,
     };
@@ -33,7 +33,7 @@ export function getSupabaseBrowserConfig() {
     if (!/^https?:$/.test(parsed.protocol)) {
       return {
         ok: false,
-        reason: "NEXT_PUBLIC_SUPABASE_URL is not http/https",
+        reason: 'NEXT_PUBLIC_SUPABASE_URL is not http/https',
         url,
         anonKey,
       };
@@ -41,7 +41,7 @@ export function getSupabaseBrowserConfig() {
   } catch {
     return {
       ok: false,
-      reason: "NEXT_PUBLIC_SUPABASE_URL is not a valid URL",
+      reason: 'NEXT_PUBLIC_SUPABASE_URL is not a valid URL',
       url,
       anonKey,
     };
@@ -49,7 +49,7 @@ export function getSupabaseBrowserConfig() {
 
   return {
     ok: true,
-    reason: "",
+    reason: '',
     url,
     anonKey,
   };
