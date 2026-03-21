@@ -6,6 +6,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.2",
     "@supabase/supabase-js": "^2.99.3",
     "eslint-config-next": "^14.2.35",
     "next": "^14.2.35",
