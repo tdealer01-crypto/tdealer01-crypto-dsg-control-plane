@@ -1,0 +1,6 @@
+.env.local
+.env.production
+.next/
+.vercel/
+node_modules/
+*.swp
