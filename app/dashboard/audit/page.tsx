@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type AuditEvent = {
@@ -74,15 +75,36 @@ export default function AuditPage() {
     };
   }, []);
 
+  const freezeCount = determinism.filter(
+    (item) => item.ok && item.data?.gate_action === "FREEZE"
+  ).length;
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">DSG</p>
-          <h1 className="mt-2 text-3xl font-semibold">Audit Layer</h1>
-          <p className="mt-2 text-slate-400">
-            Region-aware audit events, determinism checks, entropy, and freeze recommendations from DSG core.
-          </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">DSG</p>
+            <h1 className="mt-2 text-3xl font-semibold">Audit Layer</h1>
+            <p className="mt-2 text-slate-400">
+              Region-aware audit events, determinism checks, entropy, and freeze recommendations from DSG core.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/audit/matrix"
+              className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200"
+            >
+              Matrix
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200"
+            >
+              Dashboard
+            </Link>
+          </div>
         </div>
 
         {error ? (
@@ -100,9 +122,7 @@ export default function AuditPage() {
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <p className="text-sm text-slate-400">Recommended freeze</p>
-            <p className="mt-3 text-3xl font-semibold">
-              {determinism.filter((item) => item.ok && item.data?.gate_action === "FREEZE").length}
-            </p>
+            <p className="mt-3 text-3xl font-semibold">{loading ? "..." : freezeCount}</p>
           </div>
         </div>
 

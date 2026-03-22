@@ -50,6 +50,33 @@ type HealthPayload = {
   };
 };
 
+type AuditEvent = {
+  id?: number;
+  epoch: string;
+  sequence: number;
+  region_id: string;
+  state_hash: string;
+  entropy: number;
+  gate_result: string;
+  z3_proof_hash?: string | null;
+  signature?: string | null;
+  created_at: string;
+};
+
+type DeterminismResult = {
+  sequence: number;
+  ok: boolean;
+  data: null | {
+    sequence: number;
+    region_count: number;
+    unique_state_hashes: number;
+    max_entropy: number;
+    deterministic: boolean;
+    gate_action: string;
+  };
+  error: string | null;
+};
+
 function formatDate(value?: string | null) {
   if (!value) return "-";
   try {
@@ -64,8 +91,11 @@ export default function DashboardPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [health, setHealth] = useState<HealthPayload | null>(null);
+  const [auditItems, setAuditItems] = useState<AuditEvent[]>([]);
+  const [determinism, setDeterminism] = useState<DeterminismResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [auditError, setAuditError] = useState<string>("");
 
   useEffect(() => {
     let alive = true;
@@ -73,20 +103,23 @@ export default function DashboardPage() {
     async function load() {
       setLoading(true);
       setError("");
+      setAuditError("");
 
       try {
-        const [agentsRes, executionsRes, usageRes, healthRes] = await Promise.all([
+        const [agentsRes, executionsRes, usageRes, healthRes, auditRes] = await Promise.all([
           fetch("/api/agents", { cache: "no-store" }),
           fetch("/api/executions?limit=10", { cache: "no-store" }),
           fetch("/api/usage", { cache: "no-store" }),
           fetch("/api/health", { cache: "no-store" }),
+          fetch("/api/audit?limit=20", { cache: "no-store" }),
         ]);
 
-        const [agentsJson, executionsJson, usageJson, healthJson] = await Promise.all([
+        const [agentsJson, executionsJson, usageJson, healthJson, auditJson] = await Promise.all([
           agentsRes.json(),
           executionsRes.json(),
           usageRes.json(),
           healthRes.json(),
+          auditRes.json(),
         ]);
 
         if (!agentsRes.ok) throw new Error(agentsJson.error || "Failed to load agents");
@@ -99,6 +132,16 @@ export default function DashboardPage() {
         setExecutions(executionsJson.executions || []);
         setSummary(usageJson.summary || null);
         setHealth(healthJson || null);
+
+        if (auditRes.ok) {
+          setAuditItems(auditJson.items || []);
+          setDeterminism(auditJson.determinism || []);
+          if (auditJson.error) setAuditError(auditJson.error);
+        } else {
+          setAuditItems([]);
+          setDeterminism([]);
+          setAuditError(auditJson.error || "Failed to load audit data");
+        }
       } catch (err) {
         if (!alive) return;
         setError(err instanceof Error ? err.message : "Failed to load dashboard");
@@ -123,6 +166,22 @@ export default function DashboardPage() {
     ];
   }, [agents.length, executions.length, summary, health]);
 
+  const deterministicCount = useMemo(() => {
+    return determinism.filter((item) => item.ok && item.data?.deterministic).length;
+  }, [determinism]);
+
+  const freezeCount = useMemo(() => {
+    return determinism.filter(
+      (item) => item.ok && (item.data?.gate_action || "").toUpperCase() === "FREEZE"
+    ).length;
+  }, [determinism]);
+
+  const auditStatus = auditError
+    ? "warning"
+    : loading
+      ? "checking"
+      : "ok";
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
@@ -140,6 +199,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/executions" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Executions</Link>
             <Link href="/dashboard/billing" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Billing</Link>
             <Link href="/dashboard/policies" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Policies</Link>
+            <Link href="/dashboard/audit" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Audit</Link>
           </div>
         </div>
 
@@ -168,6 +228,51 @@ export default function DashboardPage() {
             <p>Core version: {health?.core?.version || "-"}</p>
             <p>Core status: {health?.core?.status || (health?.core_ok ? "ok" : "unreachable")}</p>
             <p>Error: {health?.core?.error || "-"}</p>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Audit Summary</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                Live audit events, determinism checks, and freeze recommendations from DSG core.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link href="/dashboard/audit" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">
+                Open Audit
+              </Link>
+              <Link href="/dashboard/audit/matrix" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">
+                Open Matrix
+              </Link>
+            </div>
+          </div>
+
+          {auditError ? (
+            <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">
+              {auditError}
+            </div>
+          ) : null}
+
+          <div className="mt-6 grid gap-6 md:grid-cols-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
+              <p className="text-sm text-slate-400">Audit events</p>
+              <p className="mt-3 text-3xl font-semibold">{loading ? "..." : auditItems.length}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
+              <p className="text-sm text-slate-400">Deterministic</p>
+              <p className="mt-3 text-3xl font-semibold">{loading ? "..." : deterministicCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
+              <p className="text-sm text-slate-400">Freeze recommended</p>
+              <p className="mt-3 text-3xl font-semibold">{loading ? "..." : freezeCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
+              <p className="text-sm text-slate-400">Audit status</p>
+              <p className="mt-3 text-3xl font-semibold">{auditStatus}</p>
+            </div>
           </div>
         </section>
 
