@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
+import { getDSGCoreLedger, getDSGCoreMetrics } from "../../../lib/dsg-core";
 
 export const dynamic = "force-dynamic";
 
@@ -29,27 +30,41 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get("limit") || "10"), 50);
 
-    const { data, error } = await supabase
-      .from("executions")
-      .select(`
-        id,
-        org_id,
-        agent_id,
-        decision,
-        latency_ms,
-        policy_version,
-        reason,
-        created_at
-      `)
-      .eq("org_id", profile.org_id)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const [{ data, error }, coreLedger, coreMetrics] = await Promise.all([
+      supabase
+        .from("executions")
+        .select(`
+          id,
+          org_id,
+          agent_id,
+          decision,
+          latency_ms,
+          policy_version,
+          reason,
+          created_at
+        `)
+        .eq("org_id", profile.org_id)
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      getDSGCoreLedger(limit),
+      getDSGCoreMetrics(),
+    ]);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, executions: data ?? [] });
+    return NextResponse.json({
+      ok: true,
+      executions: data ?? [],
+      core: {
+        ledger_ok: coreLedger.ok,
+        ledger_items: coreLedger.items,
+        metrics_ok: coreMetrics.ok,
+        metrics: coreMetrics.ok ? coreMetrics.data : null,
+        error: !coreLedger.ok ? coreLedger.error : !coreMetrics.ok ? coreMetrics.error : null,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unexpected error" },
