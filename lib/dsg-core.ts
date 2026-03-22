@@ -6,6 +6,29 @@ export type DSGCoreExecutionRequest = {
   payload?: Record<string, unknown>;
 };
 
+export type DSGCoreAuditEvent = {
+  id?: number;
+  epoch: string | number | null;
+  sequence: number;
+  region_id: string;
+  state_hash: string | null;
+  entropy: number | null;
+  gate_result: "ALLOW" | "STABILIZE" | "BLOCK" | string | null;
+  z3_proof_hash?: string | null;
+  signature?: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string | null;
+};
+
+export type DSGCoreDeterminism = {
+  sequence: number;
+  region_count: number;
+  unique_state_hashes: number;
+  max_entropy: number;
+  deterministic: boolean;
+  gate_action: string;
+};
+
 export function getDSGCoreConfig() {
   return {
     url: (process.env.DSG_CORE_URL || DEFAULT_DSG_CORE_URL).replace(/\/$/, ""),
@@ -19,6 +42,10 @@ function coreHeaders() {
     "Content-Type": "application/json",
     ...(apiKey ? { "x-api-key": apiKey } : {}),
   };
+}
+
+function parseError(data: any, status: number) {
+  return data?.detail || data?.error || `HTTP ${status}`;
 }
 
 export async function getDSGCoreHealth() {
@@ -36,7 +63,7 @@ export async function getDSGCoreHealth() {
       ok: response.ok,
       url,
       ...data,
-      ...(response.ok ? {} : { error: data?.detail || data?.error || `HTTP ${response.status}` }),
+      ...(response.ok ? {} : { error: parseError(data, response.status) }),
     };
   } catch (error) {
     return {
@@ -58,7 +85,7 @@ export async function executeOnDSGCore(payload: DSGCoreExecutionRequest) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.detail || data?.error || `DSG core execution failed (${response.status})`);
+    throw new Error(parseError(data, response.status));
   }
 
   return data;
@@ -76,7 +103,7 @@ export async function getDSGCoreMetrics() {
     const data = await response.json().catch(() => ({}));
     return {
       ok: response.ok,
-      ...(response.ok ? { data } : { error: data?.detail || data?.error || `HTTP ${response.status}` }),
+      ...(response.ok ? { data } : { error: parseError(data, response.status) }),
     };
   } catch (error) {
     return {
@@ -100,13 +127,68 @@ export async function getDSGCoreLedger(limit = 20) {
     return {
       ok: response.ok,
       items,
-      ...(response.ok ? {} : { error: data?.detail || data?.error || `HTTP ${response.status}` }),
+      ...(response.ok ? {} : { error: parseError(data, response.status) }),
     };
   } catch (error) {
     return {
       ok: false,
       items: [],
       error: error instanceof Error ? error.message : "Failed to fetch DSG core ledger",
+    };
+  }
+}
+
+export async function getDSGCoreAuditEvents(limit = 20) {
+  const { url } = getDSGCoreConfig();
+
+  try {
+    const response = await fetch(`${url}/audit/events?limit=${limit}`, {
+      method: "GET",
+      headers: coreHeaders(),
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+    const items = Array.isArray(data?.items) ? (data.items as DSGCoreAuditEvent[]) : [];
+    return {
+      ok: response.ok,
+      items,
+      ...(response.ok ? {} : { error: parseError(data, response.status) }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      items: [] as DSGCoreAuditEvent[],
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch DSG core audit events",
+    };
+  }
+}
+
+export async function getDSGCoreDeterminism(sequence: number) {
+  const { url } = getDSGCoreConfig();
+
+  try {
+    const response = await fetch(`${url}/audit/determinism/${sequence}`, {
+      method: "GET",
+      headers: coreHeaders(),
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+    return {
+      ok: response.ok,
+      ...(response.ok
+        ? { data: data as DSGCoreDeterminism }
+        : { error: parseError(data, response.status) }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch DSG core determinism",
     };
   }
 }
