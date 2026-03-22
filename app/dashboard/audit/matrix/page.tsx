@@ -16,31 +16,30 @@ type MatrixCell = {
   gate_result: string | null;
   state_hash: string | null;
   created_at: string | null;
-  epoch: number | null;
+  epoch: string | number | null;
   z3_proof_hash: string | null;
   signature: string | null;
 };
 
+type MatrixSummary = {
+  audit_events?: number;
+  audit_event_count?: number;
+  sequence_count?: number;
+  region_count?: number;
+  deterministic_count?: number;
+  determinism_ok_count?: number;
+  freeze_count?: number;
+  core_error?: string | null;
+};
+
 type MatrixResponse = {
   ok: boolean;
-  sequences: number[];
-  regions: string[];
-  cells: MatrixCell[];
-  determinism: DeterminismResult[];
-  summary: {
-    audit_event_count: number;
-    normalized_event_count: number;
-    sequence_count: number;
-    region_count: number;
-    cell_count: number;
-    populated_cell_count: number;
-    determinism_count: number;
-    determinism_ok_count: number;
-    determinism_error_count: number;
-    core_ok: boolean;
-    core_error: string | null;
-    generated_at: string;
-  };
+  sequences?: number[];
+  regions?: string[];
+  cells?: MatrixCell[];
+  determinism?: DeterminismResult[];
+  summary?: MatrixSummary;
+  error?: string;
 };
 
 function metricValue(value: number, loading: boolean) {
@@ -67,7 +66,7 @@ function mapCellToAuditEvent(cell: MatrixCell): AuditEvent {
 export default function AuditMatrixPage() {
   const [cells, setCells] = useState<MatrixCell[]>([]);
   const [determinism, setDeterminism] = useState<DeterminismResult[]>([]);
-  const [summary, setSummary] = useState<MatrixResponse["summary"] | null>(null);
+  const [summary, setSummary] = useState<MatrixSummary | null>(null);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
   const [loading, setLoading] = useState(true);
@@ -87,7 +86,7 @@ export default function AuditMatrixPage() {
         const json: MatrixResponse = await res.json();
 
         if (!res.ok) {
-          throw new Error((json as any).error || "Failed to load audit matrix");
+          throw new Error(json.error || "Failed to load audit matrix");
         }
 
         if (!alive) return;
@@ -118,6 +117,18 @@ export default function AuditMatrixPage() {
 
   const items = useMemo(() => cells.map(mapCellToAuditEvent), [cells]);
 
+  const sequenceCount = useMemo(() => {
+    return new Set(cells.map((cell) => cell.sequence)).size;
+  }, [cells]);
+
+  const regionCount = useMemo(() => {
+    return new Set(cells.map((cell) => cell.region_id)).size;
+  }, [cells]);
+
+  const deterministicCount = useMemo(() => {
+    return determinism.filter((item) => item.ok && item.data?.deterministic).length;
+  }, [determinism]);
+
   const freezeCount = useMemo(() => {
     return determinism.filter(
       (item) =>
@@ -126,11 +137,26 @@ export default function AuditMatrixPage() {
   }, [determinism]);
 
   const cards = [
-    { label: "audit_events", value: summary?.audit_event_count ?? 0 },
-    { label: "sequence_count", value: summary?.sequence_count ?? 0 },
-    { label: "region_count", value: summary?.region_count ?? 0 },
-    { label: "deterministic_count", value: summary?.determinism_ok_count ?? 0 },
-    { label: "freeze_count", value: freezeCount },
+    {
+      label: "audit_events",
+      value: summary?.audit_events ?? summary?.audit_event_count ?? items.length,
+    },
+    {
+      label: "sequence_count",
+      value: summary?.sequence_count ?? sequenceCount,
+    },
+    {
+      label: "region_count",
+      value: summary?.region_count ?? regionCount,
+    },
+    {
+      label: "deterministic_count",
+      value: summary?.deterministic_count ?? summary?.determinism_ok_count ?? deterministicCount,
+    },
+    {
+      label: "freeze_count",
+      value: summary?.freeze_count ?? freezeCount,
+    },
   ];
 
   return (
