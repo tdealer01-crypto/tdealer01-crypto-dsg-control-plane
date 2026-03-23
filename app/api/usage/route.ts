@@ -1,16 +1,24 @@
 import { NextResponse } from 'next/server';
+
+import { getApiAuthContext } from '../../../lib/auth/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const auth = await getApiAuthContext();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const supabase = getSupabaseAdmin();
     const billingPeriod = new Date().toISOString().slice(0, 7);
 
     const { data: usageCounters, error: usageError } = await supabase
       .from('usage_counters')
       .select('executions')
+      .eq('org_id', auth.profile.org_id)
       .eq('billing_period', billingPeriod);
 
     if (usageError) {

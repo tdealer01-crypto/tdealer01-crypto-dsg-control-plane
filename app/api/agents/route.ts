@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID, createHash } from 'crypto';
+import { getApiAuthContext } from '../../../lib/auth/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -14,12 +15,19 @@ function buildPreview(apiKey: string) {
 
 export async function GET() {
   try {
+    const auth = await getApiAuthContext();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString().slice(0, 7);
 
     const { data: agents, error } = await supabase
       .from('agents')
-      .select('id, name, policy_id, status, monthly_limit');
+      .select('id, name, policy_id, status, monthly_limit')
+      .eq('org_id', auth.profile.org_id)
+      .order('created_at', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -57,6 +65,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getApiAuthContext();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const body = await request.json().catch(() => null);
     if (!body?.name || !body?.policy_id) {
       return NextResponse.json(
@@ -71,19 +84,11 @@ export async function POST(request: Request) {
     const agentId = `agt_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
     const now = new Date().toISOString();
 
-    const { data: existingOrg } = await supabase
-      .from('agents')
-      .select('org_id')
-      .limit(1)
-      .maybeSingle();
-
-    const orgId = existingOrg?.org_id || 'org_demo';
-
     const { data: inserted, error } = await supabase
       .from('agents')
       .insert({
         id: agentId,
-        org_id: orgId,
+        org_id: auth.profile.org_id,
         name: String(body.name),
         policy_id: String(body.policy_id),
         status: 'active',

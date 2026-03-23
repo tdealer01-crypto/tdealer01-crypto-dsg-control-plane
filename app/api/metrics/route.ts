@@ -1,16 +1,24 @@
 import { NextResponse } from 'next/server';
+
+import { getApiAuthContext } from '../../../lib/auth/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const auth = await getApiAuthContext();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const supabase = getSupabaseAdmin();
     const today = new Date().toISOString().slice(0, 10);
 
     const { data: executions, error: executionsError } = await supabase
       .from('executions')
-      .select('decision, latency_ms, created_at');
+      .select('decision, latency_ms, created_at')
+      .eq('org_id', auth.profile.org_id);
 
     if (executionsError) {
       return NextResponse.json({ error: executionsError.message }, { status: 500 });
@@ -19,6 +27,7 @@ export async function GET() {
     const { count: activeAgents, error: agentError } = await supabase
       .from('agents')
       .select('*', { count: 'exact', head: true })
+      .eq('org_id', auth.profile.org_id)
       .eq('status', 'active');
 
     if (agentError) {
