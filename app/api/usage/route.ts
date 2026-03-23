@@ -3,15 +3,72 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+const INCLUDED_EXECUTIONS: Record<string, number> = {
+  trial: 1000,
+  pro: 10000,
+  business: 100000,
+  enterprise: 1000000,
+};
+
+function formatPlanLabel(planKey?: string | null, interval?: string | null) {
+  const normalized = String(planKey || 'trial').toLowerCase();
+  const pretty =
+    normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+
+  if (!interval) return pretty;
+  return `${pretty} (${interval})`;
+}
+
+function formatBillingPeriod(
+  start?: string | null,
+  end?: string | null,
+  fallback?: string
+) {
+  if (start && end) {
+    return `${String(start).slice(0, 10)} → ${String(end).slice(0, 10)}`;
+  }
+
+  return fallback || new Date().toISOString().slice(0, 7);
+}
+
 export async function GET() {
   try {
     const supabase = getSupabaseAdmin();
-    const billingPeriod = new Date().toISOString().slice(0, 7);
 
-    const { data: usageCounters, error: usageError } = await supabase
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from('billing_subscriptions')
+      .select(
+        'org_id, plan_key, billing_interval, status, current_period_start, current_period_end, trial_end, updated_at'
+      )
+      .in('status', ['trialing', 'active', 'past_due', 'unpaid', 'canceled'])
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (
+      subscriptionError &&
+      !/relation .* does not exist/i.test(subscriptionError.message)
+    ) {
+      return NextResponse.json(
+        { error: subscriptionError.message },
+        { status: 500 }
+      );
+    }
+
+    const billingPeriodKey = subscription?.current_period_start
+      ? String(subscription.current_period_start).slice(0, 7)
+      : new Date().toISOString().slice(0, 7);
+
+    let usageQuery = supabase
       .from('usage_counters')
       .select('executions')
-      .eq('billing_period', billingPeriod);
+      .eq('billing_period', billingPeriodKey);
+
+    if (subscription?.org_id) {
+      usageQuery = usageQuery.eq('org_id', subscription.org_id);
+    }
+
+    const { data: usageCounters, error: usageError } = await usageQuery;
 
     if (usageError) {
       return NextResponse.json({ error: usageError.message }, { status: 500 });
@@ -22,13 +79,24 @@ export async function GET() {
       0
     );
 
-    const includedExecutions = 10000;
+    const planKey = String(subscription?.plan_key || 'trial').toLowerCase();
+    const includedExecutions =
+      INCLUDED_EXECUTIONS[planKey] || INCLUDED_EXECUTIONS.trial;
+
     const overageExecutions = Math.max(0, executions - includedExecutions);
     const projectedAmountUsd = Number((overageExecutions * 0.001).toFixed(3));
 
     return NextResponse.json({
-      plan: 'Pro',
-      billing_period: billingPeriod,
+      plan: formatPlanLabel(planKey, subscription?.billing_interval || null),
+      subscription_status: subscription?.status || 'trialing',
+      billing_period: formatBillingPeriod(
+        subscription?.current_period_start || null,
+        subscription?.current_period_end || null,
+        billingPeriodKey
+      ),
+      current_period_start: subscription?.current_period_start || null,
+      current_period_end: subscription?.current_period_end || null,
+      trial_end: subscription?.trial_end || null,
       executions,
       included_executions: includedExecutions,
       overage_executions: overageExecutions,
