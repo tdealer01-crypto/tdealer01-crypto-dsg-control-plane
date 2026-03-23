@@ -148,7 +148,16 @@ export async function getDSGCoreAuditEvents(limit = 20) {
       cache: "no-store",
     });
     const data = await response.json().catch(() => ({}));
-    const items = Array.isArray(data?.items) ? (data.items as DSGCoreAuditEvent[]) : [];
+
+    let items: DSGCoreAuditEvent[] = [];
+    if (Array.isArray((data as any)?.items)) {
+      items = (data as any).items;
+    } else if (Array.isArray((data as any)?.events)) {
+      items = (data as any).events;
+    } else if (Array.isArray((data as any)?.data?.items)) {
+      items = (data as any).data.items;
+    }
+
     return {
       ok: response.ok,
       items,
@@ -170,16 +179,30 @@ export async function getDSGCoreDeterminism(sequence: number) {
   const { url } = getDSGCoreConfig();
 
   try {
-    const response = await fetch(`${url}/audit/determinism/${sequence}`, {
+    let response = await fetch(`${url}/audit/determinism/${sequence}`, {
       method: "GET",
       headers: coreHeaders(),
       cache: "no-store",
     });
+
+    if (response.status === 404) {
+      response = await fetch(`${url}/audit/determinism?sequence=${sequence}`, {
+        method: "GET",
+        headers: coreHeaders(),
+        cache: "no-store",
+      });
+    }
+
     const data = await response.json().catch(() => ({}));
+    const determinismData =
+      data && typeof data === "object" && "data" in data
+        ? (data as any).data
+        : data;
+
     return {
       ok: response.ok,
       ...(response.ok
-        ? { data: data as DSGCoreDeterminism }
+        ? { data: determinismData as DSGCoreDeterminism }
         : { error: parseError(data, response.status) }),
     };
   } catch (error) {
