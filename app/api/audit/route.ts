@@ -26,7 +26,7 @@ function getDeterminismError(result: DeterminismResult) {
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -82,12 +82,22 @@ export async function GET(request: Request) {
       })
     );
 
+    const overallOk = auditEvents.ok && determinismResults.every((res) => res.ok);
+    const determinismErrors = determinismResults
+      .filter((res) => !res.ok)
+      .map((res) => res.error)
+      .filter(Boolean);
+
     return NextResponse.json({
-      ok: true,
+      ok: overallOk,
       items: auditEvents.items,
       determinism: determinismResults,
       core_ok: auditEvents.ok,
-      error: auditEvents.ok ? null : auditEvents.error,
+      error: overallOk
+        ? null
+        : auditEvents.ok
+          ? determinismErrors.join("; ")
+          : auditEvents.error ?? null,
     });
   } catch (error) {
     return NextResponse.json(
