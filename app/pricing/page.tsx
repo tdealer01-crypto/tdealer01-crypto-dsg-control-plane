@@ -203,7 +203,7 @@ export default function PricingPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => startCheckout(plan.key)}
+                    onClick={() => startCheckout(plan.key as PaidPlanKey)}
                     disabled={loadingPlan !== null}
                     className={[
                       'mt-8 inline-block w-full rounded-xl px-4 py-3 text-center font-semibold',
