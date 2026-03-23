@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
-import { getDSGCoreAuditEvents, getDSGCoreDeterminism } from "../../../lib/dsg-core";
+import {
+  getDSGCoreAuditEvents,
+  getDSGCoreDeterminism,
+  type DSGCoreDeterminism,
+} from "../../../lib/dsg-core";
 
 export const dynamic = "force-dynamic";
+
+type DeterminismResult = Awaited<ReturnType<typeof getDSGCoreDeterminism>>;
+
+function hasDeterminismData(
+  result: DeterminismResult
+): result is { ok: true; data: DSGCoreDeterminism } {
+  return result.ok && "data" in result;
+}
+
+function getDeterminismError(result: DeterminismResult) {
+  if (!result.ok && "error" in result) {
+    return result.error;
+  }
+
+  return "Unknown error";
+}
 
 export async function GET(request: Request) {
   try {
@@ -31,18 +51,33 @@ export async function GET(request: Request) {
     const limit = Math.min(Number(url.searchParams.get("limit") || "20"), 100);
 
     const auditEvents = await getDSGCoreAuditEvents(limit);
+
     const sequences = Array.from(
-      new Set((auditEvents.items || []).map((item) => Number(item.sequence)).filter((n) => Number.isFinite(n)))
+      new Set(
+        (auditEvents.items || [])
+          .map((item) => Number(item.sequence))
+          .filter((n) => Number.isFinite(n))
+      )
     ).slice(0, 5);
 
     const determinismResults = await Promise.all(
       sequences.map(async (sequence) => {
         const result = await getDSGCoreDeterminism(sequence);
+
+        if (hasDeterminismData(result)) {
+          return {
+            sequence,
+            ok: true,
+            data: result.data,
+            error: null,
+          };
+        }
+
         return {
           sequence,
-          ok: result.ok,
-          data: result.ok ? result.data : null,
-          error: result.ok ? null : result.error,
+          ok: false,
+          data: null,
+          error: getDeterminismError(result),
         };
       })
     );

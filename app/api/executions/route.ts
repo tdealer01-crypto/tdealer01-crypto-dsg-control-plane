@@ -54,6 +54,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const metricsData = coreMetrics.ok && "data" in coreMetrics ? coreMetrics.data : null;
+    const metricsError = !coreMetrics.ok && "error" in coreMetrics ? coreMetrics.error : null;
+
     return NextResponse.json({
       ok: true,
       executions: data ?? [],
@@ -61,8 +64,8 @@ export async function GET(request: Request) {
         ledger_ok: coreLedger.ok,
         ledger_items: coreLedger.items,
         metrics_ok: coreMetrics.ok,
-        metrics: coreMetrics.ok ? coreMetrics.data : null,
-        error: !coreLedger.ok ? coreLedger.error : !coreMetrics.ok ? coreMetrics.error : null,
+        metrics: metricsData,
+        error: !coreLedger.ok ? coreLedger.error : metricsError,
       },
     });
   } catch (error) {
