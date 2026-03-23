@@ -3,37 +3,97 @@ import Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
 
+type PlanKey = 'pro' | 'business' | 'enterprise';
+type BillingInterval = 'monthly' | 'yearly';
+
+const PLAN_CONFIG: Record<
+  PlanKey,
+  {
+    trialDays: number;
+    priceEnv: Record<BillingInterval, string>;
+  }
+> = {
+  pro: {
+    trialDays: 14,
+    priceEnv: {
+      monthly: 'STRIPE_PRICE_PRO_MONTHLY',
+      yearly: 'STRIPE_PRICE_PRO_YEARLY',
+    },
+  },
+  business: {
+    trialDays: 14,
+    priceEnv: {
+      monthly: 'STRIPE_PRICE_BUSINESS_MONTHLY',
+      yearly: 'STRIPE_PRICE_BUSINESS_YEARLY',
+    },
+  },
+  enterprise: {
+    trialDays: 30,
+    priceEnv: {
+      monthly: 'STRIPE_PRICE_ENTERPRISE_MONTHLY',
+      yearly: 'STRIPE_PRICE_ENTERPRISE_YEARLY',
+    },
+  },
+};
+
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
+
   return new Stripe(secretKey, {
     apiVersion: '2023-10-16',
   });
 }
 
-function getPriceId(plan: string) {
-  if (plan === 'business') return process.env.STRIPE_PRICE_BUSINESS || '';
-  return process.env.STRIPE_PRICE_PRO || '';
+function normalizePlan(value: unknown): PlanKey {
+  const plan = String(value || 'pro').toLowerCase();
+  if (plan === 'business') return 'business';
+  if (plan === 'enterprise') return 'enterprise';
+  return 'pro';
+}
+
+function normalizeInterval(value: unknown): BillingInterval {
+  const interval = String(value || 'monthly').toLowerCase();
+  if (interval === 'year' || interval === 'yearly') return 'yearly';
+  return 'monthly';
+}
+
+function getPriceId(plan: PlanKey, interval: BillingInterval) {
+  const envName = PLAN_CONFIG[plan].priceEnv[interval];
+  return process.env[envName] || '';
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null);
-    const plan = String(body?.plan || 'pro').toLowerCase();
-    const customerEmail = body?.email ? String(body.email) : undefined;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const priceId = getPriceId(plan);
 
+    const plan = normalizePlan(body?.plan);
+    const interval = normalizeInterval(body?.interval);
+    const customerEmail = body?.email ? String(body.email) : undefined;
+    const orgId = body?.org_id ? String(body.org_id) : undefined;
+
+    const priceId = getPriceId(plan, interval);
     if (!priceId) {
       return NextResponse.json(
-        { error: `Missing Stripe price configuration for plan: ${plan}` },
+        { error: `Missing Stripe price configuration for ${plan}/${interval}` },
         { status: 500 }
       );
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const stripe = getStripeClient();
+
+    const metadata: Record<string, string> = {
+      plan_key: plan,
+      billing_interval: interval,
+      source: 'dsg-control-plane',
+    };
+
+    if (orgId) metadata.org_id = orgId;
+    if (customerEmail) metadata.customer_email = customerEmail;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [
@@ -42,13 +102,16 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/dashboard/billing?checkout=success`,
-      cancel_url: `${appUrl}/pricing?checkout=cancelled`,
+      success_url: `${appUrl}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/pricing?checkout=cancelled&plan=${plan}&interval=${interval}`,
       customer_email: customerEmail,
+      client_reference_id: orgId,
       allow_promotion_codes: true,
-      metadata: {
-        plan,
-        source: 'dsg-control-plane',
+      billing_address_collection: 'auto',
+      metadata,
+      subscription_data: {
+        trial_period_days: PLAN_CONFIG[plan].trialDays,
+        metadata,
       },
     });
 
@@ -56,6 +119,8 @@ export async function POST(request: Request) {
       ok: true,
       url: session.url,
       session_id: session.id,
+      plan,
+      interval,
     });
   } catch (error) {
     return NextResponse.json(
