@@ -38,11 +38,21 @@ export async function GET(request: Request) {
     const determinismResults = await Promise.all(
       sequences.map(async (sequence) => {
         const result = await getDSGCoreDeterminism(sequence);
+
+        if (result.ok && "data" in result) {
+          return {
+            sequence,
+            ok: true,
+            data: result.data,
+            error: null,
+          };
+        }
+
         return {
           sequence,
-          ok: result.ok,
-          data: result.ok ? result.data : null,
-          error: result.ok ? null : result.error,
+          ok: false,
+          data: null,
+          error: "error" in result ? result.error : "Unknown error",
         };
       })
     );
