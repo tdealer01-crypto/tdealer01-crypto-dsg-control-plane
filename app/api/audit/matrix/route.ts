@@ -110,7 +110,7 @@ function pickMoreRecentCell(current: MatrixCell | undefined, candidate: MatrixCe
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -134,13 +134,9 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = clampLimit(url.searchParams.get("limit"), 100, 100);
 
-    const auditEvents = (await getDSGCoreAuditEvents(limit)) as {
-      ok?: boolean;
-      items?: RawAuditEvent[];
-      error?: string | null;
-    };
+    const auditEvents = await getDSGCoreAuditEvents(limit);
 
-    const rawItems = Array.isArray(auditEvents.items) ? auditEvents.items : [];
+    const rawItems = Array.isArray(auditEvents?.items) ? auditEvents.items : [];
     const normalizedItems = rawItems
       .map((item) => normalizeAuditEvent(item))
       .filter((item): item is MatrixCell => item !== null);
@@ -180,17 +176,14 @@ export async function GET(request: Request) {
 
     const determinism = await Promise.all(
       sequences.map(async (sequence) => {
-        const result = (await getDSGCoreDeterminism(sequence)) as {
-          ok?: boolean;
-          data?: unknown;
-          error?: string | null;
-        };
-
+        const result = await getDSGCoreDeterminism(sequence);
         return {
           sequence,
-          ok: Boolean(result?.ok),
-          data: result?.ok ? (result.data ?? null) : null,
-          error: result?.ok ? null : (result?.error ?? "Failed to fetch determinism"),
+          ok: result.ok ?? false,
+          data: result.ok ? (result.data ?? null) : null,
+          error: result.ok
+            ? null
+            : result.error ?? "Failed to fetch determinism",
         };
       })
     );
@@ -210,8 +203,10 @@ export async function GET(request: Request) {
       generated_at: new Date().toISOString(),
     };
 
+    const overallOk = (auditEvents.ok ?? false) && determinism.every((d) => d.ok);
+
     return NextResponse.json({
-      ok: true,
+      ok: overallOk,
       sequences,
       regions,
       cells,
