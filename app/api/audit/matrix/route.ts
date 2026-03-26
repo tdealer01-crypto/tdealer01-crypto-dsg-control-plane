@@ -177,13 +177,24 @@ export async function GET(request: Request) {
     const determinism = await Promise.all(
       sequences.map(async (sequence) => {
         const result = await getDSGCoreDeterminism(sequence);
+
+        if (result.ok && "data" in result) {
+          return {
+            sequence,
+            ok: true,
+            data: result.data ?? null,
+            error: null,
+          };
+        }
+
         return {
           sequence,
-          ok: result.ok ?? false,
-          data: result.ok ? (result.data ?? null) : null,
-          error: result.ok
-            ? null
-            : result.error ?? "Failed to fetch determinism",
+          ok: false,
+          data: null,
+          error:
+            "error" in result
+              ? result.error ?? "Failed to fetch determinism"
+              : "Failed to fetch determinism",
         };
       })
     );
