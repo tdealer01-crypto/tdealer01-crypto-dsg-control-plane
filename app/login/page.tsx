@@ -13,6 +13,13 @@ function getMessage(message?: string, error?: string) {
     };
   }
 
+  if (message === 'signed-out') {
+    return {
+      tone: 'success',
+      text: 'Signed out successfully. You can request a new magic link at any time.',
+    };
+  }
+
   if (error === 'missing-email') {
     return {
       tone: 'error',

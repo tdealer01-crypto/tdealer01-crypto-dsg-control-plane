@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID, createHash } from 'crypto';
+import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -12,14 +13,45 @@ function buildPreview(apiKey: string) {
   return `${apiKey.slice(0, 12)}...`;
 }
 
+async function requireActiveProfile() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { ok: false as const, status: 401, error: 'Unauthorized' };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('org_id, is_active')
+    .eq('auth_user_id', user.id)
+    .maybeSingle();
+
+  if (profileError || !profile?.org_id || !profile.is_active) {
+    return { ok: false as const, status: 403, error: 'Forbidden' };
+  }
+
+  return { ok: true as const, orgId: String(profile.org_id) };
+}
+
 export async function GET() {
   try {
+    const access = await requireActiveProfile();
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString().slice(0, 7);
 
     const { data: agents, error } = await supabase
       .from('agents')
-      .select('id, name, policy_id, status, monthly_limit');
+      .select('id, name, policy_id, status, monthly_limit')
+      .eq('org_id', access.orgId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,6 +62,7 @@ export async function GET() {
         const { data: usageCounter } = await supabase
           .from('usage_counters')
           .select('executions')
+          .eq('org_id', access.orgId)
           .eq('agent_id', agent.id)
           .eq('billing_period', now)
           .maybeSingle();
@@ -57,6 +90,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const access = await requireActiveProfile();
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     const body = await request.json().catch(() => null);
     if (!body?.name || !body?.policy_id) {
       return NextResponse.json(
@@ -71,19 +109,11 @@ export async function POST(request: Request) {
     const agentId = `agt_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
     const now = new Date().toISOString();
 
-    const { data: existingOrg } = await supabase
-      .from('agents')
-      .select('org_id')
-      .limit(1)
-      .maybeSingle();
-
-    const orgId = existingOrg?.org_id || 'org_demo';
-
     const { data: inserted, error } = await supabase
       .from('agents')
       .insert({
         id: agentId,
-        org_id: orgId,
+        org_id: access.orgId,
         name: String(body.name),
         policy_id: String(body.policy_id),
         status: 'active',
