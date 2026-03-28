@@ -24,12 +24,12 @@ const plans: PlanCard[] = [
     name: 'Trial',
     monthlyPrice: 'Free',
     yearlyPrice: 'Free',
-    subtitle: 'สำหรับการทดลอง flow แรก',
-    trial: 'Evaluation access only',
+    subtitle: 'Best for first evaluation and stakeholder review',
+    trial: 'No card required',
     features: [
-      '1 agent',
+      '1 agent sandbox',
       '1,000 executions / month',
-      'DSG dashboard access',
+      'Dashboard visibility',
       'Basic workflow testing',
     ],
     cta: 'Start Trial',
@@ -39,7 +39,7 @@ const plans: PlanCard[] = [
     name: 'Pro',
     monthlyPrice: 'US$99/mo',
     yearlyPrice: 'US$990/yr',
-    subtitle: 'สำหรับ solo founder และทีมเล็ก',
+    subtitle: 'Best for solo founders and lean product teams',
     trial: '14-day free trial',
     features: [
       '5 agents',
@@ -55,7 +55,7 @@ const plans: PlanCard[] = [
     name: 'Business',
     monthlyPrice: 'US$299/mo',
     yearlyPrice: 'US$2,990/yr',
-    subtitle: 'สำหรับทีมที่เริ่มใช้งานจริง',
+    subtitle: 'Best for production AI workflows',
     trial: '14-day free trial',
     features: [
       '25 agents',
@@ -70,13 +70,13 @@ const plans: PlanCard[] = [
     name: 'Enterprise',
     monthlyPrice: 'US$999/mo',
     yearlyPrice: 'US$9,990/yr',
-    subtitle: 'สำหรับองค์กรและงานกำกับดูแลจริง',
+    subtitle: 'Best for audit-heavy and governance-first deployments',
     trial: '30-day pilot',
     features: [
       'Custom quotas',
       'Longer pilot window',
-      'Governance-heavy deployments',
-      'Audit exports + onboarding',
+      'Governance onboarding',
+      'Audit exports + rollout support',
     ],
     cta: 'Start Enterprise Pilot',
   },
@@ -122,28 +122,24 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+    <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="mb-4 text-sm uppercase tracking-[0.25em] text-emerald-400">
-            Pricing
-          </p>
-          <h1 className="mb-6 text-4xl font-bold md:text-6xl">
-            DSG Control Plane Pricing
-          </h1>
-          <p className="text-lg text-slate-300">
-            Choose the plan that matches your team, execution volume, and governance needs.
+          <div className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">
+            Pricing that maps directly to execution volume
+          </div>
+          <h1 className="mt-8 text-4xl font-bold md:text-6xl">Choose the plan that matches your AI control surface.</h1>
+          <p className="mt-6 text-lg leading-8 text-slate-300">
+            DSG is already wired for subscription checkout. These plans turn governance, audit, and usage visibility into a clean commercial offer.
           </p>
 
-          <div className="mt-8 inline-flex rounded-2xl border border-slate-800 bg-slate-900 p-1">
+          <div className="mt-8 inline-flex rounded-2xl border border-white/10 bg-white/5 p-1">
             <button
               type="button"
               onClick={() => setInterval('monthly')}
               className={[
-                'rounded-xl px-4 py-2 text-sm font-semibold transition',
-                interval === 'monthly'
-                  ? 'bg-emerald-500 text-black'
-                  : 'text-slate-300',
+                'rounded-xl px-5 py-3 text-sm font-semibold transition',
+                interval === 'monthly' ? 'bg-emerald-400 text-slate-950' : 'text-slate-300',
               ].join(' ')}
             >
               Monthly
@@ -152,10 +148,8 @@ export default function PricingPage() {
               type="button"
               onClick={() => setInterval('yearly')}
               className={[
-                'rounded-xl px-4 py-2 text-sm font-semibold transition',
-                interval === 'yearly'
-                  ? 'bg-emerald-500 text-black'
-                  : 'text-slate-300',
+                'rounded-xl px-5 py-3 text-sm font-semibold transition',
+                interval === 'yearly' ? 'bg-emerald-400 text-slate-950' : 'text-slate-300',
               ].join(' ')}
             >
               Yearly
@@ -171,36 +165,42 @@ export default function PricingPage() {
 
         <div className="mt-14 grid gap-6 lg:grid-cols-4">
           {plans.map((plan) => {
-            const price =
-              interval === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
+            const price = interval === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
 
             return (
               <div
                 key={plan.name}
                 className={[
-                  'rounded-2xl border p-6 shadow-lg',
+                  'rounded-[1.75rem] border p-6 backdrop-blur-sm',
                   plan.highlighted
-                    ? 'border-emerald-400 bg-slate-900'
-                    : 'border-slate-800 bg-slate-900/70',
+                    ? 'border-emerald-400/50 bg-emerald-400/10 shadow-glow'
+                    : 'border-white/10 bg-white/5',
                 ].join(' ')}
               >
                 <div className="mb-6">
+                  {plan.highlighted ? (
+                    <div className="mb-4 inline-flex rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-950">
+                      Most popular
+                    </div>
+                  ) : null}
                   <h2 className="text-2xl font-bold">{plan.name}</h2>
-                  <p className="mt-2 text-3xl font-semibold">{price}</p>
-                  <p className="mt-2 text-sm text-emerald-300">{plan.trial}</p>
-                  <p className="mt-2 text-sm text-slate-400">{plan.subtitle}</p>
+                  <p className="mt-3 text-4xl font-semibold">{price}</p>
+                  <p className="mt-3 text-sm text-emerald-200">{plan.trial}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{plan.subtitle}</p>
                 </div>
 
-                <ul className="space-y-3 text-sm text-slate-300">
+                <ul className="space-y-3 text-sm text-slate-200">
                   {plan.features.map((feature) => (
-                    <li key={feature}>• {feature}</li>
+                    <li key={feature} className="rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                      {feature}
+                    </li>
                   ))}
                 </ul>
 
                 {plan.key === 'trial' ? (
                   <Link
                     href="/login"
-                    className="mt-8 inline-block w-full rounded-xl border border-slate-700 px-4 py-3 text-center font-semibold text-white"
+                    className="mt-8 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center font-semibold text-white"
                   >
                     {plan.cta}
                   </Link>
@@ -214,10 +214,10 @@ export default function PricingPage() {
                     }}
                     disabled={loadingPlan !== null}
                     className={[
-                      'mt-8 inline-block w-full rounded-xl px-4 py-3 text-center font-semibold',
+                      'mt-8 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-center font-semibold transition',
                       plan.highlighted
-                        ? 'bg-emerald-500 text-black'
-                        : 'border border-slate-700 text-white',
+                        ? 'bg-emerald-400 text-slate-950'
+                        : 'border border-white/10 bg-white/5 text-white',
                       loadingPlan !== null ? 'opacity-70' : '',
                     ].join(' ')}
                   >
@@ -229,14 +229,25 @@ export default function PricingPage() {
           })}
         </div>
 
-        <div className="mt-12 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
-          <p className="font-semibold text-white">Billing notes</p>
-          <ul className="mt-3 space-y-2">
-            <li>• Pro and Business start with a 14-day free trial.</li>
-            <li>• Enterprise starts with a 30-day pilot configuration.</li>
-            <li>• Checkout uses subscription pricing from live Stripe env values.</li>
-            <li>• UI uses US$ labels while Stripe still uses currency code usd.</li>
-          </ul>
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
+            <p className="text-lg font-semibold text-white">Why this pricing works</p>
+            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
+              <li>• Trial lowers friction for technical evaluation.</li>
+              <li>• Pro creates a clean self-serve entry point.</li>
+              <li>• Business matches real production traffic and team workflows.</li>
+              <li>• Enterprise gives you room for pilots, governance support, and audit exports.</li>
+            </ul>
+          </div>
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6">
+            <p className="text-lg font-semibold text-white">Billing notes</p>
+            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
+              <li>• Pro and Business start with a 14-day free trial.</li>
+              <li>• Enterprise starts with a 30-day pilot configuration.</li>
+              <li>• Checkout uses subscription pricing from live Stripe env values.</li>
+              <li>• UI uses US$ labels while Stripe still uses currency code usd.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </main>
