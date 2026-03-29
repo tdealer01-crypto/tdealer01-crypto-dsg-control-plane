@@ -137,8 +137,8 @@ export default function LoginPage({
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/pricing" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-100">
-                View Pricing
+              <Link href="/signup" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-100">
+                Start free trial
               </Link>
               <Link href="/" className="rounded-2xl border border-white/10 px-4 py-3 font-semibold text-slate-300">
                 Back Home
