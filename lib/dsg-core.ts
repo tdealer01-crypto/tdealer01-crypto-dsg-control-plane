@@ -56,9 +56,10 @@ type CoreFetchResult = {
   error: string | null;
 };
 
+const CORE_PATH_MISMATCH_STATUSES = new Set([404, 405]);
+
 async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
   const { url } = getDSGCoreConfig();
-  const fallbackStatuses = new Set([404, 405]);
 
   let last: CoreFetchResult = {
     ok: false,
@@ -96,7 +97,7 @@ async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
         error: parseError(data, response.status),
       };
 
-      if (!fallbackStatuses.has(response.status)) {
+      if (!CORE_PATH_MISMATCH_STATUSES.has(response.status)) {
         return last;
       }
     } catch (error) {
