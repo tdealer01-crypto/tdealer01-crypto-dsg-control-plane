@@ -1,0 +1,4 @@
+health fallback: /health -> /api/health
+metrics fallback: /metrics -> /api/metrics -> synthesize from /api/executions
+ledger fallback: /ledger -> /api/ledger -> /ledger/verify
+audit reads keep current paths and parse root arrays/items/events/data.items
