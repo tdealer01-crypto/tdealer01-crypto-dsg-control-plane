@@ -99,7 +99,7 @@ async function collectOrgSnapshot(args: {
       .eq("status", "active"),
     admin
       .from("usage_counters")
-      .select("included_executions, overage_executions, projected_amount_usd, executions")
+      .select("executions")
       .eq("org_id", orgId)
       .eq("billing_period", billingPeriod),
   ]);
@@ -131,18 +131,12 @@ async function collectOrgSnapshot(args: {
     (sum, row) => sum + Number(row.executions || 0),
     0
   );
-  const includedExecutions = usageRows.reduce(
-    (sum, row) => sum + Number(row.included_executions || 0),
-    0
-  );
-  const overageExecutions = usageRows.reduce(
-    (sum, row) => sum + Number(row.overage_executions || 0),
-    0
-  );
-  const projectedAmountUsd = usageRows.reduce(
-    (sum, row) => sum + Number(row.projected_amount_usd || 0),
-    0
-  );
+  // usage_counters in scaffold migrations currently tracks only executions.
+  // Keep snapshot fields populated with conservative defaults until richer
+  // billing columns are introduced in a later migration.
+  const includedExecutions = executionsThisMonth;
+  const overageExecutions = 0;
+  const projectedAmountUsd = 0;
 
   const readiness = formatReadinessStatus({
     coreHealthOk: !!coreHealth.ok,
