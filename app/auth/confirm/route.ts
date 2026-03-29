@@ -4,7 +4,7 @@ import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
+  if (!value || !value.startsWith('/')) return '/workspace';
   return value;
 }
 

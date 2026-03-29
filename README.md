@@ -9,6 +9,8 @@ Deterministic control plane for AI systems with governance, audit, and billing b
 - `/pricing`
 - `/docs`
 - `/login`
+- `/workspace` (authenticated)
+- `/quickstart` (authenticated)
 
 ### Dashboard
 - `/dashboard`
@@ -26,11 +28,13 @@ Deterministic control plane for AI systems with governance, audit, and billing b
 
 ## Core Product Loop
 1. User logs in
-2. User creates an agent
-3. User receives an API key
-4. User calls `/api/execute`
-5. Dashboard shows decisions and usage
-6. Billing reflects consumption
+2. User lands in `/workspace` after magic-link confirmation
+3. User opens `/quickstart` to run the guided loop
+4. User creates an agent
+5. User receives an API key
+6. User calls `/api/execute`
+7. Dashboard shows decisions and usage
+8. Billing reflects consumption
 
 ## Run locally
 
