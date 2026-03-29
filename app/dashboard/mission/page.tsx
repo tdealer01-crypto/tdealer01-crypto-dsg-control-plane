@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import EntropyField from '../../../components/canvas/EntropyField';
 
 type Health = {
   core_ok?: boolean;
@@ -54,6 +55,18 @@ export default function MissionPage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm text-slate-400">Executions</p><p className="mt-3 text-3xl font-semibold">{capacity?.executions ?? 0}</p></div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm text-slate-400">Remaining</p><p className="mt-3 text-3xl font-semibold">{capacity?.remaining_executions ?? 0}</p></div>
         </div>
+        <section className="mt-8">
+          <EntropyField
+            status={health?.core_ok ? 'ready' : 'down'}
+            entropy={Math.min(Math.max(capacity?.utilization ?? 0, 0), 1)}
+            latencyMs={84 + Math.round((capacity?.utilization ?? 0) * 220)}
+            activeAgents={Math.max(1, capacity?.executions ?? 1)}
+            allowRate={health?.core_ok ? 0.9 : 0.2}
+            blockRate={health?.core_ok ? 0.04 : 0.5}
+            stabilizeRate={health?.core_ok ? 0.06 : 0.3}
+            className="w-full"
+          />
+        </section>
       </div>
     </main>
   );
