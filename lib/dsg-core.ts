@@ -56,6 +56,10 @@ type CoreFetchResult = {
   error: string | null;
 };
 
+function shouldFallbackForStatus(status: number) {
+  return status === 404 || status === 405;
+}
+
 async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
   const { url } = getDSGCoreConfig();
 
@@ -87,13 +91,19 @@ async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
         };
       }
 
-      last = {
+      const failedResponse = {
         ok: false,
         path,
         status: response.status,
         data,
         error: parseError(data, response.status),
       };
+
+      if (!shouldFallbackForStatus(response.status)) {
+        return failedResponse;
+      }
+
+      last = failedResponse;
     } catch (error) {
       last = {
         ok: false,
