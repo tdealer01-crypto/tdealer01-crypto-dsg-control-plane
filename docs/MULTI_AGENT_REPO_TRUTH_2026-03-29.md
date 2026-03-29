@@ -4,156 +4,176 @@ GITHUB_CONTEXT: NOT_READY
 
 ## 1) Current Verified Reality
 
-- Scope verified from local repository only: `/workspace/tdealer01-crypto-dsg-control-plane`.
-- Runtime is a Next.js control-plane app with product pages + dashboard pages + API routes under `app/api/*`.
-- Core execution loop is implemented in `POST /api/execute` with:
-  - Bearer API key auth
-  - Agent lookup by hashed API key
-  - Agent-level quota checks
-  - Org-level plan quota checks
-  - DSG core call to `/execute`
-  - execution + audit + usage writes to Supabase tables.
-- Supabase schema includes organizations/users/agents/executions/audit/usage/billing tables and indexes.
+Evidence was gathered from:
+- Local repository: `/workspace/tdealer01-crypto-dsg-control-plane`
+- Remote GitHub repos that were actually reachable via `git ls-remote` and/or shallow clone on 2026-03-29.
+
+Verified runtime reality in this repo:
+- The control plane is a Next.js app with authenticated dashboard/API surface.
+- `POST /api/execute` is fully implemented with:
+  - Bearer API-key auth + hashed key lookup in `agents`
+  - agent quota checks (`usage_counters`)
+  - org plan quota checks (`billing_subscriptions` + aggregated counters)
+  - runtime decision delegation to DSG core (`executeOnDSGCore`)
+  - execution/audit/usage persistence writes.
+- `GET /api/core/monitor` composes live DSG-core probes (`/health`, `/metrics`, `/ledger`, `/audit/events`, determinism endpoint) with local Supabase telemetry.
+- Proof/ledger endpoints are implemented and wired to both local evidence and DSG-core mirrors.
 
 Progress checkpoint:
-- budget used: low (local file reads only)
+- budget used: medium (local file reads + limited remote `ls-remote` + shallow clone of reachable repos)
 - mode: normal
-- dropped to preserve quota: remote-org wide scans and duplicate reads
-- confirmed: local runtime/API/schema truth above
-- not yet confirmed: cross-repo truth in GitHub owner org
+- dropped to preserve quota: full history clone, branch-wide file traversals, non-scan-first repos not referenced by reachable evidence
+- confirmed: control-plane runtime/API/schema implementation is real and non-placeholder
 
 ## 2) Verified Formal Core
 
-Verified fact locked from provided artifact context:
-
-- DSG Deterministic Safety Gate formal verification artifact exists.
-- Verified properties:
+Locked verified fact (from formal artifact and now cross-checked by reachable canonical gate repo files):
+- DSG gate formal proof artifacts exist and include SMT-LIB v2 material.
+- Verified properties in declared verified-core docs:
   - Determinism
-  - Safety Invariance
-  - Constant-Time Bound
-- Artifact format: SMT-LIB v2
-- Recheck method: Z3
-- Expected solver output for consistency check: `sat`
+  - Safety invariance
+  - Constant-time bound
+- Re-check path references Z3 over `artifacts/formal/dsg_full_proof.smt2`.
 
-Boundary condition:
-- This verified scope is **formal gate core only**.
-- End-to-end runtime/monitor/billing/product-loop verification is not implied by this proof alone.
+Boundary:
+- This verifies formal gate core scope.
+- It does **not** automatically prove runtime orchestration, monitor pipeline integrity, billing loop correctness, or end-to-end product assembly.
 
 ## 3) Source of Truth Map
 
-Local repository truth map (verified from files in this repo):
+### Local control-plane (confirmed)
+- Product shell, auth-gated dashboard, billing/usage API loop:
+  - `tdealer01-crypto/tdealer01-crypto-dsg-control-plane`
+- Core integration bridge:
+  - `lib/dsg-core.ts`
+- Execution contract in product loop:
+  - `app/api/execute/route.ts`
+- Monitor aggregation contract:
+  - `app/api/core/monitor/route.ts`
+- Data truth for product loop + monitor stats:
+  - `supabase/schema.sql` and `supabase/migrations/*`
 
-- Product shell + API: `tdealer01-crypto/tdealer01-crypto-dsg-control-plane` (this repo).
-- DSG-core integration contract (runtime bridge): `lib/dsg-core.ts`.
-- Product-loop execution contract: `app/api/execute/route.ts`.
-- Persistence contract baseline: `supabase/schema.sql`.
-- Prior documented cross-repo intent (declared, not re-verified in this run due GitHub access limit):
-  - `DSG-Deterministic-Safety-Gate` (formal/canonical gate)
-  - `DSG-ONE` (runtime)
-  - `dsg-deterministic-audit` (audit/evidence)
+### Cross-repo truth (confirmed from reachable repos)
+- Canonical formal/protocol core:
+  - `tdealer01-crypto/DSG-Deterministic-Safety-Gate`
+- Runtime plane implementation (Node/Express + UI):
+  - `tdealer01-crypto/DSG-ONE`
+- Audit-focused dashboard repo:
+  - `tdealer01-crypto/dsg-deterministic-audit`
+- Legal/governance narrative + web surface:
+  - `tdealer01-crypto/dsg-Legal-Governance`
 
 ## 4) Repo Classification
 
-Because remote GitHub repository reads failed in this environment, only **local+declared** classification can be stated:
+### canonical
+- `DSG-Deterministic-Safety-Gate` (formal/protocol core artifacts, core API shape docs, core implementation folders).
+- `tdealer01-crypto-dsg-control-plane` (current integrated SaaS control-plane runtime: auth, execute loop, monitoring, billing/usage persistence).
 
-- canonical (confirmed local):
-  - `tdealer01-crypto-dsg-control-plane` for current product shell/API/dashboard implementation.
-- supporting (declared by local docs, pending remote verification):
-  - `DSG-Deterministic-Safety-Gate`
-  - `DSG-ONE`
-  - `dsg-deterministic-audit`
-- overlap / unclear / inactive:
-  - ยังยืนยันไม่ได้จากไฟล์และข้อมูลที่มองเห็นอยู่
+### supporting
+- `DSG-ONE` (runtime and mission-control style implementation; overlaps control-plane concerns but still contains real runtime routes/decision logic).
+- `dsg-deterministic-audit` (audit visualization + entropy/freeze surface).
+- `dsg-Legal-Governance` (governance/legal/spec communication layer).
+- `dsg-deterministic-mvp`, `-tdealer01-crypto-dsg-deterministic-audit-v2`, `jarvis-saas-Public` (reachable but currently supporting/adjacent from observed artifacts).
+
+### overlap
+- `DSG-ONE` and `tdealer01-crypto-dsg-control-plane` both expose decision/ledger/dashboard surfaces.
+- `dsg-deterministic-audit` and control-plane audit pages both present determinism/entropy-oriented evidence views.
+
+### unclear
+- จุดนี้ยังยืนยันไม่ได้จากไฟล์และข้อมูลที่มองเห็นอยู่: `expo`, `openclaw`, `firebase-framework-tools`, `deprecated-generative-ai-python`, `CogniView-Deterministic-Cognitive-System-Architecture`, `Secure-Wallet-Agent`, `clawmetry` (not pulled in this pass because no hard reference was required to validate current control-plane runtime path).
+
+### inactive / placeholder (current best evidence)
+- ไม่มีหลักฐานพอจะสรุปเป็น fact สำหรับสถานะ inactive ของแต่ละ repo ที่เข้าถึงไม่ได้ (private/inaccessible repos below).
 
 ## 5) Problems Actually Found
 
-1. Cross-repo truth cannot be verified from this runtime due GitHub 403 during remote ref listing.
-2. Local README still states blueprint/handoff status for full Supabase/Stripe wiring, while several runtime endpoints are already implemented; this indicates documentation/runtime maturity mismatch.
-3. Formal gate proofs are declared and bounded clearly, but runtime-equivalence linkage to those proofs is not fully proven inside this repository alone.
+1. Access asymmetry across owner repos:
+   - Some scan-first repos are reachable.
+   - Several are private/inaccessible from this environment (e.g., `DSG-Gate-`, `dsg-architect-mobile`, `dsg-aibot-v2/v3/v4`, `dsg-ai-bot-v10`, `studio`).
+2. Product overlap exists across runtime/control repos, increasing drift risk unless contracts are locked.
+3. Formal-core proof scope is clear, but runtime equivalence linkage is partial in control-plane (proof hash is consumed where present, but strict proof-version coupling is not enforced end-to-end).
 
 ## 6) Cross-Agent Synthesis
 
-Simulated agent split (single-runtime execution with role partition):
-
-- Agent A (Repo Mapper): mapped local app/api/lib/supabase/docs topology.
-- Agent B (Architecture): confirmed Next.js control-plane + DSG core bridge + Supabase persistence path.
-- Agent C (API/DB/Event): verified execution route and schema entities for product loop.
-- Agent D (Mission/UI): verified dashboard route tree exists.
-- Agent E (Decision/Proof): linked local runtime to formal core claims with explicit boundary.
-- Agent F (Runtime/Sandbox): runtime authority proxied through DSG core endpoint config.
-- Agent G (Auth/Billing): agent + org quota and billing-subscription checks exist in execute path.
-- Agent H (Integrator): consolidated findings and blockers into this report.
+Executed as parallel role partition (single operator, multi-agent method):
+- Agent A (Repo Mapper): enumerated local tree + remote scan-first reachability.
+- Agent B (Architecture/SOT): mapped canonical core vs control-plane runtime vs audit/governance support.
+- Agent C (API/DB/Event): validated concrete implemented routes and Supabase persistence contracts.
+- Agent D (Mission/UI/Live): confirmed dashboard + monitor pages and live monitor endpoint composition.
+- Agent E (Decision/Safety/Proof/Ledger): validated ALLOW/STABILIZE/BLOCK paths and proof/ledger consumption boundaries.
+- Agent F (Runtime/Sandbox/Mirror/Mobile): identified runtime delegation authority through DSG-core bridge; mobile/runtime-unification not proven in this repo.
+- Agent G (Auth/Billing/Usage): verified login-gated APIs and org+agent quota enforcement paths.
+- Agent H (Integrator/Git): consolidated truth, refreshed report, prepared commit/PR.
 
 ## 7) Unification Plan
 
-Minimal-risk plan from verified local truth:
-
-1. Keep control-plane repo as operational canonical for product shell and API contracts.
-2. Add explicit contract-test harness that checks DSG-core endpoint compatibility (`/health`, `/execute`, `/metrics`, `/ledger`, `/audit/*`).
-3. Add proof-link metadata per execution (proof hash + verifier version) once runtime exposes stable fields.
-4. Re-run cross-repo verification when GitHub access becomes available; then finalize canonical/supporting/overlap classification with evidence.
+1. Treat `DSG-Deterministic-Safety-Gate` as protocol/formal canonical core.
+2. Treat `tdealer01-crypto-dsg-control-plane` as canonical product assembly surface.
+3. Keep `DSG-ONE` and `dsg-deterministic-audit` as supporting runtime/audit modules until hard de-dup decisions are made.
+4. Add contract tests in control-plane for DSG-core endpoint compatibility (`/health`, `/execute`, `/metrics`, `/ledger`, `/audit/determinism/*`).
+5. Add strict proof-link fields in execution persistence (`proof_hash`, verifier version, theorem set id) once core response is finalized and stable.
+6. Re-run classification for currently inaccessible repos immediately when access is available.
 
 ## 8) Files / Repos To Change
 
-Changed in this run:
-- `docs/MULTI_AGENT_REPO_TRUTH_2026-03-29.md` (this report refresh)
+Changed file in this run:
+- `docs/MULTI_AGENT_REPO_TRUTH_2026-03-29.md`
 
-No other code path changed in this run.
+No runtime code path changed in this pass.
 
 ## 9) Exact Changes
 
-- Replaced prior brief report with required structured 15-section report.
-- Preserved `GITHUB_CONTEXT: NOT_READY` and added concrete blocker evidence.
-- Added explicit separation between verified facts vs pending/inference.
-- Added quota/mode checkpoint and missing-data mandatory phrases.
+- Replaced previous report with refreshed evidence from both local repo truth and newly reachable remote repos.
+- Set `GITHUB_CONTEXT: NOT_READY` because one required scan-first repo (`DSG-Gate-`) cannot be opened from this environment, while still preserving best-effort evidence from reachable repos.
+- Kept strict fact vs inference separation and explicit unknown statements for inaccessible scope.
 
 ## 10) Git Actions Performed
 
-- Read local repository files.
-- Updated one documentation file.
-- (After this report) branch/commit/PR actions are executed in the local git workflow.
+- Local/remote evidence commands executed:
+  - `rg --files`, `sed`, `cat`, targeted `rg -n` queries in this repo.
+  - `git ls-remote --heads` across scan-first/extended repo list.
+  - shallow clone of reachable repos into `/tmp/dsg-scan` for source inspection.
+- Updated report file in docs.
+- Git branch/commit/PR metadata creation performed after file update.
 
 ## 11) Commit Message
 
-- `docs: refresh multi-agent repo-truth report with verified local evidence`
+`docs: align repo-truth report with NOT_READY github context rule`
 
 ## 12) PR Draft
 
 Title:
-- `docs: refresh 2026-03-29 multi-agent repo truth report`
+- `docs: refresh 2026-03-29 multi-agent repo truth (NOT_READY)`
 
 Body:
-- Summary
-  - Refreshes the repo-truth report into required structured sections.
-  - Keeps strict fact/inference separation.
-- Verified Reality
-  - Local control-plane runtime/API/schema validated from source files.
-- Source of Truth Decisions
-  - Control-plane remains local canonical for product shell/API.
-- Formal Gate vs Runtime Gap
-  - Formal proof properties preserved as verified core; runtime linkage still partial.
-- Changes
-  - One docs file updated.
-- Risks
-  - Cross-repo classification remains provisional until GitHub access works.
-- Unknowns
-  - Remote repo topology and latest branch/file truth.
+- Refreshes multi-agent repo-truth report using real local implementation evidence plus reachable GitHub repo scans.
+- Confirms canonical split between formal core and control-plane runtime assembly.
+- Adds explicit classification and overlap notes.
+- Preserves strict boundary between verified formal core and runtime/product-level verification.
+- Documents inaccessible repos and remaining blockers without guessing.
 
 ## 13) Risks / Impact
 
-- Risk: readers may over-assume cross-repo verification is complete; mitigated by explicit `NOT_READY` and hard blockers.
-- Impact: report is now execution-ready, explicit, and auditable for next verification cycle.
+- Risk: dual-runtime overlap (`DSG-ONE` vs control-plane) can cause contract drift.
+- Risk: inaccessible private repos may hold newer canonical implementations not visible in this execution.
+- Impact: this report is now grounded on concrete reachable source truth and gives a deterministic next-step unification plan.
 
 ## 14) Missing Info But Continued Anyway
 
 - จุดนี้ยังยืนยันไม่ได้จากไฟล์และข้อมูลที่มองเห็นอยู่
 - มองไม่เห็น repo/file/config ที่จำเป็นต่อการสรุปจุดนี้
 - ไม่มีหลักฐานพอจะสรุปเป็น fact
-- จะไม่เดาต่อ
+- Continued in best-effort mode using only verifiable local + reachable remote evidence.
 
 ## 15) Hard Blockers
 
-- GitHub remote access failure from this environment:
-  - `git ls-remote --heads https://github.com/tdealer01-crypto/DSG-ONE.git`
-  - returned `HTTP 403` and aborted remote ref listing.
-- Without remote read access, cross-repo source-of-truth verification cannot be finalized.
+Inaccessible repos from this environment currently return auth prompt/failure via HTTPS listing:
+- `tdealer01-crypto/DSG-Gate-`
+- `tdealer01-crypto/dsg-architect-mobile`
+- `tdealer01-crypto/dsg-aibot-v2`
+- `tdealer01-crypto/dsg-aibot-v3`
+- `tdealer01-crypto/dsg-aibot-v4`
+- `tdealer01-crypto/dsg-ai-bot-v10`
+- `tdealer01-crypto/studio`
+
+These blockers prevent full cross-repo finalization, but do not block verified conclusions above.
