@@ -185,7 +185,11 @@ export async function getDSGCoreDeterminism(sequence: number) {
       cache: "no-store",
     });
 
-    if (response.status === 404) {
+    // Compatibility fallback is intentionally narrow:
+    // - only retry with query-style endpoint when path-style endpoint is missing (404)
+    // - do not hide upstream 4xx/5xx/non-404 errors behind a second request
+    const shouldFallbackToQueryEndpoint = response.status === 404;
+    if (shouldFallbackToQueryEndpoint) {
       response = await fetch(`${url}/audit/determinism?sequence=${sequence}`, {
         method: "GET",
         headers: coreHeaders(),
