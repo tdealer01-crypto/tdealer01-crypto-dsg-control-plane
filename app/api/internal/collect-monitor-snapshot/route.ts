@@ -335,7 +335,7 @@ export async function GET(req: Request) {
     const billingPeriod = monthKey();
     const today = todayKey();
 
-    const results = await Promise.all(
+    const settledResults = await Promise.allSettled(
       orgIds.map((orgId) =>
         collectOrgSnapshot({
           orgId,
@@ -350,10 +350,30 @@ export async function GET(req: Request) {
       )
     );
 
+    const results: Awaited<ReturnType<typeof collectOrgSnapshot>>[] = [];
+    const failures: Array<{ orgId: string; error: string }> = [];
+
+    settledResults.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        results.push(result.value);
+        return;
+      }
+
+      failures.push({
+        orgId: orgIds[index],
+        error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+      });
+    });
+
+    for (const failure of failures) {
+      console.error("collect-monitor-snapshot org failure", failure);
+    }
+
     return NextResponse.json({
       ok: true,
       processed: results.length,
       snapshots: results,
+      failures,
       generated_at: new Date().toISOString(),
     });
   } catch (error) {
