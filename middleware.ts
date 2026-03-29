@@ -2,12 +2,19 @@ import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 
 function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
+  if (!value || !value.startsWith('/')) return '/workspace';
   return value;
 }
 
-function isDashboardPath(pathname: string) {
-  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+function isProtectedPath(pathname: string) {
+  return (
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/workspace' ||
+    pathname.startsWith('/workspace/') ||
+    pathname === '/quickstart' ||
+    pathname.startsWith('/quickstart/')
+  );
 }
 
 export async function middleware(request: NextRequest) {
@@ -45,7 +52,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(next, request.url));
   }
 
-  if (isDashboardPath(request.nextUrl.pathname) && !user) {
+  if (isProtectedPath(request.nextUrl.pathname) && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set(
       'next',

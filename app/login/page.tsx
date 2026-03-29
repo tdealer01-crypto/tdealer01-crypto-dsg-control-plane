@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 function getSafeNext(value?: string) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
+  if (!value || !value.startsWith('/')) return '/workspace';
   return value;
 }
 
