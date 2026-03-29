@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import {
-  type DSGCoreDeterminism,
   getDSGCoreAuditEvents,
   getDSGCoreDeterminism
 } from "../../../lib/dsg-core";
@@ -10,9 +9,7 @@ export const dynamic = "force-dynamic";
 
 type DeterminismResult = Awaited<ReturnType<typeof getDSGCoreDeterminism>>;
 
-function getDeterminismData(
-  result: DeterminismResult
-): DSGCoreDeterminism | null {
+function getDeterminismData(result: DeterminismResult) {
   if (result.ok && "data" in result) {
     return result.data;
   }
