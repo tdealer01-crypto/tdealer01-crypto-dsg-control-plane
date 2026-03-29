@@ -10,9 +10,14 @@ export const dynamic = "force-dynamic";
 
 type DeterminismResult = Awaited<ReturnType<typeof getDSGCoreDeterminism>>;
 
+type DeterminismSuccess = Extract<
+  DeterminismResult,
+  { ok: true; data: DSGCoreDeterminism }
+>;
+
 function hasDeterminismData(
   result: DeterminismResult
-): result is { ok: true; data: DSGCoreDeterminism } {
+): result is DeterminismSuccess {
   return result.ok && "data" in result;
 }
 
