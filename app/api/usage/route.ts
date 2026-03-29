@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { createClient } from '../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,13 +33,33 @@ function formatBillingPeriod(
 
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('org_id, is_active')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (profileError || !profile?.org_id || !profile.is_active) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from('billing_subscriptions')
       .select(
         'org_id, plan_key, billing_interval, status, current_period_start, current_period_end, trial_end, updated_at'
       )
+      .eq('org_id', profile.org_id)
       .in('status', ['trialing', 'active', 'past_due', 'unpaid', 'canceled'])
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -59,16 +79,11 @@ export async function GET() {
       ? String(subscription.current_period_start).slice(0, 7)
       : new Date().toISOString().slice(0, 7);
 
-    let usageQuery = supabase
+    const { data: usageCounters, error: usageError } = await supabase
       .from('usage_counters')
       .select('executions')
+      .eq('org_id', profile.org_id)
       .eq('billing_period', billingPeriodKey);
-
-    if (subscription?.org_id) {
-      usageQuery = usageQuery.eq('org_id', subscription.org_id);
-    }
-
-    const { data: usageCounters, error: usageError } = await usageQuery;
 
     if (usageError) {
       return NextResponse.json({ error: usageError.message }, { status: 500 });

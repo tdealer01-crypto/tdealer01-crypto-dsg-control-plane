@@ -60,9 +60,19 @@ function normalizeInterval(value: unknown): BillingInterval {
   return 'monthly';
 }
 
+function getLegacyMonthlyPriceId(plan: PlanKey) {
+  if (plan === 'pro') return process.env.STRIPE_PRICE_PRO || '';
+  if (plan === 'business') return process.env.STRIPE_PRICE_BUSINESS || '';
+  return '';
+}
+
 function getPriceId(plan: PlanKey, interval: BillingInterval) {
   const envName = PLAN_CONFIG[plan].priceEnv[interval];
-  return process.env[envName] || '';
+  const configured = process.env[envName] || '';
+
+  if (configured) return configured;
+  if (interval === 'monthly') return getLegacyMonthlyPriceId(plan);
+  return '';
 }
 
 export async function POST(request: Request) {
