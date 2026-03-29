@@ -10,6 +10,17 @@ create table if not exists organizations (
   updated_at timestamptz default now()
 );
 
+
+create table if not exists trial_signups (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  workspace_name text not null,
+  full_name text,
+  status text not null default 'pending',
+  created_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique,
@@ -132,3 +143,6 @@ create index if not exists idx_usage_events_org_id on usage_events(org_id);
 create index if not exists idx_usage_counters_org_period on usage_counters(org_id, billing_period);
 create index if not exists idx_billing_subscriptions_org_id on billing_subscriptions(org_id);
 create index if not exists idx_billing_events_customer on billing_events(stripe_customer_id);
+
+create index if not exists idx_trial_signups_email_status on trial_signups(email, status, created_at desc);
+create unique index if not exists idx_trial_signups_completed_email on trial_signups(email) where status = 'completed';
