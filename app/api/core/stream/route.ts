@@ -119,15 +119,26 @@ export async function GET() {
         }
       };
 
+      let refreshInFlight = false;
+      const runTick = async () => {
+        if (refreshInFlight || closed) return;
+        refreshInFlight = true;
+        try {
+          await tick();
+        } finally {
+          refreshInFlight = false;
+        }
+      };
+
       send("connected", {
         ok: true,
         org_id: orgId,
         connected_at: new Date().toISOString(),
       });
 
-      void tick();
+      void runTick();
       const updateTimer = setInterval(() => {
-        void tick();
+        void runTick();
       }, 3000);
 
       const heartbeatTimer = setInterval(() => {
