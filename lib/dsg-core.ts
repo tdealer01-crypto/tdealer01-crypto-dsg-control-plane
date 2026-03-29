@@ -48,30 +48,115 @@ function parseError(data: any, status: number) {
   return data?.detail || data?.error || `HTTP ${status}`;
 }
 
-export async function getDSGCoreHealth() {
+type CoreFetchResult = {
+  ok: boolean;
+  path: string | null;
+  status: number | null;
+  data: any;
+  error: string | null;
+};
+
+async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
   const { url } = getDSGCoreConfig();
 
-  try {
-    const response = await fetch(`${url}/health`, {
-      method: "GET",
-      headers: coreHeaders(),
-      cache: "no-store",
-    });
+  let last: CoreFetchResult = {
+    ok: false,
+    path: null,
+    status: null,
+    data: null,
+    error: "No DSG core path attempted",
+  };
 
-    const data = await response.json().catch(() => ({}));
-    return {
-      ok: response.ok,
-      url,
-      ...data,
-      ...(response.ok ? {} : { error: parseError(data, response.status) }),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      url,
-      error: error instanceof Error ? error.message : "Failed to reach DSG core",
-    };
+  for (const path of paths) {
+    try {
+      const response = await fetch(`${url}${path}`, {
+        method: "GET",
+        headers: coreHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        return {
+          ok: true,
+          path,
+          status: response.status,
+          data,
+          error: null,
+        };
+      }
+
+      last = {
+        ok: false,
+        path,
+        status: response.status,
+        data,
+        error: parseError(data, response.status),
+      };
+    } catch (error) {
+      last = {
+        ok: false,
+        path,
+        status: null,
+        data: null,
+        error: error instanceof Error ? error.message : "Failed to reach DSG core",
+      };
+    }
   }
+
+  return last;
+}
+
+function normalizeLedgerItems(data: any, limit: number) {
+  if (Array.isArray(data)) {
+    return data.slice(0, limit);
+  }
+
+  if (Array.isArray(data?.items)) {
+    return data.items.slice(0, limit);
+  }
+
+  if (Array.isArray(data?.events)) {
+    return data.events.slice(0, limit);
+  }
+
+  if (Array.isArray(data?.data?.items)) {
+    return data.data.items.slice(0, limit);
+  }
+
+  return [];
+}
+
+function synthesizeMetricsFromExecutions(data: any) {
+  if (!Array.isArray(data)) return null;
+
+  const decisions = data.map((row) =>
+    String(row?.decision || row?.result?.decision || "").toUpperCase()
+  );
+  const allow = decisions.filter((decision) => decision === "ALLOW").length;
+  const stabilize = decisions.filter((decision) => decision === "STABILIZE").length;
+  const block = decisions.filter((decision) => decision === "BLOCK").length;
+
+  return {
+    total_executions: data.length,
+    allow_count: allow,
+    stabilize_count: stabilize,
+    block_count: block,
+  };
+}
+
+export async function getDSGCoreHealth() {
+  const { url } = getDSGCoreConfig();
+  const result = await fetchCoreJson(["/health", "/api/health"]);
+
+  return {
+    ok: result.ok,
+    url,
+    source_path: result.path,
+    ...(result.ok ? result.data : {}),
+    ...(result.ok ? {} : { error: result.error || "Failed to reach DSG core" }),
+  };
 }
 
 export async function executeOnDSGCore(payload: DSGCoreExecutionRequest) {
@@ -92,126 +177,94 @@ export async function executeOnDSGCore(payload: DSGCoreExecutionRequest) {
 }
 
 export async function getDSGCoreMetrics() {
-  const { url } = getDSGCoreConfig();
+  const metricsResult = await fetchCoreJson(["/metrics", "/api/metrics"]);
 
-  try {
-    const response = await fetch(`${url}/metrics`, {
-      method: "GET",
-      headers: coreHeaders(),
-      cache: "no-store",
-    });
-    const data = await response.json().catch(() => ({}));
+  if (metricsResult.ok) {
     return {
-      ok: response.ok,
-      ...(response.ok ? { data } : { error: parseError(data, response.status) }),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Failed to fetch DSG core metrics",
+      ok: true,
+      data: metricsResult.data,
+      source_path: metricsResult.path,
+      synthesized: false,
     };
   }
+
+  const executionsResult = await fetchCoreJson(["/api/executions"]);
+  const synthesized = executionsResult.ok
+    ? synthesizeMetricsFromExecutions(executionsResult.data)
+    : null;
+
+  if (synthesized) {
+    return {
+      ok: true,
+      data: synthesized,
+      source_path: executionsResult.path,
+      synthesized: true,
+    };
+  }
+
+  return {
+    ok: false,
+    error:
+      metricsResult.error ||
+      executionsResult.error ||
+      "Failed to fetch DSG core metrics",
+  };
 }
 
 export async function getDSGCoreLedger(limit = 20) {
-  const { url } = getDSGCoreConfig();
+  const result = await fetchCoreJson(["/ledger", "/api/ledger", "/ledger/verify"]);
 
-  try {
-    const response = await fetch(`${url}/ledger`, {
-      method: "GET",
-      headers: coreHeaders(),
-      cache: "no-store",
-    });
-    const data = await response.json().catch(() => ({}));
-    const items = Array.isArray(data?.items) ? data.items.slice(0, limit) : [];
-    return {
-      ok: response.ok,
-      items,
-      ...(response.ok ? {} : { error: parseError(data, response.status) }),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      items: [],
-      error: error instanceof Error ? error.message : "Failed to fetch DSG core ledger",
-    };
-  }
+  return {
+    ok: result.ok,
+    items: result.ok ? normalizeLedgerItems(result.data, limit) : [],
+    source_path: result.path,
+    ...(result.ok ? {} : { error: result.error || "Failed to fetch DSG core ledger" }),
+  };
 }
 
 export async function getDSGCoreAuditEvents(limit = 20) {
-  const { url } = getDSGCoreConfig();
+  const result = await fetchCoreJson([
+    `/audit/events?limit=${limit}`,
+    `/audit/events`,
+  ]);
 
-  try {
-    const response = await fetch(`${url}/audit/events?limit=${limit}`, {
-      method: "GET",
-      headers: coreHeaders(),
-      cache: "no-store",
-    });
-    const data = await response.json().catch(() => ({}));
-
-    let items: DSGCoreAuditEvent[] = [];
-    if (Array.isArray((data as any)?.items)) {
-      items = (data as any).items;
-    } else if (Array.isArray((data as any)?.events)) {
-      items = (data as any).events;
-    } else if (Array.isArray((data as any)?.data?.items)) {
-      items = (data as any).data.items;
+  let items: DSGCoreAuditEvent[] = [];
+  if (result.ok) {
+    if (Array.isArray(result.data)) {
+      items = result.data.slice(0, limit);
+    } else if (Array.isArray((result.data as any)?.items)) {
+      items = (result.data as any).items.slice(0, limit);
+    } else if (Array.isArray((result.data as any)?.events)) {
+      items = (result.data as any).events.slice(0, limit);
+    } else if (Array.isArray((result.data as any)?.data?.items)) {
+      items = (result.data as any).data.items.slice(0, limit);
     }
-
-    return {
-      ok: response.ok,
-      items,
-      ...(response.ok ? {} : { error: parseError(data, response.status) }),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      items: [] as DSGCoreAuditEvent[],
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to fetch DSG core audit events",
-    };
   }
+
+  return {
+    ok: result.ok,
+    items,
+    source_path: result.path,
+    ...(result.ok ? {} : { error: result.error || "Failed to fetch DSG core audit events" }),
+  };
 }
 
 export async function getDSGCoreDeterminism(sequence: number) {
-  const { url } = getDSGCoreConfig();
+  const result = await fetchCoreJson([
+    `/audit/determinism/${sequence}`,
+    `/audit/determinism?sequence=${sequence}`,
+  ]);
 
-  try {
-    let response = await fetch(`${url}/audit/determinism/${sequence}`, {
-      method: "GET",
-      headers: coreHeaders(),
-      cache: "no-store",
-    });
+  const determinismData =
+    result.data && typeof result.data === "object" && "data" in result.data
+      ? (result.data as any).data
+      : result.data;
 
-    if (response.status === 404) {
-      response = await fetch(`${url}/audit/determinism?sequence=${sequence}`, {
-        method: "GET",
-        headers: coreHeaders(),
-        cache: "no-store",
-      });
-    }
-
-    const data = await response.json().catch(() => ({}));
-    const determinismData =
-      data && typeof data === "object" && "data" in data
-        ? (data as any).data
-        : data;
-
-    return {
-      ok: response.ok,
-      ...(response.ok
-        ? { data: determinismData as DSGCoreDeterminism }
-        : { error: parseError(data, response.status) }),
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to fetch DSG core determinism",
-    };
-  }
+  return {
+    ok: result.ok,
+    source_path: result.path,
+    ...(result.ok
+      ? { data: determinismData as DSGCoreDeterminism }
+      : { error: result.error || "Failed to fetch DSG core determinism" }),
+  };
 }
