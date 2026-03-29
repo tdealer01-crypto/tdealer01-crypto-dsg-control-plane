@@ -58,6 +58,7 @@ type CoreFetchResult = {
 
 async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
   const { url } = getDSGCoreConfig();
+  const fallbackStatuses = new Set([404, 405]);
 
   let last: CoreFetchResult = {
     ok: false,
@@ -94,6 +95,10 @@ async function fetchCoreJson(paths: string[]): Promise<CoreFetchResult> {
         data,
         error: parseError(data, response.status),
       };
+
+      if (!fallbackStatuses.has(response.status)) {
+        return last;
+      }
     } catch (error) {
       last = {
         ok: false,
