@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
   const next = getSafeNext(searchParams.get('next'));
+  const signupMode = searchParams.get('signup');
 
   const redirectToLogin = new URL('/login', request.url);
   redirectToLogin.searchParams.set('next', next);
@@ -101,6 +102,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectTo, { status: 302 });
   }
 
+  if (signupMode !== 'trial') {
+    redirectToLogin.searchParams.set('error', 'not-provisioned');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
+  }
+
   const { data: pendingSignup, error: pendingSignupError } = await admin
     .from('trial_signups')
     .select('id, workspace_name, full_name, status')
@@ -110,12 +116,7 @@ export async function GET(request: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  if (pendingSignupError) {
-    redirectToLogin.searchParams.set('error', 'not-provisioned');
-    return NextResponse.redirect(redirectToLogin, { status: 302 });
-  }
-
-  if (!pendingSignup) {
+  if (pendingSignupError || !pendingSignup) {
     redirectToLogin.searchParams.set('error', 'not-provisioned');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
@@ -205,6 +206,6 @@ export async function GET(request: NextRequest) {
     .update({ status: 'completed', completed_at: nowIso })
     .eq('id', pendingSignup.id);
 
-  const redirectToQuickstart = new URL('/quickstart', request.url);
-  return NextResponse.redirect(redirectToQuickstart, { status: 302 });
+  const redirectTo = new URL(next || '/quickstart', request.url);
+  return NextResponse.redirect(redirectTo, { status: 302 });
 }
