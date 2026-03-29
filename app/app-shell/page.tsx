@@ -44,6 +44,14 @@ const initialState: StreamState = {
   activeAlerts: [],
 };
 
+function parseEventData<T>(data: string): T | null {
+  try {
+    return JSON.parse(data) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function AppShellPage() {
   const [stream, setStream] = useState<StreamState>(initialState);
 
@@ -51,7 +59,8 @@ export default function AppShellPage() {
     const source = new EventSource('/api/core/stream');
 
     const onConnected = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as { connected_at?: string };
+      const payload = parseEventData<{ connected_at?: string }>(event.data);
+      if (!payload) return;
       setStream((prev) => ({
         ...prev,
         streamStatus: 'live',
@@ -60,7 +69,8 @@ export default function AppShellPage() {
     };
 
     const onReadiness = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as { status?: 'ready' | 'degraded' | 'down' };
+      const payload = parseEventData<{ status?: 'ready' | 'degraded' | 'down' }>(event.data);
+      if (!payload) return;
       setStream((prev) => ({
         ...prev,
         readinessStatus: payload.status || null,
@@ -68,7 +78,8 @@ export default function AppShellPage() {
     };
 
     const onExecutions = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as StreamState['latestExecutions'];
+      const payload = parseEventData<StreamState['latestExecutions']>(event.data);
+      if (!payload) return;
       setStream((prev) => ({
         ...prev,
         latestExecutions: Array.isArray(payload) ? payload : prev.latestExecutions,
@@ -76,7 +87,8 @@ export default function AppShellPage() {
     };
 
     const onHeartbeat = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as { ts?: string };
+      const payload = parseEventData<{ ts?: string }>(event.data);
+      if (!payload) return;
       setStream((prev) => ({
         ...prev,
         lastHeartbeat: payload.ts || new Date().toISOString(),
@@ -84,11 +96,16 @@ export default function AppShellPage() {
     };
 
     const onAlert = (event: MessageEvent) => {
-      const payload = JSON.parse(event.data) as StreamState['activeAlerts'][number];
+      const payload = parseEventData<StreamState['activeAlerts'][number]>(event.data);
+      if (!payload) return;
       setStream((prev) => ({
         ...prev,
         activeAlerts: [payload, ...prev.activeAlerts].slice(0, 5),
       }));
+    };
+
+    source.onopen = () => {
+      setStream((prev) => ({ ...prev, streamStatus: 'live' }));
     };
 
     source.addEventListener('connected', onConnected);
@@ -101,6 +118,11 @@ export default function AppShellPage() {
     };
 
     return () => {
+      source.removeEventListener('connected', onConnected);
+      source.removeEventListener('readiness_update', onReadiness);
+      source.removeEventListener('execution_update', onExecutions);
+      source.removeEventListener('heartbeat', onHeartbeat);
+      source.removeEventListener('alert', onAlert);
       source.close();
     };
   }, []);
