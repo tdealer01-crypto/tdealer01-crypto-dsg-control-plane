@@ -7,6 +7,21 @@ function getSafeNext(value: string | null) {
   return value;
 }
 
+function getTrustedAppOrigin() {
+  const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!configuredAppUrl) {
+    throw new Error('APP_URL or NEXT_PUBLIC_APP_URL is required');
+  }
+
+  const parsed = new URL(configuredAppUrl);
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('APP_URL or NEXT_PUBLIC_APP_URL must use http/https');
+  }
+
+  return parsed.origin;
+}
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const email = String(formData.get('email') || '').trim().toLowerCase();
@@ -86,12 +101,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl) {
-      throw new Error('NEXT_PUBLIC_APP_URL is required');
-    }
-
-    const confirmUrl = new URL('/auth/confirm', appUrl);
+    const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin());
     confirmUrl.searchParams.set('next', next);
     confirmUrl.searchParams.set('signup', 'trial');
 
