@@ -83,6 +83,23 @@ create table if not exists usage_counters (
   unique (agent_id, billing_period)
 );
 
+
+create table if not exists execution_reservations (
+  id uuid primary key default gen_random_uuid(),
+  org_id text not null references organizations(id) on delete cascade,
+  agent_id text not null references agents(id) on delete cascade,
+  billing_period text not null,
+  org_billing_period text not null,
+  idempotency_key text not null,
+  refund_policy text not null default 'refund_on_failure',
+  status text not null default 'reserved',
+  execution_id uuid references executions(id) on delete set null,
+  error_message text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (agent_id, idempotency_key)
+);
+
 create table if not exists billing_customers (
   id uuid primary key default gen_random_uuid(),
   stripe_customer_id text unique not null,
@@ -130,5 +147,7 @@ create index if not exists idx_executions_created_at on executions(created_at de
 create index if not exists idx_audit_logs_org_id on audit_logs(org_id);
 create index if not exists idx_usage_events_org_id on usage_events(org_id);
 create index if not exists idx_usage_counters_org_period on usage_counters(org_id, billing_period);
+create index if not exists idx_execution_reservations_org_period on execution_reservations(org_id, org_billing_period, created_at desc);
+create index if not exists idx_execution_reservations_status on execution_reservations(status, created_at desc);
 create index if not exists idx_billing_subscriptions_org_id on billing_subscriptions(org_id);
 create index if not exists idx_billing_events_customer on billing_events(stripe_customer_id);
