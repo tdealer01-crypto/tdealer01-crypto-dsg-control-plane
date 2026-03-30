@@ -1,133 +1,169 @@
 import Link from 'next/link';
 
-const pillars = [
-  {
-    title: 'Policy Gate',
-    text: 'Deterministic allow, stabilize, or block decisions before risky AI output reaches production.',
-  },
-  {
-    title: 'Audit Evidence',
-    text: 'Capture execution trails, proofs, and replay-ready evidence for internal review or compliance.',
-  },
-  {
-    title: 'Usage Billing',
-    text: 'Map execution volume to revenue with self-serve subscriptions and enterprise upgrade paths.',
-  },
+type Section = {
+  heading: string;
+  body: string;
+  points?: string[];
+};
+
+type CopySet = {
+  id: string;
+  label: string;
+  headline: string;
+  subheadline: string;
+  trustLine: string;
+  primaryCta: { label: string; href: string };
+  secondaryCta: { label: string; href: string };
+  sections: Section[];
+};
+
+const marketContext = [
+  'Observability / evals (e.g., LangSmith)',
+  'Governance / compliance (e.g., Credo AI)',
+  'Runtime guardrails (e.g., Amazon Bedrock Guardrails)',
+  'AI security (e.g., Lakera Guard)',
+  'OSS tracing / eval tooling (e.g., Arize Phoenix)',
 ];
 
-const stats = [
-  { label: 'Decision modes', value: 'ALLOW / STABILIZE / BLOCK' },
-  { label: 'Commercial motion', value: 'Trial → Pro → Business → Enterprise' },
-  { label: 'Built for', value: 'AI operations, governance, audit-heavy teams' },
+const copySets: CopySet[] = [
+  {
+    id: 'set-a',
+    label: 'Set A · Control-First Narrative',
+    headline: 'Operate AI with deterministic control, timestamped evidence, and real-time governance.',
+    subheadline:
+      'DSG ONE is an auditable control plane for organizations that need AI systems to be observable, reviewable, and governable under zero-trust conditions.',
+    trustLine: 'Research-informed. Verification-aware. Built for audit-heavy AI operations.',
+    primaryCta: { label: 'Start Free Trial', href: '/pricing' },
+    secondaryCta: { label: 'Open Command Workspace', href: '/workspace' },
+    sections: [
+      {
+        heading: 'The next AI bottleneck is not generation. It is governance.',
+        body: 'As AI systems move from experimentation into operational authority, organizations need execution control, runtime visibility, structured auditability, and governance that survives real-world scrutiny.',
+      },
+      {
+        heading: 'A control plane for serious AI operations.',
+        body: 'DSG ONE is an operator-facing control layer that helps constrain execution, inspect state, and review mission behavior with clearer accountability.',
+        points: [
+          'Operator access',
+          'Agent workflows',
+          'Execution visibility',
+          'Audit surfaces',
+          'Mission monitoring and readiness state',
+          'Command workspace control',
+        ],
+      },
+      {
+        heading: 'Built around determinism, evidence, and control.',
+        body: 'Critical paths should be explicit enough to review, measurable enough to verify, and observable enough to intervene during runtime.',
+        points: [
+          'Deterministic control where it matters',
+          'Mathematics of truth with measurable state',
+          'System-wide inspectability across execution and alerts',
+          'Real-time governance, not postmortem-only governance',
+          'Governance encoded in access, flow, evidence, and monitoring',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'set-b',
+    label: 'Set B · Market-Positioned Investor Narrative',
+    headline: 'A narrower, stricter operating model for high-accountability AI deployments.',
+    subheadline:
+      'DSG ONE focuses on control-first execution governance in a market where capabilities are often split across observability, compliance, runtime guardrails, and AI security layers.',
+    trustLine: 'Positioned with evidence discipline: assert only what implementation and runtime behavior can support.',
+    primaryCta: { label: 'Open App Shell', href: '/app-shell' },
+    secondaryCta: { label: 'Review Research', href: '/docs' },
+    sections: [
+      {
+        heading: 'Designed for environments where trust must be earned.',
+        body: 'For enterprise AI operations, internal agent platforms, audit-heavy workflows, and review-sensitive deployments where intervention and traceability are mandatory.',
+      },
+      {
+        heading: 'Different from single-layer products.',
+        body: 'Many products lead in one layer. DSG ONE emphasizes orchestration discipline across operational control, evidence surfaces, and runtime intervention paths.',
+        points: [
+          'Control first',
+          'Evidence first',
+          'Governance in real time',
+          'Leaner dependency profile',
+          'Offline-capable control-plane direction',
+        ],
+      },
+      {
+        heading: 'Evaluation standard: inspect, test, verify.',
+        body: 'Do not trust claims by default. Review routes, auth flow, execution path, audit surfaces, mission workspace, and runtime behavior directly.',
+      },
+    ],
+  },
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-hero-radial text-white">
-      <section className="mx-auto max-w-7xl px-6 pb-16 pt-20">
-        <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200 shadow-glow">
-              Commercial-ready DSG control plane
-            </div>
-            <h1 className="mt-8 max-w-4xl text-5xl font-bold leading-tight md:text-7xl">
-              Govern AI execution with an interface that looks premium and sells clearly.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              DSG gives product and governance teams a deterministic layer for policy enforcement,
-              replayable audit logs, and subscription-ready billing in one operator console.
-            </p>
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="rounded-3xl border border-emerald-400/20 bg-gradient-to-b from-slate-900 to-slate-950 p-8 md:p-10">
+          <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">DSG ONE</p>
+          <h1 className="mt-4 max-w-4xl text-4xl font-bold leading-tight md:text-6xl">
+            Deterministic, auditable, zero-trust control plane for AI operations.
+          </h1>
+          <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 md:text-lg">
+            Two ready-to-use landing copy sets below, structured for direct use in a Next.js + Tailwind page.
+          </p>
+        </div>
+      </section>
 
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link
-                href="/pricing"
-                className="rounded-2xl bg-emerald-400 px-6 py-4 text-base font-semibold text-slate-950 transition hover:scale-[1.01]"
-              >
-                Start paid rollout
+      <section className="mx-auto max-w-7xl px-6 pb-8">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <h2 className="text-xl font-semibold">Market context (reference framing)</h2>
+          <ul className="mt-4 grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+            {marketContext.map((item) => (
+              <li key={item} className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl space-y-8 px-6 pb-16">
+        {copySets.map((set) => (
+          <article key={set.id} className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
+            <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">{set.label}</p>
+            <h2 className="mt-3 text-3xl font-bold leading-tight md:text-4xl">{set.headline}</h2>
+            <p className="mt-4 max-w-4xl text-slate-300">{set.subheadline}</p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href={set.primaryCta.href} className="rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950">
+                {set.primaryCta.label}
               </Link>
               <Link
-                href="/dashboard"
-                className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base font-semibold text-slate-100 transition hover:border-emerald-400/40 hover:bg-emerald-400/10"
+                href={set.secondaryCta.href}
+                className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-slate-100"
               >
-                Open dashboard
-              </Link>
-              <Link
-                href="/docs"
-                className="rounded-2xl border border-white/10 bg-transparent px-6 py-4 text-base font-semibold text-slate-300 transition hover:border-white/20 hover:text-white"
-              >
-                Read docs
+                {set.secondaryCta.label}
               </Link>
             </div>
 
-            <div className="mt-12 grid gap-4 md:grid-cols-3">
-              {stats.map((item) => (
-                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                  <p className="text-sm text-slate-400">{item.label}</p>
-                  <p className="mt-3 text-base font-semibold text-white">{item.value}</p>
+            <p className="mt-5 text-sm text-emerald-200">{set.trustLine}</p>
+
+            <div className="mt-8 space-y-5">
+              {set.sections.map((section) => (
+                <div key={section.heading} className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+                  <h3 className="text-lg font-semibold">{section.heading}</h3>
+                  <p className="mt-2 text-slate-300">{section.body}</p>
+                  {section.points ? (
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-300">
+                      {section.points.map((point) => (
+                        <li key={point}>{point}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-emerald-950/30 backdrop-blur-xl">
-            <div className="rounded-[1.5rem] border border-emerald-400/20 bg-slate-950/90 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/80">Live policy graph</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Execution governance loop</h2>
-                </div>
-                <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                  Online
-                </div>
-              </div>
-
-              <div className="mt-8 grid gap-4">
-                {['AI request enters control plane', 'Policy engine scores context', 'DSG selects ALLOW / STABILIZE / BLOCK', 'Audit + billing events are stored'].map((item, index) => (
-                  <div key={item} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-400/15 text-sm font-semibold text-emerald-200">
-                      0{index + 1}
-                    </div>
-                    <p className="text-sm text-slate-200">{item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {pillars.map((pillar) => (
-            <div key={pillar.title} className="rounded-[1.75rem] border border-white/10 bg-slate-900/60 p-7 backdrop-blur-sm">
-              <div className="inline-flex rounded-2xl bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-200">
-                {pillar.title}
-              </div>
-              <p className="mt-5 text-lg font-semibold text-white">{pillar.title}</p>
-              <p className="mt-3 leading-7 text-slate-300">{pillar.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <div className="rounded-[2rem] border border-white/10 bg-gradient-to-r from-emerald-400/15 via-cyan-400/10 to-transparent p-8 md:p-10">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Revenue motion</p>
-              <h2 className="mt-3 text-3xl font-bold md:text-4xl">Turn control-plane capability into paid product value.</h2>
-              <p className="mt-4 max-w-2xl text-slate-300">
-                Self-serve pricing already exists in the product. The next win is making the first impression, upgrade path, and onboarding feel as strong as the backend.
-              </p>
-            </div>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-4 text-base font-semibold text-slate-950"
-            >
-              View plans
-            </Link>
-          </div>
-        </div>
+          </article>
+        ))}
       </section>
     </main>
   );
