@@ -4,6 +4,7 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/command-center', label: 'Command Center' },
   { href: '/dashboard/mission', label: 'Mission' },
+  { href: '/dashboard/live', label: 'Live' },
   { href: '/dashboard/operations', label: 'Operations' },
   { href: '/dashboard/executions', label: 'Executions' },
   { href: '/dashboard/proofs', label: 'Proofs' },
