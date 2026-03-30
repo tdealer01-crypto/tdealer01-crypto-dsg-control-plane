@@ -301,6 +301,34 @@ A practical way to evaluate the system is:
 The right standard is not whether the README sounds impressive.  
 It is whether the system is inspectable under use.
 
+### MCP tools (agent-callable)
+
+This control-plane can expose real MCP tools to agents through two runtime APIs:
+
+- `GET /api/mcp/tools?agent_id=...` (lists configured tools)
+- `POST /api/mcp/call` (executes one configured tool)
+
+Both endpoints require:
+- `Authorization: Bearer <agent_api_key>`
+- active agent identity
+- tool allow-list from `MCP_TOOL_REGISTRY_JSON`
+
+`MCP_TOOL_REGISTRY_JSON` is a JSON array in env, for example:
+
+```json
+[
+  {
+    "name": "ledger_verify",
+    "description": "Verify DSG ledger chain",
+    "endpoint": "http://localhost:8100/mcp/ledger/verify",
+    "method": "POST",
+    "timeout_ms": 10000
+  }
+]
+```
+
+Every MCP invocation is persisted as a `usage_events` row with `event_type = mcp_tool_call` for auditability.
+
 ---
 
 ## Roadmap Direction
