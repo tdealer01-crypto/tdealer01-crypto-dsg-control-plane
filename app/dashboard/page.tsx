@@ -128,9 +128,25 @@ export default function DashboardPage() {
         if (!healthRes.ok) throw new Error(healthJson.error || "Failed to load control-plane health");
         if (!alive) return;
 
-        setAgents(agentsJson.agents || []);
+        setAgents(agentsJson.items || agentsJson.agents || []);
         setExecutions(executionsJson.executions || []);
-        setSummary(usageJson.summary || null);
+        setSummary(
+          usageJson.summary || {
+            billing_period: usageJson.billing_period || new Date().toISOString().slice(0, 7),
+            agent_count: (agentsJson.items || agentsJson.agents || []).length,
+            execution_count: usageJson.executions || 0,
+            monthly_executions: usageJson.executions || 0,
+            subscription: usageJson.plan
+              ? {
+                  plan: usageJson.plan,
+                  status: usageJson.subscription_status || "trialing",
+                  current_period_start: usageJson.current_period_start || null,
+                  current_period_end: usageJson.current_period_end || null,
+                  updated_at: new Date().toISOString(),
+                }
+              : null,
+          }
+        );
         setHealth(healthJson || null);
 
         if (auditRes.ok) {

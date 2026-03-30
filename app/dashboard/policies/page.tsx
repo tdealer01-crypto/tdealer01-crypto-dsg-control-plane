@@ -6,7 +6,7 @@ type PolicyRow = {
   id: string;
   name: string;
   version: string;
-  status: "active" | "draft" | "archived";
+  status: "preview" | "draft" | "archived";
   description: string;
   thresholds: {
     block_risk_score: number;
@@ -19,8 +19,8 @@ const seedPolicies: PolicyRow[] = [
     id: "policy_default",
     name: "Default DSG Policy",
     version: "v1",
-    status: "active",
-    description: "Baseline execution policy used for deterministic risk gating.",
+    status: "preview",
+    description: "Baseline reference policy shown for review only (not runtime-writable).",
     thresholds: {
       block_risk_score: 0.8,
       stabilize_risk_score: 0.4,
@@ -56,9 +56,13 @@ export default function PoliciesPage() {
           </p>
           <h1 className="text-4xl font-bold">Policy Management</h1>
           <p className="mt-3 max-w-2xl text-slate-300">
-            Review policy versions, inspect current thresholds, and prepare the
-            next policy workflow for DB-backed approvals.
+            Unfinished governance surface for policy review. This page is not
+            the active governance runtime surface.
           </p>
+        </div>
+        <div className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+          Governance status: unfinished + preview-only. Runtime ALLOW/STABILIZE/BLOCK decisions
+          are enforced by server-side gate contracts, not by edits on this screen.
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -107,8 +111,8 @@ export default function PoliciesPage() {
             <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-5 text-sm text-slate-300">
               <p className="font-semibold text-white">Next step</p>
               <p className="mt-2">
-                Wire this page to a real policies table plus approval history so
-                policy versioning becomes auditable end-to-end.
+                Wire this page to DB-backed policies, approval history, and
+                controlled rollout gates before promoting it to an active governance runtime surface.
               </p>
             </div>
           </section>

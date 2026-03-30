@@ -79,7 +79,10 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json({ items });
+    return NextResponse.json({
+      items,
+      agents: items,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unexpected error' },

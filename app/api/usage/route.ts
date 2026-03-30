@@ -93,6 +93,17 @@ export async function GET() {
       (sum, row) => sum + Number(row.executions || 0),
       0
     );
+    const { count: agentCount, error: agentCountError } = await supabase
+      .from('agents')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', profile.org_id);
+
+    if (
+      agentCountError &&
+      !/relation .* does not exist/i.test(agentCountError.message)
+    ) {
+      return NextResponse.json({ error: agentCountError.message }, { status: 500 });
+    }
 
     const planKey = String(subscription?.plan_key || 'trial').toLowerCase();
     const includedExecutions =
@@ -101,7 +112,7 @@ export async function GET() {
     const overageExecutions = Math.max(0, executions - includedExecutions);
     const projectedAmountUsd = Number((overageExecutions * 0.001).toFixed(3));
 
-    return NextResponse.json({
+    const payload = {
       plan: formatPlanLabel(planKey, subscription?.billing_interval || null),
       subscription_status: subscription?.status || 'trialing',
       billing_period: formatBillingPeriod(
@@ -116,6 +127,23 @@ export async function GET() {
       included_executions: includedExecutions,
       overage_executions: overageExecutions,
       projected_amount_usd: projectedAmountUsd,
+    };
+
+    return NextResponse.json({
+      ...payload,
+      summary: {
+        billing_period: payload.billing_period,
+        agent_count: Number(agentCount || 0),
+        execution_count: payload.executions,
+        monthly_executions: payload.executions,
+        subscription: {
+          plan: payload.plan,
+          status: payload.subscription_status,
+          current_period_start: payload.current_period_start,
+          current_period_end: payload.current_period_end,
+          updated_at: subscription?.updated_at || new Date().toISOString(),
+        },
+      },
     });
   } catch (error) {
     return NextResponse.json(

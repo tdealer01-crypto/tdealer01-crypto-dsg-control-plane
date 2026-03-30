@@ -34,6 +34,13 @@ function getMessage(message?: string, error?: string) {
     };
   }
 
+  if (error === 'invite-only') {
+    return {
+      tone: 'error',
+      text: 'Invite-only mode is disabled. If you still see this, refresh and try again.',
+    };
+  }
+
   if (error === 'not-provisioned') {
     return {
       tone: 'error',
@@ -55,6 +62,20 @@ function getMessage(message?: string, error?: string) {
     };
   }
 
+  if (error === 'server-misconfigured') {
+    return {
+      tone: 'error',
+      text: 'Server auth callback is missing required Supabase environment variables.',
+    };
+  }
+
+  if (error === 'self-serve-failed') {
+    return {
+      tone: 'error',
+      text: 'Account provisioning failed after login confirmation. Please retry or contact support.',
+    };
+  }
+
   return null;
 }
 
@@ -73,7 +94,7 @@ export default function LoginPage({
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Operator Access</p>
           <h1 className="mt-4 text-4xl font-bold">Sign in to the DSG Control Plane</h1>
           <p className="mt-4 text-base leading-7 text-slate-300">
-            Use your approved operator email to receive a magic link. After confirmation, you will be redirected into the protected dashboard.
+            Self-serve access. Enter your email to receive a magic link; on first login we auto-provision your trial workspace.
           </p>
 
           {notice ? (
@@ -112,7 +133,7 @@ export default function LoginPage({
           <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-slate-950/50 p-5 text-sm text-slate-300">
             <p className="font-semibold text-white">Provisioning rule</p>
             <p className="mt-2 leading-7">
-              Login alone is not enough. Your email must also map to an active row in the <code>users</code> table with a valid <code>org_id</code>.
+              First successful confirmation auto-creates your organization and owner profile in <code>organizations</code> and <code>users</code>.
             </p>
           </div>
         </div>
@@ -124,8 +145,8 @@ export default function LoginPage({
               {[
                 'We send a magic link through Supabase Auth.',
                 'The callback verifies the link and creates a cookie session.',
-                'If your email already exists in users, the app links auth_user_id automatically.',
-                'Protected dashboard routes unlock only when org_id and is_active are valid.',
+                'If this is your first login, we auto-create organization + owner profile.',
+                'Protected dashboard routes unlock after org_id and is_active are provisioned.',
               ].map((item, index) => (
                 <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-400/10 font-semibold text-emerald-200">

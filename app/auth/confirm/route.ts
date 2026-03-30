@@ -1,11 +1,30 @@
 import { type EmailOtpType } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/workspace';
   return value;
+}
+
+function buildOrgId() {
+  return `org_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+}
+
+function buildOrgName(email: string) {
+  const localPart = email.split('@')[0] || 'dsg';
+  return `${localPart}-org`;
+}
+
+function buildOrgSlug(email: string) {
+  const localPart = (email.split('@')[0] || 'dsg')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  return `${localPart || 'dsg'}-${randomUUID().slice(0, 8)}`;
 }
 
 export async function GET(request: NextRequest) {
@@ -42,13 +61,79 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
-  const admin = getSupabaseAdmin();
+  let admin;
+  try {
+    admin = getSupabaseAdmin();
+  } catch {
+    redirectToLogin.searchParams.set('error', 'server-misconfigured');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
+  }
 
-  await admin
+  const { data: existingProfile } = await admin
     .from('users')
-    .update({ auth_user_id: user.id })
+    .select('id, org_id, is_active, auth_user_id')
     .eq('email', user.email)
-    .is('auth_user_id', null);
+    .maybeSingle();
+
+  if (existingProfile?.id) {
+    let orgId = existingProfile.org_id || null;
+    if (!orgId) {
+      orgId = buildOrgId();
+      const orgName = buildOrgName(user.email);
+      const orgSlug = buildOrgSlug(user.email);
+      const { error: orgError } = await admin.from('organizations').insert({
+        id: orgId,
+        name: orgName,
+        slug: orgSlug,
+        plan: 'trial',
+        status: 'active',
+      });
+      if (orgError) {
+        redirectToLogin.searchParams.set('error', 'self-serve-failed');
+        return NextResponse.redirect(redirectToLogin, { status: 302 });
+      }
+    }
+
+    await admin
+      .from('users')
+      .update({
+        auth_user_id: existingProfile.auth_user_id || user.id,
+        org_id: orgId,
+        is_active: true,
+      })
+      .eq('id', existingProfile.id);
+  } else {
+    const orgId = buildOrgId();
+    const orgName = buildOrgName(user.email);
+    const orgSlug = buildOrgSlug(user.email);
+
+    const { error: orgError } = await admin.from('organizations').insert({
+      id: orgId,
+      name: orgName,
+      slug: orgSlug,
+      plan: 'trial',
+      status: 'active',
+    });
+
+    if (orgError) {
+      redirectToLogin.searchParams.set('error', 'self-serve-failed');
+      return NextResponse.redirect(redirectToLogin, { status: 302 });
+    }
+
+    const { error: userError } = await admin.from('users').insert({
+      auth_user_id: user.id,
+      org_id: orgId,
+      email: user.email,
+      role: 'owner',
+      auth_provider: 'magic_link',
+      is_active: true,
+    });
+
+    if (userError) {
+      redirectToLogin.searchParams.set('error', 'self-serve-failed');
+      return NextResponse.redirect(redirectToLogin, { status: 302 });
+    }
+  }
 
   const { data: profile } = await admin
     .from('users')
