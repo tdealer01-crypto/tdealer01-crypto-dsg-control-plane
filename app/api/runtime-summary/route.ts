@@ -27,42 +27,23 @@ export async function GET() {
   const admin = getSupabaseAdmin();
   const orgId = String(profile.org_id);
 
-  const [{ data: truth }, { data: approvals }, { data: effects }, { data: ledger }, { data: usage }] =
-    await Promise.all([
-      admin.from('runtime_truth_state').select('*').eq('org_id', orgId).maybeSingle(),
-      admin
-        .from('approvals')
-        .select('id, status, approved_at, expires_at')
-        .eq('org_id', orgId)
-        .order('approved_at', { ascending: false })
-        .limit(20),
-      admin
-        .from('effects')
-        .select('effect_id, action, status, updated_at')
-        .eq('org_id', orgId)
-        .order('updated_at', { ascending: false })
-        .limit(20),
-      admin
-        .from('ledger_entries')
-        .select('sequence, action, decision, reason, entry_hash, created_at')
-        .eq('org_id', orgId)
-        .order('sequence', { ascending: false })
-        .limit(20),
-      admin
-        .from('usage_events')
-        .select('event_type, quantity, created_at')
-        .eq('org_id', orgId)
-        .order('created_at', { ascending: false })
-        .limit(20),
-    ]);
+  const [truthRes, approvalsRes, effectsRes, ledgerRes, checkpointsRes, mcpCallsRes] = await Promise.all([
+    admin.from('runtime_truth_state').select('*').eq('org_id', orgId).maybeSingle(),
+    admin.from('approvals').select('id, status, approved_at, expires_at').eq('org_id', orgId).order('approved_at', { ascending: false }).limit(20),
+    admin.from('effects').select('effect_id, action, status, updated_at').eq('org_id', orgId).order('updated_at', { ascending: false }).limit(20),
+    admin.from('ledger_entries').select('sequence, action, decision, reason, entry_hash, created_at').eq('org_id', orgId).order('sequence', { ascending: false }).limit(20),
+    admin.from('state_checkpoints').select('sequence, state_hash, entry_hash, created_at').eq('org_id', orgId).order('sequence', { ascending: false }).limit(10),
+    admin.from('mcp_tool_calls').select('request_id, tool_name, status, created_at').eq('org_id', orgId).order('created_at', { ascending: false }).limit(20),
+  ]);
 
   return NextResponse.json({
     ok: true,
-    truth_state: truth || null,
-    approvals_open: (approvals || []).filter((x) => x.status === 'issued').length,
-    approvals_recent: approvals || [],
-    effects_recent: effects || [],
-    ledger_recent: ledger || [],
-    usage_recent: usage || [],
+    truth_state: truthRes.data || null,
+    approvals_open: (approvalsRes.data || []).filter((x) => x.status === 'issued').length,
+    approvals_recent: approvalsRes.data || [],
+    effects_recent: effectsRes.data || [],
+    ledger_recent: ledgerRes.data || [],
+    checkpoints_recent: checkpointsRes.data || [],
+    mcp_calls_recent: mcpCallsRes.data || [],
   });
 }

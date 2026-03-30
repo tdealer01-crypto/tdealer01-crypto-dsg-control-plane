@@ -75,6 +75,8 @@ export async function getDSGCoreHealth() {
 }
 
 export async function executeOnDSGCore(payload: DSGCoreExecutionRequest) {
+  // Optional compatibility bridge only.
+  // Truth execution is handled by lib/runtime/spine.ts.
   const { url } = getDSGCoreConfig();
   const response = await fetch(`${url}/execute`, {
     method: "POST",

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { sha256Hex } from './canonical';
 
 export type IntentEnvelope = {
@@ -8,6 +9,10 @@ export type IntentEnvelope = {
   next_g: string;
   next_i: string;
 };
+
+export function ensureRequestId(requestId?: string) {
+  return typeof requestId === 'string' && requestId.trim().length > 0 ? requestId.trim() : randomUUID();
+}
 
 export function computeInputHash(intent: IntentEnvelope): string {
   return sha256Hex({
@@ -49,4 +54,44 @@ export function computeEffectId(params: {
     action: params.action,
     payload_hash: params.payloadHash,
   });
+}
+
+export async function verifyApprovalForExecution(params: {
+  supabase: any;
+  orgId: string;
+  agentId: string;
+  approvalId: string;
+  intent: IntentEnvelope;
+}) {
+  const inputHash = computeInputHash(params.intent);
+  const { data: approval, error } = await params.supabase
+    .from('approvals')
+    .select('*')
+    .eq('id', params.approvalId)
+    .eq('org_id', params.orgId)
+    .eq('agent_id', params.agentId)
+    .maybeSingle();
+
+  if (error || !approval) return { ok: false as const, status: 400, error: 'ERR_INVALID_APPROVAL' };
+  if (approval.status !== 'issued' || approval.used_at) {
+    return { ok: false as const, status: 409, error: 'ERR_REPLAY_ATTACK' };
+  }
+
+  if (new Date(approval.expires_at).getTime() < Date.now()) {
+    return { ok: false as const, status: 400, error: 'ERR_EXPIRED' };
+  }
+
+  if (approval.request_id !== params.intent.request_id) {
+    return { ok: false as const, status: 400, error: 'ERR_REQUEST_MISMATCH' };
+  }
+
+  if (approval.action !== params.intent.action) {
+    return { ok: false as const, status: 400, error: 'ERR_ACTION_MISMATCH' };
+  }
+
+  if (approval.input_hash !== inputHash) {
+    return { ok: false as const, status: 400, error: 'ERR_INTEGRITY_MISMATCH' };
+  }
+
+  return { ok: true as const, approval, inputHash };
 }
