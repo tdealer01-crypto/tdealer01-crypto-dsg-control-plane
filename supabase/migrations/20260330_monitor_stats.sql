@@ -475,55 +475,91 @@ drop policy if exists core_monitor_snapshots_org_read on core_monitor_snapshots;
 create policy core_monitor_snapshots_org_read
 on core_monitor_snapshots
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists readiness_history_org_read on readiness_history;
 create policy readiness_history_org_read
 on readiness_history
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists alert_events_org_read on alert_events;
 create policy alert_events_org_read
 on alert_events
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists agent_stats_daily_org_read on agent_stats_daily;
 create policy agent_stats_daily_org_read
 on agent_stats_daily
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists org_stats_hourly_org_read on org_stats_hourly;
 create policy org_stats_hourly_org_read
 on org_stats_hourly
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists core_audit_event_cache_org_read on core_audit_event_cache;
 create policy core_audit_event_cache_org_read
 on core_audit_event_cache
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists core_ledger_cache_org_read on core_ledger_cache;
 create policy core_ledger_cache_org_read
 on core_ledger_cache
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists agent_training_events_org_read on agent_training_events;
 create policy agent_training_events_org_read
 on agent_training_events
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 drop policy if exists user_readiness_signals_org_read on user_readiness_signals;
 create policy user_readiness_signals_org_read
 on user_readiness_signals
 for select
-using (true);
+to authenticated
+using (
+  public.current_user_is_active()
+  and org_id = public.current_user_org_id()
+);
 
 -- Writes should normally happen via service-role/admin path only.
 -- So we do not add public insert/update policies here.
