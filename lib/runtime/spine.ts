@@ -1,15 +1,10 @@
 import { getSupabaseAdmin } from '../supabase-server';
 import { sha256Hex } from './canonical';
-import {
-  computeEffectId,
-  computeInputHash,
-  type IntentEnvelope,
-} from './approval';
-import {
-  evaluateUDGGate,
-  type TruthState,
-} from './gate';
+import { computeEffectId, computeInputHash, type IntentEnvelope } from './approval';
+import { evaluateUDGGate, type TruthState } from './gate';
 import { buildLedgerEntry } from './ledger';
+import { createEffectJournalEntry } from './effects';
+import { maybeWriteCheckpoint } from './checkpoints';
 
 const CORE_SPEC_SHA256 =
   '8d73cf93de5aa71c1cb1b9d93d15fc5124977dc0781cf0c1698216412ba623af';
@@ -91,10 +86,7 @@ export async function ensureTruthState(orgId: string) {
   return inserted;
 }
 
-export async function executeThroughSpine(
-  access: SpineAccess,
-  body: ExecuteEnvelope
-) {
+export async function executeThroughSpine(access: SpineAccess, body: ExecuteEnvelope) {
   const supabase = getSupabaseAdmin();
   const nowIso = new Date().toISOString();
 
@@ -111,33 +103,13 @@ export async function executeThroughSpine(
     .eq('agent_id', access.agentId)
     .single();
 
-  if (approvalError || !approval) {
-    throw new Error('ERR_INVALID_APPROVAL');
-  }
-
-  if (approval.status !== 'issued' || approval.used_at) {
-    throw new Error('ERR_REPLAY_ATTACK');
-  }
-
-  if (new Date(approval.expires_at).getTime() < Date.now()) {
-    throw new Error('ERR_EXPIRED');
-  }
-
-  if (approval.request_id !== body.request_id) {
-    throw new Error('ERR_REQUEST_MISMATCH');
-  }
-
-  if (approval.action !== body.action) {
-    throw new Error('ERR_ACTION_MISMATCH');
-  }
-
-  if (approval.input_hash !== inputHash) {
-    throw new Error('ERR_INTEGRITY_MISMATCH');
-  }
-
-  if (Number(approval.epoch) !== truthState.epoch) {
-    throw new Error('ERR_EPOCH_MISMATCH');
-  }
+  if (approvalError || !approval) throw new Error('ERR_INVALID_APPROVAL');
+  if (approval.status !== 'issued' || approval.used_at) throw new Error('ERR_REPLAY_ATTACK');
+  if (new Date(approval.expires_at).getTime() < Date.now()) throw new Error('ERR_EXPIRED');
+  if (approval.request_id !== body.request_id) throw new Error('ERR_REQUEST_MISMATCH');
+  if (approval.action !== body.action) throw new Error('ERR_ACTION_MISMATCH');
+  if (approval.input_hash !== inputHash) throw new Error('ERR_INTEGRITY_MISMATCH');
+  if (Number(approval.epoch) !== truthState.epoch) throw new Error('ERR_EPOCH_MISMATCH');
 
   const gate = evaluateUDGGate(truthState, {
     action: body.action,
@@ -148,14 +120,12 @@ export async function executeThroughSpine(
   });
 
   const prevStateHash = sha256Hex(truthState);
-
   let nextSequence = truthState.sequence;
   let nextStateHash = prevStateHash;
   let effectId: string | null = null;
 
   if (gate.decision === 'ALLOW') {
     nextSequence = truthState.sequence + 1;
-
     effectId = computeEffectId({
       epoch: truthState.epoch,
       sequence: nextSequence,
@@ -163,24 +133,16 @@ export async function executeThroughSpine(
       payloadHash: inputHash,
     });
 
-    const { error: effectError } = await supabase
-      .from('effects')
-      .insert({
-        org_id: access.orgId,
-        agent_id: access.agentId,
-        request_id: body.request_id,
-        action: body.action,
-        effect_id: effectId,
-        payload_hash: inputHash,
-        status: 'committed',
-        external_receipt: {},
-        created_at: nowIso,
-        updated_at: nowIso,
-      });
-
-    if (effectError) {
-      throw new Error(effectError.message);
-    }
+    await createEffectJournalEntry({
+      orgId: access.orgId,
+      agentId: access.agentId,
+      requestId: body.request_id,
+      action: body.action,
+      effectId,
+      payloadHash: inputHash,
+      status: 'committed',
+      externalReceipt: {},
+    });
 
     const currentBalance = Number((truthState.v_t as any).balance || 0);
     const nextBalance = Number(body.next_v.balance ?? currentBalance);
@@ -215,9 +177,7 @@ export async function executeThroughSpine(
       .from('runtime_truth_state')
       .upsert(nextTruthRow, { onConflict: 'org_id' });
 
-    if (truthUpdateError) {
-      throw new Error(truthUpdateError.message);
-    }
+    if (truthUpdateError) throw new Error(truthUpdateError.message);
   }
 
   const { data: lastEntry, error: lastEntryError } = await supabase
@@ -228,9 +188,7 @@ export async function executeThroughSpine(
     .limit(1)
     .maybeSingle();
 
-  if (lastEntryError) {
-    throw new Error(lastEntryError.message);
-  }
+  if (lastEntryError) throw new Error(lastEntryError.message);
 
   const ledgerEntry = buildLedgerEntry({
     orgId: access.orgId,
@@ -255,32 +213,44 @@ export async function executeThroughSpine(
     },
   });
 
-  const { error: ledgerError } = await supabase
-    .from('ledger_entries')
-    .insert({
-      org_id: ledgerEntry.org_id,
-      agent_id: ledgerEntry.agent_id,
-      request_id: ledgerEntry.request_id,
-      approval_hash: ledgerEntry.approval_hash,
-      sequence: ledgerEntry.sequence,
-      epoch: ledgerEntry.epoch,
-      action: ledgerEntry.action,
-      input_hash: ledgerEntry.input_hash,
-      decision: ledgerEntry.decision,
-      reason: ledgerEntry.reason,
-      prev_state_hash: ledgerEntry.prev_state_hash,
-      next_state_hash: ledgerEntry.next_state_hash,
-      effect_id: ledgerEntry.effect_id,
-      logical_ts: ledgerEntry.logical_ts,
-      prev_entry_hash: ledgerEntry.prev_entry_hash,
-      entry_hash: ledgerEntry.entry_hash,
-      metadata: ledgerEntry.metadata,
-      created_at: nowIso,
-    });
+  const { error: ledgerError } = await supabase.from('ledger_entries').insert({
+    org_id: ledgerEntry.org_id,
+    agent_id: ledgerEntry.agent_id,
+    request_id: ledgerEntry.request_id,
+    approval_hash: ledgerEntry.approval_hash,
+    sequence: ledgerEntry.sequence,
+    epoch: ledgerEntry.epoch,
+    action: ledgerEntry.action,
+    input_hash: ledgerEntry.input_hash,
+    decision: ledgerEntry.decision,
+    reason: ledgerEntry.reason,
+    prev_state_hash: ledgerEntry.prev_state_hash,
+    next_state_hash: ledgerEntry.next_state_hash,
+    effect_id: ledgerEntry.effect_id,
+    logical_ts: ledgerEntry.logical_ts,
+    prev_entry_hash: ledgerEntry.prev_entry_hash,
+    entry_hash: ledgerEntry.entry_hash,
+    metadata: ledgerEntry.metadata,
+    created_at: nowIso,
+  });
 
-  if (ledgerError) {
-    throw new Error(ledgerError.message);
-  }
+  if (ledgerError) throw new Error(ledgerError.message);
+
+  await maybeWriteCheckpoint({
+    orgId: access.orgId,
+    sequence: nextSequence,
+    epoch: truthState.epoch,
+    stateHash: nextStateHash,
+    entryHash: ledgerEntry.entry_hash,
+    snapshot: {
+      v_t: body.next_v,
+      t_t: Number(body.next_t),
+      g_t: body.next_g,
+      i_t: body.next_i,
+      decision: gate.decision,
+      reason: gate.reason,
+    },
+  });
 
   const { error: approvalUpdateError } = await supabase
     .from('approvals')
@@ -296,9 +266,7 @@ export async function executeThroughSpine(
     })
     .eq('id', approval.id);
 
-  if (approvalUpdateError) {
-    throw new Error(approvalUpdateError.message);
-  }
+  if (approvalUpdateError) throw new Error(approvalUpdateError.message);
 
   const { data: executionRow, error: executionError } = await supabase
     .from('executions')
@@ -330,55 +298,47 @@ export async function executeThroughSpine(
     throw new Error(executionError?.message || 'Failed to write execution');
   }
 
-  const { error: auditError } = await supabase
-    .from('audit_logs')
-    .insert({
-      org_id: access.orgId,
-      agent_id: access.agentId,
-      execution_id: executionRow.id,
-      policy_version: `udg-epoch-${truthState.epoch}`,
+  const { error: auditError } = await supabase.from('audit_logs').insert({
+    org_id: access.orgId,
+    agent_id: access.agentId,
+    execution_id: executionRow.id,
+    policy_version: `udg-epoch-${truthState.epoch}`,
+    decision: gate.decision,
+    reason: gate.reason,
+    evidence: {
+      approval_id: approval.id,
+      approval_hash: approval.approval_hash,
+      input_hash: inputHash,
+      entry_hash: ledgerEntry.entry_hash,
+      prev_state_hash: prevStateHash,
+      next_state_hash: nextStateHash,
+      effect_id: effectId,
+      core_spec_hash: CORE_SPEC_SHA256,
+      arbiter_hash: ARBITER_SHA256,
+      gate_metrics: gate.metrics,
+    },
+    created_at: nowIso,
+  });
+
+  if (auditError) throw new Error(auditError.message);
+
+  const { error: usageError } = await supabase.from('usage_events').insert({
+    org_id: access.orgId,
+    agent_id: access.agentId,
+    execution_id: executionRow.id,
+    event_type: gate.decision === 'ALLOW' ? 'execution' : 'decision_only',
+    quantity: 1,
+    unit: 'execution',
+    amount_usd: 0,
+    metadata: {
       decision: gate.decision,
       reason: gate.reason,
-      evidence: {
-        approval_id: approval.id,
-        approval_hash: approval.approval_hash,
-        input_hash: inputHash,
-        entry_hash: ledgerEntry.entry_hash,
-        prev_state_hash: prevStateHash,
-        next_state_hash: nextStateHash,
-        effect_id: effectId,
-        core_spec_hash: CORE_SPEC_SHA256,
-        arbiter_hash: ARBITER_SHA256,
-        gate_metrics: gate.metrics,
-      },
-      created_at: nowIso,
-    });
+      entry_hash: ledgerEntry.entry_hash,
+    },
+    created_at: nowIso,
+  });
 
-  if (auditError) {
-    throw new Error(auditError.message);
-  }
-
-  const { error: usageError } = await supabase
-    .from('usage_events')
-    .insert({
-      org_id: access.orgId,
-      agent_id: access.agentId,
-      execution_id: executionRow.id,
-      event_type: gate.decision === 'ALLOW' ? 'execution' : 'decision_only',
-      quantity: 1,
-      unit: 'execution',
-      amount_usd: 0,
-      metadata: {
-        decision: gate.decision,
-        reason: gate.reason,
-        entry_hash: ledgerEntry.entry_hash,
-      },
-      created_at: nowIso,
-    });
-
-  if (usageError) {
-    throw new Error(usageError.message);
-  }
+  if (usageError) throw new Error(usageError.message);
 
   return {
     request_id: body.request_id,
