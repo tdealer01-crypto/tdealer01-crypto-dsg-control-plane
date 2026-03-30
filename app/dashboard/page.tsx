@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Agent = {
-  id: string;
+  agent_id: string;
   name: string;
+  policy_id: string;
   status: string;
   monthly_limit: number;
-  last_used_at: string | null;
-  updated_at: string;
+  usage_this_month?: number;
+  api_key_preview?: string;
 };
 
 type Execution = {
@@ -24,15 +25,15 @@ type Execution = {
 
 type UsageSummary = {
   billing_period: string;
-  agent_count: number;
-  execution_count: number;
   monthly_executions: number;
+  included_executions: number;
+  overage_executions: number;
+  projected_amount_usd: number;
   subscription: null | {
     plan: string;
     status: string;
     current_period_start: string | null;
     current_period_end: string | null;
-    updated_at: string;
   };
 };
 
@@ -86,6 +87,26 @@ function formatDate(value?: string | null) {
   }
 }
 
+function normalizeUsageSummary(input: any): UsageSummary {
+  const monthlyExecutions = Number(input?.executions || 0);
+  const currentPeriodStart = input?.current_period_start || null;
+  const currentPeriodEnd = input?.current_period_end || null;
+
+  return {
+    billing_period: String(input?.billing_period || new Date().toISOString().slice(0, 7)),
+    monthly_executions: monthlyExecutions,
+    included_executions: Number(input?.included_executions || 0),
+    overage_executions: Number(input?.overage_executions || 0),
+    projected_amount_usd: Number(input?.projected_amount_usd || 0),
+    subscription: {
+      plan: String(input?.plan || "-"),
+      status: String(input?.subscription_status || "unknown"),
+      current_period_start: currentPeriodStart,
+      current_period_end: currentPeriodEnd,
+    },
+  };
+}
+
 export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
@@ -128,9 +149,12 @@ export default function DashboardPage() {
         if (!healthRes.ok) throw new Error(healthJson.error || "Failed to load control-plane health");
         if (!alive) return;
 
-        setAgents(agentsJson.agents || []);
-        setExecutions(executionsJson.executions || []);
-        setSummary(usageJson.summary || null);
+        const normalizedAgents: Agent[] = Array.isArray(agentsJson?.items) ? agentsJson.items : [];
+        const normalizedExecutions: Execution[] = Array.isArray(executionsJson?.executions) ? executionsJson.executions : [];
+
+        setAgents(normalizedAgents);
+        setExecutions(normalizedExecutions);
+        setSummary(normalizeUsageSummary(usageJson));
         setHealth(healthJson || null);
 
         if (auditRes.ok) {
@@ -158,8 +182,8 @@ export default function DashboardPage() {
 
   const cards = useMemo(() => {
     return [
-      { label: "Agents", value: summary?.agent_count ?? agents.length },
-      { label: "Executions", value: summary?.execution_count ?? executions.length },
+      { label: "Agents", value: agents.length },
+      { label: "Executions", value: executions.length },
       { label: "Monthly Usage", value: summary?.monthly_executions ?? 0 },
       { label: "Plan", value: summary?.subscription?.plan ?? "-" },
       { label: "DSG Core", value: health?.core_ok ? "Online" : "Offline" },
@@ -285,18 +309,18 @@ export default function DashboardPage() {
             <div className="mt-4 space-y-3">
               {agents.length === 0 && !loading ? <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No agents found.</div> : null}
               {agents.map((agent) => (
-                <div key={agent.id} className="rounded-xl border border-slate-800 p-4">
+                <div key={agent.agent_id} className="rounded-xl border border-slate-800 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold">{agent.name}</p>
-                      <p className="mt-1 text-sm text-slate-400">{agent.id}</p>
+                      <p className="mt-1 text-sm text-slate-400">{agent.agent_id}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">{agent.status}</span>
                   </div>
                   <div className="mt-3 grid gap-2 text-sm text-slate-300">
                     <p>Monthly limit: {agent.monthly_limit}</p>
-                    <p>Last used: {formatDate(agent.last_used_at)}</p>
-                    <p>Updated: {formatDate(agent.updated_at)}</p>
+                    <p>Policy: {agent.policy_id}</p>
+                    <p>Usage this month: {agent.usage_this_month ?? 0}</p>
                   </div>
                 </div>
               ))}
