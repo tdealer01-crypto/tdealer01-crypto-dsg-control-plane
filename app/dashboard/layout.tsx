@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireProvisionedOperator } from '../../lib/auth-gate';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -14,7 +15,9 @@ const NAV = [
   { href: '/app-shell', label: 'App Shell' },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await requireProvisionedOperator('/dashboard');
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="border-b border-slate-800 bg-slate-950/80">
