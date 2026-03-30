@@ -10,9 +10,7 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
   const { data: profile } = await supabase
     .from('users')
@@ -29,15 +27,13 @@ export async function GET(request: Request) {
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
-    .from('ledger_entries')
-    .select('sequence, epoch, action, decision, reason, entry_hash, prev_entry_hash, created_at, metadata')
+    .from('effects')
+    .select('effect_id, request_id, action, status, payload_hash, external_receipt, updated_at')
     .eq('org_id', profile.org_id)
-    .order('sequence', { ascending: false })
+    .order('updated_at', { ascending: false })
     .limit(limit);
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, items: data || [] });
 }

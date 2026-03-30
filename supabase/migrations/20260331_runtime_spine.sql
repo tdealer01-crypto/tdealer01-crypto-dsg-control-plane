@@ -81,7 +81,35 @@ create table if not exists state_checkpoints (
   unique (org_id, sequence)
 );
 
+create table if not exists mcp_tool_calls (
+  id uuid primary key default gen_random_uuid(),
+  org_id text not null references organizations(id) on delete cascade,
+  agent_id text references agents(id) on delete set null,
+  request_id text not null,
+  tool_name text not null,
+  approval_hash text,
+  input_hash text not null,
+  result_hash text,
+  status text not null default 'started',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists agent_memory (
+  id uuid primary key default gen_random_uuid(),
+  org_id text not null references organizations(id) on delete cascade,
+  agent_id text references agents(id) on delete set null,
+  request_id text,
+  memory_key text not null,
+  memory_value jsonb not null default '{}'::jsonb,
+  lineage_hash text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_runtime_truth_state_updated_at on runtime_truth_state(updated_at desc);
 create index if not exists idx_approvals_org_agent on approvals(org_id, agent_id, approved_at desc);
 create index if not exists idx_effects_org_created on effects(org_id, created_at desc);
 create index if not exists idx_ledger_entries_org_created on ledger_entries(org_id, created_at desc);
 create index if not exists idx_checkpoints_org_sequence on state_checkpoints(org_id, sequence desc);
+create index if not exists idx_mcp_tool_calls_org_created on mcp_tool_calls(org_id, created_at desc);
+create index if not exists idx_agent_memory_org_agent on agent_memory(org_id, agent_id, created_at desc);

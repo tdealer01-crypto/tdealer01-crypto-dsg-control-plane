@@ -1,24 +1,40 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { requireActiveAgentFromBearer, type AgentAccess } from '../../../lib/agent-auth';
-import { computeApprovalHash, computeInputHash, type IntentEnvelope } from '../../../lib/runtime/approval';
+import {
+  computeApprovalHash,
+  computeInputHash,
+  ensureRequestId,
+  type IntentEnvelope,
+} from '../../../lib/runtime/approval';
 
 export const dynamic = 'force-dynamic';
 
 const APPROVAL_TTL_MS = 10 * 60 * 1000;
 
-type IntentBody = IntentEnvelope & {
+type IntentBody = Partial<IntentEnvelope> & {
   agent_id: string;
 };
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as IntentBody | null;
-  if (!body?.request_id || !body?.action) {
+  if (!body?.action || !body?.agent_id || typeof body.next_t !== 'number' || !body.next_g || !body.next_i) {
     return NextResponse.json(
-      { ok: false, error: 'request_id and action are required' },
+      { ok: false, error: 'agent_id, action, next_t, next_g, next_i are required' },
       { status: 400 }
     );
   }
+
+  const next_v = body.next_v && typeof body.next_v === 'object' ? body.next_v : {};
+  const requestId = ensureRequestId(body.request_id);
+  const intent: IntentEnvelope = {
+    request_id: requestId,
+    action: body.action,
+    next_v,
+    next_t: body.next_t,
+    next_g: body.next_g,
+    next_i: body.next_i,
+  };
 
   const access = await requireActiveAgentFromBearer(request, body.agent_id);
   if (!access.ok) {
@@ -39,11 +55,11 @@ export async function POST(request: Request) {
   }
 
   const epoch = Number(currentState?.epoch || 1);
-  const inputHash = computeInputHash(body);
+  const inputHash = computeInputHash(intent);
   const approvalHash = computeApprovalHash({
     orgId: access.orgId,
     agentId: access.agentId,
-    requestId: body.request_id,
+    requestId,
     action: body.action,
     inputHash,
     epoch,
@@ -57,7 +73,7 @@ export async function POST(request: Request) {
       {
         org_id: access.orgId,
         agent_id: access.agentId,
-        request_id: body.request_id,
+        request_id: requestId,
         action: body.action,
         input_hash: inputHash,
         approval_hash: approvalHash,
@@ -83,6 +99,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    request_id: requestId,
     approval_id: data.id,
     approval_hash: data.approval_hash,
     input_hash: inputHash,
