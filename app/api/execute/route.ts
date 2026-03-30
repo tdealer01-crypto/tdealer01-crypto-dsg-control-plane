@@ -7,6 +7,18 @@ export const dynamic = 'force-dynamic';
 
 type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
 
+type ReservationRow = {
+  reservation_id: string;
+  status: 'pending' | 'processed' | 'failed' | 'rejected';
+  execution_id: string | null;
+  response_payload: Record<string, unknown> | null;
+  quota_reserved: boolean;
+  error_code: string | null;
+  error_message: string | null;
+  current_agent_executions: number;
+  org_executions: number;
+};
+
 const INCLUDED_EXECUTIONS: Record<string, number> = {
   trial: 1000,
   pro: 10000,
@@ -19,7 +31,28 @@ function getIncludedExecutions(planKey?: string | null) {
   return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
 }
 
+function getIdempotencyKey(request: Request, body: Record<string, unknown> | null) {
+  const headerKey = request.headers.get('idempotency-key')?.trim();
+  const bodyKey = typeof body?.idempotency_key === 'string' ? body.idempotency_key.trim() : '';
+  return headerKey || bodyKey;
+}
+
+async function markReservationFailed(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  reservationId: string,
+  reason: string
+) {
+  await supabase.rpc('finalize_execution_reservation', {
+    p_reservation_id: reservationId,
+    p_status: 'failed',
+    p_execution_id: null,
+    p_response_payload: { error: reason },
+  });
+}
+
 export async function POST(request: Request) {
+  let reservationId: string | null = null;
+
   try {
     const authHeader = request.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {
@@ -31,15 +64,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Empty API key' }, { status: 401 });
     }
 
-    const body = await request.json().catch(() => null);
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body || !body.agent_id) {
       return NextResponse.json({ error: 'agent_id is required' }, { status: 400 });
+    }
+
+    const idempotencyKey = getIdempotencyKey(request, body);
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { error: 'idempotency_key is required (header idempotency-key or body.idempotency_key)' },
+        { status: 400 }
+      );
     }
 
     const agentId = String(body.agent_id);
     const input = body.input ?? {};
     const context = body.context ?? {};
-    const action = String(body.action || context.action || 'scan');
+    const action = String(body.action || (context as Record<string, unknown>).action || 'scan');
 
     const supabase = getSupabaseAdmin();
     const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
@@ -62,35 +103,6 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const billingPeriod = nowIso.slice(0, 7);
 
-    const { data: counter, error: counterReadError } = await supabase
-      .from('usage_counters')
-      .select('id, executions')
-      .eq('agent_id', agent.id)
-      .eq('billing_period', billingPeriod)
-      .maybeSingle();
-
-    if (counterReadError) {
-      return NextResponse.json({ error: counterReadError.message }, { status: 500 });
-    }
-
-    const currentAgentExecutions = Number(counter?.executions || 0);
-    const monthlyLimit = Number(agent.monthly_limit || 0);
-
-    if (monthlyLimit > 0 && currentAgentExecutions >= monthlyLimit) {
-      return NextResponse.json(
-        {
-          error: 'Agent monthly quota exceeded',
-          quota: {
-            scope: 'agent',
-            billing_period: billingPeriod,
-            executions: currentAgentExecutions,
-            monthly_limit: monthlyLimit,
-          },
-        },
-        { status: 429 }
-      );
-    }
-
     const { data: subscription, error: subscriptionError } = await supabase
       .from('billing_subscriptions')
       .select('plan_key, status, current_period_start')
@@ -99,10 +111,7 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    if (
-      subscriptionError &&
-      !/relation .* does not exist/i.test(subscriptionError.message)
-    ) {
+    if (subscriptionError && !/relation .* does not exist/i.test(subscriptionError.message)) {
       return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
     }
 
@@ -110,36 +119,72 @@ export async function POST(request: Request) {
       ? String(subscription.current_period_start).slice(0, 7)
       : billingPeriod;
 
-    const { data: orgCounters, error: orgCounterError } = await supabase
-      .from('usage_counters')
-      .select('executions')
-      .eq('org_id', agent.org_id)
-      .eq('billing_period', orgBillingPeriod);
-
-    if (orgCounterError) {
-      return NextResponse.json({ error: orgCounterError.message }, { status: 500 });
-    }
-
-    const orgExecutions = (orgCounters || []).reduce(
-      (sum, row) => sum + Number(row.executions || 0),
-      0
-    );
     const includedExecutions = getIncludedExecutions(subscription?.plan_key || 'trial');
 
-    if (orgExecutions >= includedExecutions) {
+    const { data: reservationRows, error: reserveError } = await supabase.rpc('reserve_execution_quota', {
+      p_org_id: agent.org_id,
+      p_agent_id: agent.id,
+      p_idempotency_key: idempotencyKey,
+      p_billing_period: billingPeriod,
+      p_org_billing_period: orgBillingPeriod,
+      p_monthly_limit: Number(agent.monthly_limit || 0),
+      p_included_executions: includedExecutions,
+    });
+
+    if (reserveError) {
+      return NextResponse.json({ error: reserveError.message }, { status: 500 });
+    }
+
+    const reservation = (Array.isArray(reservationRows) ? reservationRows[0] : reservationRows) as
+      | ReservationRow
+      | undefined;
+
+    if (!reservation) {
+      return NextResponse.json({ error: 'Failed to reserve execution quota' }, { status: 500 });
+    }
+
+    reservationId = reservation.reservation_id;
+
+    if (reservation.status === 'rejected') {
+      const isAgentScope = reservation.error_code === 'agent_quota_exceeded';
       return NextResponse.json(
         {
-          error: 'Organization execution quota exceeded',
+          error: reservation.error_message || 'Quota exceeded',
           quota: {
-            scope: 'organization',
-            billing_period: orgBillingPeriod,
-            executions: orgExecutions,
-            included_executions: includedExecutions,
+            scope: isAgentScope ? 'agent' : 'organization',
+            billing_period: isAgentScope ? billingPeriod : orgBillingPeriod,
+            executions: isAgentScope
+              ? Number(reservation.current_agent_executions || 0)
+              : Number(reservation.org_executions || 0),
+            monthly_limit: isAgentScope ? Number(agent.monthly_limit || 0) : undefined,
+            included_executions: isAgentScope ? undefined : includedExecutions,
             plan_key: String(subscription?.plan_key || 'trial').toLowerCase(),
             subscription_status: subscription?.status || 'trialing',
           },
         },
         { status: 429 }
+      );
+    }
+
+    if (reservation.status === 'processed') {
+      return NextResponse.json(
+        {
+          ...(reservation.response_payload || {}),
+          idempotency_key: idempotencyKey,
+          idempotency_status: 'processed',
+        },
+        { status: 200 }
+      );
+    }
+
+    if (!reservation.quota_reserved) {
+      return NextResponse.json(
+        {
+          idempotency_key: idempotencyKey,
+          idempotency_status: 'in_flight',
+          reservation_id: reservation.reservation_id,
+        },
+        { status: 202 }
       );
     }
 
@@ -163,11 +208,12 @@ export async function POST(request: Request) {
       .insert({
         org_id: agent.org_id,
         agent_id: agent.id,
+        idempotency_key: idempotencyKey,
         decision,
         latency_ms: latencyMs,
         request_payload: input,
         context_payload: {
-          ...context,
+          ...((context as Record<string, unknown>) || {}),
           action,
           stability_score: stabilityScore,
           core_result: coreResult,
@@ -180,11 +226,29 @@ export async function POST(request: Request) {
       .single();
 
     if (executionError || !execution) {
+      await markReservationFailed(
+        supabase,
+        reservation.reservation_id,
+        executionError?.message || 'Failed to insert execution'
+      );
       return NextResponse.json(
         { error: executionError?.message || 'Failed to insert execution' },
         { status: 500 }
       );
     }
+
+    const responsePayload = {
+      request_id: execution.id,
+      decision: execution.decision,
+      reason: execution.reason,
+      latency_ms: execution.latency_ms,
+      policy_version: execution.policy_version,
+      stability_score: stabilityScore,
+      core: {
+        decision: coreResult.decision,
+        evaluated_at: coreResult.evaluated_at,
+      },
+    };
 
     const { data: auditRow, error: auditError } = await supabase
       .from('audit_logs')
@@ -199,6 +263,7 @@ export async function POST(request: Request) {
           action,
           input,
           context,
+          idempotency_key: idempotencyKey,
           stability_score: stabilityScore,
           core_result: coreResult,
         },
@@ -208,48 +273,26 @@ export async function POST(request: Request) {
       .single();
 
     if (auditError) {
+      await markReservationFailed(supabase, reservation.reservation_id, auditError.message);
       return NextResponse.json({ error: auditError.message }, { status: 500 });
     }
 
-    const { error: usageEventError } = await supabase
-      .from('usage_events')
-      .insert({
-        org_id: agent.org_id,
-        agent_id: agent.id,
-        execution_id: execution.id,
-        event_type: 'execution',
-        quantity: 1,
-        unit: 'execution',
-        amount_usd: 0.001,
-        metadata: { decision, stability_score: stabilityScore },
-        created_at: nowIso,
-      });
+    const { error: usageEventError } = await supabase.from('usage_events').insert({
+      org_id: agent.org_id,
+      agent_id: agent.id,
+      execution_id: execution.id,
+      idempotency_key: idempotencyKey,
+      event_type: 'execution',
+      quantity: 1,
+      unit: 'execution',
+      amount_usd: 0.001,
+      metadata: { decision, idempotency_key: idempotencyKey, stability_score: stabilityScore },
+      created_at: nowIso,
+    });
 
     if (usageEventError) {
+      await markReservationFailed(supabase, reservation.reservation_id, usageEventError.message);
       return NextResponse.json({ error: usageEventError.message }, { status: 500 });
-    }
-
-    if (counter?.id) {
-      const { error: counterUpdateError } = await supabase
-        .from('usage_counters')
-        .update({ executions: currentAgentExecutions + 1, updated_at: nowIso })
-        .eq('id', counter.id);
-      if (counterUpdateError) {
-        return NextResponse.json({ error: counterUpdateError.message }, { status: 500 });
-      }
-    } else {
-      const { error: counterInsertError } = await supabase
-        .from('usage_counters')
-        .insert({
-          org_id: agent.org_id,
-          agent_id: agent.id,
-          billing_period: billingPeriod,
-          executions: 1,
-          updated_at: nowIso,
-        });
-      if (counterInsertError) {
-        return NextResponse.json({ error: counterInsertError.message }, { status: 500 });
-      }
     }
 
     const { error: agentUpdateError } = await supabase
@@ -258,27 +301,48 @@ export async function POST(request: Request) {
       .eq('id', agent.id);
 
     if (agentUpdateError) {
+      await markReservationFailed(supabase, reservation.reservation_id, agentUpdateError.message);
       return NextResponse.json({ error: agentUpdateError.message }, { status: 500 });
+    }
+
+    const finalizedPayload = {
+      ...responsePayload,
+      audit_id: auditRow?.id ?? null,
+      usage_counted: true,
+    };
+
+    const { error: finalizeError } = await supabase.rpc('finalize_execution_reservation', {
+      p_reservation_id: reservation.reservation_id,
+      p_status: 'processed',
+      p_execution_id: execution.id,
+      p_response_payload: finalizedPayload,
+    });
+
+    if (finalizeError) {
+      return NextResponse.json({ error: finalizeError.message }, { status: 500 });
     }
 
     return NextResponse.json(
       {
-        request_id: execution.id,
-        decision: execution.decision,
-        reason: execution.reason,
-        latency_ms: execution.latency_ms,
-        policy_version: execution.policy_version,
-        stability_score: stabilityScore,
-        audit_id: auditRow?.id ?? null,
-        usage_counted: true,
-        core: {
-          decision: coreResult.decision,
-          evaluated_at: coreResult.evaluated_at,
-        },
+        ...finalizedPayload,
+        idempotency_key: idempotencyKey,
+        idempotency_status: 'processed',
       },
       { status: 200 }
     );
   } catch (error) {
+    if (reservationId) {
+      try {
+        await markReservationFailed(
+          getSupabaseAdmin(),
+          reservationId,
+          error instanceof Error ? error.message : 'Unexpected error'
+        );
+      } catch {
+        // no-op
+      }
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unexpected error' },
       { status: 500 }
