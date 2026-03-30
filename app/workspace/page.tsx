@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { requireProvisionedOperator } from '../../lib/auth-gate';
 
-export default function WorkspacePage() {
+export default async function WorkspacePage() {
+  await requireProvisionedOperator('/workspace');
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto max-w-5xl rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
