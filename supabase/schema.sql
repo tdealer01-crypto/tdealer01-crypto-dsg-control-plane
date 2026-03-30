@@ -73,6 +73,23 @@ create table if not exists usage_events (
   created_at timestamptz default now()
 );
 
+create table if not exists usage_reservations (
+  id uuid primary key default gen_random_uuid(),
+  org_id text not null references organizations(id) on delete cascade,
+  agent_id text not null references agents(id) on delete cascade,
+  execution_id uuid references executions(id) on delete set null,
+  billing_period text not null,
+  org_billing_period text not null,
+  status text not null check (status in ('reserved', 'consumed', 'failed_refunded', 'failed_not_refunded')),
+  quantity integer not null default 1 check (quantity > 0),
+  plan_key text not null,
+  refund_policy text not null check (refund_policy in ('refund_on_failure', 'no_refund_on_failure')),
+  policy_source text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now(),
+  finalized_at timestamptz
+);
+
 create table if not exists usage_counters (
   id uuid primary key default gen_random_uuid(),
   org_id text not null references organizations(id) on delete cascade,
@@ -129,6 +146,7 @@ create index if not exists idx_executions_agent_id on executions(agent_id);
 create index if not exists idx_executions_created_at on executions(created_at desc);
 create index if not exists idx_audit_logs_org_id on audit_logs(org_id);
 create index if not exists idx_usage_events_org_id on usage_events(org_id);
+create index if not exists idx_usage_reservations_org_created_at on usage_reservations(org_id, created_at desc);
 create index if not exists idx_usage_counters_org_period on usage_counters(org_id, billing_period);
 create index if not exists idx_billing_subscriptions_org_id on billing_subscriptions(org_id);
 create index if not exists idx_billing_events_customer on billing_events(stripe_customer_id);

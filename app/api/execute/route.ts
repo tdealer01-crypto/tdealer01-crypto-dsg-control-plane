@@ -6,6 +6,7 @@ import { executeOnDSGCore } from '../../../lib/dsg-core';
 export const dynamic = 'force-dynamic';
 
 type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
+type ReservationStatus = 'consumed' | 'failed_refunded' | 'failed_not_refunded';
 
 const INCLUDED_EXECUTIONS: Record<string, number> = {
   trial: 1000,
@@ -14,9 +15,23 @@ const INCLUDED_EXECUTIONS: Record<string, number> = {
   enterprise: 1000000,
 };
 
+const PLAN_REFUND_POLICY: Record<string, 'refund_on_failure' | 'no_refund_on_failure'> = {
+  trial: 'refund_on_failure',
+  pro: 'refund_on_failure',
+  business: 'refund_on_failure',
+  enterprise: 'no_refund_on_failure',
+};
+
+const REFUND_POLICY_SOURCE = 'app/api/execute/route.ts:PLAN_REFUND_POLICY';
+
 function getIncludedExecutions(planKey?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
   return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
+}
+
+function getRefundPolicy(planKey?: string | null) {
+  const normalized = String(planKey || 'trial').toLowerCase();
+  return PLAN_REFUND_POLICY[normalized] || PLAN_REFUND_POLICY.trial;
 }
 
 export async function POST(request: Request) {
@@ -124,7 +139,9 @@ export async function POST(request: Request) {
       (sum, row) => sum + Number(row.executions || 0),
       0
     );
-    const includedExecutions = getIncludedExecutions(subscription?.plan_key || 'trial');
+    const planKey = String(subscription?.plan_key || 'trial').toLowerCase();
+    const includedExecutions = getIncludedExecutions(planKey);
+    const refundPolicy = getRefundPolicy(planKey);
 
     if (orgExecutions >= includedExecutions) {
       return NextResponse.json(
@@ -135,7 +152,7 @@ export async function POST(request: Request) {
             billing_period: orgBillingPeriod,
             executions: orgExecutions,
             included_executions: includedExecutions,
-            plan_key: String(subscription?.plan_key || 'trial').toLowerCase(),
+            plan_key: planKey,
             subscription_status: subscription?.status || 'trialing',
           },
         },
@@ -143,14 +160,81 @@ export async function POST(request: Request) {
       );
     }
 
-    const coreResult = await executeOnDSGCore({
-      agent_id: agentId,
-      action,
-      payload: {
-        input,
-        context,
+    const { data: reserveRows, error: reserveError } = await supabase.rpc('reserve_execution_quota', {
+      p_org_id: agent.org_id,
+      p_agent_id: agent.id,
+      p_billing_period: billingPeriod,
+      p_org_billing_period: orgBillingPeriod,
+      p_agent_monthly_limit: monthlyLimit,
+      p_org_included_executions: includedExecutions,
+      p_plan_key: planKey,
+      p_refund_policy: refundPolicy,
+      p_policy_source: REFUND_POLICY_SOURCE,
+      p_metadata: {
+        action,
+        refund_policy: refundPolicy,
+        policy_source: REFUND_POLICY_SOURCE,
       },
     });
+
+    if (reserveError) {
+      return NextResponse.json({ error: reserveError.message }, { status: 500 });
+    }
+
+    const reserveResult = Array.isArray(reserveRows) ? reserveRows[0] : null;
+    if (!reserveResult?.ok || !reserveResult?.reservation_id) {
+      const quotaStatus = reserveResult?.error_code === 'agent_quota_exceeded' || reserveResult?.error_code === 'org_quota_exceeded'
+        ? 429
+        : 400;
+      return NextResponse.json(
+        {
+          error: reserveResult?.error_message || 'Unable to reserve execution quota',
+          reservation: reserveResult ?? null,
+        },
+        { status: quotaStatus }
+      );
+    }
+
+    const reservationId = String(reserveResult.reservation_id);
+
+    let coreResult: Awaited<ReturnType<typeof executeOnDSGCore>>;
+    try {
+      coreResult = await executeOnDSGCore({
+        agent_id: agentId,
+        action,
+        payload: {
+          input,
+          context,
+        },
+      });
+    } catch (coreError) {
+      const failedStatus: ReservationStatus = refundPolicy === 'refund_on_failure'
+        ? 'failed_refunded'
+        : 'failed_not_refunded';
+
+      await supabase.rpc('finalize_execution_reservation', {
+        p_reservation_id: reservationId,
+        p_status: failedStatus,
+        p_metadata: {
+          stage: 'core_execution',
+          refund_reason: refundPolicy === 'refund_on_failure'
+            ? 'DSG core execution failed and plan policy allows refund.'
+            : 'DSG core execution failed but plan policy denies refund.',
+          policy_source: REFUND_POLICY_SOURCE,
+          core_error: coreError instanceof Error ? coreError.message : String(coreError),
+        },
+      });
+
+      return NextResponse.json(
+        {
+          error: coreError instanceof Error ? coreError.message : 'DSG core execution failed',
+          reservation_id: reservationId,
+          reservation_status: failedStatus,
+          refund_policy: refundPolicy,
+        },
+        { status: 502 }
+      );
+    }
 
     const decision = String(coreResult.decision || 'BLOCK') as Decision;
     const latencyMs = Number(coreResult.latency_ms || 0);
@@ -180,6 +264,22 @@ export async function POST(request: Request) {
       .single();
 
     if (executionError || !execution) {
+      const failedStatus: ReservationStatus = refundPolicy === 'refund_on_failure'
+        ? 'failed_refunded'
+        : 'failed_not_refunded';
+      await supabase.rpc('finalize_execution_reservation', {
+        p_reservation_id: reservationId,
+        p_status: failedStatus,
+        p_metadata: {
+          stage: 'execution_insert',
+          refund_reason: refundPolicy === 'refund_on_failure'
+            ? 'Execution insert failed; quota reservation refunded by plan policy.'
+            : 'Execution insert failed; plan policy configured to keep reservation consumed.',
+          policy_source: REFUND_POLICY_SOURCE,
+          db_error: executionError?.message || 'Failed to insert execution',
+        },
+      });
+
       return NextResponse.json(
         { error: executionError?.message || 'Failed to insert execution' },
         { status: 500 }
@@ -208,48 +308,48 @@ export async function POST(request: Request) {
       .single();
 
     if (auditError) {
+      const failedStatus: ReservationStatus = refundPolicy === 'refund_on_failure'
+        ? 'failed_refunded'
+        : 'failed_not_refunded';
+      await supabase.rpc('finalize_execution_reservation', {
+        p_reservation_id: reservationId,
+        p_status: failedStatus,
+        p_execution_id: execution.id,
+        p_metadata: {
+          stage: 'audit_insert',
+          refund_reason: refundPolicy === 'refund_on_failure'
+            ? 'Audit insert failed; reservation refunded per plan policy.'
+            : 'Audit insert failed; reservation kept per plan policy.',
+          policy_source: REFUND_POLICY_SOURCE,
+          db_error: auditError.message,
+        },
+      });
       return NextResponse.json({ error: auditError.message }, { status: 500 });
     }
 
-    const { error: usageEventError } = await supabase
-      .from('usage_events')
-      .insert({
-        org_id: agent.org_id,
-        agent_id: agent.id,
-        execution_id: execution.id,
-        event_type: 'execution',
-        quantity: 1,
-        unit: 'execution',
-        amount_usd: 0.001,
-        metadata: { decision, stability_score: stabilityScore },
-        created_at: nowIso,
-      });
+    const { data: finalizeRows, error: finalizeError } = await supabase.rpc('finalize_execution_reservation', {
+      p_reservation_id: reservationId,
+      p_status: 'consumed',
+      p_execution_id: execution.id,
+      p_metadata: {
+        stage: 'execution_consumed',
+        policy_source: REFUND_POLICY_SOURCE,
+        refund_reason: 'Execution succeeded; reservation consumed with no refund.',
+        decision,
+        stability_score: stabilityScore,
+      },
+    });
 
-    if (usageEventError) {
-      return NextResponse.json({ error: usageEventError.message }, { status: 500 });
+    if (finalizeError) {
+      return NextResponse.json({ error: finalizeError.message }, { status: 500 });
     }
 
-    if (counter?.id) {
-      const { error: counterUpdateError } = await supabase
-        .from('usage_counters')
-        .update({ executions: currentAgentExecutions + 1, updated_at: nowIso })
-        .eq('id', counter.id);
-      if (counterUpdateError) {
-        return NextResponse.json({ error: counterUpdateError.message }, { status: 500 });
-      }
-    } else {
-      const { error: counterInsertError } = await supabase
-        .from('usage_counters')
-        .insert({
-          org_id: agent.org_id,
-          agent_id: agent.id,
-          billing_period: billingPeriod,
-          executions: 1,
-          updated_at: nowIso,
-        });
-      if (counterInsertError) {
-        return NextResponse.json({ error: counterInsertError.message }, { status: 500 });
-      }
+    const finalizeResult = Array.isArray(finalizeRows) ? finalizeRows[0] : null;
+    if (!finalizeResult?.ok) {
+      return NextResponse.json(
+        { error: finalizeResult?.error_message || 'Failed to finalize reservation as consumed' },
+        { status: 500 }
+      );
     }
 
     const { error: agentUpdateError } = await supabase
@@ -271,6 +371,10 @@ export async function POST(request: Request) {
         stability_score: stabilityScore,
         audit_id: auditRow?.id ?? null,
         usage_counted: true,
+        reservation_id: reservationId,
+        reservation_status: 'consumed',
+        refund_policy: refundPolicy,
+        policy_source: REFUND_POLICY_SOURCE,
         core: {
           decision: coreResult.decision,
           evaluated_at: coreResult.evaluated_at,
