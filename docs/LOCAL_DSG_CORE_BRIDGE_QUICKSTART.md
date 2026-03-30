@@ -144,6 +144,59 @@ Then open the control-plane dashboard and audit pages.
 
 ---
 
+
+## 7. Enable MCP tools that agents can call
+
+Set `MCP_TOOL_REGISTRY_JSON` in `.env.local` with real tool endpoints:
+
+```bash
+MCP_TOOL_REGISTRY_JSON=[
+  {
+    "name":"ledger_verify",
+    "description":"Verify DSG ledger chain",
+    "endpoint":"http://localhost:8100/mcp/ledger/verify",
+    "method":"POST",
+    "timeout_ms":10000
+  },
+  {
+    "name":"monitor_snapshot",
+    "description":"Collect current monitor snapshot",
+    "endpoint":"http://localhost:8100/mcp/monitor/snapshot",
+    "method":"POST",
+    "timeout_ms":8000
+  }
+]
+```
+
+List available tools for an agent:
+
+```bash
+curl "http://localhost:3000/api/mcp/tools?agent_id=YOUR_AGENT_ID" \
+  -H "Authorization: Bearer YOUR_AGENT_KEY"
+```
+
+Execute a tool via control-plane:
+
+```bash
+curl -X POST http://localhost:3000/api/mcp/call \
+  -H "Authorization: Bearer YOUR_AGENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "YOUR_AGENT_ID",
+    "tool_name": "ledger_verify",
+    "input": {"sequence": 42},
+    "request_id": "mcp-demo-001"
+  }'
+```
+
+Expected behavior:
+- only active agent + valid bearer key can list/call tools
+- tool name must exist in `MCP_TOOL_REGISTRY_JSON`
+- each call is recorded into `usage_events` with `event_type = mcp_tool_call`
+
+---
+
+
 ## Success condition
 
 The local bridge setup is correct when:
