@@ -50,3 +50,19 @@ export function computeEffectId(params: {
     payload_hash: params.payloadHash,
   });
 }
+
+export function computeMemoryLineageHash(params: {
+  orgId: string;
+  agentId: string;
+  requestId: string;
+  memoryKey: string;
+  memoryValue: unknown;
+}): string {
+  return sha256Hex({
+    org_id: params.orgId,
+    agent_id: params.agentId,
+    request_id: params.requestId,
+    memory_key: params.memoryKey,
+    memory_value: params.memoryValue,
+  });
+}
