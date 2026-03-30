@@ -39,6 +39,7 @@ create table if not exists executions (
   id uuid primary key default gen_random_uuid(),
   org_id text not null references organizations(id) on delete cascade,
   agent_id text not null references agents(id) on delete cascade,
+  idempotency_key text,
   decision text not null,
   latency_ms integer default 0,
   request_payload jsonb default '{}'::jsonb,
@@ -65,6 +66,7 @@ create table if not exists usage_events (
   org_id text not null references organizations(id) on delete cascade,
   agent_id text references agents(id) on delete set null,
   execution_id uuid references executions(id) on delete set null,
+  idempotency_key text,
   event_type text not null,
   quantity integer default 1,
   unit text default 'execution',
@@ -81,6 +83,26 @@ create table if not exists usage_counters (
   executions integer default 0,
   updated_at timestamptz default now(),
   unique (agent_id, billing_period)
+);
+
+create table if not exists execution_reservations (
+  id uuid primary key default gen_random_uuid(),
+  org_id text not null references organizations(id) on delete cascade,
+  agent_id text not null references agents(id) on delete cascade,
+  idempotency_key text not null,
+  billing_period text not null,
+  org_billing_period text not null,
+  status text not null default 'pending',
+  quota_reserved boolean not null default false,
+  execution_id uuid references executions(id) on delete set null,
+  response_payload jsonb default '{}'::jsonb,
+  error_code text,
+  error_message text,
+  current_agent_executions integer not null default 0,
+  org_executions integer not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (agent_id, idempotency_key)
 );
 
 create table if not exists billing_customers (
@@ -129,6 +151,14 @@ create index if not exists idx_executions_agent_id on executions(agent_id);
 create index if not exists idx_executions_created_at on executions(created_at desc);
 create index if not exists idx_audit_logs_org_id on audit_logs(org_id);
 create index if not exists idx_usage_events_org_id on usage_events(org_id);
+create unique index if not exists idx_executions_agent_idempotency
+  on executions(agent_id, idempotency_key)
+  where idempotency_key is not null;
+create unique index if not exists idx_usage_events_agent_idempotency_event
+  on usage_events(agent_id, idempotency_key, event_type)
+  where idempotency_key is not null;
+create index if not exists idx_execution_reservations_agent_created_at
+  on execution_reservations(agent_id, created_at desc);
 create index if not exists idx_usage_counters_org_period on usage_counters(org_id, billing_period);
 create index if not exists idx_billing_subscriptions_org_id on billing_subscriptions(org_id);
 create index if not exists idx_billing_events_customer on billing_events(stripe_customer_id);
