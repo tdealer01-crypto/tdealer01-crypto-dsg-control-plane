@@ -7,18 +7,6 @@ export const dynamic = 'force-dynamic';
 
 type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
 
-const INCLUDED_EXECUTIONS: Record<string, number> = {
-  trial: 1000,
-  pro: 10000,
-  business: 100000,
-  enterprise: 1000000,
-};
-
-function getIncludedExecutions(planKey?: string | null) {
-  const normalized = String(planKey || 'trial').toLowerCase();
-  return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
-}
-
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization') || '';
@@ -60,86 +48,40 @@ export async function POST(request: Request) {
     }
 
     const nowIso = new Date().toISOString();
-    const billingPeriod = nowIso.slice(0, 7);
 
-    const { data: counter, error: counterReadError } = await supabase
-      .from('usage_counters')
-      .select('id, executions')
-      .eq('agent_id', agent.id)
-      .eq('billing_period', billingPeriod)
-      .maybeSingle();
-
-    if (counterReadError) {
-      return NextResponse.json({ error: counterReadError.message }, { status: 500 });
-    }
-
-    const currentAgentExecutions = Number(counter?.executions || 0);
-    const monthlyLimit = Number(agent.monthly_limit || 0);
-
-    if (monthlyLimit > 0 && currentAgentExecutions >= monthlyLimit) {
-      return NextResponse.json(
-        {
-          error: 'Agent monthly quota exceeded',
-          quota: {
-            scope: 'agent',
-            billing_period: billingPeriod,
-            executions: currentAgentExecutions,
-            monthly_limit: monthlyLimit,
-          },
-        },
-        { status: 429 }
-      );
-    }
-
-    const { data: subscription, error: subscriptionError } = await supabase
-      .from('billing_subscriptions')
-      .select('plan_key, status, current_period_start')
-      .eq('org_id', agent.org_id)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (
-      subscriptionError &&
-      !/relation .* does not exist/i.test(subscriptionError.message)
-    ) {
-      return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
-    }
-
-    const orgBillingPeriod = subscription?.current_period_start
-      ? String(subscription.current_period_start).slice(0, 7)
-      : billingPeriod;
-
-    const { data: orgCounters, error: orgCounterError } = await supabase
-      .from('usage_counters')
-      .select('executions')
-      .eq('org_id', agent.org_id)
-      .eq('billing_period', orgBillingPeriod);
-
-    if (orgCounterError) {
-      return NextResponse.json({ error: orgCounterError.message }, { status: 500 });
-    }
-
-    const orgExecutions = (orgCounters || []).reduce(
-      (sum, row) => sum + Number(row.executions || 0),
-      0
+    const { data: quotaReservation, error: quotaReservationError } = await supabase.rpc(
+      'reserve_execution_quota',
+      {
+        p_agent_id: agent.id,
+        p_now: nowIso,
+      }
     );
-    const includedExecutions = getIncludedExecutions(subscription?.plan_key || 'trial');
 
-    if (orgExecutions >= includedExecutions) {
+    if (quotaReservationError) {
+      return NextResponse.json({ error: quotaReservationError.message }, { status: 500 });
+    }
+
+    const reservationOk = Boolean(quotaReservation?.ok);
+    const reservationError = quotaReservation?.error ?? null;
+    const reservation = quotaReservation?.reservation ?? null;
+
+    if (!reservationOk) {
+      const quotaCode = String(reservationError?.code || 'QUOTA_RESERVATION_FAILED');
+      const status =
+        quotaCode === 'AGENT_NOT_FOUND'
+          ? 401
+          : quotaCode === 'AGENT_INACTIVE'
+            ? 403
+            : quotaCode.endsWith('_QUOTA_EXCEEDED')
+              ? 429
+              : 400;
+
       return NextResponse.json(
         {
-          error: 'Organization execution quota exceeded',
-          quota: {
-            scope: 'organization',
-            billing_period: orgBillingPeriod,
-            executions: orgExecutions,
-            included_executions: includedExecutions,
-            plan_key: String(subscription?.plan_key || 'trial').toLowerCase(),
-            subscription_status: subscription?.status || 'trialing',
-          },
+          error: reservationError?.message || 'Quota reservation failed',
+          quota: reservationError,
         },
-        { status: 429 }
+        { status }
       );
     }
 
@@ -229,29 +171,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: usageEventError.message }, { status: 500 });
     }
 
-    if (counter?.id) {
-      const { error: counterUpdateError } = await supabase
-        .from('usage_counters')
-        .update({ executions: currentAgentExecutions + 1, updated_at: nowIso })
-        .eq('id', counter.id);
-      if (counterUpdateError) {
-        return NextResponse.json({ error: counterUpdateError.message }, { status: 500 });
-      }
-    } else {
-      const { error: counterInsertError } = await supabase
-        .from('usage_counters')
-        .insert({
-          org_id: agent.org_id,
-          agent_id: agent.id,
-          billing_period: billingPeriod,
-          executions: 1,
-          updated_at: nowIso,
-        });
-      if (counterInsertError) {
-        return NextResponse.json({ error: counterInsertError.message }, { status: 500 });
-      }
-    }
-
     const { error: agentUpdateError } = await supabase
       .from('agents')
       .update({ last_used_at: nowIso, updated_at: nowIso })
@@ -271,6 +190,7 @@ export async function POST(request: Request) {
         stability_score: stabilityScore,
         audit_id: auditRow?.id ?? null,
         usage_counted: true,
+        quota_reservation: reservation,
         core: {
           decision: coreResult.decision,
           evaluated_at: coreResult.evaluated_at,
