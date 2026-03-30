@@ -9,6 +9,15 @@ export type IntentEnvelope = {
   next_i: string;
 };
 
+export type ApprovalSeed = {
+  orgId: string;
+  agentId: string;
+  requestId: string;
+  action: string;
+  inputHash: string;
+  epoch: number;
+};
+
 export function computeInputHash(intent: IntentEnvelope): string {
   return sha256Hex({
     action: intent.action,
@@ -19,21 +28,14 @@ export function computeInputHash(intent: IntentEnvelope): string {
   });
 }
 
-export function computeApprovalHash(params: {
-  orgId: string;
-  agentId: string;
-  requestId: string;
-  action: string;
-  inputHash: string;
-  epoch: number;
-}): string {
+export function computeApprovalHash(seed: ApprovalSeed): string {
   return sha256Hex({
-    org_id: params.orgId,
-    agent_id: params.agentId,
-    request_id: params.requestId,
-    action: params.action,
-    input_hash: params.inputHash,
-    epoch: params.epoch,
+    org_id: seed.orgId,
+    agent_id: seed.agentId,
+    request_id: seed.requestId,
+    action: seed.action,
+    input_hash: seed.inputHash,
+    epoch: seed.epoch,
   });
 }
 
@@ -48,5 +50,21 @@ export function computeEffectId(params: {
     sequence: params.sequence,
     action: params.action,
     payload_hash: params.payloadHash,
+  });
+}
+
+export function computeMemoryLineageHash(params: {
+  orgId: string;
+  agentId: string | null;
+  requestId: string | null;
+  memoryKey: string;
+  memoryValue: unknown;
+}): string {
+  return sha256Hex({
+    org_id: params.orgId,
+    agent_id: params.agentId,
+    request_id: params.requestId,
+    memory_key: params.memoryKey,
+    memory_value: params.memoryValue,
   });
 }
