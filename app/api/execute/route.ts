@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { executeOnDSGCore } from '../../../lib/dsg-core';
 import { computeEffectId, computeInputHash, type IntentEnvelope } from '../../../lib/runtime/approval';
 import { sha256Hex } from '../../../lib/runtime/canonical';
+import { maybeWriteCheckpoint } from '../../../lib/runtime/checkpoints';
 import { evaluateUDGGate, type TruthState } from '../../../lib/runtime/gate';
 
 export const dynamic = 'force-dynamic';
@@ -372,6 +373,29 @@ async function runSpineExecution(params: {
 
   if (usageInsert.error) {
     return { ok: false as const, status: 500, error: usageInsert.error.message };
+  }
+
+  if (gate.decision === 'ALLOW') {
+    await maybeWriteCheckpoint({
+      orgId: agent.org_id,
+      sequence: nextSequence,
+      epoch: truthState.epoch,
+      entryHash: entryHash,
+      truthState: {
+        epoch: truthState.epoch,
+        sequence: nextSequence,
+        v_t: {
+          ...body.next_v,
+          last_direction: Math.sign(
+            Number(body.next_v.balance ?? 0) - Number((truthState.v_t as any).balance || 0)
+          ),
+        },
+        t_t: Number(body.next_t),
+        g_t: body.next_g,
+        i_t: body.next_i,
+        s_star_hash: sha256Hex(body.next_v),
+      },
+    });
   }
 
   return {
