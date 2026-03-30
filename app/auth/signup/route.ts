@@ -86,7 +86,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const confirmUrl = new URL('/auth/confirm', request.nextUrl.origin);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      throw new Error('NEXT_PUBLIC_APP_URL is required');
+    }
+
+    const confirmUrl = new URL('/auth/confirm', appUrl);
     confirmUrl.searchParams.set('next', next);
     confirmUrl.searchParams.set('signup', 'trial');
 
