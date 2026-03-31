@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       email,
       options: {
         emailRedirectTo: confirmUrl.toString(),
-        shouldCreateUser: false,
+        shouldCreateUser: true,
       },
     });
 
