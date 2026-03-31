@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
   return value;
+}
+
+function getTrustedAppOrigin(request: NextRequest) {
+  const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!configuredAppUrl) {
+    return request.nextUrl.origin;
+  }
+
+  try {
+    const parsed = new URL(configuredAppUrl);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.origin;
+    }
+  } catch {}
+
+  return request.nextUrl.origin;
 }
 
 export async function POST(request: NextRequest) {
@@ -20,35 +38,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = await createClient();
-    const confirmUrl = new URL('/auth/confirm', request.nextUrl.origin);
+    const authClient = await createClient();
+    const admin = getSupabaseAdmin();
+    const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin(request));
     confirmUrl.searchParams.set('next', next);
 
     console.log('[magic-link] input:', { email });
 
-    const { data: anyActiveRow, error: anyActiveErr } = await supabase
-      .from('users')
-      .select('id, email, is_active, org_id, auth_user_id')
-      .eq('email', email)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    console.log('[magic-link] ANY ACTIVE:', {
-      ok: !anyActiveErr,
-      anyActiveErrMessage: anyActiveErr?.message ?? null,
-      userRowPresent: !!anyActiveRow,
-      userRow: anyActiveRow
-        ? {
-            id: anyActiveRow.id,
-            email: anyActiveRow.email,
-            is_active: anyActiveRow.is_active,
-            org_id: anyActiveRow.org_id ?? null,
-            auth_user_id: anyActiveRow.auth_user_id ?? null,
-          }
-        : null,
-    });
-
-    const { data: userRow, error: userErr } = await supabase
+    const { data: userRow, error: userErr } = await admin
       .from('users')
       .select('id, email, is_active, org_id, auth_user_id')
       .eq('email', email)
@@ -57,7 +54,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (userErr) {
-      console.log('[magic-link] FINAL validation query failed:', {
+      console.log('[magic-link] operator validation query failed:', {
         message: userErr.message,
         details: userErr.details ?? null,
         hint: userErr.hint ?? null,
@@ -65,7 +62,7 @@ export async function POST(request: NextRequest) {
       throw userErr;
     }
 
-    console.log('[magic-link] FINAL validation:', {
+    console.log('[magic-link] operator validation:', {
       operatorAllowed: !!userRow,
       userRow: userRow
         ? {
@@ -79,14 +76,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!userRow) {
-      console.log('[magic-link] BLOCKED BEFORE OTP');
-      redirectToLogin.searchParams.set('error', 'send-failed');
+      console.log('[magic-link] BLOCKED BEFORE OTP: not provisioned/active');
+      redirectToLogin.searchParams.set('error', 'not-allowed');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
 
     console.log('[magic-link] calling signInWithOtp...');
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await authClient.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: confirmUrl.toString(),
@@ -103,6 +100,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.log('[magic-link] OTP send failed after operator validation');
       redirectToLogin.searchParams.set('error', 'send-failed');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
