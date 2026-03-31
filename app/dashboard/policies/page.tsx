@@ -29,6 +29,18 @@ type ApprovalHistoryItem = {
   };
 };
 
+type GovernanceEvent = {
+  id: string;
+  policy_id: string;
+  event_type: string;
+  actor_auth_user_id: string;
+  created_at: string;
+  metadata?: {
+    reason?: string | null;
+    [key: string]: unknown;
+  };
+};
+
 function formatDate(value?: string | null) {
   if (!value) return "-";
   try {
@@ -42,7 +54,13 @@ export default function PoliciesPage() {
   const [policies, setPolicies] = useState<PolicyRow[]>([]);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
+  const [draftStatus, setDraftStatus] = useState<string>("active");
+  const [draftBlock, setDraftBlock] = useState<string>("0.8");
+  const [draftStabilize, setDraftStabilize] = useState<string>("0.4");
+  const [draftReason, setDraftReason] = useState<string>("");
+  const [governanceEvents, setGovernanceEvents] = useState<GovernanceEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -62,9 +80,13 @@ export default function PoliciesPage() {
         if (!alive) return;
         const nextPolicies = Array.isArray(data?.items) ? data.items : [];
         const nextHistory = Array.isArray(data?.approval_history) ? data.approval_history : [];
+        const nextGovernanceEvents = Array.isArray(data?.governance_events)
+          ? data.governance_events
+          : [];
 
         setPolicies(nextPolicies);
         setApprovalHistory(nextHistory);
+        setGovernanceEvents(nextGovernanceEvents);
         setSelectedId(nextPolicies[0]?.id || "");
       } catch (err) {
         if (!alive) return;
@@ -84,6 +106,59 @@ export default function PoliciesPage() {
     if (!policies.length) return null;
     return policies.find((item) => item.id === selectedId) || policies[0];
   }, [policies, selectedId]);
+
+  useEffect(() => {
+    if (!selectedPolicy) return;
+    setDraftStatus(selectedPolicy.status || "active");
+    setDraftBlock(String(selectedPolicy.config?.block_risk_score ?? "0.8"));
+    setDraftStabilize(String(selectedPolicy.config?.stabilize_risk_score ?? "0.4"));
+  }, [selectedPolicy]);
+
+  async function saveGovernance() {
+    if (!selectedPolicy) return;
+    setSaving(true);
+    setError("");
+
+    const block = Number(draftBlock);
+    const stabilize = Number(draftStabilize);
+    if (!Number.isFinite(block) || !Number.isFinite(stabilize) || block < 0 || block > 1 || stabilize < 0 || stabilize > 1) {
+      setSaving(false);
+      setError("Risk score ต้องเป็นตัวเลข 0 ถึง 1");
+      return;
+    }
+
+    const res = await fetch("/api/policies", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selectedPolicy.id,
+        status: draftStatus,
+        config: {
+          block_risk_score: block,
+          stabilize_risk_score: stabilize,
+        },
+        reason: draftReason || null,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setSaving(false);
+      setError(data.error || "Failed to update policy");
+      return;
+    }
+
+    const updated = data?.item as PolicyRow;
+    setPolicies((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setDraftReason("");
+
+    const refresh = await fetch("/api/policies", { cache: "no-store" });
+    const refreshData = await refresh.json().catch(() => ({}));
+    if (refresh.ok && Array.isArray(refreshData?.governance_events)) {
+      setGovernanceEvents(refreshData.governance_events);
+    }
+    setSaving(false);
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -149,6 +224,63 @@ export default function PoliciesPage() {
                   <p>Stabilize threshold: {String(selectedPolicy.config?.stabilize_risk_score ?? "-")}</p>
                   <p>Updated: {formatDate(selectedPolicy.updated_at || null)}</p>
                 </div>
+                <div className="mt-5 rounded-xl border border-slate-800 p-4">
+                  <p className="text-sm font-semibold text-emerald-300">Governance Controls</p>
+                  <div className="mt-3 grid gap-3 text-sm text-slate-200">
+                    <label className="grid gap-1">
+                      <span>Status</span>
+                      <select
+                        value={draftStatus}
+                        onChange={(event) => setDraftStatus(event.target.value)}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      >
+                        <option value="active">active</option>
+                        <option value="draft">draft</option>
+                        <option value="archived">archived</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-1">
+                      <span>Block Risk Score (0-1)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={draftBlock}
+                        onChange={(event) => setDraftBlock(event.target.value)}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span>Stabilize Risk Score (0-1)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={draftStabilize}
+                        onChange={(event) => setDraftStabilize(event.target.value)}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span>Reason</span>
+                      <input
+                        value={draftReason}
+                        onChange={(event) => setDraftReason(event.target.value)}
+                        placeholder="change reason for audit trail"
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                      />
+                    </label>
+                    <button
+                      onClick={saveGovernance}
+                      disabled={saving}
+                      className="mt-1 rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 disabled:opacity-50"
+                    >
+                      {saving ? "Saving..." : "Save Governance"}
+                    </button>
+                  </div>
+                </div>
               </>
             ) : (
               <div className="mt-4 rounded-xl border border-slate-800 p-4 text-slate-400">No policy selected.</div>
@@ -181,6 +313,31 @@ export default function PoliciesPage() {
                   <p>Used: {formatDate(item.used_at)}</p>
                   <p>Expires: {formatDate(item.expires_at)}</p>
                   <p>Policy ref: {String(item.metadata?.policy_id || "-")}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Governance Events</h2>
+            <span className="text-sm text-slate-400">{loading ? "Loading..." : `${governanceEvents.length} rows`}</span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {!loading && governanceEvents.length === 0 ? (
+              <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No governance events found.</div>
+            ) : null}
+            {governanceEvents.map((event) => (
+              <div key={event.id} className="rounded-xl border border-slate-800 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold">{event.event_type}</p>
+                  <p className="text-xs text-slate-400">{formatDate(event.created_at)}</p>
+                </div>
+                <div className="mt-2 grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+                  <p>Policy: {event.policy_id}</p>
+                  <p>Actor: {event.actor_auth_user_id}</p>
+                  <p className="md:col-span-2">Reason: {String(event.metadata?.reason || "-")}</p>
                 </div>
               </div>
             ))}

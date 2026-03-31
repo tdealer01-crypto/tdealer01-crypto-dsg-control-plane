@@ -22,6 +22,17 @@ create table if not exists users (
   updated_at timestamptz default now()
 );
 
+create table if not exists policies (
+  id text primary key,
+  name text not null,
+  version text not null default 'v1',
+  status text not null default 'active',
+  description text,
+  config jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 create table if not exists agents (
   id text primary key,
   org_id text not null references organizations(id) on delete cascade,
@@ -144,6 +155,18 @@ create table if not exists billing_events (
   processed_at timestamptz default now()
 );
 
+create table if not exists policy_governance_events (
+  id uuid primary key default gen_random_uuid(),
+  org_id text not null references organizations(id) on delete cascade,
+  actor_auth_user_id uuid not null,
+  policy_id text not null references policies(id) on delete cascade,
+  event_type text not null,
+  previous_state jsonb not null default '{}'::jsonb,
+  next_state jsonb not null default '{}'::jsonb,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
 create index if not exists idx_users_org_id on users(org_id);
 create index if not exists idx_agents_org_id on agents(org_id);
 create index if not exists idx_executions_org_id on executions(org_id);
@@ -162,3 +185,7 @@ create index if not exists idx_execution_reservations_agent_created_at
 create index if not exists idx_usage_counters_org_period on usage_counters(org_id, billing_period);
 create index if not exists idx_billing_subscriptions_org_id on billing_subscriptions(org_id);
 create index if not exists idx_billing_events_customer on billing_events(stripe_customer_id);
+create index if not exists idx_policy_governance_events_org_created
+  on policy_governance_events(org_id, created_at desc);
+create index if not exists idx_policy_governance_events_policy_created
+  on policy_governance_events(policy_id, created_at desc);
