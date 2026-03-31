@@ -2,9 +2,6 @@ import type { PublicProofReport } from './proof-types';
 
 export function buildPublicProofReport(): PublicProofReport {
   return {
-    report_class: 'public_narrative',
-    mode: 'public_ai_first',
-    generated_at: new Date().toISOString(),
     product_name: 'DSG ONE',
     category: 'Deterministic AI runtime control plane',
     one_line_summary:
@@ -46,8 +43,6 @@ export function buildPublicProofReport(): PublicProofReport {
       start_page: '/enterprise-proof/start',
       report_page: '/enterprise-proof/report',
       json_report: '/api/enterprise-proof/report',
-      verified_report_page: '/enterprise-proof/verified/report',
-      verified_api: '/api/enterprise-proof/runtime-report',
     },
   };
 }

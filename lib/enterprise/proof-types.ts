@@ -1,7 +1,4 @@
 export type PublicProofReport = {
-  report_class: 'public_narrative';
-  mode: 'public_ai_first';
-  generated_at: string;
   product_name: string;
   category: string;
   one_line_summary: string;
@@ -22,8 +19,6 @@ export type PublicProofReport = {
     start_page: '/enterprise-proof/start';
     report_page: '/enterprise-proof/report';
     json_report: '/api/enterprise-proof/report';
-    verified_report_page: '/enterprise-proof/verified/report';
-    verified_api: '/api/enterprise-proof/runtime-report';
   };
 };
 
