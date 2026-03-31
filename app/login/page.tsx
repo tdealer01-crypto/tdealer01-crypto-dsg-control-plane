@@ -34,6 +34,13 @@ function getMessage(message?: string, error?: string) {
     };
   }
 
+  if (error === 'not-allowed') {
+    return {
+      tone: 'error',
+      text: 'This email is not provisioned for operator access. Contact your organization admin or start a free trial.',
+    };
+  }
+
   if (error === 'not-provisioned') {
     return {
       tone: 'error',
