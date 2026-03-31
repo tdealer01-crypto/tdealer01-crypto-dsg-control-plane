@@ -22,6 +22,10 @@ describe('enterprise proof pages', () => {
       }),
     }));
 
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({
+      validateOrgAgentScope: vi.fn(async () => ({ ok: true, orgId: 'o1', agentId: 'a1' })),
+    }));
+
     vi.doMock('../../../lib/enterprise/proof-runtime', () => ({
       buildVerifiedRuntimeProofReport: vi.fn(async () => ({
         report_class: 'verified_runtime',
@@ -63,5 +67,47 @@ describe('enterprise proof pages', () => {
     expect(html).toContain('Runtime Summary');
     expect(html).toContain('Anti-Replay Proof');
     expect(html).toContain('Final Verdict');
+  });
+
+  it('verified report page returns safe state when agent_id is missing', async () => {
+    vi.resetModules();
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: async () => ({
+        auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
+        from: () => ({
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: { org_id: 'o1', is_active: true } }) }),
+          }),
+        }),
+      }),
+    }));
+
+    const { default: VerifiedReportPage } = await import('../../../app/enterprise-proof/verified/report/page');
+    const node = await VerifiedReportPage({ searchParams: { org_id: 'o1' } });
+    const html = renderToStaticMarkup(node);
+    expect(html).toContain('Agent ID is required');
+  });
+
+  it('verified report page returns safe state when agent is outside org scope', async () => {
+    vi.resetModules();
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: async () => ({
+        auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
+        from: () => ({
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: { org_id: 'o1', is_active: true } }) }),
+          }),
+        }),
+      }),
+    }));
+
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({
+      validateOrgAgentScope: vi.fn(async () => ({ ok: false, status: 404, error: 'Agent not found in org scope' })),
+    }));
+
+    const { default: VerifiedReportPage } = await import('../../../app/enterprise-proof/verified/report/page');
+    const node = await VerifiedReportPage({ searchParams: { org_id: 'o1', agent_id: 'aX' } });
+    const html = renderToStaticMarkup(node);
+    expect(html).toContain('Agent not found in org scope');
   });
 });

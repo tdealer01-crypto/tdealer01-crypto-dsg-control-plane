@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
-import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { buildVerifiedRuntimeProofReport } from '../../../../lib/enterprise/proof-runtime';
+import { validateOrgAgentScope } from '../../../../lib/enterprise/proof-access';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,40 +30,44 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Cross-org access is forbidden' }, { status: 403, headers: PRIVATE_HEADERS });
     }
 
-    const supabase = getSupabaseAdmin();
-    const { data: agent, error: agentError } = await supabase
-      .from('agents')
-      .select('id')
-      .eq('id', agentId)
-      .eq('org_id', orgId)
-      .maybeSingle();
-
-    if (agentError) {
-      return NextResponse.json({ error: agentError.message }, { status: 500, headers: PRIVATE_HEADERS });
-    }
-
-    if (!agent) {
-      return NextResponse.json({ error: 'Agent not found in org scope' }, { status: 404, headers: PRIVATE_HEADERS });
+    const scope = await validateOrgAgentScope({ orgId, agentId });
+    if (!scope.ok) {
+      return NextResponse.json({ error: scope.error }, { status: scope.status, headers: PRIVATE_HEADERS });
     }
 
     const report = await buildVerifiedRuntimeProofReport({ orgId, agentId });
 
-    await supabase.from('audit_logs').insert({
-      org_id: orgId,
-      agent_id: agentId,
-      decision: 'STABILIZE',
-      reason: 'Verified runtime enterprise-proof report generated',
-      evidence: {
-        report_class: report.report_class,
-        mode: report.mode,
-        generated_at: report.generated_at,
-        source: 'api.enterprise-proof.runtime-report',
-        actor_user_id: access.userId,
-      },
-      created_at: new Date().toISOString(),
-    });
+    // Audit write is intentionally best-effort: proof generation should remain readable
+    // even if audit_logs is temporarily unavailable.
+    let auditLogged = false;
+    try {
+      const supabase = getSupabaseAdmin();
+      const { error: auditError } = await supabase.from('audit_logs').insert({
+        org_id: orgId,
+        agent_id: agentId,
+        decision: 'STABILIZE',
+        reason: 'Verified runtime enterprise-proof report generated',
+        evidence: {
+          report_class: report.report_class,
+          mode: report.mode,
+          generated_at: report.generated_at,
+          source: 'api.enterprise-proof.runtime-report',
+          actor_user_id: access.userId,
+          audit_mode: 'best_effort',
+        },
+        created_at: new Date().toISOString(),
+      });
+      auditLogged = !auditError;
+    } catch {
+      auditLogged = false;
+    }
 
-    return NextResponse.json(report, { headers: PRIVATE_HEADERS });
+    return NextResponse.json(report, {
+      headers: {
+        ...PRIVATE_HEADERS,
+        'X-Proof-Audit-Log': auditLogged ? 'logged' : 'best-effort-failed',
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unexpected error' },

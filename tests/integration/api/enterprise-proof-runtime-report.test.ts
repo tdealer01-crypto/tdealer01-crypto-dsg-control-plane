@@ -4,6 +4,7 @@ describe('/api/enterprise-proof/runtime-report', () => {
   it('returns 400 when org_id/agent_id are missing', async () => {
     vi.resetModules();
     vi.doMock('../../../lib/authz', () => ({ requireOrgRole: vi.fn(async () => ({ ok: true, orgId: 'o1', userId: 'u1' })) }));
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({ validateOrgAgentScope: vi.fn(async () => ({ ok: true, orgId: 'o1', agentId: 'a1' })) }));
     const { GET } = await import('../../../app/api/enterprise-proof/runtime-report/route');
     const res = await GET(new Request('http://localhost/api/enterprise-proof/runtime-report'));
     expect(res.status).toBe(400);
@@ -12,6 +13,7 @@ describe('/api/enterprise-proof/runtime-report', () => {
   it('returns 401 when unauthorized', async () => {
     vi.resetModules();
     vi.doMock('../../../lib/authz', () => ({ requireOrgRole: vi.fn(async () => ({ ok: false, status: 401, error: 'Unauthorized' })) }));
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({ validateOrgAgentScope: vi.fn(async () => ({ ok: true, orgId: 'o1', agentId: 'a1' })) }));
     const { GET } = await import('../../../app/api/enterprise-proof/runtime-report/route');
     const res = await GET(new Request('http://localhost/api/enterprise-proof/runtime-report?org_id=o1&agent_id=a1'));
     expect(res.status).toBe(401);
@@ -20,6 +22,7 @@ describe('/api/enterprise-proof/runtime-report', () => {
   it('returns 403 for cross-org access', async () => {
     vi.resetModules();
     vi.doMock('../../../lib/authz', () => ({ requireOrgRole: vi.fn(async () => ({ ok: true, orgId: 'o1', userId: 'u1' })) }));
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({ validateOrgAgentScope: vi.fn(async () => ({ ok: true, orgId: 'o1', agentId: 'a1' })) }));
     const { GET } = await import('../../../app/api/enterprise-proof/runtime-report/route');
     const res = await GET(new Request('http://localhost/api/enterprise-proof/runtime-report?org_id=o2&agent_id=a1'));
     expect(res.status).toBe(403);
@@ -48,11 +51,8 @@ describe('/api/enterprise-proof/runtime-report', () => {
       })),
     }));
 
-    const from = vi.fn(() => ({
-      select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'a1' }, error: null }) }) }) }),
-      insert: async () => ({ error: null }),
-    }));
-
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({ validateOrgAgentScope: vi.fn(async () => ({ ok: true, orgId: 'o1', agentId: 'a1' })) }));
+    const from = vi.fn(() => ({ insert: async () => ({ error: null }) }));
     vi.doMock('../../../lib/supabase-server', () => ({ getSupabaseAdmin: () => ({ from }) }));
 
     const { GET } = await import('../../../app/api/enterprise-proof/runtime-report/route');
@@ -65,6 +65,7 @@ describe('/api/enterprise-proof/runtime-report/summary', () => {
   it('returns 403 for cross-org access', async () => {
     vi.resetModules();
     vi.doMock('../../../lib/authz', () => ({ requireOrgRole: vi.fn(async () => ({ ok: true, orgId: 'o1', userId: 'u1' })) }));
+    vi.doMock('../../../lib/enterprise/proof-access', () => ({ validateOrgAgentScope: vi.fn(async () => ({ ok: true, orgId: 'o2', agentId: 'a1' })) }));
     const { GET } = await import('../../../app/api/enterprise-proof/runtime-report/summary/route');
     const res = await GET(new Request('http://localhost/api/enterprise-proof/runtime-report/summary?org_id=o2&agent_id=a1'));
     expect(res.status).toBe(403);

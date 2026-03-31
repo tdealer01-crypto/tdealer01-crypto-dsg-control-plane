@@ -24,6 +24,30 @@ describe('enterprise runtime proof', () => {
     expect(summary.final_verdict).toBe('verified');
   });
 
+
+  it('does not emit verified when critical runtime source is unavailable', async () => {
+    const { summarizeVerifiedRuntimeReport } = await import('../../../lib/enterprise/proof-runtime');
+    const summary = summarizeVerifiedRuntimeReport({
+      report_class: 'verified_runtime',
+      evidence_scope: 'org_agent_scoped',
+      mode: 'verified_runtime',
+      org_id: 'o1',
+      agent_id: 'a1',
+      generated_at: '2026-03-31T00:00:00.000Z',
+      runtime_summary: { truth_epoch: null, truth_sequence: 7, latest_truth_hash: 'hash-ok', latest_entry_hash: null },
+      approval_anti_replay: { replay_protected: true, terminal_approval_enforced: true, expired_rejected: true },
+      truth_ledger_lineage: { latest_truth_sequence: 7, latest_ledger_sequence: 7, drift_detected: false },
+      checkpoint_recovery: { pass: true, latest_checkpoint_sequence: 7, missing_lineage_count: 0 },
+      effects: { recent_count: 3, callback_reconciled: true },
+      governance: { runtime_roles: ['org_admin'], policy_count: 1, rbac_enforced: true },
+      billing_operational_value: { executions_this_period: 5, usage_events: 5, billed_estimate_usd: 0.5 },
+      source: { public_narrative_available: true, verified_runtime_available: true, generated_from: 'runtime_tables' },
+      gaps: ['No canonical ledger entry hash field found'],
+    });
+
+    expect(summary.final_verdict).toBe('partial');
+  });
+
   it('builds runtime report with explicit gaps when data missing', async () => {
     vi.resetModules();
     const from = vi.fn((table: string) => {
@@ -36,6 +60,7 @@ describe('enterprise runtime proof', () => {
       if (table === 'policies') return { select: () => ({ eq: async () => ({ count: 0, error: null }) }) };
       if (table === 'usage_counters') return { select: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) };
       if (table === 'usage_events') return { select: () => ({ eq: () => ({ eq: async () => ({ data: [], error: null }) }) }) };
+      if (table === 'audit_logs') return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [], error: null }) }) }) }) }) };
       if (table === 'executions') return { select: () => ({ eq: () => ({ eq: async () => ({ count: 0, error: null }) }) }) };
       return { select: async () => ({ data: [], error: null }) };
     });

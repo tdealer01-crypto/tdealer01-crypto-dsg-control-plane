@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/server';
 import { buildVerifiedRuntimeProofReport, summarizeVerifiedRuntimeReport } from '../../../../lib/enterprise/proof-runtime';
+import { validateOrgAgentScope } from '../../../../lib/enterprise/proof-access';
 
 type Props = {
   searchParams: {
@@ -61,6 +62,18 @@ export default async function VerifiedEnterpriseProofReportPage({ searchParams }
           <code className="mt-4 block rounded-lg border border-white/10 bg-slate-900 p-3 text-xs text-emerald-200">
             /enterprise-proof/verified/report?org_id={String(profile.org_id)}&agent_id=&lt;agent_id&gt;
           </code>
+        </div>
+      </main>
+    );
+  }
+
+
+  const scope = await validateOrgAgentScope({ orgId: String(orgId), agentId: String(agentId) });
+  if (!scope.ok) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-rose-500/40 bg-rose-500/10 p-6">
+          {scope.error}
         </div>
       </main>
     );

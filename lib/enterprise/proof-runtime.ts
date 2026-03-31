@@ -17,7 +17,7 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
     policiesRes,
     usageCounterRes,
     usageEventsRes,
-    executionsRes,
+    auditRes,
     recovery,
   ] = await Promise.all([
     supabase
@@ -30,7 +30,7 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
       .maybeSingle(),
     supabase
       .from('runtime_ledger_entries')
-      .select('id, ledger_sequence, truth_sequence')
+      .select('id, ledger_sequence, truth_sequence, metadata')
       .eq('org_id', orgId)
       .eq('agent_id', agentId)
       .order('ledger_sequence', { ascending: false })
@@ -60,7 +60,13 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
     supabase.from('policies').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
     supabase.from('usage_counters').select('executions').eq('org_id', orgId).eq('agent_id', agentId),
     supabase.from('usage_events').select('amount_usd').eq('org_id', orgId).eq('agent_id', agentId),
-    supabase.from('executions').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('agent_id', agentId),
+    supabase
+      .from('audit_logs')
+      .select('evidence')
+      .eq('org_id', orgId)
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false })
+      .limit(100),
     validateRuntimeRecovery({ orgId, agentId }),
   ]);
 
@@ -73,22 +79,39 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
   if (policiesRes.error) gaps.push(`policies unavailable: ${policiesRes.error.message}`);
   if (usageCounterRes.error) gaps.push(`usage_counters unavailable: ${usageCounterRes.error.message}`);
   if (usageEventsRes.error) gaps.push(`usage_events unavailable: ${usageEventsRes.error.message}`);
-  if (executionsRes.error) gaps.push(`executions unavailable: ${executionsRes.error.message}`);
+  if (auditRes.error) gaps.push(`audit_logs unavailable: ${auditRes.error.message}`);
 
   const approvals = approvalRes.data || [];
   const effects = effectsRes.data || [];
   const roles = Array.from(new Set((rolesRes.data || []).map((row) => String(row.role))));
   const usageEvents = usageEventsRes.data || [];
+  const auditRows = auditRes.data || [];
 
   const expiredCount = approvals.filter((row) => row.status === 'expired' || row.status === 'rejected').length;
   const pendingCount = approvals.filter((row) => row.status === 'pending').length;
   const consumedCount = approvals.filter((row) => row.status === 'consumed').length;
   const reconciledEffects = effects.filter((row) => row.status !== 'pending' && Number(row.callback_count || 0) > 0).length;
 
+  const antiReplayEvidence = auditRows
+    .map((row: any) => row?.evidence?.anti_replay)
+    .filter((value: any) => value && typeof value === 'object' && value.approval_request_id);
+  const replayedHits = antiReplayEvidence.filter((value: any) => value.replayed === true).length;
+
   if (!truthRes.data) gaps.push('No runtime truth state found for org/agent scope');
   if (!ledgerRes.data) gaps.push('No runtime ledger entries found for org/agent scope');
   if (!checkpointsRes.data) gaps.push('No runtime checkpoint found for org/agent scope');
   if (approvals.length === 0) gaps.push('No approval records found for org/agent scope');
+  if (antiReplayEvidence.length === 0) gaps.push('No anti-replay evidence in audit logs for org/agent scope');
+
+  const metadataEntryHash = (ledgerRes.data as any)?.metadata?.entry_hash;
+  const latestEntryHash = typeof metadataEntryHash === 'string' ? metadataEntryHash : null;
+  if (!latestEntryHash) {
+    gaps.push('No canonical ledger entry hash field found (runtime_ledger_entries.metadata.entry_hash missing)');
+  }
+
+  // runtime_truth_states has canonical hash + timestamp but no explicit epoch field in current schema.
+  const truthEpoch: number | null = null;
+  gaps.push('No explicit truth_epoch field exists in current runtime spine schema');
 
   const report: VerifiedRuntimeProofReport = {
     report_class: 'verified_runtime',
@@ -98,14 +121,14 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
     agent_id: agentId,
     generated_at: new Date().toISOString(),
     runtime_summary: {
-      truth_epoch: truthRes.data?.created_at ? Date.parse(truthRes.data.created_at) : null,
+      truth_epoch: truthEpoch,
       truth_sequence: ledgerRes.data?.truth_sequence ? Number(ledgerRes.data.truth_sequence) : null,
       latest_truth_hash: truthRes.data?.canonical_hash || null,
-      latest_entry_hash: ledgerRes.data?.id || null,
+      latest_entry_hash: latestEntryHash,
     },
     approval_anti_replay: {
-      replay_protected: consumedCount > 0 && pendingCount === 0,
-      terminal_approval_enforced: consumedCount + expiredCount > 0,
+      replay_protected: antiReplayEvidence.length > 0 && replayedHits === 0 && consumedCount > 0 && pendingCount === 0,
+      terminal_approval_enforced: antiReplayEvidence.length > 0 && consumedCount > 0,
       expired_rejected: expiredCount > 0,
     },
     truth_ledger_lineage: {
@@ -144,13 +167,22 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
 }
 
 export function summarizeVerifiedRuntimeReport(report: VerifiedRuntimeProofReport): VerifiedRuntimeProofSummary {
-  const noGaps = report.gaps.length === 0;
-  const finalVerdict: VerifiedRuntimeProofSummary['final_verdict'] =
-    noGaps && !report.truth_ledger_lineage.drift_detected && report.checkpoint_recovery.pass && report.governance.rbac_enforced
-      ? 'verified'
-      : report.runtime_summary.latest_truth_hash
-        ? 'partial'
-        : 'insufficient_evidence';
+  const criticalEvidenceReady = Boolean(
+    report.runtime_summary.latest_truth_hash &&
+      report.truth_ledger_lineage.latest_ledger_sequence &&
+      report.truth_ledger_lineage.latest_truth_sequence &&
+      report.runtime_summary.latest_entry_hash &&
+      report.approval_anti_replay.replay_protected &&
+      report.checkpoint_recovery.pass &&
+      !report.truth_ledger_lineage.drift_detected &&
+      report.governance.rbac_enforced
+  );
+
+  const finalVerdict: VerifiedRuntimeProofSummary['final_verdict'] = criticalEvidenceReady
+    ? 'verified'
+    : report.runtime_summary.latest_truth_hash || report.truth_ledger_lineage.latest_ledger_sequence
+      ? 'partial'
+      : 'insufficient_evidence';
 
   return {
     report_class: 'verified_runtime_summary',
