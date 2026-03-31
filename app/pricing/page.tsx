@@ -199,7 +199,7 @@ export default function PricingPage() {
 
                 {plan.key === 'trial' ? (
                   <Link
-                    href="/signup"
+                    href="/login"
                     className="mt-8 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center font-semibold text-white"
                   >
                     {plan.cta}
