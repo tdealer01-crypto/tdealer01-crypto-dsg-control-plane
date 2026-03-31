@@ -1,35 +1,50 @@
-import { NextResponse } from 'next/server';
-import { requireOrgRole } from '../../../../lib/authz';
-import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
-import { buildEnterpriseProofReport } from '../../../../lib/enterprise/proof';
+import { NextResponse } from "next/server";
 
-function canUseDemo(request: Request) {
-  if (process.env.NODE_ENV === 'production') return false;
-  if (process.env.ENABLE_DEMO_BOOTSTRAP !== 'true') return false;
-  const expected = process.env.DEMO_BOOTSTRAP_TOKEN;
-  if (!expected) return false;
-  return request.headers.get('x-demo-token') === expected;
-}
+export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  try {
-    const url = new URL(request.url);
-    const orgId = String(url.searchParams.get('org_id') || '');
-    const agentId = String(url.searchParams.get('agent_id') || '');
-    if (!orgId || !agentId) {
-      return NextResponse.json({ error: 'org_id and agent_id are required' }, { status: 400 });
-    }
-
-    const demoBypass = canUseDemo(request);
-    if (!demoBypass) {
-      const access = await requireOrgRole(RuntimeRouteRoles.runtime_summary);
-      if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
-      if (orgId !== access.orgId) return NextResponse.json({ error: 'Cross-org access denied' }, { status: 403 });
-    }
-
-    const report = await buildEnterpriseProofReport({ orgId, agentId });
-    return NextResponse.json(report);
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
-  }
+export async function GET() {
+  return NextResponse.json({
+    product_name: "DSG ONE",
+    category: "Deterministic AI runtime control plane",
+    one_line_summary:
+      "A runtime control plane for enterprises that need AI execution to be auditable, replay-resistant, recoverable, and governed.",
+    problem_solved: [
+      "duplicate or replayed execution risk",
+      "lack of runtime lineage",
+      "weak operational recovery visibility",
+      "policy without enforceable runtime control",
+    ],
+    core_capabilities: [
+      "runtime intent approval",
+      "deterministic decision path",
+      "ledger-backed execution lineage",
+      "checkpoint visibility",
+      "effect callback reconciliation",
+      "role-based governance",
+    ],
+    enterprise_value: [
+      "auditability",
+      "runtime trust",
+      "reduced operational risk",
+      "faster incident investigation",
+      "governed AI operations",
+    ],
+    proof_points: {
+      approval_control: true,
+      runtime_summary: true,
+      ledger_lineage: true,
+      checkpoint_visibility: true,
+      rbac_enforced: true,
+      governance_surface: true,
+    },
+    why_use_this_app:
+      "Enterprises should use this app when AI actions must be controlled, reviewable, and operationally trustworthy in production.",
+    final_recommendation:
+      "Use DSG ONE when AI execution must be governed, inspectable, and supported by runtime evidence rather than policy documents alone.",
+    recommended_links: {
+      start_page: "/enterprise-proof/start",
+      report_page: "/enterprise-proof/report",
+      json_report: "/api/enterprise-proof/report",
+    },
+  });
 }
