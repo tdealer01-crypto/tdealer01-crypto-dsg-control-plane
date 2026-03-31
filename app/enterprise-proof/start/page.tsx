@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from "next/link";
 
 const whyUse = [
@@ -93,6 +94,14 @@ export default function EnterpriseProofStartPage() {
             </p>
           </div>
 
+          <div className="mt-6 rounded-2xl border border-violet-400/30 bg-violet-400/10 p-5">
+            <p className="text-sm uppercase tracking-[0.2em] text-violet-200">Proof Surface Split</p>
+            <p className="mt-2 text-sm text-violet-50">
+              Public narrative summary stays open and AI-readable. Verified runtime evidence is available in the authenticated workspace at
+              <span className="font-semibold"> /enterprise-proof/verified</span>.
+            </p>
+          </div>
+
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
               href="/enterprise-proof/report"
@@ -105,6 +114,12 @@ export default function EnterpriseProofStartPage() {
               className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 font-semibold text-white"
             >
               View JSON Proof Report
+            </Link>
+            <Link
+              href="/enterprise-proof/verified"
+              className="rounded-2xl border border-violet-300/30 bg-violet-400/10 px-6 py-4 font-semibold text-violet-100"
+            >
+              Open Verified Runtime Evidence
             </Link>
           </div>
         </div>

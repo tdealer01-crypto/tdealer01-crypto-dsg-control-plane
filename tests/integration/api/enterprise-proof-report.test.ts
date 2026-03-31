@@ -1,12 +1,11 @@
-import { vi } from 'vitest';
-
 describe('/api/enterprise-proof/report', () => {
-  it('returns 401 when authz denies request', async () => {
-    vi.resetModules();
-    vi.doMock('../../../lib/authz', () => ({ requireOrgRole: vi.fn(async () => ({ ok: false, status: 401, error: 'Unauthorized' })) }));
+  it('returns public AI-first narrative payload', async () => {
     const { GET } = await import('../../../app/api/enterprise-proof/report/route');
-    const req = new Request('http://localhost/api/enterprise-proof/report?org_id=o1&agent_id=a1');
-    const res = await GET(req);
-    expect(res.status).toBe(401);
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.report_class).toBe('public_narrative');
+    expect(json.mode).toBe('public_ai_first');
+    expect(json.product_name).toBe('DSG ONE');
   });
 });
