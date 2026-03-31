@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from "next/link";
 
 const sections = [
@@ -54,6 +55,12 @@ export default function EnterpriseProofReportPage() {
             >
               Open JSON Report
             </Link>
+            <Link
+              href="/enterprise-proof/verified"
+              className="rounded-2xl border border-violet-300/30 bg-violet-400/10 px-4 py-3 font-semibold text-violet-100"
+            >
+              Open Verified Runtime Report
+            </Link>
           </div>
         </div>
 
@@ -67,6 +74,16 @@ export default function EnterpriseProofReportPage() {
               <p className="mt-3 leading-8 text-slate-300">{section.body}</p>
             </div>
           ))}
+        </div>
+
+
+        <div className="mt-10 rounded-[2rem] border border-violet-400/20 bg-violet-400/10 p-6">
+          <p className="text-sm uppercase tracking-[0.2em] text-violet-200">
+            Verification boundary
+          </p>
+          <p className="mt-3 leading-8 text-violet-50">
+            This page is a public, AI-first narrative. Verified runtime evidence is available only in authenticated, org-scoped routes.
+          </p>
         </div>
 
         <div className="mt-10 rounded-[2rem] border border-cyan-400/20 bg-cyan-400/10 p-6">
