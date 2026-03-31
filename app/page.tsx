@@ -40,10 +40,10 @@ export default function HomePage() {
 
             <div className="mt-10 flex flex-wrap gap-4">
               <Link
-                href="/signup"
+                href="/login"
                 className="rounded-2xl bg-emerald-400 px-6 py-4 text-base font-semibold text-slate-950 transition hover:scale-[1.01]"
               >
-                Start free trial
+                Continue with email
               </Link>
               <Link
                 href="/dashboard"
@@ -121,10 +121,10 @@ export default function HomePage() {
               </p>
             </div>
             <Link
-              href="/signup"
+              href="/login"
               className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-4 text-base font-semibold text-slate-950"
             >
-              Start free trial
+              Continue with email
             </Link>
           </div>
         </div>
