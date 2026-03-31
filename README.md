@@ -2,212 +2,229 @@
 
 # DSG ONE
 
-### Deterministic, Auditable, Zero-Trust Control Plane for AI Operations
+### Enterprise AI Runtime Control Plane for Auditability, Control, and Verified Operations
 
 <p>
-  DSG ONE is a control plane for organizations that need AI systems to be
-  <strong>observable, reviewable, controllable, and governable in real time</strong>.
+  DSG ONE is a runtime control plane for organizations that need AI execution to be
+  <strong>governable, reviewable, replay-resistant, and operationally visible</strong>.
 </p>
 
 <p>
-  <img alt="Deterministic Control" src="https://img.shields.io/badge/Deterministic-Control%20Layer-0f172a?style=for-the-badge">
-  <img alt="Auditability" src="https://img.shields.io/badge/Auditability-System--Wide-0f766e?style=for-the-badge">
-  <img alt="Formal Reasoning" src="https://img.shields.io/badge/Formal%20Reasoning-Verification%20Aware-1d4ed8?style=for-the-badge">
-  <img alt="Realtime Governance" src="https://img.shields.io/badge/Realtime-Monitoring%20%26%20Control-7c3aed?style=for-the-badge">
+  <img alt="Enterprise AI Runtime" src="https://img.shields.io/badge/Enterprise-AI%20Runtime-0f172a?style=for-the-badge">
+  <img alt="Auditability" src="https://img.shields.io/badge/Auditability-Evidence%20Backed-0f766e?style=for-the-badge">
+  <img alt="Verified Runtime" src="https://img.shields.io/badge/Verified-Runtime%20Evidence-1d4ed8?style=for-the-badge">
+  <img alt="Governance" src="https://img.shields.io/badge/Governance-In%20the%20Control%20Flow-7c3aed?style=for-the-badge">
 </p>
 
 <p>
-  <strong>Built for teams that do not want AI to operate on assumption, opacity, or informal trust.</strong>
+  <strong>Built for teams that cannot afford opaque AI execution in production.</strong>
 </p>
 
 </div>
 
 ---
 
-## Overview
+## What DSG ONE Is
 
-DSG ONE is an operational control layer for AI systems.
+DSG ONE is an enterprise runtime control plane for AI operations.
 
-It is designed for environments where execution cannot be treated as a black box, where decisions must be reviewable, and where system behavior must remain visible under live operating conditions. The project is built around a zero-trust principle: AI should not be trusted by default. It should be constrained, observed, and evaluated through explicit control logic.
+It is designed for environments where AI execution must not be treated as a black box. Instead of relying on informal trust, DSG ONE gives organizations a structured runtime layer for:
 
-This repository is focused on making that operational layer practical through:
 - authenticated operator access
-- agent management
-- execution control flow
-- audit-oriented system surfaces
-- mission monitoring
-- readiness state visibility
-- operator command workflows
-- structured usage and governance signals
+- organization-scoped workspaces
+- agent creation and API-key-based execution
+- execution visibility and decision traces
+- audit-oriented runtime evidence
+- live mission and readiness surfaces
+- usage, quota, and billing awareness
+- public product proof and authenticated verified proof
+
+The goal is simple:
+
+> **If AI is going to operate in production, it must be controllable, inspectable, and reviewable in real time.**
 
 ---
 
-## Why DSG ONE Exists
+## Why This Exists
 
-As AI systems move from experimentation into real workflows, the problem changes.
+As AI systems move from demos into real workflows, the problem changes.
 
-The challenge is no longer only model quality. The challenge is whether an organization can understand what happened, why it happened, whether it was allowed, and whether it stayed inside acceptable control boundaries.
+The hard problem is no longer only model quality. The real problem is whether an organization can answer:
 
-That is the problem DSG ONE is trying to address.
+- What happened?
+- Why did it happen?
+- Was it allowed?
+- Was it replayed or duplicated?
+- What evidence exists for review?
+- Can operators inspect the runtime state safely and quickly?
 
-Instead of assuming trust, DSG ONE is built around:
-- explicit control surfaces
-- observable runtime behavior
-- auditable event structure
-- real-time mission visibility
-- operator review paths
-- governance that appears inside the architecture, not outside it
-
----
-
-## Core Thesis
-
-The core thesis of DSG ONE is simple:
-
-**If an AI system cannot be inspected, it cannot be governed well.**  
-**If it cannot be governed well, it cannot be trusted at scale.**
-
-This leads to five principles.
-
-### 1. Determinism where it matters
-
-Critical control paths should be as explicit and stable as possible.
-
-DSG ONE does not claim that every part of AI behavior is perfectly closed under formal proof. It does aim to reduce ambiguity in the operational layer: how actions are evaluated, how state is surfaced, how decisions are recorded, and how operators can review what happened with consistency.
-
-### 2. Mathematics of truth
-
-Operational truth should not depend only on narrative.
-
-Important system claims should be supported by structured evidence, measurable state, and verification-aware reasoning. The goal is to move from “we think this happened” toward “this is the recorded state, this is the control path, and this is the evidence surface available for review.”
-
-### 3. System-wide inspectability
-
-AI operations should be inspectable across the full operating surface.
-
-That includes:
-- execution flow
-- audit routes
-- mission state
-- readiness signals
-- operator actions
-- alerts
-- usage and quota state
-- deployment behavior
-
-The point is not only to log events. The point is to make system behavior legible.
-
-### 4. Real-time control
-
-Governance that exists only after the fact is incomplete.
-
-DSG ONE is designed around live visibility so that control is not limited to postmortem analysis. Readiness, alerts, mission state, and operator workflows are intended to support intervention while the system is running.
-
-### 5. Governance that is structurally correct
-
-Good governance is not just policy language.
-
-It must appear in:
-- the access model
-- the control flow
-- the evidence model
-- the monitoring layer
-- the operator experience
-
-DSG ONE is an attempt to encode governance into the operating layer itself.
+DSG ONE is built to address that operational problem.
 
 ---
 
-## What This Repository Contains
+## Product Thesis
 
-Current work in this project includes:
+DSG ONE is based on five practical principles:
 
-### Operator and access layer
-- authenticated operator access
-- protected dashboard routes
-- operator-facing control-plane surfaces
+### 1. Control must exist at runtime
+Governance that only exists in documents is not enough.
+
+### 2. Evidence must be visible
+Operational claims should be backed by observable runtime state, not only by narrative.
+
+### 3. Auditability must be practical
+It should be possible to inspect actions, state transitions, and proof surfaces without reverse-engineering the system.
+
+### 4. Operators need live visibility
+Monitoring, readiness, mission state, and execution history should support intervention while the system is running.
+
+### 5. Public proof and verified proof are different
+A product can have a public AI-readable narrative for positioning, while still keeping authenticated, org-scoped, runtime-backed evidence for real verification.
+
+---
+
+## What the Product Includes
+
+### Operator access and provisioning
+- magic-link authentication
+- protected operator surfaces
+- organization-scoped user state
+- trial signup and provisioning flow
 
 ### Agent and execution layer
-- agent management
-- execution flow tracking
-- execution records and decision traces
-- usage accounting and limits
+- starter-agent creation
+- one-time API key generation
+- sample execution path
+- execution decisions, latency, and audit references
 
-### Audit and monitoring layer
-- audit-oriented routes
-- mission monitoring
-- readiness and alert patterns
-- command workspace surfaces
-- execution visibility for operator review
+### Monitoring and control-plane surfaces
+- dashboard and mission views
+- readiness and app-shell entry points
+- operator-facing workflow surfaces
 
-### Control-plane product surfaces
-- dashboard views
-- mission and monitoring UI
-- workspace patterns for operators
-- billing and usage views
-- execution history surfaces
-
-This project should be judged by implementation, runtime behavior, and evidence, not by branding language alone.
+### Enterprise proof surfaces
+- **Public proof narrative** for external evaluation
+- **Verified runtime evidence** for authenticated, org-scoped review
 
 ---
 
-## Architecture Direction
+## Public Proof vs Verified Runtime Proof
 
-DSG ONE should be understood as a control-plane effort for operating AI with more discipline.
+DSG ONE intentionally separates two proof surfaces:
 
-At a high level, the architecture direction is:
+### Public proof narrative
+For customers, partners, AI systems, and public evaluation.
 
-1. **Access**
-   - authenticated operator entry
-   - scoped control surfaces
-   - explicit user and organization state
+Use:
+- `/enterprise-proof/start`
+- `/enterprise-proof/report`
+- `/api/enterprise-proof/report`
 
-2. **Execution**
-   - structured execution path
-   - visible decision outcomes
-   - usage and control boundaries
+This surface is:
+- public
+- AI-readable
+- safe to share externally
+- not tied to org-scoped runtime secrets
 
-3. **Audit**
-   - review-oriented routes
-   - recorded events and decision surfaces
-   - operator-facing evidence paths
+### Verified runtime evidence
+For authenticated users inside a real organization scope.
 
-4. **Monitoring**
-   - readiness state
-   - mission state
-   - alerts
-   - live operational visibility
+Use:
+- `/enterprise-proof/verified`
+- `/enterprise-proof/verified/report?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
+- `/api/enterprise-proof/runtime-report?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
+- `/api/enterprise-proof/runtime-report/summary?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
 
-5. **Governance**
-   - control embedded into runtime workflow
-   - evidence visible to operators
-   - system state available for review
-
-This is not presented as final closure on AI governance. It is presented as a practical architecture for improving it.
+This surface is:
+- auth-gated
+- org-scoped
+- agent-scoped
+- runtime-backed
+- explicit about gaps when evidence is incomplete
 
 ---
 
-## Determinism, Verification, and Control
+## Quickstart Experience
 
-DSG ONE does not claim that every property of an AI system is universally or permanently solved by formal proof.
+A new workspace can be evaluated through a guided flow:
 
-What it does aim to demonstrate is that the **operational layer** can be made more disciplined through:
-- deterministic control surfaces
-- explicit state visibility
-- structured auditability
-- verification-aware system design
-- real-time monitoring
-- operator-governed review paths
+1. Sign up for a trial workspace
+2. Confirm the magic link
+3. Enter `/quickstart`
+4. Create the first starter agent
+5. Copy the one-time API key
+6. Run the first sample execution
+7. Inspect mission, app-shell, and enterprise-proof surfaces
 
-This matters because many failures in AI operations are not only model failures. They are also failures of visibility, escalation, evidence, and control.
+Quickstart currently includes:
+- 14-day trial
+- 1,000 included executions
+- first-agent creation
+- first-execution walkthrough
+- links into live monitoring surfaces
+
+---
+
+## Authentication and Provisioning Model
+
+DSG ONE uses two distinct entry paths:
+
+### `/signup`
+For first-time users.
+
+This path:
+- collects work email and workspace name
+- creates a pending trial-signup record
+- sends a magic link
+- provisions organization, user, and trial subscription during confirmation
+- redirects the user into `/quickstart`
+
+### `/login`
+For already provisioned operator accounts only.
+
+Login is not a public self-service signup path.
+The email must already map to:
+- an active row in `users`
+- a valid `org_id`
+- an allowed operator account
+
+This distinction is intentional. Login is for existing operator access. Signup is for first-time provisioning.
+
+---
+
+## Who This Is For
+
+DSG ONE is relevant for teams building or operating:
+
+- enterprise AI systems
+- internal AI platforms
+- agent-based workflows with approval and oversight requirements
+- audit-heavy or review-sensitive AI operations
+- regulated or compliance-aware runtime environments
+- production AI systems where traceability matters
+
+It is especially relevant where **“just trust the model”** is not an acceptable operating standard.
+
+---
+
+## What Buyers Actually Get
+
+Organizations using DSG ONE get:
+
+- a clearer runtime control layer for AI execution
+- better operational evidence for review
+- separation between public positioning and real runtime proof
+- visible quickstart paths from signup to first execution
+- operator-facing surfaces for mission, execution, and readiness workflows
+- an architecture designed for review, not only for demos
 
 ---
 
 ## Research References
 
-This work is informed by technical and formal research artifacts related to auditability, safety-oriented architecture, and verification-based reasoning.
+This product direction is supported by research and technical artifacts related to control, auditability, and verification-oriented runtime design.
 
-### Referenced artifacts
+### Supporting DOIs
 
 - DOI: `10.5281/zenodo.18244246`  
   https://doi.org/10.5281/zenodo.18244246
@@ -218,135 +235,88 @@ This work is informed by technical and formal research artifacts related to audi
 - DOI: `10.5281/zenodo.18212854`  
   https://doi.org/10.5281/zenodo.18212854
 
-These references support the research direction behind DSG ONE. They should be read as supporting material, not as a substitute for evaluating the implementation itself.
+These references support the research direction behind DSG ONE.
 
-The implementation should still be judged by:
-- code
-- routes
-- control flow
-- deployment behavior
-- operator experience
-- monitoring surfaces
-- audit evidence
-- runtime behavior
-
----
-
-## What We Are Trying to Prove
-
-DSG ONE is an attempt to prove that AI operations can be made:
-
-- more deterministic at the control layer
-- more inspectable across the system
-- more auditable in practice
-- more governable in real time
-- more accountable under organizational review
-
-This is not a claim of perfect safety.  
-It is a claim that stronger operational structure is possible and worth building.
-
----
-
-## Intended Audience
-
-DSG ONE is relevant for teams working on:
-
-- enterprise AI operations
-- internal AI platforms
-- operator-facing AI systems
-- agent orchestration with oversight requirements
-- audit-heavy AI workflows
-- regulated or review-sensitive environments
-- systems where traceability and intervention matter
-
-Especially where “just trust the model” is not an acceptable operating standard.
+They are **supporting artifacts**, not a substitute for inspecting the product itself.
 
 ---
 
 ## How To Evaluate DSG ONE
 
-The strongest way to assess DSG ONE is not through slogans.
+The right way to evaluate DSG ONE is not through slogans.
 
 It is through inspection.
 
 Review:
-- the auth flow
-- the operator access model
-- the execution routes
-- the audit surfaces
-- the mission monitoring behavior
-- the workspace UI
-- the runtime behavior
-- the deployment behavior
-- the research references
+- signup and login behavior
+- provisioning rules
+- quickstart flow
+- starter-agent creation
+- execution path and returned decision data
+- public enterprise-proof surfaces
+- verified runtime proof surfaces
+- monitoring and mission entry points
+- runtime evidence and gaps behavior
+- research references alongside implementation
 
-Then decide whether the architecture demonstrates the level of determinism, control, evidence, and governance your environment requires.
+The standard is not whether the README sounds impressive.
 
----
-
-## Quickstart
-
-A practical way to evaluate the system is:
-
-1. Open the authenticated control-plane surfaces.
-2. Review the operator and mission workflows.
-3. Inspect execution, usage, and audit routes.
-4. Check monitoring and readiness behavior.
-5. Compare implementation behavior against the research direction and governance claims.
-
-The right standard is not whether the README sounds impressive.  
-It is whether the system is inspectable under use.
+The standard is whether the runtime is reviewable under actual use.
 
 ---
 
-## Roadmap Direction
+## Suggested Evaluation Path
 
-The long-term direction of DSG ONE is toward:
+A practical evaluation path is:
 
-- stronger operator control surfaces
-- clearer real-time monitoring
-- richer audit and evidence models
-- improved readiness and alerting flows
-- tighter control-plane discipline around AI execution
-- more verification-aware operational infrastructure
-
-The intent is steady improvement in operational truth, not exaggerated claims.
+1. Open the public proof narrative
+2. Start a trial workspace
+3. Complete magic-link confirmation
+4. Use quickstart to create the first agent
+5. Run the first execution
+6. Open mission and dashboard surfaces
+7. Inspect the verified runtime proof path
+8. Compare runtime behavior against the product claims and research direction
 
 ---
 
 ## Positioning
 
-DSG ONE should be understood as an attempt to build **a more truthful operating layer for AI systems**.
+DSG ONE should be understood as:
 
-Not a claim of universal formal closure.  
-Not a claim that governance is solved by one repository.  
-Not a claim that every AI risk disappears.
+> **A control plane for enterprise AI operations that need auditability, runtime evidence, and operational governance.**
 
-It is a serious effort to move AI operations toward:
-- clearer control
-- stronger evidence
-- better live visibility
-- more disciplined review
-- more structurally correct governance
+It is not a claim that all AI risk disappears.
+It is not a claim that policy text alone is enough.
+It is not a claim that one repository solves governance universally.
+
+It is a serious product effort to make AI operations:
+
+- more inspectable
+- more auditable
+- more controllable
+- more operationally truthful
+- more governable in real time
 
 ---
 
 ## Bottom Line
 
-If your organization wants AI systems to be operated with:
+If your organization needs AI systems to operate with:
 
-- deterministic control where it matters
-- mathematics-backed reasoning where possible
-- system-wide inspectability
-- real-time monitoring and intervention
-- governance that exists inside the architecture, not only in policy
+- explicit runtime control
+- visible execution evidence
+- authenticated operator workflows
+- structured quickstart-to-production paths
+- public proof for external evaluation
+- verified proof for real runtime review
 
 then DSG ONE is built in that direction.
 
-**Read the code. Review the flows. Test the runtime behavior. Make your own judgment.**
+**Read the flows. Run the product. Inspect the runtime. Make your own judgment.**
 
 ---
 
 ## Keywords
 
-`#DeepTech` `#AISafety` `#FormalVerification` `#Z3` `#Determinism` `#ZeroTrust` `#EnterpriseAI` `#Auditability` `#RealtimeControl` `#Governance`
+`#EnterpriseAI` `#AIRuntime` `#Auditability` `#VerifiedRuntime` `#Governance` `#ZeroTrust` `#Operators` `#ControlPlane` `#MissionVisibility` `#ExecutionEvidence`
