@@ -1,0 +1,54 @@
+import { NextResponse } from 'next/server';
+import { requireOrgRole } from '../../../../lib/authz';
+import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
+
+export async function POST(request: Request) {
+  try {
+    const access = await requireOrgRole(RuntimeRouteRoles.mcp_call);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
+    const body = await request.json().catch(() => null);
+    const auth = request.headers.get('authorization') || '';
+    const origin = new URL(request.url).origin;
+
+    const intentResp = await fetch(`${origin}/api/intent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: auth },
+      body: JSON.stringify({ agent_id: body?.agent_id, org_id: access.orgId, intent: { action: body?.action, payload: body?.payload ?? {} } }),
+    });
+
+    const intentJson = await intentResp.json().catch(() => ({}));
+    if (!intentResp.ok) {
+      return NextResponse.json({ error: intentJson?.error || 'intent failed' }, { status: intentResp.status });
+    }
+
+    const executeResp = await fetch(`${origin}/api/execute`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: auth },
+      body: JSON.stringify({
+        agent_id: body?.agent_id,
+        action: body?.action || 'mcp-call',
+        input: body?.payload ?? {},
+        context: { source: 'mcp', intent_request_id: intentJson.request_id },
+      }),
+    });
+
+    const executeJson = await executeResp.json().catch(() => ({}));
+    if (!executeResp.ok) {
+      return NextResponse.json({ error: executeJson?.error || 'execute failed' }, { status: executeResp.status });
+    }
+
+    return NextResponse.json({
+      runtime: executeJson,
+      dispatch: {
+        tool_name: body?.tool_name || 'unknown-tool',
+        dispatched: executeJson.decision === 'ALLOW',
+        bypass_prevented: true,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+  }
+}
