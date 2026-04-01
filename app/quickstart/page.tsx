@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type AgentResponse = {
   agent_id: string;
@@ -13,6 +13,20 @@ type AgentResponse = {
   api_key_preview: string | null;
   created: boolean;
 };
+
+
+type OnboardingState = {
+  bootstrap_status: 'pending' | 'completed' | 'failed';
+  checklist?: { steps?: string[]; next_action?: string };
+};
+
+const FALLBACK_STEPS = [
+  'Create or inspect your first agent',
+  'Review a starter policy',
+  'Run your first controlled execution',
+  'Inspect evidence or audit output',
+  'Review quota/billing basics',
+];
 
 type ExecuteResponse = {
   decision: string;
@@ -29,6 +43,19 @@ export default function QuickstartPage() {
   const [executeError, setExecuteError] = useState('');
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const [isEmptyOrg, setIsEmptyOrg] = useState(false);
+
+
+  useEffect(() => {
+    void (async () => {
+      const response = await fetch('/api/quickstart/onboarding');
+      if (!response.ok) return;
+      const json = await response.json();
+      setOnboarding(json.onboarding);
+      setIsEmptyOrg(Boolean(json.is_empty));
+    })();
+  }, []);
 
   async function createStarterAgent() {
     try {
@@ -83,6 +110,18 @@ export default function QuickstartPage() {
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Workspace ready</p>
           <h1 className="mt-4 text-4xl font-bold">Your DSG workspace is ready</h1>
           <p className="mt-4 text-slate-300">Complete quickstart to create your first agent, run a real execution, and inspect live telemetry.</p>
+        </section>
+
+        <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-6">
+          <p className="text-lg font-semibold">Starter checklist</p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {(onboarding?.checklist?.steps || FALLBACK_STEPS).map((step) => (
+              <li key={step}>• {step}</li>
+            ))}
+          </ul>
+          {isEmptyOrg && onboarding?.bootstrap_status !== 'completed' ? (
+            <p className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">Set up starter workspace</p>
+          ) : null}
         </section>
 
         <section className="grid gap-6 md:grid-cols-2">

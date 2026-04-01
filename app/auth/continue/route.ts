@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { resolveLoginContext } from '../../../lib/auth/login-context';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -30,9 +31,12 @@ export async function POST(request: NextRequest) {
   const workspaceName = String(formData.get('workspace_name') || '').trim();
   const fullName = String(formData.get('full_name') || '').trim();
   const next = getSafeNext(String(formData.get('next') || ''));
+  const orgSlug = String(formData.get('org') || '').trim();
 
   const redirectToLogin = new URL('/login', request.url);
   redirectToLogin.searchParams.set('next', next);
+
+  if (orgSlug) redirectToLogin.searchParams.set('org', orgSlug);
 
   if (!email) {
     redirectToLogin.searchParams.set('error', 'missing-email');
@@ -42,6 +46,16 @@ export async function POST(request: NextRequest) {
   try {
     const authClient = await createClient();
     const admin = getSupabaseAdmin();
+
+    const loginContext = await resolveLoginContext({ email, orgSlug: orgSlug || undefined });
+    if (loginContext.org?.slug) {
+      redirectToLogin.searchParams.set('org', loginContext.org.slug);
+    }
+
+    if (loginContext.mode === 'sso-only') {
+      redirectToLogin.searchParams.set('error', 'sso-required');
+      return NextResponse.redirect(redirectToLogin, { status: 302 });
+    }
 
     const { data: operatorRow, error: operatorErr } = await admin
       .from('users')
@@ -74,6 +88,11 @@ export async function POST(request: NextRequest) {
       }
 
       redirectToLogin.searchParams.set('message', 'check-email');
+      return NextResponse.redirect(redirectToLogin, { status: 302 });
+    }
+
+    if (orgSlug && loginContext.mode === 'sso-first') {
+      redirectToLogin.searchParams.set('error', 'org-self-serve-disabled');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
 
