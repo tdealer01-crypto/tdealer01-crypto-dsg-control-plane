@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { canonicalHash, canonicalJson } from '../../../../lib/runtime/canonical';
 import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
+import { getOverageRateUsd } from '../../../../lib/billing/overage-config';
 
 function demoEnabled(request: Request) {
   if (process.env.NODE_ENV === 'production') return false;
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
       event_type: 'execution',
       quantity: 1,
       unit: 'execution',
-      amount_usd: 0.001,
+      amount_usd: getOverageRateUsd(),
       metadata: { source: 'enterprise_demo' },
     });
 

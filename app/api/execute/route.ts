@@ -6,17 +6,12 @@ import { buildApprovalKey } from '../../../lib/runtime/approval';
 import { canonicalHash, canonicalJson } from '../../../lib/runtime/canonical';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
 
 export const dynamic = 'force-dynamic';
 
 type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
 
-const INCLUDED_EXECUTIONS: Record<string, number> = {
-  trial: 1000,
-  pro: 10000,
-  business: 100000,
-  enterprise: 1000000,
-};
 
 function getIncludedExecutions(planKey?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
@@ -200,7 +195,7 @@ export async function POST(request: Request) {
       event_type: 'execution',
       quantity: 1,
       unit: 'execution',
-      amount_usd: 0.001,
+      amount_usd: getOverageRateUsd(),
       metadata: { decision, stability_score: stabilityScore },
       created_at: nowIso,
     });
