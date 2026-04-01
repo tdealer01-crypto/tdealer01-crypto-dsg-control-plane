@@ -33,6 +33,12 @@ describe('/auth/continue', () => {
   beforeEach(() => {
     vi.resetModules();
     process.env.APP_URL = 'http://localhost';
+    process.env.APPROVED_APPROVAL_DOMAINS = '';
+    vi.doMock('../../../lib/auth/sign-in-events', () => ({ logSignInEvent: vi.fn(async () => {}) }));
+    vi.doMock('../../../lib/auth/access-policy', async () => {
+      const actual = await vi.importActual<any>('../../../lib/auth/access-policy');
+      return { ...actual };
+    });
   });
 
   it('provisioned operator email → operator magic-link path', async () => {
@@ -121,6 +127,30 @@ describe('/auth/continue', () => {
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/login');
     expect(location).toContain('error=missing-workspace');
+  });
+
+
+  it('approval-required domain → request-access redirect', async () => {
+    process.env.APPROVED_APPROVAL_DOMAINS = 'co.com';
+
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
+    }));
+
+    vi.doMock('../../../lib/supabase-server', () => ({
+      getSupabaseAdmin: vi.fn(() => ({
+        from: vi.fn(() => chainMock({ data: null, error: null })),
+      })),
+    }));
+
+    const { POST } = await import('../../../app/auth/continue/route');
+    const req = buildFormRequest({ email: 'new@co.com', workspace_name: 'Acme', next: '/dashboard' });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location') ?? '';
+    expect(location).toContain('/request-access');
+    expect(location).toContain('email=new%40co.com');
   });
 
   it('missing email → missing-email', async () => {
