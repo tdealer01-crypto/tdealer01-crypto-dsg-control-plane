@@ -14,7 +14,7 @@ export default async function DashboardAccessSettingsPage() {
   const [requestsRes, guestsRes] = await Promise.all([
     admin
       .from('access_requests')
-      .select('id, email, email_domain, workspace_name, created_at, status')
+      .select('id, org_id, email, email_domain, workspace_name, created_at, status')
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(20),
@@ -26,7 +26,7 @@ export default async function DashboardAccessSettingsPage() {
       .limit(20),
   ]);
 
-  const requests = (requestsRes.data || []).filter((row) => row.email_domain === orgDomain);
+  const requests = (requestsRes.data || []).filter((row) => row.org_id === access.orgId || (!row.org_id && row.email_domain === orgDomain));
   const guests = guestsRes.data || [];
 
   const mode = resolveAccessModeForEmail(access.email);

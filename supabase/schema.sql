@@ -164,6 +164,7 @@ create table if not exists guest_access_grants (
 
 create table if not exists access_requests (
   id uuid primary key default gen_random_uuid(),
+  org_id text null references organizations(id) on delete set null,
   email text not null,
   email_domain text not null,
   workspace_name text null,
@@ -194,6 +195,7 @@ create table if not exists sign_in_events (
 
 create index if not exists idx_guest_access_grants_org_email on guest_access_grants(org_id, email);
 create index if not exists idx_guest_access_grants_org_status on guest_access_grants(org_id, status);
+create index if not exists idx_access_requests_org_status on access_requests(org_id, status);
 create index if not exists idx_access_requests_email_status on access_requests(email, status);
 create index if not exists idx_access_requests_domain_status on access_requests(email_domain, status);
 create index if not exists idx_access_requests_status_created on access_requests(status, created_at desc);

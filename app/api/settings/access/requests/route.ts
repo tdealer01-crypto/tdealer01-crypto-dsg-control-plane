@@ -15,7 +15,7 @@ export async function GET() {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('access_requests')
-    .select('id, email, email_domain, workspace_name, status, created_at')
+    .select('id, org_id, email, email_domain, workspace_name, status, created_at')
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(50);
@@ -25,7 +25,7 @@ export async function GET() {
   }
 
   const orgDomain = access.email.split('@')[1] || '';
-  const scoped = (data || []).filter((row) => row.email_domain === orgDomain);
+  const scoped = (data || []).filter((row) => row.org_id === access.orgId || (!row.org_id && row.email_domain === orgDomain));
 
   return NextResponse.json({ requests: scoped }, { headers: PRIVATE_HEADERS });
 }

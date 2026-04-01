@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { logSignInEvent } from '../../../../lib/auth/sign-in-events';
 
@@ -8,6 +9,27 @@ function normalizeEmail(value: unknown) {
 
 function extractDomain(email: string) {
   return email.split('@')[1] || '';
+}
+
+
+async function resolveRequesterOrgId() {
+  try {
+    const supabase = await createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user?.id) return null;
+
+    const admin = getSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('users')
+      .select('org_id')
+      .eq('auth_user_id', auth.user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    return profile?.org_id || null;
+  } catch {
+    return null;
+  }
 }
 
 async function parseBody(request: NextRequest) {
@@ -38,6 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = getSupabaseAdmin();
+  const orgId = await resolveRequesterOrgId();
   const { data: existingPending } = await admin
     .from('access_requests')
     .select('id, created_at')
@@ -52,6 +75,7 @@ export async function POST(request: NextRequest) {
 
   if (!existingPending?.id || !isRecent) {
     await admin.from('access_requests').insert({
+      org_id: orgId,
       email,
       email_domain: domain,
       workspace_name: workspaceName,
