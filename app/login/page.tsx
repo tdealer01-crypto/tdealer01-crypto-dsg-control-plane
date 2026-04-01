@@ -9,14 +9,18 @@ function getMessage(message?: string, error?: string) {
   if (message === 'check-email') {
     return {
       tone: 'success',
-      text: 'Check your email to continue.',
+      text: 'Check your email for the magic link to continue.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
   if (message === 'signed-out') {
     return {
       tone: 'success',
-      text: 'You’ve been signed out. Request a new link anytime.',
+      text: 'Signed out successfully. You can request a new magic link at any time.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -24,6 +28,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'Enter your email before continuing.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -31,13 +37,17 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'If this email is new, add a workspace name to start a trial.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
-  if (error === 'invalid-email') {
+  if (error === 'not-allowed') {
     return {
       tone: 'error',
-      text: 'Please enter a valid work email.',
+      text: 'This email is not provisioned for operator access. Contact your organization admin or start a free trial.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -45,28 +55,17 @@ function getMessage(message?: string, error?: string) {
   if (error === 'approval-required') {
     return {
       tone: 'error',
-      text: 'Your company requires admin approval before access can be granted.',
+      text: 'Your organization requires admin approval before access is granted.',
+      ctaHref: '/request-access',
+      ctaLabel: 'Request access',
     };
   }
-
-  if (error === 'sso-required') {
-    return {
-      tone: 'error',
-      text: 'Your company requires single sign-on.',
-    };
-  }
-
-  if (error === 'not-allowed') {
-    return {
-      tone: 'error',
-      text: 'This account can’t access DSG yet. Contact your company admin for access.',
-    };
-  }
-
   if (error === 'send-failed') {
     return {
       tone: 'error',
-      text: 'We couldn’t send your sign-in link. Please try again.',
+      text: 'We could not send the magic link for this operator account. Check email auth delivery and try again.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -74,13 +73,17 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'We could not start the trial flow. Check your details and try again.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
   if (error === 'not-provisioned') {
     return {
       tone: 'error',
-      text: 'This account is not yet ready for access. Contact your admin or request an invitation.',
+      text: 'This email is authenticated but not provisioned for an active DSG organization yet.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -88,13 +91,17 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'This login link is invalid or expired. Request a new one.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
   if (error === 'unexpected') {
     return {
       tone: 'error',
-      text: 'Something went wrong. Please try again.',
+      text: 'Unexpected auth error. Check server logs and auth configuration.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -114,9 +121,10 @@ export default function LoginPage({
       <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Continue with email</p>
-          <h1 className="mt-4 text-4xl font-bold">One login for every access path</h1>
+          <h1 className="mt-4 text-4xl font-bold">Access DSG in one step</h1>
           <p className="mt-4 text-base leading-7 text-slate-300">
-            Enter your work email once. Existing accounts get a sign-in link. New teams can start a trial by adding a workspace name.
+            Enter your work email once. If your account already has operator access, we will send a login link.
+            If you are new, add a workspace name and we will start a trial setup flow.
           </p>
 
           {notice ? (
@@ -128,7 +136,12 @@ export default function LoginPage({
                   : 'border-red-500/30 bg-red-500/10 text-red-200',
               ].join(' ')}
             >
-              {notice.text}
+              <p>{notice.text}</p>
+              {notice.ctaHref ? (
+                <Link href={notice.ctaHref} className="mt-3 inline-flex rounded-xl border border-emerald-300/40 bg-emerald-400/10 px-3 py-2 font-semibold text-emerald-100">
+                  {notice.ctaLabel || 'Continue'}
+                </Link>
+              ) : null}
             </div>
           ) : null}
 
@@ -183,7 +196,8 @@ export default function LoginPage({
           <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-slate-950/50 p-5 text-sm text-slate-300">
             <p className="font-semibold text-white">How it works</p>
             <p className="mt-2 leading-7">
-              If your account already exists, we email a sign-in link. If you’re new, add a workspace name and we’ll start your trial setup.
+              If your email already maps to an active operator row, workspace details are ignored and you get a login link.
+              If not, workspace details are used to start a trial signup flow.
             </p>
           </div>
         </div>
@@ -193,10 +207,10 @@ export default function LoginPage({
             <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">What happens next</p>
             <div className="mt-6 grid gap-4">
               {[
-                'Existing members receive a secure sign-in link.',
-                'New teams can start a trial by adding a workspace name.',
-                'The link confirms your session when opened.',
-                'Access rules are enforced for your organization after sign-in.',
+                'Existing operator emails receive a magic link for login.',
+                'New emails can start a trial when workspace details are included.',
+                'The callback verifies the link and creates the session.',
+                'Protected dashboard access still requires a valid active org mapping.',
               ].map((item, index) => (
                 <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-400/10 font-semibold text-emerald-200">
@@ -208,16 +222,6 @@ export default function LoginPage({
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              {searchParams?.error === 'approval-required' ? (
-                <Link href="/enterprise-proof/start" className="rounded-2xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950">
-                  Request access
-                </Link>
-              ) : null}
-              {searchParams?.error === 'sso-required' ? (
-                <Link href="/enterprise-proof/start" className="rounded-2xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950">
-                  Continue with SSO
-                </Link>
-              ) : null}
               <Link href="/pricing" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-100">
                 View plans
               </Link>

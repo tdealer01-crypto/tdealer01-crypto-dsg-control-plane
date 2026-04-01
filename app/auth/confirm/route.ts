@@ -3,6 +3,7 @@ import { type EmailOtpType } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 
 const TRIAL_DAYS = 14;
 
@@ -98,6 +99,15 @@ export async function GET(request: NextRequest) {
   }
 
   if (existingUser?.org_id && existingUser.is_active) {
+    await logSignInEvent({
+      email: normalizedEmail,
+      orgId: existingUser.org_id,
+      authUserId: user.id,
+      eventType: 'magic_link_verified',
+      source: 'auth-confirm',
+      success: true,
+      metadata: { signup_mode: signupMode || 'none' },
+    });
     const redirectTo = new URL(next, request.url);
     return NextResponse.redirect(redirectTo, { status: 302 });
   }
@@ -205,6 +215,16 @@ export async function GET(request: NextRequest) {
     .from('trial_signups')
     .update({ status: 'completed', completed_at: nowIso })
     .eq('id', pendingSignup.id);
+
+  await logSignInEvent({
+    email: normalizedEmail,
+    orgId,
+    authUserId: user.id,
+    eventType: 'magic_link_verified',
+    source: 'auth-confirm',
+    success: true,
+    metadata: { signup_mode: 'trial' },
+  });
 
   const redirectTo = new URL(next || '/quickstart', request.url);
   return NextResponse.redirect(redirectTo, { status: 302 });

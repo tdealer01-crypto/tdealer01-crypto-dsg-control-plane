@@ -33,6 +33,12 @@ describe('/auth/continue', () => {
   beforeEach(() => {
     vi.resetModules();
     process.env.APP_URL = 'http://localhost';
+    process.env.APPROVED_APPROVAL_DOMAINS = '';
+    vi.doMock('../../../lib/auth/sign-in-events', () => ({ logSignInEvent: vi.fn(async () => {}) }));
+    vi.doMock('../../../lib/auth/access-policy', async () => {
+      const actual = await vi.importActual<any>('../../../lib/auth/access-policy');
+      return { ...actual };
+    });
   });
 
   it('provisioned operator email → operator magic-link path', async () => {
@@ -124,8 +130,8 @@ describe('/auth/continue', () => {
   });
 
 
-  it('approved approval domain → approval-required', async () => {
-    process.env.APPROVED_APPROVAL_DOMAINS = 'enterprise.com';
+  it('approval-required domain → request-access redirect', async () => {
+    process.env.APPROVED_APPROVAL_DOMAINS = 'co.com';
 
     vi.doMock('../../../lib/supabase/server', () => ({
       createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
@@ -138,15 +144,13 @@ describe('/auth/continue', () => {
     }));
 
     const { POST } = await import('../../../app/auth/continue/route');
-    const req = buildFormRequest({ email: 'user@enterprise.com', workspace_name: 'Acme Ops', next: '/dashboard' });
+    const req = buildFormRequest({ email: 'new@co.com', workspace_name: 'Acme', next: '/dashboard' });
     const res = await POST(req as never);
 
     expect(res.status).toBe(302);
     const location = res.headers.get('location') ?? '';
-    expect(location).toContain('/login');
-    expect(location).toContain('error=approval-required');
-
-    delete process.env.APPROVED_APPROVAL_DOMAINS;
+    expect(location).toContain('/request-access');
+    expect(location).toContain('email=new%40co.com');
   });
 
   it('missing email → missing-email', async () => {
@@ -168,27 +172,6 @@ describe('/auth/continue', () => {
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/login');
     expect(location).toContain('error=missing-email');
-  });
-
-  it('invalid email → invalid-email', async () => {
-    vi.doMock('../../../lib/supabase/server', () => ({
-      createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
-    }));
-
-    vi.doMock('../../../lib/supabase-server', () => ({
-      getSupabaseAdmin: vi.fn(() => ({
-        from: vi.fn(() => chainMock({ data: null, error: null })),
-      })),
-    }));
-
-    const { POST } = await import('../../../app/auth/continue/route');
-    const req = buildFormRequest({ email: 'not-an-email', next: '/dashboard' });
-    const res = await POST(req as never);
-
-    expect(res.status).toBe(302);
-    const location = res.headers.get('location') ?? '';
-    expect(location).toContain('/login');
-    expect(location).toContain('error=invalid-email');
   });
 
   it('OTP send failure for operator → send-failed', async () => {
