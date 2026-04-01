@@ -123,6 +123,32 @@ describe('/auth/continue', () => {
     expect(location).toContain('error=missing-workspace');
   });
 
+
+  it('approved approval domain → approval-required', async () => {
+    process.env.APPROVED_APPROVAL_DOMAINS = 'enterprise.com';
+
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
+    }));
+
+    vi.doMock('../../../lib/supabase-server', () => ({
+      getSupabaseAdmin: vi.fn(() => ({
+        from: vi.fn(() => chainMock({ data: null, error: null })),
+      })),
+    }));
+
+    const { POST } = await import('../../../app/auth/continue/route');
+    const req = buildFormRequest({ email: 'user@enterprise.com', workspace_name: 'Acme Ops', next: '/dashboard' });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location') ?? '';
+    expect(location).toContain('/login');
+    expect(location).toContain('error=approval-required');
+
+    delete process.env.APPROVED_APPROVAL_DOMAINS;
+  });
+
   it('missing email → missing-email', async () => {
     vi.doMock('../../../lib/supabase/server', () => ({
       createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
@@ -142,6 +168,27 @@ describe('/auth/continue', () => {
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/login');
     expect(location).toContain('error=missing-email');
+  });
+
+  it('invalid email → invalid-email', async () => {
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
+    }));
+
+    vi.doMock('../../../lib/supabase-server', () => ({
+      getSupabaseAdmin: vi.fn(() => ({
+        from: vi.fn(() => chainMock({ data: null, error: null })),
+      })),
+    }));
+
+    const { POST } = await import('../../../app/auth/continue/route');
+    const req = buildFormRequest({ email: 'not-an-email', next: '/dashboard' });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location') ?? '';
+    expect(location).toContain('/login');
+    expect(location).toContain('error=invalid-email');
   });
 
   it('OTP send failure for operator → send-failed', async () => {
