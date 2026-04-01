@@ -27,6 +27,7 @@ returns table (
 )
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
   v_request runtime_approval_requests;
@@ -36,6 +37,10 @@ declare
   v_truth_sequence bigint;
   v_inserted runtime_ledger_entries;
 begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'runtime_commit_execution requires service_role';
+  end if;
+
   select * into v_request
   from runtime_approval_requests
   where id = p_request_id
@@ -165,3 +170,35 @@ begin
     false;
 end;
 $$;
+
+revoke all on function public.runtime_commit_execution(
+  text,
+  text,
+  uuid,
+  text,
+  text,
+  jsonb,
+  text,
+  jsonb,
+  integer,
+  jsonb,
+  jsonb,
+  text,
+  timestamptz
+) from public;
+
+grant execute on function public.runtime_commit_execution(
+  text,
+  text,
+  uuid,
+  text,
+  text,
+  jsonb,
+  text,
+  jsonb,
+  integer,
+  jsonb,
+  jsonb,
+  text,
+  timestamptz
+) to service_role;
