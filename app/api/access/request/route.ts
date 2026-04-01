@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { logSignInEvent } from '../../../../lib/auth/sign-in-events';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 
 function normalizeEmail(value: unknown) {
   return String(value || '').trim().toLowerCase();
@@ -64,6 +65,18 @@ async function parseBody(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = applyRateLimit({
+    key: getRateLimitKey(request, 'access-request'),
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: buildRateLimitHeaders(rateLimit, 10) }
+    );
+  }
+
   const body = await parseBody(request);
   const email = normalizeEmail(body.email);
   const domain = extractDomain(email);
@@ -73,7 +86,10 @@ export async function POST(request: NextRequest) {
   const explicitOrgId = String(body.org_id || '').trim() || null;
 
   if (!email || !domain) {
-    return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'A valid email is required.' },
+      { status: 400, headers: buildRateLimitHeaders(rateLimit, 10) }
+    );
   }
 
   const admin = getSupabaseAdmin();
@@ -117,8 +133,11 @@ export async function POST(request: NextRequest) {
     redirectTo.searchParams.set('email', email);
     if (workspaceName) redirectTo.searchParams.set('workspace_name', workspaceName);
     redirectTo.searchParams.set('success', '1');
-    return NextResponse.redirect(redirectTo, { status: 302 });
+    return NextResponse.redirect(redirectTo, {
+      status: 302,
+      headers: buildRateLimitHeaders(rateLimit, 10),
+    });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, { headers: buildRateLimitHeaders(rateLimit, 10) });
 }

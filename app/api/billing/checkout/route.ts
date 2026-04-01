@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { createClient } from '../../../../lib/supabase/server';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,12 +79,56 @@ function getPriceId(plan: PlanKey, interval: BillingInterval) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = applyRateLimit({
+      key: getRateLimitKey(request, 'billing-checkout'),
+      limit: 20,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
+    }
+
     const body = await request.json().catch(() => null);
 
     const plan = normalizePlan(body?.plan);
     const interval = normalizeInterval(body?.interval);
     const customerEmail = body?.email ? String(body.email) : undefined;
     const orgId = body?.org_id ? String(body.org_id) : undefined;
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('org_id, is_active, email')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (!profile?.is_active || !profile?.org_id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
+    }
+
+    if (orgId && orgId !== profile.org_id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
+    }
 
     const priceId = getPriceId(plan, interval);
     if (!priceId) {
@@ -92,7 +138,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      return NextResponse.json(
+        { error: 'Missing NEXT_PUBLIC_APP_URL' },
+        { status: 500, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
+    }
     const stripe = getStripeClient();
 
     const metadata: Record<string, string> = {
@@ -114,8 +166,8 @@ export async function POST(request: Request) {
       ],
       success_url: `${appUrl}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/pricing?checkout=cancelled&plan=${plan}&interval=${interval}`,
-      customer_email: customerEmail,
-      client_reference_id: orgId,
+      customer_email: customerEmail || profile.email || undefined,
+      client_reference_id: orgId || String(profile.org_id),
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
       metadata,
@@ -131,7 +183,7 @@ export async function POST(request: Request) {
       session_id: session.id,
       plan,
       interval,
-    });
+    }, { headers: buildRateLimitHeaders(rateLimit, 20) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unexpected error' },

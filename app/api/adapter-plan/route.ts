@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import { getDSGCoreCompatibility } from "../../../lib/core-compat";
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from "../../../lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimit = applyRateLimit({
+    key: getRateLimitKey(request, 'adapter-plan'),
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: buildRateLimitHeaders(rateLimit, 30) }
+    );
+  }
+
   const compatibility = await getDSGCoreCompatibility();
   const profile = compatibility.inferred.profile;
 
@@ -70,5 +83,5 @@ export async function GET() {
     inference_reason: compatibility.inferred.reason,
     read_plan: readPlan,
     note: "This is a verified read-side adapter plan derived from repo truth and read-only probes. Execute-path recommendations are still non-write verified.",
-  });
+  }, { headers: buildRateLimitHeaders(rateLimit, 30) });
 }
