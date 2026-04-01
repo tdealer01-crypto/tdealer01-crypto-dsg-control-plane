@@ -3,7 +3,8 @@ import { type EmailOtpType } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
-import { logSignInEvent } from '../../../lib/auth/sign-in-events';
+import { ensureSeatActivatedForUser } from '../../../lib/billing/seat-activation';
+import { bootstrapOrgStarterState } from '../../../lib/onboarding/bootstrap';
 
 const TRIAL_DAYS = 14;
 
@@ -29,7 +30,7 @@ function slugifyWorkspace(name: string) {
 async function findProvisionedUser(admin: ReturnType<typeof getSupabaseAdmin>, userId: string, email: string) {
   const { data: byAuth, error: byAuthError } = await admin
     .from('users')
-    .select('id, auth_user_id, email, org_id, is_active')
+    .select('id, auth_user_id, email, org_id, is_active, role')
     .eq('auth_user_id', userId)
     .maybeSingle();
 
@@ -43,7 +44,7 @@ async function findProvisionedUser(admin: ReturnType<typeof getSupabaseAdmin>, u
 
   const { data: byEmail, error: byEmailError } = await admin
     .from('users')
-    .select('id, auth_user_id, email, org_id, is_active')
+    .select('id, auth_user_id, email, org_id, is_active, role')
     .eq('email', email)
     .maybeSingle();
 
@@ -99,15 +100,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (existingUser?.org_id && existingUser.is_active) {
-    await logSignInEvent({
+    await ensureSeatActivatedForUser({
+      orgId: String(existingUser.org_id),
       email: normalizedEmail,
-      orgId: existingUser.org_id,
-      authUserId: user.id,
-      eventType: 'magic_link_verified',
-      source: 'auth-confirm',
-      success: true,
-      metadata: { signup_mode: signupMode || 'none' },
+      userId: String(existingUser.id),
+      role: existingUser.role || 'viewer',
+      source: 'auth_confirm',
     });
+
     const redirectTo = new URL(next, request.url);
     return NextResponse.redirect(redirectTo, { status: 302 });
   }
@@ -216,15 +216,34 @@ export async function GET(request: NextRequest) {
     .update({ status: 'completed', completed_at: nowIso })
     .eq('id', pendingSignup.id);
 
-  await logSignInEvent({
-    email: normalizedEmail,
+  await ensureSeatActivatedForUser({
     orgId,
-    authUserId: user.id,
-    eventType: 'magic_link_verified',
-    source: 'auth-confirm',
-    success: true,
-    metadata: { signup_mode: 'trial' },
+    email: normalizedEmail,
+    userId: existingUser?.id ?? user.id,
+    role: existingUser?.role || 'owner',
+    source: 'auth_confirm',
   });
+
+  try {
+    await bootstrapOrgStarterState(orgId, { initiatedByUserId: user.id });
+  } catch (bootstrapError) {
+    console.error('[auth-confirm] bootstrap failed:', bootstrapError);
+    await admin.from('org_onboarding_states').upsert({
+      org_id: orgId,
+      bootstrap_status: 'failed',
+      checklist: {
+        steps: [
+          'Create or inspect your first agent',
+          'Review a starter policy',
+          'Run your first controlled execution',
+          'Inspect evidence or audit output',
+          'Review quota/billing basics',
+        ],
+        next_action: 'Set up starter workspace',
+      },
+      updated_at: nowIso,
+    }, { onConflict: 'org_id' });
+  }
 
   const redirectTo = new URL(next || '/quickstart', request.url);
   return NextResponse.redirect(redirectTo, { status: 302 });
