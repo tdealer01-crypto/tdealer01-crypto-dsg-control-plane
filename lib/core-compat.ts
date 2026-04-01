@@ -119,6 +119,24 @@ function inferProfile(probes: ReadProbe[]): {
 
 export async function getDSGCoreCompatibility() {
   const { url } = getDSGCoreConfig();
+  if (!url || process.env.DSG_CORE_MODE === "internal") {
+    return {
+      target_url: "internal://runtime-gate",
+      probes: [] as ReadProbe[],
+      inferred: {
+        profile: "unknown" as const,
+        reason: "Internal runtime gate mode is enabled; external DSG core endpoint probing is skipped.",
+        recommended_paths: {
+          health: null,
+          execute: null,
+          ledger: null,
+          metrics: null,
+          audit: null,
+        },
+      },
+      note: "Compatibility probes only apply to external DSG core endpoints.",
+    };
+  }
   const probes = await Promise.all(READ_PATHS.map((path) => probePath(url, path)));
   const inferred = inferProfile(probes);
 

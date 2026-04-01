@@ -1,3 +1,5 @@
+import { evaluateGate } from "./runtime/gate";
+
 export type DSGCoreExecutionRequest = {
   agent_id: string;
   action: string;
@@ -28,15 +30,28 @@ export type DSGCoreDeterminism = {
 };
 
 export function getDSGCoreConfig() {
-  const configuredUrl = process.env.DSG_CORE_URL;
-  if (!configuredUrl) {
-    throw new Error("Missing DSG_CORE_URL");
-  }
+  const configuredUrl = process.env.DSG_CORE_URL?.replace(/\/$/, "") || "";
 
   return {
-    url: configuredUrl.replace(/\/$/, ""),
+    url: configuredUrl,
     apiKey: process.env.DSG_CORE_API_KEY || process.env.DSG_API_KEY || "",
   };
+}
+
+function shouldUseInternalCore(url: string) {
+  if (process.env.DSG_CORE_MODE === "internal") {
+    return true;
+  }
+  return !url;
+}
+
+function resolveRiskScore(payload?: Record<string, unknown>) {
+  const context = (payload?.context || {}) as Record<string, unknown>;
+  const fromContext = Number(context.risk_score ?? context.riskScore);
+  if (Number.isFinite(fromContext)) {
+    return Math.max(0, Math.min(1, fromContext));
+  }
+  return 0.5;
 }
 
 function coreHeaders() {
@@ -53,6 +68,16 @@ function parseError(data: any, status: number) {
 
 export async function getDSGCoreHealth() {
   const { url } = getDSGCoreConfig();
+  if (shouldUseInternalCore(url)) {
+    return {
+      ok: true,
+      url: "internal://runtime-gate",
+      status: "ok",
+      version: "internal-runtime-gate",
+      timestamp: new Date().toISOString(),
+      mode: "internal",
+    };
+  }
 
   try {
     const response = await fetch(`${url}/health`, {
@@ -79,19 +104,36 @@ export async function getDSGCoreHealth() {
 
 export async function executeOnDSGCore(payload: DSGCoreExecutionRequest) {
   const { url } = getDSGCoreConfig();
-  const response = await fetch(`${url}/execute`, {
-    method: "POST",
-    headers: coreHeaders(),
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(parseError(data, response.status));
+  if (shouldUseInternalCore(url)) {
+    const riskScore = resolveRiskScore(payload.payload);
+    const gate = evaluateGate({ riskScore });
+    return {
+      decision: gate.decision,
+      reason: gate.reason,
+      policy_version: "internal-runtime-gate-v1",
+      latency_ms: 0,
+      evaluated_at: new Date().toISOString(),
+      stability_score: gate.decision === "ALLOW" ? 1 : gate.decision === "STABILIZE" ? 0.5 : 0,
+      source: "internal",
+    };
   }
+  try {
+    const response = await fetch(`${url}/execute`, {
+      method: "POST",
+      headers: coreHeaders(),
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    });
 
-  return data;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(parseError(data, response.status));
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function getDSGCoreMetrics() {
