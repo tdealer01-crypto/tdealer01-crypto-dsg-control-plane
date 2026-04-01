@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDSGCoreHealth } from "../../../lib/dsg-core";
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from "../../../lib/security/rate-limit";
 import {
   KNOWN_GAPS,
   SOURCE_OF_TRUTH_MAP,
@@ -8,7 +9,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimit = applyRateLimit({
+    key: getRateLimitKey(request, 'integration'),
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: buildRateLimitHeaders(rateLimit, 30) }
+    );
+  }
+
   const core = await getDSGCoreHealth();
 
   return NextResponse.json({
@@ -23,5 +36,5 @@ export async function GET() {
       core,
     },
     known_gaps: KNOWN_GAPS,
-  });
+  }, { headers: buildRateLimitHeaders(rateLimit, 30) });
 }

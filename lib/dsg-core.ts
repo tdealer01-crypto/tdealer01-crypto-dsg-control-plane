@@ -1,5 +1,3 @@
-const DEFAULT_DSG_CORE_URL = "http://localhost:8000";
-
 export type DSGCoreExecutionRequest = {
   agent_id: string;
   action: string;
@@ -30,8 +28,13 @@ export type DSGCoreDeterminism = {
 };
 
 export function getDSGCoreConfig() {
+  const configuredUrl = process.env.DSG_CORE_URL;
+  if (!configuredUrl) {
+    throw new Error("Missing DSG_CORE_URL");
+  }
+
   return {
-    url: (process.env.DSG_CORE_URL || DEFAULT_DSG_CORE_URL).replace(/\/$/, ""),
+    url: configuredUrl.replace(/\/$/, ""),
     apiKey: process.env.DSG_CORE_API_KEY || process.env.DSG_API_KEY || "",
   };
 }
