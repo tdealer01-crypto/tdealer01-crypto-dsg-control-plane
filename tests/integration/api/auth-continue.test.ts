@@ -172,4 +172,26 @@ describe('/auth/continue', () => {
     expect(location).toContain('error=send-failed');
     expect(signInWithOtp).toHaveBeenCalledOnce();
   });
+
+
+  it('blocks excessive attempts by email', async () => {
+    vi.doMock('../../../lib/security/rate-limit', () => ({
+      consumeRateLimit: vi.fn(async () => ({ allowed: false, retryAfterSeconds: 120 })),
+    }));
+
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: vi.fn(async () => ({ auth: { signInWithOtp: vi.fn() } })),
+    }));
+
+    vi.doMock('../../../lib/supabase-server', () => ({
+      getSupabaseAdmin: vi.fn(() => ({ from: vi.fn(() => chainMock({ data: null, error: null })) })),
+    }));
+
+    const { POST } = await import('../../../app/auth/continue/route');
+    const req = buildFormRequest({ email: 'op@co.com', next: '/dashboard' });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location') || '').toContain('error=rate-limited');
+  });
 });
