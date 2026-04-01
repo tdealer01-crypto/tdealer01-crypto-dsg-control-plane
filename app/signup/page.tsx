@@ -70,6 +70,13 @@ export default function SignupPage({
             Create a workspace in minutes, generate your first agent, run a real execution, and monitor live readiness in one flow.
           </p>
 
+          <p className="mt-4 text-sm text-slate-300">
+            Already have an account?{' '}
+            <Link href="/login" className="text-emerald-300 underline">
+              Login here →
+            </Link>
+          </p>
+
           {notice ? (
             <div
               className={[
