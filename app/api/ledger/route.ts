@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import { getDSGCoreLedger } from "../../../lib/dsg-core";
+import { fetchAuditLogsForExport } from "../../../lib/security/audit-export";
 
 export const dynamic = "force-dynamic";
 
@@ -30,28 +31,20 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get("limit") || "20"), 100);
 
-    const [{ data, error }, coreLedger] = await Promise.all([
-      supabase
-        .from("audit_logs")
-        .select(`
-          id,
-          execution_id,
-          decision,
-          reason,
-          evidence,
-          created_at
-        `)
-        .eq("org_id", profile.org_id)
-        .order("created_at", { ascending: false })
-        .limit(limit),
+    const [auditExport, coreLedger] = await Promise.all([
+      fetchAuditLogsForExport(String(profile.org_id), limit),
       getDSGCoreLedger(limit),
     ]);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!auditExport.ok) {
+      if ("reason" in auditExport && auditExport.reason === "relation-missing") {
+        return NextResponse.json({ error: "Audit export is temporarily unavailable because audit_logs relation is missing." }, { status: 503 });
+      }
+
+      return NextResponse.json({ error: "message" in auditExport ? auditExport.message : "Failed to load audit export." }, { status: 500 });
     }
 
-    const items = (data || []).map((row: any) => ({
+    const items = (auditExport.rows || []).map((row: any) => ({
       id: row.id,
       execution_id: row.execution_id,
       decision: row.decision,

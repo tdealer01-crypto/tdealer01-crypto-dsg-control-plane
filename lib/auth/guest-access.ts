@@ -6,6 +6,28 @@ export type GuestScope = {
   executions?: string[];
 };
 
+const FORBIDDEN_GUEST_PERMISSIONS = new Set([
+  'org.manage_access',
+  'org.manage_billing',
+  'org.manage_security',
+  'org.manage_policies',
+  'org.manage_agents',
+  'org.execute',
+  'org.invite_members',
+  'org.invite_guests',
+]);
+
+export function preventGuestAuditorPrivilegeEscalation(requestedPermissions: string[]): { ok: true } | { ok: false; reason: string } {
+  const normalized = requestedPermissions.map((item) => String(item || '').trim()).filter(Boolean);
+  const forbidden = normalized.filter((permission) => FORBIDDEN_GUEST_PERMISSIONS.has(permission));
+
+  if (forbidden.length > 0) {
+    return { ok: false, reason: `Guest auditors cannot request privileged permissions: ${forbidden.join(', ')}` };
+  }
+
+  return { ok: true };
+}
+
 export type GuestAccessGrant = {
   id: string;
   org_id: string;

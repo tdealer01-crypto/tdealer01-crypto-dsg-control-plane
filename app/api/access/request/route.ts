@@ -32,6 +32,22 @@ async function resolveRequesterOrgId() {
   }
 }
 
+async function resolveOrgIdByDomain(domain: string) {
+  if (!domain) return null;
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('users')
+    .select('org_id')
+    .eq('is_active', true)
+    .ilike('email', `%@${domain}`)
+    .not('org_id', 'is', null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return data?.org_id || null;
+}
+
 async function parseBody(request: NextRequest) {
   const contentType = request.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -54,13 +70,14 @@ export async function POST(request: NextRequest) {
   const workspaceName = String(body.workspace_name || '').trim() || null;
   const fullName = String(body.full_name || '').trim() || null;
   const reason = String(body.reason || '').trim() || null;
+  const explicitOrgId = String(body.org_id || '').trim() || null;
 
   if (!email || !domain) {
     return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 });
   }
 
   const admin = getSupabaseAdmin();
-  const orgId = await resolveRequesterOrgId();
+  const orgId = explicitOrgId || (await resolveRequesterOrgId()) || (await resolveOrgIdByDomain(domain));
   const { data: existingPending } = await admin
     .from('access_requests')
     .select('id, created_at')

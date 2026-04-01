@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { resolveLoginContext } from '../../../lib/auth/login-context';
+import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -57,6 +58,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
 
+    if (loginContext.mode === 'approval-required') {
+      const requestAccess = new URL('/request-access', request.url);
+      requestAccess.searchParams.set('email', email);
+      if (workspaceName) requestAccess.searchParams.set('workspace_name', workspaceName);
+      return NextResponse.redirect(requestAccess, { status: 302 });
+    }
+
     const { data: operatorRow, error: operatorErr } = await admin
       .from('users')
       .select('id, email, is_active, org_id, auth_user_id')
@@ -93,6 +101,24 @@ export async function POST(request: NextRequest) {
 
     if (orgSlug && loginContext.mode === 'sso-first') {
       redirectToLogin.searchParams.set('error', 'org-self-serve-disabled');
+      return NextResponse.redirect(redirectToLogin, { status: 302 });
+    }
+
+    const accessMode = resolveAccessModeForEmail(email);
+    if (accessMode === 'invite_only' || accessMode === 'scim_managed') {
+      redirectToLogin.searchParams.set('error', 'not-allowed');
+      return NextResponse.redirect(redirectToLogin, { status: 302 });
+    }
+
+    if (accessMode === 'approved_domains_require_approval') {
+      const requestAccess = new URL('/request-access', request.url);
+      requestAccess.searchParams.set('email', email);
+      if (workspaceName) requestAccess.searchParams.set('workspace_name', workspaceName);
+      return NextResponse.redirect(requestAccess, { status: 302 });
+    }
+
+    if (accessMode === 'sso_required') {
+      redirectToLogin.searchParams.set('error', 'sso-required');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
 
