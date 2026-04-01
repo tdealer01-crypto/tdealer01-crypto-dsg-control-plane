@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import LoginForm from '../../components/LoginForm';
 import { resolveLoginContext } from '../../lib/auth/login-context';
 
 function getSafeNext(value?: string) {
@@ -44,7 +45,7 @@ export default async function LoginPage({
           <p className="mt-4 text-base leading-7 text-slate-300">
             {ssoOnly || ssoFirst
               ? 'Continue with your company SSO to access your organization workspace.'
-              : 'Enter your work email once. If your account already has operator access, we will send a login link. If you are new, add a workspace name and we will start a trial setup flow.'}
+              : 'Login with your work email, or start a free trial if you are new.'}
           </p>
 
           {notice ? <div className={['mt-6 rounded-2xl border p-4 text-sm', notice.tone === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100' : 'border-red-500/30 bg-red-500/10 text-red-200'].join(' ')}>{notice.text}</div> : null}
@@ -59,27 +60,9 @@ export default async function LoginPage({
           )}
 
           {!ssoOnly && (
-            <form action="/auth/continue" method="post" className="mt-8 space-y-4">
-              <input type="hidden" name="next" value={next} />
-              {context.org?.slug ? <input type="hidden" name="org" value={context.org.slug} /> : null}
-
-              <div>
-                <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">Work email</label>
-                <input id="email" name="email" type="email" required placeholder="name@company.com" className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-slate-100 outline-none" />
-              </div>
-
-              <div>
-                <label htmlFor="workspace_name" className="mb-2 block text-sm font-medium text-slate-200">Workspace name (only for new trial users)</label>
-                <input id="workspace_name" name="workspace_name" type="text" placeholder="Acme Ops" className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-slate-100 outline-none" />
-              </div>
-
-              <div>
-                <label htmlFor="full_name" className="mb-2 block text-sm font-medium text-slate-200">Full name (optional)</label>
-                <input id="full_name" name="full_name" type="text" placeholder="Jane Doe" className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-slate-100 outline-none" />
-              </div>
-
-              <button className="w-full rounded-2xl bg-emerald-400 px-5 py-4 font-semibold text-slate-950 transition hover:scale-[1.01]">{ssoFirst ? 'Use email recovery link' : 'Continue with email'}</button>
-            </form>
+            <div className="mt-8">
+              <LoginForm next={next} orgSlug={context.org?.slug} ssoFirst={ssoFirst} />
+            </div>
           )}
         </div>
 
@@ -88,10 +71,10 @@ export default async function LoginPage({
             <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">What happens next</p>
             <div className="mt-6 grid gap-4">
               {[
-                'Existing operator emails receive a magic link for login.',
-                'New emails can start a trial when workspace details are included.',
-                'The callback verifies the link and creates the session.',
-                'Protected dashboard access still requires a valid active org mapping.',
+                'Use the Login tab to sign in with your existing work email.',
+                'Use the Start Trial tab to create a new workspace with a 14-day free trial.',
+                'We send a magic link to your email — click it to continue.',
+                'Protected dashboard access requires a valid active organization.',
               ].map((item, index) => (
                 <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-400/10 font-semibold text-emerald-200">{index + 1}</div>
