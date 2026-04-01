@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
+import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
 
 export const dynamic = "force-dynamic";
 
-const INCLUDED_EXECUTIONS: Record<string, number> = {
-  trial: 1000,
-  pro: 10000,
-  business: 100000,
-  enterprise: 1000000,
-};
 
 export async function GET() {
   try {
@@ -69,7 +64,7 @@ export async function GET() {
     const remaining = Math.max(0, included - executions);
     const utilization = included > 0 ? Number((executions / included).toFixed(4)) : 0;
     const overage = Math.max(0, executions - included);
-    const projectedAmountUsd = Number((overage * 0.001).toFixed(3));
+    const projectedAmountUsd = Number((overage * getOverageRateUsd()).toFixed(3));
 
     return NextResponse.json({
       ok: true,

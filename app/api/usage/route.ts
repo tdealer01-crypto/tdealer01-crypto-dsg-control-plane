@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
+import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
 
 export const dynamic = 'force-dynamic';
 
-const INCLUDED_EXECUTIONS: Record<string, number> = {
-  trial: 1000,
-  pro: 10000,
-  business: 100000,
-  enterprise: 1000000,
-};
 
 function formatPlanLabel(planKey?: string | null, interval?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
@@ -99,7 +94,7 @@ export async function GET() {
       INCLUDED_EXECUTIONS[planKey] || INCLUDED_EXECUTIONS.trial;
 
     const overageExecutions = Math.max(0, executions - includedExecutions);
-    const projectedAmountUsd = Number((overageExecutions * 0.001).toFixed(3));
+    const projectedAmountUsd = Number((overageExecutions * getOverageRateUsd()).toFixed(3));
 
     return NextResponse.json({
       plan: formatPlanLabel(planKey, subscription?.billing_interval || null),
