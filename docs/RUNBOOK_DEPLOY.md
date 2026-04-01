@@ -21,6 +21,37 @@ Set required production values in Vercel project settings using `.env.example` a
 - Billing: `OVERAGE_RATE_USD`
 - Access control: `ACCESS_MODE` / `ACCESS_POLICY`
 
+### Vercel + GitHub failure pattern (current known)
+If deployment status is `Error` and build logs show:
+- `Missing Supabase public environment variables`
+
+Then the project is missing at least one of:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+For server route execution, also verify:
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Quick check with Vercel CLI:
+```bash
+vercel env ls
+```
+
+Add missing values:
+```bash
+vercel env add NEXT_PUBLIC_SUPABASE_URL production
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+vercel env add SUPABASE_SERVICE_ROLE_KEY production
+```
+
+If using internal DSG core mode in the same repo:
+- leave `DSG_CORE_URL` unset, or set `DSG_CORE_MODE=internal`
+
+Then redeploy from the latest GitHub commit:
+```bash
+vercel --prod
+```
+
 ## 3) Apply Supabase migrations
 Run migrations for the target environment before traffic cutover.
 - Verify new migration files are present and executed in order.

@@ -38,7 +38,7 @@ export function getDSGCoreConfig() {
   };
 }
 
-function useInternalCore(url: string) {
+function shouldUseInternalCore(url: string) {
   if (process.env.DSG_CORE_MODE === "internal") {
     return true;
   }
@@ -68,7 +68,7 @@ function parseError(data: any, status: number) {
 
 export async function getDSGCoreHealth() {
   const { url } = getDSGCoreConfig();
-  if (useInternalCore(url)) {
+  if (shouldUseInternalCore(url)) {
     return {
       ok: true,
       url: "internal://runtime-gate",
@@ -104,7 +104,7 @@ export async function getDSGCoreHealth() {
 
 export async function executeOnDSGCore(payload: DSGCoreExecutionRequest) {
   const { url } = getDSGCoreConfig();
-  if (useInternalCore(url)) {
+  if (shouldUseInternalCore(url)) {
     const riskScore = resolveRiskScore(payload.payload);
     const gate = evaluateGate({ riskScore });
     return {
