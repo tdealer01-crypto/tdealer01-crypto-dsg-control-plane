@@ -6,6 +6,11 @@ export type AccessMode =
   | 'sso_required'
   | 'scim_managed';
 
+export type AccessPolicyDecision = {
+  mode: 'auto_join' | 'require_approval' | 'manual_review';
+  reason: AccessMode;
+};
+
 function parseDomainList(value?: string): string[] {
   return String(value || '')
     .split(',')
@@ -18,7 +23,11 @@ export function getApprovedAutoJoinDomains(): string[] {
 }
 
 export function getApprovedApprovalDomains(): string[] {
-  return parseDomainList(process.env.APPROVED_APPROVAL_DOMAINS);
+  const canonical = parseDomainList(process.env.APPROVED_APPROVAL_DOMAINS);
+  if (canonical.length > 0) return canonical;
+
+  // Backward-compat fallback for older env naming.
+  return parseDomainList(process.env.APPROVAL_REQUIRED_DOMAINS);
 }
 
 export function resolveAccessModeForEmail(email: string): AccessMode {
@@ -41,4 +50,18 @@ export function resolveAccessModeForEmail(email: string): AccessMode {
   }
 
   return 'self_serve_trial';
+}
+
+export function resolveAccessPolicyDecision(email: string): AccessPolicyDecision {
+  const mode = resolveAccessModeForEmail(email);
+
+  if (mode === 'approved_domains_auto_join') {
+    return { mode: 'auto_join', reason: mode };
+  }
+
+  if (mode === 'approved_domains_require_approval') {
+    return { mode: 'require_approval', reason: mode };
+  }
+
+  return { mode: 'manual_review', reason: mode };
 }
