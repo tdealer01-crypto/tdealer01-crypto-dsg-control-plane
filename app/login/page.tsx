@@ -10,6 +10,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'success',
       text: 'Check your email for the magic link to continue.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -17,6 +19,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'success',
       text: 'Signed out successfully. You can request a new magic link at any time.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -24,6 +28,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'Enter your email before continuing.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -31,6 +37,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'If this email is new, add a workspace name to start a trial.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -38,13 +46,26 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'This email is not provisioned for operator access. Contact your organization admin or start a free trial.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
+
+  if (error === 'approval-required') {
+    return {
+      tone: 'error',
+      text: 'Your organization requires admin approval before access is granted.',
+      ctaHref: '/request-access',
+      ctaLabel: 'Request access',
+    };
+  }
   if (error === 'send-failed') {
     return {
       tone: 'error',
       text: 'We could not send the magic link for this operator account. Check email auth delivery and try again.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -52,6 +73,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'We could not start the trial flow. Check your details and try again.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -59,6 +82,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'This email is authenticated but not provisioned for an active DSG organization yet.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -66,6 +91,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'This login link is invalid or expired. Request a new one.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -73,6 +100,8 @@ function getMessage(message?: string, error?: string) {
     return {
       tone: 'error',
       text: 'Unexpected auth error. Check server logs and auth configuration.',
+      ctaHref: null,
+      ctaLabel: null,
     };
   }
 
@@ -107,7 +136,12 @@ export default function LoginPage({
                   : 'border-red-500/30 bg-red-500/10 text-red-200',
               ].join(' ')}
             >
-              {notice.text}
+              <p>{notice.text}</p>
+              {notice.ctaHref ? (
+                <Link href={notice.ctaHref} className="mt-3 inline-flex rounded-xl border border-emerald-300/40 bg-emerald-400/10 px-3 py-2 font-semibold text-emerald-100">
+                  {notice.ctaLabel || 'Continue'}
+                </Link>
+              ) : null}
             </div>
           ) : null}
 
