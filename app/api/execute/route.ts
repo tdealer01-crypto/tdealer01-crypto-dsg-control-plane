@@ -6,6 +6,7 @@ import { buildApprovalKey } from '../../../lib/runtime/approval';
 import { canonicalHash, canonicalJson } from '../../../lib/runtime/canonical';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { buildQuotaSummary } from '../../../lib/billing/quota-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,8 +129,9 @@ export async function POST(request: Request) {
     if (orgCounterError) return NextResponse.json({ error: orgCounterError.message }, { status: 500 });
 
     const orgExecutions = (orgCounters || []).reduce((sum, row) => sum + Number(row.executions || 0), 0);
+    const quotaSummary = buildQuotaSummary(subscription?.plan_key || 'trial', orgExecutions);
     if (orgExecutions >= getIncludedExecutions(subscription?.plan_key || 'trial')) {
-      return NextResponse.json({ error: 'Organization execution quota exceeded' }, { status: 429 });
+      return NextResponse.json({ error: 'Organization execution quota exceeded', quota_summary: quotaSummary }, { status: 429 });
     }
 
     const coreResult = await executeOnDSGCore({
@@ -229,6 +231,7 @@ export async function POST(request: Request) {
       ledger_sequence: Number(commitRow.ledger_sequence || 0),
       truth_sequence: Number(commitRow.truth_sequence || 0),
       core: { decision: coreResult.decision, evaluated_at: coreResult.evaluated_at },
+      quota_summary: quotaSummary,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });

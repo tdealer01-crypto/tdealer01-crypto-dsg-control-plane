@@ -1,0 +1,8 @@
+'use client';
+import { useEffect, useState } from 'react';
+
+export default function GoLivePage() {
+  const [report, setReport] = useState<any>(null);
+  useEffect(() => { fetch('/api/settings/go-live', { cache: 'no-store' }).then((r) => r.json()).then(setReport).catch(() => setReport(null)); }, []);
+  return <main className="min-h-screen bg-slate-950 text-white p-8"><h1 className="text-3xl font-semibold">Go-live readiness</h1><p className="text-slate-300 mt-2">Structured checklist for enterprise rollout.</p>{!report ? <p className="mt-4">Loading...</p> : <div className="mt-6"><div className="rounded border border-slate-700 bg-slate-900 p-4"><p className="text-sm text-slate-300">Overall status</p><p className="text-2xl font-semibold">{report.status}</p></div><div className="mt-6 grid gap-4 md:grid-cols-2">{(report.categories || []).map((c: any)=><div key={c.name} className="rounded border border-slate-800 bg-slate-900 p-4"><p className="font-semibold">{c.name}</p>{(c.items||[]).map((i:any)=><p key={i.key} className="text-sm text-slate-300">{i.ok ? '✅' : '⚠️'} {i.key}</p>)}</div>)}</div><div className="mt-6"><p className="font-semibold">Blockers</p>{(report.blockers||[]).map((b:string)=><p key={b} className="text-sm text-red-300">• {b}</p>) || <p>None</p>}<p className="font-semibold mt-4">Warnings</p>{(report.warnings||[]).map((w:string)=><p key={w} className="text-sm text-amber-300">• {w}</p>) || <p>None</p>}</div><div className="mt-4"><a className="border border-slate-700 rounded px-3 py-2" href="/api/settings/go-live/export?format=json">Export JSON</a> <a className="border border-slate-700 rounded px-3 py-2" href="/api/settings/go-live/export?format=md">Export Markdown</a></div></div>}</main>;
+}

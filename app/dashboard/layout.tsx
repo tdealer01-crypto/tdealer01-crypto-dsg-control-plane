@@ -11,8 +11,9 @@ const NAV = [
   { href: '/dashboard/capacity', label: 'Capacity' },
   { href: '/dashboard/billing', label: 'Billing' },
   { href: '/dashboard/audit', label: 'Audit' },
-  { href: '/dashboard/settings/access', label: 'Access Settings' },
-  { href: '/dashboard/settings/security', label: 'Security Settings' },
+  { href: '/dashboard/settings/domains', label: 'Domains' },
+  { href: '/dashboard/settings/security', label: 'Security' },
+  { href: '/dashboard/settings/go-live', label: 'Go-live' },
   { href: '/app-shell', label: 'App Shell' },
 ];
 
