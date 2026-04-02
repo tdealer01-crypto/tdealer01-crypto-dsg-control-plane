@@ -153,8 +153,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
+  let provisionedUser: { id: string; role: string | null } | null = null;
+
   if (existingUser?.id) {
-    const { error: userUpdateError } = await admin
+    const { data: updatedUser, error: userUpdateError } = await admin
       .from('users')
       .update({
         auth_user_id: user.id,
@@ -162,14 +164,17 @@ export async function GET(request: NextRequest) {
         is_active: true,
         updated_at: nowIso,
       })
+      .select('id, role')
       .eq('id', existingUser.id);
 
     if (userUpdateError) {
       redirectToLogin.searchParams.set('error', 'not-provisioned');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
+
+    provisionedUser = updatedUser?.[0] ?? null;
   } else {
-    const { error: userInsertError } = await admin
+    const { data: insertedUser, error: userInsertError } = await admin
       .from('users')
       .insert({
         auth_user_id: user.id,
@@ -180,22 +185,19 @@ export async function GET(request: NextRequest) {
         is_active: true,
         created_at: nowIso,
         updated_at: nowIso,
-      });
+      })
+      .select('id, role')
+      .single();
 
     if (userInsertError) {
       redirectToLogin.searchParams.set('error', 'not-provisioned');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
+
+    provisionedUser = insertedUser;
   }
 
-  const { data: provisionedUser, error: provisionedUserError } = await admin
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .eq('org_id', orgId)
-    .maybeSingle();
-
-  if (provisionedUserError || !provisionedUser?.id) {
+  if (!provisionedUser?.id) {
     redirectToLogin.searchParams.set('error', 'not-provisioned');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
