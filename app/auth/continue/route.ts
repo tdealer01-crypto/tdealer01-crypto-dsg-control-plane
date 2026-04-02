@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { getResend, buildMagicLinkEmail } from '../../../lib/resend';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -22,6 +23,39 @@ function getTrustedAppOrigin(request: NextRequest) {
   } catch {}
 
   return request.nextUrl.origin;
+}
+
+async function sendMagicLink(
+  authClient: Awaited<ReturnType<typeof createClient>>,
+  email: string,
+  redirectUrl: string,
+  context: 'login' | 'trial',
+): Promise<{ error: { message: string } | null }> {
+  const resend = getResend();
+
+  // Always create the OTP via Supabase (generates the magic link)
+  const { data, error } = await authClient.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectUrl,
+      shouldCreateUser: true,
+    },
+  });
+
+  if (error) {
+    return { error };
+  }
+
+  // If Resend is configured, we rely on Supabase's OTP but could send
+  // a branded email. However, Supabase already sends the email with the
+  // magic link when signInWithOtp is called. Resend integration is useful
+  // when Supabase email is disabled and a custom SMTP/API is preferred.
+  // For now, log that Resend is available for future custom email templates.
+  if (resend.configured) {
+    console.info('[auth-continue] Resend is configured — Supabase OTP email sent for:', email);
+  }
+
+  return { error: null };
 }
 
 export async function POST(request: NextRequest) {
@@ -59,13 +93,7 @@ export async function POST(request: NextRequest) {
       const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin(request));
       confirmUrl.searchParams.set('next', next);
 
-      const { error } = await authClient.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: confirmUrl.toString(),
-          shouldCreateUser: true,
-        },
-      });
+      const { error } = await sendMagicLink(authClient, email, confirmUrl.toString(), 'login');
 
       if (error) {
         console.error('[auth-continue] operator send failed:', error);
@@ -124,13 +152,7 @@ export async function POST(request: NextRequest) {
     confirmUrl.searchParams.set('next', '/quickstart');
     confirmUrl.searchParams.set('signup', 'trial');
 
-    const { error } = await authClient.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: confirmUrl.toString(),
-        shouldCreateUser: true,
-      },
-    });
+    const { error } = await sendMagicLink(authClient, email, confirmUrl.toString(), 'trial');
 
     if (error) {
       console.error('[auth-continue] trial send failed:', error);
