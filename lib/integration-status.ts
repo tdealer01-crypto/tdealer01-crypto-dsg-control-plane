@@ -10,7 +10,7 @@ export const VERIFIED_FORMAL_CORE = {
   ],
   scope_boundary: [
     "Formal gate core only",
-    "Does not by itself verify runtime orchestration",
+    "Runtime orchestration is implemented in control-plane and requires integration verification",
     "Does not by itself verify monitor pipelines",
     "Does not by itself verify billing or organization flows",
     "Does not by itself verify multi-repo product assembly",
@@ -41,3 +41,9 @@ export const KNOWN_GAPS = [
   "Runtime, audit, and canonical gate are split across multiple repositories.",
   "Cross-repo contract alignment still needs implementation verification before it can be treated as a single unified product path.",
 ] as const;
+
+export const VERIFIABLE_EVIDENCE_ARTIFACTS = {
+  z3_proof: "artifacts/formal/dsg_gate_proof.smt2",
+  z3_verify_script: "artifacts/formal/verify.sh",
+  nist_ai_rmf_mapping: "docs/NIST_AI_RMF_MAPPING.md",
+} as const;
