@@ -124,13 +124,12 @@ export default function DashboardPage() {
 
         if (!agentsRes.ok) throw new Error(agentsJson.error || "Failed to load agents");
         if (!executionsRes.ok) throw new Error(executionsJson.error || "Failed to load executions");
-        if (!usageRes.ok) throw new Error(usageJson.error || "Failed to load usage");
         if (!healthRes.ok) throw new Error(healthJson.error || "Failed to load control-plane health");
         if (!alive) return;
 
         setAgents(agentsJson.agents || []);
         setExecutions(executionsJson.executions || []);
-        setSummary(usageJson.summary || null);
+        setSummary(usageRes.ok ? (usageJson.summary || usageJson || null) : null);
         setHealth(healthJson || null);
 
         if (auditRes.ok) {
