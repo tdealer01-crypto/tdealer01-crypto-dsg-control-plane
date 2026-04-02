@@ -169,21 +169,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
   } else {
-    const { error: userInsertError } = await admin.from('users').insert({
-      auth_user_id: user.id,
-      email: normalizedEmail,
-      org_id: orgId,
-      role: 'owner',
-      auth_provider: 'magic_link',
-      is_active: true,
-      created_at: nowIso,
-      updated_at: nowIso,
-    });
+    const { error: userInsertError } = await admin
+      .from('users')
+      .insert({
+        auth_user_id: user.id,
+        email: normalizedEmail,
+        org_id: orgId,
+        role: 'owner',
+        auth_provider: 'magic_link',
+        is_active: true,
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
 
     if (userInsertError) {
       redirectToLogin.searchParams.set('error', 'not-provisioned');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
+  }
+
+  const { data: provisionedUser, error: provisionedUserError } = await admin
+    .from('users')
+    .select('id, role')
+    .eq('auth_user_id', user.id)
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (provisionedUserError || !provisionedUser?.id) {
+    redirectToLogin.searchParams.set('error', 'not-provisioned');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
+  }
+
+  const { error: runtimeRoleError } = await admin
+    .from('runtime_roles')
+    .upsert(
+      [
+        { org_id: orgId, user_id: provisionedUser.id, role: 'org_admin' },
+        { org_id: orgId, user_id: provisionedUser.id, role: 'operator' },
+        { org_id: orgId, user_id: provisionedUser.id, role: 'billing_admin' },
+      ],
+      { onConflict: 'org_id,user_id,role' }
+    );
+
+  if (runtimeRoleError) {
+    redirectToLogin.searchParams.set('error', 'not-provisioned');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
   const { error: billingError } = await admin.from('billing_subscriptions').insert({
@@ -219,8 +249,8 @@ export async function GET(request: NextRequest) {
   await ensureSeatActivatedForUser({
     orgId,
     email: normalizedEmail,
-    userId: existingUser?.id ?? user.id,
-    role: existingUser?.role || 'owner',
+    userId: provisionedUser.id,
+    role: provisionedUser.role || existingUser?.role || 'owner',
     source: 'auth_confirm',
   });
 

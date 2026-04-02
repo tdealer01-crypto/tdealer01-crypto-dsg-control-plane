@@ -15,6 +15,8 @@ create or replace function runtime_commit_execution(
   p_request_payload jsonb default '{}'::jsonb,
   p_context_payload jsonb default '{}'::jsonb,
   p_policy_version text default null,
+  p_audit_evidence jsonb default '{}'::jsonb,
+  p_usage_amount_usd numeric default 0,
   p_created_at timestamptz default now()
 )
 returns table (
@@ -160,6 +162,69 @@ begin
     where id = p_request_id
       and status = 'pending';
 
+  insert into audit_logs (
+    org_id,
+    agent_id,
+    execution_id,
+    policy_version,
+    decision,
+    reason,
+    evidence,
+    created_at
+  )
+  values (
+    p_org_id,
+    p_agent_id,
+    v_execution.id,
+    p_policy_version,
+    p_decision,
+    p_reason,
+    coalesce(p_audit_evidence, '{}'::jsonb),
+    coalesce(p_created_at, now())
+  );
+
+  insert into usage_events (
+    org_id,
+    agent_id,
+    execution_id,
+    event_type,
+    quantity,
+    unit,
+    amount_usd,
+    metadata,
+    created_at
+  )
+  values (
+    p_org_id,
+    p_agent_id,
+    v_execution.id,
+    'execution',
+    1,
+    'execution',
+    coalesce(p_usage_amount_usd, 0),
+    coalesce(p_metadata, '{}'::jsonb),
+    coalesce(p_created_at, now())
+  );
+
+  insert into usage_counters (
+    org_id,
+    agent_id,
+    billing_period,
+    executions,
+    updated_at
+  )
+  values (
+    p_org_id,
+    p_agent_id,
+    to_char(coalesce(p_created_at, now()), 'YYYY-MM'),
+    1,
+    coalesce(p_created_at, now())
+  )
+  on conflict (agent_id, billing_period)
+  do update
+    set executions = usage_counters.executions + 1,
+        updated_at = excluded.updated_at;
+
   return query
   select
     v_inserted.id,
@@ -184,6 +249,8 @@ revoke all on function public.runtime_commit_execution(
   jsonb,
   jsonb,
   text,
+  jsonb,
+  numeric,
   timestamptz
 ) from public;
 
@@ -200,5 +267,7 @@ grant execute on function public.runtime_commit_execution(
   jsonb,
   jsonb,
   text,
+  jsonb,
+  numeric,
   timestamptz
 ) to service_role;

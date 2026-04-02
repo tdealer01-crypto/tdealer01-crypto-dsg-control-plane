@@ -35,18 +35,25 @@ async function resolveRequesterOrgId() {
 
 async function resolveOrgIdByDomain(domain: string) {
   if (!domain) return null;
-  const admin = getSupabaseAdmin();
-  const { data, error } = await admin
-    .from('users')
-    .select('org_id')
-    .eq('is_active', true)
-    .ilike('email', `%@${domain}`)
-    .not('org_id', 'is', null)
-    .limit(1)
-    .maybeSingle();
+  try {
+    const admin = getSupabaseAdmin();
+    const usersTable = admin.from('users') as any;
 
-  if (error) return null;
-  return data?.org_id || null;
+    if (typeof usersTable.select !== 'function') return null;
+
+    const { data, error } = await usersTable
+      .select('org_id')
+      .eq('is_active', true)
+      .ilike('email', `%@${domain}`)
+      .not('org_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) return null;
+    return data?.org_id || null;
+  } catch {
+    return null;
+  }
 }
 
 async function parseBody(request: NextRequest) {

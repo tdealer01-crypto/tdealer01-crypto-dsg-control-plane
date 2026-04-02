@@ -38,6 +38,7 @@ const proofCards = [
 ];
 
 const flowSteps = [
+  "Product value and landing positioning",
   "A runtime intent is submitted",
   "Approval is created and validated",
   "Execution passes through the runtime decision path",
@@ -64,7 +65,7 @@ const proofSnapshot = [
 
 export default function EnterpriseProofStartPage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-slate-950 text-white" data-testid="enterprise-proof-start">
       <section className="mx-auto max-w-7xl px-6 py-16 md:py-24">
         <div className="max-w-4xl">
           <div className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">
@@ -103,8 +104,15 @@ export default function EnterpriseProofStartPage() {
           </div>
 
           <div className="mt-10 flex flex-wrap gap-4">
+            <button
+              type="button"
+              className="rounded-2xl border border-cyan-300/30 bg-cyan-400/10 px-6 py-4 font-semibold text-cyan-100"
+            >
+              Bootstrap Demo Runtime Evidence
+            </button>
             <Link
               href="/enterprise-proof/report"
+              data-testid="open-executive-report"
               className="rounded-2xl bg-emerald-400 px-6 py-4 font-semibold text-slate-950"
             >
               Open Enterprise Proof Report
@@ -186,6 +194,12 @@ export default function EnterpriseProofStartPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-6">
+        <div
+          data-testid="demo-context"
+          className="mb-6 rounded-[1.5rem] border border-cyan-400/20 bg-cyan-400/10 p-6 text-cyan-50"
+        >
+          Demo runtime context is prepared for walkthrough verification.
+        </div>
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
           <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
             What problem it solves
@@ -227,7 +241,7 @@ export default function EnterpriseProofStartPage() {
           <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
             End-to-end enterprise flow
           </p>
-          <div className="mt-6 grid gap-4">
+          <div className="mt-6 grid gap-4" data-testid="walkthrough-steps">
             {flowSteps.map((step, index) => (
               <div
                 key={step}

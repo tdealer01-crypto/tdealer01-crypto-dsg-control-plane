@@ -18,7 +18,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'effect_id is required' }, { status: 400 });
     }
 
-    const result = await reconcileEffectCallback({ effectId, status, payload: body?.payload ?? {} });
+    const result = await reconcileEffectCallback({
+      effectId,
+      orgId: access.orgId,
+      status,
+      payload: body?.payload ?? {},
+    });
 
     if (!result.found) {
       return NextResponse.json({ error: 'effect_id not found' }, { status: 404 });

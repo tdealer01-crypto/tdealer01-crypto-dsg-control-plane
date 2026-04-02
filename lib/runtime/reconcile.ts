@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from '../supabase-server';
 
 export async function reconcileEffectCallback(input: {
   effectId: string;
+  orgId: string;
   status: 'succeeded' | 'failed';
   payload: unknown;
 }) {
@@ -11,6 +12,7 @@ export async function reconcileEffectCallback(input: {
     .from('runtime_effects')
     .select('id, status, callback_count')
     .eq('id', input.effectId)
+    .eq('org_id', input.orgId)
     .maybeSingle();
 
   if (readError) throw new Error(readError.message);
@@ -26,6 +28,7 @@ export async function reconcileEffectCallback(input: {
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.effectId)
+    .eq('org_id', input.orgId)
     .eq('status', 'pending');
 
   if (updateError) throw new Error(updateError.message);
