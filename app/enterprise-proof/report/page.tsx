@@ -30,7 +30,7 @@ const sections = [
 
 export default function EnterpriseProofReportPage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-slate-950 text-white" data-testid="enterprise-proof-report">
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -68,6 +68,19 @@ export default function EnterpriseProofReportPage() {
           {sections.map((section) => (
             <div
               key={section.title}
+              data-testid={
+                section.title === 'Product definition'
+                  ? 'value-landing'
+                  : section.title === 'Runtime proof'
+                    ? 'runtime-summary'
+                    : section.title === 'Governance proof'
+                      ? 'governance-panel'
+                      : section.title === 'Recovery proof'
+                        ? 'checkpoint-recovery'
+                        : section.title === 'Business impact'
+                          ? 'billing-value'
+                          : 'executive-proof-final'
+              }
               className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6"
             >
               <h2 className="text-2xl font-semibold">{section.title}</h2>
@@ -77,7 +90,7 @@ export default function EnterpriseProofReportPage() {
         </div>
 
 
-        <div className="mt-10 rounded-[2rem] border border-violet-400/20 bg-violet-400/10 p-6">
+        <div className="mt-10 rounded-[2rem] border border-violet-400/20 bg-violet-400/10 p-6" data-testid="security-context">
           <p className="text-sm uppercase tracking-[0.2em] text-violet-200">
             Verification boundary
           </p>
@@ -86,7 +99,7 @@ export default function EnterpriseProofReportPage() {
           </p>
         </div>
 
-        <div className="mt-10 rounded-[2rem] border border-cyan-400/20 bg-cyan-400/10 p-6">
+        <div className="mt-10 rounded-[2rem] border border-cyan-400/20 bg-cyan-400/10 p-6" data-testid="ledger-lineage">
           <p className="text-sm uppercase tracking-[0.2em] text-cyan-200">
             AI-ready summary
           </p>

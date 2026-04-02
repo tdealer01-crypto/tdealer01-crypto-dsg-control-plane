@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { getResend, buildMagicLinkEmail } from '../../../lib/resend';
 import { resolveLoginContext } from '../../../lib/auth/login-context';
 import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
+import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -119,9 +120,28 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('[auth-continue] operator send failed:', error);
+        await logSignInEvent({
+          email,
+          orgId: operatorRow.org_id,
+          authUserId: operatorRow.auth_user_id,
+          eventType: 'magic_link_requested',
+          source: 'auth-continue',
+          success: false,
+          metadata: { mode: 'operator', next },
+        }).catch(() => null);
         redirectToLogin.searchParams.set('error', 'send-failed');
         return NextResponse.redirect(redirectToLogin, { status: 302 });
       }
+
+      await logSignInEvent({
+        email,
+        orgId: operatorRow.org_id,
+        authUserId: operatorRow.auth_user_id,
+        eventType: 'magic_link_requested',
+        source: 'auth-continue',
+        success: true,
+        metadata: { mode: 'operator', next },
+      }).catch(() => null);
 
       redirectToLogin.searchParams.set('message', 'check-email');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
@@ -201,9 +221,24 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[auth-continue] trial send failed:', error);
+      await logSignInEvent({
+        email,
+        eventType: 'magic_link_requested',
+        source: 'auth-continue',
+        success: false,
+        metadata: { mode: 'trial', workspace_name: workspaceName },
+      }).catch(() => null);
       redirectToLogin.searchParams.set('error', 'signup-failed');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
+
+    await logSignInEvent({
+      email,
+      eventType: 'magic_link_requested',
+      source: 'auth-continue',
+      success: true,
+      metadata: { mode: 'trial', workspace_name: workspaceName },
+    }).catch(() => null);
 
     redirectToLogin.searchParams.set('message', 'check-email');
     return NextResponse.redirect(redirectToLogin, { status: 302 });

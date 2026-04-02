@@ -60,14 +60,13 @@
 
 ## 5) Problems Actually Found (control-plane repo truth)
 
+> Update (2026-04-02): รายการ “missing files” ด้านล่างถูกแก้ไขแล้วใน repository ปัจจุบัน
+> (`tdealer01-crypto-dsg-control-plane`). ไฟล์ runtime spine / RBAC / tests ที่เคยถูกระบุว่า missing
+> มีอยู่ครบถ้วนแล้วใน working tree ปัจจุบัน. ประเด็นที่ยังต้องโฟกัสคือ logic/contract gaps.
+
 ### PR-101 runtime-spine-foundation
 
-**Missing required files**
-- `supabase/migrations/20260331_runtime_spine.sql`
-- `lib/runtime/canonical.ts`
-- `lib/runtime/gate.ts`
-- `lib/runtime/approval.ts`
-- `lib/agent-auth.ts`
+**Status:** Resolved (files exist)
 
 **Observed gap**
 - ยังไม่มีตาราง prefix `runtime_*` ใน schema หลัก
@@ -75,10 +74,7 @@
 
 ### PR-102 runtime-intent-execute
 
-**Missing required files**
-- `app/api/intent/route.ts`
-- `app/api/runtime-summary/route.ts`
-- `supabase/migrations/20260331_runtime_spine_rpc.sql`
+**Status:** Resolved (files exist)
 
 **Observed gap**
 - `/api/execute` มี compatibility writes (`executions`, `audit_logs`, `usage_events`, `usage_counters`) จริง
@@ -86,20 +82,11 @@
 
 ### PR-103 runtime-mcp-effect-checkpoint
 
-**Missing required files ทั้งชุด**
-- `app/api/mcp/call/route.ts`
-- `app/api/effect-callback/route.ts`
-- `app/api/checkpoint/route.ts`
-- `lib/runtime/reconcile.ts`
-- `lib/runtime/checkpoint.ts`
+**Status:** Resolved (files exist)
 
 ### PR-104 runtime-rbac-governance
 
-**Missing required files**
-- `supabase/migrations/20260401_runtime_rbac.sql`
-- `lib/authz.ts`
-- `lib/runtime/permissions.ts`
-- `app/api/policies/route.ts`
+**Status:** Resolved (files exist)
 
 **Observed gap**
 - route หลักหลายจุดยังใช้ authentication + `users.is_active` style checks
@@ -107,11 +94,18 @@
 
 ### PR-105 runtime-tests-ops
 
-**Missing required files/areas**
-- `tests/` tree ยังไม่พบ
-- runtime ops docs (`docs/ops/runtime-spine-*`) ยังไม่พบ
-- release gate doc (`docs/release/runtime-spine-release-gate.md`) ยังไม่พบ
-- `package.json` ยังไม่มี `test` script
+**Status:** Partially resolved
+- `tests/` tree และ `package.json` test script มีแล้ว
+- เอกสาร ops/release ให้ตรวจตามสถานะล่าสุดใน `docs/ops` และ `docs/release`
+
+### Remaining runtime contract gaps (active)
+
+1. Trial signup path ต้อง seed `runtime_roles` ให้ครบ owner defaults
+2. `/api/execute` ควรรวม audit + usage writes ใน transaction/RPC เดียว
+3. `/api/effect-callback` ต้องบังคับ org scope จาก caller
+4. `/api/core/monitor` ต้องบังคับ RBAC ผ่าน `requireOrgRole`
+5. `.env.example` ควรมี `DSG_CORE_MODE`
+6. `usage_counters` ต้องมี unique index `(agent_id, billing_period)` เพื่อกัน race
 
 ## 6) Cross-Agent Synthesis (A..H simulation over real evidence)
 

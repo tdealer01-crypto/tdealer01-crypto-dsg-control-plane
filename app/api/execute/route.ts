@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
     const { data: counter, error: counterReadError } = await supabase
       .from('usage_counters')
-      .select('id, executions')
+      .select('executions')
       .eq('agent_id', agent.id)
       .eq('billing_period', billingPeriod)
       .maybeSingle();
@@ -141,6 +141,15 @@ export async function POST(request: Request) {
 
     const canonical = { action, input, context, decision, policyVersion, reason };
 
+    const auditEvidence = {
+      action,
+      input,
+      context,
+      stability_score: stabilityScore,
+      core_result: coreResult,
+      anti_replay: { approval_request_id: approvalRequest.id },
+    };
+
     const { data: commitResult, error: rpcError } = await supabase.rpc('runtime_commit_execution', {
       p_org_id: agent.org_id,
       p_agent_id: agent.id,
@@ -154,6 +163,8 @@ export async function POST(request: Request) {
       p_request_payload: input,
       p_context_payload: { ...context, action, stability_score: stabilityScore, core_result: coreResult },
       p_policy_version: policyVersion,
+      p_audit_evidence: auditEvidence,
+      p_usage_amount_usd: getOverageRateUsd(),
       p_created_at: nowIso,
     });
 
@@ -165,50 +176,6 @@ export async function POST(request: Request) {
 
     const executionId = String(commitRow.execution_id);
 
-    const { data: auditRow, error: auditError } = await supabase
-      .from('audit_logs')
-      .insert({
-        org_id: agent.org_id,
-        agent_id: agent.id,
-        execution_id: executionId,
-        policy_version: policyVersion,
-        decision,
-        reason,
-        evidence: {
-          action,
-          input,
-          context,
-          stability_score: stabilityScore,
-          core_result: coreResult,
-          anti_replay: { approval_request_id: approvalRequest.id, replayed: Boolean(commitRow.replayed) },
-        },
-        created_at: nowIso,
-      })
-      .select('id')
-      .single();
-    if (auditError) return NextResponse.json({ error: auditError.message }, { status: 500 });
-
-    const { error: usageEventError } = await supabase.from('usage_events').insert({
-      org_id: agent.org_id,
-      agent_id: agent.id,
-      execution_id: executionId,
-      event_type: 'execution',
-      quantity: 1,
-      unit: 'execution',
-      amount_usd: getOverageRateUsd(),
-      metadata: { decision, stability_score: stabilityScore },
-      created_at: nowIso,
-    });
-    if (usageEventError) return NextResponse.json({ error: usageEventError.message }, { status: 500 });
-
-    if (counter?.id) {
-      const { error } = await supabase.from('usage_counters').update({ executions: currentAgentExecutions + 1, updated_at: nowIso }).eq('id', counter.id);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    } else {
-      const { error } = await supabase.from('usage_counters').insert({ org_id: agent.org_id, agent_id: agent.id, billing_period: billingPeriod, executions: 1, updated_at: nowIso });
-      if (error && !/relation .* does not exist/i.test(error.message)) return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
     await supabase.from('agents').update({ last_used_at: nowIso, updated_at: nowIso }).eq('id', agent.id);
 
     return NextResponse.json({
@@ -218,7 +185,7 @@ export async function POST(request: Request) {
       latency_ms: latencyMs,
       policy_version: policyVersion,
       stability_score: stabilityScore,
-      audit_id: auditRow?.id ?? null,
+      audit_id: null,
       usage_counted: true,
       replayed: Boolean(commitRow.replayed),
       ledger_sequence: Number(commitRow.ledger_sequence || 0),

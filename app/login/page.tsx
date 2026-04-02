@@ -10,6 +10,8 @@ function getSafeNext(value?: string) {
 function getMessage(message?: string, error?: string) {
   if (message === 'check-email') return { tone: 'success', text: 'Check your email for the magic link to continue.' };
   if (message === 'signed-out') return { tone: 'success', text: 'Signed out successfully. You can request a new magic link at any time.' };
+  if (error === 'invalid-email') return { tone: 'error', text: 'Enter a valid email address before continuing.' };
+  if (error === 'approval-required') return { tone: 'error', text: 'This domain requires admin approval. Request access and wait for review.' };
   if (error === 'missing-email') return { tone: 'error', text: 'Enter your email before continuing.' };
   if (error === 'missing-workspace') return { tone: 'error', text: 'If this email is new, add a workspace name to start a trial.' };
   if (error === 'not-allowed') return { tone: 'error', text: 'This email is not provisioned for operator access. Contact your organization admin or start a free trial.' };
@@ -55,6 +57,7 @@ export default async function LoginPage({
               <Link href={ssoHref} className="block w-full rounded-2xl bg-emerald-400 px-5 py-4 text-center font-semibold text-slate-950">
                 Continue with your company SSO
               </Link>
+              <p className="text-sm text-slate-300">Continue with SSO for organization-managed login.</p>
               {ssoOnly ? null : <p className="text-sm text-slate-300">Use email recovery link</p>}
             </div>
           )}
@@ -85,6 +88,7 @@ export default async function LoginPage({
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/pricing" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-100">View plans</Link>
+              <Link href="/request-access" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-100">Request access</Link>
               <Link href="/" className="rounded-2xl border border-white/10 px-4 py-3 font-semibold text-slate-300">Back home</Link>
             </div>
           </div>

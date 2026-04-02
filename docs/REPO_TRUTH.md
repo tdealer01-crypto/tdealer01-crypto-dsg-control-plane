@@ -23,11 +23,11 @@ The uploaded proof artifact is SMT-LIB v2 and is intended to be checked with Z3,
 
 This does not mean the full product is formally verified end to end.
 
-The following still require repository-truth verification and contract alignment:
+The following still require contract-depth hardening and verification:
 
-- runtime orchestration
-- live monitor flows
-- billing and organization flows
+- runtime orchestration (implemented, but verify transactional consistency and org scoping)
+- live monitor flows (enforce RBAC depth on all monitor paths)
+- billing and organization flows (verify usage/accounting consistency under failure)
 - multi-repo product assembly
 
 ## Current integration gap
