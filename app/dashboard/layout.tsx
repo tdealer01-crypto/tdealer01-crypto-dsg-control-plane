@@ -6,11 +6,14 @@ const NAV = [
   { href: '/dashboard/mission', label: 'Mission' },
   { href: '/dashboard/operations', label: 'Operations' },
   { href: '/dashboard/executions', label: 'Executions' },
+  { href: '/dashboard/skills', label: 'Skills' },
   { href: '/dashboard/proofs', label: 'Proofs' },
   { href: '/dashboard/ledger', label: 'Ledger' },
   { href: '/dashboard/capacity', label: 'Capacity' },
   { href: '/dashboard/billing', label: 'Billing' },
   { href: '/dashboard/audit', label: 'Audit' },
+  { href: '/dashboard/settings/access', label: 'Access Settings' },
+  { href: '/dashboard/settings/security', label: 'Security Settings' },
   { href: '/app-shell', label: 'App Shell' },
 ];
 

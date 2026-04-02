@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import GlobalNav from '../components/GlobalNav';
 
 export const metadata: Metadata = {
   title: 'DSG Control Plane',
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">{children}</body>
+      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
+        <GlobalNav />
+        {children}
+      </body>
     </html>
   );
 }
