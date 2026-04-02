@@ -83,6 +83,25 @@ Expected readiness contract:
 - `GET /api/usage`
 - Execute one approved runtime intent path (`/api/intent` -> `/api/execute`)
 
+## 7) Login/Magic-Link troubleshooting (`/login?error=unexpected`)
+When users are redirected back to login with an unexpected auth error, validate this sequence in order:
+
+1. **Vercel env vars are complete**
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+2. **Supabase migrations are applied on the same project**
+   - `supabase db push --linked` (or equivalent SQL execution in order)
+3. **Supabase Email provider is enabled**
+   - Authentication → Providers → Email
+4. **Supabase URL configuration matches production**
+   - Site URL: `https://<your-production-domain>`
+   - Redirect URL includes: `https://<your-production-domain>/auth/confirm`
+5. **Redeploy Vercel after changes**
+   - `vercel --prod`
+
+If these values are incorrect, `createClient()` / admin client initialization can fail and trigger a fallback redirect to `/login?error=unexpected`.
+
 ## Roll-forward criteria
 - All checks pass without elevated error rate.
 - Core monitor remains stable with `readiness_status: "ready"`.

@@ -60,16 +60,22 @@
 
 **Status:** Resolved (tests/docs exist)
 
-## 6) Remaining Contract/Logic Gaps (active)
+## 6) Remaining Contract/Logic Gaps (status: resolved in code, keep regression watch)
 
-ไฟล์ไม่ missing แล้ว แต่ยังต้องเฝ้าระวัง/ตรวจซ้ำที่ระดับ logic:
+ไฟล์ไม่ missing แล้ว และ logic gaps หลักที่เคยเปิดไว้ได้รับการ implement แล้วใน codebase ปัจจุบัน:
 
-1. Trial signup ต้อง seed `runtime_roles` สำหรับ owner defaults อย่างสม่ำเสมอ
-2. `/api/execute` ต้องคง transactional consistency ของ execution + audit + usage
-3. `/api/effect-callback` ต้อง enforce org scoping ตลอดเส้นทาง
-4. `/api/core/monitor` ต้อง enforce RBAC ด้วย `requireOrgRole`
-5. `.env.example` ต้องคงค่า `DSG_CORE_MODE`
-6. `usage_counters` ต้องมี uniqueness `(agent_id, billing_period)`
+1. Trial signup path seed `runtime_roles` สำหรับ owner defaults แล้ว
+2. `/api/execute` commit path อยู่ใน RPC transaction เดียว (execution + audit + usage)
+3. `/api/effect-callback` enforce org scoping ใน reconcile path แล้ว
+4. `/api/core/monitor` enforce RBAC ด้วย `requireOrgRole` แล้ว
+5. `.env.example` ระบุ `DSG_CORE_MODE` แล้ว
+6. `usage_counters` มี uniqueness `(agent_id, billing_period)` และรองรับ upsert
+
+Operational gap ที่ยังเจอบ่อยจริงใน production deploy คือ env/config drift:
+
+- `NEXT_PUBLIC_SUPABASE_URL` หรือ key ที่เกี่ยวข้องไม่ครบใน Vercel
+- Supabase Auth URL/Redirect ไม่ตรงกับ production hostname
+- migrations ยังไม่ครบ environment ปลายทาง
 
 ## 7) Unification Plan
 
