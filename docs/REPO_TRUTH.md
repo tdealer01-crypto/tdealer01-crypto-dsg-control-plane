@@ -23,12 +23,13 @@ The uploaded proof artifact is SMT-LIB v2 and is intended to be checked with Z3,
 
 This does not mean the full product is formally verified end to end.
 
-The following still require contract-depth hardening and verification:
+The runtime spine is implemented in control-plane, and remaining work is contract-depth verification:
 
-- runtime orchestration (implemented, but verify transactional consistency and org scoping)
-- live monitor flows (enforce RBAC depth on all monitor paths)
-- billing and organization flows (verify usage/accounting consistency under failure)
-- multi-repo product assembly
+- transactional consistency under failure paths
+- strict org scoping across callback and reconciliation paths
+- RBAC depth across monitor and runtime admin surfaces
+- billing and usage accounting consistency under concurrency
+- multi-repo product assembly verification
 
 ## Current integration gap
 
