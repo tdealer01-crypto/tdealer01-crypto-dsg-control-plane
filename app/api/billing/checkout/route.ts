@@ -79,7 +79,7 @@ function getPriceId(plan: PlanKey, interval: BillingInterval) {
 
 export async function POST(request: Request) {
   try {
-    const rateLimit = applyRateLimit({
+    const rateLimit = await applyRateLimit({
       key: getRateLimitKey(request, 'billing-checkout'),
       limit: 20,
       windowMs: 60_000,

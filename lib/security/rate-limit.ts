@@ -1,3 +1,6 @@
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
 type RateLimitOptions = {
   key: string;
   limit: number;
@@ -10,12 +13,51 @@ type RateLimitResult = {
   resetAt: number;
 };
 
-type Bucket = {
-  count: number;
-  resetAt: number;
-};
+type Bucket = { count: number; resetAt: number };
+const memBuckets = new Map<string, Bucket>();
 
-const buckets = new Map<string, Bucket>();
+function applyMemoryRateLimit(options: RateLimitOptions): RateLimitResult {
+  const now = Date.now();
+  const existing = memBuckets.get(options.key);
+  if (!existing || now >= existing.resetAt) {
+    const resetAt = now + options.windowMs;
+    memBuckets.set(options.key, { count: 1, resetAt });
+    return { allowed: true, remaining: Math.max(options.limit - 1, 0), resetAt };
+  }
+  if (existing.count >= options.limit) {
+    return { allowed: false, remaining: 0, resetAt: existing.resetAt };
+  }
+  existing.count += 1;
+  memBuckets.set(options.key, existing);
+  return { allowed: true, remaining: Math.max(options.limit - existing.count, 0), resetAt: existing.resetAt };
+}
+
+let redis: Redis | null = null;
+const limiters = new Map<string, Ratelimit>();
+
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  redis = new Redis({ url, token });
+  return redis;
+}
+
+function getLimiter(prefix: string, limit: number, windowMs: number): Ratelimit | null {
+  const r = getRedis();
+  if (!r) return null;
+  const key = `${prefix}:${limit}:${windowMs}`;
+  if (!limiters.has(key)) {
+    const windowSec = `${Math.ceil(windowMs / 1000)} s`;
+    limiters.set(key, new Ratelimit({
+      redis: r,
+      limiter: Ratelimit.fixedWindow(limit, windowSec as any),
+      prefix: `rl:${prefix}`,
+    }));
+  }
+  return limiters.get(key)!;
+}
 
 export function getRateLimitKey(request: Request, prefix: string) {
   const forwardedFor = request.headers.get('x-forwarded-for') || '';
@@ -24,35 +66,20 @@ export function getRateLimitKey(request: Request, prefix: string) {
   return `${prefix}:${ip}`;
 }
 
-export function applyRateLimit(options: RateLimitOptions): RateLimitResult {
-  const now = Date.now();
-  const existing = buckets.get(options.key);
+export async function applyRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
+  const prefix = options.key.split(':')[0] || 'default';
+  const limiter = getLimiter(prefix, options.limit, options.windowMs);
 
-  if (!existing || now >= existing.resetAt) {
-    const resetAt = now + options.windowMs;
-    buckets.set(options.key, { count: 1, resetAt });
-    return {
-      allowed: true,
-      remaining: Math.max(options.limit - 1, 0),
-      resetAt,
-    };
+  if (!limiter) {
+    return applyMemoryRateLimit(options);
   }
 
-  if (existing.count >= options.limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: existing.resetAt,
-    };
+  try {
+    const { success, remaining, reset } = await limiter.limit(options.key);
+    return { allowed: success, remaining, resetAt: reset };
+  } catch {
+    return applyMemoryRateLimit(options);
   }
-
-  existing.count += 1;
-  buckets.set(options.key, existing);
-  return {
-    allowed: true,
-    remaining: Math.max(options.limit - existing.count, 0),
-    resetAt: existing.resetAt,
-  };
 }
 
 export function buildRateLimitHeaders(result: RateLimitResult, limit: number) {

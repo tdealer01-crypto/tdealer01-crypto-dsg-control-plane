@@ -10,7 +10,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const rateLimit = applyRateLimit({
+  const rateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'integration'),
     limit: 30,
     windowMs: 60_000,

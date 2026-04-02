@@ -138,6 +138,8 @@ export async function POST(request: Request) {
     const latencyMs = Number(coreResult.latency_ms || 0);
     const policyVersion = String(coreResult.policy_version || 'dsg-core-v1');
     const stabilityScore = Number(coreResult.stability_score ?? 0);
+    const proofHash = String(coreResult.proof_hash || '');
+    const proofVersion = String(coreResult.proof_version || '');
 
     const canonical = { action, input, context, decision, policyVersion, reason };
 
@@ -146,6 +148,8 @@ export async function POST(request: Request) {
       input,
       context,
       stability_score: stabilityScore,
+      proof_hash: proofHash,
+      proof_version: proofVersion,
       core_result: coreResult,
       anti_replay: { approval_request_id: approvalRequest.id },
     };
@@ -166,6 +170,8 @@ export async function POST(request: Request) {
       p_audit_evidence: auditEvidence,
       p_usage_amount_usd: getOverageRateUsd(),
       p_created_at: nowIso,
+      p_agent_monthly_limit: monthlyLimit,
+      p_org_plan_limit: getIncludedExecutions(subscription?.plan_key || 'trial'),
     });
 
     if (rpcError) return NextResponse.json({ error: rpcError.message }, { status: 500 });
@@ -190,6 +196,8 @@ export async function POST(request: Request) {
       replayed: Boolean(commitRow.replayed),
       ledger_sequence: Number(commitRow.ledger_sequence || 0),
       truth_sequence: Number(commitRow.truth_sequence || 0),
+      proof_hash: proofHash || null,
+      proof_version: proofVersion || null,
       core: { decision: coreResult.decision, evaluated_at: coreResult.evaluated_at },
     });
   } catch (error) {
