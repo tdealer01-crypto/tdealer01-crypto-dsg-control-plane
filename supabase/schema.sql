@@ -33,11 +33,22 @@ create table if not exists users (
   updated_at timestamptz default now()
 );
 
+create table if not exists policies (
+  id text primary key,
+  name text not null,
+  version text not null default 'v1',
+  status text not null default 'active',
+  description text,
+  config jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists agents (
   id text primary key,
   org_id text not null references organizations(id) on delete cascade,
   name text not null,
-  policy_id text,
+  policy_id text references policies(id) on update cascade,
   status text default 'active',
   monthly_limit integer default 10000,
   api_key_hash text not null,
