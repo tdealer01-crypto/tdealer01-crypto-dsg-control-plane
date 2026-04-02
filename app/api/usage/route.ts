@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../lib/supabase/server';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { requireOrgRole } from '../../../lib/authz';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
+import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,33 +30,19 @@ function formatBillingPeriod(
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await requireOrgRole(RuntimeRouteRoles.usage_read);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('org_id, is_active')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (profileError || !profile?.org_id || !profile.is_active) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const supabase = getSupabaseAdmin();
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from('billing_subscriptions')
       .select(
         'org_id, plan_key, billing_interval, status, current_period_start, current_period_end, trial_end, updated_at'
       )
-      .eq('org_id', profile.org_id)
+      .eq('org_id', access.orgId)
       .in('status', ['trialing', 'active', 'past_due', 'unpaid', 'canceled'])
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -77,7 +65,7 @@ export async function GET() {
     const { data: usageCounters, error: usageError } = await supabase
       .from('usage_counters')
       .select('executions')
-      .eq('org_id', profile.org_id)
+      .eq('org_id', access.orgId)
       .eq('billing_period', billingPeriodKey);
 
     if (usageError) {
