@@ -2,7 +2,7 @@ import { getDSGCoreHealth } from '../../../lib/dsg-core';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
 export async function GET(request: Request) {
-  const rateLimit = applyRateLimit({
+  const rateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'health'),
     limit: 60,
     windowMs: 60_000,

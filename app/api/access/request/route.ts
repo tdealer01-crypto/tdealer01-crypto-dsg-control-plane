@@ -72,7 +72,7 @@ async function parseBody(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimit = applyRateLimit({
+  const rateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'access-request'),
     limit: 10,
     windowMs: 60_000,

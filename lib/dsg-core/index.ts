@@ -54,9 +54,13 @@ export async function getDSGCoreHealth() {
 }
 
 export async function executeOnDSGCore(payload: import('./types').DSGCoreExecutionRequest) {
-  const mode = parseMode();
-  if (mode === 'internal') return executeOnInternalDSGCore(payload);
-  return executeOnRemoteDSGCore(getRemoteConfig(), payload);
+  const { resolveGate } = await import('../gate');
+  const gate = resolveGate();
+  return gate.evaluate({
+    agent_id: payload.agent_id,
+    action: payload.action,
+    payload: payload.payload,
+  });
 }
 
 export async function getDSGCoreMetrics() {
