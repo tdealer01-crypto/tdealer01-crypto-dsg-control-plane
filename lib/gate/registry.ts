@@ -10,13 +10,13 @@ export function resolveGate(id?: string): GatePlugin {
   const pluginId = id || process.env.DSG_GATE_PLUGIN || mapLegacyMode();
   const plugin = plugins.get(pluginId);
   if (!plugin) {
-    throw new Error(`Gate plugin "${pluginId}" not found. Available: ${[...plugins.keys()].join(', ')}`);
+    throw new Error(`Gate plugin "${pluginId}" not found. Available: ${Array.from(plugins.keys()).join(', ')}`);
   }
   return plugin;
 }
 
 export function listGates(): GatePlugin[] {
-  return [...plugins.values()];
+  return Array.from(plugins.values());
 }
 
 function mapLegacyMode(): string {
