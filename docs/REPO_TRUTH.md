@@ -31,6 +31,8 @@ The runtime spine is implemented in control-plane, and remaining work is contrac
 - billing and usage accounting consistency under concurrency
 - multi-repo product assembly verification
 
+Current practical deployment risk is configuration drift (especially Supabase/Vercel auth environment variables and redirect URL settings), not missing runtime-spine files.
+
 ## Current integration gap
 
 The control-plane expects a richer core contract than the canonical gate contract currently visible in the gate repo. The current product is therefore a multi-repo system with verified components, not yet a single fully aligned execution path.
