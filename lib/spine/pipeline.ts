@@ -2,6 +2,13 @@ import { registry } from './plugin';
 import { ensureSpinePluginsRegistered } from './register-defaults';
 import type { Decision, PipelineResult, PluginOutput, PluginInput } from './types';
 
+export class SpineInfraError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SpineInfraError';
+  }
+}
+
 function severity(decision: Decision): number {
   return { ALLOW: 0, STABILIZE: 1, BLOCK: 2 }[decision];
 }
@@ -45,8 +52,11 @@ export async function runPipeline(input: PluginInput): Promise<PipelineResult> {
 
   const gateId = process.env.DSG_SPINE_GATE_PLUGIN || 'dsg-gate-bridge-v1';
   const gatePlugin = registry.get(gateId);
-  if (!gatePlugin || gatePlugin.kind !== 'gate') {
-    throw new Error(`Spine gate plugin not found: ${gateId}`);
+  if (!gatePlugin) {
+    throw new SpineInfraError('GATE_PLUGIN_NOT_FOUND');
+  }
+  if (gatePlugin.kind !== 'gate') {
+    throw new SpineInfraError('GATE_PLUGIN_INVALID_KIND');
   }
 
   const gateOutput = await gatePlugin.evaluate(input).catch((error) => pluginError(gatePlugin.id, error));

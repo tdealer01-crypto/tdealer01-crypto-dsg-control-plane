@@ -2,8 +2,8 @@ import { resolveAgentFromApiKey } from '../agent-auth';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../billing/overage-config';
 import { getSupabaseAdmin } from '../supabase-server';
 import { buildApprovalKey } from '../runtime/approval';
-import { canonicalHash, canonicalJson } from '../runtime/canonical';
-import { runPipeline } from './pipeline';
+import { canonicalHash, canonicalJson, type CanonicalInput } from '../runtime/canonical';
+import { runPipeline, SpineInfraError } from './pipeline';
 import type { SpineIntentPayload, TruthState } from './types';
 
 function getIncludedExecutions(planKey?: string | null) {
@@ -16,6 +16,38 @@ function rpcErrorMessage(error: unknown): string {
     return String((error as { message?: unknown }).message || '');
   }
   return '';
+}
+
+function mapRpcError(error: unknown) {
+  const message = rpcErrorMessage(error).toLowerCase();
+  const hasAny = (...patterns: string[]) => patterns.some((pattern) => message.includes(pattern));
+
+  if (hasAny('agent_quota_exceeded', 'agent quota exceeded')) {
+    return { status: 429, body: { error: 'Agent monthly quota exceeded' } };
+  }
+  if (hasAny('org_quota_exceeded', 'org quota exceeded')) {
+    return { status: 429, body: { error: 'Organization execution quota exceeded' } };
+  }
+  if (hasAny('approval_request_expired', 'approval request expired')) {
+    return { status: 409, body: { error: 'Runtime intent expired' } };
+  }
+  if (hasAny('approval_request_not_pending', 'approval request not pending')) {
+    return { status: 409, body: { error: 'Runtime intent is not pending' } };
+  }
+  if (hasAny('approval_request_not_found', 'approval request not found')) {
+    return { status: 409, body: { error: 'Runtime intent not found' } };
+  }
+  if (hasAny('approval_consumed_without_ledger_lineage', 'approval consumed without ledger lineage')) {
+    return { status: 500, body: { error: 'Approval consumed without ledger lineage' } };
+  }
+  if (hasAny('approval_consumption_failed', 'approval consumption failed')) {
+    return { status: 409, body: { error: 'Approval consumption failed' } };
+  }
+  if (hasAny('invalid_decision', 'invalid decision')) {
+    return { status: 500, body: { error: 'Pipeline returned invalid decision' } };
+  }
+
+  return { status: 500, body: { error: 'Internal server error' } };
 }
 
 async function resolveActiveAgent(orgId: string, agentId: string, apiKey: string) {
@@ -41,7 +73,7 @@ export async function issueSpineIntent(params: {
   const approvalKey = buildApprovalKey({
     orgId: resolved.agent.org_id,
     agentId: resolved.agent.id,
-    request: params.payload.canonicalRequest,
+    request: params.payload.canonicalRequest as CanonicalInput,
   });
 
   const { data: prior, error: priorError } = await supabase
@@ -118,7 +150,7 @@ export async function executeSpineIntent(params: {
   const approvalKey = buildApprovalKey({
     orgId: agent.org_id,
     agentId: agent.id,
-    request: params.payload.canonicalRequest,
+    request: params.payload.canonicalRequest as CanonicalInput,
   });
 
   const { data: approvalRequest, error: approvalError } = await supabase
@@ -206,26 +238,45 @@ export async function executeSpineIntent(params: {
     .maybeSingle();
 
   const truthState = (latestTruthRow || null) as TruthState;
-  const pipeline = await runPipeline({
-    org_id: agent.org_id,
-    agent_id: agent.id,
-    action: params.payload.action,
-    payload: {
-      input: params.payload.input,
-      context: params.payload.context,
-    },
-    truth_state: truthState,
-    approval: {
-      approval_id: approvalRequest.id,
-      approval_key: approvalKey,
-      expires_at: approvalRequest.expires_at,
-    },
-    spine: {
-      request_id: String(approvalRequest.id),
-      received_at: nowIso,
-      billing_period: billingPeriod,
-    },
-  });
+  let pipeline;
+  try {
+    pipeline = await runPipeline({
+      org_id: agent.org_id,
+      agent_id: agent.id,
+      action: params.payload.action,
+      payload: {
+        input: params.payload.input,
+        context: params.payload.context,
+      },
+      truth_state: truthState,
+      approval: {
+        approval_id: approvalRequest.id,
+        approval_key: approvalKey,
+        expires_at: approvalRequest.expires_at,
+      },
+      spine: {
+        request_id: String(approvalRequest.id),
+        received_at: nowIso,
+        billing_period: billingPeriod,
+      },
+    });
+  } catch (error) {
+    if (error instanceof SpineInfraError) {
+      const message = error.message;
+      if (message.includes('GATE_PLUGIN_NOT_FOUND') || message.includes('GATE_PLUGIN_INVALID_KIND')) {
+        return {
+          ok: false as const,
+          status: 500,
+          body: { error: 'Spine gate plugin is not available' },
+        };
+      }
+    }
+    return {
+      ok: false as const,
+      status: 500,
+      body: { error: 'Internal server error' },
+    };
+  }
 
   const canonical = {
     action: params.payload.action,
@@ -245,7 +296,14 @@ export async function executeSpineIntent(params: {
     proof: pipeline.proof,
     authoritative_plugin_id: pipeline.authoritative_plugin_id,
     pipeline_trace: pipeline.stages,
-    anti_replay: { approval_request_id: approvalRequest.id },
+    anti_replay: {
+      approval_request_id: approvalRequest.id,
+      approval_key: approvalKey,
+    },
+    spine: {
+      billing_period: billingPeriod,
+      received_at: nowIso,
+    },
   };
 
   const { data: commitResult, error: rpcError } = await supabase.rpc('runtime_commit_execution', {
@@ -259,8 +317,8 @@ export async function executeSpineIntent(params: {
       authoritative_plugin_id: pipeline.authoritative_plugin_id,
       pipeline_trace: pipeline.stages,
     },
-    p_canonical_hash: canonicalHash(canonical),
-    p_canonical_json: JSON.parse(canonicalJson(canonical)),
+    p_canonical_hash: canonicalHash(canonical as CanonicalInput),
+    p_canonical_json: JSON.parse(canonicalJson(canonical as CanonicalInput)),
     p_latency_ms: pipeline.total_latency_ms,
     p_request_payload: params.payload.input,
     p_context_payload: {
@@ -279,14 +337,8 @@ export async function executeSpineIntent(params: {
   });
 
   if (rpcError) {
-    const message = rpcErrorMessage(rpcError);
-    if (message.includes('agent_quota_exceeded')) {
-      return { ok: false as const, status: 429, body: { error: 'Agent monthly quota exceeded' } };
-    }
-    if (message.includes('org_quota_exceeded')) {
-      return { ok: false as const, status: 429, body: { error: 'Organization execution quota exceeded' } };
-    }
-    return { ok: false as const, status: 500, body: { error: 'Internal server error' } };
+    const mapped = mapRpcError(rpcError);
+    return { ok: false as const, status: mapped.status, body: mapped.body };
   }
 
   const commitRow = Array.isArray(commitResult) ? commitResult[0] : commitResult;
