@@ -3,6 +3,8 @@ import { requireOrgPermission } from '../../../../../lib/auth/require-org-permis
 import { logServerError, serverErrorResponse } from '../../../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 const PRIVATE_HEADERS = {
   'cache-control': 'private, no-store, max-age=0',
 };
