@@ -20,6 +20,7 @@ function getMessage(message?: string, error?: string) {
   if (error === 'not-provisioned') return { tone: 'error', text: 'This email is authenticated but not provisioned for an active DSG organization yet.' };
   if (error === 'invalid-link') return { tone: 'error', text: 'This login link is invalid or expired. Request a new one.' };
   if (error === 'sso-required') return { tone: 'error', text: 'Your company requires single sign-on.' };
+  if (error === 'rate-limited') return { tone: 'error', text: 'Too many login attempts. Wait 1 minute, then try again.' };
   if (error === 'sso-unavailable') return { tone: 'error', text: 'Single sign-on is not available for this login right now.' };
   if (error === 'org-self-serve-disabled') return { tone: 'error', text: 'Your company does not allow self-serve access for this login path.' };
   if (error === 'unexpected') return { tone: 'error', text: 'Unexpected auth error. Check server logs and auth configuration.' };
