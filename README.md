@@ -280,6 +280,25 @@ A practical evaluation path is:
 
 ---
 
+## Security Checklist Reality (Updated: 2026-04-03)
+
+จากผลตรวจล่าสุด มีบางจุดที่รายงานเดิม “ไม่ตรงกับความจริงปัจจุบัน” และได้อัปเดตให้ตรงกับสถานะจริงของโค้ดแล้ว:
+
+### Corrected facts
+- `app/auth/continue/route.ts` **มี rate limit แล้ว** (ไม่ได้เป็นช่องโหว่ที่ยังค้าง).
+- `app/api/execute/route.ts` **มี route-level rate limit แล้ว** (นอกเหนือจาก quota logic).
+- ที่ root **มี lock file แล้ว** (`package-lock.json`) จึงไม่ใช่สถานะ “ไม่พบ lock file”.
+
+### Items still needing additional verification / hardening
+- ยังไม่ได้ audit รายละเอียดของ shell scripts บางไฟล์แบบเต็ม:
+  - `set-vercel-runtime-env.sh`
+  - `set-vercel-stripe-env.sh`
+- CORS ยังเป็นแนวทาง same-origin เป็นหลัก หากมีแผน external client ควรกำหนด explicit allowlist policy.
+- ควรทบทวนการส่ง error detail กลับ client ให้เป็น generic มากขึ้นใน production paths ที่ยังส่งข้อความเชิงเทคนิค.
+- ควรกำหนดรอบ dependency security review/update อย่างสม่ำเสมอ.
+
+---
+
 ## Positioning
 
 DSG ONE should be understood as:
