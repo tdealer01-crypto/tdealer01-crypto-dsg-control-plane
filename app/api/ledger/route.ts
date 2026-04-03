@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import { getDSGCoreLedger } from "../../../lib/dsg-core";
 import { fetchAuditLogsForExport } from "../../../lib/security/audit-export";
+import { internalErrorMessage, logApiError } from "../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Audit export is temporarily unavailable because audit_logs relation is missing." }, { status: 503 });
       }
 
-      return NextResponse.json({ error: "message" in auditExport ? auditExport.message : "Failed to load audit export." }, { status: 500 });
+      logApiError("api/ledger", "message" in auditExport ? auditExport.message : "Audit export failed", { stage: "audit-export" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const items = (auditExport.rows || []).map((row: any) => ({
@@ -71,8 +73,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    logApiError("api/ledger", error, { stage: "unhandled" });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

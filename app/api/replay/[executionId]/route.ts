@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase/server";
 import { getDSGCoreLedger } from "../../../../lib/dsg-core";
+import { internalErrorMessage, logApiError } from "../../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -69,11 +70,13 @@ export async function GET(
     ]);
 
     if (executionError) {
-      return NextResponse.json({ error: executionError.message }, { status: 500 });
+      logApiError("api/replay/[executionId]", executionError, { stage: "execution-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     if (auditError) {
-      return NextResponse.json({ error: auditError.message }, { status: 500 });
+      logApiError("api/replay/[executionId]", auditError, { stage: "audit-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     if (!execution) {
@@ -96,8 +99,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    logApiError("api/replay/[executionId]", error, { stage: "unhandled" });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

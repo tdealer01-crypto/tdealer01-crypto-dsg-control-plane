@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { canonicalHash, canonicalJson } from '../../../../lib/runtime/canonical';
 import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
 import { getOverageRateUsd } from '../../../../lib/billing/overage-config';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 function demoEnabled(request: Request) {
   if (process.env.NODE_ENV === 'production') return false;
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
     });
 
     if (commitError) {
-      return NextResponse.json({ error: commitError.message }, { status: 500 });
+      logApiError('api/demo/bootstrap', commitError, { stage: 'runtime-commit' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const commitRow = Array.isArray(commit) ? commit[0] : commit;
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ org_id: orgId, agent_id: agentId, execution_id: commitRow.execution_id, demo_mode: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+    logApiError('api/demo/bootstrap', error, { stage: 'unhandled' });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }

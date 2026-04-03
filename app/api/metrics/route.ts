@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,8 @@ export async function GET() {
       .gte('created_at', todayStart.toISOString());
 
     if (executionsError) {
-      return NextResponse.json({ error: executionsError.message }, { status: 500 });
+      logApiError('api/metrics', executionsError, { stage: 'executions-query' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const { count: activeAgents, error: agentError } = await supabase
@@ -56,7 +58,8 @@ export async function GET() {
       .eq('status', 'active');
 
     if (agentError) {
-      return NextResponse.json({ error: agentError.message }, { status: 500 });
+      logApiError('api/metrics', agentError, { stage: 'agents-query' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const total = (executions || []).length;
@@ -78,7 +81,8 @@ export async function GET() {
       active_agents: Number(activeAgents || 0),
       avg_latency_ms: avgLatencyMs,
     });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    logApiError('api/metrics', error, { stage: 'unhandled' });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }
