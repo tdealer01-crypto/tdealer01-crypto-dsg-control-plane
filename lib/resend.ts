@@ -72,10 +72,21 @@ export function getResend(): ResendStatus {
   return { configured: true, send };
 }
 
+/** Escape a string for safe interpolation inside an HTML attribute value. */
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /**
  * Build a branded magic-link email body.
  */
 export function buildMagicLinkEmail(magicLink: string, context: 'login' | 'trial'): string {
+  const safeLink = escapeHtmlAttr(magicLink);
   const heading = context === 'trial' ? 'Start your DSG trial' : 'Sign in to DSG';
   const subtext =
     context === 'trial'
@@ -91,7 +102,7 @@ export function buildMagicLinkEmail(magicLink: string, context: 'login' | 'trial
     <p style="font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#6ee7b7;margin:0;">DSG Control Plane</p>
     <h1 style="font-size:24px;margin:16px 0 8px;color:#f1f5f9;">${heading}</h1>
     <p style="color:#94a3b8;line-height:1.6;margin:0 0 24px;">${subtext}</p>
-    <a href="${magicLink}" style="display:inline-block;background:#34d399;color:#0f172a;font-weight:600;padding:14px 28px;border-radius:12px;text-decoration:none;">
+    <a href="${safeLink}" style="display:inline-block;background:#34d399;color:#0f172a;font-weight:600;padding:14px 28px;border-radius:12px;text-decoration:none;">
       Continue to DSG
     </a>
     <p style="margin:24px 0 0;font-size:13px;color:#64748b;line-height:1.5;">
