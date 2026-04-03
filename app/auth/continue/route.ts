@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
-import { getResend, buildMagicLinkEmail } from '../../../lib/resend';
+import { getResend } from '../../../lib/resend';
 import { resolveLoginContext } from '../../../lib/auth/login-context';
 import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
 import { logSignInEvent } from '../../../lib/auth/sign-in-events';
+import { applyRateLimit, getRateLimitKey } from '../../../lib/security/rate-limit';
+
+const AUTH_CONTINUE_RATE_LIMIT = 8;
+const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -55,13 +59,19 @@ async function sendMagicLink(
   // when Supabase email is disabled and a custom SMTP/API is preferred.
   // For now, log that Resend is available for future custom email templates.
   if (resend.configured) {
-    console.info('[auth-continue] Resend is configured — Supabase OTP email sent for:', email);
+    console.info('[auth-continue] Resend is configured — Supabase OTP email sent.');
   }
 
   return { error: null };
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'auth-continue'),
+    limit: AUTH_CONTINUE_RATE_LIMIT,
+    windowMs: AUTH_CONTINUE_RATE_WINDOW_MS,
+  });
+
   const formData = await request.formData();
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const workspaceName = String(formData.get('workspace_name') || '').trim();
@@ -76,6 +86,11 @@ export async function POST(request: NextRequest) {
 
   if (!email) {
     redirectToLogin.searchParams.set('error', 'missing-email');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
+  }
+
+  if (!rateLimit.allowed) {
+    redirectToLogin.searchParams.set('error', 'rate-limited');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
