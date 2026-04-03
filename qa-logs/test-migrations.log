@@ -1,0 +1,18 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test:migrations
+> vitest run tests/migrations
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tdealer01-crypto-dsg-control-plane
+
+ ✓ tests/migrations/batch3-enterprise-identity.test.ts (1 test) 5ms
+ ✓ tests/migrations/runtime-spine.test.ts (2 tests) 5ms
+ ✓ tests/migrations/runtime-spine-hardening.test.ts (2 tests) 5ms
+
+ Test Files  3 passed (3)
+      Tests  5 passed (5)
+   Start at  22:45:30
+   Duration  2.47s (transform 190ms, setup 0ms, collect 182ms, tests 15ms, environment 1ms, prepare 461ms)
+
