@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID, createHash } from 'crypto';
 import { createClient } from '../../../lib/supabase/server';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,8 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logServerError(error, 'agents-get');
+      return serverErrorResponse();
     }
 
     const items = await Promise.all(
@@ -81,10 +83,8 @@ export async function GET() {
 
     return NextResponse.json({ items });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
-      { status: 500 }
-    );
+    logServerError(error, 'agents-get');
+    return serverErrorResponse();
   }
 }
 
@@ -126,8 +126,9 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !inserted) {
+      logServerError(error, 'agents-post');
       return NextResponse.json(
-        { error: error?.message || 'Failed to create agent' },
+        { error: 'Failed to create agent' },
         { status: 500 }
       );
     }
@@ -142,9 +143,7 @@ export async function POST(request: Request) {
       api_key_preview: buildPreview(apiKey),
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
-      { status: 500 }
-    );
+    logServerError(error, 'agents-post');
+    return serverErrorResponse();
   }
 }

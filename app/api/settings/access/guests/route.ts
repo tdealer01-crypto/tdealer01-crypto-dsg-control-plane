@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgPermission } from '../../../../../lib/auth/require-org-permission';
+import { logServerError, serverErrorResponse } from '../../../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
 
 const PRIVATE_HEADERS = {
@@ -21,7 +22,8 @@ export async function GET() {
     .limit(50);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: PRIVATE_HEADERS });
+    logServerError(error, 'settings-access-guests');
+    return serverErrorResponse({ headers: PRIVATE_HEADERS });
   }
 
   return NextResponse.json({ guests: data || [] }, { headers: PRIVATE_HEADERS });
