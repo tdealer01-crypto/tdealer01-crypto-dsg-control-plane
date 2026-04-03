@@ -205,7 +205,7 @@ export default function DashboardPage() {
 
         {error ? <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
 
-        {!loading && agents.length === 0 && executions.length === 0 ? (
+        {!loading && !error && agents.length === 0 && executions.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">
             <p className="text-lg font-semibold text-emerald-100">Welcome to DSG Control Plane</p>
             <p className="mt-2 text-sm leading-7 text-emerald-200/80">
