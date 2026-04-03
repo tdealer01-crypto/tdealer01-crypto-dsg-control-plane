@@ -58,6 +58,8 @@ export default function CommandCenterPage() {
   const [usage, setUsage] = useState<UsagePayload | null>(null);
   const [audit, setAudit] = useState<AuditPayload | null>(null);
   const [command, setCommand] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatOutput, setChatOutput] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -111,6 +113,52 @@ export default function CommandCenterPage() {
     return actions;
   }, [health?.core_ok, capacity?.utilization, alerts.length]);
 
+  async function submitCommand() {
+    const value = command.trim();
+    if (!value || chatBusy) return;
+    setChatBusy(true);
+    setChatOutput((prev) => [...prev, `> ${value}`]);
+
+    try {
+      const res = await fetch('/api/agent-chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: value }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Agent chat failed');
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No stream body returned');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(chunk, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || '';
+
+        for (const raw of events) {
+          if (!raw.startsWith('data: ')) continue;
+          const event = JSON.parse(raw.slice(6));
+          if (event.type === 'step_result' || event.type === 'step_error') {
+            setChatOutput((prev) => [...prev, JSON.stringify(event, null, 2)]);
+          }
+        }
+      }
+
+      setCommand('');
+    } catch (err) {
+      setChatOutput((prev) => [...prev, err instanceof Error ? err.message : 'Agent chat failed']);
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-7xl">
@@ -146,17 +194,26 @@ export default function CommandCenterPage() {
           <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Chat / Agent Console</h2>
-              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">Coming soon</span>
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">Live</span>
             </div>
             <p className="mt-2 text-sm text-slate-400">Use this pane for command prompts, summaries, and action planning.</p>
             <label className="mt-4 block text-sm text-slate-300">Command</label>
             <textarea
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder="Chat backend coming soon"
-              disabled
+              placeholder="Ask readiness/audit/capacity/execute..."
               className="mt-2 h-28 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100 outline-none ring-emerald-400 focus:ring-1"
             />
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={submitCommand}
+                disabled={chatBusy}
+                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
+              >
+                {chatBusy ? 'Running…' : 'Submit'}
+              </button>
+            </div>
             <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
               <p className="font-semibold text-slate-200">Suggested Actions</p>
               <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-300">
@@ -164,6 +221,17 @@ export default function CommandCenterPage() {
                   <li key={action}>{action}</li>
                 ))}
               </ul>
+            </div>
+            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <p className="font-semibold text-slate-200">Command Output</p>
+              <div className="mt-2 max-h-52 space-y-2 overflow-y-auto text-xs text-slate-300">
+                {chatOutput.length === 0 ? <p className="text-slate-500">No output yet.</p> : null}
+                {chatOutput.map((line, index) => (
+                  <pre key={`${index}-${line.slice(0, 8)}`} className="whitespace-pre-wrap break-all rounded border border-slate-800 bg-slate-900 p-2">
+                    {line}
+                  </pre>
+                ))}
+              </div>
             </div>
           </article>
 

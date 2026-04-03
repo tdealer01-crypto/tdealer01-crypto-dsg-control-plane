@@ -4,7 +4,6 @@ type ErrorResponseOptions = {
   status?: number;
   message?: string;
   headers?: HeadersInit;
-  logLabel?: string;
 };
 
 export function logServerError(error: unknown, label = 'server-error') {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import { getDSGCoreLedger, getDSGCoreMetrics } from "../../../lib/dsg-core";
-import { applyRateLimit, getRateLimitKey } from "../../../lib/security/rate-limit";
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from "../../../lib/security/rate-limit";
 import { logServerError, serverErrorResponse } from "../../../lib/security/error-response";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,10 @@ export async function GET(request: Request) {
     });
 
     if (!rateLimit.allowed) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit, EXECUTIONS_RATE_LIMIT) }
+      );
     }
 
     const supabase = await createClient();

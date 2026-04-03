@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { validateRuntimeRecovery } from '../../../lib/runtime/recovery';
 
 function canUseNonProdBypass(request: Request) {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     const result = await validateRuntimeRecovery({ orgId, agentId });
     return NextResponse.json(result, { status: result.pass ? 200 : 409 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+    logServerError(error, 'runtime-recovery-post');
+    return serverErrorResponse();
   }
 }

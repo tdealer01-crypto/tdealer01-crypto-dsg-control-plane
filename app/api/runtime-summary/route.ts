@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export async function GET(request: Request) {
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
       entries: ledger || [],
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+    logServerError(error, 'runtime-summary-get');
+    return serverErrorResponse();
   }
 }
