@@ -5,6 +5,8 @@ import { createClient } from '../../../../lib/supabase/server';
 import { buildVerifiedRuntimeProofReport, summarizeVerifiedRuntimeReport } from '../../../../lib/enterprise/proof-runtime';
 import { validateOrgAgentScope } from '../../../../lib/enterprise/proof-access';
 
+export const dynamic = 'force-dynamic';
+
 type Props = {
   searchParams: {
     org_id?: string;

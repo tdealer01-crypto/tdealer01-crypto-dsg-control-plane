@@ -3,6 +3,8 @@ import { requireOrgPermission } from '../../../../lib/auth/require-org-permissio
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { getApprovedApprovalDomains } from '../../../../lib/auth/access-policy';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardSecuritySettingsPage() {
   const access = await requireOrgPermission('org.manage_security');
   if (!access.ok) {
