@@ -1,0 +1,73 @@
+import { NextResponse } from 'next/server';
+import { requireOrgRole } from '../../../../lib/authz';
+import { executeSpineIntent } from '../../../../lib/spine/engine';
+import { normalizeSpinePayload } from '../../../../lib/spine/request';
+import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+
+export const dynamic = 'force-dynamic';
+
+const EXECUTE_RATE_LIMIT = 60;
+const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
+
+export async function POST(request: Request) {
+  try {
+    const rateLimit = await applyRateLimit({
+      key: getRateLimitKey(request, 'spine-execute'),
+      limit: EXECUTE_RATE_LIMIT,
+      windowMs: EXECUTE_RATE_WINDOW_MS,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
+      );
+    }
+
+    const access = await requireOrgRole(RuntimeRouteRoles.execute);
+    if (!access.ok) {
+      return NextResponse.json(
+        { error: access.error },
+        { status: access.status, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
+      );
+    }
+
+    const authHeader = request.headers.get('authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Missing Bearer token' },
+        { status: 401, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
+      );
+    }
+
+    const apiKey = authHeader.slice(7).trim();
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Empty API key' },
+        { status: 401, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
+      );
+    }
+
+    const payload = normalizeSpinePayload(await request.json().catch(() => null));
+    if (!payload.agentId) {
+      return NextResponse.json(
+        { error: 'agent_id is required' },
+        { status: 400, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
+      );
+    }
+
+    const result = await executeSpineIntent({
+      orgId: access.orgId,
+      apiKey,
+      payload,
+    });
+
+    return NextResponse.json(result.body, {
+      status: result.status,
+      headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+    });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
