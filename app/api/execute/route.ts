@@ -4,6 +4,13 @@ import { executeOnDSGCore } from '../../../lib/dsg-core';
 import { resolveAgentFromApiKey } from '../../../lib/agent-auth';
 import { buildApprovalKey } from '../../../lib/runtime/approval';
 import { canonicalHash, canonicalJson } from '../../../lib/runtime/canonical';
+import {
+  buildDhammaProofHash,
+  MAKK8_VERSION,
+  Makk8Arbiter,
+  type Makk8ActionData,
+  signDhammaProof,
+} from '../../../lib/runtime/makk8-arbiter';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
@@ -19,6 +26,34 @@ const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
 function getIncludedExecutions(planKey?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
   return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
+}
+
+function normalizeBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+  }
+  return fallback;
+}
+
+function normalizeNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export function buildMakk8ActionData(input: Record<string, unknown>, context: Record<string, unknown>): Makk8ActionData {
+  const value = normalizeNumber(input.value ?? context.value, 0);
+  return {
+    value,
+    is_grounded: normalizeBoolean(context.is_grounded ?? input.is_grounded, true),
+    intent_score: normalizeNumber(context.intent_score ?? input.intent_score, 1),
+    is_api_clean: normalizeBoolean(context.is_api_clean ?? input.is_api_clean, true),
+    source_verified: normalizeBoolean(context.source_verified ?? input.source_verified, true),
+    compute_cost: normalizeNumber(context.compute_cost ?? input.compute_cost, 0),
+    has_audit_trail: true,
+    nonce_lock: normalizeBoolean(context.nonce_lock ?? input.nonce_lock, true),
+  };
 }
 
 export async function POST(request: Request) {
@@ -183,19 +218,47 @@ export async function POST(request: Request) {
       );
     }
 
-    const coreResult = await executeOnDSGCore({
-      agent_id: agentId,
-      action,
-      payload: { input, context },
-    });
+    const makk8ActionData = buildMakk8ActionData(input, context);
+    const arbiterResult = new Makk8Arbiter().verifyPathIntegrity(makk8ActionData);
 
-    const decision = String(coreResult.decision || 'BLOCK') as Decision;
-    const reason = String(coreResult.reason || 'Decision returned by DSG core');
-    const latencyMs = Number(coreResult.latency_ms || 0);
-    const policyVersion = String(coreResult.policy_version || 'dsg-core-v1');
-    const stabilityScore = Number(coreResult.stability_score ?? 0);
-    const proofHash = String(coreResult.proof_hash || '');
-    const proofVersion = String(coreResult.proof_version || '');
+    let coreResult: Record<string, unknown> = {};
+    let decision: Decision = 'BLOCK';
+    let reason = 'PATH_CONFLICT';
+    let latencyMs = 0;
+    let policyVersion = MAKK8_VERSION;
+    let stabilityScore = 0;
+    let proofHash = '';
+    let proofVersion = 'makk8-v159';
+
+    if (arbiterResult.ok) {
+      const serverKey = process.env.DSG_DHAMMA_PROOF_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'dsg-proof-fallback';
+      proofHash = buildDhammaProofHash(arbiterResult.artifact, Number(makk8ActionData.value || 0));
+      const proofSignature = signDhammaProof(proofHash, serverKey);
+
+      coreResult = await executeOnDSGCore({
+        agent_id: agentId,
+        action,
+        payload: { input, context },
+      });
+
+      decision = String(coreResult.decision || 'BLOCK') as Decision;
+      reason = String(coreResult.reason || 'Decision returned by DSG core');
+      latencyMs = Number(coreResult.latency_ms || 0);
+      policyVersion = String(coreResult.policy_version || MAKK8_VERSION);
+      stabilityScore = Number(coreResult.stability_score ?? 0);
+      proofHash = String(coreResult.proof_hash || proofHash);
+      proofVersion = String(coreResult.proof_version || proofVersion);
+
+      coreResult = {
+        ...coreResult,
+        makk8: {
+          ok: arbiterResult.ok,
+          reason: arbiterResult.reason,
+          artifact: arbiterResult.artifact,
+          proof_signature: proofSignature,
+        },
+      };
+    }
 
     const canonical = { action, input, context, decision, policyVersion, reason };
 
@@ -206,6 +269,11 @@ export async function POST(request: Request) {
       stability_score: stabilityScore,
       proof_hash: proofHash,
       proof_version: proofVersion,
+      makk8: {
+        ok: arbiterResult.ok,
+        reason: arbiterResult.reason,
+        artifact: arbiterResult.artifact,
+      },
       core_result: coreResult,
       anti_replay: { approval_request_id: approvalRequest.id },
     };
