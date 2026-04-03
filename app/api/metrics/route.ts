@@ -36,12 +36,14 @@ export async function GET() {
     }
 
     const supabase = getSupabaseAdmin();
-    const today = new Date().toISOString().slice(0, 10);
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
 
     const { data: executions, error: executionsError } = await supabase
       .from('executions')
       .select('decision, latency_ms, created_at')
-      .eq('org_id', access.orgId);
+      .eq('org_id', access.orgId)
+      .gte('created_at', todayStart.toISOString());
 
     if (executionsError) {
       return NextResponse.json({ error: executionsError.message }, { status: 500 });
@@ -57,18 +59,14 @@ export async function GET() {
       return NextResponse.json({ error: agentError.message }, { status: 500 });
     }
 
-    const todayExecutions = (executions || []).filter((row) =>
-      String(row.created_at || '').startsWith(today)
-    );
-
-    const total = todayExecutions.length;
-    const allow = todayExecutions.filter((row) => row.decision === 'ALLOW').length;
-    const block = todayExecutions.filter((row) => row.decision === 'BLOCK').length;
-    const stabilize = todayExecutions.filter((row) => row.decision === 'STABILIZE').length;
+    const total = (executions || []).length;
+    const allow = (executions || []).filter((row) => row.decision === 'ALLOW').length;
+    const block = (executions || []).filter((row) => row.decision === 'BLOCK').length;
+    const stabilize = (executions || []).filter((row) => row.decision === 'STABILIZE').length;
 
     const avgLatencyMs = total
       ? Math.round(
-          todayExecutions.reduce((sum, row) => sum + Number(row.latency_ms || 0), 0) / total
+          (executions || []).reduce((sum, row) => sum + Number(row.latency_ms || 0), 0) / total
         )
       : 0;
 
@@ -80,10 +78,7 @@ export async function GET() {
       active_agents: Number(activeAgents || 0),
       avg_latency_ms: avgLatencyMs,
     });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

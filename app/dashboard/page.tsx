@@ -128,7 +128,7 @@ export default function DashboardPage() {
         if (!healthRes.ok) throw new Error(healthJson.error || "Failed to load control-plane health");
         if (!alive) return;
 
-        setAgents(agentsJson.agents || []);
+        setAgents(agentsJson.items || []);
         setExecutions(executionsJson.executions || []);
         setSummary(usageJson.summary || null);
         setHealth(healthJson || null);

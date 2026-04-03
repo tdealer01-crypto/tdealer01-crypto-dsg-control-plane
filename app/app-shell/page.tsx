@@ -224,7 +224,7 @@ export default function AppShellPage() {
               </p>
             </div>
             <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
-              Workspace Chat
+              Workspace Chat · Coming soon
             </span>
           </div>
 
@@ -250,15 +250,17 @@ export default function AppShellPage() {
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Ask the agent to analyze readiness, review alerts, inspect usage, or plan the next action..."
+                placeholder="Chat backend coming soon"
+                disabled
                 className="min-h-[112px] rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
               />
               <div className="flex flex-col gap-3">
                 <button
                   onClick={submitPrompt}
-                  className="rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950"
+                  disabled
+                  className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-300"
                 >
-                  Send to Agent
+                  Coming soon
                 </button>
                 <button
                   onClick={() =>
@@ -266,7 +268,8 @@ export default function AppShellPage() {
                       'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend next operator action.',
                     )
                   }
-                  className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-100"
+                  disabled
+                  className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-500"
                 >
                   Use Readiness Prompt
                 </button>
