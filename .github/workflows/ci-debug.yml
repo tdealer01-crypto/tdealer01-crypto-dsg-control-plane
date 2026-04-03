@@ -1,0 +1,53 @@
+name: CI Debug
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      NPM_CONFIG_LOGLEVEL: verbose
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Debug environment
+        run: |
+          pwd
+          ls -la
+          echo "Node $(node -v)"
+          echo "NPM $(npm -v)"
+          test -f package.json && echo "package.json found"
+          test -f package-lock.json && echo "package-lock.json found"
+          npm run
+
+      - name: Install dependencies
+        run: npm ci --verbose
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
