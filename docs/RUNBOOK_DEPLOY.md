@@ -52,6 +52,13 @@ Then redeploy from the latest GitHub commit:
 vercel --prod
 ```
 
+### Vercel cron limitation on Hobby plan
+If deployment fails with `Hobby accounts are limited to daily cron`, at least one cron schedule is too frequent for Hobby.
+
+- Keep cron expressions at daily cadence (`0 3 * * *`, `15 0 * * *`, etc.).
+- If sub-daily cadence is required, move the project to Pro/Enterprise before redeploying.
+- This repository keeps cron config in `vercel.json` with a daily schedule to stay Hobby-compatible.
+
 ## 3) Apply Supabase migrations
 Run migrations for the target environment before traffic cutover.
 - Verify new migration files are present and executed in order.
