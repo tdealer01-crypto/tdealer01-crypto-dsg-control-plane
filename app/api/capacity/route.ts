@@ -1,43 +1,32 @@
 import { NextResponse } from "next/server";
-import { createClient } from "../../../lib/supabase/server";
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
+import { requireOrgRole } from "../../../lib/authz";
+import { RuntimeRouteRoles } from "../../../lib/runtime/permissions";
+import { getSupabaseAdmin } from "../../../lib/supabase-server";
+import { internalErrorMessage, logApiError } from "../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const access = await requireOrgRole(RuntimeRouteRoles.usage_read);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("org_id, is_active")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile?.org_id || !profile.is_active) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const supabase = getSupabaseAdmin();
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("billing_subscriptions")
       .select("plan_key, billing_interval, status, current_period_start, current_period_end")
-      .eq("org_id", profile.org_id)
+      .eq("org_id", access.orgId)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (subscriptionError) {
-      return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
+      logApiError("api/capacity", subscriptionError, { stage: "subscription-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const periodKey = subscription?.current_period_start
@@ -47,11 +36,12 @@ export async function GET() {
     const { data: counters, error: counterError } = await supabase
       .from("usage_counters")
       .select("executions")
-      .eq("org_id", profile.org_id)
+      .eq("org_id", access.orgId)
       .eq("billing_period", periodKey);
 
     if (counterError) {
-      return NextResponse.json({ error: counterError.message }, { status: 500 });
+      logApiError("api/capacity", counterError, { stage: "counter-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const executions = (counters || []).reduce(
@@ -82,8 +72,9 @@ export async function GET() {
       projected_amount_usd: projectedAmountUsd,
     });
   } catch (error) {
+    logApiError("api/capacity", error, { stage: "unhandled" });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

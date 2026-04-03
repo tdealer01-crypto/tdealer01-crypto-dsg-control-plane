@@ -2,6 +2,7 @@ import { randomUUID, createHash } from 'crypto';
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -169,9 +170,9 @@ export async function POST() {
       message: 'Starter data created — your dashboard is ready.',
     });
   } catch (error) {
-    console.error('[onboarding-seed] error:', error);
+    logApiError('api/onboarding/seed', error, { stage: 'unhandled' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      { error: internalErrorMessage() },
       { status: 500 },
     );
   }

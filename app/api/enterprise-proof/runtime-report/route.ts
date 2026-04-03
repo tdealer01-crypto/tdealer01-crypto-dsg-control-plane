@@ -4,6 +4,7 @@ import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
 import { buildVerifiedRuntimeProofReport } from '../../../../lib/enterprise/proof-runtime';
 import { validateOrgAgentScope } from '../../../../lib/enterprise/proof-access';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,8 +70,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    logApiError('api/enterprise-proof/runtime-report', error, { stage: 'unhandled' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      { error: internalErrorMessage() },
       { status: 500, headers: PRIVATE_HEADERS }
     );
   }

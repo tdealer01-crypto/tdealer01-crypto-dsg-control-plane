@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 const TRIAL_EXECUTION_LIMIT = 1000;
 
@@ -55,7 +56,8 @@ export async function POST() {
       .maybeSingle();
 
     if (existingAgentError) {
-      return NextResponse.json({ error: existingAgentError.message }, { status: 500 });
+      logApiError('api/quickstart/agent', existingAgentError, { stage: 'existing-agent-query' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     if (existingAgent) {
@@ -92,8 +94,9 @@ export async function POST() {
       .single();
 
     if (insertError || !inserted) {
+      logApiError('api/quickstart/agent', insertError, { stage: 'insert-agent' });
       return NextResponse.json(
-        { error: insertError?.message || 'Failed to create starter agent' },
+        { error: internalErrorMessage() },
         { status: 500 }
       );
     }
@@ -109,8 +112,9 @@ export async function POST() {
       created: true,
     });
   } catch (error) {
+    logApiError('api/quickstart/agent', error, { stage: 'unhandled' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

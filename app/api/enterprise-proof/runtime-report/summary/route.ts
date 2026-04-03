@@ -3,6 +3,7 @@ import { requireOrgRole } from '../../../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../../../lib/runtime/permissions';
 import { buildVerifiedRuntimeProofReport, summarizeVerifiedRuntimeReport } from '../../../../../lib/enterprise/proof-runtime';
 import { validateOrgAgentScope } from '../../../../../lib/enterprise/proof-access';
+import { internalErrorMessage, logApiError } from '../../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,8 +38,9 @@ export async function GET(request: Request) {
     const report = await buildVerifiedRuntimeProofReport({ orgId, agentId });
     return NextResponse.json(summarizeVerifiedRuntimeReport(report), { headers: PRIVATE_HEADERS });
   } catch (error) {
+    logApiError('api/enterprise-proof/runtime-report/summary', error, { stage: 'unhandled' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      { error: internalErrorMessage() },
       { status: 500, headers: PRIVATE_HEADERS }
     );
   }

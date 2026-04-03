@@ -4,6 +4,7 @@ import { executeToolSafely } from '../../../lib/agent/executor';
 import type { AgentContext } from '../../../lib/agent/context';
 import { planGoal } from '../../../lib/agent/planner';
 import { DSG_TOOLS } from '../../../lib/agent/tools';
+import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 function sseData(payload: unknown) {
   return `data: ${JSON.stringify(payload)}\n\n`;
@@ -49,12 +50,13 @@ export async function POST(request: Request) {
             const result = await executeToolSafely(tool, step.params, context);
             controller.enqueue(encoder.encode(sseData({ type: 'step_result', step: step.id, result })));
           } catch (error) {
+            logApiError('api/agent-chat', error, { stage: 'tool-execution', step: step.id, toolId: step.toolId });
             controller.enqueue(
               encoder.encode(
                 sseData({
                   type: 'step_error',
                   step: step.id,
-                  error: error instanceof Error ? error.message : 'Tool execution failed',
+                  error: internalErrorMessage(),
                 }),
               ),
             );
