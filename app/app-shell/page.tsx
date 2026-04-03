@@ -148,8 +148,8 @@ export default function AppShellPage() {
   }, []);
 
   const readinessStatus = monitor?.readiness?.status || 'unknown';
-  const entropy = monitor?.core?.determinism?.data?.max_entropy ?? 0.08;
-  const deterministic = monitor?.core?.determinism?.data?.deterministic ?? true;
+  const entropy = monitor?.core?.determinism?.data?.max_entropy ?? null;
+  const deterministic = monitor?.core?.determinism?.data?.deterministic ?? null;
   const control = monitor?.control_plane;
   const alerts = monitor?.alerts || [];
 
@@ -308,13 +308,13 @@ export default function AppShellPage() {
             cols={56}
             rows={26}
             status={readinessStatus}
-            entropy={entropy}
+            entropy={entropy ?? undefined}
             latencyMs={control?.avg_latency_ms ?? 0}
             activeAgents={control?.active_agents ?? 0}
             allowRate={control?.allow_rate ?? 0}
             blockRate={control?.block_rate ?? 0}
             stabilizeRate={control?.stabilize_rate ?? 0}
-            deterministic={deterministic}
+            deterministic={deterministic ?? undefined}
             animated={true}
             className="w-full"
           />
@@ -333,8 +333,8 @@ export default function AppShellPage() {
               <p className="text-sm font-semibold text-slate-200">Core Readiness</p>
               <div className="mt-3 space-y-2 text-sm text-slate-300">
                 <p>Core OK: {monitor?.core?.health?.ok ? 'yes' : 'no'}</p>
-                <p>Deterministic: {deterministic ? 'yes' : 'no'}</p>
-                <p>Entropy: {entropy.toFixed(3)}</p>
+                <p>Deterministic: {deterministic === null ? '—' : deterministic ? 'yes' : 'no'}</p>
+                <p>Entropy: {entropy === null ? '—' : entropy.toFixed(3)}</p>
                 <p>Gate Action: {monitor?.core?.determinism?.data?.gate_action || '-'}</p>
                 <p>Sequence: {monitor?.core?.determinism?.data?.sequence || '-'}</p>
               </div>

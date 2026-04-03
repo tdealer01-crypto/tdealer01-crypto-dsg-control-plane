@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,8 @@ export async function GET() {
       .gte('created_at', todayStart.toISOString());
 
     if (executionsError) {
-      return NextResponse.json({ error: executionsError.message }, { status: 500 });
+      logServerError(executionsError, 'metrics-executions');
+      return serverErrorResponse();
     }
 
     const { count: activeAgents, error: agentError } = await supabase
@@ -56,7 +58,8 @@ export async function GET() {
       .eq('status', 'active');
 
     if (agentError) {
-      return NextResponse.json({ error: agentError.message }, { status: 500 });
+      logServerError(agentError, 'metrics-agents');
+      return serverErrorResponse();
     }
 
     const total = (executions || []).length;
@@ -78,7 +81,8 @@ export async function GET() {
       active_agents: Number(activeAgents || 0),
       avg_latency_ms: avgLatencyMs,
     });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    logServerError(error, 'metrics-get');
+    return serverErrorResponse();
   }
 }
