@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Audit export is temporarily unavailable because audit_logs relation is missing." }, { status: 503 });
       }
 
-      return NextResponse.json({ error: "message" in auditExport ? auditExport.message : "Failed to load audit export." }, { status: 500 });
+      return NextResponse.json({ error: "Failed to load audit export." }, { status: 500 });
     }
 
     const items = (auditExport.rows || []).map((row: any) => ({
