@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { applyRateLimit, getRateLimitKey } from '../../../lib/security/rate-limit';
+
+const AUTH_LOGIN_RATE_LIMIT = 8;
+const AUTH_LOGIN_RATE_WINDOW_MS = 60 * 1000;
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -25,6 +29,12 @@ function getTrustedAppOrigin(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'auth-login'),
+    limit: AUTH_LOGIN_RATE_LIMIT,
+    windowMs: AUTH_LOGIN_RATE_WINDOW_MS,
+  });
+
   const formData = await request.formData();
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const next = getSafeNext(String(formData.get('next') || ''));
@@ -37,13 +47,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
+  if (!rateLimit.allowed) {
+    redirectToLogin.searchParams.set('error', 'rate-limited');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
+  }
+
   try {
     const authClient = await createClient();
     const admin = getSupabaseAdmin();
     const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin(request));
     confirmUrl.searchParams.set('next', next);
-
-    console.log('[magic-link] input received');
 
     const { data: userRow, error: userErr } = await admin
       .from('users')
@@ -54,19 +67,14 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (userErr) {
-      console.error('[magic-link] operator validation query failed:', userErr.message);
+      console.error('[magic-link] operator validation query failed');
       throw userErr;
     }
 
-    console.log('[magic-link] operator validation:', { allowed: !!userRow });
-
     if (!userRow) {
-      console.log('[magic-link] BLOCKED BEFORE OTP: not provisioned/active');
       redirectToLogin.searchParams.set('error', 'not-allowed');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
-
-    console.log('[magic-link] calling signInWithOtp...');
 
     const { error } = await authClient.auth.signInWithOtp({
       email,
@@ -76,18 +84,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('[magic-link] OTP result:', { ok: !error });
-
     if (error) {
-      console.log('[magic-link] OTP send failed after operator validation');
       redirectToLogin.searchParams.set('error', 'send-failed');
       return NextResponse.redirect(redirectToLogin, { status: 302 });
     }
 
     redirectToLogin.searchParams.set('message', 'check-email');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
-  } catch (err) {
-    console.error('[magic-link] failed:', err instanceof Error ? err.message : 'unknown-error');
+  } catch {
+    console.error('[magic-link] failed');
     redirectToLogin.searchParams.set('error', 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
