@@ -144,13 +144,17 @@ export default function CommandCenterPage() {
 
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">Chat / Agent Console</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Chat / Agent Console</h2>
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">Coming soon</span>
+            </div>
             <p className="mt-2 text-sm text-slate-400">Use this pane for command prompts, summaries, and action planning.</p>
             <label className="mt-4 block text-sm text-slate-300">Command</label>
             <textarea
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder="e.g. triage latest BLOCK alerts and summarize root cause"
+              placeholder="Chat backend coming soon"
+              disabled
               className="mt-2 h-28 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100 outline-none ring-emerald-400 focus:ring-1"
             />
             <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">

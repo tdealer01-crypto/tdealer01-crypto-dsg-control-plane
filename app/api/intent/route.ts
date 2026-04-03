@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (priorError) {
-      return NextResponse.json({ error: priorError.message }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     if (prior && prior.status !== 'pending') {
@@ -77,11 +77,11 @@ export async function POST(request: Request) {
       .single();
 
     if (createError || !created) {
-      return NextResponse.json({ error: createError?.message || 'Failed to create intent' }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     return NextResponse.json({ request_id: created.id, status: created.status, expires_at: created.expires_at });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

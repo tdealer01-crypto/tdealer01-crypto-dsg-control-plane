@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin(request));
     confirmUrl.searchParams.set('next', next);
 
-    console.log('[magic-link] input:', { email });
+    console.log('[magic-link] input received');
 
     const { data: userRow, error: userErr } = await admin
       .from('users')
@@ -54,26 +54,11 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (userErr) {
-      console.log('[magic-link] operator validation query failed:', {
-        message: userErr.message,
-        details: userErr.details ?? null,
-        hint: userErr.hint ?? null,
-      });
+      console.error('[magic-link] operator validation query failed:', userErr.message);
       throw userErr;
     }
 
-    console.log('[magic-link] operator validation:', {
-      operatorAllowed: !!userRow,
-      userRow: userRow
-        ? {
-            id: userRow.id,
-            email: userRow.email,
-            is_active: userRow.is_active,
-            org_id: userRow.org_id ?? null,
-            auth_user_id: userRow.auth_user_id ?? null,
-          }
-        : null,
-    });
+    console.log('[magic-link] operator validation:', { allowed: !!userRow });
 
     if (!userRow) {
       console.log('[magic-link] BLOCKED BEFORE OTP: not provisioned/active');
@@ -91,13 +76,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('[magic-link] OTP RESULT:', {
-      email,
-      ok: !error,
-      message: error?.message ?? null,
-      status: error?.status ?? null,
-      code: error?.code ?? null,
-    });
+    console.log('[magic-link] OTP result:', { ok: !error });
 
     if (error) {
       console.log('[magic-link] OTP send failed after operator validation');
@@ -108,7 +87,7 @@ export async function POST(request: NextRequest) {
     redirectToLogin.searchParams.set('message', 'check-email');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   } catch (err) {
-    console.log('[magic-link] CRASH:', err);
+    console.error('[magic-link] failed:', err instanceof Error ? err.message : 'unknown-error');
     redirectToLogin.searchParams.set('error', 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }

@@ -1,9 +1,24 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+
+const MCP_RATE_LIMIT = 30;
+const MCP_RATE_WINDOW_MS = 60_000;
 
 export async function POST(request: Request) {
   try {
+    const rateLimit = await applyRateLimit({
+      key: getRateLimitKey(request, 'mcp-call'),
+      limit: MCP_RATE_LIMIT,
+      windowMs: MCP_RATE_WINDOW_MS,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
+      );
+    }
     const access = await requireOrgRole(RuntimeRouteRoles.mcp_call);
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
@@ -48,7 +63,7 @@ export async function POST(request: Request) {
         bypass_prevented: true,
       },
     });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
