@@ -110,6 +110,7 @@ export default function AppShellPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'm0',
@@ -148,8 +149,8 @@ export default function AppShellPage() {
   }, []);
 
   const readinessStatus = monitor?.readiness?.status || 'unknown';
-  const entropy = monitor?.core?.determinism?.data?.max_entropy ?? 0.08;
-  const deterministic = monitor?.core?.determinism?.data?.deterministic ?? true;
+  const entropy = monitor?.core?.determinism?.data?.max_entropy ?? null;
+  const deterministic = monitor?.core?.determinism?.data?.deterministic ?? null;
   const control = monitor?.control_plane;
   const alerts = monitor?.alerts || [];
 
@@ -165,27 +166,67 @@ export default function AppShellPage() {
     [control],
   );
 
-  function submitPrompt() {
+  async function submitPrompt() {
     const value = draft.trim();
-    if (!value) return;
+    if (!value || chatBusy) return;
 
-    const userMessage: ChatMessage = {
-      id: `u-${Date.now()}`,
-      role: 'user',
-      content: value,
-    };
-
-    const readinessSummary = monitor?.readiness?.status || 'unknown';
-    const assistantMessage: ChatMessage = {
-      id: `a-${Date.now()}`,
-      role: 'assistant',
-      content:
-        `Queued for agent workflow. Current readiness is ${readinessSummary}. ` +
-        'Use live monitor signals before executing high-risk actions.',
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', content: value }]);
     setDraft('');
+    setChatBusy(true);
+
+    try {
+      const res = await fetch('/api/agent-chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: value }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Failed to run agent chat');
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No stream body returned');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(chunk, { stream: true });
+
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || '';
+
+        for (const raw of events) {
+          if (!raw.startsWith('data: ')) continue;
+          const event = JSON.parse(raw.slice(6));
+          if (event.type === 'step_result' || event.type === 'step_error') {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `a-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                role: 'assistant',
+                content: JSON.stringify(event, null, 2),
+              },
+            ]);
+          }
+        }
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: err instanceof Error ? err.message : 'Agent chat failed',
+        },
+      ]);
+    } finally {
+      setChatBusy(false);
+    }
   }
 
   return (
@@ -224,7 +265,7 @@ export default function AppShellPage() {
               </p>
             </div>
             <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
-              Workspace Chat · Coming soon
+              Workspace Chat · Live
             </span>
           </div>
 
@@ -250,17 +291,16 @@ export default function AppShellPage() {
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Chat backend coming soon"
-                disabled
+                placeholder="Ask readiness, execute, audit, checkpoint, policies, capacity..."
                 className="min-h-[112px] rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
               />
               <div className="flex flex-col gap-3">
                 <button
                   onClick={submitPrompt}
-                  disabled
-                  className="rounded-2xl bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-300"
+                  disabled={chatBusy}
+                  className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
                 >
-                  Coming soon
+                  {chatBusy ? 'Running…' : 'Run in Agent Chat'}
                 </button>
                 <button
                   onClick={() =>
@@ -268,8 +308,7 @@ export default function AppShellPage() {
                       'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend next operator action.',
                     )
                   }
-                  disabled
-                  className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-500"
+                  className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200"
                 >
                   Use Readiness Prompt
                 </button>
@@ -308,13 +347,13 @@ export default function AppShellPage() {
             cols={56}
             rows={26}
             status={readinessStatus}
-            entropy={entropy}
+            entropy={entropy ?? 0}
             latencyMs={control?.avg_latency_ms ?? 0}
             activeAgents={control?.active_agents ?? 0}
             allowRate={control?.allow_rate ?? 0}
             blockRate={control?.block_rate ?? 0}
             stabilizeRate={control?.stabilize_rate ?? 0}
-            deterministic={deterministic}
+            deterministic={deterministic ?? false}
             animated={true}
             className="w-full"
           />
@@ -333,8 +372,8 @@ export default function AppShellPage() {
               <p className="text-sm font-semibold text-slate-200">Core Readiness</p>
               <div className="mt-3 space-y-2 text-sm text-slate-300">
                 <p>Core OK: {monitor?.core?.health?.ok ? 'yes' : 'no'}</p>
-                <p>Deterministic: {deterministic ? 'yes' : 'no'}</p>
-                <p>Entropy: {entropy.toFixed(3)}</p>
+                <p>Deterministic: {deterministic === null ? 'unknown' : deterministic ? 'yes' : 'no'}</p>
+                <p>Entropy: {typeof entropy === 'number' ? entropy.toFixed(3) : '-'}</p>
                 <p>Gate Action: {monitor?.core?.determinism?.data?.gate_action || '-'}</p>
                 <p>Sequence: {monitor?.core?.determinism?.data?.sequence || '-'}</p>
               </div>

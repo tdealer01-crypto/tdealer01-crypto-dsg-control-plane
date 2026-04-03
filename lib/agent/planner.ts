@@ -1,0 +1,89 @@
+import type { AgentPlan, AgentPlanStep } from './context';
+
+function extractAgentId(message: string) {
+  const match = message.match(/agt_[a-zA-Z0-9_-]+/);
+  return match ? match[0] : '';
+}
+
+function extractEffectId(message: string) {
+  const match = message.match(/eff_[a-zA-Z0-9_-]+/);
+  return match ? match[0] : '';
+}
+
+function nextStep(id: number, toolId: string, params: Record<string, unknown>): AgentPlanStep {
+  return { id: `s${id}`, toolId, params };
+}
+
+export function planGoal(message: string): AgentPlan {
+  const text = message.trim();
+  const lower = text.toLowerCase();
+  const agentId = extractAgentId(text);
+
+  if (/readiness|health|status|สถานะ/.test(lower)) {
+    return { steps: [nextStep(1, 'readiness', {})] };
+  }
+
+  if (/execute|run|รัน|ทำงาน/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'readiness', {}),
+        nextStep(2, 'execute_action', { agent_id: agentId, action: 'operator-request', payload: { message: text } }),
+      ],
+    };
+  }
+
+  if (/audit|lineage|ตรวจสอบ/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'audit_summary', { agent_id: agentId }),
+        nextStep(2, 'recovery_validate', { agent_id: agentId }),
+      ],
+    };
+  }
+
+  if (/checkpoint|บันทึก/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'recovery_validate', { agent_id: agentId }),
+        nextStep(2, 'checkpoint', { agent_id: agentId }),
+      ],
+    };
+  }
+
+  if (/quota|capacity|โควต้า/.test(lower)) {
+    return { steps: [nextStep(1, 'capacity', {})] };
+  }
+
+  if (/policy|นโยบาย/.test(lower)) {
+    return { steps: [nextStep(1, 'list_policies', {})] };
+  }
+
+  if (/effect|reconcile/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'reconcile_effect', {
+          effect_id: extractEffectId(text),
+          status: /fail|failed|error/.test(lower) ? 'failed' : 'succeeded',
+        }),
+      ],
+    };
+  }
+
+  if (/create agent|สร้างเอเจนต์|new agent/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'create_agent', {
+          name: 'New Agent',
+          policy_id: 'default',
+        }),
+      ],
+    };
+  }
+
+  return {
+    steps: [
+      nextStep(1, 'readiness', {}),
+      nextStep(2, 'list_agents', {}),
+    ],
+  };
+}

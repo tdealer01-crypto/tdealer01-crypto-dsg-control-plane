@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { reconcileEffectCallback } from '../../../lib/runtime/reconcile';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 
 export async function POST(request: Request) {
   try {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, idempotent: result.alreadyFinal });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+    logServerError(error, 'effect-callback-post');
+    return serverErrorResponse();
   }
 }
