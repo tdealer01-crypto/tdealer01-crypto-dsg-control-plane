@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '../../../../lib/supabase/server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -185,9 +186,7 @@ export async function POST(request: Request) {
       interval,
     }, { headers: buildRateLimitHeaders(rateLimit, 20) });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
-      { status: 500 }
-    );
+    logApiError('api/billing/checkout', error);
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../lib/supabase-server";
 import { requireOrgRole } from "../../../../lib/authz";
 import { RuntimeRouteRoles } from "../../../../lib/runtime/permissions";
+import { internalErrorMessage, logApiError } from "../../../../lib/security/api-error";
 import {
   getDSGCoreHealth,
   getDSGCoreMetrics,
@@ -96,22 +97,26 @@ export async function GET() {
     ]);
 
     if (executionsRes.error) {
-      return NextResponse.json({ error: executionsRes.error.message }, { status: 500 });
+      logApiError("api/core/monitor", executionsRes.error, { stage: "executions-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     if (activeAgentsRes.error) {
-      return NextResponse.json({ error: activeAgentsRes.error.message }, { status: 500 });
+      logApiError("api/core/monitor", activeAgentsRes.error, { stage: "agents-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     if (usageCountersRes.error) {
-      return NextResponse.json({ error: usageCountersRes.error.message }, { status: 500 });
+      logApiError("api/core/monitor", usageCountersRes.error, { stage: "usage-counters-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     if (
       subscriptionRes.error &&
       !/relation .* does not exist/i.test(subscriptionRes.error.message)
     ) {
-      return NextResponse.json({ error: subscriptionRes.error.message }, { status: 500 });
+      logApiError("api/core/monitor", subscriptionRes.error, { stage: "subscription-query" });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const executions = executionsRes.data || [];
@@ -234,9 +239,7 @@ export async function GET() {
       alerts,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
-      { status: 500 }
-    );
+    logApiError("api/core/monitor", error, { stage: "unhandled" });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }
