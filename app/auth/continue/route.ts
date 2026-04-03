@@ -5,6 +5,7 @@ import { getResend, buildMagicLinkEmail } from '../../../lib/resend';
 import { resolveLoginContext } from '../../../lib/auth/login-context';
 import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
 import { logSignInEvent } from '../../../lib/auth/sign-in-events';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
@@ -79,6 +80,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'auth-continue'),
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    redirectToLogin.searchParams.set('error', 'rate-limited');
+    return NextResponse.redirect(redirectToLogin, {
+      status: 302,
+      headers: buildRateLimitHeaders(rateLimit, 10),
+    });
+  }
+  const rateLimitHeaders = buildRateLimitHeaders(rateLimit, 10);
+
   try {
     const authClient = await createClient();
     const admin = getSupabaseAdmin();
@@ -90,7 +106,10 @@ export async function POST(request: NextRequest) {
 
     if (loginContext.mode === 'sso-only') {
       redirectToLogin.searchParams.set('error', 'sso-required');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, {
+        status: 302,
+        headers: rateLimitHeaders,
+      });
     }
 
     if (loginContext.mode === 'approval-required') {
@@ -119,7 +138,7 @@ export async function POST(request: NextRequest) {
       const { error } = await sendMagicLink(authClient, email, confirmUrl.toString(), 'login');
 
       if (error) {
-        console.error('[auth-continue] operator send failed:', error);
+        console.error('[auth-continue] operator send failed:', error?.message || 'unknown-error');
         await logSignInEvent({
           email,
           orgId: operatorRow.org_id,
@@ -130,7 +149,10 @@ export async function POST(request: NextRequest) {
           metadata: { mode: 'operator', next },
         }).catch(() => null);
         redirectToLogin.searchParams.set('error', 'send-failed');
-        return NextResponse.redirect(redirectToLogin, { status: 302 });
+        return NextResponse.redirect(redirectToLogin, {
+          status: 302,
+          headers: rateLimitHeaders,
+        });
       }
 
       await logSignInEvent({
@@ -144,18 +166,27 @@ export async function POST(request: NextRequest) {
       }).catch(() => null);
 
       redirectToLogin.searchParams.set('message', 'check-email');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, {
+        status: 302,
+        headers: rateLimitHeaders,
+      });
     }
 
     if (orgSlug && loginContext.mode === 'sso-first') {
       redirectToLogin.searchParams.set('error', 'org-self-serve-disabled');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, {
+        status: 302,
+        headers: rateLimitHeaders,
+      });
     }
 
     const accessMode = resolveAccessModeForEmail(email);
     if (accessMode === 'invite_only' || accessMode === 'scim_managed') {
       redirectToLogin.searchParams.set('error', 'not-allowed');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, {
+        status: 302,
+        headers: rateLimitHeaders,
+      });
     }
 
     if (accessMode === 'approved_domains_require_approval') {
@@ -167,12 +198,12 @@ export async function POST(request: NextRequest) {
 
     if (accessMode === 'sso_required') {
       redirectToLogin.searchParams.set('error', 'sso-required');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
     }
 
     if (!workspaceName) {
       redirectToLogin.searchParams.set('error', 'missing-workspace');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
     }
 
     const { data: existingPending, error: existingPendingError } = await admin
@@ -220,7 +251,7 @@ export async function POST(request: NextRequest) {
     const { error } = await sendMagicLink(authClient, email, confirmUrl.toString(), 'trial');
 
     if (error) {
-      console.error('[auth-continue] trial send failed:', error);
+      console.error('[auth-continue] trial send failed:', error?.message || 'unknown-error');
       await logSignInEvent({
         email,
         eventType: 'magic_link_requested',
@@ -229,7 +260,7 @@ export async function POST(request: NextRequest) {
         metadata: { mode: 'trial', workspace_name: workspaceName },
       }).catch(() => null);
       redirectToLogin.searchParams.set('error', 'signup-failed');
-      return NextResponse.redirect(redirectToLogin, { status: 302 });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
     }
 
     await logSignInEvent({
@@ -241,10 +272,10 @@ export async function POST(request: NextRequest) {
     }).catch(() => null);
 
     redirectToLogin.searchParams.set('message', 'check-email');
-    return NextResponse.redirect(redirectToLogin, { status: 302 });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
   } catch (err) {
-    console.error('[auth-continue] failed:', err);
+    console.error('[auth-continue] failed:', err instanceof Error ? err.message : 'unknown-error');
     redirectToLogin.searchParams.set('error', 'unexpected');
-    return NextResponse.redirect(redirectToLogin, { status: 302 });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
   }
 }
