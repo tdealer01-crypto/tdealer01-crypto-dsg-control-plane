@@ -7,6 +7,9 @@ import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
 import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
+const AUTH_CONTINUE_RATE_LIMIT = 8;
+const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
+
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith('/')) return '/dashboard/executions';
   return value;
@@ -56,7 +59,7 @@ async function sendMagicLink(
   // when Supabase email is disabled and a custom SMTP/API is preferred.
   // For now, log that Resend is available for future custom email templates.
   if (resend.configured) {
-    console.info('[auth-continue] Resend is configured — Supabase OTP email sent for:', email);
+    console.info('[auth-continue] Resend is configured — Supabase OTP email sent');
   }
 
   return { error: null };
@@ -82,18 +85,18 @@ export async function POST(request: NextRequest) {
 
   const rateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'auth-continue'),
-    limit: 10,
-    windowMs: 60_000,
+    limit: AUTH_CONTINUE_RATE_LIMIT,
+    windowMs: AUTH_CONTINUE_RATE_WINDOW_MS,
   });
 
   if (!rateLimit.allowed) {
     redirectToLogin.searchParams.set('error', 'rate-limited');
     return NextResponse.redirect(redirectToLogin, {
       status: 302,
-      headers: buildRateLimitHeaders(rateLimit, 10),
+      headers: buildRateLimitHeaders(rateLimit, AUTH_CONTINUE_RATE_LIMIT),
     });
   }
-  const rateLimitHeaders = buildRateLimitHeaders(rateLimit, 10);
+  const rateLimitHeaders = buildRateLimitHeaders(rateLimit, AUTH_CONTINUE_RATE_LIMIT);
 
   try {
     const authClient = await createClient();
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
       const requestAccess = new URL('/request-access', request.url);
       requestAccess.searchParams.set('email', email);
       if (workspaceName) requestAccess.searchParams.set('workspace_name', workspaceName);
-      return NextResponse.redirect(requestAccess, { status: 302 });
+      return NextResponse.redirect(requestAccess, { status: 302, headers: rateLimitHeaders });
     }
 
     const { data: operatorRow, error: operatorErr } = await admin
@@ -193,7 +196,7 @@ export async function POST(request: NextRequest) {
       const requestAccess = new URL('/request-access', request.url);
       requestAccess.searchParams.set('email', email);
       if (workspaceName) requestAccess.searchParams.set('workspace_name', workspaceName);
-      return NextResponse.redirect(requestAccess, { status: 302 });
+      return NextResponse.redirect(requestAccess, { status: 302, headers: rateLimitHeaders });
     }
 
     if (accessMode === 'sso_required') {
