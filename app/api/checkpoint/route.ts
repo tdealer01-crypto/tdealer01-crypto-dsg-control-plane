@@ -3,6 +3,7 @@ import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { buildCheckpointHash } from '../../../lib/runtime/checkpoint';
+import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export async function POST(request: Request) {
   try {
@@ -61,9 +62,13 @@ export async function POST(request: Request) {
       .select('id, checkpoint_hash, created_at')
       .single();
 
-    if (error || !checkpoint) return NextResponse.json({ error: error?.message || 'Failed to write checkpoint' }, { status: 500 });
+    if (error || !checkpoint) {
+      logApiError('api/checkpoint', error, { stage: 'insert-checkpoint' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+    }
     return NextResponse.json(checkpoint);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unexpected error' }, { status: 500 });
+    logApiError('api/checkpoint', error, { stage: 'unhandled' });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }

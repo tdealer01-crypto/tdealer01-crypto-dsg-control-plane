@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "../../../../lib/supabase/server";
 import { getDSGCoreAuditEvents, getDSGCoreDeterminism } from "../../../../lib/dsg-core";
+import { requireOrgRole } from "../../../../lib/authz";
+import { RuntimeRouteRoles } from "../../../../lib/runtime/permissions";
+import { internalErrorMessage, logApiError } from "../../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -110,25 +112,9 @@ function pickMoreRecentCell(current: MatrixCell | undefined, candidate: MatrixCe
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("org_id, is_active")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile?.org_id || !profile.is_active) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await requireOrgRole(RuntimeRouteRoles.monitor);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     const url = new URL(request.url);
@@ -217,8 +203,9 @@ export async function GET(request: Request) {
       summary,
     });
   } catch (error) {
+    logApiError("api/audit/matrix", error, { stage: "unhandled" });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -277,8 +278,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true, type: event.type });
   } catch (error) {
+    logApiError('api/billing/webhook', error, { stage: 'unhandled' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      { error: internalErrorMessage() },
       { status: 400 }
     );
   }

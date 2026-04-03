@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { requireOrgRole } from '../../../lib/authz';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +53,8 @@ export async function GET() {
       subscriptionError &&
       !/relation .* does not exist/i.test(subscriptionError.message)
     ) {
-      return NextResponse.json(
-        { error: subscriptionError.message },
-        { status: 500 }
-      );
+      logApiError('api/usage', subscriptionError, { stage: 'subscription-query' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const billingPeriodKey = subscription?.current_period_start
@@ -69,7 +68,8 @@ export async function GET() {
       .eq('billing_period', billingPeriodKey);
 
     if (usageError) {
-      return NextResponse.json({ error: usageError.message }, { status: 500 });
+      logApiError('api/usage', usageError, { stage: 'usage-counter-query' });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
     const executions = (usageCounters || []).reduce(
@@ -101,8 +101,9 @@ export async function GET() {
       projected_amount_usd: projectedAmountUsd,
     });
   } catch (error) {
+    logApiError('api/usage', error, { stage: 'unhandled' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unexpected error' },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }
