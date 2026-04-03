@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
+import { logServerError, serverErrorResponse } from "../../../lib/security/error-response";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,8 @@ export async function GET(request: Request) {
       .limit(limit);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logServerError(error, "proofs-get");
+      return serverErrorResponse();
     }
 
     const items = (data || []).map((row: any) => {
@@ -77,9 +79,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ ok: true, items });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
-      { status: 500 }
-    );
+    logServerError(error, "proofs-get");
+    return serverErrorResponse();
   }
 }

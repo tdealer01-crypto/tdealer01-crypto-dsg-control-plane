@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export async function GET() {
@@ -14,7 +15,10 @@ export async function GET() {
     .eq('org_id', access.orgId)
     .order('updated_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    logServerError(error, 'policies-get');
+    return serverErrorResponse();
+  }
   return NextResponse.json({ items: data || [] });
 }
 
@@ -39,7 +43,10 @@ export async function POST(request: Request) {
     .select('id, name, version, status, thresholds, governance_state')
     .single();
 
-  if (error || !data) return NextResponse.json({ error: error?.message || 'Failed to create policy' }, { status: 500 });
+  if (error || !data) {
+    logServerError(error, 'policies-post');
+    return NextResponse.json({ error: 'Failed to create policy' }, { status: 500 });
+  }
 
   await supabase.from('runtime_policy_governance_events').insert({
     org_id: access.orgId,

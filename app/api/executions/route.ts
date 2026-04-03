@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import { getDSGCoreLedger, getDSGCoreMetrics } from "../../../lib/dsg-core";
+import { applyRateLimit, getRateLimitKey } from "../../../lib/security/rate-limit";
+import { logServerError, serverErrorResponse } from "../../../lib/security/error-response";
 
 export const dynamic = "force-dynamic";
+const EXECUTIONS_RATE_LIMIT = 60;
+const EXECUTIONS_RATE_WINDOW_MS = 60 * 1000;
 
 export async function GET(request: Request) {
   try {
+    const rateLimit = await applyRateLimit({
+      key: getRateLimitKey(request, "executions"),
+      limit: EXECUTIONS_RATE_LIMIT,
+      windowMs: EXECUTIONS_RATE_WINDOW_MS,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const supabase = await createClient();
 
     const {
@@ -51,7 +65,8 @@ export async function GET(request: Request) {
     ]);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logServerError(error, "executions-get");
+      return serverErrorResponse();
     }
 
     const metricsData = coreMetrics.ok && "data" in coreMetrics ? coreMetrics.data : null;
@@ -69,9 +84,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
-      { status: 500 }
-    );
+    logServerError(error, "executions-get");
+    return serverErrorResponse();
   }
 }
