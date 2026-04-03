@@ -6,7 +6,6 @@ export type AuditExportResult = {
 } | {
   ok: false;
   reason: 'relation-missing' | 'query-error';
-  message: string;
 };
 
 function isMissingRelationError(message?: string, code?: string | null) {
@@ -25,10 +24,10 @@ export async function fetchAuditLogsForExport(orgId: string, limit: number): Pro
 
   if (error) {
     if (isMissingRelationError(error.message, (error as { code?: string | null }).code ?? null)) {
-      return { ok: false, reason: 'relation-missing', message: error.message };
+      return { ok: false, reason: 'relation-missing' };
     }
 
-    return { ok: false, reason: 'query-error', message: error.message };
+    return { ok: false, reason: 'query-error' };
   }
 
   return { ok: true, rows: (data || []) as Array<Record<string, unknown>> };
