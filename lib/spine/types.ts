@@ -1,4 +1,8 @@
+import type { CanonicalInput } from '../runtime/canonical';
+
 export type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
+
+type CanonicalRecord = { [key: string]: CanonicalInput | undefined };
 
 export type TruthState = {
   id?: string;
@@ -60,11 +64,11 @@ export type PipelineResult = {
 export type SpineIntentPayload = {
   agentId: string;
   action: string;
-  input: Record<string, unknown>;
-  context: Record<string, unknown>;
+  input: CanonicalRecord;
+  context: CanonicalRecord;
   canonicalRequest: {
     action: string;
-    input: Record<string, unknown>;
-    context: Record<string, unknown>;
+    input: CanonicalRecord;
+    context: CanonicalRecord;
   };
 };
