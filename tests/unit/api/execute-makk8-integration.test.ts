@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildMakk8ActionData } from '../../../app/api/execute/route';
+import { buildMakk8ActionData } from '../../../lib/makk8/action-data';
 
 describe('buildMakk8ActionData', () => {
   it('normalizes values from input/context with defaults', () => {
