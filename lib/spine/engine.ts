@@ -18,6 +18,35 @@ function rpcErrorMessage(error: unknown): string {
   return '';
 }
 
+function mapRpcError(error: unknown) {
+  const message = rpcErrorMessage(error);
+  if (message.includes('agent_quota_exceeded')) {
+    return { status: 429, body: { error: 'Agent monthly quota exceeded' } };
+  }
+  if (message.includes('org_quota_exceeded')) {
+    return { status: 429, body: { error: 'Organization execution quota exceeded' } };
+  }
+  if (message.includes('approval_request_expired')) {
+    return { status: 409, body: { error: 'Runtime intent expired' } };
+  }
+  if (message.includes('approval_request_not_pending')) {
+    return { status: 409, body: { error: 'Runtime intent is not pending' } };
+  }
+  if (message.includes('approval_request_not_found')) {
+    return { status: 409, body: { error: 'Runtime intent not found' } };
+  }
+  if (message.includes('approval_consumed_without_ledger_lineage')) {
+    return { status: 500, body: { error: 'Approval consumed without ledger lineage' } };
+  }
+  if (message.includes('approval_consumption_failed')) {
+    return { status: 409, body: { error: 'Approval consumption failed' } };
+  }
+  if (message.includes('invalid_decision')) {
+    return { status: 500, body: { error: 'Pipeline returned invalid decision' } };
+  }
+  return { status: 500, body: { error: 'Internal server error' } };
+}
+
 async function resolveActiveAgent(orgId: string, agentId: string, apiKey: string) {
   const agent = await resolveAgentFromApiKey(agentId, apiKey);
   if (!agent || agent.org_id !== orgId) {
@@ -196,7 +225,7 @@ export async function executeSpineIntent(params: {
     return { ok: false as const, status: 429, body: { error: 'Organization execution quota exceeded' } };
   }
 
-  const { data: latestTruthRow } = await supabase
+  const { data: latestTruthRow, error: truthReadError } = await supabase
     .from('runtime_truth_states')
     .select('id, canonical_hash, canonical_json, created_at')
     .eq('org_id', agent.org_id)
@@ -204,6 +233,10 @@ export async function executeSpineIntent(params: {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (truthReadError) {
+    return { ok: false as const, status: 500, body: { error: 'Internal server error' } };
+  }
 
   const truthState = (latestTruthRow || null) as TruthState;
   const pipeline = await runPipeline({
@@ -234,8 +267,10 @@ export async function executeSpineIntent(params: {
     decision: pipeline.final_decision,
     policy_version: pipeline.final_policy_version,
     reason: pipeline.final_reason,
+    authoritative_plugin_id: pipeline.authoritative_plugin_id,
     pipeline_trace: pipeline.stages,
     proof_hash: pipeline.proof.proof_hash,
+    proof_version: pipeline.proof.proof_version,
   };
 
   const auditEvidence = {
@@ -245,7 +280,14 @@ export async function executeSpineIntent(params: {
     proof: pipeline.proof,
     authoritative_plugin_id: pipeline.authoritative_plugin_id,
     pipeline_trace: pipeline.stages,
-    anti_replay: { approval_request_id: approvalRequest.id },
+    anti_replay: {
+      approval_request_id: approvalRequest.id,
+      approval_key: approvalKey,
+    },
+    spine: {
+      billing_period: billingPeriod,
+      received_at: nowIso,
+    },
   };
 
   const { data: commitResult, error: rpcError } = await supabase.rpc('runtime_commit_execution', {
@@ -279,14 +321,8 @@ export async function executeSpineIntent(params: {
   });
 
   if (rpcError) {
-    const message = rpcErrorMessage(rpcError);
-    if (message.includes('agent_quota_exceeded')) {
-      return { ok: false as const, status: 429, body: { error: 'Agent monthly quota exceeded' } };
-    }
-    if (message.includes('org_quota_exceeded')) {
-      return { ok: false as const, status: 429, body: { error: 'Organization execution quota exceeded' } };
-    }
-    return { ok: false as const, status: 500, body: { error: 'Internal server error' } };
+    const mapped = mapRpcError(rpcError);
+    return { ok: false as const, status: mapped.status, body: mapped.body };
   }
 
   const commitRow = Array.isArray(commitResult) ? commitResult[0] : commitResult;
