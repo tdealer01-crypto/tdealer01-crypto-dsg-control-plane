@@ -21,6 +21,45 @@ const stats = [
   { label: 'Built for', value: 'AI operations, governance, audit-heavy teams' },
 ];
 
+const verificationHighlights = [
+  { label: 'Aggregated Vitest', value: '41 files passed / 85 tests passed (2026-04-03 UTC)' },
+  { label: 'Unit', value: '18 files passed / 41 tests passed' },
+  { label: 'Integration', value: '19 files passed / 35 tests passed' },
+  { label: 'Failure-mode', value: '1 file passed / 4 tests passed' },
+  { label: 'Migrations', value: '3 files passed / 5 tests passed' },
+  { label: 'Typecheck', value: 'tsc --noEmit passed' },
+];
+
+const proofSurfaces = [
+  { label: 'Runtime proof portal', href: '/enterprise-proof/start' },
+  { label: 'Public report', href: '/enterprise-proof/report' },
+  { label: 'JSON report API', href: '/api/enterprise-proof/report' },
+  { label: 'Verified report', href: '/enterprise-proof/verified/report' },
+];
+
+const enterpriseComparisons = [
+  {
+    category: 'Proof model',
+    dsg: 'Public + verified proof surfaces with runtime evidence endpoints.',
+    market: 'Marketing claims without machine-readable runtime proof artifacts.',
+  },
+  {
+    category: 'Control gates',
+    dsg: 'Deterministic ALLOW / STABILIZE / BLOCK policy modes.',
+    market: 'Single-pass generation flow with limited runtime intervention.',
+  },
+  {
+    category: 'Governance posture',
+    dsg: 'NIST AI RMF mapping + auditable logs + replay-oriented records.',
+    market: 'Policy PDFs and ad-hoc ticket audits.',
+  },
+  {
+    category: 'Commercial readiness',
+    dsg: 'Trial-to-enterprise billing path integrated into product runtime.',
+    market: 'Separate sales process with weak in-product metering evidence.',
+  },
+];
+
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-hero-radial text-white">
@@ -58,6 +97,24 @@ export default function HomePage() {
               >
                 Read docs
               </Link>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-400/5 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Share links</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                <Link
+                  href="/enterprise-proof/start"
+                  className="rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 font-medium text-cyan-100 transition hover:border-cyan-200/40"
+                >
+                  Landing share page
+                </Link>
+                <Link
+                  href="/enterprise-proof/report"
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 font-medium text-slate-100 transition hover:border-white/30"
+                >
+                  Public proof report
+                </Link>
+              </div>
             </div>
 
             <div className="mt-12 grid gap-4 md:grid-cols-3">
@@ -127,6 +184,84 @@ export default function HomePage() {
             >
               Continue with email
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pb-6 pt-10">
+        <div className="rounded-[2rem] border border-cyan-300/20 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 md:p-10">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">Enterprise verification</p>
+              <h2 className="mt-3 text-3xl font-bold md:text-4xl">Evidence-first testing and correctness proof.</h2>
+              <p className="mt-4 max-w-3xl text-slate-300">
+                Designed for executive sharing: every claim ties back to test outcomes, proof endpoints, and runtime artifacts already present in this repository.
+              </p>
+            </div>
+            <Link
+              href="/docs"
+              className="inline-flex items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-6 py-3 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/40"
+            >
+              Open evidence docs
+            </Link>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {verificationHighlights.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{item.label}</p>
+                <p className="mt-3 text-sm font-semibold leading-6 text-white">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-10">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-8">
+            <p className="text-xs uppercase tracking-[0.3em] text-emerald-200">Proof surfaces</p>
+            <h3 className="mt-3 text-2xl font-bold">Share-ready links for customer, auditor, and board review.</h3>
+            <div className="mt-6 grid gap-3">
+              {proofSurfaces.map((surface) => (
+                <Link
+                  key={surface.href}
+                  href={surface.href}
+                  className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 px-4 py-3 text-sm font-medium text-emerald-100 transition hover:border-emerald-200/40"
+                >
+                  {surface.label}
+                  <span className="ml-2 font-mono text-xs text-emerald-200/80">{surface.href}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-8">
+            <p className="text-xs uppercase tracking-[0.3em] text-violet-200">Market comparison</p>
+            <h3 className="mt-3 text-2xl font-bold">Compared against common enterprise AI deployment patterns.</h3>
+            <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-white/5 text-slate-300">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Category</th>
+                    <th className="px-4 py-3 font-semibold">DSG ONE</th>
+                    <th className="px-4 py-3 font-semibold">Typical market baseline</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {enterpriseComparisons.map((row) => (
+                    <tr key={row.category} className="border-t border-white/10 align-top">
+                      <td className="px-4 py-3 font-semibold text-white">{row.category}</td>
+                      <td className="px-4 py-3 text-emerald-100">{row.dsg}</td>
+                      <td className="px-4 py-3 text-slate-300">{row.market}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-4 text-xs text-slate-400">
+              Baseline column reflects prevailing enterprise AI rollout behavior (policy docs first, proof later). DSG column references features already implemented in this repository.
+            </p>
           </div>
         </div>
       </section>
