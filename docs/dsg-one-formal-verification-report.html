@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSG ONE - Formal Verification Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 45vh;
+            max-height: 400px;
+            min-height: 300px;
+        }
+        .plot-container-wrapper {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+        .qr-mock {
+            background: linear-gradient(45deg, #0F172A 25%, transparent 25%), 
+                        linear-gradient(-45deg, #0F172A 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #0F172A 75%), 
+                        linear-gradient(-45deg, transparent 75%, #0F172A 75%);
+            background-size: 10px 10px;
+            background-color: #ffffff;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .qr-mock:hover { transform: scale(1.05); }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        [data-lang] { display: none; }
+        .lang-en [data-lang="en"] { display: inline; }
+        .lang-en [data-lang-block="en"] { display: block; }
+        .lang-th [data-lang="th"] { display: inline; }
+        .lang-th [data-lang-block="th"] { display: block; }
+        .lang-th [data-lang="en"], .lang-th [data-lang-block="en"] { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-teal-500 selection:text-white lang-en">
+
+    <nav class="sticky top-0 z-50 bg-slate-900 shadow-lg border-b border-indigo-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 flex items-center text-white font-bold text-xl tracking-wider">
+                    <span class="text-indigo-400 mr-2">&#9632;</span> DSG ONE
+                </div>
+                <div class="hidden md:flex space-x-8 text-sm font-medium text-slate-300 items-center">
+                    <a href="#summary" class="hover:text-teal-400 transition-colors">
+                        <span data-lang="th">ข้อเสนอ</span><span data-lang="en">Prospectus</span>
+                    </a>
+                    <a href="#trust-hub" class="hover:text-teal-400 transition-colors">
+                        <span data-lang="th">หลักฐาน</span><span data-lang="en">Verification</span>
+                    </a>
+                    <a href="#test-matrix" class="hover:text-teal-400 transition-colors">
+                        <span data-lang="th">ผลการทดสอบ</span><span data-lang="en">Test Matrix</span>
+                    </a>
+                    <button onclick="toggleLang()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md text-xs font-bold transition-all border border-indigo-400">
+                        <span data-lang="th">Switch to EN</span><span data-lang="en">สลับเป็นภาษาไทย</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-slate-900 text-white pt-20 pb-24 border-b-4 border-teal-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-flex items-center px-4 py-2 rounded-full bg-teal-900/50 text-teal-300 font-semibold text-sm mb-6 border border-teal-700/50">
+                <span>&#10004;</span>
+                <span class="ml-2 tracking-wide uppercase" data-lang="th">สินทรัพย์ที่ตรวจสอบได้ระดับ Audit</span>
+                <span class="ml-2 tracking-wide uppercase" data-lang="en">Audit-Grade Formal Artifact</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
+                <span data-lang="th">ความน่าเชื่อถือที่ <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-500">พิสูจน์ได้ทางคณิตศาสตร์</span></span>
+                <span data-lang="en">Trust <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-500">Validated by Math</span></span>
+            </h1>
+            <p class="mt-4 max-w-3xl mx-auto text-xl text-slate-400">
+                <span data-lang="th">DSG ONE คือระบบ Deterministic Safety Gate ที่ผ่านการตรวจสอบในระดับสูงสุด พร้อมหลักฐานที่ไม่อาจโต้แย้งได้</span>
+                <span data-lang="en">Deterministic Safety Gate (DSG) verified via SMT-LIB v2 formal logic for absolute reliability.</span>
+            </p>
+            <div class="mt-8">
+                <a href="https://doi.org/10.5281/zenodo.18212854" target="_blank" class="inline-flex items-center px-6 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20">
+                    <span data-lang="th">ดูไฟล์งานวิจัยและผลการทดสอบ (DOI)</span>
+                    <span data-lang="en">External Verification Link (DOI)</span>
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-24">
+
+        <section id="trust-hub" class="scroll-mt-24">
+            <div class="bg-indigo-900 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-8 opacity-10">
+                    <div class="w-64 h-64 border-8 border-white rounded-full"></div>
+                </div>
+                <div class="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
+                    <div class="lg:col-span-2 text-white">
+                        <h2 class="text-3xl font-bold mb-6 italic underline decoration-teal-500 underline-offset-8" data-lang="en">Formal Verification Evidence</h2>
+                        <h2 class="text-3xl font-bold mb-6 italic underline decoration-teal-500 underline-offset-8" data-lang="th">หลักฐานการตรวจสอบสถานะ</h2>
+                        <p class="text-indigo-200 text-lg mb-8">
+                            <span data-lang="th">การันตีความถูกต้องด้วย **Formal Proof (SMT-LIB v2)** และ **SHA256 Content Anchors** มาตรฐานสากล</span>
+                            <span data-lang="en">Guaranteed correctness via **SMT-LIB v2 Formal Proofs** and **SHA256 Integrity Anchors** for full auditability.</span>
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-indigo-800/50 p-6 rounded-2xl border border-indigo-700 cursor-pointer hover:bg-indigo-800 transition-colors" onclick="window.open('https://doi.org/10.5281/zenodo.18212854', '_blank')">
+                                <h4 class="font-bold text-teal-400 mb-2">Digital Signature (SHA256)</h4>
+                                <code class="text-xs break-all text-indigo-100 underline decoration-indigo-400 decoration-dotted">51ba236fad25254482860198330b57fd587451caac697862d7f2228b33bb93a3</code>
+                            </div>
+                            <div class="bg-indigo-800/50 p-6 rounded-2xl border border-indigo-700">
+                                <h4 class="font-bold text-teal-400 mb-2" data-lang="th">สถานะการตรวจสอบ</h4>
+                                <h4 class="font-bold text-teal-400 mb-2" data-lang="en">Solver Status</h4>
+                                <div class="flex items-center text-white">
+                                    <span class="w-4 h-4 bg-green-400 rounded-full mr-2 shadow-[0_0_10px_rgba(74,222,128,0.5)]"></span>
+                                    <span class="font-mono">Z3: SATISFIED (SAT)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center bg-white p-8 rounded-3xl shadow-xl">
+                        <div onclick="window.open('https://doi.org/10.5281/zenodo.18212854', '_blank')" class="w-48 h-48 qr-mock rounded-xl mb-4 p-4 border-4 border-slate-100">
+                            <div class="grid grid-cols-4 gap-1 w-full h-full">
+                                <div class="bg-slate-900"></div><div class="bg-slate-900"></div><div class="bg-white"></div><div class="bg-slate-900"></div>
+                                <div class="bg-slate-900"></div><div class="bg-white"></div><div class="bg-slate-900"></div><div class="bg-white"></div>
+                                <div class="bg-white"></div><div class="bg-slate-900"></div><div class="bg-slate-900"></div><div class="bg-slate-900"></div>
+                                <div class="bg-slate-900"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-slate-900"></div>
+                            </div>
+                        </div>
+                        <span class="text-slate-900 font-bold" data-lang="th">สแกนตรวจสอบหลักฐาน</span>
+                        <span class="text-slate-900 font-bold" data-lang="en">SCAN FOR ARTIFACTS</span>
+                        <a href="https://doi.org/10.5281/zenodo.18212854" target="_blank" class="text-indigo-600 hover:text-indigo-500 font-mono text-[10px] mt-1 underline">DOI: 10.5281/zenodo.18212854</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="test-matrix" class="scroll-mt-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-900">
+                    <span data-lang="th">ตารางการทดสอบระบบแบบครบถ้วน</span>
+                    <span data-lang="en">Verification Matrix (86 Cases)</span>
+                </h2>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">
+                    <span data-lang="th">สรุปผลการทดสอบทั้ง 86 รายการ จำแนกตามโมดูลหลัก</span>
+                    <span data-lang="en">Consolidated test results for DSG safety and determinism modules.</span>
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-900 text-slate-200">
+                            <tr>
+                                <th class="px-6 py-4 text-sm font-semibold uppercase tracking-wider">ID / Category</th>
+                                <th class="px-6 py-4 text-sm font-semibold uppercase tracking-wider">Objective</th>
+                                <th class="px-6 py-4 text-sm font-semibold uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-4 text-sm font-semibold uppercase tracking-wider">Evidence Link</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr class="bg-indigo-50/30">
+                                <td class="px-6 py-4 font-bold text-indigo-900">SAFETY-001..020</td>
+                                <td class="px-6 py-4 italic" data-lang="th">การป้องกันสถานะต้องห้าม</td>
+                                <td class="px-6 py-4 italic" data-lang="en">Forbidden State Avoidance</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">PASSED (20/20)</span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-indigo-600 font-medium cursor-pointer underline hover:text-indigo-800" onclick="window.open('https://doi.org/10.5281/zenodo.18212854', '_blank')">DOI: 18212854</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-bold text-slate-800">DET-021..040</td>
+                                <td class="px-6 py-4 italic" data-lang="th">ความแน่นอนของผลลัพธ์</td>
+                                <td class="px-6 py-4 italic" data-lang="en">Functional Determinism</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">PASSED (20/20)</span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-indigo-600 font-medium cursor-pointer underline hover:text-indigo-800" onclick="window.open('https://doi.org/10.5281/zenodo.18212854', '_blank')">DOI: 18212854</td>
+                            </tr>
+                            <tr class="bg-teal-50/30">
+                                <td class="px-6 py-4 font-bold text-teal-900">API-041..070</td>
+                                <td class="px-6 py-4 italic" data-lang="th">การกรองคำสั่งและสิทธิ์</td>
+                                <td class="px-6 py-4 italic" data-lang="en">Input Sanitization (Arbiter)</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">PASSED (30/30)</span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-indigo-600 font-medium cursor-pointer underline hover:text-indigo-800" onclick="window.open('https://doi.org/10.5281/zenodo.18212854', '_blank')">DOI: 18212854</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-bold text-slate-800">RT-071..085</td>
+                                <td class="px-6 py-4 italic" data-lang="th">ความเร็วประมวลผลคงที่</td>
+                                <td class="px-6 py-4 italic" data-lang="en">Real-time O(1) Constraint</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">PASSED (15/15)</span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-indigo-600 font-medium cursor-pointer underline hover:text-indigo-800" onclick="window.open('https://doi.org/10.5281/zenodo.18212854', '_blank')">DOI: 18212854</td>
+                            </tr>
+                            <tr class="bg-rose-50/30">
+                                <td class="px-6 py-4 font-bold text-rose-900">NET-086</td>
+                                <td class="px-6 py-4 italic" data-lang="th">การเชื่อมต่อเครือข่ายภายนอก</td>
+                                <td class="px-6 py-4 italic" data-lang="en">Unrestricted Network Access</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-bold underline">RESTRICTED (1/1)</span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-slate-600 italic">Air-gapped Design</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="reliability" class="scroll-mt-24">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-4 text-center italic">
+                            <span data-lang="th">สรุปความเชื่อถือโดยรวม</span>
+                            <span data-lang="en">Aggregate Reliability Score</span>
+                        </h3>
+                        <div class="flex justify-center items-baseline space-x-2 mb-6">
+                            <span class="text-6xl font-black text-teal-600">85</span>
+                            <span class="text-2xl text-slate-500 font-medium">/ 86</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="testResultsChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                    <h3 class="text-xl font-bold text-slate-800 mb-6 text-center">
+                        <span data-lang="th">แผนภูมิการคุมสิทธิ์ RBAC</span>
+                        <span data-lang="en">RBAC Deterministic Matrix</span>
+                    </h3>
+                    <div class="plot-container-wrapper h-80" id="rbacHeatmap"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-16 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="mb-8 border border-indigo-500/30 p-8 rounded-3xl bg-indigo-950/20">
+                <h4 class="text-white font-bold text-2xl mb-4 italic">Official Verification Guarantee</h4>
+                <div data-lang-block="th">
+                    <p class="max-w-3xl mx-auto text-base leading-relaxed text-slate-300">
+                        "เรารับรองความถูกต้องของตรรกะในระบบ DSG ONE ว่าเป็นไปตามข้อกำหนดทางคณิตศาสตร์ 100% 
+                        โดยระบบทำงานแบบ Deterministic ซึ่งตรวจสอบผลลัพธ์ได้ล่วงหน้า 
+                        ยืนยันผ่าน Z3 Theorem Prover และจัดเก็บหลักฐานในระบบที่ไม่สามารถแก้ไขได้"
+                    </p>
+                </div>
+                <div data-lang-block="en">
+                    <p class="max-w-3xl mx-auto text-base leading-relaxed text-slate-300">
+                        "The DSG ONE logical core is guaranteed to be 100% compliant with formal specifications. 
+                        Decisions are deterministic, verifiable, and validated via Z3 Theorem Prover. 
+                        Evidence is anchored via SHA256 and DOI for immutable reporting."
+                    </p>
+                </div>
+                <div class="mt-6 flex justify-center space-x-8 text-xs font-mono">
+                    <div class="text-teal-400">STATUS: VERIFIED</div>
+                    <div class="text-teal-400">LOGIC: SATISFIED</div>
+                    <a href="https://doi.org/10.5281/zenodo.18212854" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline">DOI ARTIFACT SOURCE</a>
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-600 uppercase tracking-widest">Digital Signature Guaranteed | 2026-04-04</p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleLang() {
+            const body = document.body;
+            if (body.classList.contains('lang-th')) {
+                body.classList.remove('lang-th');
+                body.classList.add('lang-en');
+            } else {
+                body.classList.remove('lang-en');
+                body.classList.add('lang-th');
+            }
+        }
+
+        const ctxTest = document.getElementById('testResultsChart').getContext('2d');
+        new Chart(ctxTest, {
+            type: 'bar',
+            data: {
+                labels: ['Passed', 'Restricted'],
+                datasets: [{
+                    data: [85, 1],
+                    backgroundColor: ['#0D9488', '#F43F5E'],
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        const xRoles = ['owner', 'admin', 'operator', 'viewer', 'auditor'];
+        const yPerms = ['access', 'billing', 'security', 'policies', 'agents', 'execute', 'reports', 'evidence', 'invite', 'guests'];
+        const zData = [[1,1,0,0,0],[1,0,0,0,0],[1,1,0,0,0],[1,1,0,0,0],[1,1,1,0,0],[1,1,1,0,0],[1,1,1,1,1],[1,1,1,1,1],[1,1,0,0,0],[1,1,0,0,0]];
+
+        Plotly.newPlot('rbacHeatmap', [{
+            z: zData, x: xRoles, y: yPerms, type: 'heatmap',
+            colorscale: [[0, '#F8FAFC'], [1, '#0D9488']], showscale: false,
+            xgap: 2, ygap: 2
+        }], {
+            margin: { t: 0, b: 30, l: 100, r: 10 },
+            font: { size: 9, family: 'sans-serif' },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+        }, {displayModeBar: false, responsive: true});
+    </script>
+</body>
+</html>

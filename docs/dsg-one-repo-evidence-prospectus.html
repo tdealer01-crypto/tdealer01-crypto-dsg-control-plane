@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DSG ONE - Repository Grounded Evidence Prospectus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <style>
+    [data-lang] { display: none; }
+    [data-lang-block] { display: none; }
+    .lang-en [data-lang="en"] { display: inline; }
+    .lang-en [data-lang-block="en"] { display: block; }
+    .lang-th [data-lang="th"] { display: inline; }
+    .lang-th [data-lang-block="th"] { display: block; }
+    .audio-wave { display: flex; align-items: center; gap: 3px; }
+    .audio-wave div { width: 3px; height: 8px; background: #2dd4bf; animation: wave 1s infinite ease-in-out; }
+    @keyframes wave { 0%, 100% { height: 8px; } 50% { height: 18px; } }
+    .playing .wave-1 { animation-delay: .1s; }
+    .playing .wave-2 { animation-delay: .2s; }
+    .playing .wave-3 { animation-delay: .3s; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased lang-th">
+  <nav class="sticky top-0 z-50 bg-slate-950 border-b border-teal-500 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="text-teal-400 text-2xl">◈</span>
+        <div class="min-w-0">
+          <div class="text-white font-black tracking-tight text-xl">DSG ONE</div>
+          <div class="text-[10px] uppercase tracking-[0.25em] text-slate-400">Repo Grounded Evidence</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="speakSummary()" id="audioBtn" class="flex items-center gap-3 rounded-full bg-teal-600 hover:bg-teal-500 px-4 py-2 text-white shadow-lg shadow-teal-950/30 transition">
+          <span id="audioIcon">&#9654;</span>
+          <div id="waveContainer" class="audio-wave hidden">
+            <div class="wave-1"></div><div class="wave-2"></div><div class="wave-3"></div>
+          </div>
+          <div class="text-left leading-tight hidden sm:block">
+            <div class="text-[10px] uppercase font-bold opacity-80">Repo Brief</div>
+            <div class="text-xs font-bold"><span data-lang="th">ฟังสรุปจากข้อมูลจริง</span><span data-lang="en">Play grounded summary</span></div>
+          </div>
+        </button>
+        <button onclick="toggleLang()" class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800">
+          <span data-lang="th">ENGLISH</span><span data-lang="en">ภาษาไทย</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="relative overflow-hidden bg-slate-950 text-white border-b-8 border-indigo-600">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(45,212,191,0.18),_transparent_32%),radial-gradient(circle_at_left,_rgba(99,102,241,0.18),_transparent_28%)]"></div>
+    <div class="relative max-w-7xl mx-auto px-4 py-16 md:py-24">
+      <div class="flex flex-wrap gap-2 mb-6">
+        <span class="rounded-full bg-teal-500/15 border border-teal-400/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-teal-300">README-grounded</span>
+        <span class="rounded-full bg-indigo-500/15 border border-indigo-400/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-indigo-300">Runtime-backed</span>
+        <span class="rounded-full bg-slate-800 border border-slate-700 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">No fabricated metrics</span>
+      </div>
+      <div class="grid lg:grid-cols-[1.4fr_0.8fr] gap-10 items-start">
+        <div>
+          <h1 class="text-4xl md:text-6xl font-black leading-tight tracking-tight">
+            <span data-lang="th">หน้าเสนอข้อมูล DSG ONE<br><span class="text-teal-400">อิงจากไฟล์จริงใน Repo</span></span>
+            <span data-lang="en">DSG ONE Prospectus<br><span class="text-teal-400">Grounded in Repository Facts</span></span>
+          </h1>
+          <div data-lang-block="th" class="mt-6 max-w-3xl text-lg leading-8 text-slate-300 space-y-4">
+            <p>เวอร์ชันนี้ตัดคำกล่าวที่พิสูจน์จากรีโปไม่ได้ออก แล้วยึดเฉพาะสิ่งที่อ่านได้ตรงจาก <code class="text-teal-300">README</code>, public proof routes, verified runtime routes, spine execute route, RBAC map, และ Makk8 arbiter.</p>
+            <p>แกนของผลิตภัณฑ์ตามรีโปคือ <strong>enterprise AI runtime control plane</strong> ที่ทำให้ AI execution มีความสามารถด้าน auditability, replay resistance, recovery visibility และ governance แบบตรวจสอบได้.</p>
+          </div>
+          <div data-lang-block="en" class="mt-6 max-w-3xl text-lg leading-8 text-slate-300 space-y-4">
+            <p>This version removes claims that are not directly provable from the repository and keeps only what is visible in <code class="text-teal-300">README</code>, public proof routes, verified runtime routes, the spine execute route, RBAC maps, and the Makk8 arbiter source.</p>
+            <p>The repository positions DSG ONE as an <strong>enterprise AI runtime control plane</strong> focused on auditability, replay resistance, recovery visibility, and governed execution.</p>
+          </div>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm shadow-2xl">
+          <div class="text-xs uppercase tracking-[0.25em] text-slate-400 font-black">Ground Truth Snapshot</div>
+          <div class="mt-5 grid grid-cols-2 gap-4">
+            <div class="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
+              <div class="text-[10px] uppercase text-slate-400 font-black">Category</div>
+              <div class="mt-2 text-sm font-bold text-teal-300">Deterministic AI runtime control plane</div>
+            </div>
+            <div class="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
+              <div class="text-[10px] uppercase text-slate-400 font-black">Execute Route</div>
+              <div class="mt-2 text-sm font-bold text-indigo-300">60 req / 60 sec</div>
+            </div>
+            <div class="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
+              <div class="text-[10px] uppercase text-slate-400 font-black">Public Proof</div>
+              <div class="mt-2 text-sm font-bold text-slate-100">Open narrative + JSON</div>
+            </div>
+            <div class="rounded-2xl bg-slate-900/70 p-4 border border-slate-800">
+              <div class="text-[10px] uppercase text-slate-400 font-black">Verified Proof</div>
+              <div class="mt-2 text-sm font-bold text-slate-100">Auth + org + agent scoped</div>
+            </div>
+          </div>
+          <div class="mt-5 rounded-2xl border border-teal-400/20 bg-teal-500/10 p-4 text-sm leading-7 text-teal-50">
+            <span data-lang="th">หมายเหตุ: หน้านี้เป็น repository-evidence page ไม่ใช่ดีลชีตทางการเงิน จึงจะแสดงเฉพาะข้อเท็จจริงทางผลิตภัณฑ์และ runtime proof ที่ตรวจกลับได้จากโค้ด.</span>
+            <span data-lang="en">Note: this page is a repository-evidence page, not a financial deal sheet. It only presents product and runtime-proof facts that can be traced back to code.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-12 space-y-12">
+    <section class="grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Repository Definition</div>
+            <h2 class="mt-2 text-2xl font-black text-slate-900">
+              <span data-lang="th">ผลิตภัณฑ์นี้คืออะไร ตาม README จริง</span>
+              <span data-lang="en">What the README actually says</span>
+            </h2>
+          </div>
+          <a href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/README.md" target="_blank" class="text-xs font-bold text-indigo-600 underline">README.md</a>
+        </div>
+        <div data-lang-block="th" class="mt-6 space-y-4 text-slate-700 leading-8">
+          <p>README ระบุชัดว่า DSG ONE เป็น <strong>enterprise runtime control plane for AI operations</strong> ที่ทำให้ AI execution ไม่เป็น black box และเพิ่มความสามารถด้าน authenticated operator access, organization-scoped workspaces, agent creation, execution visibility, audit-oriented runtime evidence, mission/readiness surfaces, usage/quota/billing awareness และ proof surfaces แบบ public กับ verified.</p>
+          <p>ธีสหลักของรีโปคือ ถ้า AI จะทำงานใน production ได้ ระบบต้อง controllable, inspectable, และ reviewable แบบ real time.</p>
+        </div>
+        <div data-lang-block="en" class="mt-6 space-y-4 text-slate-700 leading-8">
+          <p>The README describes DSG ONE as an <strong>enterprise runtime control plane for AI operations</strong> that prevents execution from being treated as a black box. It lists authenticated operator access, organization-scoped workspaces, agent creation, execution visibility, audit-oriented runtime evidence, mission/readiness surfaces, usage/quota/billing awareness, and separate public versus verified proof surfaces.</p>
+          <p>The repo thesis is simple: if AI is used in production, it must be controllable, inspectable, and reviewable in real time.</p>
+        </div>
+      </div>
+      <div class="rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl p-6 md:p-8 flex flex-col items-center text-center">
+        <canvas id="qrCanvas" class="mb-5"></canvas>
+        <div class="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Supporting DOI</div>
+        <div class="mt-2 text-lg font-black text-teal-300">10.5281/zenodo.18212854</div>
+        <a href="https://doi.org/10.5281/zenodo.18212854" target="_blank" class="mt-4 text-sm font-bold text-indigo-300 underline">Open DOI artifact</a>
+        <div class="mt-6 pt-6 border-t border-slate-800 w-full text-left text-sm leading-7 text-slate-300">
+          <div class="font-black uppercase text-[10px] tracking-[0.25em] text-slate-500 mb-2">Also listed in README</div>
+          <div>10.5281/zenodo.18244246</div>
+          <div>10.5281/zenodo.18225586</div>
+          <div>10.5281/zenodo.18212854</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-2 gap-8">
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Proof Surface Split</div>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">
+          <span data-lang="th">Public Proof กับ Verified Runtime Proof</span>
+          <span data-lang="en">Public Proof vs Verified Runtime Proof</span>
+        </h2>
+        <div class="mt-6 grid md:grid-cols-2 gap-4">
+          <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
+            <div class="text-sm font-black text-cyan-900">Public proof narrative</div>
+            <ul class="mt-3 text-sm leading-7 text-cyan-950 space-y-1">
+              <li>/enterprise-proof/start</li>
+              <li>/enterprise-proof/report</li>
+              <li>/api/enterprise-proof/report</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+            <div class="text-sm font-black text-violet-900">Verified runtime evidence</div>
+            <ul class="mt-3 text-sm leading-7 text-violet-950 space-y-1 break-all">
+              <li>/enterprise-proof/verified</li>
+              <li>/enterprise-proof/verified/report?org_id=&lt;ORG_ID&gt;&amp;agent_id=&lt;AGENT_ID&gt;</li>
+              <li>/api/enterprise-proof/runtime-report?org_id=&lt;ORG_ID&gt;&amp;agent_id=&lt;AGENT_ID&gt;</li>
+              <li>/api/enterprise-proof/runtime-report/summary?org_id=&lt;ORG_ID&gt;&amp;agent_id=&lt;AGENT_ID&gt;</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-slate-900 p-5 text-sm leading-7 text-slate-200">
+          <span data-lang="th">ฝั่ง public ใช้สำหรับ external evaluation และ AI-readable narrative ส่วนฝั่ง verified ใช้สำหรับ auth-gated, org-scoped, agent-scoped runtime-backed review.</span>
+          <span data-lang="en">The public side is for external evaluation and AI-readable narrative. The verified side is auth-gated, org-scoped, agent-scoped, and runtime-backed.</span>
+        </div>
+      </div>
+
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Verified Runtime Summary Model</div>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">
+          <span data-lang="th">สรุปว่ารายงาน verified runtime วัดอะไร</span>
+          <span data-lang="en">What the verified runtime summary evaluates</span>
+        </h2>
+        <div class="mt-6 grid sm:grid-cols-2 gap-4 text-sm">
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4"><strong>Runtime summary</strong><br>latest_truth_hash<br>latest_entry_hash<br>truth_sequence</div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4"><strong>Anti replay</strong><br>replay_protected<br>terminal_approval_enforced<br>expired_rejected</div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4"><strong>Lineage</strong><br>latest_ledger_sequence<br>drift_detected</div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4"><strong>Recovery</strong><br>checkpoint_pass<br>missing_lineage_count</div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4"><strong>Governance</strong><br>runtime_roles<br>policy_count<br>rbac_enforced</div>
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4"><strong>Operational value</strong><br>executions_this_period<br>usage_events<br>billed_estimate_usd</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid xl:grid-cols-[1fr_1fr_0.9fr] gap-8">
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Execute Route Facts</div>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">Spine Execute</h2>
+        <ul class="mt-6 space-y-3 text-sm leading-7 text-slate-700">
+          <li><strong>Route:</strong> <code>/api/spine/execute</code> and <code>/api/execute</code> re-exports into it</li>
+          <li><strong>Rate limit:</strong> 60 requests per 60 seconds</li>
+          <li><strong>Authorization:</strong> requires <code>Bearer</code> token</li>
+          <li><strong>Payload contract:</strong> <code>agent_id</code> is required</li>
+          <li><strong>Access control:</strong> enforced by org role checks before execution</li>
+          <li><strong>Response behavior:</strong> returns rate-limit headers with result</li>
+        </ul>
+      </div>
+
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Runtime Role Map</div>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">RBAC</h2>
+        <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900 text-white">
+              <tr>
+                <th class="px-4 py-3">Capability</th>
+                <th class="px-4 py-3">Roles</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              <tr><td class="px-4 py-3 font-semibold">execute</td><td class="px-4 py-3">operator, org_admin</td></tr>
+              <tr><td class="px-4 py-3 font-semibold">runtime_summary</td><td class="px-4 py-3">runtime_auditor, reviewer, org_admin</td></tr>
+              <tr><td class="px-4 py-3 font-semibold">monitor</td><td class="px-4 py-3">operator, org_admin, runtime_auditor</td></tr>
+              <tr><td class="px-4 py-3 font-semibold">usage_read</td><td class="px-4 py-3">billing_admin, org_admin</td></tr>
+              <tr><td class="px-4 py-3 font-semibold">policies_write</td><td class="px-4 py-3">org_admin, reviewer</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Package Signals</div>
+        <h2 class="mt-2 text-2xl font-black">Runtime Stack</h2>
+        <ul class="mt-6 space-y-3 text-sm leading-7 text-slate-300">
+          <li><strong>Next:</strong> 14.2.35</li>
+          <li><strong>React:</strong> 18.2.0</li>
+          <li><strong>Supabase:</strong> SSR + supabase-js</li>
+          <li><strong>Rate limit:</strong> Upstash Ratelimit + Redis</li>
+          <li><strong>Billing:</strong> Stripe</li>
+          <li><strong>Tests:</strong> Vitest + Playwright</li>
+        </ul>
+        <div class="mt-6 pt-6 border-t border-slate-800 text-sm leading-7 text-slate-300">
+          <div class="font-black uppercase text-[10px] tracking-[0.25em] text-slate-500 mb-2">Available scripts</div>
+          <div>dev / build / start / lint / typecheck</div>
+          <div>test / test:unit / test:integration / test:failure / test:migrations</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-2 gap-8">
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Makk8 Arbiter</div>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">
+          <span data-lang="th">อินวาเรียนต์ 8 ข้อที่โค้ดใช้จริง</span>
+          <span data-lang="en">The 8 invariants defined in code</span>
+        </h2>
+        <div class="mt-4 rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm leading-7 text-slate-700">
+          <div><strong>MAKK8_VERSION:</strong> V159-DHAMMA-INTEGRITY</div>
+          <div><strong>MAKK8_INVARIANT_SET:</strong> MAKK-8-LOGIC-v1.0</div>
+        </div>
+        <div class="mt-6 grid sm:grid-cols-2 gap-4 text-sm">
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightView → is_grounded</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightResolve → intent_score &gt; 0</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightSpeech → is_api_clean</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightConduct → value &gt;= 0</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightLivelihood → source_verified</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightEffort → compute_cost &lt; 1000</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightMindfulness → has_audit_trail</div>
+          <div class="rounded-2xl border border-slate-200 p-4 bg-white">rightSamadhi → nonce_lock</div>
+        </div>
+      </div>
+
+      <div class="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 md:p-8">
+        <div class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Source Anchors</div>
+        <h2 class="mt-2 text-2xl font-black text-slate-900">
+          <span data-lang="th">ไฟล์ต้นทางที่ใช้ประกอบหน้านี้</span>
+          <span data-lang="en">Repository files used for this page</span>
+        </h2>
+        <div class="mt-6 space-y-3 text-sm leading-7">
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/README.md">README.md</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/app/enterprise-proof/report/page.tsx">app/enterprise-proof/report/page.tsx</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/lib/enterprise/proof-public.ts">lib/enterprise/proof-public.ts</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/lib/enterprise/proof-runtime.ts">lib/enterprise/proof-runtime.ts</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/app/api/spine/execute/route.ts">app/api/spine/execute/route.ts</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/lib/runtime/permissions.ts">lib/runtime/permissions.ts</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/lib/runtime/makk8-arbiter.ts">lib/runtime/makk8-arbiter.ts</a>
+          <a class="block rounded-2xl border border-slate-200 p-4 hover:bg-slate-50" target="_blank" href="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/blob/main/package.json">package.json</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-slate-950 border-t border-slate-800 text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 text-sm leading-7">
+      <div>
+        <div class="text-[10px] uppercase tracking-[0.25em] font-black text-slate-500">Boundary</div>
+        <p class="mt-3"><span data-lang="th">หน้านี้ไม่ใส่ตัวเลขดีล, valuation, หรือ test pass count ที่ยังไม่ได้อ่านกลับจาก source file บน branch หลักโดยตรง.</span><span data-lang="en">This page intentionally excludes deal figures, valuation claims, or test pass counts that are not directly grounded in source files on the main branch.</span></p>
+      </div>
+      <div>
+        <div class="text-[10px] uppercase tracking-[0.25em] font-black text-slate-500">Intent</div>
+        <p class="mt-3"><span data-lang="th">ใช้สำหรับสื่อสารภาพผลิตภัณฑ์และ proof boundary แบบตรวจกลับได้จากโค้ดจริง ไม่ใช่ narrative เชิงขายที่เกินหลักฐาน.</span><span data-lang="en">Use this as a product and proof-boundary communication page that traces back to real code, not as a sales narrative that outruns the evidence.</span></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    let isSpeaking = false;
+    function toggleLang() {
+      document.body.classList.toggle('lang-th');
+      document.body.classList.toggle('lang-en');
+      window.speechSynthesis.cancel();
+      resetAudioUI();
+    }
+
+    function speakSummary() {
+      const synth = window.speechSynthesis;
+      if (isSpeaking) {
+        synth.cancel();
+        resetAudioUI();
+        return;
+      }
+      const isTh = document.body.classList.contains('lang-th');
+      const parts = isTh ? [
+        'หน้าเวอร์ชันนี้อิงจากรีโปจริงของ DSG ONE โดยตรง',
+        'README นิยามผลิตภัณฑ์ว่าเป็น enterprise runtime control plane สำหรับ AI operations ที่ต้องการ auditability, replay resistance, recovery visibility และ governance',
+        'รีโปแยก proof surfaces ออกเป็น public proof narrative กับ verified runtime evidence แบบ auth gated และผูกกับ org และ agent',
+        'verified runtime summary ตรวจทั้ง latest truth hash, latest entry hash, anti replay, checkpoint recovery, drift detection, governance และ billed estimate',
+        'execute route บังคับ rate limit ที่ 60 คำขอต่อ 60 วินาที ต้องมี Bearer token และต้องมี agent id',
+        'Makk8 arbiter ในโค้ดใช้ invariant 8 ข้อ เช่น is grounded, api clean, source verified, audit trail และ nonce lock',
+        'หน้านี้จงใจไม่ใส่ claim ที่อ่านกลับจากรีโปไม่ได้ เพื่อรักษาความตรงของข้อมูล'
+      ] : [
+        'This version is grounded directly in the DSG ONE repository.',
+        'The README defines the product as an enterprise runtime control plane for AI operations that need auditability, replay resistance, recovery visibility, and governance.',
+        'The repository separates public proof narrative from verified runtime evidence, with authentication and org and agent scoping.',
+        'The verified runtime summary checks latest truth hash, latest entry hash, anti replay state, checkpoint recovery, drift detection, governance, and billed estimate.',
+        'The execute route is rate limited at 60 requests per 60 seconds, requires a Bearer token, and requires agent id.',
+        'The Makk8 arbiter defines eight invariants such as grounded input, API cleanliness, source verification, audit trail, and nonce locking.',
+        'This page intentionally avoids claims that cannot be traced back to repository files.'
+      ];
+
+      isSpeaking = true;
+      document.getElementById('audioIcon').innerHTML = '&#9632;';
+      document.getElementById('waveContainer').classList.remove('hidden');
+      document.getElementById('audioBtn').classList.add('playing');
+      document.getElementById('audioBtn').classList.add('bg-rose-600');
+
+      let i = 0;
+      const next = () => {
+        if (i >= parts.length) {
+          resetAudioUI();
+          return;
+        }
+        const u = new SpeechSynthesisUtterance(parts[i]);
+        u.lang = isTh ? 'th-TH' : 'en-US';
+        u.rate = 1;
+        u.onend = () => { i += 1; next(); };
+        u.onerror = () => resetAudioUI();
+        synth.speak(u);
+      };
+      next();
+    }
+
+    function resetAudioUI() {
+      isSpeaking = false;
+      document.getElementById('audioIcon').innerHTML = '&#9654;';
+      document.getElementById('waveContainer').classList.add('hidden');
+      document.getElementById('audioBtn').classList.remove('playing');
+      document.getElementById('audioBtn').classList.remove('bg-rose-600');
+    }
+
+    window.onload = () => {
+      new QRious({
+        element: document.getElementById('qrCanvas'),
+        value: 'https://doi.org/10.5281/zenodo.18212854',
+        size: 180,
+        foreground: '#0f172a',
+        background: '#ffffff'
+      });
+    };
+  </script>
+</body>
+</html>
