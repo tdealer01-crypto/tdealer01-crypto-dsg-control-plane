@@ -199,6 +199,7 @@ export default function DashboardPage() {
             <Link href="/dashboard/executions" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Executions</Link>
             <Link href="/dashboard/billing" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Billing</Link>
             <Link href="/dashboard/policies" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Policies</Link>
+            <Link href="/dashboard/integration" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Integration</Link>
             <Link href="/dashboard/audit" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Audit</Link>
           </div>
         </div>

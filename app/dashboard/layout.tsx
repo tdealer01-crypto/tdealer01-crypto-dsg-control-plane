@@ -3,6 +3,7 @@ import Link from 'next/link';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/command-center', label: 'Command Center' },
+  { href: '/dashboard/integration', label: 'Integration' },
   { href: '/dashboard/mission', label: 'Mission' },
   { href: '/dashboard/operations', label: 'Operations' },
   { href: '/dashboard/executions', label: 'Executions' },
@@ -26,12 +27,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</p>
             <p className="text-lg font-semibold">Command Center</p>
           </div>
-          <nav className="flex flex-wrap gap-2">
+          <nav className="flex max-w-full gap-2 overflow-x-auto pb-1">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-emerald-400"
+                className="whitespace-nowrap rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-emerald-400"
               >
                 {item.label}
               </Link>
