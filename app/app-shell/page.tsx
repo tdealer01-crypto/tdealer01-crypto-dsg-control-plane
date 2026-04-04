@@ -64,6 +64,7 @@ type ChatMessage = {
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/command-center', label: 'Command Center' },
+  { href: '/dashboard/integration', label: 'Integration' },
   { href: '/dashboard/mission', label: 'Mission' },
   { href: '/dashboard/operations', label: 'Operations' },
   { href: '/dashboard/executions', label: 'Executions' },
