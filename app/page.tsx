@@ -72,7 +72,7 @@ export default function HomePage() {
             <h1 className="mt-8 max-w-4xl text-5xl font-bold leading-tight md:text-7xl">
               Govern AI execution with an interface that looks premium and sells clearly.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-100">
               DSG gives product and governance teams a deterministic layer for policy enforcement,
               replayable audit logs, and subscription-ready billing in one operator console.
             </p>
@@ -87,30 +87,30 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base font-semibold text-slate-100 transition hover:border-emerald-400/40 hover:bg-emerald-400/10"
+                className="rounded-2xl border border-white/30 bg-white/10 px-6 py-4 text-base font-semibold text-white transition hover:border-emerald-300/70 hover:bg-emerald-300/15"
               >
                 Open dashboard
               </Link>
               <Link
                 href="/docs"
-                className="rounded-2xl border border-white/10 bg-transparent px-6 py-4 text-base font-semibold text-slate-300 transition hover:border-white/20 hover:text-white"
+                className="rounded-2xl border border-white/25 bg-slate-900/30 px-6 py-4 text-base font-semibold text-slate-100 transition hover:border-white/40 hover:text-white"
               >
                 Read docs
               </Link>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-400/5 p-4">
+            <div className="mt-6 rounded-2xl border border-cyan-200/35 bg-cyan-300/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Share links</p>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 <Link
                   href="/enterprise-proof/start"
-                  className="rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 font-medium text-cyan-100 transition hover:border-cyan-200/40"
+                  className="rounded-xl border border-cyan-200/50 bg-cyan-200/20 px-4 py-2 font-medium text-cyan-50 transition hover:border-cyan-100/70"
                 >
                   Landing share page
                 </Link>
                 <Link
                   href="/enterprise-proof/report"
-                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 font-medium text-slate-100 transition hover:border-white/30"
+                  className="rounded-xl border border-white/30 bg-white/10 px-4 py-2 font-medium text-white transition hover:border-white/50"
                 >
                   Public proof report
                 </Link>
@@ -119,8 +119,8 @@ export default function HomePage() {
 
             <div className="mt-12 grid gap-4 md:grid-cols-3">
               {stats.map((item) => (
-                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                  <p className="text-sm text-slate-400">{item.label}</p>
+                <div key={item.label} className="rounded-3xl border border-white/25 bg-white/10 p-5 backdrop-blur-sm">
+                  <p className="text-sm text-slate-300">{item.label}</p>
                   <p className="mt-3 text-base font-semibold text-white">{item.value}</p>
                 </div>
               ))}
@@ -128,10 +128,10 @@ export default function HomePage() {
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-6 shadow-2xl shadow-emerald-950/30 backdrop-blur-xl">
-            <div className="rounded-[1.5rem] border border-emerald-400/20 bg-slate-950/90 p-6">
+            <div className="rounded-[1.5rem] border border-emerald-300/40 bg-slate-950/95 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/80">Live policy graph</p>
+                  <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live policy graph</p>
                   <h2 className="mt-2 text-2xl font-semibold">Execution governance loop</h2>
                 </div>
                 <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
@@ -141,11 +141,11 @@ export default function HomePage() {
 
               <div className="mt-8 grid gap-4">
                 {['AI request enters control plane', 'Policy engine scores context', 'DSG selects ALLOW / STABILIZE / BLOCK', 'Audit + billing events are stored'].map((item, index) => (
-                  <div key={item} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-400/15 text-sm font-semibold text-emerald-200">
+                  <div key={item} className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/10 p-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-300/25 text-sm font-semibold text-emerald-100">
                       0{index + 1}
                     </div>
-                    <p className="text-sm text-slate-200">{item}</p>
+                    <p className="text-sm text-slate-100">{item}</p>
                   </div>
                 ))}
               </div>
@@ -157,12 +157,12 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="grid gap-6 lg:grid-cols-3">
           {pillars.map((pillar) => (
-            <div key={pillar.title} className="rounded-[1.75rem] border border-white/10 bg-slate-900/60 p-7 backdrop-blur-sm">
-              <div className="inline-flex rounded-2xl bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-200">
+            <div key={pillar.title} className="rounded-[1.75rem] border border-white/20 bg-slate-900/75 p-7 backdrop-blur-sm">
+              <div className="inline-flex rounded-2xl bg-emerald-300/20 px-3 py-2 text-sm font-semibold text-emerald-100">
                 {pillar.title}
               </div>
               <p className="mt-5 text-lg font-semibold text-white">{pillar.title}</p>
-              <p className="mt-3 leading-7 text-slate-300">{pillar.text}</p>
+              <p className="mt-3 leading-7 text-slate-100">{pillar.text}</p>
             </div>
           ))}
         </div>
