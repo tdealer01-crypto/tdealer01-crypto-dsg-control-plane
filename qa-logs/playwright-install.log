@@ -1,0 +1,37 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+Downloading Chrome for Testing 145.0.7632.6 (playwright chromium v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip[22m
+Error: Download failed: server returned code 403 body 'Domain forbidden'. URL: https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip
+    at IncomingMessage.handleError (/workspace/tdealer01-crypto-dsg-control-plane/node_modules/playwright-core/lib/server/registry/oopDownloadBrowserMain.js:58:23)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+Downloading Chrome for Testing 145.0.7632.6 (playwright chromium v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip[22m
+Error: Download failed: server returned code 403 body 'Domain forbidden'. URL: https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip
+    at IncomingMessage.handleError (/workspace/tdealer01-crypto-dsg-control-plane/node_modules/playwright-core/lib/server/registry/oopDownloadBrowserMain.js:58:23)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+Downloading Chrome for Testing 145.0.7632.6 (playwright chromium v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip[22m
+Error: Download failed: server returned code 403 body 'Domain forbidden'. URL: https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip
+    at IncomingMessage.handleError (/workspace/tdealer01-crypto-dsg-control-plane/node_modules/playwright-core/lib/server/registry/oopDownloadBrowserMain.js:58:23)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+Downloading Chrome for Testing 145.0.7632.6 (playwright chromium v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip[22m
+Error: Download failed: server returned code 403 body 'Domain forbidden'. URL: https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip
+    at IncomingMessage.handleError (/workspace/tdealer01-crypto-dsg-control-plane/node_modules/playwright-core/lib/server/registry/oopDownloadBrowserMain.js:58:23)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+Downloading Chrome for Testing 145.0.7632.6 (playwright chromium v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip[22m
+Error: Download failed: server returned code 403 body 'Domain forbidden'. URL: https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip
+    at IncomingMessage.handleError (/workspace/tdealer01-crypto-dsg-control-plane/node_modules/playwright-core/lib/server/registry/oopDownloadBrowserMain.js:58:23)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+Failed to install browsers
+Error: Failed to download Chrome for Testing 145.0.7632.6 (playwright chromium v1208), caused by
+Error: Download failure, code=1
+    at ChildProcess.<anonymous> (/workspace/tdealer01-crypto-dsg-control-plane/node_modules/playwright-core/lib/server/registry/browserFetcher.js:96:32)
+    at ChildProcess.emit (node:events:524:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:293:12)
