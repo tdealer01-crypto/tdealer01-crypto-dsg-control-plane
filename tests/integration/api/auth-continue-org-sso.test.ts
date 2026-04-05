@@ -8,8 +8,19 @@ function buildReq() {
   return new Request('http://localhost/auth/continue', { method: 'POST', body: form });
 }
 
+
+function setAuthEnv() {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+  process.env.APP_URL = 'http://localhost';
+}
+
 describe('/auth/continue org-scoped sso', () => {
-  beforeEach(() => vi.resetModules());
+  beforeEach(() => {
+    vi.resetModules();
+    setAuthEnv();
+  });
 
   it('blocks email flow when break-glass is disabled', async () => {
     vi.doMock('../../../lib/auth/login-context', () => ({ resolveLoginContext: vi.fn(async () => ({ mode: 'sso-only', org: { slug: 'acme' } })) }));
