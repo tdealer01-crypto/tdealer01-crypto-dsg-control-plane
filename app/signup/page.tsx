@@ -43,6 +43,34 @@ function getMessage(message?: string, error?: string) {
     };
   }
 
+  if (error === 'missing-supabase-url') {
+    return {
+      tone: 'error',
+      text: 'Server configuration error: Supabase URL is not configured. Contact your admin.',
+    };
+  }
+
+  if (error === 'missing-anon-key') {
+    return {
+      tone: 'error',
+      text: 'Server configuration error: Supabase API key is not configured. Contact your admin.',
+    };
+  }
+
+  if (error === 'missing-service-key') {
+    return {
+      tone: 'error',
+      text: 'Server configuration error: Supabase service key is not configured. Contact your admin.',
+    };
+  }
+
+  if (error === 'missing-app-url') {
+    return {
+      tone: 'error',
+      text: 'Server configuration error: Application URL is not configured. Contact your admin.',
+    };
+  }
+
   if (error === 'signup-failed') {
     return {
       tone: 'error',

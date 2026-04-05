@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getSafeNext } from '../lib/auth/safe-next';
 
 type Props = {
@@ -11,7 +12,49 @@ type Props = {
 
 export default function LoginForm({ next, orgSlug, ssoFirst }: Props) {
   const [mode, setMode] = useState<'login' | 'trial'>('login');
+  const searchParams = useSearchParams();
   const safeNext = getSafeNext(next);
+  const isWaitingForEmail = searchParams?.get('message') === 'check-email';
+
+  useEffect(() => {
+    if (!isWaitingForEmail) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { authenticated?: boolean };
+
+        if (!cancelled && data.authenticated) {
+          window.location.href = safeNext;
+        }
+      } catch {
+        // No-op. Keep polling until session is established.
+      }
+    };
+
+    void checkSession();
+    const intervalId = window.setInterval(() => {
+      void checkSession();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isWaitingForEmail, safeNext]);
 
   return (
     <div>
