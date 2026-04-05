@@ -1,10 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
-
-function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
-  return value;
-}
+import { getSafeNext } from './lib/auth/safe-next';
 
 function isDashboardPath(pathname: string) {
   return pathname === '/dashboard' || pathname.startsWith('/dashboard/');

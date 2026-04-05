@@ -37,6 +37,11 @@ describe('/auth/login', () => {
   it('returns rate-limited when the limiter blocks the request', async () => {
     vi.doMock('../../../lib/security/rate-limit', () => ({
       applyRateLimit: vi.fn(async () => ({ allowed: false, remaining: 0, resetAt: Date.now() + 60000 })),
+      buildRateLimitHeaders: vi.fn(() => ({
+        'X-RateLimit-Limit': '8',
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(Math.floor((Date.now() + 60000) / 1000)),
+      })),
       getRateLimitKey: vi.fn(() => 'auth-login:test'),
     }));
 
@@ -62,6 +67,11 @@ describe('/auth/login', () => {
 
     vi.doMock('../../../lib/security/rate-limit', () => ({
       applyRateLimit: vi.fn(async () => ({ allowed: true, remaining: 7, resetAt: Date.now() + 60000 })),
+      buildRateLimitHeaders: vi.fn(() => ({
+        'X-RateLimit-Limit': '8',
+        'X-RateLimit-Remaining': '7',
+        'X-RateLimit-Reset': String(Math.floor((Date.now() + 60000) / 1000)),
+      })),
       getRateLimitKey: vi.fn(() => 'auth-login:test'),
     }));
 

@@ -5,13 +5,9 @@ import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { ensureSeatActivatedForUser } from '../../../lib/billing/seat-activation';
 import { bootstrapOrgStarterState } from '../../../lib/onboarding/bootstrap';
+import { getSafeNext } from '../../../lib/auth/safe-next';
 
 const TRIAL_DAYS = 14;
-
-function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
-  return value;
-}
 
 function slugifyWorkspace(name: string) {
   const base = name
