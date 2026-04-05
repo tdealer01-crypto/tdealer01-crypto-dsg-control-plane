@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import LoginForm from '../../components/LoginForm';
 import { resolveLoginContext } from '../../lib/auth/login-context';
 
@@ -23,6 +24,10 @@ function getMessage(message?: string, error?: string) {
   if (error === 'rate-limited') return { tone: 'error', text: 'Too many login attempts. Wait 1 minute, then try again.' };
   if (error === 'sso-unavailable') return { tone: 'error', text: 'Single sign-on is not available for this login right now.' };
   if (error === 'org-self-serve-disabled') return { tone: 'error', text: 'Your company does not allow self-serve access for this login path.' };
+  if (error === 'missing-supabase-url') return { tone: 'error', text: 'Server configuration error: Supabase URL is not configured. Contact your admin.' };
+  if (error === 'missing-anon-key') return { tone: 'error', text: 'Server configuration error: Supabase API key is not configured. Contact your admin.' };
+  if (error === 'missing-service-key') return { tone: 'error', text: 'Server configuration error: Supabase service key is not configured. Contact your admin.' };
+  if (error === 'missing-app-url') return { tone: 'error', text: 'Server configuration error: Application URL is not configured. Contact your admin.' };
   if (error === 'unexpected') return { tone: 'error', text: 'Unexpected auth error. Check server logs and auth configuration.' };
   return null;
 }
@@ -65,7 +70,9 @@ export default async function LoginPage({
 
           {!ssoOnly && (
             <div className="mt-8">
-              <LoginForm next={next} orgSlug={context.org?.slug} ssoFirst={ssoFirst} />
+              <Suspense fallback={null}>
+                <LoginForm next={next} orgSlug={context.org?.slug} ssoFirst={ssoFirst} />
+              </Suspense>
             </div>
           )}
         </div>

@@ -12,6 +12,14 @@ function buildFormRequest(fields: Record<string, string>) {
 }
 
 /** Build a chainable Supabase query builder mock where every method returns `this` and the terminal resolves to `result`. */
+
+function setAuthEnv() {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+  process.env.APP_URL = 'http://localhost';
+}
+
 function chainMock(result: { data: unknown; error: unknown }) {
   const resolved = Promise.resolve(result);
   const chain: Record<string, unknown> = {};
@@ -32,7 +40,7 @@ function chainMock(result: { data: unknown; error: unknown }) {
 describe('/auth/continue', () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.APP_URL = 'http://localhost';
+    setAuthEnv();
     process.env.APPROVED_APPROVAL_DOMAINS = '';
     vi.doMock('../../../lib/auth/sign-in-events', () => ({ logSignInEvent: vi.fn(async () => {}) }));
     vi.doMock('../../../lib/auth/access-policy', async () => {

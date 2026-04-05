@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { applyRateLimit, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { validateAuthConfig } from '../../../lib/auth/preflight';
 
 const AUTH_LOGIN_RATE_LIMIT = 8;
 const AUTH_LOGIN_RATE_WINDOW_MS = 60 * 1000;
@@ -49,6 +50,18 @@ export async function POST(request: NextRequest) {
 
   if (!rateLimit.allowed) {
     redirectToLogin.searchParams.set('error', 'rate-limited');
+    return NextResponse.redirect(redirectToLogin, { status: 302 });
+  }
+
+  const preflight = validateAuthConfig();
+  if (preflight.warnings.length) {
+    console.warn('[magic-link] preflight warnings:', preflight.warnings);
+  }
+
+  if (!preflight.ok) {
+    const firstError = preflight.errors[0];
+    console.error('[magic-link] preflight failed:', preflight.errors);
+    redirectToLogin.searchParams.set('error', firstError ? firstError.code : 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302 });
   }
 
