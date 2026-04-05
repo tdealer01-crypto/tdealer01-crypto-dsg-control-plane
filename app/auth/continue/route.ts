@@ -11,6 +11,8 @@ import { validateAuthConfig } from '../../../lib/auth/preflight';
 
 const AUTH_CONTINUE_RATE_LIMIT = 8;
 const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
+const AUTH_CONTINUE_EMAIL_RATE_LIMIT = 3;
+const AUTH_CONTINUE_EMAIL_RATE_WINDOW_MS = 60 * 1000;
 
 function getTrustedAppOrigin(request: NextRequest) {
   const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -63,12 +65,12 @@ async function sendMagicLink(
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimit = await applyRateLimit({
+  const ipRateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'auth-continue'),
     limit: AUTH_CONTINUE_RATE_LIMIT,
     windowMs: AUTH_CONTINUE_RATE_WINDOW_MS,
   });
-  const rateLimitHeaders = buildRateLimitHeaders(rateLimit, AUTH_CONTINUE_RATE_LIMIT);
+  const ipRateLimitHeaders = buildRateLimitHeaders(ipRateLimit, AUTH_CONTINUE_RATE_LIMIT);
 
   const formData = await request.formData();
   const email = String(formData.get('email') || '').trim().toLowerCase();
@@ -84,12 +86,24 @@ export async function POST(request: NextRequest) {
 
   if (!email) {
     redirectToLogin.searchParams.set('error', 'missing-email');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: ipRateLimitHeaders });
   }
 
-  if (!rateLimit.allowed) {
+  if (!ipRateLimit.allowed) {
     redirectToLogin.searchParams.set('error', 'rate-limited');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: ipRateLimitHeaders });
+  }
+
+  const emailRateLimit = await applyRateLimit({
+    key: `auth-continue-email:${email}`,
+    limit: AUTH_CONTINUE_EMAIL_RATE_LIMIT,
+    windowMs: AUTH_CONTINUE_EMAIL_RATE_WINDOW_MS,
+  });
+  const emailRateLimitHeaders = buildRateLimitHeaders(emailRateLimit, AUTH_CONTINUE_EMAIL_RATE_LIMIT);
+
+  if (!emailRateLimit.allowed) {
+    redirectToLogin.searchParams.set('error', 'rate-limited');
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
   }
 
   const preflight = validateAuthConfig();
@@ -101,7 +115,7 @@ export async function POST(request: NextRequest) {
     const firstError = preflight.errors[0];
     console.error('[auth-continue] preflight failed:', preflight.errors);
     redirectToLogin.searchParams.set('error', firstError ? firstError.code : 'unexpected');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
   }
 
   try {
@@ -115,14 +129,14 @@ export async function POST(request: NextRequest) {
 
     if (loginContext.mode === 'sso-only') {
       redirectToLogin.searchParams.set('error', 'sso-required');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     if (loginContext.mode === 'approval-required') {
       const requestAccess = new URL('/request-access', request.url);
       requestAccess.searchParams.set('email', email);
       if (workspaceName) requestAccess.searchParams.set('workspace_name', workspaceName);
-      return NextResponse.redirect(requestAccess, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(requestAccess, { status: 302, headers: emailRateLimitHeaders });
     }
 
     const { data: operatorRow, error: operatorErr } = await admin
@@ -155,7 +169,7 @@ export async function POST(request: NextRequest) {
           metadata: { mode: 'operator', next },
         }).catch(() => null);
         redirectToLogin.searchParams.set('error', 'send-failed');
-        return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+        return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
       }
 
       await logSignInEvent({
@@ -169,35 +183,35 @@ export async function POST(request: NextRequest) {
       }).catch(() => null);
 
       redirectToLogin.searchParams.set('message', 'check-email');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     if (orgSlug && loginContext.mode === 'sso-first') {
       redirectToLogin.searchParams.set('error', 'org-self-serve-disabled');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     const accessMode = resolveAccessModeForEmail(email);
     if (accessMode === 'invite_only' || accessMode === 'scim_managed') {
       redirectToLogin.searchParams.set('error', 'not-allowed');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     if (accessMode === 'approved_domains_require_approval') {
       const requestAccess = new URL('/request-access', request.url);
       requestAccess.searchParams.set('email', email);
       if (workspaceName) requestAccess.searchParams.set('workspace_name', workspaceName);
-      return NextResponse.redirect(requestAccess, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(requestAccess, { status: 302, headers: emailRateLimitHeaders });
     }
 
     if (accessMode === 'sso_required') {
       redirectToLogin.searchParams.set('error', 'sso-required');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     if (!workspaceName) {
       redirectToLogin.searchParams.set('error', 'missing-workspace');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     const { data: existingPending, error: existingPendingError } = await admin
@@ -254,7 +268,7 @@ export async function POST(request: NextRequest) {
         metadata: { mode: 'trial', workspace_name: workspaceName },
       }).catch(() => null);
       redirectToLogin.searchParams.set('error', 'signup-failed');
-      return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+      return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
     }
 
     await logSignInEvent({
@@ -266,10 +280,10 @@ export async function POST(request: NextRequest) {
     }).catch(() => null);
 
     redirectToLogin.searchParams.set('message', 'check-email');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
   } catch (err) {
     console.error('[auth-continue] failed:', err);
     redirectToLogin.searchParams.set('error', 'unexpected');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
   }
 }
