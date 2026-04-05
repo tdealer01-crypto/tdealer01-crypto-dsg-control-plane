@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { getSafeNext } from '../../../lib/auth/safe-next';
+import { validateAuthConfig } from '../../../lib/auth/preflight';
 
 function getTrustedAppOrigin() {
   const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -35,6 +36,18 @@ export async function POST(request: NextRequest) {
 
   if (!workspaceName) {
     redirectToSignup.searchParams.set('error', 'missing-workspace');
+    return NextResponse.redirect(redirectToSignup, { status: 302 });
+  }
+
+  const preflight = validateAuthConfig({ requireAppUrl: true });
+  if (preflight.warnings.length) {
+    console.warn('[trial-signup] preflight warnings:', preflight.warnings);
+  }
+
+  if (!preflight.ok) {
+    const firstError = preflight.errors[0];
+    console.error('[trial-signup] preflight failed:', preflight.errors);
+    redirectToSignup.searchParams.set('error', firstError ? firstError.code : 'signup-failed');
     return NextResponse.redirect(redirectToSignup, { status: 302 });
   }
 

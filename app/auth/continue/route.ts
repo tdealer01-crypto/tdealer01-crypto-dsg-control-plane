@@ -7,6 +7,7 @@ import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
 import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 import { getSafeNext } from '../../../lib/auth/safe-next';
+import { validateAuthConfig } from '../../../lib/auth/preflight';
 
 const AUTH_CONTINUE_RATE_LIMIT = 8;
 const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
@@ -88,6 +89,18 @@ export async function POST(request: NextRequest) {
 
   if (!rateLimit.allowed) {
     redirectToLogin.searchParams.set('error', 'rate-limited');
+    return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
+  }
+
+  const preflight = validateAuthConfig();
+  if (preflight.warnings.length) {
+    console.warn('[auth-continue] preflight warnings:', preflight.warnings);
+  }
+
+  if (!preflight.ok) {
+    const firstError = preflight.errors[0];
+    console.error('[auth-continue] preflight failed:', preflight.errors);
+    redirectToLogin.searchParams.set('error', firstError ? firstError.code : 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
   }
 

@@ -11,6 +11,14 @@ function buildFormRequest(fields: Record<string, string>) {
   });
 }
 
+
+function setAuthEnv() {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+  process.env.APP_URL = 'http://localhost';
+}
+
 function chainMock(result: { data: unknown; error: unknown }) {
   const resolved = Promise.resolve(result);
   const chain: Record<string, unknown> = {};
@@ -31,7 +39,7 @@ function chainMock(result: { data: unknown; error: unknown }) {
 describe('sign in event instrumentation', () => {
   beforeEach(() => {
     vi.resetModules();
-    process.env.APP_URL = 'http://localhost';
+    setAuthEnv();
   });
 
   it('logs event for successful magic link request', async () => {
