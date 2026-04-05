@@ -4,6 +4,8 @@ import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     const access = await requireOrgRole(RuntimeRouteRoles.runtime_summary);
