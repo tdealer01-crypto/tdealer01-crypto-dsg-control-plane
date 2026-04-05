@@ -1,11 +1,7 @@
 import Link from 'next/link';
 import LoginForm from '../../components/LoginForm';
 import { resolveLoginContext } from '../../lib/auth/login-context';
-
-function getSafeNext(value?: string) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
-  return value;
-}
+import { getSafeNext } from '../../lib/auth/safe-next';
 
 function getMessage(message?: string, error?: string) {
   if (message === 'check-email') return { tone: 'success', text: 'Check your email for the magic link to continue.' };

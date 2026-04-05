@@ -6,14 +6,10 @@ import { resolveLoginContext } from '../../../lib/auth/login-context';
 import { resolveAccessModeForEmail } from '../../../lib/auth/access-policy';
 import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { getSafeNext } from '../../../lib/auth/safe-next';
 
 const AUTH_CONTINUE_RATE_LIMIT = 8;
 const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
-
-function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
-  return value;
-}
 
 function getTrustedAppOrigin(request: NextRequest) {
   const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;

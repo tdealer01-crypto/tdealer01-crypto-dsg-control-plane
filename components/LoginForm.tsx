@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getSafeNext } from '../lib/auth/safe-next';
 
 type Props = {
   next: string;
@@ -10,6 +11,7 @@ type Props = {
 
 export default function LoginForm({ next, orgSlug, ssoFirst }: Props) {
   const [mode, setMode] = useState<'login' | 'trial'>('login');
+  const safeNext = getSafeNext(next);
 
   return (
     <div>
@@ -37,7 +39,7 @@ export default function LoginForm({ next, orgSlug, ssoFirst }: Props) {
       </div>
 
       <form action="/auth/continue" method="post" className="mt-6 space-y-4">
-        <input type="hidden" name="next" value={next} />
+        <input type="hidden" name="next" value={safeNext} />
         {orgSlug ? <input type="hidden" name="org" value={orgSlug} /> : null}
 
         <div>

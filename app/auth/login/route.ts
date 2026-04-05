@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { getSafeNext } from '../../../lib/auth/safe-next';
 
 const AUTH_LOGIN_RATE_LIMIT = 8;
 const AUTH_LOGIN_RATE_WINDOW_MS = 60 * 1000;
-
-function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/')) return '/dashboard/executions';
-  return value;
-}
 
 function getTrustedAppOrigin(request: NextRequest) {
   const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
