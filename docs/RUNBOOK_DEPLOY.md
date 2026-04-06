@@ -81,7 +81,23 @@ Use this checklist:
 
 ## 3) Apply Supabase migrations
 Run migrations for the target environment before traffic cutover.
-- Verify new migration files are present and executed in order.
+- Verify migration files are present and executed in order:
+
+1. `20260323053000_product_loop_scaffold.sql`
+2. `20260323054500_product_loop_rls.sql`
+3. `20260323110000_billing_checkout_flow.sql`
+4. `20260323140000_schema_constraints_hardening.sql`
+5. `20260323141000_rls_policy_hardening.sql`
+6. `20260330_monitor_stats.sql`
+7. `20260331_runtime_spine.sql`
+8. `20260331_runtime_spine_rpc.sql`
+9. `20260401093000_batch3_enterprise_identity_rollout.sql`
+10. `20260401120000_enterprise_access_batch2.sql`
+11. `20260401_runtime_rbac.sql`
+12. `20260401_schema_policies_table.sql`
+13. `20260402_billing_quota_in_rpc.sql`
+14. `20260404_runtime_spine_rpc_hardening.sql`
+
 - Validate schema changes via application smoke checks.
 
 For this repository (`tdealer01-crypto-dsg-control-plane`), current migration order is:
