@@ -84,6 +84,33 @@ Run migrations for the target environment before traffic cutover.
 - Verify new migration files are present and executed in order.
 - Validate schema changes via application smoke checks.
 
+For this repository (`tdealer01-crypto-dsg-control-plane`), current migration order is:
+1. `20260323053000_product_loop_scaffold.sql`
+2. `20260323054500_product_loop_rls.sql`
+3. `20260323110000_billing_checkout_flow.sql`
+4. `20260323140000_schema_constraints_hardening.sql`
+5. `20260323141000_rls_policy_hardening.sql`
+6. `20260329120000_trial_signup_flow.sql`
+7. `20260330_monitor_stats.sql`
+8. `20260331_runtime_spine.sql`
+9. `20260331_runtime_spine_rpc.sql`
+10. `20260401093000_batch3_enterprise_identity_rollout.sql`
+11. `20260401120000_enterprise_access_batch2.sql`
+12. `20260401123000_access_requests_org_scope.sql`
+13. `20260401_runtime_rbac.sql`
+14. `20260401_schema_policies_table.sql`
+15. `20260402100000_usage_counters_unique.sql`
+16. `20260402_billing_quota_in_rpc.sql`
+17. `20260404_runtime_spine_rpc_hardening.sql`
+
+Recommended CLI path:
+```bash
+supabase link --project-ref <PROJECT_REF>
+supabase db push
+```
+
+If Supabase CLI is not available, execute the SQL files in order in Supabase Dashboard → SQL Editor.
+
 ## 4) Set Stripe Price IDs (Production)
 Use the repository helper script to set production Stripe pricing variables in Vercel:
 
@@ -122,8 +149,8 @@ When users are redirected back to login with an unexpected auth error, validate 
 3. **Supabase Email provider is enabled**
    - Authentication → Providers → Email
 4. **Supabase URL configuration matches production**
-   - Site URL: `https://<your-production-domain>`
-   - Redirect URL includes: `https://<your-production-domain>/auth/confirm`
+   - Site URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app`
+   - Redirect URL includes: `https://tdealer01-crypto-dsg-control-plane.vercel.app/auth/confirm`
 5. **Redeploy Vercel after changes**
    - `vercel --prod`
 
