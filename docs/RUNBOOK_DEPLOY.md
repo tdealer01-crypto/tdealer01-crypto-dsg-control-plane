@@ -15,11 +15,33 @@ Control Plane deployment on Vercel + dependency readiness checks for DSG Core an
 
 ## 2) Configure environment variables
 Set required production values in Vercel project settings using `.env.example` as source of truth:
-- Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- DSG Core: `DSG_CORE_URL`, `DSG_CORE_API_KEY`
-- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS`
-- Billing: `OVERAGE_RATE_USD`
-- Access control: `ACCESS_MODE` / `ACCESS_POLICY`
+
+- Supabase:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- App origin:
+  - `APP_URL` or `NEXT_PUBLIC_APP_URL`
+- DSG Core:
+  - `DSG_CORE_MODE`
+  - `DSG_CORE_URL` (only when using remote mode)
+  - `DSG_CORE_API_KEY` (only when using remote mode)
+- Stripe:
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `STRIPE_PRICE_PRO`
+  - `STRIPE_PRICE_BUSINESS`
+- Billing:
+  - `OVERAGE_RATE_USD`
+- Access control:
+  - `ACCESS_MODE`
+  - `ACCESS_POLICY`
+
+### Notes on required env vars
+- `APP_URL` or `NEXT_PUBLIC_APP_URL` is required for signup and auth confirmation flows.
+- `DSG_CORE_MODE` must be set to either `internal` or `remote`.
+- If `DSG_CORE_MODE=internal`, leave `DSG_CORE_URL` unset.
+- If `DSG_CORE_MODE=remote`, set both `DSG_CORE_URL` and `DSG_CORE_API_KEY`.
 
 ### Vercel + GitHub failure pattern (current known)
 If deployment status is `Error` and build logs show:
@@ -33,21 +55,28 @@ For server route execution, also verify:
 - `SUPABASE_SERVICE_ROLE_KEY`
 
 Quick check with Vercel CLI:
+
 ```bash
-vercel env ls
+vercel env ls production
 ```
 
 Add missing values:
+
 ```bash
 vercel env add NEXT_PUBLIC_SUPABASE_URL production
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
 vercel env add SUPABASE_SERVICE_ROLE_KEY production
+vercel env add APP_URL production
+vercel env add NEXT_PUBLIC_APP_URL production
+vercel env add DSG_CORE_MODE production
 ```
 
-If using internal DSG core mode in the same repo:
-- leave `DSG_CORE_URL` unset, or set `DSG_CORE_MODE=internal`
+If using internal DSG Core mode in the same repo:
+- leave `DSG_CORE_URL` unset
+- set `DSG_CORE_MODE=internal`
 
 Then redeploy from the latest GitHub commit:
+
 ```bash
 vercel --prod
 ```
@@ -79,6 +108,39 @@ Use this checklist:
    - temporarily disable `Require Verified Commits` (only with explicit approval).
 5. Redeploy only after commit verification is fixed; otherwise cancellation will repeat.
 
+### CLI-first recovery when deployment is canceled
+If the unverified commit issue cannot be resolved immediately, use Vercel CLI to deploy directly:
+
+```bash
+# 1. Verify CLI access
+npx vercel whoami
+
+# 2. Deploy production directly from local files
+npx vercel --prod
+
+# 3. Verify deployment
+curl -sS https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
+
+# 4. Check env vars are present
+npx vercel env ls production
+
+# 5. Add missing env vars if needed
+npx vercel env add NEXT_PUBLIC_SUPABASE_URL production
+npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
+npx vercel env add APP_URL production
+npx vercel env add NEXT_PUBLIC_APP_URL production
+npx vercel env add DSG_CORE_MODE production
+
+# 6. Redeploy after adding env vars
+npx vercel --prod
+```
+
+If Vercel CLI is not available or credentials are missing, use Vercel Dashboard:
+1. **Project Settings → Git** → disable **Require Verified Commits**
+2. **Deployments** → Redeploy latest commit
+3. Re-enable **Require Verified Commits** after successful deploy
+
 ## 3) Apply Supabase migrations
 Run migrations for the target environment before traffic cutover.
 - Verify migration files are present and executed in order:
@@ -100,26 +162,8 @@ Run migrations for the target environment before traffic cutover.
 
 - Validate schema changes via application smoke checks.
 
-For this repository (`tdealer01-crypto-dsg-control-plane`), current migration order is:
-1. `20260323053000_product_loop_scaffold.sql`
-2. `20260323054500_product_loop_rls.sql`
-3. `20260323110000_billing_checkout_flow.sql`
-4. `20260323140000_schema_constraints_hardening.sql`
-5. `20260323141000_rls_policy_hardening.sql`
-6. `20260329120000_trial_signup_flow.sql`
-7. `20260330_monitor_stats.sql`
-8. `20260331_runtime_spine.sql`
-9. `20260331_runtime_spine_rpc.sql`
-10. `20260401093000_batch3_enterprise_identity_rollout.sql`
-11. `20260401120000_enterprise_access_batch2.sql`
-12. `20260401123000_access_requests_org_scope.sql`
-13. `20260401_runtime_rbac.sql`
-14. `20260401_schema_policies_table.sql`
-15. `20260402100000_usage_counters_unique.sql`
-16. `20260402_billing_quota_in_rpc.sql`
-17. `20260404_runtime_spine_rpc_hardening.sql`
-
 Recommended CLI path:
+
 ```bash
 supabase link --project-ref <PROJECT_REF>
 supabase db push
@@ -160,8 +204,10 @@ When users are redirected back to login with an unexpected auth error, validate 
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `APP_URL` or `NEXT_PUBLIC_APP_URL`
+   - `DSG_CORE_MODE`
 2. **Supabase migrations are applied on the same project**
-   - `supabase db push --linked` (or equivalent SQL execution in order)
+   - `supabase db push --linked`
 3. **Supabase Email provider is enabled**
    - Authentication → Providers → Email
 4. **Supabase URL configuration matches production**
