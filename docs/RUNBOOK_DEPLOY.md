@@ -59,6 +59,26 @@ If deployment fails with `Hobby accounts are limited to daily cron`, at least on
 - If sub-daily cadence is required, move the project to Pro/Enterprise before redeploying.
 - This repository keeps cron config in `vercel.json` with a daily schedule to stay Hobby-compatible.
 
+### Deployment canceled before build: `unverified commit`
+If Vercel shows:
+- `Build Canceled`
+- `The Deployment was canceled because it was created with an unverified commit`
+
+this is **not** a build/runtime failure. The deployment is blocked by Vercel Git verification policy before build starts.
+
+Use this checklist:
+1. Open the commit on GitHub and confirm it is marked **Verified**.
+2. In Vercel: **Project Settings → Git → Require Verified Commits**.
+   - If enabled, any unverified commit is auto-canceled.
+3. Validate commit identity on the machine/bot that authored the commit:
+   - `git config user.name`
+   - `git config user.email`
+   - ensure email is verified on the linked Git provider account.
+4. If commit came from automation (bot/Codex flow), either:
+   - create a new commit from an account that can produce verified commits, or
+   - temporarily disable `Require Verified Commits` (only with explicit approval).
+5. Redeploy only after commit verification is fixed; otherwise cancellation will repeat.
+
 ## 3) Apply Supabase migrations
 Run migrations for the target environment before traffic cutover.
 - Verify new migration files are present and executed in order.
