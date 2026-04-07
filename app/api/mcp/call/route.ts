@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+import { handleApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 const MCP_RATE_LIMIT = 30;
 const MCP_RATE_WINDOW_MS = 60_000;
 
 function getSanitizedUpstreamError(status: number, upstreamError: unknown, fallback: string) {
   if (status >= 500) {
-    return 'Internal server error';
+    return internalErrorMessage();
   }
   if (typeof upstreamError === 'string' && upstreamError.trim().length > 0) {
     return upstreamError;
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       },
       { headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
     );
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    return handleApiError('api/mcp/call', error);
   }
 }

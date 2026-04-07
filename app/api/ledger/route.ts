@@ -3,7 +3,7 @@ import { getDSGCoreLedger } from "../../../lib/dsg-core";
 import { fetchAuditLogsForExport } from "../../../lib/security/audit-export";
 import { requireOrgRole } from "../../../lib/authz";
 import { RuntimeRouteRoles } from "../../../lib/runtime/permissions";
-import { internalErrorMessage, logApiError } from "../../../lib/security/api-error";
+import { handleApiError } from "../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Audit export is temporarily unavailable because audit_logs relation is missing." }, { status: 503 });
       }
 
-      return NextResponse.json({ error: "Failed to load audit export." }, { status: 500 });
+      return handleApiError("api/ledger", auditExport, { details: { stage: "audit-export" } });
     }
 
     const items = (auditExport.rows || []).map((row: any) => ({
@@ -57,10 +57,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    logApiError("api/ledger", error, { stage: "unhandled" });
-    return NextResponse.json(
-      { error: internalErrorMessage() },
-      { status: 500 }
-    );
+    return handleApiError('api/ledger', error, { details: { stage: 'unhandled' } });
   }
 }

@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   if (error || !data) {
     logServerError(error, 'policies-post');
-    return NextResponse.json({ error: 'Failed to create policy' }, { status: 500 });
+    return serverErrorResponse();
   }
 
   await supabase.from('runtime_policy_governance_events').insert({
