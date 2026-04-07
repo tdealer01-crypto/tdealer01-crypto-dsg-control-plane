@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
+import { internalErrorMessage, logApiError } from '../security/api-error';
 
 export async function validateOrgAgentScope(input: { orgId?: string | null; agentId?: string | null }) {
   const orgId = input.orgId ? String(input.orgId) : '';
@@ -17,7 +18,12 @@ export async function validateOrgAgentScope(input: { orgId?: string | null; agen
     .maybeSingle();
 
   if (error) {
-    return { ok: false as const, status: 500, error: error.message };
+    logApiError('lib/enterprise/proof-access', error, {
+      stage: 'agent-scope-query',
+      orgId,
+      agentId,
+    });
+    return { ok: false as const, status: 500, error: internalErrorMessage() };
   }
 
   if (!agent) {
