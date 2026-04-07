@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { getResend } from '../../../lib/resend';
@@ -13,6 +14,24 @@ const AUTH_CONTINUE_RATE_LIMIT = 8;
 const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
 const AUTH_CONTINUE_EMAIL_RATE_LIMIT = 3;
 const AUTH_CONTINUE_EMAIL_RATE_WINDOW_MS = 60 * 1000;
+
+function buildRetryAfterHeader(resetAt: number) {
+  const retryAfterSeconds = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+  return String(retryAfterSeconds);
+}
+
+function buildRateLimitedResponse(headers: Record<string, string>, resetAt: number) {
+  return NextResponse.json(
+    { error: 'Too many requests. Please try again later.' },
+    {
+      status: 429,
+      headers: {
+        ...headers,
+        'Retry-After': buildRetryAfterHeader(resetAt),
+      },
+    },
+  );
+}
 
 function getTrustedAppOrigin(request: NextRequest) {
   const configuredAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -65,12 +84,17 @@ async function sendMagicLink(
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimitKeyBase = `${getRateLimitKey(request, 'auth-continue')}:${request.nextUrl.pathname}`;
   const ipRateLimit = await applyRateLimit({
-    key: getRateLimitKey(request, 'auth-continue'),
+    key: rateLimitKeyBase,
     limit: AUTH_CONTINUE_RATE_LIMIT,
     windowMs: AUTH_CONTINUE_RATE_WINDOW_MS,
   });
   const ipRateLimitHeaders = buildRateLimitHeaders(ipRateLimit, AUTH_CONTINUE_RATE_LIMIT);
+
+  if (!ipRateLimit.allowed) {
+    return buildRateLimitedResponse(ipRateLimitHeaders, ipRateLimit.resetAt);
+  }
 
   const formData = await request.formData();
   const email = String(formData.get('email') || '').trim().toLowerCase();
@@ -89,21 +113,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: ipRateLimitHeaders });
   }
 
-  if (!ipRateLimit.allowed) {
-    redirectToLogin.searchParams.set('error', 'rate-limited');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: ipRateLimitHeaders });
-  }
+  const emailHash = createHash('sha256').update(email).digest('hex');
+  const emailRateLimitKey = `${rateLimitKeyBase}:${emailHash}`;
 
   const emailRateLimit = await applyRateLimit({
-    key: `auth-continue-email:${email}`,
+    key: emailRateLimitKey,
     limit: AUTH_CONTINUE_EMAIL_RATE_LIMIT,
     windowMs: AUTH_CONTINUE_EMAIL_RATE_WINDOW_MS,
   });
   const emailRateLimitHeaders = buildRateLimitHeaders(emailRateLimit, AUTH_CONTINUE_EMAIL_RATE_LIMIT);
 
   if (!emailRateLimit.allowed) {
-    redirectToLogin.searchParams.set('error', 'rate-limited');
-    return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
+    return buildRateLimitedResponse(emailRateLimitHeaders, emailRateLimit.resetAt);
   }
 
   const preflight = validateAuthConfig();
