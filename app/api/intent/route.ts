@@ -3,6 +3,7 @@ import { requireOrgRole } from '../../../lib/authz';
 import { issueSpineIntent } from '../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../lib/spine/request';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { handleApiError } from '../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(result.body, { status: result.status });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    return handleApiError('api/intent', error);
   }
 }

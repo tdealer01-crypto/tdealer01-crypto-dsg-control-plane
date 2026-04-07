@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logApiError, toSafeErrorResponse } from './api-error';
 
 type ErrorResponseOptions = {
   status?: number;
@@ -6,16 +7,16 @@ type ErrorResponseOptions = {
   headers?: HeadersInit;
 };
 
-export function logServerError(error: unknown, label = 'server-error') {
-  console.error(`[${label}]`, error);
+export function logServerError(error: unknown, label = 'server-error', details?: Record<string, unknown>) {
+  logApiError(label, error, details);
 }
 
 export function serverErrorResponse(options: ErrorResponseOptions = {}) {
   const {
     status = 500,
-    message = 'Internal server error',
+    message,
     headers,
   } = options;
 
-  return NextResponse.json({ error: message }, { status, headers });
+  return NextResponse.json({ error: message ?? toSafeErrorResponse(status).error }, { status, headers });
 }

@@ -4,6 +4,7 @@ import { executeSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+import { handleApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
       status: result.status,
       headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
     });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    return handleApiError('api/spine/execute', error);
   }
 }

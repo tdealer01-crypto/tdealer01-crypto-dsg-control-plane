@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '../../../../lib/supabase/server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
-import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import { handleApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,18 +133,17 @@ export async function POST(request: Request) {
 
     const priceId = getPriceId(plan, interval);
     if (!priceId) {
-      return NextResponse.json(
-        { error: `Missing Stripe price configuration for ${plan}/${interval}` },
-        { status: 500 }
-      );
+      return handleApiError('api/billing/checkout', new Error('Missing Stripe price configuration'), {
+        details: { plan, interval, stage: 'price-config' },
+      });
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) {
-      return NextResponse.json(
-        { error: 'Missing NEXT_PUBLIC_APP_URL' },
-        { status: 500, headers: buildRateLimitHeaders(rateLimit, 20) }
-      );
+      return handleApiError('api/billing/checkout', new Error('Missing NEXT_PUBLIC_APP_URL'), {
+        details: { stage: 'app-url-config' },
+        headers: buildRateLimitHeaders(rateLimit, 20),
+      });
     }
     const stripe = getStripeClient();
 
@@ -186,7 +185,6 @@ export async function POST(request: Request) {
       interval,
     }, { headers: buildRateLimitHeaders(rateLimit, 20) });
   } catch (error) {
-    logApiError('api/billing/checkout', error);
-    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+    return handleApiError('api/billing/checkout', error);
   }
 }

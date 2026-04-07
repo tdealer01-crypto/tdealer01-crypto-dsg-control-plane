@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { canonicalHash, canonicalJson } from '../../../../lib/runtime/canonical';
 import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
 import { getOverageRateUsd } from '../../../../lib/billing/overage-config';
-import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import { handleApiError } from '../../../../lib/security/api-error';
 
 function demoEnabled(request: Request) {
   if (process.env.NODE_ENV === 'production') return false;
@@ -75,13 +75,12 @@ export async function POST(request: Request) {
     });
 
     if (commitError) {
-      logApiError('api/demo/bootstrap', commitError, { stage: 'runtime-commit-execution' });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      return handleApiError('api/demo/bootstrap', commitError, { details: { stage: 'runtime-commit-execution' } });
     }
 
     const commitRow = Array.isArray(commit) ? commit[0] : commit;
     if (!commitRow?.execution_id || !commitRow?.truth_state_id || !commitRow?.ledger_id) {
-      return NextResponse.json({ error: 'Commit bootstrap failed to produce runtime lineage' }, { status: 500 });
+      return handleApiError('api/demo/bootstrap', new Error('Commit bootstrap failed to produce runtime lineage'), { details: { stage: 'lineage-check' } });
     }
 
     const checkpointHash = buildCheckpointHash({
@@ -120,7 +119,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ org_id: orgId, agent_id: agentId, execution_id: commitRow.execution_id, demo_mode: true });
   } catch (error) {
-    logApiError('api/demo/bootstrap', error, { stage: 'unhandled' });
-    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+    return handleApiError('api/demo/bootstrap', error, { details: { stage: 'unhandled' } });
   }
 }
