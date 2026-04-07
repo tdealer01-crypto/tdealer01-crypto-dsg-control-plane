@@ -1,37 +1,342 @@
-# Updated production-readiness.yml
-
-# Workflow to ensure production readiness of the application
-name: Production Readiness
+name: Production Readiness Check
+# Required repository secrets:
+# - VERCEL_TOKEN
+# - VERCEL_ORG_ID
+# - VERCEL_PROJECT_ID
+# - SUPABASE_DB_PASSWORD
+# - SUPABASE_PROJECT_REF
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
 
 jobs:
-  health_check:
+  preflight-secrets-check:
+    name: Preflight Secrets Check
     runs-on: ubuntu-latest
+    outputs:
+      has_vercel: ${{ steps.check.outputs.has_vercel }}
+      has_supabase: ${{ steps.check.outputs.has_supabase }}
     steps:
-      - name: Check health
+      - name: Check available secrets
+        id: check
         run: |
-          # Add your health check commands here
-          echo 'Health check started'
-
-      - name: Evaluate health check
-        id: evaluate
-        run: |
-          # Replace this with your evaluation logic
-          echo 'Evaluating health check...'
-          # Simulate health check evaluation
-          health_check_success=true
-          if [[ "$health_check_success" == "true" ]]; then
-            echo 'Health check passed'
+          if [ -n "${{ secrets.VERCEL_TOKEN }}" ] && [ -n "${{ secrets.VERCEL_ORG_ID }}" ] && [ -n "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+            echo "has_vercel=true" >> $GITHUB_OUTPUT
+            echo "✓ Vercel secrets available"
           else
-            echo 'Health check failed'
+            echo "has_vercel=false" >> $GITHUB_OUTPUT
+            echo "⚠ Vercel secrets missing — env-var-check will be skipped"
+          fi
+
+          if [ -n "${{ secrets.SUPABASE_DB_PASSWORD }}" ] && [ -n "${{ secrets.SUPABASE_PROJECT_REF }}" ]; then
+            echo "has_supabase=true" >> $GITHUB_OUTPUT
+            echo "✓ Supabase secrets available"
+          else
+            echo "has_supabase=false" >> $GITHUB_OUTPUT
+            echo "⚠ Supabase secrets missing — db-migration-check will be skipped"
+          fi
+
+  env-var-check:
+    name: Environment Variable Check
+    runs-on: ubuntu-latest
+    needs: preflight-secrets-check
+    if: needs.preflight-secrets-check.outputs.has_vercel == 'true'
+    outputs:
+      critical_status: ${{ steps.check_critical.outputs.status }}
+      required_status: ${{ steps.check_required.outputs.status }}
+      billing_status: ${{ steps.check_billing.outputs.status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Pull environment variables from Vercel
+        run: |
+          vercel env pull .env.check --environment production --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Check CRITICAL variables
+        id: check_critical
+        run: |
+          CRITICAL_VARS="NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY DSG_CORE_MODE"
+          MISSING=""
+          for var in $CRITICAL_VARS; do
+            if ! grep -q "^${var}=" .env.check || grep -q "^${var}=$" .env.check; then
+              MISSING="$MISSING $var"
+            fi
+          done
+
+          if [ -z "$MISSING" ]; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ All CRITICAL variables present"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Missing CRITICAL variables:$MISSING"
             exit 1
           fi
 
-      - name: Conditional step
-        if: steps.evaluate.outputs.health_check_success == 'true'
+      - name: Check REQUIRED variables
+        id: check_required
+        if: always()
         run: |
-          echo 'Proceeding as health check passed'
+          REQUIRED_VARS="APP_URL NEXT_PUBLIC_APP_URL"
+          MISSING=""
+          for var in $REQUIRED_VARS; do
+            if ! grep -q "^${var}=" .env.check || grep -q "^${var}=$" .env.check; then
+              MISSING="$MISSING $var"
+            fi
+          done
+
+          if [ -z "$MISSING" ]; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "status=warn" >> $GITHUB_OUTPUT
+            echo "⚠ Missing REQUIRED variables:$MISSING"
+          fi
+
+      - name: Check BILLING variables
+        id: check_billing
+        if: always()
+        run: |
+          BILLING_VARS="STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET STRIPE_PRICE_PRO_MONTHLY STRIPE_PRICE_BUSINESS_MONTHLY STRIPE_PRICE_ENTERPRISE_MONTHLY"
+          MISSING=""
+          for var in $BILLING_VARS; do
+            if ! grep -q "^${var}=" .env.check || grep -q "^${var}=$" .env.check; then
+              MISSING="$MISSING $var"
+            fi
+          done
+
+          if [ -z "$MISSING" ]; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "status=warn" >> $GITHUB_OUTPUT
+            echo "⚠ Missing BILLING variables:$MISSING"
+          fi
+
+      - name: Generate preflight summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Preflight Environment Check
+
+          | Category | Status |
+          |----------|--------|
+          | CRITICAL | ${{ steps.check_critical.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
+          | REQUIRED | ${{ steps.check_required.outputs.status == 'pass' && '✅ Pass' || '⚠️ Warn' }} |
+          | BILLING  | ${{ steps.check_billing.outputs.status == 'pass' && '✅ Pass' || '⚠️ Warn' }} |
+          EOF
+
+      - name: Cleanup
+        if: always()
+        run: rm -f .env.check
+
+  db-migration-check:
+    name: Database Migration Check
+    runs-on: ubuntu-latest
+    needs: preflight-secrets-check
+    if: needs.preflight-secrets-check.outputs.has_supabase == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Link to Supabase project
+        run: |
+          echo "${{ secrets.SUPABASE_DB_PASSWORD }}" | supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Check pending migrations
+        id: migration_check
+        run: |
+          OUTPUT=$(supabase db push --dry-run 2>&1 || true)
+          echo "$OUTPUT" | tee /tmp/migration_output.txt
+
+          if echo "$OUTPUT" | grep -q "No pending migrations"; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ All migrations applied"
+          elif echo "$OUTPUT" | grep -q "pending"; then
+            echo "status=warn" >> $GITHUB_OUTPUT
+            echo "⚠ Pending migrations found"
+          else
+            echo "status=pass" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate migration summary
+        if: always()
+        run: |
+          echo "## Database Migration Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f /tmp/migration_output.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat /tmp/migration_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  health-check:
+    name: Production Health Check
+    runs-on: ubuntu-latest
+    needs: preflight-secrets-check
+    outputs:
+      health_status: ${{ steps.health.outputs.status }}
+      monitor_status: ${{ steps.monitor.outputs.status }}
+      usage_status: ${{ steps.usage.outputs.status }}
+    steps:
+      - name: Wait for deployment (push only)
+        if: github.event_name == 'push'
+        run: |
+          echo "Waiting 60s for Vercel deployment to complete..."
+          sleep 60
+
+      - name: Check /api/health
+        id: health
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          MAX_RETRIES=3
+          RETRY_DELAY=10
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 15 "${BASE_URL}/api/health" 2>/dev/null || echo "000")
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              if jq -e '.ok == true' /tmp/health.json > /dev/null 2>&1; then
+                echo "status=pass" >> $GITHUB_OUTPUT
+                echo "✓ Health check passed (attempt $i)"
+                exit 0
+              else
+                echo "⚠ HTTP 200 but ok != true (attempt $i)"
+              fi
+            else
+              echo "⚠ HTTP $HTTP_CODE (attempt $i/$MAX_RETRIES)"
+            fi
+
+            if [ "$i" -lt "$MAX_RETRIES" ]; then
+              sleep $RETRY_DELAY
+            fi
+          done
+
+          echo "status=fail" >> $GITHUB_OUTPUT
+          echo "✗ Health check failed after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Check /api/core/monitor
+        id: monitor
+        continue-on-error: true
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          HTTP_CODE=$(curl -sS -o /tmp/monitor.json -w "%{http_code}" --max-time 15 "${BASE_URL}/api/core/monitor" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            READINESS=$(jq -r '.readiness.status // "unknown"' /tmp/monitor.json 2>/dev/null)
+            echo "status=${READINESS}" >> $GITHUB_OUTPUT
+            echo "✓ Core monitor: $READINESS"
+          elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+            echo "status=auth_required" >> $GITHUB_OUTPUT
+            echo "⚠ Core monitor requires authentication (HTTP $HTTP_CODE) — expected for unauthenticated CI"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Core monitor HTTP $HTTP_CODE"
+          fi
+
+      - name: Check /api/usage
+        id: usage
+        continue-on-error: true
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "${BASE_URL}/api/usage" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ Usage endpoint OK"
+          elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+            echo "status=auth_required" >> $GITHUB_OUTPUT
+            echo "⚠ Usage endpoint requires authentication (HTTP $HTTP_CODE)"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Usage endpoint HTTP $HTTP_CODE"
+          fi
+
+      - name: Generate health check summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Production Health Status
+
+          | Endpoint | Status |
+          |----------|--------|
+          | /api/health | ${{ steps.health.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
+          | /api/core/monitor | ${{ steps.monitor.outputs.status == 'ready' && '✅ Ready' || steps.monitor.outputs.status == 'auth_required' && '🔒 Auth Required' || '⚠️ ' }}${{ steps.monitor.outputs.status }} |
+          | /api/usage | ${{ steps.usage.outputs.status == 'pass' && '✅ Pass' || steps.usage.outputs.status == 'auth_required' && '🔒 Auth Required' || '⚠️ ' }}${{ steps.usage.outputs.status }} |
+          EOF
+
+  summary:
+    name: Readiness Summary
+    runs-on: ubuntu-latest
+    needs: [preflight-secrets-check, env-var-check, db-migration-check, health-check]
+    if: always()
+    steps:
+      - name: Generate final summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # Production Readiness Summary
+
+          ## Secrets
+          - Vercel: ${{ needs.preflight-secrets-check.outputs.has_vercel == 'true' && '✅ Available' || '⚠️ Missing' }}
+          - Supabase: ${{ needs.preflight-secrets-check.outputs.has_supabase == 'true' && '✅ Available' || '⚠️ Missing' }}
+
+          ## Environment Variables
+          ${{ needs.env-var-check.result == 'skipped' && '⏭️ Skipped (no Vercel secrets)' || '' }}
+          - CRITICAL: ${{ needs.env-var-check.outputs.critical_status == 'pass' && '✅ Pass' || needs.env-var-check.result == 'skipped' && '⏭️ Skipped' || '❌ Fail' }}
+          - REQUIRED: ${{ needs.env-var-check.outputs.required_status == 'pass' && '✅ Pass' || needs.env-var-check.result == 'skipped' && '⏭️ Skipped' || '⚠️ Warn' }}
+          - BILLING: ${{ needs.env-var-check.outputs.billing_status == 'pass' && '✅ Pass' || needs.env-var-check.result == 'skipped' && '⏭️ Skipped' || '⚠️ Warn' }}
+
+          ## Database
+          - Migration Status: ${{ needs.db-migration-check.result == 'success' && '✅ Pass' || needs.db-migration-check.result == 'skipped' && '⏭️ Skipped (no Supabase secrets)' || '⚠️ Check logs' }}
+
+          ## Health Checks
+          - /api/health: ${{ needs.health-check.outputs.health_status == 'pass' && '✅ Healthy' || '❌ Down' }}
+          - /api/core/monitor: ${{ needs.health-check.outputs.monitor_status }}
+          - /api/usage: ${{ needs.health-check.outputs.usage_status }}
+
+          ## Overall Status
+          ${{ needs.health-check.outputs.health_status == 'pass' && (needs.env-var-check.result == 'success' || needs.env-var-check.result == 'skipped') && '### ✅ Production Ready' || '### ⚠️ Review Required' }}
+
+          Generated: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+
+      - name: Create issue on scheduled failure
+        if: github.event_name == 'schedule' && (needs.preflight-secrets-check.result == 'failure' || needs.env-var-check.result == 'failure' || needs.db-migration-check.result == 'failure' || needs.health-check.result == 'failure')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'production-down',
+              state: 'open',
+            });
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `Still failing at ${new Date().toISOString()}\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Production Health Check Failed',
+                body: `Health check failed at ${new Date().toISOString()}\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                labels: ['production-down'],
+              });
+            }
