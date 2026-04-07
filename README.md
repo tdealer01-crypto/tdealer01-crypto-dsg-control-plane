@@ -299,6 +299,15 @@ A practical evaluation path is:
 
 ---
 
+## Package Manager & Lockfile Policy
+
+โครงการนี้ใช้ **npm** เป็น package manager หลัก (อ้างอิงจาก `package-lock.json` และ workflow CI ที่รันด้วย `npm ci`).
+
+นโยบายที่ต้องปฏิบัติ:
+- ห้ามแก้ `package.json` โดยไม่อัปเดต `package-lock.json` ใน commit เดียวกัน
+- CI จะตรวจ lock file sync โดยรัน `npm install --package-lock-only --ignore-scripts` แล้วตรวจ `git diff --exit-code -- package-lock.json`
+- CI/CD และ Vercel ต้องติดตั้ง dependencies ด้วย `npm ci` เพื่อให้ได้ dependency graph ที่ reproducible
+
 ## Positioning
 
 DSG ONE should be understood as:
