@@ -69,6 +69,12 @@ export default async function LoginPage({
               <Suspense fallback={null}>
                 <LoginForm next={next} orgSlug={context.org?.slug} ssoFirst={ssoFirst} />
               </Suspense>
+              <p className="mt-4 text-center text-sm text-slate-400">
+                Prefer password login?{' '}
+                <Link href={`/password-login?next=${encodeURIComponent(next)}`} className="text-emerald-300 underline">
+                  Use password instead
+                </Link>
+              </p>
             </div>
           )}
         </div>
