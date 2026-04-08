@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Agent = {
-  id: string;
+  agent_id: string;
   name: string;
   status: string;
   monthly_limit: number;
-  last_used_at: string | null;
-  updated_at: string;
+  usage_this_month: number;
+  api_key_preview: string;
 };
 
 type Execution = {
@@ -23,17 +23,16 @@ type Execution = {
 };
 
 type UsageSummary = {
+  plan: string;
+  subscription_status?: string;
   billing_period: string;
-  agent_count: number;
-  execution_count: number;
-  monthly_executions: number;
-  subscription: null | {
-    plan: string;
-    status: string;
-    current_period_start: string | null;
-    current_period_end: string | null;
-    updated_at: string;
-  };
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  trial_end?: string | null;
+  executions: number;
+  included_executions: number;
+  overage_executions: number;
+  projected_amount_usd: number;
 };
 
 type HealthPayload = {
@@ -130,7 +129,7 @@ export default function DashboardPage() {
 
         setAgents(agentsJson.items || []);
         setExecutions(executionsJson.executions || []);
-        setSummary(usageJson.summary || null);
+        setSummary(usageJson || null);
         setHealth(healthJson || null);
 
         if (auditRes.ok) {
@@ -158,10 +157,10 @@ export default function DashboardPage() {
 
   const cards = useMemo(() => {
     return [
-      { label: "Agents", value: summary?.agent_count ?? agents.length },
-      { label: "Executions", value: summary?.execution_count ?? executions.length },
-      { label: "Monthly Usage", value: summary?.monthly_executions ?? 0 },
-      { label: "Plan", value: summary?.subscription?.plan ?? "-" },
+      { label: "Agents", value: agents.length },
+      { label: "Executions", value: summary?.executions ?? executions.length },
+      { label: "Monthly Usage", value: summary?.executions ?? 0 },
+      { label: "Plan", value: summary?.plan ?? "-" },
       { label: "DSG Core", value: health?.core_ok ? "Online" : "Offline" },
     ];
   }, [agents.length, executions.length, summary, health]);
@@ -299,18 +298,18 @@ export default function DashboardPage() {
             <div className="mt-4 space-y-3">
               {agents.length === 0 && !loading ? <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No agents found.</div> : null}
               {agents.map((agent) => (
-                <div key={agent.id} className="rounded-xl border border-slate-800 p-4">
+                <div key={agent.agent_id} className="rounded-xl border border-slate-800 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold">{agent.name}</p>
-                      <p className="mt-1 text-sm text-slate-400">{agent.id}</p>
+                      <p className="mt-1 text-sm text-slate-400">{agent.agent_id}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">{agent.status}</span>
                   </div>
                   <div className="mt-3 grid gap-2 text-sm text-slate-300">
                     <p>Monthly limit: {agent.monthly_limit}</p>
-                    <p>Last used: {formatDate(agent.last_used_at)}</p>
-                    <p>Updated: {formatDate(agent.updated_at)}</p>
+                    <p>Usage this month: {agent.usage_this_month}</p>
+                    <p>API key preview: {agent.api_key_preview || "-"}</p>
                   </div>
                 </div>
               ))}
@@ -348,9 +347,9 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold">Billing Snapshot</h2>
           <div className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
             <p>Billing period: {summary?.billing_period || "-"}</p>
-            <p>Subscription plan: {summary?.subscription?.plan || "-"}</p>
-            <p>Subscription status: {summary?.subscription?.status || "-"}</p>
-            <p>Period end: {formatDate(summary?.subscription?.current_period_end || null)}</p>
+            <p>Subscription plan: {summary?.plan || "-"}</p>
+            <p>Subscription status: {summary?.subscription_status || "-"}</p>
+            <p>Period end: {formatDate(summary?.current_period_end || null)}</p>
           </div>
         </section>
       </div>

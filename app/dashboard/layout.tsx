@@ -12,6 +12,8 @@ const NAV = [
   { href: '/dashboard/ledger', label: 'Ledger' },
   { href: '/dashboard/capacity', label: 'Capacity' },
   { href: '/dashboard/billing', label: 'Billing' },
+  { href: '/dashboard/agents', label: 'Agents' },
+  { href: '/dashboard/policies', label: 'Policies' },
   { href: '/dashboard/audit', label: 'Audit' },
   { href: '/dashboard/settings/access', label: 'Access Settings' },
   { href: '/dashboard/settings/security', label: 'Security Settings' },
