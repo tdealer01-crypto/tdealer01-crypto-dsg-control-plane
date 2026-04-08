@@ -36,16 +36,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { id } = await params;
     const supabase = getSupabaseAdmin();
+    const agentsTable = supabase.from('agents') as any;
     const newApiKey = buildApiKey();
     const apiKeyHash = createHash('sha256').update(newApiKey).digest('hex');
 
-    const { data: updated, error } = await supabase
-      .from('agents')
+    const { data: updated, error } = await (agentsTable
       .update({ api_key_hash: apiKeyHash, updated_at: new Date().toISOString() })
       .eq('org_id', access.orgId)
       .eq('id', id)
       .select('id')
-      .maybeSingle();
+      .maybeSingle()) as { data: { id: string } | null; error: unknown };
 
     if (error) {
       logServerError(error, 'agents-id-rotate-key');
