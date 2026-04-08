@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 type Agent = {
   agent_id: string;
   name: string;
+  policy_id?: string;
   status: string;
   monthly_limit: number;
   usage_this_month: number;
@@ -34,6 +35,52 @@ type UsageSummary = {
   overage_executions: number;
   projected_amount_usd: number;
 };
+
+function normalizeAgent(input: unknown): Agent | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  if (typeof row.agent_id !== "string" || typeof row.name !== "string") return null;
+  if (typeof row.status !== "string" || typeof row.monthly_limit !== "number") return null;
+
+  return {
+    agent_id: row.agent_id,
+    name: row.name,
+    policy_id: typeof row.policy_id === "string" ? row.policy_id : undefined,
+    status: row.status,
+    monthly_limit: row.monthly_limit,
+    usage_this_month: typeof row.usage_this_month === "number" ? row.usage_this_month : 0,
+    api_key_preview: typeof row.api_key_preview === "string" ? row.api_key_preview : "n/a",
+  };
+}
+
+function normalizeUsageSummary(input: unknown): UsageSummary | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+
+  if (
+    typeof row.plan !== "string" ||
+    typeof row.billing_period !== "string" ||
+    typeof row.executions !== "number" ||
+    typeof row.included_executions !== "number" ||
+    typeof row.overage_executions !== "number" ||
+    typeof row.projected_amount_usd !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    plan: row.plan,
+    subscription_status: typeof row.subscription_status === "string" ? row.subscription_status : undefined,
+    billing_period: row.billing_period,
+    current_period_start: typeof row.current_period_start === "string" ? row.current_period_start : null,
+    current_period_end: typeof row.current_period_end === "string" ? row.current_period_end : null,
+    trial_end: typeof row.trial_end === "string" ? row.trial_end : null,
+    executions: row.executions,
+    included_executions: row.included_executions,
+    overage_executions: row.overage_executions,
+    projected_amount_usd: row.projected_amount_usd,
+  };
+}
 
 type HealthPayload = {
   ok: boolean;
@@ -127,9 +174,15 @@ export default function DashboardPage() {
         if (!healthRes.ok) throw new Error(healthJson.error || "Failed to load control-plane health");
         if (!alive) return;
 
-        setAgents(agentsJson.items || []);
+        const normalizedAgents = Array.isArray(agentsJson?.items)
+          ? agentsJson.items.map(normalizeAgent).filter((item): item is Agent => item !== null)
+          : [];
+        const summaryPayload = usageJson?.summary ?? usageJson;
+        const normalizedSummary = normalizeUsageSummary(summaryPayload);
+
+        setAgents(normalizedAgents);
         setExecutions(executionsJson.executions || []);
-        setSummary(usageJson || null);
+        setSummary(normalizedSummary);
         setHealth(healthJson || null);
 
         if (auditRes.ok) {
