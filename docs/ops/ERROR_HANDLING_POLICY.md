@@ -4,26 +4,33 @@
 Centralize and standardize server error-to-client mapping to avoid leaking internal details.
 
 ## Requirements
-1. All server routes under `app/api/*/route.ts` must use `handleApiError(err)` (or a wrapper `withApiErrorHandling(handler)`).
-2. Route handlers must not return internal DB/third-party error messages directly to clients.
-3. CI will enforce requirement via `scripts/check-error-handlers.sh`. Violations will fail CI.
+1. All server routes under `app/api/*/route.ts` must use `handleApiError(route, err)` (or a wrapper such as `withApiErrorHandling(handler)`).
+2. Route handlers must not return internal DB/third-party error messages directly to clients (for example `error.message`).
+3. CI enforces no direct `error.message` leakage via `scripts/check-error-handlers.sh` (hard fail).
+4. Routes not yet using centralized helpers are reported as warnings during migration and should be migrated to `handleApiError(route, err)`.
 
 ## Example
 ```ts
-import { handleApiError } from "lib/security/error-response";
+import { handleApiError } from '../../../lib/security/api-error';
 
 export async function GET(req: Request) {
   try {
     // handler logic...
   } catch (err) {
-    return handleApiError(err);
+    return handleApiError('api/example', err);
   }
 }
 ```
 
 ## Exceptions
 
-If a route intentionally uses a different centralized helper, add a comment marker `// ERROR_HANDLER_EXEMPT` and a short justification. The CI script can be extended to recognize exemptions if necessary.
+If a route intentionally uses a different centralized helper, add comment marker:
+
+```ts
+// ERROR_HANDLER_EXEMPT: uses wrapper helper with equivalent safety guarantees
+```
+
+and include a short justification in the PR description.
 
 ## Rationale
 
