@@ -9,6 +9,11 @@ function isMissingRelationError(error: unknown) {
   return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
 }
 
+function isMissingColumnError(error: unknown) {
+  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
+  return message.includes('column') && message.includes('does not exist');
+}
+
 export async function GET() {
   const access = await requireOrgRole(RuntimeRouteRoles.policies_read);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
@@ -29,17 +34,32 @@ export async function GET() {
     return serverErrorResponse();
   }
 
-  const legacyRes = await supabase
+  const scopedLegacyRes = await supabase
     .from('policies')
     .select('id, name, version, status, config, updated_at')
+    .eq('org_id', access.orgId)
     .order('updated_at', { ascending: false });
 
-  if (legacyRes.error) {
-    logServerError(legacyRes.error, 'policies-get-legacy');
-    return serverErrorResponse();
+  let legacyData = scopedLegacyRes.data;
+  if (scopedLegacyRes.error) {
+    if (!isMissingColumnError(scopedLegacyRes.error)) {
+      logServerError(scopedLegacyRes.error, 'policies-get-legacy');
+      return serverErrorResponse();
+    }
+
+    const legacyRes = await supabase
+      .from('policies')
+      .select('id, name, version, status, config, updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (legacyRes.error) {
+      logServerError(legacyRes.error, 'policies-get-legacy-global');
+      return serverErrorResponse();
+    }
+    legacyData = legacyRes.data;
   }
 
-  const items = (legacyRes.data || []).map((policy) => ({
+  const items = (legacyData || []).map((policy) => ({
     id: policy.id,
     name: policy.name,
     version: policy.version,
