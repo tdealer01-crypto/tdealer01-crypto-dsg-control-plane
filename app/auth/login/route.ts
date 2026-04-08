@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 import { getSafeNext } from '../../../lib/auth/safe-next';
 import { validateAuthConfig } from '../../../lib/auth/preflight';
+import { logSecurityEvent, toSafeErrorInfo } from '../../../lib/security/safe-log';
 
 const AUTH_LOGIN_RATE_LIMIT = 8;
 const AUTH_LOGIN_RATE_WINDOW_MS = 60 * 1000;
@@ -52,12 +53,12 @@ export async function POST(request: NextRequest) {
 
   const preflight = validateAuthConfig();
   if (preflight.warnings.length) {
-    console.warn('[magic-link] preflight warnings:', preflight.warnings);
+    logSecurityEvent('warn', 'auth_login_preflight_warnings', { warnings: preflight.warnings });
   }
 
   if (!preflight.ok) {
     const firstError = preflight.errors[0];
-    console.error('[magic-link] preflight failed:', preflight.errors);
+    logSecurityEvent('error', 'auth_login_preflight_failed', { errors: preflight.errors.map((item) => item.code) });
     redirectToLogin.searchParams.set('error', firstError ? firstError.code : 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
   }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (userErr) {
-      console.error('[magic-link] operator validation query failed');
+      logSecurityEvent('error', 'auth_login_operator_validation_failed');
       throw userErr;
     }
 
@@ -101,8 +102,9 @@ export async function POST(request: NextRequest) {
 
     redirectToLogin.searchParams.set('message', 'check-email');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
-  } catch {
-    console.error('[magic-link] failed');
+  } catch (error) {
+    const safeError = toSafeErrorInfo(error);
+    logSecurityEvent('error', 'auth_login_failed', safeError);
     redirectToLogin.searchParams.set('error', 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: rateLimitHeaders });
   }
