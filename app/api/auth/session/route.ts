@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT
 import { createClient } from '../../../../lib/supabase/server';
 
 export async function GET() {

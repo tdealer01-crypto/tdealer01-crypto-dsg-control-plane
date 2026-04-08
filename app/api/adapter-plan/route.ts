@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import { getDSGCoreCompatibility } from "../../../lib/core-compat";
+import { handleApiError } from "../../../lib/security/api-error";
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from "../../../lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const rateLimit = await applyRateLimit({
-    key: getRateLimitKey(request, 'adapter-plan'),
-    limit: 30,
-    windowMs: 60_000,
-  });
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: buildRateLimitHeaders(rateLimit, 30) }
-    );
-  }
+  try {
+    const rateLimit = await applyRateLimit({
+      key: getRateLimitKey(request, 'adapter-plan'),
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit, 30) }
+      );
+    }
 
-  const compatibility = await getDSGCoreCompatibility();
-  const profile = compatibility.inferred.profile;
+    const compatibility = await getDSGCoreCompatibility();
+    const profile = compatibility.inferred.profile;
 
   const readPlan =
     profile === "dsg_one_runtime"
@@ -75,13 +77,16 @@ export async function GET(request: Request) {
             },
           };
 
-  return NextResponse.json({
-    ok: true,
-    timestamp: new Date().toISOString(),
-    target_url: compatibility.target_url,
-    inferred_profile: compatibility.inferred.profile,
-    inference_reason: compatibility.inferred.reason,
-    read_plan: readPlan,
-    note: "This is a verified read-side adapter plan derived from repo truth and read-only probes. Execute-path recommendations are still non-write verified.",
-  }, { headers: buildRateLimitHeaders(rateLimit, 30) });
+    return NextResponse.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      target_url: compatibility.target_url,
+      inferred_profile: compatibility.inferred.profile,
+      inference_reason: compatibility.inferred.reason,
+      read_plan: readPlan,
+      note: "This is a verified read-side adapter plan derived from repo truth and read-only probes. Execute-path recommendations are still non-write verified.",
+    }, { headers: buildRateLimitHeaders(rateLimit, 30) });
+  } catch (error) {
+    return handleApiError('api/adapter-plan', error);
+  }
 }

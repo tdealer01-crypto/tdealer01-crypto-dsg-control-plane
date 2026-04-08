@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { buildPublicProofReport } from '../../../../lib/enterprise/proof-public';
+import { handleApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return NextResponse.json(buildPublicProofReport());
+  try {
+    return NextResponse.json(buildPublicProofReport());
+  } catch (error) {
+    return handleApiError('api/enterprise-proof/report', error);
+  }
 }

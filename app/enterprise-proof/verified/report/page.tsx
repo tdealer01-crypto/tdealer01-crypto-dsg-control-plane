@@ -8,10 +8,10 @@ import { validateOrgAgentScope } from '../../../../lib/enterprise/proof-access';
 export const dynamic = 'force-dynamic';
 
 type Props = {
-  searchParams: {
+  searchParams: Promise<{
     org_id?: string;
     agent_id?: string;
-  };
+  }>;
 };
 
 function Section(props: { title: string; observed: string; interpretation: string; confidence: string; gaps: string }) {
@@ -29,6 +29,7 @@ function Section(props: { title: string; observed: string; interpretation: strin
 }
 
 export default async function VerifiedEnterpriseProofReportPage({ searchParams }: Props) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) redirect('/login');
@@ -41,8 +42,8 @@ export default async function VerifiedEnterpriseProofReportPage({ searchParams }
 
   if (!profile?.org_id || !profile.is_active) redirect('/login');
 
-  const orgId = searchParams.org_id || String(profile.org_id);
-  const agentId = searchParams.agent_id;
+  const orgId = params.org_id || String(profile.org_id);
+  const agentId = params.agent_id;
 
   if (orgId !== profile.org_id) {
     return (

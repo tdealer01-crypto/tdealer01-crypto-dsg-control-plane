@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { executionId: string } }
+  { params }: { params: Promise<{ executionId: string }> }
 ) {
   try {
     const access = await requireOrgRole(RuntimeRouteRoles.monitor);
@@ -18,7 +18,7 @@ export async function GET(
     }
     const supabase = getSupabaseAdmin();
 
-    const executionId = params.executionId;
+    const { executionId } = await params;
 
     const [{ data: execution, error: executionError }, { data: audit, error: auditError }, coreLedger] = await Promise.all([
       supabase

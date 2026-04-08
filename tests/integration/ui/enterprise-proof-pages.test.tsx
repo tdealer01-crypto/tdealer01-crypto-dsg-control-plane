@@ -60,7 +60,7 @@ describe('enterprise proof pages', () => {
     }));
 
     const { default: VerifiedReportPage } = await import('../../../app/enterprise-proof/verified/report/page');
-    const node = await VerifiedReportPage({ searchParams: { org_id: 'o1', agent_id: 'a1' } });
+    const node = await VerifiedReportPage({ searchParams: Promise.resolve({ org_id: 'o1', agent_id: 'a1' }) });
     const html = renderToStaticMarkup(node);
 
     expect(html).toContain('Verified Runtime Evidence');
@@ -83,7 +83,7 @@ describe('enterprise proof pages', () => {
     }));
 
     const { default: VerifiedReportPage } = await import('../../../app/enterprise-proof/verified/report/page');
-    const node = await VerifiedReportPage({ searchParams: { org_id: 'o1' } });
+    const node = await VerifiedReportPage({ searchParams: Promise.resolve({ org_id: 'o1' }) });
     const html = renderToStaticMarkup(node);
     expect(html).toContain('Agent ID is required');
   });
@@ -106,7 +106,7 @@ describe('enterprise proof pages', () => {
     }));
 
     const { default: VerifiedReportPage } = await import('../../../app/enterprise-proof/verified/report/page');
-    const node = await VerifiedReportPage({ searchParams: { org_id: 'o1', agent_id: 'aX' } });
+    const node = await VerifiedReportPage({ searchParams: Promise.resolve({ org_id: 'o1', agent_id: 'aX' }) });
     const html = renderToStaticMarkup(node);
     expect(html).toContain('Agent not found in org scope');
   });

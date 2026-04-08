@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
+import { handleApiError } from '../../../../lib/security/api-error';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { logSignInEvent } from '../../../../lib/auth/sign-in-events';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
@@ -72,79 +73,83 @@ async function parseBody(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimit = await applyRateLimit({
-    key: getRateLimitKey(request, 'access-request'),
-    limit: 10,
-    windowMs: 60_000,
-  });
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: buildRateLimitHeaders(rateLimit, 10) }
-    );
-  }
+  try {
+    const rateLimit = await applyRateLimit({
+      key: getRateLimitKey(request, 'access-request'),
+      limit: 10,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit, 10) }
+      );
+    }
 
-  const body = await parseBody(request);
-  const email = normalizeEmail(body.email);
-  const domain = extractDomain(email);
-  const workspaceName = String(body.workspace_name || '').trim() || null;
-  const fullName = String(body.full_name || '').trim() || null;
-  const reason = String(body.reason || '').trim() || null;
-  const explicitOrgId = String(body.org_id || '').trim() || null;
+    const body = await parseBody(request);
+    const email = normalizeEmail(body.email);
+    const domain = extractDomain(email);
+    const workspaceName = String(body.workspace_name || '').trim() || null;
+    const fullName = String(body.full_name || '').trim() || null;
+    const reason = String(body.reason || '').trim() || null;
+    const explicitOrgId = String(body.org_id || '').trim() || null;
 
-  if (!email || !domain) {
-    return NextResponse.json(
-      { error: 'A valid email is required.' },
-      { status: 400, headers: buildRateLimitHeaders(rateLimit, 10) }
-    );
-  }
+    if (!email || !domain) {
+      return NextResponse.json(
+        { error: 'A valid email is required.' },
+        { status: 400, headers: buildRateLimitHeaders(rateLimit, 10) }
+      );
+    }
 
-  const admin = getSupabaseAdmin();
-  const accessRequestsTable = admin.from('access_requests') as any;
-  const orgId = explicitOrgId || (await resolveRequesterOrgId()) || (await resolveOrgIdByDomain(domain));
-  const { data: existingPending } = await (accessRequestsTable
-    .select('id, created_at')
-    .eq('email', email)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()) as { data: { id?: string | null; created_at?: string | null } | null };
+    const admin = getSupabaseAdmin();
+    const accessRequestsTable = admin.from('access_requests') as any;
+    const orgId = explicitOrgId || (await resolveRequesterOrgId()) || (await resolveOrgIdByDomain(domain));
+    const { data: existingPending } = await (accessRequestsTable
+      .select('id, created_at')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()) as { data: { id?: string | null; created_at?: string | null } | null };
 
-  const createdAt = existingPending?.created_at ? new Date(existingPending.created_at).getTime() : 0;
-  const isRecent = Date.now() - createdAt < 24 * 60 * 60 * 1000;
+    const createdAt = existingPending?.created_at ? new Date(existingPending.created_at).getTime() : 0;
+    const isRecent = Date.now() - createdAt < 24 * 60 * 60 * 1000;
 
-  if (!existingPending?.id || !isRecent) {
-    await accessRequestsTable.insert({
-      org_id: orgId,
+    if (!existingPending?.id || !isRecent) {
+      await accessRequestsTable.insert({
+        org_id: orgId,
+        email,
+        email_domain: domain,
+        workspace_name: workspaceName,
+        full_name: fullName,
+        requested_org_hint: workspaceName,
+        status: 'pending',
+        review_note: reason,
+      });
+    }
+
+    await logSignInEvent({
       email,
-      email_domain: domain,
-      workspace_name: workspaceName,
-      full_name: fullName,
-      requested_org_hint: workspaceName,
-      status: 'pending',
-      review_note: reason,
+      eventType: 'request_access_submitted',
+      source: 'request-access',
+      success: true,
+      metadata: { workspace_name: workspaceName },
     });
+
+    const acceptsHtml = (request.headers.get('accept') || '').includes('text/html');
+    if (acceptsHtml) {
+      const redirectTo = new URL('/request-access', request.url);
+      redirectTo.searchParams.set('email', email);
+      if (workspaceName) redirectTo.searchParams.set('workspace_name', workspaceName);
+      redirectTo.searchParams.set('success', '1');
+      return NextResponse.redirect(redirectTo, {
+        status: 302,
+        headers: buildRateLimitHeaders(rateLimit, 10),
+      });
+    }
+
+    return NextResponse.json({ ok: true }, { headers: buildRateLimitHeaders(rateLimit, 10) });
+  } catch (error) {
+    return handleApiError('api/access/request', error);
   }
-
-  await logSignInEvent({
-    email,
-    eventType: 'request_access_submitted',
-    source: 'request-access',
-    success: true,
-    metadata: { workspace_name: workspaceName },
-  });
-
-  const acceptsHtml = (request.headers.get('accept') || '').includes('text/html');
-  if (acceptsHtml) {
-    const redirectTo = new URL('/request-access', request.url);
-    redirectTo.searchParams.set('email', email);
-    if (workspaceName) redirectTo.searchParams.set('workspace_name', workspaceName);
-    redirectTo.searchParams.set('success', '1');
-    return NextResponse.redirect(redirectTo, {
-      status: 302,
-      headers: buildRateLimitHeaders(rateLimit, 10),
-    });
-  }
-
-  return NextResponse.json({ ok: true }, { headers: buildRateLimitHeaders(rateLimit, 10) });
 }

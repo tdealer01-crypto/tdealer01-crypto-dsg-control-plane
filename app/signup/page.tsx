@@ -81,12 +81,13 @@ function getMessage(message?: string, error?: string) {
   return null;
 }
 
-export default function SignupPage({
+export default async function SignupPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; message?: string };
+  searchParams?: Promise<{ error?: string; message?: string }>;
 }) {
-  const notice = getMessage(searchParams?.message, searchParams?.error);
+  const params = await searchParams;
+  const notice = getMessage(params?.message, params?.error);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
