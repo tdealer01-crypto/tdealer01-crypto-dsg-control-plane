@@ -64,7 +64,7 @@ export const DSG_TOOLS: AgentTool[] = [
           payload: params.payload || {},
           tool_name: 'agent-chat',
         }),
-        }),
+      }),
   },
   {
     id: 'browser_navigate',

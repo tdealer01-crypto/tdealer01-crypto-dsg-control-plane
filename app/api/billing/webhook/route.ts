@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
@@ -17,7 +18,7 @@ function getStripeClient() {
   }
 
   return new Stripe(secretKey, {
-    apiVersion: '2023-10-16',
+    apiVersion: '2023-10-16' as Stripe.LatestApiVersion,
   });
 }
 
@@ -50,7 +51,7 @@ function toIso(value: number | null | undefined) {
   return new Date(value * 1000).toISOString();
 }
 
-async function resolveOrgIdByEmail(supabase: any, email: string | null) {
+async function resolveOrgIdByEmail(supabase: SupabaseClient, email: string | null) {
   if (!email) return null;
 
   const { data, error } = await supabase
@@ -66,7 +67,7 @@ async function resolveOrgIdByEmail(supabase: any, email: string | null) {
   return String(data[0].org_id);
 }
 
-async function getBillingCustomer(supabase: any, stripeCustomerId: string | null) {
+async function getBillingCustomer(supabase: SupabaseClient, stripeCustomerId: string | null) {
   if (!stripeCustomerId) return null;
 
   const { data, error } = await supabase
@@ -79,7 +80,7 @@ async function getBillingCustomer(supabase: any, stripeCustomerId: string | null
   return data;
 }
 
-async function recordEvent(supabase: any, event: Stripe.Event) {
+async function recordEvent(supabase: SupabaseClient, event: Stripe.Event) {
   const object = event.data.object as any;
 
   const stripeCustomerId =
@@ -108,7 +109,7 @@ async function recordEvent(supabase: any, event: Stripe.Event) {
 }
 
 async function upsertBillingCustomer(
-  supabase: any,
+  supabase: SupabaseClient,
   payload: {
     stripe_customer_id: string | null;
     org_id: string | null;
@@ -146,8 +147,8 @@ function subscriptionToRecord(
   const productId =
     typeof productValue === 'string'
       ? productValue
-      : typeof productValue?.id === 'string'
-        ? productValue.id
+      : productValue && typeof productValue === 'object' && 'id' in productValue
+        ? String(productValue.id)
         : null;
 
   const priceMap = getPriceMap();
@@ -177,7 +178,7 @@ function subscriptionToRecord(
   };
 }
 
-async function upsertBillingSubscription(supabase: any, payload: Record<string, unknown>) {
+async function upsertBillingSubscription(supabase: SupabaseClient, payload: Record<string, unknown>) {
   await supabase.from('billing_subscriptions').upsert(payload, {
     onConflict: 'stripe_subscription_id',
   });

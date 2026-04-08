@@ -28,3 +28,13 @@ export type DSGCoreDeterminism = {
 };
 
 export type DSGCoreMode = 'internal' | 'remote';
+
+export type DSGCoreHealthResult = {
+  ok: boolean;
+  url: string;
+  status?: string | null;
+  version?: string | null;
+  timestamp?: string | null;
+  mode?: string;
+  error?: string;
+};

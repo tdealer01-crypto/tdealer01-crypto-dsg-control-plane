@@ -1,5 +1,5 @@
 import { evaluateGate } from '../runtime/gate';
-import type { DSGCoreExecutionRequest } from './types';
+import type { DSGCoreExecutionRequest, DSGCoreHealthResult } from './types';
 
 function readRiskScore(payload?: Record<string, unknown>) {
   const context = (payload?.context || {}) as Record<string, unknown>;
@@ -11,7 +11,7 @@ function readRiskScore(payload?: Record<string, unknown>) {
   return Math.max(0, Math.min(1, numeric));
 }
 
-export async function getInternalDSGCoreHealth() {
+export async function getInternalDSGCoreHealth(): Promise<DSGCoreHealthResult> {
   return {
     ok: true,
     url: 'internal://runtime-gate',

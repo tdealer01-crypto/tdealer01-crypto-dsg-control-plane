@@ -1,4 +1,4 @@
-import type { DSGCoreAuditEvent, DSGCoreDeterminism, DSGCoreExecutionRequest } from './types';
+import type { DSGCoreAuditEvent, DSGCoreDeterminism, DSGCoreExecutionRequest, DSGCoreHealthResult } from './types';
 
 type RemoteConfig = {
   url: string;
@@ -16,7 +16,7 @@ function parseError(data: any, status: number) {
   return data?.detail || data?.error || `HTTP ${status}`;
 }
 
-export async function getRemoteDSGCoreHealth(config: RemoteConfig) {
+export async function getRemoteDSGCoreHealth(config: RemoteConfig): Promise<DSGCoreHealthResult> {
   try {
     const response = await fetch(`${config.url}/health`, {
       method: 'GET',

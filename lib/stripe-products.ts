@@ -58,7 +58,7 @@ export function getStripeClient(): Stripe {
   if (!secretKey) {
     throw new Error('Missing STRIPE_SECRET_KEY environment variable');
   }
-  return new Stripe(secretKey, { apiVersion: '2023-10-16' });
+  return new Stripe(secretKey, { apiVersion: '2023-10-16' as Stripe.LatestApiVersion });
 }
 
 /**

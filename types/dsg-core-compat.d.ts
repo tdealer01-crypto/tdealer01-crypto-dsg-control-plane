@@ -1,4 +1,4 @@
-declare module "../../../../lib/dsg-core" {
+declare module "*lib/dsg-core" {
   export type DSGCoreDeterminism = {
     sequence: number;
     region_count: number;

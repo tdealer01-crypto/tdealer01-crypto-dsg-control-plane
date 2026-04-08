@@ -10,7 +10,7 @@ import {
   getRemoteDSGCoreLedger,
   getRemoteDSGCoreMetrics,
 } from './remote';
-import type { DSGCoreMode } from './types';
+import type { DSGCoreHealthResult, DSGCoreMode } from './types';
 
 export type {
   DSGCoreAuditEvent,
@@ -47,7 +47,7 @@ export function getDSGCoreConfig() {
   };
 }
 
-export async function getDSGCoreHealth() {
+export async function getDSGCoreHealth(): Promise<DSGCoreHealthResult> {
   const mode = parseMode();
   if (mode === 'internal') return getInternalDSGCoreHealth();
   return getRemoteDSGCoreHealth(getRemoteConfig());
