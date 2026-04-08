@@ -45,9 +45,7 @@ function getStripeClient() {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
 
-  return new Stripe(secretKey, {
-    apiVersion: '2023-10-16',
-  });
+  return new Stripe(secretKey);
 }
 
 function normalizePlan(value: unknown): PlanKey {
