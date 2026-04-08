@@ -8,7 +8,7 @@ import { resolvePolicyId } from '../../../../lib/supabase/resolve-policy';
 const AGENT_DETAIL_RATE_LIMIT = 60;
 const AGENT_DETAIL_RATE_WINDOW_MS = 60 * 1000;
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   const rateLimit = await applyRateLimit({ key: getRateLimitKey(request, 'agents-detail'), limit: AGENT_DETAIL_RATE_LIMIT, windowMs: AGENT_DETAIL_RATE_WINDOW_MS });
   const headers = buildRateLimitHeaders(rateLimit, AGENT_DETAIL_RATE_LIMIT);
   if (!rateLimit.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers });
@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const access = await requireActiveProfile();
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status, headers });
 
-    const { id } = await params;
+    const { id } = params;
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString().slice(0, 7);
 
@@ -60,7 +60,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const rateLimit = await applyRateLimit({ key: getRateLimitKey(request, 'agents-detail'), limit: AGENT_DETAIL_RATE_LIMIT, windowMs: AGENT_DETAIL_RATE_WINDOW_MS });
   const headers = buildRateLimitHeaders(rateLimit, AGENT_DETAIL_RATE_LIMIT);
   if (!rateLimit.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers });
@@ -69,7 +69,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const access = await requireActiveProfile();
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status, headers });
 
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json().catch(() => null);
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -138,7 +138,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const rateLimit = await applyRateLimit({ key: getRateLimitKey(request, 'agents-detail'), limit: AGENT_DETAIL_RATE_LIMIT, windowMs: AGENT_DETAIL_RATE_WINDOW_MS });
   const headers = buildRateLimitHeaders(rateLimit, AGENT_DETAIL_RATE_LIMIT);
   if (!rateLimit.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers });
@@ -147,7 +147,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const access = await requireActiveProfile();
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status, headers });
 
-    const { id } = await params;
+    const { id } = params;
     const supabase = getSupabaseAdmin();
 
     const { data: updated, error } = await supabase
