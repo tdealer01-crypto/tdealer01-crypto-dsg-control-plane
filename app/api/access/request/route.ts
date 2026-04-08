@@ -20,14 +20,14 @@ async function resolveRequesterOrgId() {
     if (!auth?.user?.id) return null;
 
     const admin = getSupabaseAdmin();
-    const { data: profile } = await admin
-      .from('users')
+    const { data: profile } = await (admin
+      .from('users') as any)
       .select('org_id')
       .eq('auth_user_id', auth.user.id)
       .eq('is_active', true)
       .maybeSingle();
 
-    return profile?.org_id || null;
+    return (profile as { org_id?: string | null } | null)?.org_id ?? null;
   } catch {
     return null;
   }
@@ -100,21 +100,21 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = getSupabaseAdmin();
+  const accessRequestsTable = admin.from('access_requests') as any;
   const orgId = explicitOrgId || (await resolveRequesterOrgId()) || (await resolveOrgIdByDomain(domain));
-  const { data: existingPending } = await admin
-    .from('access_requests')
+  const { data: existingPending } = await (accessRequestsTable
     .select('id, created_at')
     .eq('email', email)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()) as { data: { id?: string | null; created_at?: string | null } | null };
 
   const createdAt = existingPending?.created_at ? new Date(existingPending.created_at).getTime() : 0;
   const isRecent = Date.now() - createdAt < 24 * 60 * 60 * 1000;
 
   if (!existingPending?.id || !isRecent) {
-    await admin.from('access_requests').insert({
+    await accessRequestsTable.insert({
       org_id: orgId,
       email,
       email_domain: domain,
