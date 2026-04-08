@@ -9,6 +9,7 @@ import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 import { getSafeNext } from '../../../lib/auth/safe-next';
 import { validateAuthConfig } from '../../../lib/auth/preflight';
+import { logSecurityEvent, toSafeErrorInfo } from '../../../lib/security/safe-log';
 
 const AUTH_CONTINUE_RATE_LIMIT = 8;
 const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
@@ -77,7 +78,7 @@ async function sendMagicLink(
   // when Supabase email is disabled and a custom SMTP/API is preferred.
   // For now, log that Resend is available for future custom email templates.
   if (resend.configured) {
-    console.info('[auth-continue] Resend is configured — Supabase OTP email sent.');
+    logSecurityEvent('info', 'auth_continue_resend_configured');
   }
 
   return { error: null };
@@ -129,12 +130,12 @@ export async function POST(request: NextRequest) {
 
   const preflight = validateAuthConfig();
   if (preflight.warnings.length) {
-    console.warn('[auth-continue] preflight warnings:', preflight.warnings);
+    logSecurityEvent('warn', 'auth_continue_preflight_warnings', { warnings: preflight.warnings });
   }
 
   if (!preflight.ok) {
     const firstError = preflight.errors[0];
-    console.error('[auth-continue] preflight failed:', preflight.errors);
+    logSecurityEvent('error', 'auth_continue_preflight_failed', { errors: preflight.errors.map((item) => item.code) });
     redirectToLogin.searchParams.set('error', firstError ? firstError.code : 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
   }
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
       const { error } = await sendMagicLink(authClient, email, confirmUrl.toString(), 'login');
 
       if (error) {
-        console.error('[auth-continue] operator send failed:', error);
+        logSecurityEvent('error', 'auth_continue_operator_send_failed', toSafeErrorInfo(error));
         await logSignInEvent({
           email,
           orgId: operatorRow.org_id,
@@ -280,7 +281,7 @@ export async function POST(request: NextRequest) {
     const { error } = await sendMagicLink(authClient, email, confirmUrl.toString(), 'trial');
 
     if (error) {
-      console.error('[auth-continue] trial send failed:', error);
+      logSecurityEvent('error', 'auth_continue_trial_send_failed', toSafeErrorInfo(error));
       await logSignInEvent({
         email,
         eventType: 'magic_link_requested',
@@ -302,8 +303,8 @@ export async function POST(request: NextRequest) {
 
     redirectToLogin.searchParams.set('message', 'check-email');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
-  } catch (err) {
-    console.error('[auth-continue] failed:', err);
+  } catch (error) {
+    logSecurityEvent('error', 'auth_continue_failed', toSafeErrorInfo(error));
     redirectToLogin.searchParams.set('error', 'unexpected');
     return NextResponse.redirect(redirectToLogin, { status: 302, headers: emailRateLimitHeaders });
   }
