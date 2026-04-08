@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { randomUUID, createHash } from 'crypto';
-import { createClient } from '../../../lib/supabase/server';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
+import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -21,11 +22,6 @@ function buildPreview(apiKey: string) {
   return `${apiKey.slice(0, 12)}...`;
 }
 
-function isMissingRelationError(error: unknown) {
-  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
-  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
-}
-
 function parsePagination(request: Request) {
   const url = new URL(request.url);
   const rawPage = Number.parseInt(url.searchParams.get('page') || '1', 10);
@@ -34,80 +30,6 @@ function parsePagination(request: Request) {
   const boundedPerPage = Number.isFinite(rawPerPage) && rawPerPage > 0 ? rawPerPage : DEFAULT_LIMIT;
   const perPage = Math.min(boundedPerPage, MAX_PER_PAGE);
   return { page, perPage, from: (page - 1) * perPage, to: (page - 1) * perPage + perPage - 1 };
-}
-
-async function resolvePolicyId(orgId: string, requestedPolicyId?: string | null) {
-  const supabase = getSupabaseAdmin();
-
-  if (requestedPolicyId) {
-    const { data: runtimePolicy, error: runtimeError } = await supabase
-      .from('runtime_policies')
-      .select('id')
-      .eq('org_id', orgId)
-      .eq('id', requestedPolicyId)
-      .maybeSingle();
-
-    if (!runtimeError && runtimePolicy?.id) return String(runtimePolicy.id);
-    if (runtimeError && !isMissingRelationError(runtimeError)) throw runtimeError;
-
-    const { data: legacyPolicy, error: legacyError } = await supabase
-      .from('policies')
-      .select('id')
-      .eq('id', requestedPolicyId)
-      .maybeSingle();
-
-    if (legacyError) throw legacyError;
-    if (legacyPolicy?.id) return String(legacyPolicy.id);
-
-    return null;
-  }
-
-  const { data: runtimeLatest, error: runtimeLatestError } = await supabase
-    .from('runtime_policies')
-    .select('id')
-    .eq('org_id', orgId)
-    .in('status', ['active', 'approved', 'draft', 'proposed'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!runtimeLatestError && runtimeLatest?.id) return String(runtimeLatest.id);
-  if (runtimeLatestError && !isMissingRelationError(runtimeLatestError)) throw runtimeLatestError;
-
-  const { data: legacyAny, error: legacyAnyError } = await supabase
-    .from('policies')
-    .select('id')
-    .in('status', ['active', 'draft'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (legacyAnyError) throw legacyAnyError;
-  return legacyAny?.id ? String(legacyAny.id) : null;
-}
-
-async function requireActiveProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { ok: false as const, status: 401, error: 'Unauthorized' };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('org_id, is_active')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (profileError || !profile?.org_id || !profile.is_active) {
-    return { ok: false as const, status: 403, error: 'Forbidden' };
-  }
-
-  return { ok: true as const, orgId: String(profile.org_id) };
 }
 
 export async function GET(request: Request) {
@@ -130,12 +52,20 @@ export async function GET(request: Request) {
 
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString().slice(0, 7);
+    const url = new URL(request.url);
+    const includeDisabled = url.searchParams.get('include_disabled') === 'true';
     const { page, perPage, from, to } = parsePagination(request);
 
-    const { data: agents, error, count } = await supabase
+    let agentsQuery = supabase
       .from('agents')
       .select('id, name, policy_id, status, monthly_limit', { count: 'exact' })
-      .eq('org_id', access.orgId)
+      .eq('org_id', access.orgId);
+
+    if (!includeDisabled) {
+      agentsQuery = agentsQuery.neq('status', 'disabled');
+    }
+
+    const { data: agents, error, count } = await agentsQuery
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -225,7 +155,8 @@ export async function POST(request: Request) {
     const { count: existingCount, error: countError } = await supabase
       .from('agents')
       .select('id', { count: 'exact', head: true })
-      .eq('org_id', access.orgId);
+      .eq('org_id', access.orgId)
+      .neq('status', 'disabled');
 
     if (countError) {
       logServerError(countError, 'agents-post-count');

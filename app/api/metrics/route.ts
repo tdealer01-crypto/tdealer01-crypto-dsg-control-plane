@@ -1,33 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
+import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
 
 export const dynamic = 'force-dynamic';
-
-async function requireActiveProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { ok: false as const, status: 401, error: 'Unauthorized' };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('org_id, is_active')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (profileError || !profile?.org_id || !profile.is_active) {
-    return { ok: false as const, status: 403, error: 'Forbidden' };
-  }
-
-  return { ok: true as const, orgId: String(profile.org_id) };
-}
 
 export async function GET() {
   try {

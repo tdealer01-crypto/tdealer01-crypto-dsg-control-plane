@@ -139,6 +139,8 @@ export default function AgentsPage() {
   }
 
   async function disableAgent(agentId: string) {
+    if (!confirm('Disable this agent? It will no longer accept API calls.')) return;
+
     try {
       setError('');
       const res = await fetch(`/api/agents/${agentId}`, { method: 'DELETE' });

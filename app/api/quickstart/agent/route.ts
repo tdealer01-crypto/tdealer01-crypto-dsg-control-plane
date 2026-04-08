@@ -1,8 +1,9 @@
 import { createHash, randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import { requireActiveProfile } from '../../../../lib/auth/require-active-profile';
+import { resolveQuickstartPolicyId } from '../../../../lib/supabase/resolve-policy';
 
 const TRIAL_EXECUTION_LIMIT = 1000;
 
@@ -12,93 +13,6 @@ function buildApiKey() {
 
 function buildPreview(apiKey: string) {
   return `${apiKey.slice(0, 12)}...`;
-}
-
-function isMissingRelationError(error: unknown) {
-  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
-  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
-}
-
-async function resolvePolicyId(orgId: string) {
-  const admin = getSupabaseAdmin();
-
-  const { data: runtimePolicy, error: runtimeError } = await admin
-    .from('runtime_policies')
-    .select('id')
-    .eq('org_id', orgId)
-    .in('status', ['active', 'approved', 'draft', 'proposed'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!runtimeError && runtimePolicy?.id) {
-    return String(runtimePolicy.id);
-  }
-
-  if (runtimeError && !isMissingRelationError(runtimeError)) {
-    throw runtimeError;
-  }
-
-  const { data: orgPolicy, error: legacyOrgError } = await admin
-    .from('policies')
-    .select('id')
-    .eq('org_id', orgId)
-    .in('status', ['active', 'draft'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!legacyOrgError && orgPolicy?.id) {
-    return String(orgPolicy.id);
-  }
-
-  const { data: globalPolicy, error: legacyGlobalError } = await admin
-    .from('policies')
-    .select('id')
-    .eq('id', 'policy_default')
-    .maybeSingle();
-
-  if (!legacyGlobalError && globalPolicy?.id) {
-    return String(globalPolicy.id);
-  }
-
-  const { data: anyPolicy, error: legacyAnyError } = await admin
-    .from('policies')
-    .select('id')
-    .in('status', ['active', 'draft'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (legacyAnyError) {
-    throw legacyAnyError;
-  }
-
-  return anyPolicy?.id ? String(anyPolicy.id) : null;
-}
-
-async function requireActiveProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { ok: false as const, status: 401, error: 'Unauthorized' };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('org_id, is_active')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (profileError || !profile?.org_id || !profile.is_active) {
-    return { ok: false as const, status: 403, error: 'Forbidden' };
-  }
-
-  return { ok: true as const, orgId: String(profile.org_id) };
 }
 
 export async function POST() {
@@ -150,7 +64,7 @@ export async function POST() {
       });
     }
 
-    const resolvedPolicyId = await resolvePolicyId(access.orgId);
+    const resolvedPolicyId = await resolveQuickstartPolicyId(access.orgId);
     if (!resolvedPolicyId) {
       return NextResponse.json(
         { error: 'No policy available. Create a policy before creating an agent.' },
