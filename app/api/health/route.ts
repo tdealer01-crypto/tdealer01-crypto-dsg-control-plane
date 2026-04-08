@@ -15,19 +15,25 @@ export async function GET(request: Request) {
   }
 
   const core = await getDSGCoreHealth();
+  const coreDetails = core as {
+    status?: unknown;
+    version?: unknown;
+    timestamp?: unknown;
+    error?: unknown;
+  };
 
   return Response.json({
     ok: core.ok,
     service: 'dsg-control-plane',
     timestamp: new Date().toISOString(),
     core_ok: core.ok,
-    error: core.ok ? null : core.error ?? null,
+    error: core.ok ? null : coreDetails.error ?? null,
     core: {
       ok: core.ok,
-      status: core.status ?? null,
-      version: core.version ?? null,
-      timestamp: core.timestamp ?? null,
-      error: core.ok ? null : core.error ?? 'core_unreachable',
+      status: coreDetails.status ?? null,
+      version: coreDetails.version ?? null,
+      timestamp: coreDetails.timestamp ?? null,
+      error: core.ok ? null : coreDetails.error ?? 'core_unreachable',
     },
   }, { headers: buildRateLimitHeaders(rateLimit, 60) });
 }

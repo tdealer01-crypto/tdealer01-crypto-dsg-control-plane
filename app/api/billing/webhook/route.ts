@@ -16,9 +16,7 @@ function getStripeClient() {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
 
-  return new Stripe(secretKey, {
-    apiVersion: '2023-10-16',
-  });
+  return new Stripe(secretKey);
 }
 
 function getPriceMap(): Map<string, PriceMapping> {
@@ -146,8 +144,8 @@ function subscriptionToRecord(
   const productId =
     typeof productValue === 'string'
       ? productValue
-      : typeof productValue?.id === 'string'
-        ? productValue.id
+      : productValue && typeof productValue === 'object' && 'id' in productValue
+        ? String(productValue.id)
         : null;
 
   const priceMap = getPriceMap();

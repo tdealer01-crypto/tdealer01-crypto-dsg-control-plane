@@ -10,7 +10,8 @@ export class SpineInfraError extends Error {
 }
 
 function severity(decision: Decision): number {
-  return { ALLOW: 0, STABILIZE: 1, BLOCK: 2 }[decision];
+  const severities: Record<Decision, number> = { ALLOW: 0, STABILIZE: 1, BLOCK: 2 };
+  return severities[decision];
 }
 
 function combineDecision(left: Decision, right: Decision): Decision {
