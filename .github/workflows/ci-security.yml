@@ -1,0 +1,53 @@
+name: CI Security Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Lockfile guard (deterministic install)
+        run: |
+          npm ci
+          npm install --package-lock-only --ignore-scripts
+          git diff --exit-code -- package-lock.json
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck
+
+      - name: Shellcheck (lint shell scripts)
+        run: |
+          find . -path './node_modules' -prune -o -name '*.sh' -print0 | xargs -0 -r shellcheck || true
+
+      - name: Gitleaks (detect secrets)
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: detect --source=. --report-path=gitleaks-report.json
+
+      - name: npm audit (fail on high severity)
+        run: |
+          npm ci
+          npm audit --audit-level=high
+
+      - name: Enforce central error handler on API routes
+        run: |
+          chmod +x ./scripts/check-error-handlers.sh
+          ./scripts/check-error-handlers.sh
