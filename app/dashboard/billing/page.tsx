@@ -30,8 +30,11 @@ export default function BillingPage() {
 
   useEffect(() => {
     fetch('/api/usage', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then(setUsage)
+      .then(async (r) => {
+        if (!r.ok) throw new Error('Failed to load usage');
+        return r.json();
+      })
+      .then((data) => setUsage(data))
       .catch(() => setUsage(null));
   }, []);
 
