@@ -24,6 +24,21 @@
 
 ---
 
+## Latest Update (April 8, 2026)
+
+- Hardened `/auth/continue` rate-limit key generation to avoid runtime/test instability when `request.nextUrl` is unavailable by falling back to `new URL(request.url).pathname`.
+- Re-ran validation checks after the update.
+
+### Test Results (latest run)
+
+```bash
+npm run test       # PASS (45 files, 100 tests)
+npm run typecheck  # PASS
+npm run lint       # PASS
+```
+
+---
+
 ## What DSG ONE Is
 
 DSG ONE is an enterprise runtime control plane for AI operations.

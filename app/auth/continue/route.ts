@@ -85,7 +85,8 @@ async function sendMagicLink(
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimitKeyBase = `${getRateLimitKey(request, 'auth-continue')}:${request.nextUrl.pathname}`;
+  const requestPathname = request.nextUrl?.pathname ?? new URL(request.url).pathname;
+  const rateLimitKeyBase = `${getRateLimitKey(request, 'auth-continue')}:${requestPathname}`;
   const ipRateLimit = await applyRateLimit({
     key: rateLimitKeyBase,
     limit: AUTH_CONTINUE_RATE_LIMIT,
