@@ -14,6 +14,69 @@ function buildPreview(apiKey: string) {
   return `${apiKey.slice(0, 12)}...`;
 }
 
+function isMissingRelationError(error: unknown) {
+  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
+  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
+}
+
+async function resolvePolicyId(orgId: string) {
+  const admin = getSupabaseAdmin();
+
+  const { data: runtimePolicy, error: runtimeError } = await admin
+    .from('runtime_policies')
+    .select('id')
+    .eq('org_id', orgId)
+    .in('status', ['active', 'approved', 'draft', 'proposed'])
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!runtimeError && runtimePolicy?.id) {
+    return String(runtimePolicy.id);
+  }
+
+  if (runtimeError && !isMissingRelationError(runtimeError)) {
+    throw runtimeError;
+  }
+
+  const { data: orgPolicy, error: legacyOrgError } = await admin
+    .from('policies')
+    .select('id')
+    .eq('org_id', orgId)
+    .in('status', ['active', 'draft'])
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!legacyOrgError && orgPolicy?.id) {
+    return String(orgPolicy.id);
+  }
+
+  const { data: globalPolicy, error: legacyGlobalError } = await admin
+    .from('policies')
+    .select('id')
+    .eq('id', 'policy_default')
+    .maybeSingle();
+
+  if (!legacyGlobalError && globalPolicy?.id) {
+    return String(globalPolicy.id);
+  }
+
+  const { data: anyPolicy, error: legacyAnyError } = await admin
+    .from('policies')
+    .select('id')
+    .in('status', ['active', 'draft'])
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (legacyAnyError) {
+    throw legacyAnyError;
+  }
+
+  return anyPolicy?.id ? String(anyPolicy.id) : null;
+}
+
 async function requireActiveProfile() {
   const supabase = await createClient();
   const {
@@ -60,20 +123,41 @@ export async function POST() {
       return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
 
+    const apiKey = buildApiKey();
+    const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
+
     if (existingAgent) {
+      const { error: rotateError } = await admin
+        .from('agents')
+        .update({ api_key_hash: apiKeyHash, updated_at: new Date().toISOString() })
+        .eq('id', existingAgent.id)
+        .eq('org_id', access.orgId);
+
+      if (rotateError) {
+        logApiError('api/quickstart/agent', rotateError, { stage: 'rotate-api-key', agentId: existingAgent.id });
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
+
       return NextResponse.json({
         agent_id: existingAgent.id,
         name: existingAgent.name,
         policy_id: existingAgent.policy_id,
         status: existingAgent.status,
         monthly_limit: existingAgent.monthly_limit,
-        api_key: null,
-        api_key_preview: null,
+        api_key: apiKey,
+        api_key_preview: buildPreview(apiKey),
         created: false,
       });
     }
 
-    const apiKey = buildApiKey();
+    const resolvedPolicyId = await resolvePolicyId(access.orgId);
+    if (!resolvedPolicyId) {
+      return NextResponse.json(
+        { error: 'No policy available. Create a policy before creating an agent.' },
+        { status: 400 }
+      );
+    }
+
     const agentId = `agt_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
     const now = new Date().toISOString();
 
@@ -83,10 +167,10 @@ export async function POST() {
         id: agentId,
         org_id: access.orgId,
         name: 'Starter Agent',
-        policy_id: 'policy_default',
+        policy_id: resolvedPolicyId,
         status: 'active',
         monthly_limit: TRIAL_EXECUTION_LIMIT,
-        api_key_hash: createHash('sha256').update(apiKey).digest('hex'),
+        api_key_hash: apiKeyHash,
         created_at: now,
         updated_at: now,
       })
