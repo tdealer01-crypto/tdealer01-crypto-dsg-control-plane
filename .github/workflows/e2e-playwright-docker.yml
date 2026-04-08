@@ -1,0 +1,37 @@
+name: E2E (Playwright Docker)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure Docker available
+        run: |
+          docker --version || (echo "docker not available" && exit 1)
+
+      - name: Run Playwright tests inside Docker (prebuilt browsers)
+        env:
+          NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN: ${{ secrets.NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN }}
+          DEMO_BOOTSTRAP_TOKEN: ${{ secrets.DEMO_BOOTSTRAP_TOKEN }}
+          ENABLE_DEMO_BOOTSTRAP: "true"
+        run: |
+          # Pull Playwright image that includes browsers; adjust version if needed
+          docker pull mcr.microsoft.com/playwright:v1.58.2-focal || true
+
+          # Run tests inside the container. This mounts repository into /work and runs tests.
+          docker run --rm \
+            -e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN="${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN}" \
+            -e DEMO_BOOTSTRAP_TOKEN="${DEMO_BOOTSTRAP_TOKEN}" \
+            -e ENABLE_DEMO_BOOTSTRAP="${ENABLE_DEMO_BOOTSTRAP}" \
+            -v "${{ github.workspace }}":/work -w /work \
+            mcr.microsoft.com/playwright:v1.58.2-focal \
+            bash -lc "npm ci && npm run build && ENABLE_DEMO_BOOTSTRAP=true DEMO_BOOTSTRAP_TOKEN=${DEMO_BOOTSTRAP_TOKEN} NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN} npm run dev & sleep 3 && npx playwright test --reporter=github"
