@@ -3,11 +3,7 @@ import { requireOrgRole } from '../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
-
-function isMissingRelationError(error: unknown) {
-  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
-  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
-}
+import { isMissingRelationError } from '../../../lib/supabase/resolve-policy';
 
 function isMissingColumnError(error: unknown) {
   const message = String((error as { message?: unknown })?.message || '').toLowerCase();

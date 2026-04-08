@@ -1,63 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { logServerError, serverErrorResponse } from '../../../../lib/security/error-response';
+import { requireActiveProfile } from '../../../../lib/auth/require-active-profile';
+import { resolvePolicyId } from '../../../../lib/supabase/resolve-policy';
 
 const AGENT_DETAIL_RATE_LIMIT = 60;
 const AGENT_DETAIL_RATE_WINDOW_MS = 60 * 1000;
-
-function isMissingRelationError(error: unknown) {
-  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
-  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
-}
-
-async function resolvePolicyId(orgId: string, requestedPolicyId: string) {
-  const supabase = getSupabaseAdmin();
-
-  const { data: runtimePolicy, error: runtimeError } = await supabase
-    .from('runtime_policies')
-    .select('id')
-    .eq('org_id', orgId)
-    .eq('id', requestedPolicyId)
-    .maybeSingle();
-
-  if (!runtimeError && runtimePolicy?.id) return String(runtimePolicy.id);
-  if (runtimeError && !isMissingRelationError(runtimeError)) throw runtimeError;
-
-  const { data: legacyPolicy, error: legacyError } = await supabase
-    .from('policies')
-    .select('id')
-    .eq('id', requestedPolicyId)
-    .maybeSingle();
-
-  if (legacyError) throw legacyError;
-  return legacyPolicy?.id ? String(legacyPolicy.id) : null;
-}
-
-async function requireActiveProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { ok: false as const, status: 401, error: 'Unauthorized' };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('org_id, is_active')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (profileError || !profile?.org_id || !profile.is_active) {
-    return { ok: false as const, status: 403, error: 'Forbidden' };
-  }
-
-  return { ok: true as const, orgId: String(profile.org_id) };
-}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const rateLimit = await applyRateLimit({ key: getRateLimitKey(request, 'agents-detail'), limit: AGENT_DETAIL_RATE_LIMIT, windowMs: AGENT_DETAIL_RATE_WINDOW_MS });
