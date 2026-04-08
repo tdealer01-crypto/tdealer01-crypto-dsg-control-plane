@@ -64,6 +64,56 @@ export const DSG_TOOLS: AgentTool[] = [
           payload: params.payload || {},
           tool_name: 'agent-chat',
         }),
+        }),
+  },
+  {
+    id: 'browser_navigate',
+    name: 'Browser Navigate & Extract',
+    description: 'Navigate to a target URL through Browserbase executor.',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Target agent ID' },
+      url: { type: 'string', required: true, description: 'Target URL to open' },
+      extract: { type: 'string', required: false, description: 'Extraction instruction or selector' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, '/api/mcp/call', {
+        method: 'POST',
+        body: JSON.stringify({
+          agent_id: params.agent_id,
+          action: 'browser.navigate',
+          payload: {
+            url: params.url,
+            extract: params.extract,
+          },
+          tool_name: 'browser_navigate',
+        }),
+      }),
+  },
+  {
+    id: 'telegram_send',
+    name: 'Send Telegram Message',
+    description: 'Send a message to Telegram through DSG spine.',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Target agent ID' },
+      chat_id: { type: 'string', required: true, description: 'Telegram chat ID' },
+      text: { type: 'string', required: true, description: 'Message text' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, '/api/mcp/call', {
+        method: 'POST',
+        body: JSON.stringify({
+          agent_id: params.agent_id,
+          action: 'social.telegram.send',
+          payload: {
+            chat_id: params.chat_id,
+            text: params.text,
+          },
+          tool_name: 'telegram_send',
+        }),
       }),
   },
   {
