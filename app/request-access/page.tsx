@@ -1,11 +1,12 @@
-export default function RequestAccessPage({
+export default async function RequestAccessPage({
   searchParams,
 }: {
-  searchParams?: { email?: string; workspace_name?: string; success?: string };
+  searchParams?: Promise<{ email?: string; workspace_name?: string; success?: string }>;
 }) {
-  const email = String(searchParams?.email || '').trim().toLowerCase();
-  const workspaceName = String(searchParams?.workspace_name || '').trim();
-  const success = searchParams?.success === '1';
+  const params = await searchParams;
+  const email = String(params?.email || '').trim().toLowerCase();
+  const workspaceName = String(params?.workspace_name || '').trim();
+  const success = params?.success === '1';
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">

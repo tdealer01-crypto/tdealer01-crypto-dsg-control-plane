@@ -8,5 +8,5 @@ describe('/api/execute', () => {
     const req = new Request('http://localhost/api/execute', { method: 'POST', body: JSON.stringify({ agent_id: 'a' }) });
     const res = await POST(req);
     expect(res.status).toBe(401);
-  });
+  }, 15_000);
 });

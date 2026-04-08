@@ -9,13 +9,14 @@ function getErrorMessage(error?: string) {
   return null;
 }
 
-export default function PasswordLoginPage({
+export default async function PasswordLoginPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; next?: string };
+  searchParams?: Promise<{ error?: string; next?: string }>;
 }) {
-  const next = getSafeNext(searchParams?.next || '/dashboard');
-  const errorMessage = getErrorMessage(searchParams?.error);
+  const params = await searchParams;
+  const next = getSafeNext(params?.next || '/dashboard');
+  const errorMessage = getErrorMessage(params?.error);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">

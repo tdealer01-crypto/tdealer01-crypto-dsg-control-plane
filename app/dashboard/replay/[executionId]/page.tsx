@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 
 type ReplayData = {
   execution?: {
@@ -35,13 +35,14 @@ function formatDate(value?: string | null) {
   }
 }
 
-export default function ReplayPage({ params }: { params: { executionId: string } }) {
+export default function ReplayPage({ params }: { params: Promise<{ executionId: string }> }) {
+  const { executionId } = use(params);
   const [data, setData] = useState<ReplayData | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/replay/${params.executionId}`, { cache: 'no-store' })
+    fetch(`/api/replay/${executionId}`, { cache: 'no-store' })
       .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
       .then(({ ok, json }) => {
         if (!alive) return;
@@ -55,7 +56,7 @@ export default function ReplayPage({ params }: { params: { executionId: string }
     return () => {
       alive = false;
     };
-  }, [params.executionId]);
+  }, [executionId]);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">

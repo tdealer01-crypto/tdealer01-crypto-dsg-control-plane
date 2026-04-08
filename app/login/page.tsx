@@ -31,11 +31,12 @@ function getMessage(message?: string, error?: string) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; message?: string; next?: string; org?: string };
+  searchParams?: Promise<{ error?: string; message?: string; next?: string; org?: string }>;
 }) {
-  const next = getSafeNext(searchParams?.next);
-  const notice = getMessage(searchParams?.message, searchParams?.error);
-  const context = await resolveLoginContext({ orgSlug: searchParams?.org });
+  const params = await searchParams;
+  const next = getSafeNext(params?.next);
+  const notice = getMessage(params?.message, params?.error);
+  const context = await resolveLoginContext({ orgSlug: params?.org });
   const ssoHref = `/sso/start?next=${encodeURIComponent(next)}${context.org?.slug ? `&org=${encodeURIComponent(context.org.slug)}` : ''}`;
   const ssoOnly = context.mode === 'sso-only';
   const ssoFirst = context.mode === 'sso-first';
