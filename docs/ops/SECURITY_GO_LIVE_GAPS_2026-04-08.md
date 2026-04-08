@@ -23,9 +23,9 @@
 
 ### 3) วางนโยบาย CORS แบบ explicit (ถ้าจะเปิด external client)
 
-- ถ้า API ใช้แบบ same-origin เท่านั้น สถานะปัจจุบันถือว่าปลอดภัย
-- แต่ถ้าจะให้ mobile app / partner / external dashboard เรียก API โดยตรง ควรกำหนด CORS allowlist ชัดเจน
-- เหตุผล: ลดการขยายพื้นผิวโจมตีแบบไม่ตั้งใจเมื่อเริ่มเปิด integration ภายนอก
+- เพิ่ม CORS headers สำหรับ `/api/:path*` แล้วผ่าน `next.config.js` โดย allow origin จาก `APP_URL` หรือ `NEXT_PUBLIC_APP_URL`
+- ถ้าไม่ได้ตั้งค่า env ดังกล่าว ระบบจะไม่เปิด CORS headers เพิ่มเติม (คงพฤติกรรม same-origin เดิม)
+- เหตุผล: จำกัดการเข้าถึงข้าม origin ให้ชัดเจนและไม่เปิดกว้างโดยไม่ตั้งใจ
 
 ### 4) จัดการ shell helper scripts สำหรับ production governance
 
