@@ -15,9 +15,17 @@ type RateLimitResult = {
 
 type Bucket = { count: number; resetAt: number };
 const memBuckets = new Map<string, Bucket>();
+const MAX_MEM_BUCKETS = 10_000;
 
 function applyMemoryRateLimit(options: RateLimitOptions): RateLimitResult {
   const now = Date.now();
+
+  if (memBuckets.size > MAX_MEM_BUCKETS) {
+    for (const [key, bucket] of Array.from(memBuckets.entries())) {
+      if (now >= bucket.resetAt) memBuckets.delete(key);
+    }
+  }
+
   const existing = memBuckets.get(options.key);
   if (!existing || now >= existing.resetAt) {
     const resetAt = now + options.windowMs;

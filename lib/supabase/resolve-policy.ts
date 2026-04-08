@@ -75,19 +75,6 @@ export async function resolveQuickstartPolicyId(orgId: string) {
     throw runtimeError;
   }
 
-  const { data: orgPolicy, error: legacyOrgError } = await admin
-    .from('policies')
-    .select('id')
-    .eq('org_id', orgId)
-    .in('status', ['active', 'draft'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!legacyOrgError && orgPolicy?.id) {
-    return String(orgPolicy.id);
-  }
-
   const { data: globalPolicy, error: legacyGlobalError } = await admin
     .from('policies')
     .select('id')

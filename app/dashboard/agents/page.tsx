@@ -43,7 +43,7 @@ export default function AgentsPage() {
   const [error, setError] = useState('');
 
   const [name, setName] = useState('');
-  const [monthlyLimit, setMonthlyLimit] = useState(10000);
+  const [monthlyLimit, setMonthlyLimit] = useState('10000');
   const [policyId, setPolicyId] = useState('');
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedAgent | null>(null);
@@ -82,7 +82,7 @@ export default function AgentsPage() {
       setCreating(true);
       setError('');
       setCreated(null);
-      const payload: Record<string, unknown> = { name, monthly_limit: monthlyLimit };
+      const payload: Record<string, unknown> = { name, monthly_limit: Number(monthlyLimit) || 10000 };
       if (policyId.trim()) payload.policy_id = policyId.trim();
 
       const res = await fetch('/api/agents', {
@@ -97,7 +97,7 @@ export default function AgentsPage() {
       setCreated(json as CreatedAgent);
       setName('');
       setPolicyId('');
-      setMonthlyLimit(10000);
+      setMonthlyLimit('10000');
       await loadAgents(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create agent');
@@ -165,7 +165,7 @@ export default function AgentsPage() {
           <h2 className="text-xl font-semibold">Create agent</h2>
           <form className="mt-4 grid gap-3 md:grid-cols-4" onSubmit={createAgent}>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Agent name" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" required />
-            <input value={monthlyLimit} onChange={(e) => setMonthlyLimit(Number(e.target.value || 0))} type="number" min={1} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
+            <input value={monthlyLimit} onChange={(e) => setMonthlyLimit(e.target.value)} type="number" min={1} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
             <input value={policyId} onChange={(e) => setPolicyId(e.target.value)} placeholder="Policy ID (optional)" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
             <button disabled={creating} className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-black">{creating ? 'Creating...' : 'Create Agent'}</button>
           </form>
