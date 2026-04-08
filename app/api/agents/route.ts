@@ -28,8 +28,11 @@ function isMissingRelationError(error: unknown) {
 
 function parsePagination(request: Request) {
   const url = new URL(request.url);
-  const page = Math.max(Number(url.searchParams.get('page') || 1), 1);
-  const perPage = Math.min(Math.max(Number(url.searchParams.get('per_page') || DEFAULT_LIMIT), 1), MAX_PER_PAGE);
+  const rawPage = Number.parseInt(url.searchParams.get('page') || '1', 10);
+  const rawPerPage = Number.parseInt(url.searchParams.get('per_page') || String(DEFAULT_LIMIT), 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const boundedPerPage = Number.isFinite(rawPerPage) && rawPerPage > 0 ? rawPerPage : DEFAULT_LIMIT;
+  const perPage = Math.min(boundedPerPage, MAX_PER_PAGE);
   return { page, perPage, from: (page - 1) * perPage, to: (page - 1) * perPage + perPage - 1 };
 }
 
@@ -70,15 +73,6 @@ async function resolvePolicyId(orgId: string, requestedPolicyId?: string | null)
 
   if (!runtimeLatestError && runtimeLatest?.id) return String(runtimeLatest.id);
   if (runtimeLatestError && !isMissingRelationError(runtimeLatestError)) throw runtimeLatestError;
-
-  const { data: legacyDefault, error: legacyDefaultError } = await supabase
-    .from('policies')
-    .select('id')
-    .eq('id', 'policy_default')
-    .maybeSingle();
-
-  if (legacyDefaultError) throw legacyDefaultError;
-  if (legacyDefault?.id) return String(legacyDefault.id);
 
   const { data: legacyAny, error: legacyAnyError } = await supabase
     .from('policies')

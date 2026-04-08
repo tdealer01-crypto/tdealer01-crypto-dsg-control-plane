@@ -162,9 +162,9 @@ export default function AgentsPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">Create agent</h2>
           <form className="mt-4 grid gap-3 md:grid-cols-4" onSubmit={createAgent}>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Agent name" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" required />
-            <input value={monthlyLimit} onChange={(e) => setMonthlyLimit(Number(e.target.value || 0))} type="number" min={1} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
-            <input value={policyId} onChange={(e) => setPolicyId(e.target.value)} placeholder="Policy ID (optional)" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Agent name" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" required />
+            <input value={monthlyLimit} onChange={(e) => setMonthlyLimit(Number(e.target.value || 0))} type="number" min={1} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
+            <input value={policyId} onChange={(e) => setPolicyId(e.target.value)} placeholder="Policy ID (optional)" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
             <button disabled={creating} className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-black">{creating ? 'Creating...' : 'Create Agent'}</button>
           </form>
           {created ? (
@@ -190,10 +190,10 @@ export default function AgentsPage() {
               <div key={agent.agent_id} className="rounded-xl border border-slate-700 bg-slate-950 p-4">
                 {editingId === agent.agent_id ? (
                   <div className="grid gap-3 md:grid-cols-5">
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" />
-                    <input type="number" min={1} value={editMonthlyLimit} onChange={(e) => setEditMonthlyLimit(Number(e.target.value || 0))} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" />
-                    <input value={editPolicyId} onChange={(e) => setEditPolicyId(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" placeholder="Policy ID" />
-                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'active' | 'disabled')} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2">
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
+                    <input type="number" min={1} value={editMonthlyLimit} onChange={(e) => setEditMonthlyLimit(Number(e.target.value || 0))} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder:text-slate-500" />
+                    <input value={editPolicyId} onChange={(e) => setEditPolicyId(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder:text-slate-500" placeholder="Policy ID" />
+                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'active' | 'disabled')} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100">
                       <option value="active">active</option>
                       <option value="disabled">disabled</option>
                     </select>

@@ -58,24 +58,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const issued = await issueSpineIntent({
+    let result = await executeSpineIntent({
       orgId: access.orgId,
       apiKey,
       payload,
     });
 
-    if (!issued.ok) {
-      return NextResponse.json(issued.body, {
-        status: issued.status,
-        headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+    if (!result.ok && result.status === 409 && result.body?.error === 'No pending runtime intent for request') {
+      const issued = await issueSpineIntent({
+        orgId: access.orgId,
+        apiKey,
+        payload,
+      });
+
+      if (!issued.ok) {
+        return NextResponse.json(issued.body, {
+          status: issued.status,
+          headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+        });
+      }
+
+      result = await executeSpineIntent({
+        orgId: access.orgId,
+        apiKey,
+        payload,
       });
     }
-
-    const result = await executeSpineIntent({
-      orgId: access.orgId,
-      apiKey,
-      payload,
-    });
 
     return NextResponse.json(result.body, {
       status: result.status,

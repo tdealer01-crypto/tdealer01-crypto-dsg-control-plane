@@ -20,6 +20,17 @@ function hasMissingRelationError(error: unknown) {
   return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
 }
 
+function hasUnavailableRuntimeRolesError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const message = String((error as { message?: unknown }).message || '').toLowerCase();
+  return (
+    hasMissingRelationError(error) ||
+    message.includes('permission denied') ||
+    message.includes('not authorized') ||
+    message.includes('schema cache')
+  );
+}
+
 function collectRoles(rows: RoleRow[] | null | undefined): Set<RuntimeRole> {
   const out = new Set<RuntimeRole>();
   for (const row of rows || []) {
@@ -54,7 +65,7 @@ export async function requireOrgRole(roles: RuntimeRole[]) {
 
   if (!runtimeRoleError) {
     granted = collectRoles(runtimeRoleRows as RoleRow[]);
-  } else if (hasMissingRelationError(runtimeRoleError)) {
+  } else if (hasUnavailableRuntimeRolesError(runtimeRoleError)) {
     const fallbackRows: RoleRow[] = [];
 
     const { data: userOrgRoleRows, error: userOrgRoleError } = await supabase
@@ -72,6 +83,13 @@ export async function requireOrgRole(roles: RuntimeRole[]) {
     }
 
     granted = collectRoles(fallbackRows);
+  }
+
+  if (granted.size === 0 && profile.role) {
+    const mapped = mapOrgRoleToRuntimeRole(String(profile.role));
+    if (mapped) {
+      granted.add(mapped);
+    }
   }
 
   const hasRole = roles.some((role) => granted.has(role));
