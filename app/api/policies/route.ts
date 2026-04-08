@@ -4,22 +4,52 @@ import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
+function isMissingRelationError(error: unknown) {
+  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
+  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
+}
+
 export async function GET() {
   const access = await requireOrgRole(RuntimeRouteRoles.policies_read);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
+  const runtimeRes = await supabase
     .from('runtime_policies')
     .select('id, name, version, status, thresholds, governance_state, updated_at')
     .eq('org_id', access.orgId)
     .order('updated_at', { ascending: false });
 
-  if (error) {
-    logServerError(error, 'policies-get');
+  if (!runtimeRes.error) {
+    return NextResponse.json({ items: runtimeRes.data || [], source: 'runtime_policies' });
+  }
+
+  if (!isMissingRelationError(runtimeRes.error)) {
+    logServerError(runtimeRes.error, 'policies-get-runtime');
     return serverErrorResponse();
   }
-  return NextResponse.json({ items: data || [] });
+
+  const legacyRes = await supabase
+    .from('policies')
+    .select('id, name, version, status, config, updated_at')
+    .order('updated_at', { ascending: false });
+
+  if (legacyRes.error) {
+    logServerError(legacyRes.error, 'policies-get-legacy');
+    return serverErrorResponse();
+  }
+
+  const items = (legacyRes.data || []).map((policy) => ({
+    id: policy.id,
+    name: policy.name,
+    version: policy.version,
+    status: policy.status,
+    thresholds: policy.config || {},
+    governance_state: 'legacy',
+    updated_at: policy.updated_at,
+  }));
+
+  return NextResponse.json({ items, source: 'policies_legacy' });
 }
 
 export async function POST(request: Request) {
@@ -44,6 +74,13 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
+    if (isMissingRelationError(error)) {
+      return NextResponse.json(
+        { error: 'runtime_policies table is unavailable. Run runtime RBAC migrations before creating policies.' },
+        { status: 503 }
+      );
+    }
+
     logServerError(error, 'policies-post');
     return serverErrorResponse();
   }

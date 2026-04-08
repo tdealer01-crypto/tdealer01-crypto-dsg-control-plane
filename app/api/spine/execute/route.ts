@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../lib/authz';
-import { executeSpineIntent } from '../../../../lib/spine/engine';
+import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
@@ -56,6 +56,19 @@ export async function POST(request: Request) {
         { error: 'agent_id is required' },
         { status: 400, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
       );
+    }
+
+    const issued = await issueSpineIntent({
+      orgId: access.orgId,
+      apiKey,
+      payload,
+    });
+
+    if (!issued.ok) {
+      return NextResponse.json(issued.body, {
+        status: issued.status,
+        headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+      });
     }
 
     const result = await executeSpineIntent({

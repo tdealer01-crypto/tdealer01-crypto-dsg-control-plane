@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
+import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 async function requireActiveProfile() {
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'api_key is required. Create a fresh starter agent to receive one-time key output.' },
+        { error: 'api_key is required. Create or reissue starter agent key first.' },
         { status: 400 }
       );
     }
@@ -65,41 +67,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const origin = new URL(request.url).origin;
-    const executeResponse = await fetch(`${origin}/api/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        authorization: `Bearer ${apiKey}`,
+    const payload = normalizeSpinePayload({
+      agent_id: starterAgent.id,
+      action: 'quickstart-demo',
+      input: {
+        prompt: 'run quickstart deterministic safety validation',
+        risk_score: 0.25,
       },
-      body: JSON.stringify({
-        agent_id: starterAgent.id,
-        action: 'quickstart-demo',
-        input: {
-          prompt: 'run quickstart deterministic safety validation',
-          risk_score: 0.25,
-        },
-        context: {
-          source: 'quickstart',
-          audience: 'trial-user',
-        },
-      }),
+      context: {
+        source: 'quickstart',
+        audience: 'trial-user',
+      },
     });
 
-    const executeJson = await executeResponse.json().catch(() => ({}));
-    if (!executeResponse.ok) {
-      return NextResponse.json(
-        { error: executeJson?.error || 'Failed to run sample execution' },
-        { status: executeResponse.status }
-      );
+    const issueResult = await issueSpineIntent({
+      orgId: access.orgId,
+      apiKey,
+      payload,
+    });
+
+    if (!issueResult.ok) {
+      return NextResponse.json(issueResult.body, { status: issueResult.status });
+    }
+
+    const executeResult = await executeSpineIntent({
+      orgId: access.orgId,
+      apiKey,
+      payload,
+    });
+
+    if (!executeResult.ok) {
+      return NextResponse.json(executeResult.body, { status: executeResult.status });
     }
 
     return NextResponse.json({
-      request_id: executeJson.request_id,
-      decision: executeJson.decision,
-      reason: executeJson.reason,
-      latency_ms: executeJson.latency_ms,
-      audit_id: executeJson.audit_id || null,
+      request_id: executeResult.body.request_id,
+      decision: executeResult.body.decision,
+      reason: executeResult.body.reason,
+      latency_ms: executeResult.body.latency_ms,
+      audit_id: null,
     });
   } catch (error) {
     logApiError('api/quickstart/execute', error, { stage: 'unhandled' });
