@@ -4,12 +4,27 @@ import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engi
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import { requireActiveProfile } from '../../../../lib/auth/require-active-profile';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+
+const QUICKSTART_EXECUTE_RATE_LIMIT = 30;
+const QUICKSTART_EXECUTE_RATE_WINDOW_MS = 60 * 1000;
 
 export async function POST(request: Request) {
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'quickstart-execute'),
+    limit: QUICKSTART_EXECUTE_RATE_LIMIT,
+    windowMs: QUICKSTART_EXECUTE_RATE_WINDOW_MS,
+  });
+  const headers = buildRateLimitHeaders(rateLimit, QUICKSTART_EXECUTE_RATE_LIMIT);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers });
+  }
+
   try {
     const access = await requireActiveProfile();
     if (!access.ok) {
-      return NextResponse.json({ error: access.error }, { status: access.status });
+      return NextResponse.json({ error: access.error }, { status: access.status, headers });
     }
 
     const body = await request.json().catch(() => null);
@@ -18,7 +33,7 @@ export async function POST(request: Request) {
     if (!apiKey) {
       return NextResponse.json(
         { error: 'api_key is required. Create or reissue starter agent key first.' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -33,13 +48,13 @@ export async function POST(request: Request) {
 
     if (agentError) {
       logApiError('api/quickstart/execute', agentError, { stage: 'load-starter-agent' });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      return NextResponse.json({ error: internalErrorMessage() }, { status: 500, headers });
     }
 
     if (!starterAgent?.id) {
       return NextResponse.json(
         { error: 'Create starter agent first via /api/quickstart/agent' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -63,7 +78,7 @@ export async function POST(request: Request) {
     });
 
     if (!issueResult.ok) {
-      return NextResponse.json(issueResult.body, { status: issueResult.status });
+      return NextResponse.json(issueResult.body, { status: issueResult.status, headers });
     }
 
     const executeResult = await executeSpineIntent({
@@ -73,7 +88,7 @@ export async function POST(request: Request) {
     });
 
     if (!executeResult.ok) {
-      return NextResponse.json(executeResult.body, { status: executeResult.status });
+      return NextResponse.json(executeResult.body, { status: executeResult.status, headers });
     }
 
     return NextResponse.json({
@@ -82,9 +97,9 @@ export async function POST(request: Request) {
       reason: executeResult.body.reason,
       latency_ms: executeResult.body.latency_ms,
       audit_id: null,
-    });
+    }, { headers });
   } catch (error) {
     logApiError('api/quickstart/execute', error, { stage: 'unhandled' });
-    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500, headers });
   }
 }

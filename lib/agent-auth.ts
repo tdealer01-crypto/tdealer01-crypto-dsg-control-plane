@@ -10,7 +10,7 @@ export async function resolveAgentFromApiKey(agentId: string, apiKey: string) {
     .select('id, org_id, policy_id, status, monthly_limit')
     .eq('id', agentId)
     .eq('api_key_hash', apiKeyHash)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;
