@@ -1,4 +1,5 @@
 import { getDSGCoreHealth } from '../../../lib/dsg-core';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { handleApiError } from '../../../lib/security/api-error';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
@@ -16,6 +17,16 @@ export async function GET(request: Request) {
       );
     }
 
+
+    let dbOk = false;
+    try {
+      const admin = getSupabaseAdmin();
+      const { error: dbError } = await admin.from('organizations').select('id').limit(1);
+      dbOk = !dbError;
+    } catch {
+      dbOk = false;
+    }
+
     const core = await getDSGCoreHealth();
     const coreDetails = core as {
       status?: unknown;
@@ -25,13 +36,14 @@ export async function GET(request: Request) {
     };
 
     return Response.json({
-      ok: core.ok,
+      ok: core.ok && dbOk,
       service: 'dsg-control-plane',
       timestamp: new Date().toISOString(),
       core_ok: core.ok,
-      error: core.ok ? null : coreDetails.error ?? null,
+      db_ok: dbOk,
+      error: (core.ok && dbOk) ? null : (!dbOk ? 'db_unreachable' : (coreDetails.error ?? null)),
       core: {
-        ok: core.ok,
+        ok: core.ok && dbOk,
         status: coreDetails.status ?? null,
         version: coreDetails.version ?? null,
         timestamp: coreDetails.timestamp ?? null,

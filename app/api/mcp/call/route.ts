@@ -2,20 +2,12 @@ import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../lib/authz';
 import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
-import { handleApiError, internalErrorMessage } from '../../../../lib/security/api-error';
+import { handleApiError } from '../../../../lib/security/api-error';
+import { issueSpineIntent, executeSpineIntent } from '../../../../lib/spine/engine';
+import { normalizeSpinePayload } from '../../../../lib/spine/request';
 
 const MCP_RATE_LIMIT = 30;
 const MCP_RATE_WINDOW_MS = 60_000;
-
-function getSanitizedUpstreamError(status: number, upstreamError: unknown, fallback: string) {
-  if (status >= 500) {
-    return internalErrorMessage();
-  }
-  if (typeof upstreamError === 'string' && upstreamError.trim().length > 0) {
-    return upstreamError;
-  }
-  return fallback;
-}
 
 export async function POST(request: Request) {
   try {
@@ -39,48 +31,71 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => null);
-    const auth = request.headers.get('authorization') || '';
-    const origin = new URL(request.url).origin;
 
-    const intentResp = await fetch(`${origin}/api/intent`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: auth },
-      body: JSON.stringify({ agent_id: body?.agent_id, org_id: access.orgId, intent: { action: body?.action, payload: body?.payload ?? {} } }),
-    });
-
-    const intentJson = await intentResp.json().catch(() => ({}));
-    if (!intentResp.ok) {
+    const authHeader = request.headers.get('authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: getSanitizedUpstreamError(intentResp.status, intentJson?.error, 'Intent request failed') },
-        { status: intentResp.status, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
+        { error: 'Missing Bearer token' },
+        { status: 401, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
       );
     }
 
-    const executeResp = await fetch(`${origin}/api/execute`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: auth },
-      body: JSON.stringify({
-        agent_id: body?.agent_id,
-        action: body?.action || 'mcp-call',
-        input: body?.payload ?? {},
-        context: { source: 'mcp', intent_request_id: intentJson.request_id },
-      }),
+    const apiKey = authHeader.slice(7).trim();
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Empty API key' },
+        { status: 401, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
+      );
+    }
+
+    const payload = normalizeSpinePayload({
+      agent_id: body?.agent_id,
+      action: body?.action || 'mcp-call',
+      input: body?.payload ?? {},
+      context: {
+        source: 'mcp',
+      },
     });
 
-    const executeJson = await executeResp.json().catch(() => ({}));
-    if (!executeResp.ok) {
+    if (!payload.agentId) {
       return NextResponse.json(
-        { error: getSanitizedUpstreamError(executeResp.status, executeJson?.error, 'Execution failed') },
-        { status: executeResp.status, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
+        { error: 'agent_id is required' },
+        { status: 400, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
       );
+    }
+
+    const intentResult = await issueSpineIntent({
+      orgId: access.orgId,
+      apiKey,
+      payload,
+    });
+
+    if (!intentResult.ok) {
+      return NextResponse.json(intentResult.body, {
+        status: intentResult.status,
+        headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT),
+      });
+    }
+
+    const executeResult = await executeSpineIntent({
+      orgId: access.orgId,
+      apiKey,
+      payload,
+    });
+
+    if (!executeResult.ok) {
+      return NextResponse.json(executeResult.body, {
+        status: executeResult.status,
+        headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT),
+      });
     }
 
     return NextResponse.json(
       {
-        runtime: executeJson,
+        runtime: executeResult.body,
         dispatch: {
           tool_name: body?.tool_name || 'unknown-tool',
-          dispatched: executeJson.decision === 'ALLOW',
+          dispatched: executeResult.body?.decision === 'ALLOW',
           bypass_prevented: true,
         },
       },

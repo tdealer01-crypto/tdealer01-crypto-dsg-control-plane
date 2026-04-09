@@ -147,10 +147,10 @@ export async function POST(_request: Request) {
 
     if (!existingSub || existingSub.length === 0) {
       const { error: subError } = await admin.from('billing_subscriptions').insert({
-        stripe_subscription_id: `auto_trial_${orgId}`,
-        stripe_customer_id: `auto_cus_${orgId}`,
+        stripe_subscription_id: `placeholder_sub_${orgId}`,
+        stripe_customer_id: `placeholder_cus_${orgId}`,
         org_id: orgId,
-        customer_email: `setup@${orgId}`,
+        customer_email: `placeholder+setup@${orgId}`,
         status: 'trialing',
         plan_key: 'trial',
         billing_interval: 'monthly',
