@@ -192,10 +192,23 @@ Expected readiness contract:
 - `readiness_status: "ready"`
 
 ## 6) Post-deploy smoke checks
+
+### Public smoke check
 - `GET /api/health`
+
+### Dependency and monitor checks
 - `GET /api/core/monitor`
+
+### Authenticated operator smoke checks
 - `GET /api/usage`
+- `GET /api/executions`
 - Execute one approved runtime intent path (`/api/intent` -> `/api/execute`)
+
+### Notes
+- `GET /api/health` is the public probe for baseline availability.
+- Do not use `GET /api/usage` as an anonymous/public health check; it is an operator-facing route.
+- `/api/execute` is the stable public compatibility entry for the current spine execution handler.
+- For deep debugging, compare behavior with the underlying spine route only after auth/runtime prerequisites are satisfied.
 
 ## 7) Login/Magic-Link troubleshooting (`/login?error=unexpected`)
 When users are redirected back to login with an unexpected auth error, validate this sequence in order:
