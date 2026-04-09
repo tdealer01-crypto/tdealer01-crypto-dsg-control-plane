@@ -4,34 +4,34 @@ import Link from "next/link";
 
 const capabilities = [
   "Deterministic policy gate with ALLOW / STABILIZE / BLOCK decisions.",
-  "Audit-ready execution records and usage tracking.",
-  "Operational dashboard for agents, health, audit, and billing.",
-  "API-first integration model for external AI systems.",
+  "Audit-oriented execution records and usage tracking.",
+  "Authenticated operator surfaces for dashboard, audit, billing, and policy review.",
+  "Stable execution entry via /api/execute with protected runtime handling behind the current execution layer.",
 ];
 
 const checks = [
   {
     title: "Product home",
     href: "/",
-    desc: "Open the main landing page for the DSG Control Plane.",
+    desc: "Open the main public landing page for the DSG Control Plane.",
   },
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    desc: "Review operational surfaces for agents, executions, audit, and billing.",
+    title: "Login",
+    href: "/login",
+    desc: "Enter authenticated operator workspace routes.",
   },
   {
     title: "Health endpoint",
     href: "/api/health",
-    desc: "Verify control-plane and DSG core health JSON output.",
+    desc: "Verify the public baseline health JSON output.",
   },
 ];
 
 const steps = [
   "Open Product Home and confirm the public landing page is reachable.",
-  "Open the Dashboard and verify the control-plane UI loads.",
-  "Open the Health endpoint and confirm the JSON payload is returned.",
-  "Use the protected execute API only with valid credentials.",
+  "Open the Health endpoint and confirm the JSON baseline probe is returned.",
+  "Use Login or Password Login to enter authenticated operator routes.",
+  "Use the protected execute API only with valid credentials and organization-scoped access.",
 ];
 
 export default function MarketplaceUiPage() {
@@ -41,13 +41,11 @@ export default function MarketplaceUiPage() {
         <div className="badge">Marketplace Reviewer Page</div>
         <h1>DSG — Deterministic Safety Gate</h1>
         <p className="lead">
-          DSG Control Plane is a deterministic policy enforcement and audit layer for AI systems.
-          It provides decision gating, audit-ready execution records, and operator visibility across
-          governed AI traffic.
+          DSG Control Plane exposes a public product surface, a public baseline health probe, and authenticated operator routes for governed AI execution. This reviewer page makes the public-versus-protected boundary explicit.
         </p>
         <div className="cta-row">
           <Link href="/" className="btn btn-primary">Open Product Home</Link>
-          <Link href="/dashboard" className="btn btn-secondary">Open Dashboard</Link>
+          <Link href="/login" className="btn btn-secondary">Open Login</Link>
           <Link href="/api/health" className="btn btn-secondary">Open Health Endpoint</Link>
         </div>
       </section>
@@ -56,8 +54,7 @@ export default function MarketplaceUiPage() {
         <article className="panel">
           <h2>Product Summary</h2>
           <p>
-            DSG is designed as a control plane for governed AI execution. The product exposes health,
-            dashboard, and protected execution interfaces for policy-aware workflows.
+            DSG is designed as a control plane for governed AI execution. The public surface is reviewable without credentials, while dashboard, usage, audit, billing, policy, and execution workflows remain protected operator paths.
           </p>
           <ul className="feature-list">
             {capabilities.map((item) => (
@@ -86,16 +83,16 @@ export default function MarketplaceUiPage() {
         <h2>Deployment Model</h2>
         <div className="stat-grid">
           <div className="stat-card">
-            <span>Surface</span>
-            <strong>Next.js control plane</strong>
+            <span>Public surface</span>
+            <strong>Next.js product shell + proof pages</strong>
           </div>
           <div className="stat-card">
-            <span>API model</span>
-            <strong>Protected bearer-token execution API</strong>
+            <span>Public probe</span>
+            <strong>GET /api/health</strong>
           </div>
           <div className="stat-card">
-            <span>Core output</span>
-            <strong>ALLOW / STABILIZE / BLOCK</strong>
+            <span>Protected execution entry</span>
+            <strong>POST /api/execute</strong>
           </div>
         </div>
       </section>
@@ -115,9 +112,7 @@ export default function MarketplaceUiPage() {
       <section className="panel code-panel">
         <h2>Protected Execute API</h2>
         <p>
-          Execution requests use a bearer token and agent identifier. Reviewers can validate the public
-          product surface with the landing page, dashboard, and health endpoint. Protected execution
-          flows require valid credentials.
+          Execution requests use a bearer token and agent identifier. Reviewers should validate the public product surface with the landing page and health endpoint first, then use authenticated operator access for protected execution and workspace flows.
         </p>
         <pre>{`curl -X POST https://your-domain.com/api/execute \\
   -H "Authorization: Bearer DSG_API_KEY" \\

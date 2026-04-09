@@ -77,14 +77,44 @@ Operational gap ที่ยังเจอบ่อยจริงใน produc
 - Supabase Auth URL/Redirect ไม่ตรงกับ production hostname
 - migrations ยังไม่ครบ environment ปลายทาง
 
-## 7) Unification Plan
+## 7) Current Route Truth (release-gate note)
+
+สำหรับ release gate และ docs truth ปัจจุบัน ให้ยึด boundary นี้:
+
+### Public baseline probe
+- `GET /api/health`
+
+ใช้เป็น public/deploy smoke check หลัก
+
+### Stable execution entry
+- `POST /api/execute`
+
+ใช้เป็น stable compatibility entry สำหรับ quickstart และ sample execution
+
+### Current execution implementation layer
+- `POST /api/intent`
+- `POST /api/spine/execute`
+
+execution logic ปัจจุบันอยู่ใน spine-oriented path
+
+### Authenticated operator routes
+- `GET /api/usage`
+- `GET /api/executions`
+- `GET /api/audit`
+- `GET, POST /api/policies`
+- `GET /api/capacity`
+- `POST /api/agent-chat`
+
+routes กลุ่มนี้ไม่ควรถูกใช้เป็น anonymous/public health probes
+
+## 8) Unification Plan
 
 1. รักษา runtime commit path ให้เป็น atomic เสมอ
 2. รักษา org scoping + RBAC ในทุก runtime routes
 3. รักษา migration/index constraints ให้ครอบคลุม race conditions
 4. รักษา docs/release gates ให้ตรงสถานะจริง
 
-## 8) Files To Monitor
+## 9) Files To Monitor
 
 - `app/auth/confirm/route.ts`
 - `app/api/execute/route.ts`
@@ -96,12 +126,12 @@ Operational gap ที่ยังเจอบ่อยจริงใน produc
 - `supabase/migrations/*runtime*`
 - `supabase/migrations/*usage_counters*`
 
-## 9) Risks / Impact
+## 10) Risks / Impact
 
 - เอกสารนี้เป็น report/update ด้านสถานะและความเสี่ยง
 - ความเสี่ยง go-live จริงอยู่ที่ data integrity + RBAC + org scoping + billing consistency
 
-## 10) Hard Blockers Before Go-Live
+## 11) Hard Blockers Before Go-Live
 
 - ต้องผ่าน production verification checklist ตาม release gate
 - ต้องยืนยันว่า runtime critical routes ยัง enforce contract ครบหลัง deploy

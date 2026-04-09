@@ -96,7 +96,7 @@ export default async function SignupPage({
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Start free trial</p>
           <h1 className="mt-4 text-4xl font-bold">Start your DSG free trial</h1>
           <p className="mt-4 text-base leading-7 text-slate-300">
-            Create a workspace in minutes, generate your first agent, run a real execution, and monitor live readiness in one flow.
+            Create a workspace in minutes, generate your first agent, run a sample execution through the stable execution entry, and then continue into authenticated operator views for usage, audit, and policy review.
           </p>
 
           <p className="mt-4 text-sm text-slate-300">
@@ -183,8 +183,8 @@ export default async function SignupPage({
               {[
                 '14-day free trial',
                 '1,000 executions included',
-                'Live monitor + mission workspace included',
-                'Quickstart path to first agent and first execution',
+                'Quickstart path to first agent and first sample execution',
+                'Authenticated operator views for dashboard, mission, and audit context',
               ].map((item) => (
                 <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-4 leading-7">
                   {item}
@@ -195,7 +195,7 @@ export default async function SignupPage({
             <div className="mt-8 rounded-2xl border border-white/10 bg-slate-950/50 p-5 text-sm text-slate-300">
               <p className="font-semibold text-white">Quota note</p>
               <p className="mt-2 leading-7">
-                Trial workspaces include limited executions with standard quota enforcement on every call to <code>/api/execute</code>.
+                Trial workspaces include limited executions with standard quota enforcement on the stable execution entry at <code>/api/execute</code>.
               </p>
             </div>
           </div>

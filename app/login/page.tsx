@@ -6,7 +6,7 @@ import { getSafeNext } from '../../lib/auth/safe-next';
 
 function getMessage(message?: string, error?: string) {
   if (message === 'check-email') return { tone: 'success', text: 'Check your email for the magic link to continue.' };
-  if (message === 'signed-out') return { tone: 'success', text: 'Signed out successfully. You can request a new magic link at any time.' };
+  if (message === 'signed-out') return { tone: 'success', text: 'Signed out successfully. You can request a new login method at any time.' };
   if (error === 'invalid-email') return { tone: 'error', text: 'Enter a valid email address before continuing.' };
   if (error === 'approval-required') return { tone: 'error', text: 'This domain requires admin approval. Request access and wait for review.' };
   if (error === 'missing-email') return { tone: 'error', text: 'Enter your email before continuing.' };
@@ -38,6 +38,7 @@ export default async function LoginPage({
   const notice = getMessage(params?.message, params?.error);
   const context = await resolveLoginContext({ orgSlug: params?.org });
   const ssoHref = `/sso/start?next=${encodeURIComponent(next)}${context.org?.slug ? `&org=${encodeURIComponent(context.org.slug)}` : ''}`;
+  const passwordHref = `/password-login?next=${encodeURIComponent(next)}`;
   const ssoOnly = context.mode === 'sso-only';
   const ssoFirst = context.mode === 'sso-first';
 
@@ -45,12 +46,12 @@ export default async function LoginPage({
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
-          <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">{context.org ? context.org.name : 'Continue with email'}</p>
-          <h1 className="mt-4 text-4xl font-bold">Access DSG in one step</h1>
+          <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">{context.org ? context.org.name : 'Operator access'}</p>
+          <h1 className="mt-4 text-4xl font-bold">Access DSG operator routes</h1>
           <p className="mt-4 text-base leading-7 text-slate-300">
             {ssoOnly || ssoFirst
               ? 'Continue with your company SSO to access your organization workspace.'
-              : 'Login with your work email, or start a free trial if you are new.'}
+              : 'Use password login as the primary sign-in path for existing operator workspaces. Email magic link remains available as a fallback.'}
           </p>
 
           {notice ? <div className={['mt-6 rounded-2xl border p-4 text-sm', notice.tone === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100' : 'border-red-500/30 bg-red-500/10 text-red-200'].join(' ')}>{notice.text}</div> : null}
@@ -61,21 +62,21 @@ export default async function LoginPage({
                 Continue with your company SSO
               </Link>
               <p className="text-sm text-slate-300">Continue with SSO for organization-managed login.</p>
-              {ssoOnly ? null : <p className="text-sm text-slate-300">Use email recovery link</p>}
+              {ssoOnly ? null : <p className="text-sm text-slate-300">Use password or email recovery only if your organization also supports them.</p>}
             </div>
           )}
 
           {!ssoOnly && (
-            <div className="mt-8">
+            <div className="mt-8 space-y-4">
+              <Link href={passwordHref} className="block w-full rounded-2xl bg-emerald-400 px-5 py-4 text-center font-semibold text-slate-950">
+                Continue with password
+              </Link>
+              <p className="text-center text-sm text-slate-400">
+                Need email recovery instead? Use the form below to request a magic link.
+              </p>
               <Suspense fallback={null}>
                 <LoginForm next={next} orgSlug={context.org?.slug} ssoFirst={ssoFirst} />
               </Suspense>
-              <p className="mt-4 text-center text-sm text-slate-400">
-                Prefer password login?{' '}
-                <Link href={`/password-login?next=${encodeURIComponent(next)}`} className="text-emerald-300 underline">
-                  Use password instead
-                </Link>
-              </p>
             </div>
           )}
         </div>
@@ -85,16 +86,23 @@ export default async function LoginPage({
             <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">What happens next</p>
             <div className="mt-6 grid gap-4">
               {[
-                'Use the Login tab to sign in with your existing work email.',
-                'Use the Start Trial tab to create a new workspace with a 14-day free trial.',
-                'We send a magic link to your email — click it to continue.',
-                'Protected dashboard access requires a valid active organization.',
+                'Use password login first if your operator account already exists.',
+                'Use the email fallback form only when you need a recovery link.',
+                'Use Start Trial only when creating a new workspace.',
+                'Protected dashboard, usage, audit, and policy views require a valid active organization.',
               ].map((item, index) => (
                 <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-400/10 font-semibold text-emerald-200">{index + 1}</div>
                   <p className="text-sm leading-7">{item}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-white/10 bg-slate-950/50 p-5 text-sm text-slate-300">
+              <p className="font-semibold text-white">Route note</p>
+              <p className="mt-2 leading-7">
+                Public proof pages stay open for evaluation, while operator routes like usage, audit, policy, and capacity remain authenticated and organization-scoped.
+              </p>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">

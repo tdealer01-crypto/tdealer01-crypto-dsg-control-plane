@@ -20,7 +20,7 @@ const sections = [
   },
   {
     title: "Business impact",
-    body: "This reduces runtime risk, improves trust in AI operations, and helps enterprises justify use in production environments.",
+    body: "This reduces runtime risk, improves trust in AI operations, and helps enterprises evaluate use in production environments more clearly.",
   },
   {
     title: "Why the enterprise should use it",
@@ -38,7 +38,7 @@ export default function EnterpriseProofReportPage() {
               Enterprise Proof Report
             </p>
             <h1 className="mt-3 text-4xl font-bold">
-              Executive proof for why this app should be used
+              Executive narrative for why governed AI runtime matters
             </h1>
           </div>
 
@@ -89,7 +89,6 @@ export default function EnterpriseProofReportPage() {
           ))}
         </div>
 
-
         <div className="mt-10 rounded-[2rem] border border-violet-400/20 bg-violet-400/10 p-6" data-testid="security-context">
           <p className="text-sm uppercase tracking-[0.2em] text-violet-200">
             Verification boundary
@@ -104,9 +103,7 @@ export default function EnterpriseProofReportPage() {
             AI-ready summary
           </p>
           <p className="mt-3 leading-8 text-cyan-50">
-            This app should be used when an enterprise needs AI execution to be
-            auditable, replay-resistant, recoverable, and governed through one
-            visible runtime control layer.
+            This app should be used when an enterprise needs AI execution to be auditable, replay-resistant, recoverable, and governed through one visible runtime control layer, with deeper evidence available inside authenticated workspace routes.
           </p>
         </div>
       </section>

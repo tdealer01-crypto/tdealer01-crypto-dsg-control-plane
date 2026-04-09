@@ -117,7 +117,7 @@ export default function AppShellPage() {
       id: 'm0',
       role: 'system',
       content:
-        'DSG command workspace ready. Use the live monitor on the right to assess health, readiness, entropy, and alert state before acting.',
+        'Authenticated command workspace ready. Use the monitor on the right to assess readiness, entropy, alerts, and current operator context before acting.',
     },
   ]);
 
@@ -238,7 +238,7 @@ export default function AppShellPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</p>
             <h1 className="text-2xl font-semibold">Unified Command Workspace</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Split-pane chat and live monitor for operational control in one place.
+              Split-pane operator workspace with authenticated monitor data and command execution in one place.
             </p>
           </div>
 
@@ -262,11 +262,11 @@ export default function AppShellPage() {
             <div>
               <p className="text-sm font-semibold text-slate-200">Agent Console</p>
               <p className="text-xs text-slate-400">
-                Issue commands, ask for analysis, and review operator guidance.
+                Issue commands, ask for analysis, and review operator guidance from authenticated runtime paths.
               </p>
             </div>
             <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
-              Workspace Chat · Live
+              Operator Session
             </span>
           </div>
 
@@ -292,7 +292,7 @@ export default function AppShellPage() {
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Ask readiness, execute, audit, checkpoint, policies, capacity..."
+                placeholder="Ask for readiness, active alerts, audit status, policies, capacity, or execution context..."
                 className="min-h-[112px] rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
               />
               <div className="flex flex-col gap-3">
@@ -306,7 +306,7 @@ export default function AppShellPage() {
                 <button
                   onClick={() =>
                     setDraft(
-                      'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend next operator action.',
+                      'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend the next operator action.',
                     )
                   }
                   className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200"
@@ -322,7 +322,7 @@ export default function AppShellPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-200">Live Monitor</p>
-              <p className="text-xs text-slate-400">Core truth, readiness, entropy pattern, and active alerts.</p>
+              <p className="text-xs text-slate-400">Authenticated core truth, readiness, entropy pattern, and active alerts.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span

@@ -6,7 +6,7 @@ const sections = [
     items: [
       "Create an agent",
       "Store the API key shown once",
-      "Call /api/execute",
+      "Call /api/execute (stable compatibility entry)",
       "Review decisions, audit logs, and billing usage",
     ],
   },
@@ -15,19 +15,25 @@ const sections = [
     items: [
       "GET /api/health",
       "GET, POST /api/agents",
+      "POST /api/intent",
       "POST /api/execute",
+      "POST /api/spine/execute",
+      "POST /api/agent-chat",
+      "GET /api/audit",
+      "GET, POST /api/policies",
+      "GET /api/capacity",
       "GET /api/executions",
       "GET /api/metrics",
       "GET /api/usage",
     ],
   },
   {
-    title: "Next Milestones",
+    title: "Route Notes",
     items: [
-      "Wire agents and usage to Supabase schema",
-      "Persist billing state from Stripe webhooks",
-      "Add policy approvals and exportable audit evidence",
-      "Harden auth and environment setup for production",
+      "/api/execute forwards to the current spine execution handler",
+      "/api/health is the public smoke-check endpoint",
+      "/api/usage, /api/policies, and /api/capacity are operator-facing routes",
+      "Dashboard surfaces also depend on /api/audit and /api/executions",
     ],
   },
 ];
@@ -42,9 +48,9 @@ export default function DocsPage() {
           </p>
           <h1 className="text-4xl font-bold md:text-5xl">DSG Control Plane Documentation</h1>
           <p className="mt-4 text-lg text-slate-300">
-            Product documentation for the current DSG control-plane scaffold,
-            including route overview, quickstart flow, and next implementation
-            milestones.
+            Current product documentation for DSG ONE Control Plane,
+            including route overview, quickstart flow, and operator/runtime
+            entry points.
           </p>
         </div>
 
@@ -86,6 +92,15 @@ export default function DocsPage() {
         </div>
 
         <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">Execution Compatibility</h2>
+          <p className="mt-4 text-sm text-slate-300">
+            Use <code>/api/execute</code> as the stable entry shown in quickstart.
+            The current implementation forwards to the spine execution handler,
+            so the execution logic remains centralized while the public path stays stable.
+          </p>
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">Quickstart</h2>
           <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`curl -X POST http://localhost:3000/api/execute \\
   -H "Authorization: Bearer dsg_live_demo" \\
@@ -99,6 +114,10 @@ export default function DocsPage() {
       "risk_score": 0.12
     }
   }'`}</pre>
+          <p className="mt-4 text-sm text-slate-400">
+            Note: <code>/api/execute</code> is the stable compatibility route.
+            Internally, execution is handled by the spine execution path.
+          </p>
         </section>
       </div>
     </main>

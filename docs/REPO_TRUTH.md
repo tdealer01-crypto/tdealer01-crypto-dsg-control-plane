@@ -36,3 +36,43 @@ Current practical deployment risk is configuration drift (especially Supabase/Ve
 ## Current integration gap
 
 The control-plane expects a richer core contract than the canonical gate contract currently visible in the gate repo. The current product is therefore a multi-repo system with verified components, not yet a single fully aligned execution path.
+
+## Current control-plane route truth
+
+The public and operator-facing route surfaces should be interpreted as follows:
+
+### Public baseline probe
+- `GET /api/health`
+
+This is the baseline public availability probe for deployment and smoke-check purposes.
+
+### Stable execution entry
+- `POST /api/execute`
+
+This path remains the stable compatibility entry for sample and quickstart execution.
+Internally, it forwards to the current spine execution handler.
+
+### Current execution implementation layer
+- `POST /api/intent`
+- `POST /api/spine/execute`
+
+These routes reflect the current spine-oriented execution shape in the control-plane repo.
+
+### Authenticated operator routes
+- `GET /api/usage`
+- `GET /api/executions`
+- `GET /api/audit`
+- `GET, POST /api/policies`
+- `GET /api/capacity`
+- `POST /api/agent-chat`
+
+These should be evaluated with authenticated, org-scoped access.
+They are not anonymous/public health probes.
+
+## Practical interpretation
+
+When checking repo truth for the control-plane:
+- treat `/api/health` as the public baseline probe
+- treat `/api/execute` as the stable public execution entry
+- treat `/api/spine/execute` as the current implementation path behind execution
+- treat usage, policy, capacity, audit, and execution inspection routes as operator surfaces
