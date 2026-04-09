@@ -168,7 +168,7 @@ A new workspace can be evaluated through a guided flow:
 3. Enter `/quickstart`
 4. Create the first starter agent
 5. Copy the one-time API key
-6. Run the first sample execution
+6. Run the first sample execution through `/api/execute`
 7. Inspect mission, app-shell, and enterprise-proof surfaces
 
 Quickstart currently includes:
@@ -177,6 +177,46 @@ Quickstart currently includes:
 - first-agent creation
 - first-execution walkthrough
 - links into live monitoring surfaces
+
+---
+
+## Current API Route Notes (Repo Truth)
+
+These route notes are intended to keep evaluation and smoke checks aligned with the current repository truth.
+
+### Public baseline probe
+- `GET /api/health`
+
+Use this as the baseline availability probe for public and deployment checks.
+
+### Stable execution entry
+- `POST /api/execute`
+
+This is the stable compatibility entry used by quickstart and sample execution flows.
+Internally, the current implementation forwards to the spine execution handler.
+
+### Underlying execution handler
+- `POST /api/spine/execute`
+- `POST /api/intent`
+
+The spine path is the current execution implementation layer.
+`/api/intent` and `/api/spine/execute` are part of the current runtime execution flow.
+
+### Authenticated operator routes
+- `GET /api/usage`
+- `GET /api/executions`
+- `GET /api/audit`
+- `GET, POST /api/policies`
+- `GET /api/capacity`
+- `POST /api/agent-chat`
+
+These are operator-facing routes and should be evaluated with authenticated, org-scoped access.
+They should not be treated as anonymous/public health probes.
+
+### Evaluation guidance
+- Use `/api/health` first for baseline availability.
+- Use `/api/execute` for the stable sample-execution entry.
+- Use authenticated operator flows when validating usage, policy, capacity, audit, and execution surfaces.
 
 ---
 
