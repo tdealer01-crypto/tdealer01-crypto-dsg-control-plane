@@ -220,4 +220,16 @@ export const DSG_TOOLS: AgentTool[] = [
         body: JSON.stringify(params),
       }),
   },
+  {
+    id: 'auto_setup',
+    name: 'Run Org Auto Setup',
+    description: 'Auto-configure default policy, agent, seed execution, billing, onboarding, and runtime roles.',
+    parameters: {},
+    riskLevel: 'critical',
+    requiredRole: 'org_admin',
+    execute: async (_params, context) =>
+      callJson(context, '/api/setup/auto', {
+        method: 'POST',
+      }),
+  },
 ];

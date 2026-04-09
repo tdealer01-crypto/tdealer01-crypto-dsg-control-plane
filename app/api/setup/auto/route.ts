@@ -1,0 +1,212 @@
+import { createHash, randomUUID } from 'crypto';
+import { NextResponse } from 'next/server';
+import { requireOrgRole } from '../../../../lib/authz';
+import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../../lib/billing/overage-config';
+import { bootstrapOrgStarterState } from '../../../../lib/onboarding/bootstrap';
+import { canonicalHash, canonicalJson } from '../../../../lib/runtime/canonical';
+import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
+import { handleApiError } from '../../../../lib/security/api-error';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(_request: Request) {
+  try {
+    const access = await requireOrgRole(['org_admin']);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
+    const orgId = access.orgId;
+    const admin = getSupabaseAdmin();
+    const now = new Date().toISOString();
+    const suffix = randomUUID().slice(0, 8);
+    const results: Record<string, unknown> = { org_id: orgId, steps: [] as string[] };
+
+    const { error: policyError } = await admin.from('policies').upsert(
+      {
+        id: 'policy_default',
+        name: 'Default DSG Policy',
+        version: 'v1',
+        status: 'active',
+        description: 'Baseline deterministic safety policy.',
+        config: { block_risk_score: 0.8, stabilize_risk_score: 0.4, oscillation_window: 4 },
+      },
+      { onConflict: 'id', ignoreDuplicates: true },
+    );
+    (results.steps as string[]).push(policyError ? `policy: FAIL (${policyError.message})` : 'policy: OK');
+
+    const { data: existingAgents } = await admin
+      .from('agents')
+      .select('id, name')
+      .eq('org_id', orgId)
+      .limit(1);
+
+    let agentId: string;
+    let apiKey: string | null = null;
+
+    if (existingAgents && existingAgents.length > 0) {
+      agentId = String(existingAgents[0].id);
+      (results.steps as string[]).push(`agent: EXISTS (${agentId})`);
+    } else {
+      agentId = `agent-${suffix}`;
+      apiKey = `dsg_${randomUUID().replace(/-/g, '')}`;
+      const { error: agentError } = await admin.from('agents').insert({
+        id: agentId,
+        org_id: orgId,
+        name: 'Auto-Setup Agent',
+        policy_id: 'policy_default',
+        status: 'active',
+        api_key_hash: createHash('sha256').update(apiKey).digest('hex'),
+        monthly_limit: 10000,
+      });
+      (results.steps as string[]).push(agentError ? `agent: FAIL (${agentError.message})` : `agent: CREATED (${agentId})`);
+    }
+
+    const approvalId = randomUUID();
+    const canonical = {
+      action: 'auto_setup_verification',
+      input: { amount: 0, asset: 'SYSTEM', source: 'auto-setup' },
+      context: { risk_score: 0.05, source: 'auto_setup' },
+      decision: 'ALLOW',
+      policyVersion: 'v1',
+      reason: 'Auto-setup verification execution',
+    };
+
+    const { error: approvalError } = await admin.from('runtime_approval_requests').insert({
+      id: approvalId,
+      org_id: orgId,
+      agent_id: agentId,
+      approval_key: `auto-setup-${suffix}`,
+      request_payload: canonical,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+    });
+
+    if (approvalError) {
+      (results.steps as string[]).push(`approval: FAIL (${approvalError.message})`);
+    } else {
+      const { data: commit, error: commitError } = await admin.rpc('runtime_commit_execution', {
+        p_org_id: orgId,
+        p_agent_id: agentId,
+        p_request_id: approvalId,
+        p_decision: 'ALLOW',
+        p_reason: 'Auto-setup verification — system healthy',
+        p_metadata: { action: 'auto_setup_verification', source: 'auto-setup' },
+        p_canonical_hash: canonicalHash(canonical),
+        p_canonical_json: JSON.parse(canonicalJson(canonical)),
+        p_latency_ms: 1,
+        p_request_payload: canonical.input,
+        p_context_payload: canonical.context,
+        p_policy_version: 'v1',
+        p_audit_evidence: { risk_score: 0.05, source: 'auto_setup', verified: true },
+        p_usage_amount_usd: getOverageRateUsd(),
+        p_created_at: now,
+        p_agent_monthly_limit: 10000,
+        p_org_plan_limit: INCLUDED_EXECUTIONS.trial,
+      });
+
+      if (commitError) {
+        (results.steps as string[]).push(`rpc_commit: FAIL (${commitError.message})`);
+      } else {
+        const row = Array.isArray(commit) ? commit[0] : commit;
+        results.execution_id = row?.execution_id;
+        results.ledger_id = row?.ledger_id;
+        results.truth_state_id = row?.truth_state_id;
+        (results.steps as string[]).push(`rpc_commit: OK (execution=${row?.execution_id})`);
+
+        if (row?.ledger_id && row?.truth_state_id) {
+          const cpHash = buildCheckpointHash({
+            truthCanonicalHash: canonicalHash(canonical),
+            latestLedgerId: String(row.ledger_id),
+            latestLedgerSequence: Number(row.ledger_sequence || 0),
+            latestTruthSequence: Number(row.truth_sequence || 0),
+          });
+
+          await admin.from('runtime_checkpoints').upsert(
+            {
+              org_id: orgId,
+              agent_id: agentId,
+              truth_state_id: row.truth_state_id,
+              latest_ledger_entry_id: row.ledger_id,
+              checkpoint_hash: cpHash,
+              metadata: { source: 'auto_setup' },
+            },
+            { onConflict: 'org_id,agent_id,checkpoint_hash', ignoreDuplicates: true },
+          );
+          (results.steps as string[]).push('checkpoint: OK');
+        }
+      }
+    }
+
+    const { data: existingSub } = await admin
+      .from('billing_subscriptions')
+      .select('id')
+      .eq('org_id', orgId)
+      .limit(1);
+
+    if (!existingSub || existingSub.length === 0) {
+      const { error: subError } = await admin.from('billing_subscriptions').insert({
+        stripe_subscription_id: `auto_trial_${orgId}`,
+        stripe_customer_id: `auto_cus_${orgId}`,
+        org_id: orgId,
+        customer_email: `setup@${orgId}`,
+        status: 'trialing',
+        plan_key: 'trial',
+        billing_interval: 'monthly',
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 14 * 86400_000).toISOString(),
+      });
+      (results.steps as string[]).push(subError ? `billing: FAIL (${subError.message})` : 'billing: CREATED (trial)');
+    } else {
+      (results.steps as string[]).push('billing: EXISTS');
+    }
+
+    try {
+      await bootstrapOrgStarterState(orgId, { initiatedByUserId: access.userId });
+      (results.steps as string[]).push('onboarding: OK');
+    } catch (error) {
+      (results.steps as string[]).push(
+        `onboarding: FAIL (${error instanceof Error ? error.message : 'unknown'})`,
+      );
+    }
+
+    await admin.from('runtime_roles').upsert(
+      [
+        { org_id: orgId, user_id: access.userId, role: 'org_admin' },
+        { org_id: orgId, user_id: access.userId, role: 'operator' },
+        { org_id: orgId, user_id: access.userId, role: 'runtime_auditor' },
+        { org_id: orgId, user_id: access.userId, role: 'billing_admin' },
+      ],
+      { onConflict: 'org_id,user_id,role', ignoreDuplicates: true },
+    );
+    (results.steps as string[]).push('runtime_roles: OK');
+
+    const coreMode = process.env.DSG_CORE_MODE;
+    results.env_check = {
+      DSG_CORE_MODE: coreMode || '❌ NOT SET — dashboard จะ error',
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅' : '❌ NOT SET',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅' : '❌ NOT SET',
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? '✅' : '❌ NOT SET',
+      STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ? '✅' : '❌ NOT SET',
+    };
+
+    if (apiKey) {
+      results.api_key = apiKey;
+      results.api_key_warning = '⚠️ เก็บ key นี้ไว้ — จะไม่แสดงอีก';
+    }
+
+    results.ok = true;
+    results.next_steps = [] as string[];
+    if (!coreMode) {
+      (results.next_steps as string[]).push('ตั้ง DSG_CORE_MODE=internal บน Vercel');
+    }
+    if (!process.env.STRIPE_SECRET_KEY) {
+      (results.next_steps as string[]).push('ตั้ง STRIPE_SECRET_KEY บน Vercel (ถ้าจะใช้ billing)');
+    }
+
+    return NextResponse.json(results);
+  } catch (error) {
+    return handleApiError('api/setup/auto', error);
+  }
+}
