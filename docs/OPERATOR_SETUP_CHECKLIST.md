@@ -66,6 +66,8 @@ npx vercel --prod
 
 ## Step 5: Verify
 
+### Public baseline probe
+
 ```bash
 # Health check
 curl -sS https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
@@ -77,6 +79,22 @@ curl -sS https://tdealer01-crypto-dsg-control-plane.vercel.app/api/core/monitor
 Open login page:
 - macOS: `open https://tdealer01-crypto-dsg-control-plane.vercel.app/login`
 - Termux: `termux-open-url https://tdealer01-crypto-dsg-control-plane.vercel.app/login`
+
+### Authenticated operator verification
+
+After signup/login succeeds and an org-scoped operator session exists, verify:
+
+- dashboard loads successfully
+- first agent can be created
+- `/api/executions` returns operator-visible execution data
+- `/api/usage` returns org-scoped usage data
+- policy and capacity screens load with authenticated access
+
+### Execution route note
+
+- `POST /api/execute` is the stable compatibility entry for sample execution and quickstart use.
+- The current implementation forwards into the spine execution handler.
+- Do not treat `/api/usage` as a public health check; it is an authenticated operator route.
 
 ## Step 6: First Login
 
@@ -96,7 +114,7 @@ Open login page:
 | `missing-service-key` | Missing `SUPABASE_SERVICE_ROLE_KEY` | Add env var in Vercel |
 | `send-failed` | Supabase Email provider disabled | Enable in Supabase Dashboard |
 | `not-allowed` | `ACCESS_MODE=invite_only` | Change to `self_serve_trial` or remove |
-| `missing-workspace` | Used Login tab instead of Start Free Trial | Switch to Start Free Trial tab |
+| `missing-workspace` | Used Login tab instead of Start Free Trial tab | Switch to Start Free Trial tab |
 | `invalid-link` | Magic link expired or Redirect URL mismatch | Check Supabase URL Configuration |
 | `rate-limited` | Too many login attempts | Wait 1 minute |
 | `unexpected` | Server error | Check Vercel Function Logs |
