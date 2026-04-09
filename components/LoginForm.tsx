@@ -67,7 +67,7 @@ export default function LoginForm({ next, orgSlug, ssoFirst }: Props) {
             mode === 'login' ? 'bg-emerald-400 text-slate-950' : 'text-slate-300 hover:text-white',
           ].join(' ')}
         >
-          Login
+          Email Recovery Link
         </button>
         <button
           type="button"
@@ -131,13 +131,13 @@ export default function LoginForm({ next, orgSlug, ssoFirst }: Props) {
         )}
 
         <button className="w-full rounded-2xl bg-emerald-400 px-5 py-4 font-semibold text-slate-950 transition hover:scale-[1.01]">
-          {mode === 'login' ? (ssoFirst ? 'Use email recovery link' : 'Send magic link') : 'Start free trial'}
+          {mode === 'login' ? (ssoFirst ? 'Use email recovery link' : 'Send recovery link') : 'Start free trial'}
         </button>
       </form>
 
       {mode === 'login' && (
         <p className="mt-4 text-center text-sm text-slate-400">
-          New here?{' '}
+          Need a new workspace?{' '}
           <button type="button" onClick={() => setMode('trial')} className="text-emerald-300 underline">
             Start a free trial
           </button>
@@ -148,7 +148,7 @@ export default function LoginForm({ next, orgSlug, ssoFirst }: Props) {
         <p className="mt-4 text-center text-sm text-slate-400">
           Already have an account?{' '}
           <button type="button" onClick={() => setMode('login')} className="text-emerald-300 underline">
-            Login with email
+            Use email recovery link
           </button>
         </p>
       )}
