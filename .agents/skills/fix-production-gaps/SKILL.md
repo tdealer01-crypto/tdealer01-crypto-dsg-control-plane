@@ -418,7 +418,3 @@ curl -sS https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
 | `package.json` | 9 |
 | `app/api/onboarding/seed/route.ts` | 10 |
 ```
-
----
-
-ไฟล์ references ที่ใช้เขียน skill นี้: [16-cite-0](#16-cite-0) [16-cite-1](#16-cite-1) [16-cite-2](#16-cite-2) [16-cite-3](#16-cite-3) [16-cite-4](#16-cite-4) [16-cite-5](#16-cite-5) [16-cite-6](#16-cite-6) [16-cite-7](#16-cite-7) [16-cite-8](#16-cite-8) [16-cite-9](#16-cite-9) [16-cite-10](#16-cite-10) [16-cite-11](#16-cite-11) [16-cite-12](#16-cite-12)
