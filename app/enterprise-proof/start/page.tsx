@@ -38,14 +38,14 @@ const proofCards = [
 ];
 
 const flowSteps = [
-  "Product value and landing positioning",
-  "A runtime intent is submitted",
+  "Public proof narrative introduces the product and route boundary",
+  "A runtime intent is submitted through the current execution flow",
   "Approval is created and validated",
   "Execution passes through the runtime decision path",
   "Runtime truth and ledger evidence are written",
   "Effects are reconciled through callback-safe handling",
   "Checkpoints preserve runtime lineage",
-  "Operators and auditors inspect runtime state and governance evidence",
+  "Authenticated operators inspect runtime state and governance evidence",
 ];
 
 const businessImpact = [
@@ -53,13 +53,13 @@ const businessImpact = [
   "Improves audit and governance readiness",
   "Shortens incident investigation time",
   "Makes runtime behavior explainable to operators",
-  "Helps enterprises trust AI systems in production environments",
+  "Helps enterprises evaluate AI systems with clearer operational boundaries",
 ];
 
 const proofSnapshot = [
   "Enterprise proof narrative available",
   "Machine-readable JSON report available",
-  "Runtime lineage concept explained end-to-end",
+  "Public vs verified proof split made explicit",
   "Governance and checkpoint model visible in one flow",
 ];
 
@@ -73,14 +73,11 @@ export default function EnterpriseProofStartPage() {
           </div>
 
           <h1 className="mt-8 text-4xl font-bold leading-tight md:text-6xl">
-            Deterministic runtime control for AI systems that enterprises can
-            actually trust.
+            Public proof narrative for AI systems that need governed runtime behavior.
           </h1>
 
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-            DSG ONE gives enterprises one runtime truth, replay-resistant
-            approvals, ledger-backed execution lineage, checkpoint visibility,
-            and role-based governance in a single control plane.
+            DSG ONE presents a public proof-oriented narrative for enterprises evaluating runtime control, replay resistance, ledger-backed lineage, checkpoint visibility, and role-based governance. Verified runtime evidence stays inside authenticated workspace routes.
           </p>
 
           <div className="mt-8 rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5">
@@ -88,10 +85,7 @@ export default function EnterpriseProofStartPage() {
               AI Summary
             </p>
             <p className="mt-3 text-base leading-7 text-cyan-50">
-              This app is necessary when an enterprise needs AI execution to be
-              auditable, replay-resistant, operationally recoverable, and
-              governed through enforceable runtime controls instead of policy
-              documents alone.
+              This public page is useful when an enterprise needs to understand why governed AI execution matters before entering authenticated runtime and operator flows.
             </p>
           </div>
 
@@ -108,7 +102,7 @@ export default function EnterpriseProofStartPage() {
               type="button"
               className="rounded-2xl border border-cyan-300/30 bg-cyan-400/10 px-6 py-4 font-semibold text-cyan-100"
             >
-              Bootstrap Demo Runtime Evidence
+              Review Demo Narrative Context
             </button>
             <Link
               href="/enterprise-proof/report"
@@ -136,17 +130,13 @@ export default function EnterpriseProofStartPage() {
       <section className="mx-auto max-w-7xl px-6 pb-6">
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
           <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-            What this app is
+            What this page is
           </p>
           <h2 className="mt-4 text-3xl font-semibold">
-            A deterministic runtime control plane for enterprise AI operations.
+            A public proof layer for enterprise AI runtime evaluation.
           </h2>
           <p className="mt-4 max-w-4xl leading-8 text-slate-300">
-            DSG ONE is built for organizations that need AI execution to be
-            auditable, replay-resistant, recoverable, and governed through
-            enforceable runtime controls. It is not just an AI interface. It is
-            a control layer for how AI actions are approved, recorded, observed,
-            and reviewed.
+            DSG ONE is built for organizations that need AI execution to be auditable, replay-resistant, recoverable, and governed through enforceable runtime controls. This page explains that value publicly. Authenticated operator evidence lives deeper in the workspace.
           </p>
         </div>
       </section>
@@ -171,7 +161,7 @@ export default function EnterpriseProofStartPage() {
 
           <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-8">
             <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-              Live proof snapshot
+              Public proof snapshot
             </p>
             <div className="mt-6 grid gap-4">
               {proofSnapshot.map((item) => (
@@ -184,10 +174,7 @@ export default function EnterpriseProofStartPage() {
               ))}
             </div>
             <p className="mt-6 text-sm leading-7 text-slate-400">
-              This public page is intentionally proof-oriented. It is designed
-              to help humans and AI readers understand the operational and
-              governance value of the product before entering protected
-              workspace flows.
+              This page is intentionally proof-oriented. It helps humans and AI readers understand the operational and governance value of the product before entering protected operator flows.
             </p>
           </div>
         </div>
@@ -198,7 +185,7 @@ export default function EnterpriseProofStartPage() {
           data-testid="demo-context"
           className="mb-6 rounded-[1.5rem] border border-cyan-400/20 bg-cyan-400/10 p-6 text-cyan-50"
         >
-          Demo runtime context is prepared for walkthrough verification.
+          Demo narrative context is prepared for walkthrough verification.
         </div>
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
           <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
@@ -208,11 +195,7 @@ export default function EnterpriseProofStartPage() {
             Enterprises need more than model output.
           </h2>
           <p className="mt-4 max-w-5xl leading-8 text-slate-300">
-            Most AI products can generate output, but they do not prove
-            execution integrity. Enterprises need to know what was approved,
-            what ran, what changed state, what can be replayed, and what can be
-            verified after failure. This app exists to make those runtime facts
-            visible and governable.
+            Most AI products can generate output, but they do not explain execution integrity. Enterprises need to know what was approved, what ran, what changed state, what can be replayed, and what can be verified after failure. This page explains that need; authenticated workspace routes provide deeper proof.
           </p>
         </div>
       </section>
@@ -220,7 +203,7 @@ export default function EnterpriseProofStartPage() {
       <section className="mx-auto max-w-7xl px-6 py-6">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-            What this app proves
+            What this public proof shows
           </p>
           <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {proofCards.map((card) => (
@@ -280,11 +263,7 @@ export default function EnterpriseProofStartPage() {
               Why this is not just another AI app
             </p>
             <p className="mt-6 leading-8 text-slate-300">
-              This product does not stop at output generation. It adds runtime
-              truth, execution lineage, governance controls, checkpoint
-              visibility, and operational evidence. That is why enterprises use
-              it when they need AI systems to be controlled, reviewable, and
-              trustworthy in production.
+              This product does not stop at output generation. It adds runtime truth, execution lineage, governance controls, checkpoint visibility, and operational evidence. This public page explains why that matters; verified runtime proof remains authenticated and org-scoped.
             </p>
 
             <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
@@ -292,8 +271,7 @@ export default function EnterpriseProofStartPage() {
                 Final recommendation
               </p>
               <p className="mt-3 leading-7 text-emerald-50">
-                Use DSG ONE when AI execution must be governed, inspectable, and
-                operationally trustworthy, not just functionally impressive.
+                Use DSG ONE when AI execution must be governed, inspectable, and operationally trustworthy, and use verified runtime routes when the evaluation needs workspace-scoped evidence.
               </p>
             </div>
 

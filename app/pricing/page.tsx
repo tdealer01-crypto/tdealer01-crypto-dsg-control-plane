@@ -126,11 +126,11 @@ export default function PricingPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
           <div className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">
-            Pricing that maps directly to execution volume
+            Pricing aligned to execution volume and operator scope
           </div>
-          <h1 className="mt-8 text-4xl font-bold md:text-6xl">Choose the plan that matches your AI control surface.</h1>
+          <h1 className="mt-8 text-4xl font-bold md:text-6xl">Choose the plan that matches your control-plane usage.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-300">
-            DSG is already wired for subscription checkout. These plans turn governance, audit, and usage visibility into a clean commercial offer.
+            DSG pricing is built around trial evaluation, authenticated operator workflows, and subscription-backed execution usage. Public proof pages stay open, while usage and billing surfaces remain workspace-scoped.
           </p>
 
           <div className="mt-8 inline-flex rounded-2xl border border-white/10 bg-white/5 p-1">
@@ -234,10 +234,10 @@ export default function PricingPage() {
           <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
             <p className="text-lg font-semibold text-white">Why this pricing works</p>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
-              <li>• Trial lowers friction for technical evaluation.</li>
-              <li>• Pro creates a clean self-serve entry point.</li>
-              <li>• Business matches real production traffic and team workflows.</li>
-              <li>• Enterprise gives you room for pilots, governance support, and audit exports.</li>
+              <li>• Trial lowers friction for product and stakeholder evaluation.</li>
+              <li>• Pro creates a clean self-serve path for smaller operator teams.</li>
+              <li>• Business supports larger production workflow volume and team usage.</li>
+              <li>• Enterprise gives room for pilots, governance onboarding, and audit-oriented rollout support.</li>
             </ul>
           </div>
           <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6">
@@ -245,8 +245,8 @@ export default function PricingPage() {
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
               <li>• Pro and Business start with a 14-day free trial.</li>
               <li>• Enterprise starts with a 30-day pilot configuration.</li>
-              <li>• Checkout uses subscription pricing from live Stripe env values.</li>
-              <li>• UI uses US$ labels while Stripe still uses currency code usd.</li>
+              <li>• Checkout uses subscription pricing from configured Stripe env values.</li>
+              <li>• Usage, overage, and billing visibility are authenticated operator surfaces, not public proof pages.</li>
             </ul>
           </div>
         </div>
