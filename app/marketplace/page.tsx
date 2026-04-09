@@ -2,34 +2,34 @@ import Link from "next/link";
 
 const reviewerChecks = [
   {
-    title: "Landing page",
+    title: "Product home",
     href: "/",
-    note: "Product overview and navigation for DSG Control Plane.",
+    note: "Public landing page and product overview for DSG Control Plane.",
   },
   {
     title: "Health endpoint",
     href: "/api/health",
-    note: "Returns control-plane and DSG core health status.",
+    note: "Public baseline probe for control-plane and DSG core health status.",
   },
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    note: "Operational overview for agents, executions, audit, and billing.",
+    title: "Login",
+    href: "/login",
+    note: "Entry into authenticated operator workspace routes.",
   },
 ];
 
 const capabilities = [
   "Deterministic policy gate with ALLOW / STABILIZE / BLOCK decisions.",
-  "Audit-ready execution records and usage tracking.",
-  "Control-plane dashboard for agent traffic, health, audit, and billing.",
-  "API-first integration model for external AI systems.",
+  "Audit-oriented execution records and usage tracking.",
+  "Authenticated operator surfaces for dashboard, audit, policy, and billing review.",
+  "Stable execution entry via /api/execute with deeper runtime handled behind the current execution layer.",
 ];
 
 const reviewSteps = [
-  "Open the landing page and confirm the product overview is available.",
-  "Open /api/health and confirm the JSON health payload is returned.",
-  "Open /dashboard and review the control-plane operational surfaces.",
-  "Use the documented execute API with a valid bearer token for protected execution tests.",
+  "Open the product home and confirm the public landing page is reachable.",
+  "Open /api/health and confirm the JSON baseline probe is returned.",
+  "Use /login or /password-login to enter authenticated operator routes.",
+  "Use protected execution and operator APIs only with valid credentials and organization-scoped access.",
 ];
 
 export default function MarketplacePage() {
@@ -44,9 +44,7 @@ export default function MarketplacePage() {
             DSG — Deterministic Safety Gate
           </h1>
           <p className="mt-6 max-w-3xl text-lg text-slate-300">
-            DSG Control Plane is a deterministic policy enforcement and audit layer for AI systems.
-            It provides decision gating, audit-ready execution records, and operator visibility across
-            governed AI traffic.
+            DSG Control Plane exposes a public product surface, a public baseline health probe, and authenticated operator routes for governed AI execution. This page is designed to help marketplace reviewers distinguish public checks from protected runtime workflows.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-4">
@@ -57,10 +55,10 @@ export default function MarketplacePage() {
               Open Product Home
             </Link>
             <Link
-              href="/dashboard"
+              href="/login"
               className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200"
             >
-              Open Dashboard
+              Open Login
             </Link>
             <Link
               href="/api/health"
@@ -75,8 +73,7 @@ export default function MarketplacePage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-2xl font-semibold">Product Summary</h2>
             <p className="mt-4 text-slate-300">
-              DSG is designed as a control plane for governed AI execution. The product exposes health,
-              dashboard, and protected execution interfaces for policy-aware workflows.
+              DSG is a control plane for governed AI execution. The public product surface is available for review, while dashboard, usage, audit, policy, capacity, and execution workflows remain protected operator routes.
             </p>
             <ul className="mt-6 space-y-3 text-slate-200">
               {capabilities.map((item) => (
@@ -111,16 +108,16 @@ export default function MarketplacePage() {
           <h2 className="text-2xl font-semibold">Deployment Model</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-sm text-slate-400">Surface</p>
-              <p className="mt-2 font-semibold">Next.js control plane</p>
+              <p className="text-sm text-slate-400">Public surface</p>
+              <p className="mt-2 font-semibold">Next.js product shell + proof pages</p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-sm text-slate-400">API model</p>
-              <p className="mt-2 font-semibold">Protected bearer-token execution API</p>
+              <p className="text-sm text-slate-400">Public probe</p>
+              <p className="mt-2 font-semibold">GET /api/health</p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-sm text-slate-400">Core decision output</p>
-              <p className="mt-2 font-semibold">ALLOW / STABILIZE / BLOCK</p>
+              <p className="text-sm text-slate-400">Protected execution entry</p>
+              <p className="mt-2 font-semibold">POST /api/execute</p>
             </div>
           </div>
         </section>
@@ -142,9 +139,7 @@ export default function MarketplacePage() {
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-2xl font-semibold">Protected Execute API</h2>
           <p className="mt-3 text-slate-300">
-            Execution requests use a bearer token and agent identifier. Reviewers can verify the public
-            product surface with the landing page, health endpoint, and dashboard. Protected execution
-            flows require valid credentials.
+            Execution requests use a bearer token and agent identifier. Reviewers should validate the public product surface with the landing page and health endpoint first, then use authenticated operator access for protected execution and workspace flows.
           </p>
           <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`curl -X POST https://your-domain.com/api/execute \\
   -H "Authorization: Bearer DSG_API_KEY" \\

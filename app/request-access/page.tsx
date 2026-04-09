@@ -14,7 +14,7 @@ export default async function RequestAccessPage({
         <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Request access</p>
         <h1 className="mt-4 text-4xl font-bold">Your organization requires approval</h1>
         <p className="mt-4 text-base leading-7 text-slate-300">
-          Submit this short request and an admin can review access for your workspace.
+          Submit this request when your organization restricts workspace access. Public proof pages can remain open for evaluation, while protected workspace pages require approved access.
         </p>
 
         {success ? (
