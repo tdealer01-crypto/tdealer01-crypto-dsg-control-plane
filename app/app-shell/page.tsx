@@ -238,7 +238,7 @@ export default function AppShellPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</p>
             <h1 className="text-2xl font-semibold">Unified Command Workspace</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Split-pane operator workspace with authenticated monitor data and command execution in one place.
+              Split-pane chat and live monitor with authenticated monitor data and command execution in one place.
             </p>
           </div>
 

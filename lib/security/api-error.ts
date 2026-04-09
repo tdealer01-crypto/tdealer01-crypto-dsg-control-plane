@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
 
 const INTERNAL_SERVER_ERROR = 'Internal server error';
@@ -60,6 +61,10 @@ export function logApiError(route: string, error: unknown, details?: Record<stri
     error: redactSensitive(error),
     ...(details ? redactSensitive(details) as Record<string, unknown> : {}),
   });
+
+  if (error instanceof Error) {
+    Sentry.captureException(error, { tags: { route }, extra: details });
+  }
 }
 
 export function handleApiError(

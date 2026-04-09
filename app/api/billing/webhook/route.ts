@@ -207,6 +207,29 @@ export async function POST(request: Request) {
 
     await recordEvent(supabase, event);
 
+    // Cleanup placeholder records when real Stripe data arrives
+    if (event.type === 'checkout.session.completed') {
+      const checkoutSession = event.data.object as Stripe.Checkout.Session;
+      const placeholderOrgId =
+        checkoutSession.metadata?.org_id ||
+        (await resolveOrgIdByEmail(
+          supabase,
+          checkoutSession.customer_details?.email || checkoutSession.customer_email || null
+        ));
+      if (placeholderOrgId) {
+        await supabase
+          .from('billing_subscriptions')
+          .delete()
+          .eq('org_id', placeholderOrgId)
+          .like('stripe_subscription_id', 'placeholder_%');
+        await supabase
+          .from('billing_customers')
+          .delete()
+          .eq('org_id', placeholderOrgId)
+          .like('stripe_customer_id', 'placeholder_%');
+      }
+    }
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
