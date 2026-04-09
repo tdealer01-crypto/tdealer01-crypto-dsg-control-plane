@@ -212,7 +212,7 @@ export default function DashboardPage() {
     return [
       { label: "Agents", value: agents.length },
       { label: "Executions", value: summary?.executions ?? executions.length },
-      { label: "Monthly Usage", value: summary?.executions ?? 0 },
+      { label: "Current Usage", value: summary?.executions ?? 0 },
       { label: "Plan", value: summary?.plan ?? "-" },
       { label: "DSG Core", value: health?.core_ok ? "Online" : "Offline" },
     ];
@@ -242,7 +242,7 @@ export default function DashboardPage() {
             <p className="text-sm uppercase tracking-[0.2em] text-slate-400">DSG</p>
             <h1 className="mt-2 text-3xl font-semibold">Control Plane Dashboard</h1>
             <p className="mt-2 text-slate-400">
-              Product operations, agent traffic, billing, and DSG core status in one view.
+              Authenticated overview of agents, executions, billing, audit state, and current DSG core status.
             </p>
           </div>
 
@@ -262,11 +262,11 @@ export default function DashboardPage() {
           <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">
             <p className="text-lg font-semibold text-emerald-100">Welcome to DSG Control Plane</p>
             <p className="mt-2 text-sm leading-7 text-emerald-200/80">
-              Your dashboard is empty. Head to the{" "}
+              Your authenticated dashboard is still empty. Head to the{" "}
               <Link href="/quickstart" className="underline font-semibold text-emerald-200">Quickstart</Link>{" "}
               page to create your first agent and run a sample execution, or visit{" "}
               <Link href="/pricing" className="underline font-semibold text-emerald-200">Pricing</Link>{" "}
-              to upgrade your plan.
+              to review plan changes.
             </p>
           </div>
         ) : null}
@@ -302,7 +302,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-xl font-semibold">Audit Summary</h2>
               <p className="mt-2 text-sm text-slate-400">
-                Live audit events, determinism checks, and freeze recommendations from DSG core.
+                Operator-facing audit events, determinism checks, and current freeze recommendations from DSG core.
               </p>
             </div>
 

@@ -14,7 +14,6 @@ type AgentResponse = {
   created: boolean;
 };
 
-
 type OnboardingState = {
   bootstrap_status: 'pending' | 'completed' | 'failed';
   checklist?: { steps?: string[]; next_action?: string };
@@ -25,7 +24,7 @@ const FALLBACK_STEPS = [
   'Review a starter policy',
   'Run your first controlled execution',
   'Inspect evidence or audit output',
-  'Review quota/billing basics',
+  'Review quota and billing basics',
 ];
 
 type ExecuteResponse = {
@@ -45,7 +44,6 @@ export default function QuickstartPage() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
   const [isEmptyOrg, setIsEmptyOrg] = useState(false);
-
 
   useEffect(() => {
     void (async () => {
@@ -109,7 +107,10 @@ export default function QuickstartPage() {
         <section className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Workspace ready</p>
           <h1 className="mt-4 text-4xl font-bold">Your DSG workspace is ready</h1>
-          <p className="mt-4 text-slate-300">Complete quickstart to create your first agent, run a real execution, and inspect live telemetry.</p>
+          <p className="mt-4 text-slate-300">
+            Complete quickstart to create your first agent, run a sample execution through the stable execution entry,
+            and inspect authenticated operator surfaces.
+          </p>
         </section>
 
         <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-6">
@@ -120,7 +121,9 @@ export default function QuickstartPage() {
             ))}
           </ul>
           {isEmptyOrg && onboarding?.bootstrap_status !== 'completed' ? (
-            <p className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">Set up starter workspace</p>
+            <p className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+              Set up starter workspace
+            </p>
           ) : null}
         </section>
 
@@ -134,7 +137,7 @@ export default function QuickstartPage() {
             </ul>
           </div>
           <div className="rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-6">
-            <p className="text-lg font-semibold">Open live monitor</p>
+            <p className="text-lg font-semibold">Open operator surfaces</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/dashboard/mission" className="rounded-xl border border-white/10 px-4 py-2 text-sm">Open Mission</Link>
               <Link href="/app-shell" className="rounded-xl border border-white/10 px-4 py-2 text-sm">Open App Shell</Link>
@@ -173,19 +176,24 @@ export default function QuickstartPage() {
         </section>
 
         <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-6">
-          <p className="text-lg font-semibold">Run first execution</p>
+          <p className="text-lg font-semibold">Run sample execution</p>
           <button
             onClick={() => void runSampleExecution()}
             disabled={isExecuting || !agent?.api_key}
             className="mt-4 rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold"
           >
-            {isExecuting ? 'Running...' : 'Run Sample Execute'}
+            {isExecuting ? 'Running...' : 'Run Sample Execution'}
           </button>
 
-
           {!agent?.api_key ? (
-            <p className="mt-3 text-sm text-amber-200">Create a new starter agent first to get the one-time API key needed for sample execution.</p>
+            <p className="mt-3 text-sm text-amber-200">
+              Create a new starter agent first to get the one-time API key needed for sample execution.
+            </p>
           ) : null}
+
+          <p className="mt-3 text-sm text-slate-400">
+            Quickstart uses the stable execution entry and keeps deeper usage, policy, and capacity checks inside authenticated operator surfaces.
+          </p>
 
           {executeError ? <p className="mt-3 text-sm text-red-300">{executeError}</p> : null}
 

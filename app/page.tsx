@@ -10,24 +10,24 @@ const pillars = [
     text: 'Capture execution trails, proofs, and replay-ready evidence for internal review or compliance.',
   },
   {
-    title: 'Usage Billing',
-    text: 'Map execution volume to revenue with self-serve subscriptions and enterprise upgrade paths.',
+    title: 'Usage Visibility',
+    text: 'Track operator-scoped usage, billing context, and plan boundaries inside the control plane.',
   },
 ];
 
 const stats = [
   { label: 'Decision modes', value: 'ALLOW / STABILIZE / BLOCK' },
-  { label: 'Commercial motion', value: 'Trial → Pro → Business → Enterprise' },
+  { label: 'Execution entry', value: 'Stable /api/execute compatibility path' },
   { label: 'Built for', value: 'AI operations, governance, audit-heavy teams' },
 ];
 
 const verificationHighlights = [
-  { label: 'Aggregated Vitest', value: '41 files passed / 85 tests passed (2026-04-03 UTC)' },
-  { label: 'Unit', value: '18 files passed / 41 tests passed' },
-  { label: 'Integration', value: '19 files passed / 35 tests passed' },
-  { label: 'Failure-mode', value: '1 file passed / 4 tests passed' },
-  { label: 'Migrations', value: '3 files passed / 5 tests passed' },
+  { label: 'Latest validation', value: 'npm run test passed (45 files, 100 tests)' },
   { label: 'Typecheck', value: 'tsc --noEmit passed' },
+  { label: 'Lint', value: 'eslint passed' },
+  { label: 'Public baseline probe', value: 'GET /api/health' },
+  { label: 'Stable execution entry', value: 'POST /api/execute' },
+  { label: 'Verified runtime path', value: '/enterprise-proof/verified' },
 ];
 
 const proofSurfaces = [
@@ -54,9 +54,9 @@ const enterpriseComparisons = [
     market: 'Policy PDFs and ad-hoc ticket audits.',
   },
   {
-    category: 'Commercial readiness',
-    dsg: 'Trial-to-enterprise billing path integrated into product runtime.',
-    market: 'Separate sales process with weak in-product metering evidence.',
+    category: 'Operator path',
+    dsg: 'Authenticated operator surfaces for usage, audit, policies, capacity, and execution review.',
+    market: 'Mixed admin and runtime checks with weak in-product visibility.',
   },
 ];
 
@@ -67,14 +67,14 @@ export default function HomePage() {
         <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200 shadow-glow">
-              Commercial-ready DSG control plane
+              Public proof + authenticated operator control plane
             </div>
             <h1 className="mt-8 max-w-4xl text-5xl font-bold leading-tight md:text-7xl">
-              Govern AI execution with an interface that looks premium and sells clearly.
+              Govern AI execution with runtime evidence, operator visibility, and clear control flow.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-100">
-              DSG gives product and governance teams a deterministic layer for policy enforcement,
-              replayable audit logs, and subscription-ready billing in one operator console.
+              DSG gives product, platform, and governance teams a deterministic layer for policy enforcement,
+              replayable audit logs, and operator-scoped billing and usage visibility in one control plane.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-4">
@@ -100,7 +100,7 @@ export default function HomePage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-cyan-200/35 bg-cyan-300/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Share links</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Public proof links</p>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 <Link
                   href="/enterprise-proof/start"
@@ -131,16 +131,21 @@ export default function HomePage() {
             <div className="rounded-[1.5rem] border border-emerald-300/40 bg-slate-950/95 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live policy graph</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Execution governance loop</h2>
+                  <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Execution flow</p>
+                  <h2 className="mt-2 text-2xl font-semibold">Control-plane route model</h2>
                 </div>
                 <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                  Online
+                  Reference
                 </div>
               </div>
 
               <div className="mt-8 grid gap-4">
-                {['AI request enters control plane', 'Policy engine scores context', 'DSG selects ALLOW / STABILIZE / BLOCK', 'Audit + billing events are stored'].map((item, index) => (
+                {[
+                  'Public availability starts at /api/health',
+                  'Authenticated operators create agents and inspect runtime surfaces',
+                  'Stable sample execution enters through /api/execute',
+                  'Audit, usage, and policy surfaces stay org-scoped',
+                ].map((item, index) => (
                   <div key={item} className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/10 p-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-300/25 text-sm font-semibold text-emerald-100">
                       0{index + 1}
@@ -172,17 +177,17 @@ export default function HomePage() {
         <div className="rounded-[2rem] border border-white/10 bg-gradient-to-r from-emerald-400/15 via-cyan-400/10 to-transparent p-8 md:p-10">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Revenue motion</p>
-              <h2 className="mt-3 text-3xl font-bold md:text-4xl">Turn control-plane capability into paid product value.</h2>
+              <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Operator path</p>
+              <h2 className="mt-3 text-3xl font-bold md:text-4xl">Move from trial signup to governed runtime checks.</h2>
               <p className="mt-4 max-w-2xl text-slate-300">
-                Self-serve pricing already exists in the product. The next win is making the first impression, upgrade path, and onboarding feel as strong as the backend.
+                The product already exposes signup, quickstart, dashboard, proof, and billing surfaces. The right next step is to keep the public story aligned with the authenticated operator path.
               </p>
             </div>
             <Link
-              href="/login"
+              href="/quickstart"
               className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-4 text-base font-semibold text-slate-950"
             >
-              Continue with email
+              Open quickstart
             </Link>
           </div>
         </div>
@@ -193,9 +198,9 @@ export default function HomePage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">Enterprise verification</p>
-              <h2 className="mt-3 text-3xl font-bold md:text-4xl">Evidence-first testing and correctness proof.</h2>
+              <h2 className="mt-3 text-3xl font-bold md:text-4xl">Evidence-first testing and route truth.</h2>
               <p className="mt-4 max-w-3xl text-slate-300">
-                Designed for executive sharing: every claim ties back to test outcomes, proof endpoints, and runtime artifacts already present in this repository.
+                Designed for executive sharing: every claim should tie back to test outcomes, proof endpoints, and runtime surfaces present in this repository.
               </p>
             </div>
             <Link
@@ -260,7 +265,7 @@ export default function HomePage() {
               </table>
             </div>
             <p className="mt-4 text-xs text-slate-400">
-              Baseline column reflects prevailing enterprise AI rollout behavior (policy docs first, proof later). DSG column references features already implemented in this repository.
+              Baseline column reflects prevailing enterprise AI rollout behavior. DSG column references surfaces and route boundaries already present in this repository.
             </p>
           </div>
         </div>
