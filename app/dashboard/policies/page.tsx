@@ -1,4 +1,12 @@
 export default function PoliciesPage() {
+  const policyNavItems: [string, string, boolean][] = [
+    ["dashboard", "Overview", false],
+    ["hub", "Policy Graph", true],
+    ["sync_alt", "Execution Loops", false],
+    ["gavel", "Audit Evidence", false],
+    ["verified_user", "Verification", false],
+  ];
+
   return (
     <main className="h-screen w-screen overflow-hidden bg-[#0d0e11] text-[#f7f6f9]">
       <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between bg-[#0d0e11] px-6 shadow-[0_0_8px_rgba(0,229,255,0.15)]">
@@ -29,13 +37,7 @@ export default function PoliciesPage() {
           <div className="font-label text-[0.6875rem] uppercase tracking-[0.1em] text-[#ababae]">LEVEL_4_ACCESS</div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {[
-            ["dashboard", "Overview", false],
-            ["hub", "Policy Graph", true],
-            ["sync_alt", "Execution Loops", false],
-            ["gavel", "Audit Evidence", false],
-            ["verified_user", "Verification", false],
-          ].map(([icon, label, active]) => (
+          {policyNavItems.map(([icon, label, active]) => (
             <div
               key={label}
               className={[
