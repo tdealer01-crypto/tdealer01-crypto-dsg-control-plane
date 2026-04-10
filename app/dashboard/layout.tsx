@@ -6,6 +6,7 @@ const NAV = [
   { href: '/dashboard/integration', label: 'Integration' },
   { href: '/dashboard/mission', label: 'Mission' },
   { href: '/dashboard/operations', label: 'Operations' },
+  { href: '/dashboard/live-control', label: 'Live Control' },
   { href: '/dashboard/executions', label: 'Executions' },
   { href: '/dashboard/skills', label: 'Skills' },
   { href: '/dashboard/verification', label: 'Verification' },
