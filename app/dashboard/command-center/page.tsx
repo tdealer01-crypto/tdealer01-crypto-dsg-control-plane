@@ -18,22 +18,18 @@ type CapacityPayload = {
   remaining_executions: number;
   utilization: number;
   projected_amount_usd: number;
-  period: string;
+  billing_period: string;
 };
 
 type UsagePayload = {
-  summary?: {
-    billing_period?: string;
-    execution_count?: number;
-    monthly_executions?: number;
-    subscription?: {
-      plan?: string;
-      status?: string;
-    } | null;
-  };
+  plan?: string;
+  subscription_status?: string;
+  billing_period?: string;
 };
 
 type AuditPayload = {
+  ok?: boolean;
+  error?: string | null;
   items?: Array<{
     id?: number;
     gate_result?: string;
@@ -65,24 +61,48 @@ export default function CommandCenterPage() {
   useEffect(() => {
     let alive = true;
 
-    Promise.all([
-      fetch('/api/health', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/capacity', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/usage', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/audit?limit=8', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
+    Promise.allSettled([
+      fetch('/api/health', { cache: 'no-store' }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(json.error || 'Failed to load health');
+        return json;
+      }),
+      fetch('/api/capacity', { cache: 'no-store' }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(json.error || 'Failed to load capacity');
+        return json;
+      }),
+      fetch('/api/usage', { cache: 'no-store' }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(json.error || 'Failed to load usage');
+        return json;
+      }),
+      fetch('/api/audit?limit=8', { cache: 'no-store' }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(json.error || 'Failed to load audit');
+        return json;
+      }),
     ])
       .then(([healthRes, capacityRes, usageRes, auditRes]) => {
         if (!alive) return;
 
-        if (!healthRes.ok) throw new Error(healthRes.json.error || 'Failed to load health');
-        if (!capacityRes.ok) throw new Error(capacityRes.json.error || 'Failed to load capacity');
-        if (!usageRes.ok) throw new Error(usageRes.json.error || 'Failed to load usage');
-        if (!auditRes.ok) throw new Error(auditRes.json.error || 'Failed to load audit');
+        const errors: string[] = [];
 
-        setHealth(healthRes.json);
-        setCapacity(capacityRes.json);
-        setUsage(usageRes.json);
-        setAudit(auditRes.json);
+        if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
+        else errors.push(healthRes.reason?.message || 'Failed to load health');
+
+        if (capacityRes.status === 'fulfilled') setCapacity(capacityRes.value);
+        else errors.push(capacityRes.reason?.message || 'Failed to load capacity');
+
+        if (usageRes.status === 'fulfilled') setUsage(usageRes.value);
+        else errors.push(usageRes.reason?.message || 'Failed to load usage');
+
+        if (auditRes.status === 'fulfilled') setAudit(auditRes.value);
+        else errors.push(auditRes.reason?.message || 'Failed to load audit');
+
+        if (errors.length > 0) {
+          setError(errors.join(' • '));
+        }
       })
       .catch((err) => {
         if (!alive) return;
@@ -103,6 +123,11 @@ export default function CommandCenterPage() {
     const events = audit?.items || [];
     return events.filter((item) => ['BLOCK', 'FREEZE'].includes((item.gate_result || '').toUpperCase()));
   }, [audit]);
+
+  const auditUnavailableInInternalMode = useMemo(() => {
+    const message = (audit?.error || '').toLowerCase();
+    return message.includes('internal dsg core mode');
+  }, [audit?.error]);
 
   const suggestedActions = useMemo(() => {
     const actions: string[] = [];
@@ -183,7 +208,7 @@ export default function CommandCenterPage() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Period</p>
-              <p className="text-2xl font-semibold">{capacity?.period || usage?.summary?.billing_period || '-'}</p>
+              <p className="text-2xl font-semibold">{capacity?.billing_period || usage?.billing_period || '-'}</p>
             </div>
           </div>
         </header>
@@ -253,7 +278,7 @@ export default function CommandCenterPage() {
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                 <p className="text-sm text-slate-400">Plan</p>
-                <p className="mt-1 text-2xl font-semibold">{usage?.summary?.subscription?.plan || '-'}</p>
+                <p className="mt-1 text-2xl font-semibold">{usage?.plan || '-'}</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
@@ -279,7 +304,10 @@ export default function CommandCenterPage() {
                 <p className="mt-1 break-all text-slate-400">State hash: {item.state_hash || '-'}</p>
               </div>
             ))}
-            {audit?.items?.length === 0 ? <p className="text-sm text-slate-400">No audit events found.</p> : null}
+            {auditUnavailableInInternalMode ? (
+              <p className="text-sm text-slate-400">Audit unavailable in internal mode.</p>
+            ) : null}
+            {!auditUnavailableInInternalMode && audit?.items?.length === 0 ? <p className="text-sm text-slate-400">No audit events found.</p> : null}
           </div>
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
             Active alerts: {alerts.length}
