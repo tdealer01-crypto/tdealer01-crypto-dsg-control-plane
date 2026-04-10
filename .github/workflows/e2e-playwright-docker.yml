@@ -18,20 +18,35 @@ jobs:
         run: |
           docker --version || (echo "docker not available" && exit 1)
 
+      - name: Resolve Playwright Docker image
+        id: image
+        run: |
+          # Try currently maintained Ubuntu base first, then fallback.
+          for image in \
+            mcr.microsoft.com/playwright:v1.58.2-jammy \
+            mcr.microsoft.com/playwright:v1.58.2-noble \
+            mcr.microsoft.com/playwright:v1.58.2-focal
+          do
+            if docker pull "$image"; then
+              echo "image=$image" >> "$GITHUB_OUTPUT"
+              echo "Using image: $image"
+              exit 0
+            fi
+          done
+
+          echo "Unable to pull any supported Playwright image" >&2
+          exit 1
+
       - name: Run Playwright tests inside Docker (prebuilt browsers)
         env:
           NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN: ${{ secrets.NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN }}
           DEMO_BOOTSTRAP_TOKEN: ${{ secrets.DEMO_BOOTSTRAP_TOKEN }}
           ENABLE_DEMO_BOOTSTRAP: "true"
         run: |
-          # Pull Playwright image that includes browsers; adjust version if needed
-          docker pull mcr.microsoft.com/playwright:v1.58.2-focal || true
-
-          # Run tests inside the container. This mounts repository into /work and runs tests.
           docker run --rm \
             -e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN="${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN}" \
             -e DEMO_BOOTSTRAP_TOKEN="${DEMO_BOOTSTRAP_TOKEN}" \
             -e ENABLE_DEMO_BOOTSTRAP="${ENABLE_DEMO_BOOTSTRAP}" \
             -v "${{ github.workspace }}":/work -w /work \
-            mcr.microsoft.com/playwright:v1.58.2-focal \
-            bash -lc "npm ci && npm run build && ENABLE_DEMO_BOOTSTRAP=true DEMO_BOOTSTRAP_TOKEN=${DEMO_BOOTSTRAP_TOKEN} NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN} npm run dev & sleep 3 && npx playwright test --reporter=github"
+            "${{ steps.image.outputs.image }}" \
+            bash -lc "npm ci && npm run build && ENABLE_DEMO_BOOTSTRAP=true DEMO_BOOTSTRAP_TOKEN=${DEMO_BOOTSTRAP_TOKEN} NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN} npm run dev >/tmp/next.log 2>&1 & for i in $(seq 1 60); do curl -fsS http://127.0.0.1:3000 >/dev/null && break; sleep 1; done; curl -fsS http://127.0.0.1:3000 >/dev/null && npx playwright test --reporter=github"
