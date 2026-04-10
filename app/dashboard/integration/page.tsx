@@ -28,6 +28,7 @@ function EntryCard({
 
 export default async function IntegrationPage() {
   const core = await getDSGCoreHealth();
+  const coreTyped = core as typeof core & { deterministic?: boolean };
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -85,7 +86,7 @@ export default async function IntegrationPage() {
             <p>Core URL: {core.url}</p>
             <p>Status: {core.ok ? core.status || "ok" : core.error || "unreachable"}</p>
             <p>Version: {core.version || "-"}</p>
-            <p>Deterministic: {String((core as any).deterministic ?? "-")}</p>
+            <p>Deterministic: {String(coreTyped.deterministic ?? "-")}</p>
           </div>
         </section>
 

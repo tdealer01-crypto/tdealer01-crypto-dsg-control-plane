@@ -168,22 +168,38 @@ export default function DashboardPage() {
           auditRes.json(),
         ]);
 
-        if (!agentsRes.ok) throw new Error(agentsJson.error || "Failed to load agents");
-        if (!executionsRes.ok) throw new Error(executionsJson.error || "Failed to load executions");
-        if (!usageRes.ok) throw new Error(usageJson.error || "Failed to load usage");
-        if (!healthRes.ok) throw new Error(healthJson.error || "Failed to load control-plane health");
         if (!alive) return;
 
-        const normalizedAgents = Array.isArray(agentsJson?.items)
-          ? agentsJson.items.map(normalizeAgent).filter((item): item is Agent => item !== null)
-          : [];
-        const summaryPayload = usageJson?.summary ?? usageJson;
-        const normalizedSummary = normalizeUsageSummary(summaryPayload);
+        const warnings: string[] = [];
 
-        setAgents(normalizedAgents);
-        setExecutions(executionsJson.executions || []);
-        setSummary(normalizedSummary);
-        setHealth(healthJson || null);
+        if (agentsRes.ok) {
+          const normalizedAgents = Array.isArray(agentsJson?.items)
+            ? agentsJson.items.map(normalizeAgent).filter((item): item is Agent => item !== null)
+            : [];
+          setAgents(normalizedAgents);
+        } else {
+          warnings.push(agentsJson.error || "Failed to load agents");
+        }
+
+        if (executionsRes.ok) {
+          setExecutions(executionsJson.executions || []);
+        } else {
+          warnings.push(executionsJson.error || "Failed to load executions");
+        }
+
+        if (usageRes.ok) {
+          const summaryPayload = usageJson?.summary ?? usageJson;
+          const normalizedSummary = normalizeUsageSummary(summaryPayload);
+          setSummary(normalizedSummary);
+        } else {
+          warnings.push(usageJson.error || "Failed to load usage");
+        }
+
+        if (healthRes.ok) {
+          setHealth(healthJson || null);
+        } else {
+          warnings.push(healthJson.error || "Failed to load health");
+        }
 
         if (auditRes.ok) {
           setAuditItems(auditJson.items || []);
@@ -193,6 +209,10 @@ export default function DashboardPage() {
           setAuditItems([]);
           setDeterminism([]);
           setAuditError(auditJson.error || "Failed to load audit data");
+        }
+
+        if (warnings.length > 0) {
+          setError(warnings.join(" | "));
         }
       } catch (err) {
         if (!alive) return;

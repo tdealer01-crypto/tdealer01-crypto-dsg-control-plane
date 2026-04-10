@@ -37,21 +37,30 @@ export default function OperationsPage() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([
-      fetch('/api/executions?limit=10', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/proofs?limit=10', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-    ])
-      .then(([execRes, proofRes]) => {
-        if (!alive) return;
-        if (!execRes.ok) throw new Error(execRes.json.error || 'Failed to load executions');
-        if (!proofRes.ok) throw new Error(proofRes.json.error || 'Failed to load proofs');
-        setExecutions(execRes.json.executions || []);
-        setProofs(proofRes.json.items || []);
-      })
-      .catch((err) => {
-        if (!alive) return;
-        setError(err instanceof Error ? err.message : 'Failed to load operations');
-      });
+    Promise.allSettled([
+      fetch('/api/executions?limit=10', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/proofs?limit=10', { cache: 'no-store' }).then((r) => r.json()),
+    ]).then(([execRes, proofRes]) => {
+      if (!alive) return;
+
+      const warnings: string[] = [];
+
+      if (execRes.status === 'fulfilled' && !execRes.value.error) {
+        setExecutions(execRes.value.executions || []);
+      } else {
+        warnings.push(`Executions: ${execRes.status === 'fulfilled' ? execRes.value.error : String(execRes.reason)}`);
+      }
+
+      if (proofRes.status === 'fulfilled' && !proofRes.value.error) {
+        setProofs(proofRes.value.items || []);
+      } else {
+        warnings.push(`Proofs: ${proofRes.status === 'fulfilled' ? proofRes.value.error : String(proofRes.reason)}`);
+      }
+
+      if (warnings.length > 0) {
+        setError(warnings.join(' | '));
+      }
+    });
     return () => {
       alive = false;
     };
