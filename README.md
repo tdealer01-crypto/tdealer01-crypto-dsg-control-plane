@@ -182,25 +182,33 @@ Quickstart currently includes:
 
 ## Current API Route Notes (Repo Truth)
 
-These route notes are intended to keep evaluation and smoke checks aligned with the current repository truth.
+These route notes are intended to keep evaluation, onboarding, and smoke checks aligned with the current repository truth.
 
 ### Public baseline probe
 - `GET /api/health`
 
-Use this as the baseline availability probe for public and deployment checks.
+Use this as the anonymous/public baseline availability probe for deployment and uptime checks.
 
-### Stable execution entry
+### Stable execution compatibility entry
 - `POST /api/execute`
 
 This is the stable compatibility entry used by quickstart and sample execution flows.
-Internally, the current implementation forwards to the spine execution handler.
 
-### Underlying execution handler
+Important:
+- this route is **not** an anonymous public execution endpoint
+- it forwards to the spine execution implementation
+- it is intended for controlled runtime execution within a valid org/workspace context
+
+### Underlying execution implementation
 - `POST /api/spine/execute`
-- `POST /api/intent`
 
-The spine path is the current execution implementation layer.
-`/api/intent` and `/api/spine/execute` are part of the current runtime execution flow.
+`/api/execute` currently forwards to `/api/spine/execute`, which enforces runtime access and request validation.
+
+Current execution requirements include:
+- authenticated org-scoped access
+- `Authorization: Bearer <API_KEY>`
+- a valid `agent_id` in the request payload
+- normal execution rate limiting
 
 ### Authenticated operator routes
 - `GET /api/usage`
@@ -213,16 +221,25 @@ The spine path is the current execution implementation layer.
 These are operator-facing routes and should be evaluated with authenticated, org-scoped access.
 They should not be treated as anonymous/public health probes.
 
+### Common execution failure modes
+For `POST /api/execute` / `POST /api/spine/execute`, evaluators and integrators should expect:
+
+- `401 Unauthorized` when the Bearer token is missing or empty
+- `400 Bad Request` when required fields such as `agent_id` are missing
+- `403 Forbidden` when the caller does not have the required org-scoped access
+- `429 Too Many Requests` when execution rate limits are exceeded
+
 ### Evaluation guidance
 - Use `/api/health` first for baseline availability.
-- Use `/api/execute` for the stable sample-execution entry.
+- Use `/api/execute` as the stable compatibility entry for authenticated execution testing.
+- Do not evaluate `/api/execute` as if it were a public anonymous endpoint.
 - Use authenticated operator flows when validating usage, policy, capacity, audit, and execution surfaces.
 
 ---
 
 ## Online Integration Smoke Test (with external apps)
 
-Use this checklist when you want to test DSG ONE online with another application (e.g., internal portal, automation tool, webhook worker, or partner integration).
+Use this checklist when you want to test DSG ONE online with another application (for example: internal portal, automation worker, webhook processor, or partner integration).
 
 ### 1) Prepare deployment target
 
@@ -232,22 +249,33 @@ Set your deployed base URL:
 export DSG_BASE_URL="https://<your-deployment-domain>"
 ```
 
-### 2) Baseline availability check
+### 2) Prepare execution credentials
+
+Set the runtime API key and target agent ID:
+
+```bash
+export DSG_API_KEY="<your-runtime-api-key>"
+export DSG_AGENT_ID="<your-agent-id>"
+```
+
+### 3) Baseline availability check
 
 ```bash
 curl -sS "$DSG_BASE_URL/api/health"
 ```
 
-Expected result: JSON response with healthy status.
+Expected result: a healthy JSON response.
 
-### 3) Cross-app execution test (server-to-server)
+### 4) Cross-app execution test (server-to-server)
 
 Call the stable execution endpoint from the external app backend:
 
 ```bash
 curl -sS -X POST "$DSG_BASE_URL/api/execute" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $DSG_API_KEY" \
   -d '{
+    "agent_id": "'"$DSG_AGENT_ID"'",
     "prompt": "Cross-app smoke test",
     "input": {
       "source": "external-app",
@@ -256,28 +284,31 @@ curl -sS -X POST "$DSG_BASE_URL/api/execute" \
   }'
 ```
 
-Expected result: execution response with a request/execution identifier and runtime decision metadata.
+Expected result: an execution response with a request/execution identifier and runtime decision metadata.
 
-### 4) Verify operator surfaces after external trigger
+### 5) Verify operator surfaces after the external trigger
 
-After step 3, verify these authenticated routes in your operator session:
+After step 4, verify these authenticated routes in an operator session:
+
 - `/api/executions` (new item appears)
 - `/api/audit` (trace/evidence recorded)
 - `/api/usage` (usage delta recorded)
 
-### 5) Recommended production checks
+### 6) Recommended production checks
 
 For real online integrations, verify:
-- retry behavior for 429/5xx responses
-- idempotency key strategy in the caller
+
+- retry behavior for 429 and 5xx responses
+- idempotency strategy in the caller
 - request timeout budget alignment between systems
 - org-scoped auth policy and minimum privileges
+- API key handling and rotation practices
 
 ### Quick pass criteria
 
-- `GET /api/health` is reachable.
-- `POST /api/execute` from the external app returns success.
-- corresponding execution and audit records are visible to operators.
+- `GET /api/health` is reachable
+- `POST /api/execute` succeeds with a valid Bearer API key and valid agent_id
+- corresponding execution and audit records are visible to operators
 
 ---
 
