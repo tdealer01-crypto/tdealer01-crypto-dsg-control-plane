@@ -282,7 +282,7 @@ export default function CommandCenterPage() {
         <section className="border border-slate-800 bg-black/30 p-6 md:col-span-12">
           <div className="grid gap-6 lg:grid-cols-2">
             <div>
-              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Operator Console</h2>
+              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Chat / Agent Console</h2>
               <p className="mt-2 text-sm text-slate-400">Prompt the agent for summaries and recovery procedures.</p>
               <textarea
                 value={command}
@@ -302,7 +302,7 @@ export default function CommandCenterPage() {
             </div>
 
             <div>
-              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Active Execution Loops</h2>
+              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Monitor / Control Panel</h2>
               <p className="mt-2 text-sm text-slate-400">Latest audit stream and gate results.</p>
               <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-2">
                 {(audit?.items || []).map((item) => (
