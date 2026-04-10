@@ -6,6 +6,14 @@ import { RuntimeRouteRoles } from "../../../lib/runtime/permissions";
 import { handleApiError } from "../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
+type LedgerEvidence = {
+  core_result?: {
+    proof_hash?: string;
+    stability_score?: number;
+  };
+  proof_hash?: string;
+  stability_score?: number;
+} & Record<string, unknown>;
 
 export async function GET(request: Request) {
   try {
@@ -30,7 +38,14 @@ export async function GET(request: Request) {
       return handleApiError("api/ledger", auditExport, { details: { stage: "audit-export" } });
     }
 
-    const items = (auditExport.rows || []).map((row: any) => ({
+    const items = (auditExport.rows || []).map((row: {
+      id: string;
+      execution_id: string | null;
+      decision: string | null;
+      reason: string | null;
+      evidence: LedgerEvidence | null;
+      created_at: string | null;
+    }) => ({
       id: row.id,
       execution_id: row.execution_id,
       decision: row.decision,

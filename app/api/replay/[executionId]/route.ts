@@ -70,7 +70,7 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const coreMatch = (coreLedger.items || []).find((item: any) => {
+    const coreMatch = (coreLedger.items || []).find((item: { metadata?: { execution_id?: string; audit_id?: string } }) => {
       const metadata = item?.metadata || {};
       return metadata?.execution_id === executionId || metadata?.audit_id === audit?.id;
     }) || null;
