@@ -41,6 +41,21 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Verify runtime contract test files exist
+        run: |
+          test -f tests/integration/api/spine-execute.test.ts
+          test -f tests/integration/api/intent.test.ts
+          test -f tests/integration/api/execute-compat.test.ts
+          test -f tests/unit/security/cors.test.ts
+
+      - name: Runtime contract test subset
+        run: |
+          npm run test -- \
+            tests/integration/api/spine-execute.test.ts \
+            tests/integration/api/intent.test.ts \
+            tests/integration/api/execute-compat.test.ts \
+            tests/unit/security/cors.test.ts
+
       - name: Test
         run: npm run test
 
