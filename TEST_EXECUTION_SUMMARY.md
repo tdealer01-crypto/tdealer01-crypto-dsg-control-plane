@@ -1,44 +1,35 @@
-# Test Execution Summary (2026-04-03)
+# Test Execution Summary (2026-04-10)
 
 ## Environment setup
-- Installed dependencies with `npm install`.
-- Created `.env.local` based on `.env.example` using local dummy values for required keys (file is gitignored).
+- Installed dependencies with `npm ci`.
+- No additional environment file changes were required for this run.
 
 ## Vitest (`npm test`)
 - Command: `npm test`
-- Result: ✅ PASS
+- Result: ❌ FAIL
 - Aggregate result from run:
-  - Test files: 41 passed, 0 failed, 0 skipped
-  - Tests: 85 passed, 0 failed, 0 skipped
+  - Test files: 44 passed, 1 failed, 0 skipped
+  - Tests: 99 passed, 1 failed, 0 skipped
 
-### Vitest breakdown by category
-- unit: pass 41, fail 0, skip 0
-- integration: pass 35, fail 0, skip 0
+### Vitest breakdown by category (from current run)
+- unit: pass 45, fail 0, skip 0
+- integration: pass 49, fail 1, skip 0
 - failure: pass 4, fail 0, skip 0
 - migrations: pass 5, fail 0, skip 0
 
-## Playwright browser install
-- Command: `npx playwright install chromium`
-- Result: ❌ FAIL
+### Failed test details
+- Test file: `tests/integration/api/request-access.test.ts`
+- Test case: `/api/access/request > creates pending access request row`
 - Failure output excerpt:
-  - `Error: Download failed: server returned code 403 body 'Domain forbidden'`
-  - URL: `https://cdn.playwright.dev/builds/cft/145.0.7632.6/linux64/chrome-linux64.zip`
+  - `Error: Test timed out in 5000ms.`
 
-## Playwright E2E (`npx playwright test`)
-- Command: `npx playwright test`
-- Result: ❌ FAIL
-- Aggregate result:
-  - e2e: pass 0, fail 1, skip 0
+## Playwright status
+- Not re-run in this execution round.
+- Last known state in this repo context remains: browser install/E2E blocked by Playwright browser download/availability issue.
 
-### Failed E2E details
-- Test: `tests/e2e/enterprise-proof.spec.ts > enterprise walkthrough shows all checkpoints`
-- Failure output excerpt:
-  - `Error: browserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-linux64/chrome-headless-shell`
-  - Playwright suggested: `npx playwright install`
-
-## Final consolidated totals
-- unit: pass 41, fail 0, skip 0
-- integration: pass 35, fail 0, skip 0
+## Final consolidated totals (current run)
+- unit: pass 45, fail 0, skip 0
+- integration: pass 49, fail 1, skip 0
 - failure: pass 4, fail 0, skip 0
 - migrations: pass 5, fail 0, skip 0
-- e2e (playwright): pass 0, fail 1, skip 0
+- e2e (playwright): not executed in this round
