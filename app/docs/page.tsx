@@ -6,7 +6,8 @@ const sections = [
     items: [
       "Create an agent",
       "Store the API key shown once",
-      "Call /api/execute (stable compatibility entry)",
+      "Call OPTIONS, POST /api/execute (stable compatibility entry)",
+      "Call OPTIONS, POST /api/spine/execute (runtime-native entry)",
       "Review decisions, audit logs, and billing usage",
     ],
   },
@@ -16,8 +17,8 @@ const sections = [
       "GET /api/health",
       "GET, POST /api/agents",
       "POST /api/intent",
-      "POST /api/execute",
-      "POST /api/spine/execute",
+      "OPTIONS, POST /api/execute",
+      "OPTIONS, POST /api/spine/execute",
       "POST /api/agent-chat",
       "GET /api/audit",
       "GET, POST /api/policies",
@@ -28,9 +29,19 @@ const sections = [
     ],
   },
   {
+    title: "Runtime Contract",
+    items: [
+      "Execution requires Authorization: Bearer <API_KEY>",
+      "Execution requires a valid agent_id",
+      "Execution requires a resolved active agent",
+      "Explicit preflight handling (OPTIONS) is supported for external clients",
+    ],
+  },
+  {
     title: "Route Notes",
     items: [
       "/api/execute forwards to the current spine execution handler",
+      "/api/spine/execute is the runtime-native route",
       "/api/health is the public smoke-check endpoint",
       "/api/usage, /api/policies, and /api/capacity are operator-facing routes",
       "Dashboard surfaces also depend on /api/audit and /api/executions",
@@ -75,7 +86,7 @@ export default function DocsPage() {
           </Link>
         </div>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
           {sections.map((section) => (
             <section
               key={section.title}
@@ -115,8 +126,9 @@ export default function DocsPage() {
     }
   }'`}</pre>
           <p className="mt-4 text-sm text-slate-400">
-            Note: <code>/api/execute</code> is the stable compatibility route.
-            Internally, execution is handled by the spine execution path.
+            Runtime execution requires a bearer API key, a valid <code>agent_id</code>,
+            and a resolved active agent. External clients can call OPTIONS first for
+            explicit preflight handling before POST execution.
           </p>
         </section>
       </div>
