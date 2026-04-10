@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -56,7 +59,7 @@ jobs:
             tests/integration/api/execute-compat.test.ts \
             tests/unit/security/cors.test.ts
 
-      - name: Test
+      - name: Full test suite
         run: npm run test
 
       - name: Build
