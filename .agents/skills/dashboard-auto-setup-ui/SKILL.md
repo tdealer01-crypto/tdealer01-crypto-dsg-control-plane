@@ -156,14 +156,36 @@ Env Check:
 
 ถ้าต้องการ execute ผ่าน API ตรง (ไม่ผ่าน UI):
 
+> **หมายเหตุ:** `/api/execute` ต้องการ auth 2 ชั้น:
+> 1. **Session cookie** — ได้จาก login ผ่าน browser (Supabase auth)
+> 2. **Bearer API key** — ได้จาก Step 2 หรือ Step 4
+>
+> วิธีง่ายที่สุด: ใช้ **Command Center** ใน Step 5 แทน curl
+> ถ้าต้องใช้ curl จริง ให้ copy session cookie จาก browser DevTools (Application → Cookies)
+
 ```bash
 curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <API_KEY_FROM_STEP_2_OR_4>" \
+  -H "Cookie: sb-access-token=<SESSION_TOKEN>; sb-refresh-token=<REFRESH_TOKEN>" \
   -d '{
     "agent_id": "<AGENT_ID>",
     "action": "test-action",
-    "payload": {
+    "context": { "risk_score": 0.3 },
+    "input": { "amount": 100, "asset": "BTC" }
+  }'
+```
+
+หรือใช้ `intent` wrapper:
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <API_KEY_FROM_STEP_2_OR_4>" \
+  -H "Cookie: sb-access-token=<SESSION_TOKEN>; sb-refresh-token=<REFRESH_TOKEN>" \
+  -d '{
+    "agent_id": "<AGENT_ID>",
+    "intent": {
+      "action": "test-action",
       "context": { "risk_score": 0.3 },
       "input": { "amount": 100, "asset": "BTC" }
     }
@@ -185,10 +207,17 @@ POST /api/execute
 ### Expected Response
 ```json
 {
-  "execution_id": "exec_...",
+  "request_id": "exec_...",
   "decision": "ALLOW",
   "reason": "Risk score 0.30 below stabilize threshold 0.40",
-  "latency_ms": 42
+  "latency_ms": 42,
+  "policy_version": "v1",
+  "replayed": false,
+  "ledger_sequence": 1,
+  "truth_sequence": 1,
+  "proof": { ... },
+  "authoritative_plugin_id": "internal-risk-gate",
+  "pipeline_trace": [ ... ]
 }
 ```
 
