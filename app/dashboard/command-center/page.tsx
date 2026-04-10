@@ -18,19 +18,14 @@ type CapacityPayload = {
   remaining_executions: number;
   utilization: number;
   projected_amount_usd: number;
-  period: string;
+  billing_period?: string;
 };
 
 type UsagePayload = {
-  summary?: {
-    billing_period?: string;
-    execution_count?: number;
-    monthly_executions?: number;
-    subscription?: {
-      plan?: string;
-      status?: string;
-    } | null;
-  };
+  plan?: string;
+  billing_period?: string;
+  subscription_status?: string;
+  executions?: number;
 };
 
 type AuditPayload = {
@@ -61,32 +56,89 @@ export default function CommandCenterPage() {
   const [chatBusy, setChatBusy] = useState(false);
   const [chatOutput, setChatOutput] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [chatAuthRequired, setChatAuthRequired] = useState(false);
 
   useEffect(() => {
     let alive = true;
 
-    Promise.all([
-      fetch('/api/health', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/capacity', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/usage', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/audit?limit=8', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
+    const fetchJson = async (url: string) => {
+      const response = await fetch(url, { cache: 'no-store' });
+      const json = await response.json().catch(() => ({}));
+      return { ok: response.ok, status: response.status, json };
+    };
+
+    Promise.allSettled([
+      fetchJson('/api/health'),
+      fetchJson('/api/capacity'),
+      fetchJson('/api/usage'),
+      fetchJson('/api/audit?limit=8'),
     ])
-      .then(([healthRes, capacityRes, usageRes, auditRes]) => {
+      .then((results) => {
         if (!alive) return;
 
-        if (!healthRes.ok) throw new Error(healthRes.json.error || 'Failed to load health');
-        if (!capacityRes.ok) throw new Error(capacityRes.json.error || 'Failed to load capacity');
-        if (!usageRes.ok) throw new Error(usageRes.json.error || 'Failed to load usage');
-        if (!auditRes.ok) throw new Error(auditRes.json.error || 'Failed to load audit');
+        const nextWarnings: string[] = [];
+        setError('');
 
-        setHealth(healthRes.json);
-        setCapacity(capacityRes.json);
-        setUsage(usageRes.json);
-        setAudit(auditRes.json);
+        const [healthRes, capacityRes, usageRes, auditRes] = results;
+
+        if (healthRes.status === 'fulfilled') {
+          if (healthRes.value.ok) {
+            setHealth(healthRes.value.json);
+          } else {
+            const message = healthRes.value.json?.error || 'Failed to load health';
+            setError(message);
+          }
+        } else {
+          setError('Failed to load health');
+        }
+
+        if (capacityRes.status === 'fulfilled') {
+          if (capacityRes.value.ok) {
+            setCapacity(capacityRes.value.json);
+          } else if (capacityRes.value.status === 401) {
+            nextWarnings.push('Capacity is unavailable until you sign in.');
+          } else {
+            nextWarnings.push(capacityRes.value.json?.error || 'Failed to load capacity.');
+          }
+        } else {
+          nextWarnings.push('Failed to load capacity.');
+        }
+
+        if (usageRes.status === 'fulfilled') {
+          if (usageRes.value.ok) {
+            setUsage(usageRes.value.json);
+          } else if (usageRes.value.status === 401) {
+            nextWarnings.push('Usage is unavailable until you sign in.');
+          } else {
+            nextWarnings.push(usageRes.value.json?.error || 'Failed to load usage.');
+          }
+        } else {
+          nextWarnings.push('Failed to load usage.');
+        }
+
+        if (auditRes.status === 'fulfilled') {
+          if (auditRes.value.ok) {
+            setAudit(auditRes.value.json);
+          } else if (auditRes.value.status === 401) {
+            nextWarnings.push('Audit stream is unavailable until you sign in.');
+          } else {
+            const message = auditRes.value.json?.error || 'Failed to load audit.';
+            if (/internal mode/i.test(message)) {
+              nextWarnings.push('Audit unavailable in internal mode.');
+            } else {
+              nextWarnings.push(message);
+            }
+          }
+        } else {
+          nextWarnings.push('Failed to load audit.');
+        }
+
+        setWarnings(nextWarnings);
       })
-      .catch((err) => {
+      .catch(() => {
         if (!alive) return;
-        setError(err instanceof Error ? err.message : 'Failed to load command center');
+        setError('Failed to load command center');
       });
 
     return () => {
@@ -127,8 +179,14 @@ export default function CommandCenterPage() {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          setChatAuthRequired(true);
+          throw new Error('Please sign in with operator or org_admin access to use Agent Chat.');
+        }
         throw new Error(json.error || 'Agent chat failed');
       }
+
+      setChatAuthRequired(false);
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error('No stream body returned');
@@ -183,12 +241,22 @@ export default function CommandCenterPage() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Period</p>
-              <p className="text-2xl font-semibold">{capacity?.period || usage?.summary?.billing_period || '-'}</p>
+              <p className="text-2xl font-semibold">{capacity?.billing_period || usage?.billing_period || '-'}</p>
             </div>
           </div>
         </header>
 
         {error ? <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
+        {warnings.length > 0 ? (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">
+            <p className="font-semibold">Partial data loaded</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+              {warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -204,6 +272,11 @@ export default function CommandCenterPage() {
               placeholder="Ask readiness/audit/capacity/execute..."
               className="mt-2 h-28 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100 outline-none ring-emerald-400 focus:ring-1"
             />
+            {chatAuthRequired ? (
+              <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                Please sign in with operator/org_admin role to run Agent Chat commands.
+              </div>
+            ) : null}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
@@ -253,7 +326,7 @@ export default function CommandCenterPage() {
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                 <p className="text-sm text-slate-400">Plan</p>
-                <p className="mt-1 text-2xl font-semibold">{usage?.summary?.subscription?.plan || '-'}</p>
+                <p className="mt-1 text-2xl font-semibold">{usage?.plan || '-'}</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
@@ -280,6 +353,9 @@ export default function CommandCenterPage() {
               </div>
             ))}
             {audit?.items?.length === 0 ? <p className="text-sm text-slate-400">No audit events found.</p> : null}
+            {!audit?.items?.length && warnings.some((warning) => warning === 'Audit unavailable in internal mode.') ? (
+              <p className="text-sm text-amber-300">Audit unavailable in internal mode.</p>
+            ) : null}
           </div>
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
             Active alerts: {alerts.length}
