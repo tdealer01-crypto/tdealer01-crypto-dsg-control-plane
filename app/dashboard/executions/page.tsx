@@ -45,6 +45,14 @@ type ExecutionsResponse = {
 
 type TabKey = 'payload' | 'headers' | 'raw';
 
+const INTERNAL_MODE_INFO =
+  'Showing database-only execution view. DSG core ledger and metrics are unavailable in internal mode.';
+
+const EMPTY_STATE_TITLE = 'No executions found for this workspace yet.';
+
+const EMPTY_STATE_BODY =
+  'Run your first execution to start tracing real requests, latency, and runtime outcomes for this workspace.';
+
 function formatTime(value?: string | null) {
   if (!value) return '--:--:--';
   const date = new Date(value);
@@ -266,11 +274,17 @@ export default function ExecutionsPage() {
           </div>
         </div>
 
-        {(error || coreError) && (
+        {error ? (
           <div className="border-b border-[#ff6e85]/20 bg-[#ff6e85]/10 px-6 py-2 font-mono text-xs text-[#ffa8a3]">
-            {error || coreError}
+            {error}
           </div>
-        )}
+        ) : null}
+
+        {coreError ? (
+          <div className="border-b border-[#81ecff]/20 bg-[#81ecff]/10 px-6 py-2 text-xs text-[#b8f5ff]">
+            {INTERNAL_MODE_INFO}
+          </div>
+        ) : null}
 
         <div className="flex flex-1 overflow-hidden">
           <section className="w-1/3 flex-col overflow-y-auto border-r border-[#47484b]/10 bg-[#0d0e11]">
@@ -300,7 +314,29 @@ export default function ExecutionsPage() {
                   </button>
                 );
               })}
-              {!loading && executions.length === 0 && <div className="p-4 text-sm text-slate-500">No traces found.</div>}
+              {!loading && executions.length === 0 && (
+                <div className="p-5">
+                  <div className="rounded-2xl border border-[#47484b]/30 bg-[#121316] p-5">
+                    <p className="text-base font-semibold text-[#f7f6f9]">{EMPTY_STATE_TITLE}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{EMPTY_STATE_BODY}</p>
+
+                    <div className="mt-4 flex gap-2">
+                      <Link
+                        href="/quickstart"
+                        className="rounded-xl bg-[#81ecff] px-4 py-3 text-sm font-semibold text-black"
+                      >
+                        Run first execution
+                      </Link>
+                      <Link
+                        href="/quickstart"
+                        className="rounded-xl border border-[#81ecff]/40 px-4 py-3 text-sm font-semibold text-[#81ecff] hover:bg-[#81ecff]/10"
+                      >
+                        Open quickstart
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
