@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { resolveAgentFromApiKey } from '../../../../lib/agent-auth';
 import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
+import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/security/cors';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -11,11 +12,15 @@ const EXECUTE_RATE_LIMIT = 60;
 const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
 
 function jsonWithHeaders(
+  request: Request,
   body: Record<string, unknown>,
   status: number,
-  headers: HeadersInit
+  extraHeaders?: HeadersInit
 ) {
-  return NextResponse.json(body, { status, headers });
+  return NextResponse.json(body, {
+    status,
+    headers: buildCorsHeaders(request, extraHeaders),
+  });
 }
 
 function extractBearerToken(request: Request): string | null {
@@ -26,8 +31,12 @@ function extractBearerToken(request: Request): string | null {
   return token.length > 0 ? token : null;
 }
 
+export async function OPTIONS(request: Request) {
+  return buildPreflightResponse(request);
+}
+
 export async function POST(request: Request) {
-  let responseHeaders: HeadersInit | undefined;
+  let responseHeaders: Headers | undefined;
 
   try {
     const rateLimit = await applyRateLimit({
@@ -36,29 +45,35 @@ export async function POST(request: Request) {
       windowMs: EXECUTE_RATE_WINDOW_MS,
     });
 
-    responseHeaders = buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT);
+    responseHeaders = buildCorsHeaders(
+      request,
+      buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT)
+    );
 
     if (!rateLimit.allowed) {
-      return jsonWithHeaders({ error: 'Too many requests' }, 429, responseHeaders);
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: responseHeaders }
+      );
     }
 
     const apiKey = extractBearerToken(request);
     if (!apiKey) {
-      return jsonWithHeaders({ error: 'Missing Bearer token' }, 401, responseHeaders);
+      return jsonWithHeaders(request, { error: 'Missing Bearer token' }, 401, responseHeaders);
     }
 
     const payload = normalizeSpinePayload(await request.json().catch(() => null));
     if (!payload.agentId) {
-      return jsonWithHeaders({ error: 'agent_id is required' }, 400, responseHeaders);
+      return jsonWithHeaders(request, { error: 'agent_id is required' }, 400, responseHeaders);
     }
 
     const agent = await resolveAgentFromApiKey(payload.agentId, apiKey);
     if (!agent) {
-      return jsonWithHeaders({ error: 'Invalid agent_id or API key' }, 401, responseHeaders);
+      return jsonWithHeaders(request, { error: 'Invalid agent_id or API key' }, 401, responseHeaders);
     }
 
     if (agent.status !== 'active') {
-      return jsonWithHeaders({ error: 'Agent is not active' }, 403, responseHeaders);
+      return jsonWithHeaders(request, { error: 'Agent is not active' }, 403, responseHeaders);
     }
 
     const orgId = String(agent.org_id);
@@ -100,7 +115,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return handleApiError('api/spine/execute', error, {
-      headers: responseHeaders,
+      headers: responseHeaders ?? buildCorsHeaders(request),
     });
   }
 }

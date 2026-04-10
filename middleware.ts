@@ -9,6 +9,10 @@ function isDashboardPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  if (request.method === 'OPTIONS' && request.nextUrl.pathname.startsWith('/api/')) {
+    return response;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
