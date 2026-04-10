@@ -29,6 +29,11 @@ describe('/api/access/request', () => {
     });
 
     vi.doMock('../../../lib/supabase-server', () => ({ getSupabaseAdmin: vi.fn(() => ({ from })) }));
+    vi.doMock('../../../lib/supabase/server', () => ({
+      createClient: vi.fn(async () => ({
+        auth: { getUser: vi.fn(async () => ({ data: null, error: null })) },
+      })),
+    }));
     vi.doMock('../../../lib/auth/sign-in-events', () => ({ logSignInEvent: vi.fn(async () => {}) }));
 
     const { POST } = await import('../../../app/api/access/request/route');
