@@ -15,6 +15,12 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !key) {
+    if (isDashboardPath(request.nextUrl.pathname)) {
+      return new NextResponse(
+        'Service unavailable — authentication not configured',
+        { status: 503 }
+      );
+    }
     return response;
   }
 

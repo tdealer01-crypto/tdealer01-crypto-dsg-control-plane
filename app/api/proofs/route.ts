@@ -49,11 +49,11 @@ export async function GET(request: Request) {
       return serverErrorResponse();
     }
 
-    const items = (data || []).map((row: any) => {
-      const coreResult = row?.evidence?.core_result || {};
-      const proofHash = coreResult?.proof_hash || row?.evidence?.proof_hash || null;
-      const stabilityScore =
-        row?.evidence?.stability_score ?? coreResult?.stability_score ?? null;
+    const items = (data || []).map((row) => {
+      const evidence = (row.evidence || null) as Record<string, unknown> | null;
+      const coreResult = (evidence?.core_result || {}) as Record<string, unknown>;
+      const proofHash = coreResult?.proof_hash || evidence?.proof_hash || null;
+      const stabilityScore = evidence?.stability_score ?? coreResult?.stability_score ?? null;
 
       return {
         id: row.id,

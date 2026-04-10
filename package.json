@@ -7,6 +7,7 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/database.types.ts",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
@@ -33,6 +34,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.5.15",
     "postcss": "^8.4.38",
+    "supabase": "^2.89.0",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.6.3",
     "vitest": "^2.1.9"

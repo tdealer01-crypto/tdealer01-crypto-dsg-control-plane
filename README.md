@@ -220,6 +220,67 @@ They should not be treated as anonymous/public health probes.
 
 ---
 
+## Online Integration Smoke Test (with external apps)
+
+Use this checklist when you want to test DSG ONE online with another application (e.g., internal portal, automation tool, webhook worker, or partner integration).
+
+### 1) Prepare deployment target
+
+Set your deployed base URL:
+
+```bash
+export DSG_BASE_URL="https://<your-deployment-domain>"
+```
+
+### 2) Baseline availability check
+
+```bash
+curl -sS "$DSG_BASE_URL/api/health"
+```
+
+Expected result: JSON response with healthy status.
+
+### 3) Cross-app execution test (server-to-server)
+
+Call the stable execution endpoint from the external app backend:
+
+```bash
+curl -sS -X POST "$DSG_BASE_URL/api/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Cross-app smoke test",
+    "input": {
+      "source": "external-app",
+      "timestamp": "2026-04-10T00:00:00Z"
+    }
+  }'
+```
+
+Expected result: execution response with a request/execution identifier and runtime decision metadata.
+
+### 4) Verify operator surfaces after external trigger
+
+After step 3, verify these authenticated routes in your operator session:
+- `/api/executions` (new item appears)
+- `/api/audit` (trace/evidence recorded)
+- `/api/usage` (usage delta recorded)
+
+### 5) Recommended production checks
+
+For real online integrations, verify:
+- retry behavior for 429/5xx responses
+- idempotency key strategy in the caller
+- request timeout budget alignment between systems
+- org-scoped auth policy and minimum privileges
+
+### Quick pass criteria
+
+- `GET /api/health` is reachable.
+- `POST /api/execute` from the external app returns success.
+- corresponding execution and audit records are visible to operators.
+
+---
+
 ## Authentication and Provisioning Model
 
 DSG ONE uses two distinct entry paths:

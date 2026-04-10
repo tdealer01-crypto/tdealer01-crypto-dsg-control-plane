@@ -49,7 +49,13 @@ async function probePath(baseUrl: string, path: string): Promise<ReadProbe> {
       path,
       ok: response.ok,
       status: response.status,
-      error: response.ok ? null : String((data as any)?.detail || (data as any)?.error || `HTTP ${response.status}`),
+      error: response.ok
+        ? null
+        : String(
+            (data as Record<string, unknown>)?.detail ||
+              (data as Record<string, unknown>)?.error ||
+              `HTTP ${response.status}`
+          ),
       keys,
     };
   } catch (error) {

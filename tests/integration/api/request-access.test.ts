@@ -46,6 +46,7 @@ describe('/api/access/request', () => {
     const res = await POST(req as never);
     expect(res.status).toBe(200);
     expect(insert).toHaveBeenCalledOnce();
-    expect((insert.mock.calls as any)[0][0]).toMatchObject({ email: 'test@acme.com', email_domain: 'acme.com', status: 'pending' });
+    const insertCalls = insert.mock.calls as unknown[][];
+    expect(insertCalls[0]?.[0]).toMatchObject({ email: 'test@acme.com', email_domain: 'acme.com', status: 'pending' });
   });
 });

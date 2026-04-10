@@ -12,8 +12,12 @@ function coreHeaders(config: RemoteConfig) {
   };
 }
 
-function parseError(data: any, status: number) {
-  return data?.detail || data?.error || `HTTP ${status}`;
+function parseError(data: unknown, status: number) {
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    return String(obj.detail || obj.error || `HTTP ${status}`);
+  }
+  return `HTTP ${status}`;
 }
 
 export async function getRemoteDSGCoreHealth(config: RemoteConfig) {
@@ -109,12 +113,16 @@ export async function getRemoteDSGCoreAuditEvents(config: RemoteConfig, limit = 
     const data = await response.json().catch(() => ({}));
 
     let items: DSGCoreAuditEvent[] = [];
-    if (Array.isArray((data as any)?.items)) {
-      items = (data as any).items;
-    } else if (Array.isArray((data as any)?.events)) {
-      items = (data as any).events;
-    } else if (Array.isArray((data as any)?.data?.items)) {
-      items = (data as any).data.items;
+    const d = data as Record<string, unknown>;
+    if (Array.isArray(d?.items)) {
+      items = d.items as DSGCoreAuditEvent[];
+    } else if (Array.isArray(d?.events)) {
+      items = d.events as DSGCoreAuditEvent[];
+    } else {
+      const nested = d?.data as Record<string, unknown> | undefined;
+      if (Array.isArray(nested?.items)) {
+        items = nested.items as DSGCoreAuditEvent[];
+      }
     }
 
     return {
@@ -148,7 +156,10 @@ export async function getRemoteDSGCoreDeterminism(config: RemoteConfig, sequence
     }
 
     const data = await response.json().catch(() => ({}));
-    const determinismData = data && typeof data === 'object' && 'data' in data ? (data as any).data : data;
+    const determinismData =
+      data && typeof data === 'object' && 'data' in data
+        ? (data as Record<string, unknown>).data
+        : data;
 
     return {
       ok: response.ok,

@@ -36,16 +36,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { id } = await params;
     const supabase = getSupabaseAdmin();
-    const agentsTable = supabase.from('agents') as any;
     const newApiKey = buildApiKey();
     const apiKeyHash = createHash('sha256').update(newApiKey).digest('hex');
 
-    const { data: updated, error } = await (agentsTable
+    const { data: updated, error } = await supabase
+      .from('agents')
       .update({ api_key_hash: apiKeyHash, updated_at: new Date().toISOString() })
       .eq('org_id', access.orgId)
       .eq('id', id)
       .select('id')
-      .maybeSingle()) as { data: { id: string } | null; error: unknown };
+      .maybeSingle();
 
     if (error) {
       logServerError(error, 'agents-id-rotate-key');
@@ -57,7 +57,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     return NextResponse.json({
-      agent_id: updated.id,
+      agent_id: String(updated.id),
       api_key: newApiKey,
       api_key_preview: buildPreview(newApiKey),
       rotated: true,
