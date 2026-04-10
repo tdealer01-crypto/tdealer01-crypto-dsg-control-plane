@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireOrgRole } from '../../../../lib/authz';
+import { resolveAgentFromApiKey } from '../../../../lib/agent-auth';
 import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
-import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -11,7 +10,25 @@ export const dynamic = 'force-dynamic';
 const EXECUTE_RATE_LIMIT = 60;
 const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
 
+function jsonWithHeaders(
+  body: Record<string, unknown>,
+  status: number,
+  headers: HeadersInit
+) {
+  return NextResponse.json(body, { status, headers });
+}
+
+function extractBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get('authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.slice(7).trim();
+  return token.length > 0 ? token : null;
+}
+
 export async function POST(request: Request) {
+  let responseHeaders: HeadersInit | undefined;
+
   try {
     const rateLimit = await applyRateLimit({
       key: getRateLimitKey(request, 'spine-execute'),
@@ -19,54 +36,46 @@ export async function POST(request: Request) {
       windowMs: EXECUTE_RATE_WINDOW_MS,
     });
 
+    responseHeaders = buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT);
+
     if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        { status: 429, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
-      );
+      return jsonWithHeaders({ error: 'Too many requests' }, 429, responseHeaders);
     }
 
-    const access = await requireOrgRole(RuntimeRouteRoles.execute);
-    if (!access.ok) {
-      return NextResponse.json(
-        { error: access.error },
-        { status: access.status, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
-      );
-    }
-
-    const authHeader = request.headers.get('authorization') || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Missing Bearer token' },
-        { status: 401, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
-      );
-    }
-
-    const apiKey = authHeader.slice(7).trim();
+    const apiKey = extractBearerToken(request);
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Empty API key' },
-        { status: 401, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
-      );
+      return jsonWithHeaders({ error: 'Missing Bearer token' }, 401, responseHeaders);
     }
 
     const payload = normalizeSpinePayload(await request.json().catch(() => null));
     if (!payload.agentId) {
-      return NextResponse.json(
-        { error: 'agent_id is required' },
-        { status: 400, headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT) }
-      );
+      return jsonWithHeaders({ error: 'agent_id is required' }, 400, responseHeaders);
     }
 
+    const agent = await resolveAgentFromApiKey(payload.agentId, apiKey);
+    if (!agent) {
+      return jsonWithHeaders({ error: 'Invalid agent_id or API key' }, 401, responseHeaders);
+    }
+
+    if (agent.status !== 'active') {
+      return jsonWithHeaders({ error: 'Agent is not active' }, 403, responseHeaders);
+    }
+
+    const orgId = String(agent.org_id);
+
     let result = await executeSpineIntent({
-      orgId: access.orgId,
+      orgId,
       apiKey,
       payload,
     });
 
-    if (!result.ok && result.status === 409 && result.body?.error === 'No pending runtime intent for request') {
+    if (
+      !result.ok &&
+      result.status === 409 &&
+      result.body?.error === 'No pending runtime intent for request'
+    ) {
       const issued = await issueSpineIntent({
-        orgId: access.orgId,
+        orgId,
         apiKey,
         payload,
       });
@@ -74,12 +83,12 @@ export async function POST(request: Request) {
       if (!issued.ok) {
         return NextResponse.json(issued.body, {
           status: issued.status,
-          headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+          headers: responseHeaders,
         });
       }
 
       result = await executeSpineIntent({
-        orgId: access.orgId,
+        orgId,
         apiKey,
         payload,
       });
@@ -87,9 +96,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+      headers: responseHeaders,
     });
   } catch (error) {
-    return handleApiError('api/spine/execute', error);
+    return handleApiError('api/spine/execute', error, {
+      headers: responseHeaders,
+    });
   }
 }
