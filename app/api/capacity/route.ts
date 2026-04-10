@@ -45,7 +45,7 @@ export async function GET() {
     }
 
     const executions = (counters || []).reduce(
-      (sum, row: any) => sum + Number(row.executions || 0),
+      (sum, row: { executions: number | null }) => sum + Number(row.executions || 0),
       0
     );
 

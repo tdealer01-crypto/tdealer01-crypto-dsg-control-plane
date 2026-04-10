@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import type { Database, Json } from '../../../../lib/database.types';
 
 export const dynamic = 'force-dynamic';
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
@@ -10,6 +11,7 @@ type PriceMapping = {
   planKey: string | null;
   billingInterval: string | null;
 };
+type BillingSubscriptionInsert = Database['public']['Tables']['billing_subscriptions']['Insert'];
 
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -97,7 +99,7 @@ async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
       event_type: event.type,
       stripe_customer_id: stripeCustomerId,
       stripe_subscription_id: stripeSubscriptionId,
-      payload: event as unknown as Record<string, unknown>,
+      payload: event as unknown as Json,
       processed_at: new Date().toISOString(),
     },
     {
@@ -176,7 +178,7 @@ function subscriptionToRecord(
   };
 }
 
-async function upsertBillingSubscription(supabase: SupabaseAdmin, payload: Record<string, unknown>) {
+async function upsertBillingSubscription(supabase: SupabaseAdmin, payload: BillingSubscriptionInsert) {
   await supabase.from('billing_subscriptions').upsert(payload, {
     onConflict: 'stripe_subscription_id',
   });

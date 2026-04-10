@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
+import type { Json } from '../database.types';
 
 export async function getDirectorySyncConfig(orgId: string) {
   const admin = getSupabaseAdmin();
@@ -20,6 +21,6 @@ export async function logDirectorySyncEvent(input: {
     event_type: input.eventType,
     email: input.email ?? null,
     external_user_id: input.externalUserId ?? null,
-    payload: input.payload ?? {},
+    payload: (input.payload ?? {}) as Json,
   });
 }

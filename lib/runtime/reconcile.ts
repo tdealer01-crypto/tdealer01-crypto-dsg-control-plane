@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
+import type { Json } from '../database.types';
 
 export async function reconcileEffectCallback(input: {
   effectId: string;
@@ -23,7 +24,7 @@ export async function reconcileEffectCallback(input: {
     .from('runtime_effects')
     .update({
       status: input.status,
-      result_payload: input.payload,
+      result_payload: input.payload as Json,
       callback_count: Number(effect.callback_count || 0) + 1,
       updated_at: new Date().toISOString(),
     })
