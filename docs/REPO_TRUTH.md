@@ -76,3 +76,26 @@ When checking repo truth for the control-plane:
 - treat `/api/execute` as the stable public execution entry
 - treat `/api/spine/execute` as the current implementation path behind execution
 - treat usage, policy, capacity, audit, and execution inspection routes as operator surfaces
+
+## PR merge timeline note (April 2026)
+
+If you are trying to "merge #216" in this repository timeline, note that this branch history currently has:
+
+- `#215` (`33aa49d`)
+- `#217` (`e1b3987`)
+- `#218` (`52e17a8`)
+- `#219` (`eb170a6`)
+- `#220` (`8920f39`)
+
+There is no commit tagged with `(#216)` in the local git history, which usually means one of the following:
+
+1. PR 216 was closed without merge.
+2. PR 216 was merged with a different title that omitted the `(#216)` suffix.
+3. The branch was rebased/squashed and commit references changed.
+
+Suggested recovery flow:
+
+1. Fetch full remote refs (`git fetch --all --prune`).
+2. Check whether `origin/pr/216` or an equivalent branch exists.
+3. If PR 216 exists remotely, merge/cherry-pick by commit SHA, not PR number label.
+4. If PR 216 does not exist, continue from the latest merged baseline (`#220`) and re-open the missing changes as a new PR.
