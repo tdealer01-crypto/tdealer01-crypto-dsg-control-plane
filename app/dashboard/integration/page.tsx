@@ -85,7 +85,7 @@ export default async function IntegrationPage() {
             <p>Core URL: {core.url}</p>
             <p>Status: {core.ok ? core.status || "ok" : core.error || "unreachable"}</p>
             <p>Version: {core.version || "-"}</p>
-            <p>Deterministic: {String((core as any).deterministic ?? "-")}</p>
+            <p>Deterministic: {String("deterministic" in core ? (core as Record<string, unknown>).deterministic : "-")}</p>
           </div>
         </section>
 

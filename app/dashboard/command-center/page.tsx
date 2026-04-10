@@ -18,19 +18,17 @@ type CapacityPayload = {
   remaining_executions: number;
   utilization: number;
   projected_amount_usd: number;
-  period: string;
+  billing_period: string;
 };
 
 type UsagePayload = {
-  summary?: {
-    billing_period?: string;
-    execution_count?: number;
-    monthly_executions?: number;
-    subscription?: {
-      plan?: string;
-      status?: string;
-    } | null;
-  };
+  plan?: string;
+  subscription_status?: string;
+  billing_period?: string;
+  executions?: number;
+  included_executions?: number;
+  overage_executions?: number;
+  projected_amount_usd?: number;
 };
 
 type AuditPayload = {
@@ -65,29 +63,32 @@ export default function CommandCenterPage() {
   useEffect(() => {
     let alive = true;
 
+    const safeFetch = (url: string) =>
+      fetch(url, { cache: 'no-store' })
+        .then((r) => r.json().then((json) => ({ ok: r.ok, json })))
+        .catch(() => ({ ok: false, json: { error: 'Network error' } }));
+
     Promise.all([
-      fetch('/api/health', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/capacity', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/usage', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/audit?limit=8', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-    ])
-      .then(([healthRes, capacityRes, usageRes, auditRes]) => {
-        if (!alive) return;
+      safeFetch('/api/health'),
+      safeFetch('/api/capacity'),
+      safeFetch('/api/usage'),
+      safeFetch('/api/audit?limit=8'),
+    ]).then(([healthRes, capacityRes, usageRes, auditRes]) => {
+      if (!alive) return;
 
-        if (!healthRes.ok) throw new Error(healthRes.json.error || 'Failed to load health');
-        if (!capacityRes.ok) throw new Error(capacityRes.json.error || 'Failed to load capacity');
-        if (!usageRes.ok) throw new Error(usageRes.json.error || 'Failed to load usage');
-        if (!auditRes.ok) throw new Error(auditRes.json.error || 'Failed to load audit');
+      if (healthRes.ok) setHealth(healthRes.json);
+      if (capacityRes.ok) setCapacity(capacityRes.json);
+      if (usageRes.ok) setUsage(usageRes.json);
+      if (auditRes.ok) setAudit(auditRes.json);
 
-        setHealth(healthRes.json);
-        setCapacity(capacityRes.json);
-        setUsage(usageRes.json);
-        setAudit(auditRes.json);
-      })
-      .catch((err) => {
-        if (!alive) return;
-        setError(err instanceof Error ? err.message : 'Failed to load command center');
-      });
+      const errors = [
+        !healthRes.ok && 'Health',
+        !capacityRes.ok && 'Capacity',
+        !usageRes.ok && 'Usage',
+        !auditRes.ok && 'Audit',
+      ].filter(Boolean);
+      if (errors.length > 0) setError(`Partial load failure: ${errors.join(', ')}`);
+    });
 
     return () => {
       alive = false;
@@ -183,7 +184,7 @@ export default function CommandCenterPage() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Period</p>
-              <p className="text-2xl font-semibold">{capacity?.period || usage?.summary?.billing_period || '-'}</p>
+              <p className="text-2xl font-semibold">{capacity?.billing_period || usage?.billing_period || '-'}</p>
             </div>
           </div>
         </header>
@@ -253,7 +254,7 @@ export default function CommandCenterPage() {
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                 <p className="text-sm text-slate-400">Plan</p>
-                <p className="mt-1 text-2xl font-semibold">{usage?.summary?.subscription?.plan || '-'}</p>
+                <p className="mt-1 text-2xl font-semibold">{usage?.plan || '-'}</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">

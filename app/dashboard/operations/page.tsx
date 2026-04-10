@@ -37,21 +37,24 @@ export default function OperationsPage() {
 
   useEffect(() => {
     let alive = true;
+    const safeFetch = (url: string) =>
+      fetch(url, { cache: 'no-store' })
+        .then((r) => r.json().then((json) => ({ ok: r.ok, json })))
+        .catch(() => ({ ok: false, json: { error: 'Network error' } }));
+
     Promise.all([
-      fetch('/api/executions?limit=10', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-      fetch('/api/proofs?limit=10', { cache: 'no-store' }).then((r) => r.json().then((json) => ({ ok: r.ok, json }))),
-    ])
-      .then(([execRes, proofRes]) => {
-        if (!alive) return;
-        if (!execRes.ok) throw new Error(execRes.json.error || 'Failed to load executions');
-        if (!proofRes.ok) throw new Error(proofRes.json.error || 'Failed to load proofs');
-        setExecutions(execRes.json.executions || []);
-        setProofs(proofRes.json.items || []);
-      })
-      .catch((err) => {
-        if (!alive) return;
-        setError(err instanceof Error ? err.message : 'Failed to load operations');
-      });
+      safeFetch('/api/executions?limit=10'),
+      safeFetch('/api/proofs?limit=10'),
+    ]).then(([execRes, proofRes]) => {
+      if (!alive) return;
+      if (execRes.ok) setExecutions(execRes.json.executions || []);
+      if (proofRes.ok) setProofs(proofRes.json.items || []);
+      const errors = [
+        !execRes.ok && 'Executions',
+        !proofRes.ok && 'Proofs',
+      ].filter(Boolean);
+      if (errors.length > 0) setError(`Partial load failure: ${errors.join(', ')}`);
+    });
     return () => {
       alive = false;
     };
