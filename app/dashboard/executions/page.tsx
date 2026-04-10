@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Execution = {
   id: string;
@@ -29,22 +29,27 @@ type CoreMetrics = {
   block_count: number;
 };
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
+function formatTime(value?: string | null) {
+  if (!value) return "--:--:--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString();
+}
+
+function decisionTone(decision: Execution["decision"]) {
+  if (decision === "ALLOW") return "text-[#00fe66]";
+  if (decision === "STABILIZE") return "text-[#81ecff]";
+  return "text-[#ff6e85]";
 }
 
 export default function ExecutionsPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [coreLedger, setCoreLedger] = useState<CoreLedgerItem[]>([]);
   const [coreMetrics, setCoreMetrics] = useState<CoreMetrics | null>(null);
-  const [coreError, setCoreError] = useState<string>("");
-  const [error, setError] = useState<string>("");
+  const [coreError, setCoreError] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -57,13 +62,14 @@ export default function ExecutionsPage() {
       try {
         const res = await fetch("/api/executions?limit=20", { cache: "no-store" });
         const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json.error || "Failed to load executions");
-        }
+        if (!res.ok) throw new Error(json.error || "Failed to load executions");
         if (!alive) return;
-        setExecutions(json.executions || []);
+
+        const nextExecutions: Execution[] = json.executions || [];
+        setExecutions(nextExecutions);
         setCoreLedger(json.core?.ledger_items || []);
         setCoreMetrics(json.core?.metrics || null);
+        setSelectedId((current) => current || nextExecutions[0]?.id || null);
         if (json.core?.error) setCoreError(json.core.error);
       } catch (err) {
         if (!alive) return;
@@ -79,104 +85,116 @@ export default function ExecutionsPage() {
     };
   }, []);
 
+  const selectedExecution = useMemo(
+    () => executions.find((item) => item.id === selectedId) || executions[0] || null,
+    [executions, selectedId],
+  );
+
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+    <main className="h-screen overflow-hidden bg-[#0d0e11] text-[#f7f6f9]">
+      <header className="flex h-16 items-center justify-between border-b border-[#47484b]/30 px-6 shadow-[0_0_8px_rgba(0,229,255,0.15)]">
         <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">DSG</p>
-          <h1 className="mt-2 text-3xl font-semibold">Executions</h1>
-          <p className="mt-2 text-slate-400">
-            Control-plane execution history alongside DSG core ledger and decision metrics.
-          </p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#00E5FF]">DSG ONE</p>
+          <h1 className="font-semibold uppercase tracking-wider">Execution Loops</h1>
         </div>
-
-        {error ? (
-          <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div>
-        ) : null}
-
-        {coreError ? (
-          <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Core warning: {coreError}</div>
-        ) : null}
-
-        <div className="mt-8 grid gap-6 md:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <p className="text-sm text-slate-400">Control-plane rows</p>
-            <p className="mt-3 text-3xl font-semibold">{loading ? "..." : executions.length}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <p className="text-sm text-slate-400">Core total</p>
-            <p className="mt-3 text-3xl font-semibold">{coreMetrics?.total_executions ?? 0}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <p className="text-sm text-slate-400">Core allow</p>
-            <p className="mt-3 text-3xl font-semibold">{coreMetrics?.allow_count ?? 0}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <p className="text-sm text-slate-400">Core block</p>
-            <p className="mt-3 text-3xl font-semibold">{coreMetrics?.block_count ?? 0}</p>
-          </div>
+        <div className="text-right font-mono text-[11px] text-slate-400">
+          <p>TOTAL_EXECUTIONS</p>
+          <p className="text-lg text-[#00fe66]">{coreMetrics?.total_executions ?? executions.length}</p>
         </div>
+      </header>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Control-plane Executions</h2>
-              <span className="text-sm text-slate-400">{loading ? "Loading..." : `${executions.length} rows`}</span>
-            </div>
-            <div className="mt-4 space-y-3">
-              {executions.length === 0 && !loading ? (
-                <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No control-plane executions found.</div>
-              ) : null}
-              {executions.map((execution) => (
-                <div key={execution.id} className="rounded-xl border border-slate-800 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{execution.decision}</p>
-                      <p className="mt-1 text-sm text-slate-400">{execution.id}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">{execution.latency_ms} ms</span>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-300">
-                    <p>Agent: {execution.agent_id}</p>
-                    <p>Policy: {execution.policy_version || "-"}</p>
-                    <p>Reason: {execution.reason || "-"}</p>
-                    <p>Created: {formatDate(execution.created_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+      {(error || coreError) && (
+        <div className="border-b border-[#ff6e85]/20 bg-[#ff6e85]/10 px-6 py-2 font-mono text-xs text-[#ffa8a3]">
+          {error || coreError}
+        </div>
+      )}
 
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">DSG Core Ledger</h2>
-              <span className="text-sm text-slate-400">{`${coreLedger.length} rows`}</span>
-            </div>
-            <div className="mt-4 space-y-3">
-              {coreLedger.length === 0 ? (
-                <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No DSG core ledger entries found.</div>
-              ) : null}
-              {coreLedger.map((item, index) => (
-                <div key={`${item.agent_id}-${item.evaluated_at}-${index}`} className="rounded-xl border border-slate-800 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{item.decision}</p>
-                      <p className="mt-1 text-sm text-slate-400">{item.action}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">
-                      stability {item.stability_score}
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        <section className="w-[34%] overflow-y-auto border-r border-[#47484b]/30">
+          <div className="sticky top-0 flex items-center justify-between border-b border-[#47484b]/30 bg-[#181a1d] px-4 py-3 font-mono text-[10px] uppercase">
+            <span className="text-slate-400">Buffer: {executions.length || 0} traces</span>
+            <span className="text-[#81ecff]">{loading ? "SCANNING..." : "READY"}</span>
+          </div>
+
+          <div className="divide-y divide-[#47484b]/20">
+            {executions.map((execution) => {
+              const selected = execution.id === selectedExecution?.id;
+              return (
+                <button
+                  key={execution.id}
+                  onClick={() => setSelectedId(execution.id)}
+                  className={`w-full border-l-2 p-4 text-left transition-colors ${
+                    selected
+                      ? "border-[#81ecff] bg-[#1e2023]"
+                      : "border-transparent hover:bg-[#181a1d]"
+                  }`}
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <span className={`font-mono text-xs ${selected ? "text-[#81ecff]" : "text-slate-400"}`}>
+                      #{execution.id.slice(0, 10)}
+                    </span>
+                    <span className={`font-mono text-[9px] ${decisionTone(execution.decision)}`}>
+                      {execution.decision}
                     </span>
                   </div>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-300">
-                    <p>Agent: {item.agent_id}</p>
-                    <p>Reason: {item.reason}</p>
-                    <p>Evaluated: {formatDate(item.evaluated_at)}</p>
+                  <div className="mb-2 text-[11px] uppercase text-slate-200">Agent: {execution.agent_id}</div>
+                  <div className="flex justify-between font-mono text-[9px] text-slate-400">
+                    <span>LATENCY: {execution.latency_ms}ms</span>
+                    <span>{formatTime(execution.created_at)}</span>
+                  </div>
+                </button>
+              );
+            })}
+
+            {!loading && executions.length === 0 && (
+              <div className="p-5 text-sm text-slate-500">No executions found.</div>
+            )}
+          </div>
+        </section>
+
+        <section className="flex flex-1 flex-col overflow-hidden bg-black/40">
+          <div className="border-b border-[#47484b]/30 p-6">
+            <div className="mb-5 flex items-end justify-between">
+              <div>
+                <p className="font-mono text-[10px] text-[#81ecff]">LATENCY_WATERFALL_MAP</p>
+                <h2 className="font-semibold uppercase tracking-tight">
+                  Trace: {selectedExecution?.id || "N/A"}
+                </h2>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-[10px] text-slate-400">TOTAL_EXEC_TIME</p>
+                <p className="font-mono text-xl text-[#00fe66]">{selectedExecution?.latency_ms ?? 0}ms</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 font-mono text-[10px]">
+              {["GATE_EVAL", "POLICY_MATCH", "LEDGER_APPEND", "RESPONSE_COMMIT"].map((phase, idx) => (
+                <div key={phase} className="grid grid-cols-12 items-center gap-2">
+                  <div className="col-span-3 text-slate-400">{phase}</div>
+                  <div className="col-span-9 h-2 bg-[#181a1d]">
+                    <div
+                      className="h-full bg-[#81ecff]"
+                      style={{ width: `${Math.min(95, 20 + idx * 18)}%` }}
+                    />
                   </div>
                 </div>
               ))}
             </div>
-          </section>
-        </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-6">
+            <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.2em] text-[#81ecff]">Payload JSON</h3>
+            <pre className="overflow-x-auto rounded border border-[#47484b]/30 bg-[#121316] p-4 font-mono text-xs text-[#81ecff]/90">{JSON.stringify(
+              {
+                execution: selectedExecution,
+                core_metrics: coreMetrics,
+                core_ledger_preview: coreLedger.slice(0, 3),
+              },
+              null,
+              2,
+            )}</pre>
+          </div>
+        </section>
       </div>
     </main>
   );
