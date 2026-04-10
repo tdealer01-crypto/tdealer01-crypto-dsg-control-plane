@@ -58,6 +58,14 @@ function formatDate(value?: string) {
   }
 }
 
+function resultTone(result?: string) {
+  const normalized = (result || '').toUpperCase();
+  if (normalized.includes('BLOCK') || normalized.includes('FREEZE')) return 'text-rose-300 border-rose-500/20';
+  if (normalized.includes('WARN')) return 'text-amber-200 border-amber-500/20';
+  if (normalized.includes('PASS') || normalized.includes('ALLOW') || normalized.includes('SUCCESS')) return 'text-emerald-200 border-emerald-500/20';
+  return 'text-slate-200 border-slate-700';
+}
+
 export default function CommandCenterPage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [capacity, setCapacity] = useState<CapacityPayload | null>(null);
@@ -125,8 +133,8 @@ export default function CommandCenterPage() {
   }, []);
 
   const overallStatus = useMemo(() => {
-    if (!health) return 'Checking';
-    return health.core_ok ? 'Ready' : 'Degraded';
+    if (!health) return 'CHECKING';
+    return health.core_ok ? 'READY' : 'DEGRADED';
   }, [health]);
 
   const alerts = useMemo(() => {
@@ -195,132 +203,123 @@ export default function CommandCenterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-      <div className="mx-auto max-w-7xl">
-        <header className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Unified Command Center</p>
-          <div className="mt-3 grid gap-4 md:grid-cols-5">
-            <div>
-              <p className="text-sm text-slate-400">Overall</p>
-              <p className="text-2xl font-semibold">{overallStatus}</p>
+    <main className="min-h-screen bg-[#0d0e11] px-6 pb-12 pt-8 text-[#f7f6f9]">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-12">
+        <section className="relative overflow-hidden bg-[#1e2023] p-8 md:col-span-8">
+          <div className="relative z-10">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="font-mono text-sm uppercase tracking-[0.3em] text-[#00e5ff]">DSG ONE · COMMAND CENTER</h1>
+                <p className="mt-3 text-3xl font-bold uppercase tracking-tight text-[#81ecff]">System Health Matrix</p>
+                <p className="mt-2 text-sm text-slate-300">Autonomous reconciliation monitoring active.</p>
+              </div>
+              <span className="rounded-full border border-[#00fe66]/30 bg-[#00fe66]/10 px-3 py-1 font-mono text-xs text-[#00fe66]">{overallStatus}</span>
             </div>
-            <div>
-              <p className="text-sm text-slate-400">Core Status</p>
-              <p className="text-2xl font-semibold">{health?.core_ok ? 'Online' : 'Offline'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Active Session</p>
-              <p className="text-2xl font-semibold">control-plane</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Executions</p>
-              <p className="text-2xl font-semibold">{capacity?.executions ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Period</p>
-              <p className="text-2xl font-semibold">{capacity?.billing_period || usage?.billing_period || '-'}</p>
-            </div>
-          </div>
-        </header>
 
-        {error ? <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
-
-        <section className="mt-6 grid gap-6 lg:grid-cols-2">
-          <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Chat / Agent Console</h2>
-              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">Live</span>
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="border-l-2 border-[#00e5ff] bg-[#121316] p-4">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Core Status</p>
+                <p className="mt-1 font-mono text-2xl">{health?.core_ok ? 'ONLINE' : 'OFFLINE'}</p>
+              </div>
+              <div className="border-l-2 border-[#00e5ff] bg-[#121316] p-4">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Executions</p>
+                <p className="mt-1 font-mono text-2xl">{capacity?.executions ?? 0}</p>
+              </div>
+              <div className="border-l-2 border-[#ff6e85] bg-[#121316] p-4">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Quota Remaining</p>
+                <p className="mt-1 font-mono text-2xl">{capacity?.remaining_executions ?? 0}</p>
+              </div>
+              <div className="border-l-2 border-[#00e5ff] bg-[#121316] p-4">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Projected Billing</p>
+                <p className="mt-1 font-mono text-2xl">${(capacity?.projected_amount_usd ?? 0).toFixed(2)}</p>
+              </div>
             </div>
-            <p className="mt-2 text-sm text-slate-400">Use this pane for command prompts, summaries, and action planning.</p>
-            <label className="mt-4 block text-sm text-slate-300">Command</label>
-            <textarea
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder="Ask readiness/audit/capacity/execute..."
-              className="mt-2 h-28 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100 outline-none ring-emerald-400 focus:ring-1"
-            />
-            <div className="mt-3 flex gap-2">
+
+            <div className="mt-8 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={submitCommand}
                 disabled={chatBusy}
-                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
+                className="bg-[#81ecff] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
               >
-                {chatBusy ? 'Running…' : 'Submit'}
+                {chatBusy ? 'Running…' : 'Run Diagnostics'}
               </button>
+              <span className="border border-[#81ecff]/30 px-4 py-2 font-mono text-xs uppercase tracking-wider text-[#81ecff]">
+                Last check: {formatDate(health?.timestamp)}
+              </span>
             </div>
-            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <p className="font-semibold text-slate-200">Suggested Actions</p>
-              <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-300">
-                {suggestedActions.map((action) => (
-                  <li key={action}>{action}</li>
-                ))}
-              </ul>
+          </div>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,227,253,0.18),transparent_60%)]" />
+        </section>
+
+        <section className="bg-[#181a1d] p-6 md:col-span-4">
+          <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Compliance Scorecard</h2>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between border-l-4 border-[#00fe66] bg-[#121316] p-4">
+              <p className="text-xs uppercase tracking-wider text-slate-400">Plan</p>
+              <p className="font-mono text-lg">{usage?.plan || '-'}</p>
             </div>
-            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <p className="font-semibold text-slate-200">Command Output</p>
-              <div className="mt-2 max-h-52 space-y-2 overflow-y-auto text-xs text-slate-300">
-                {chatOutput.length === 0 ? <p className="text-slate-500">No output yet.</p> : null}
+            <div className="flex items-center justify-between border-l-4 border-[#ff6e85] bg-[#121316] p-4">
+              <p className="text-xs uppercase tracking-wider text-slate-400">Active Alerts</p>
+              <p className="font-mono text-lg text-[#ff6e85]">{alerts.length}</p>
+            </div>
+            <div className="flex items-center justify-between border-l-4 border-[#81ecff] bg-[#121316] p-4">
+              <p className="text-xs uppercase tracking-wider text-slate-400">Utilization</p>
+              <p className="font-mono text-lg">{Math.round((capacity?.utilization ?? 0) * 100)}%</p>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-slate-700/50 pt-4">
+            <p className="text-xs uppercase tracking-wider text-slate-400">Suggested Actions</p>
+            <ul className="mt-3 space-y-2 text-sm text-slate-200">
+              {suggestedActions.map((action) => (
+                <li key={action}>• {action}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="border border-slate-800 bg-black/30 p-6 md:col-span-12">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Operator Console</h2>
+              <p className="mt-2 text-sm text-slate-400">Prompt the agent for summaries and recovery procedures.</p>
+              <textarea
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder="Ask readiness/audit/capacity/execute..."
+                className="mt-3 h-28 w-full border border-slate-700 bg-[#0d0e11] p-3 font-mono text-sm text-slate-100 outline-none focus:border-[#81ecff]"
+              />
+              {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
+              <div className="mt-4 max-h-60 space-y-2 overflow-y-auto pr-2">
+                {chatOutput.length === 0 ? <p className="text-sm text-slate-500">No output yet.</p> : null}
                 {chatOutput.map((line, index) => (
-                  <pre key={`${index}-${line.slice(0, 8)}`} className="whitespace-pre-wrap break-all rounded border border-slate-800 bg-slate-900 p-2">
+                  <pre key={`${index}-${line.slice(0, 8)}`} className="overflow-x-auto border border-slate-700 bg-[#121316] p-3 text-xs text-slate-200">
                     {line}
                   </pre>
                 ))}
               </div>
             </div>
-          </article>
 
-          <article className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">Monitor / Control Panel</h2>
-            <p className="mt-2 text-sm text-slate-400">Readiness, entropy, alerts, quota, and runtime stats in one pane.</p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-sm text-slate-400">Quota Remaining</p>
-                <p className="mt-1 text-2xl font-semibold">{capacity?.remaining_executions ?? 0}</p>
+            <div>
+              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Active Execution Loops</h2>
+              <p className="mt-2 text-sm text-slate-400">Latest audit stream and gate results.</p>
+              <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-2">
+                {(audit?.items || []).map((item) => (
+                  <div key={`${item.id}-${item.created_at}`} className={`border bg-[#121316] p-3 text-sm ${resultTone(item.gate_result)}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold uppercase">{item.gate_result || '-'}</p>
+                      <p className="text-xs text-slate-400">{formatDate(item.created_at)}</p>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-300">Entropy: {typeof item.entropy === 'number' ? item.entropy.toFixed(4) : '-'}</p>
+                    <p className="mt-1 break-all text-xs text-slate-500">State hash: {item.state_hash || '-'}</p>
+                  </div>
+                ))}
+                {auditUnavailableInInternalMode ? <p className="text-sm text-slate-500">Audit unavailable in internal mode.</p> : null}
+                {!auditUnavailableInInternalMode && audit?.items?.length === 0 ? <p className="text-sm text-slate-500">No audit events found.</p> : null}
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-sm text-slate-400">Utilization</p>
-                <p className="mt-1 text-2xl font-semibold">{Math.round((capacity?.utilization ?? 0) * 100)}%</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-sm text-slate-400">Projected Billing (USD)</p>
-                <p className="mt-1 text-2xl font-semibold">${(capacity?.projected_amount_usd ?? 0).toFixed(2)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-sm text-slate-400">Plan</p>
-                <p className="mt-1 text-2xl font-semibold">{usage?.plan || '-'}</p>
-              </div>
+              <div className="mt-3 border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Core version: {health?.core?.version || '-'} · Status: {health?.core?.status || '-'} · Error: {health?.core?.error || '-'}</div>
             </div>
-            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-              <p>Core version: {health?.core?.version || '-'}</p>
-              <p>Core status: {health?.core?.status || '-'}</p>
-              <p>Last check: {formatDate(health?.timestamp)}</p>
-              <p>Core error: {health?.core?.error || '-'}</p>
-            </div>
-          </article>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-semibold">Logs / Audit / Event Stream</h2>
-          <p className="mt-2 text-sm text-slate-400">Latest events to close the loop between alerting and agent actions.</p>
-          <div className="mt-4 space-y-3">
-            {(audit?.items || []).map((item) => (
-              <div key={`${item.id}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-100">{item.gate_result || '-'}</p>
-                  <p>{formatDate(item.created_at)}</p>
-                </div>
-                <p className="mt-1">Entropy: {typeof item.entropy === 'number' ? item.entropy.toFixed(4) : '-'}</p>
-                <p className="mt-1 break-all text-slate-400">State hash: {item.state_hash || '-'}</p>
-              </div>
-            ))}
-            {auditUnavailableInInternalMode ? (
-              <p className="text-sm text-slate-400">Audit unavailable in internal mode.</p>
-            ) : null}
-            {!auditUnavailableInInternalMode && audit?.items?.length === 0 ? <p className="text-sm text-slate-400">No audit events found.</p> : null}
-          </div>
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-            Active alerts: {alerts.length}
           </div>
         </section>
       </div>
