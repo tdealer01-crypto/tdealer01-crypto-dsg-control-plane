@@ -205,9 +205,10 @@ Important:
 `/api/execute` currently forwards to `/api/spine/execute`, which enforces runtime access and request validation.
 
 Current execution requirements include:
-- authenticated org-scoped access
 - `Authorization: Bearer <API_KEY>`
 - a valid `agent_id` in the request payload
+- API key + `agent_id` must resolve to an existing agent
+- resolved agent must be in `active` status
 - normal execution rate limiting
 
 ### Authenticated operator routes
@@ -226,7 +227,8 @@ For `POST /api/execute` / `POST /api/spine/execute`, evaluators and integrators 
 
 - `401 Unauthorized` when the Bearer token is missing or empty
 - `400 Bad Request` when required fields such as `agent_id` are missing
-- `403 Forbidden` when the caller does not have the required org-scoped access
+- `401 Unauthorized` when `agent_id` + API key do not resolve to a valid agent
+- `403 Forbidden` when the resolved agent is not in `active` status
 - `429 Too Many Requests` when execution rate limits are exceeded
 
 ### Evaluation guidance
