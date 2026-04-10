@@ -14,17 +14,27 @@ type HealthPayload = {
 };
 
 type CapacityPayload = {
+  ok?: boolean;
+  plan_key?: string;
+  billing_interval?: string;
+  subscription_status?: string;
+  billing_period?: string;
   executions: number;
+  included_executions?: number;
   remaining_executions: number;
   utilization: number;
+  overage_executions?: number;
   projected_amount_usd: number;
-  billing_period: string;
 };
 
 type UsagePayload = {
   plan?: string;
   subscription_status?: string;
   billing_period?: string;
+  executions?: number;
+  included_executions?: number;
+  overage_executions?: number;
+  projected_amount_usd?: number;
 };
 
 type AuditPayload = {
