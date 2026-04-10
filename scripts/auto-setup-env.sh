@@ -3,6 +3,14 @@
 # ตั้ง env vars สำคัญสำหรับ DSG auto-setup บน Vercel
 set -euo pipefail
 
+DRY_RUN=false
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=true ;;
+    --confirm) DRY_RUN=false ;;
+  esac
+done
+
 export VERCEL_ORG_ID="team_n189mlAdVHR6cGGiaAwsKzQ0"
 export VERCEL_PROJECT_ID="prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW"
 
@@ -11,7 +19,7 @@ if [ -n "${VERCEL_TOKEN:-}" ]; then
   AUTH_ARGS+=(--token "$VERCEL_TOKEN")
 fi
 
-if ! command -v vercel >/dev/null 2>&1; then
+if [ "$DRY_RUN" != true ] && ! command -v vercel >/dev/null 2>&1; then
   echo "Vercel CLI not found. Install with: npm i -g vercel"
   exit 1
 fi
@@ -19,6 +27,11 @@ fi
 set_env() {
   local key="$1"
   local value="$2"
+
+  if [ "$DRY_RUN" = true ]; then
+    echo "[DRY-RUN] would set $key=$value"
+    return
+  fi
 
   printf '%s' "$value" | vercel env add "$key" production --force "${AUTH_ARGS[@]}"
   echo "✓ $key"

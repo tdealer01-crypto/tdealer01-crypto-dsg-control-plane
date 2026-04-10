@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
+type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
 
 type PriceMapping = {
   planKey: string | null;
@@ -48,7 +49,7 @@ function toIso(value: number | null | undefined) {
   return new Date(value * 1000).toISOString();
 }
 
-async function resolveOrgIdByEmail(supabase: any, email: string | null) {
+async function resolveOrgIdByEmail(supabase: SupabaseAdmin, email: string | null) {
   if (!email) return null;
 
   const { data, error } = await supabase
@@ -64,7 +65,7 @@ async function resolveOrgIdByEmail(supabase: any, email: string | null) {
   return String(data[0].org_id);
 }
 
-async function getBillingCustomer(supabase: any, stripeCustomerId: string | null) {
+async function getBillingCustomer(supabase: SupabaseAdmin, stripeCustomerId: string | null) {
   if (!stripeCustomerId) return null;
 
   const { data, error } = await supabase
@@ -77,8 +78,8 @@ async function getBillingCustomer(supabase: any, stripeCustomerId: string | null
   return data;
 }
 
-async function recordEvent(supabase: any, event: Stripe.Event) {
-  const object = event.data.object as any;
+async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
+  const object = event.data.object as Record<string, unknown>;
 
   const stripeCustomerId =
     typeof object?.customer === 'string' ? object.customer : null;
@@ -106,7 +107,7 @@ async function recordEvent(supabase: any, event: Stripe.Event) {
 }
 
 async function upsertBillingCustomer(
-  supabase: any,
+  supabase: SupabaseAdmin,
   payload: {
     stripe_customer_id: string | null;
     org_id: string | null;
@@ -175,7 +176,7 @@ function subscriptionToRecord(
   };
 }
 
-async function upsertBillingSubscription(supabase: any, payload: Record<string, unknown>) {
+async function upsertBillingSubscription(supabase: SupabaseAdmin, payload: Record<string, unknown>) {
   await supabase.from('billing_subscriptions').upsert(payload, {
     onConflict: 'stripe_subscription_id',
   });

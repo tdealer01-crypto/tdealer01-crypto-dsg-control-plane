@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSafeNext } from '../../../lib/auth/safe-next';
+import { applyRateLimit, getRateLimitKey } from '../../../lib/security/rate-limit';
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'password-login'),
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (!rateLimit.allowed) {
+    const redirectUrl = new URL('/password-login', request.url);
+    redirectUrl.searchParams.set('error', 'too-many-attempts');
+    return NextResponse.redirect(redirectUrl, { status: 302 });
+  }
+
   const formData = await request.formData();
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');

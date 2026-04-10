@@ -152,63 +152,93 @@ export default function DashboardPage() {
       setAuditError("");
 
       try {
-        const [agentsRes, executionsRes, usageRes, healthRes, auditRes] = await Promise.all([
-          fetch("/api/agents", { cache: "no-store" }),
-          fetch("/api/executions?limit=10", { cache: "no-store" }),
-          fetch("/api/usage", { cache: "no-store" }),
-          fetch("/api/health", { cache: "no-store" }),
-          fetch("/api/audit?limit=20", { cache: "no-store" }),
-        ]);
-
-        const [agentsJson, executionsJson, usageJson, healthJson, auditJson] = await Promise.all([
-          agentsRes.json(),
-          executionsRes.json(),
-          usageRes.json(),
-          healthRes.json(),
-          auditRes.json(),
+        const results = await Promise.allSettled([
+          fetch("/api/agents", { cache: "no-store" }).then(async (r) => ({
+            ok: r.ok,
+            json: await r.json(),
+          })),
+          fetch("/api/executions?limit=10", { cache: "no-store" }).then(async (r) => ({
+            ok: r.ok,
+            json: await r.json(),
+          })),
+          fetch("/api/usage", { cache: "no-store" }).then(async (r) => ({
+            ok: r.ok,
+            json: await r.json(),
+          })),
+          fetch("/api/health", { cache: "no-store" }).then(async (r) => ({
+            ok: r.ok,
+            json: await r.json(),
+          })),
+          fetch("/api/audit?limit=20", { cache: "no-store" }).then(async (r) => ({
+            ok: r.ok,
+            json: await r.json(),
+          })),
         ]);
 
         if (!alive) return;
 
         const warnings: string[] = [];
+        const [agentsResult, executionsResult, usageResult, healthResult, auditResult] = results;
 
-        if (agentsRes.ok) {
-          const normalizedAgents = Array.isArray(agentsJson?.items)
-            ? agentsJson.items.map(normalizeAgent).filter((item): item is Agent => item !== null)
+        if (agentsResult.status === "fulfilled" && agentsResult.value.ok) {
+          const normalizedAgents = Array.isArray(agentsResult.value.json?.items)
+            ? agentsResult.value.json.items
+                .map(normalizeAgent)
+                .filter((item: Agent | null): item is Agent => item !== null)
             : [];
           setAgents(normalizedAgents);
         } else {
-          warnings.push(agentsJson.error || "Failed to load agents");
+          warnings.push(
+            agentsResult.status === "fulfilled"
+              ? agentsResult.value.json?.error || "Failed to load agents"
+              : "Failed to load agents"
+          );
         }
 
-        if (executionsRes.ok) {
-          setExecutions(executionsJson.executions || []);
+        if (executionsResult.status === "fulfilled" && executionsResult.value.ok) {
+          setExecutions(executionsResult.value.json.executions || []);
         } else {
-          warnings.push(executionsJson.error || "Failed to load executions");
+          warnings.push(
+            executionsResult.status === "fulfilled"
+              ? executionsResult.value.json?.error || "Failed to load executions"
+              : "Failed to load executions"
+          );
         }
 
-        if (usageRes.ok) {
-          const summaryPayload = usageJson?.summary ?? usageJson;
+        if (usageResult.status === "fulfilled" && usageResult.value.ok) {
+          const summaryPayload = usageResult.value.json?.summary ?? usageResult.value.json;
           const normalizedSummary = normalizeUsageSummary(summaryPayload);
           setSummary(normalizedSummary);
         } else {
-          warnings.push(usageJson.error || "Failed to load usage");
+          warnings.push(
+            usageResult.status === "fulfilled"
+              ? usageResult.value.json?.error || "Failed to load usage"
+              : "Failed to load usage"
+          );
         }
 
-        if (healthRes.ok) {
-          setHealth(healthJson || null);
+        if (healthResult.status === "fulfilled" && healthResult.value.ok) {
+          setHealth(healthResult.value.json || null);
         } else {
-          warnings.push(healthJson.error || "Failed to load health");
+          warnings.push(
+            healthResult.status === "fulfilled"
+              ? healthResult.value.json?.error || "Failed to load health"
+              : "Failed to load health"
+          );
         }
 
-        if (auditRes.ok) {
-          setAuditItems(auditJson.items || []);
-          setDeterminism(auditJson.determinism || []);
-          if (auditJson.error) setAuditError(auditJson.error);
+        if (auditResult.status === "fulfilled" && auditResult.value.ok) {
+          setAuditItems(auditResult.value.json.items || []);
+          setDeterminism(auditResult.value.json.determinism || []);
+          if (auditResult.value.json.error) setAuditError(auditResult.value.json.error);
         } else {
           setAuditItems([]);
           setDeterminism([]);
-          setAuditError(auditJson.error || "Failed to load audit data");
+          setAuditError(
+            auditResult.status === "fulfilled"
+              ? auditResult.value.json?.error || "Failed to load audit data"
+              : "Failed to load audit data"
+          );
         }
 
         if (warnings.length > 0) {

@@ -42,6 +42,7 @@ function applyMemoryRateLimit(options: RateLimitOptions): RateLimitResult {
 
 let redis: Redis | null = null;
 const limiters = new Map<string, Ratelimit>();
+let warnedNoRedis = false;
 
 function getRedis(): Redis | null {
   if (redis) return redis;
@@ -57,10 +58,10 @@ function getLimiter(prefix: string, limit: number, windowMs: number): Ratelimit 
   if (!r) return null;
   const key = `${prefix}:${limit}:${windowMs}`;
   if (!limiters.has(key)) {
-    const windowSec = `${Math.ceil(windowMs / 1000)} s`;
+    const windowSec = `${Math.ceil(windowMs / 1000)} s` as `${number} s`;
     limiters.set(key, new Ratelimit({
       redis: r,
-      limiter: Ratelimit.fixedWindow(limit, windowSec as any),
+      limiter: Ratelimit.fixedWindow(limit, windowSec),
       prefix: `rl:${prefix}`,
     }));
   }
@@ -79,6 +80,10 @@ export async function applyRateLimit(options: RateLimitOptions): Promise<RateLim
   const limiter = getLimiter(prefix, options.limit, options.windowMs);
 
   if (!limiter) {
+    if (!warnedNoRedis) {
+      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)');
+      warnedNoRedis = true;
+    }
     return applyMemoryRateLimit(options);
   }
 

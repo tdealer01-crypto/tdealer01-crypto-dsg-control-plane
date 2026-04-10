@@ -2,6 +2,13 @@ import { validateRuntimeRecovery } from '../runtime/recovery';
 import { getSupabaseAdmin } from '../supabase-server';
 import type { VerifiedRuntimeProofReport, VerifiedRuntimeProofSummary } from './proof-types';
 
+type AuditEvidence = {
+  anti_replay?: {
+    approval_request_id?: string;
+    replayed?: boolean;
+  };
+};
+
 export async function buildVerifiedRuntimeProofReport(input: { orgId: string; agentId: string }): Promise<VerifiedRuntimeProofReport> {
   const supabase = getSupabaseAdmin();
   const { orgId, agentId } = input;
@@ -93,9 +100,12 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
   const reconciledEffects = effects.filter((row) => row.status !== 'pending' && Number(row.callback_count || 0) > 0).length;
 
   const antiReplayEvidence = auditRows
-    .map((row: any) => row?.evidence?.anti_replay)
-    .filter((value: any) => value && typeof value === 'object' && value.approval_request_id);
-  const replayedHits = antiReplayEvidence.filter((value: any) => value.replayed === true).length;
+    .map((row) => (row.evidence as AuditEvidence | null)?.anti_replay)
+    .filter(
+      (value): value is NonNullable<typeof value> =>
+        !!value && typeof value === 'object' && !!value.approval_request_id
+    );
+  const replayedHits = antiReplayEvidence.filter((value) => value.replayed === true).length;
 
   if (!truthRes.data) gaps.push('No runtime truth state found for org/agent scope');
   if (!ledgerRes.data) gaps.push('No runtime ledger entries found for org/agent scope');
@@ -103,7 +113,7 @@ export async function buildVerifiedRuntimeProofReport(input: { orgId: string; ag
   if (approvals.length === 0) gaps.push('No approval records found for org/agent scope');
   if (antiReplayEvidence.length === 0) gaps.push('No anti-replay evidence in audit logs for org/agent scope');
 
-  const metadataEntryHash = (ledgerRes.data as any)?.metadata?.entry_hash;
+  const metadataEntryHash = (ledgerRes.data?.metadata as Record<string, unknown> | null)?.entry_hash;
   const latestEntryHash = typeof metadataEntryHash === 'string' ? metadataEntryHash : null;
   if (!latestEntryHash) {
     gaps.push('No canonical ledger entry hash field found (runtime_ledger_entries.metadata.entry_hash missing)');
