@@ -37,12 +37,22 @@ describe('finance governance api routes', () => {
   it('returns onboarding steps', async () => {
     const { GET } = await import('../../../app/api/finance-governance/onboarding/route');
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/finance-governance/onboarding', { headers: { 'x-org-id': 'org-test' } }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.steps).toHaveLength(5);
     expect(body.steps[0].id).toBe('workspace');
+  });
+
+  it('rejects onboarding when x-org-id is missing', async () => {
+    const { GET } = await import('../../../app/api/finance-governance/onboarding/route');
+
+    const response = await GET(new Request('http://localhost/api/finance-governance/onboarding'));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('missing_org_id');
   });
 
   it('returns approval queue items', async () => {

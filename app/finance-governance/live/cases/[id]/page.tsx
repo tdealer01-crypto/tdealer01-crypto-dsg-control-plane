@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { financeGovernanceFetch } from '../../request';
 
 type CaseDetailResponse = {
   case: {
@@ -36,7 +37,7 @@ export default function FinanceGovernanceLiveCaseDetailPage({ params }: PageProp
         setLoading(true);
         setError('');
 
-        const response = await fetch(`/api/finance-governance/cases/${params.id}`, {
+        const response = await financeGovernanceFetch(`/api/finance-governance/cases/${params.id}`, {
           cache: 'no-store',
         });
         const json = (await response.json()) as CaseDetailResponse;

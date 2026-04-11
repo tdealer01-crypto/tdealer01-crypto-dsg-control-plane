@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { financeGovernanceFetch } from '../request';
 
 type WorkspaceSummaryResponse = {
   workspace: {
@@ -56,8 +57,8 @@ export default function FinanceGovernanceLiveWorkflowPage() {
       setError('');
 
       const [workspaceResponse, approvalsResponse] = await Promise.all([
-        fetch('/api/finance-governance/workspace/summary', { cache: 'no-store' }),
-        fetch('/api/finance-governance/approvals', { cache: 'no-store' }),
+        financeGovernanceFetch('/api/finance-governance/workspace/summary', { cache: 'no-store' }),
+        financeGovernanceFetch('/api/finance-governance/approvals', { cache: 'no-store' }),
       ]);
 
       const workspaceJson = (await workspaceResponse.json()) as WorkspaceSummaryResponse;
@@ -86,7 +87,7 @@ export default function FinanceGovernanceLiveWorkflowPage() {
       setBusyKey('submit');
       setBanner(null);
 
-      const response = await fetch('/api/finance-governance/submit', {
+      const response = await financeGovernanceFetch('/api/finance-governance/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +120,7 @@ export default function FinanceGovernanceLiveWorkflowPage() {
       setBusyKey(`${approvalId}:${action}`);
       setBanner(null);
 
-      const response = await fetch(`/api/finance-governance/approvals/${approvalId}/${action}`, {
+      const response = await financeGovernanceFetch(`/api/finance-governance/approvals/${approvalId}/${action}`, {
         method: 'POST',
       });
       const json = (await response.json()) as ActionResponse;

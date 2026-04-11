@@ -14,8 +14,8 @@ describe('finance governance live workflow dashboard surface', () => {
     expect(source).toContain("void runApprovalAction(item.id, 'reject')");
     expect(source).toContain("void runApprovalAction(item.id, 'escalate')");
 
-    expect(source).toContain("fetch('/api/finance-governance/submit'");
-    expect(source).toContain("fetch(`/api/finance-governance/approvals/${approvalId}/${action}`");
+    expect(source).toContain("financeGovernanceFetch('/api/finance-governance/submit'");
+    expect(source).toContain("financeGovernanceFetch(`/api/finance-governance/approvals/${approvalId}/${action}`");
   });
 
   it('renders workflow summary cards for dashboard checks', () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { financeGovernanceFetch } from '../request';
 
 type ApprovalItem = {
   id: string;
@@ -29,17 +30,6 @@ type SnapshotResponse = {
   } | null;
 };
 
-type ActionEnvelope = {
-  result: {
-    action: string;
-    message: string;
-    nextStatus: string;
-    caseId?: string;
-    approvalId?: string;
-  };
-  snapshot: SnapshotResponse;
-};
-
 export default function FinanceGovernanceServerStorePage() {
   const [data, setData] = useState<SnapshotResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,16 +45,25 @@ export default function FinanceGovernanceServerStorePage() {
         setLoading(true);
       }
       setError('');
-      const response = await fetch('/api/finance-governance/server-store/state', { cache: 'no-store' });
-      const json = (await response.json()) as SnapshotResponse;
+      const [workspaceResponse, approvalsResponse] = await Promise.all([
+        financeGovernanceFetch('/api/finance-governance/workspace/summary', { cache: 'no-store' }),
+        financeGovernanceFetch('/api/finance-governance/approvals', { cache: 'no-store' }),
+      ]);
 
-      if (!response.ok) {
-        throw new Error('Failed to load server-store snapshot');
+      const workspaceJson = (await workspaceResponse.json()) as { workspace: SnapshotResponse['workspace'] };
+      const approvalsJson = (await approvalsResponse.json()) as { approvals: SnapshotResponse['approvals'] };
+
+      if (!workspaceResponse.ok || !approvalsResponse.ok) {
+        throw new Error('Failed to load workflow snapshot');
       }
 
-      setData(json);
+      setData({
+        workspace: workspaceJson.workspace,
+        approvals: approvalsJson.approvals,
+        lastAction: null,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load server-store snapshot');
+      setError(err instanceof Error ? err.message : 'Failed to load workflow snapshot');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,20 +78,19 @@ export default function FinanceGovernanceServerStorePage() {
     try {
       setBusyKey('submit');
       setError('');
-      const response = await fetch('/api/finance-governance/server-store/submit', {
+      const response = await financeGovernanceFetch('/api/finance-governance/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caseId: 'server-case-001' }),
       });
-      const json = (await response.json()) as ActionEnvelope;
+      await response.json();
 
       if (!response.ok) {
-        throw new Error('Failed to submit into server store');
+        throw new Error('Failed to submit workflow item');
       }
-
-      setData(json.snapshot);
+      await refresh(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit into server store');
+      setError(err instanceof Error ? err.message : 'Failed to submit workflow item');
     } finally {
       setBusyKey(null);
     }
@@ -102,18 +100,17 @@ export default function FinanceGovernanceServerStorePage() {
     try {
       setBusyKey(`${approvalId}:${action}`);
       setError('');
-      const response = await fetch(`/api/finance-governance/server-store/approvals/${approvalId}/${action}`, {
+      const response = await financeGovernanceFetch(`/api/finance-governance/approvals/${approvalId}/${action}`, {
         method: 'POST',
       });
-      const json = (await response.json()) as ActionEnvelope;
+      await response.json();
 
       if (!response.ok) {
-        throw new Error(`Failed to ${action} approval in server store`);
+        throw new Error(`Failed to ${action} approval`);
       }
-
-      setData(json.snapshot);
+      await refresh(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${action} approval in server store`);
+      setError(err instanceof Error ? err.message : `Failed to ${action} approval`);
     } finally {
       setBusyKey(null);
     }
@@ -123,18 +120,9 @@ export default function FinanceGovernanceServerStorePage() {
     try {
       setBusyKey('reset');
       setError('');
-      const response = await fetch('/api/finance-governance/server-store/reset', {
-        method: 'POST',
-      });
-      const json = (await response.json()) as SnapshotResponse;
-
-      if (!response.ok) {
-        throw new Error('Failed to reset server store');
-      }
-
-      setData(json);
+      await refresh(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset server store');
+      setError(err instanceof Error ? err.message : 'Failed to reload workflow data');
     } finally {
       setBusyKey(null);
     }
@@ -143,28 +131,28 @@ export default function FinanceGovernanceServerStorePage() {
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-16 text-white">
       <div className="max-w-3xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">Server-side state demo</p>
-        <h1 className="mt-4 text-4xl font-bold md:text-5xl">Backend memory workflow loop</h1>
+        <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">Scoped endpoint workflow demo</p>
+        <h1 className="mt-4 text-4xl font-bold md:text-5xl">Finance governance workflow loop</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          This page reads and mutates workflow state stored on the server process. It is faster to validate than a full database integration, but it is not durable persistence across process restarts.
+          This page reads and mutates workflow state through scoped <code>/api/finance-governance/*</code> endpoints backed by persistence.
         </p>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-4">
         <button type="button" onClick={() => void runSubmit()} disabled={busyKey !== null} className="rounded-2xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-70">
-          {busyKey === 'submit' ? 'Submitting...' : 'Submit to server store'}
+          {busyKey === 'submit' ? 'Submitting...' : 'Submit workflow item'}
         </button>
         <button type="button" onClick={() => void refresh(true)} disabled={busyKey !== null || refreshing} className="rounded-2xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white disabled:opacity-70">
           {refreshing ? 'Refreshing...' : 'Refresh snapshot'}
         </button>
         <button type="button" onClick={() => void reset()} disabled={busyKey !== null} className="rounded-2xl border border-red-400/30 bg-red-500/10 px-6 py-3 font-semibold text-red-100 disabled:opacity-70">
-          {busyKey === 'reset' ? 'Resetting...' : 'Reset server store'}
+          {busyKey === 'reset' ? 'Refreshing...' : 'Refresh workflow data'}
         </button>
       </div>
 
       {error ? <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
 
-      {loading ? <div className="mt-10 rounded-[1.75rem] border border-white/10 bg-white/5 p-7 text-slate-200">Loading server-store snapshot...</div> : null}
+      {loading ? <div className="mt-10 rounded-[1.75rem] border border-white/10 bg-white/5 p-7 text-slate-200">Loading workflow snapshot...</div> : null}
 
       {!loading && data ? (
         <>

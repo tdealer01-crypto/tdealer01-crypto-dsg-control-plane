@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { financeGovernanceFetch } from '../request';
 
 type ApprovalsResponse = {
   approvals: Array<{
@@ -25,7 +26,7 @@ export default function FinanceGovernanceLiveApprovalsPage() {
         setLoading(true);
         setError('');
 
-        const response = await fetch('/api/finance-governance/approvals', {
+        const response = await financeGovernanceFetch('/api/finance-governance/approvals', {
           cache: 'no-store',
         });
         const json = (await response.json()) as ApprovalsResponse;

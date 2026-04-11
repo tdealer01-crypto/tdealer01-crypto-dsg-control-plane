@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { financeGovernanceFetch } from './request';
 
 type WorkspaceSummaryResponse = {
   workspace: {
@@ -31,7 +32,7 @@ export default function FinanceGovernanceLiveWorkspacePage() {
         setLoading(true);
         setError('');
 
-        const response = await fetch('/api/finance-governance/workspace/summary', {
+        const response = await financeGovernanceFetch('/api/finance-governance/workspace/summary', {
           cache: 'no-store',
         });
         const json = (await response.json()) as WorkspaceSummaryResponse;
