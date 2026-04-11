@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { financeGovernanceFetch } from '../request';
 
 type OnboardingResponse = {
   steps: Array<{
@@ -23,7 +24,7 @@ export default function FinanceGovernanceLiveOnboardingPage() {
         setLoading(true);
         setError('');
 
-        const response = await fetch('/api/finance-governance/onboarding', {
+        const response = await financeGovernanceFetch('/api/finance-governance/onboarding', {
           cache: 'no-store',
         });
         const json = (await response.json()) as OnboardingResponse;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { financeGovernanceFetch } from '../request';
 
 type ActionResponse = {
   ok: true;
@@ -35,7 +36,7 @@ export default function FinanceGovernanceLiveActionsPage() {
     try {
       setSubmitState({ loading: true, error: '', result: null });
 
-      const response = await fetch('/api/finance-governance/submit', {
+      const response = await financeGovernanceFetch('/api/finance-governance/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ export default function FinanceGovernanceLiveActionsPage() {
         [approvalId]: { loading: true, error: '', result: null },
       }));
 
-      const response = await fetch(`/api/finance-governance/approvals/${approvalId}/${action}`, {
+      const response = await financeGovernanceFetch(`/api/finance-governance/approvals/${approvalId}/${action}`, {
         method: 'POST',
       });
       const json = (await response.json()) as ActionResponse;
