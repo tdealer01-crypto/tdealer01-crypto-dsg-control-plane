@@ -1,8 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const submit = vi.fn();
+const applyAction = vi.fn();
+
+vi.mock('../../../lib/finance-governance/repository', () => ({
+  FinanceGovernanceRepository: vi.fn().mockImplementation(() => ({
+    submit,
+    applyAction,
+  })),
+}));
+
 describe('finance governance action routes', () => {
   beforeEach(() => {
     vi.resetModules();
+    submit.mockReset();
+    applyAction.mockReset();
+    submit.mockImplementation(async (_orgId: string, caseId: string) => ({ ok: true, action: 'submit', caseId, nextStatus: 'pending' }));
+    applyAction.mockImplementation(async (_orgId: string, approvalId: string, action: string) => ({ ok: true, action, approvalId, nextStatus: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'escalated' }));
   });
 
   it('submits a finance workflow item', async () => {
@@ -10,7 +24,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-org-id': 'org-test' },
       body: JSON.stringify({ caseId: 'case-001' }),
     });
 
@@ -28,6 +42,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', {
       method: 'POST',
+      headers: { 'x-org-id': 'org-test' },
     });
 
     const response = await POST(request, { params: { id: 'APR-1001' } });
@@ -44,6 +59,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', {
       method: 'POST',
+      headers: { 'x-org-id': 'org-test' },
     });
 
     const response = await POST(request, { params: { id: 'APR-1002' } });
@@ -60,6 +76,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', {
       method: 'POST',
+      headers: { 'x-org-id': 'org-test' },
     });
 
     const response = await POST(request, { params: { id: 'APR-1003' } });
