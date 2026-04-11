@@ -1,0 +1,150 @@
+name: M1 GO / NO-GO Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_url:
+        description: "Staging URL (https://...) used by test:e2e:staging"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-go-no-go-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+    outputs:
+      status: ${{ steps.runtime.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Deterministic install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit + integration + migration tests
+        run: npm run test
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: E2E local
+        run: npm run test:e2e
+      - name: E2E live Supabase
+        run: npm run test:e2e:live
+      - name: Mark runtime status
+        id: runtime
+        run: echo "status=pass" >> $GITHUB_OUTPUT
+
+  staging-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: runtime-proof
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      PLAYWRIGHT_BASE_URL: ${{ inputs.staging_url }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Deterministic install
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: E2E staging
+        run: npm run test:e2e:staging
+      - name: Smoke trust + runtime endpoints
+        run: ./scripts/go-no-go-gate.sh "${{ inputs.staging_url }}"
+      - name: Mark staging status
+        id: stage
+        run: echo "status=pass" >> $GITHUB_OUTPUT
+
+  governance-and-env:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      status: ${{ steps.gov.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Deterministic install
+        run: npm ci
+      - name: Lockfile guard
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          git diff --exit-code -- package-lock.json
+      - name: Error handler policy check
+        run: ./scripts/check-error-handlers.sh
+      - name: Critical env contract (Supabase / Stripe / Resend)
+        run: |
+          required=(
+            "SUPABASE_URL:${{ secrets.SUPABASE_URL }}"
+            "SUPABASE_KEY:${{ secrets.SUPABASE_KEY }}"
+            "STRIPE_SECRET_KEY:${{ secrets.STRIPE_SECRET_KEY }}"
+            "STRIPE_WEBHOOK_SECRET:${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+            "RESEND_API_KEY:${{ secrets.RESEND_API_KEY }}"
+          )
+          missing=0
+          for entry in "${required[@]}"; do
+            name="${entry%%:*}"
+            value="${entry#*:}"
+            if [ -z "$value" ]; then
+              echo "Missing secret: $name"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+      - name: Mark governance status
+        id: gov
+        run: echo "status=pass" >> $GITHUB_OUTPUT
+
+  decision:
+    runs-on: ubuntu-latest
+    needs: [runtime-proof, staging-proof, governance-and-env]
+    if: always()
+    steps:
+      - name: Final GO / NO-GO summary
+        run: |
+          runtime='${{ needs.runtime-proof.result }}'
+          staging='${{ needs.staging-proof.result }}'
+          gov='${{ needs.governance-and-env.result }}'
+
+          cat >> "$GITHUB_STEP_SUMMARY" <<SUMMARY
+          # M1 GO / NO-GO Decision
+
+          | Gate | Result |
+          |---|---|
+          | Runtime proof (typecheck→test→e2e→e2e live) | ${runtime} |
+          | Staging proof (e2e staging + endpoint flow) | ${staging} |
+          | Governance + env hardening | ${gov} |
+          SUMMARY
+
+          if [ "$runtime" = "success" ] && [ "$staging" = "success" ] && [ "$gov" = "success" ]; then
+            echo "## ✅ GO" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "## ❌ NO-GO" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
