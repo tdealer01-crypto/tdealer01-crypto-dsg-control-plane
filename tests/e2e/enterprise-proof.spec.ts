@@ -4,9 +4,8 @@ test('enterprise walkthrough shows all checkpoints', async ({ page }) => {
   await page.goto('/enterprise-proof/start');
 
   await expect(page.getByTestId('enterprise-proof-start')).toBeVisible();
-  await expect(page.getByTestId('walkthrough-steps')).toContainText('Product value and landing positioning');
+  await expect(page.getByTestId('walkthrough-steps')).toContainText('Public proof narrative introduces the product and route boundary');
 
-  await page.getByRole('button', { name: 'Bootstrap Demo Runtime Evidence' }).click();
   await expect(page.getByTestId('demo-context')).toBeVisible();
 
   await page.getByTestId('open-executive-report').click();
