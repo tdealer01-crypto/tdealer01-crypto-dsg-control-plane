@@ -92,4 +92,48 @@ describe('finance governance server store routes', () => {
     expect(body.workspace.workspace).toBe('Finance Governance Workspace');
     expect(body.workspace.counts.readyExports).toBe(0);
   });
+
+  it('runs submit → approve → reject → escalate flow and returns synchronized API state', async () => {
+    const { POST: reset } = await import('../../../app/api/finance-governance/server-store/reset/route');
+    const { POST: submit } = await import('../../../app/api/finance-governance/server-store/submit/route');
+    const { POST: approve } = await import('../../../app/api/finance-governance/server-store/approvals/[id]/approve/route');
+    const { POST: reject } = await import('../../../app/api/finance-governance/server-store/approvals/[id]/reject/route');
+    const { POST: escalate } = await import('../../../app/api/finance-governance/server-store/approvals/[id]/escalate/route');
+    const { GET: getState } = await import('../../../app/api/finance-governance/server-store/state/route');
+
+    await reset(new Request('http://localhost/api/finance-governance/server-store/reset', { method: 'POST' }));
+
+    const submitResponse = await submit(
+      new Request('http://localhost/api/finance-governance/server-store/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caseId: 'sequence-case-001' }),
+      })
+    );
+    expect(submitResponse.status).toBe(200);
+
+    const approveResponse = await approve(new Request('http://localhost/api/finance-governance/server-store/approvals/APR-1001/approve', { method: 'POST' }), {
+      params: { id: 'APR-1001' },
+    });
+    expect(approveResponse.status).toBe(200);
+
+    const rejectResponse = await reject(new Request('http://localhost/api/finance-governance/server-store/approvals/APR-1002/reject', { method: 'POST' }), {
+      params: { id: 'APR-1002' },
+    });
+    expect(rejectResponse.status).toBe(200);
+
+    const escalateResponse = await escalate(new Request('http://localhost/api/finance-governance/server-store/approvals/APR-1003/escalate', { method: 'POST' }), {
+      params: { id: 'APR-1003' },
+    });
+    expect(escalateResponse.status).toBe(200);
+
+    const stateResponse = await getState();
+    const stateBody = await stateResponse.json();
+
+    expect(stateResponse.status).toBe(200);
+    expect(stateBody.workspace.counts.readyExports).toBe(1);
+    expect(stateBody.approvals.find((item: { id: string }) => item.id === 'APR-1001')?.status).toBe('approved');
+    expect(stateBody.approvals.find((item: { id: string }) => item.id === 'APR-1002')?.status).toBe('rejected');
+    expect(stateBody.approvals.find((item: { id: string }) => item.id === 'APR-1003')?.status).toBe('escalated');
+  });
 });
