@@ -9,6 +9,8 @@ echo "2) Open M1 epic + issue split"
 echo "3) Assign owners for A/B/C/D/E streams"
 echo "4) Start PR #1: schema/migration delta"
 echo "5) Start parallel Wave 1: A1 + B1 + D2 + E1"
+echo "6) Lock integration checkpoint: writes->DB, dashboard reads->DB"
+echo "7) PR governance: every PR must map to M1 or M2 only"
 
 echo
-echo "Suggested labels: M1, cutover, no-demo"
+echo "Suggested labels: M1, M2, cutover, no-demo"
