@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server';
-import { buildApprovalActionResult } from '../../../../../../../lib/finance-governance/actions';
+import { FinanceGovernanceRepository } from '../../../../../../lib/finance-governance/repository';
+import { resolveOrgId } from '../../../../../../lib/finance-governance/org-scope';
 
 export const dynamic = 'force-dynamic';
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
+const repository = new FinanceGovernanceRepository();
 
-export async function POST(_request: Request, context: RouteContext) {
-  return NextResponse.json(buildApprovalActionResult('escalate', context.params.id), {
-    status: 200,
-  });
+type RouteContext = { params: { id: string } };
+
+export async function POST(request: Request, context: RouteContext) {
+  try {
+    const orgId = resolveOrgId(request);
+    const result = await repository.applyAction(orgId, context.params.id, 'escalate');
+    return NextResponse.json(result, { status: 200 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown_error';
+    const status = message === 'missing_org_id' ? 400 : 500;
+    return NextResponse.json({ ok: false, error: message }, { status });
+  }
 }
