@@ -12,7 +12,10 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:failure": "vitest run tests/failure",
-    "test:migrations": "vitest run tests/migrations"
+    "test:migrations": "vitest run tests/migrations",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "test:e2e:install:shell": "playwright install --only-shell chromium"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",

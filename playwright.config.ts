@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 60_000,
@@ -8,6 +10,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
+    ...(chromiumExecutablePath ? { launchOptions: { executablePath: chromiumExecutablePath } } : {}),
   },
   webServer: {
     command: 'ENABLE_DEMO_BOOTSTRAP=true DEMO_BOOTSTRAP_TOKEN=e2e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=e2e npm run dev',
