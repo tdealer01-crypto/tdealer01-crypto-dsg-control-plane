@@ -20,7 +20,8 @@
     "test:e2e:staging": "./scripts/with-playwright-chromium.sh env PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL:-https://staging.example.com} playwright test tests/e2e/finance-governance-live-supabase.spec.ts",
     "deploy": "npx vercel deploy --target=preview --yes",
     "deploy:preview": "npx vercel deploy --target=preview --yes",
-    "deploy:prod": "npx vercel deploy --prod --yes"
+    "deploy:prod": "npx vercel deploy --prod --yes",
+    "go:no-go": "./scripts/go-no-go-gate.sh"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
