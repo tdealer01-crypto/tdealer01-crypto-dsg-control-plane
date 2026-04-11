@@ -15,7 +15,9 @@
     "test:migrations": "vitest run tests/migrations",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
-    "test:e2e:install:shell": "playwright install --only-shell chromium"
+    "test:e2e:install:shell": "playwright install --only-shell chromium",
+    "test:e2e:live": "playwright test tests/e2e/finance-governance-live-supabase.spec.ts",
+    "test:e2e:staging": "PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL:-https://staging.example.com} playwright test tests/e2e/finance-governance-live-supabase.spec.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",

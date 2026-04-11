@@ -234,3 +234,31 @@ If these values are incorrect, `createClient()` / admin client initialization ca
 ## Roll-forward criteria
 - All checks pass without elevated error rate.
 - Core monitor remains stable with `readiness_status: "ready"`.
+
+## 8) Live E2E flow (no mocks) against Supabase, then staging rerun
+Use this flow when validating end-to-end state transitions through the real finance-governance APIs and database.
+
+### Prerequisites
+- Playwright browser installed (`npm run test:e2e:install`).
+- Live Supabase env vars available in shell:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- (Optional) Staging deployment credentials for Vercel CLI.
+
+### Step A: Run live E2E locally against real Supabase
+```bash
+npm run test:e2e:live
+```
+This executes `tests/e2e/finance-governance-live-supabase.spec.ts` and verifies UI actions plus Supabase persistence.
+
+### Step B: Deploy to staging
+```bash
+npx vercel deploy --target=preview
+```
+Capture the generated staging URL.
+
+### Step C: Re-run the same live E2E against staging
+```bash
+PLAYWRIGHT_BASE_URL=<staging-url> npm run test:e2e:live
+```
+When `PLAYWRIGHT_BASE_URL` is set, Playwright uses the staging URL and does not start a local dev server.
