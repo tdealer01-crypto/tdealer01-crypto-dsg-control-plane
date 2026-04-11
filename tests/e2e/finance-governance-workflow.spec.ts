@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Route } from '@playwright/test';
 
 type Approval = {
   id: string;
@@ -37,7 +37,7 @@ test.describe('finance governance workflow e2e', () => {
 
     await page.route('**/api/finance-governance/**', async (route) => {
       const request = route.request();
-      const orgId = request.headerValue('x-org-id') ?? 'org-demo-live';
+      const orgId = (await request.headerValue('x-org-id')) ?? 'org-demo-live';
       const state = orgStore.get(orgId) ?? createOrgState();
       orgStore.set(orgId, state);
 
@@ -103,9 +103,9 @@ test.describe('finance governance workflow e2e', () => {
   test('org isolation keeps workflow state separate between org headers', async ({ browser }) => {
     const orgStore = new Map<string, OrgState>();
 
-    const handler = async (route: Parameters<Parameters<typeof test>[1]>[0]['route'][0]) => {
+    const handler = async (route: Route) => {
       const request = route.request();
-      const orgId = request.headerValue('x-org-id') ?? 'org-demo-live';
+      const orgId = (await request.headerValue('x-org-id')) ?? 'org-demo-live';
       const state = orgStore.get(orgId) ?? createOrgState();
       orgStore.set(orgId, state);
       const url = new URL(request.url());
