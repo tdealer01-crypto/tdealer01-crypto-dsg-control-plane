@@ -339,3 +339,10 @@
 - **Security** (rate-limit, safe-log, error handling)
 
 Vitest ผ่านครบ **85/85 tests** ใน 41 test files โดย E2E fail เฉพาะเรื่อง Playwright browser download (403) ไม่ใช่ bug ของโค้ด
+
+---
+
+## หมายเหตุสภาพแวดล้อม (2026-04-11)
+
+ตรวจสอบตัวแปร `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` แล้วพบว่ายังว่าง (`""`) ใน environment ปัจจุบัน จึงสอดคล้องกับอาการ E2E ที่ติดตั้ง browser ไม่สำเร็จ (403) โดยไม่ใช่ regression จากโค้ดแอปพลิเคชัน.
+
