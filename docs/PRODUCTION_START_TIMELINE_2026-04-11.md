@@ -44,7 +44,9 @@ Created: 2026-04-11 (UTC)
 
 ## Day-0 kickoff checklist (today: 2026-04-11)
 
-- [ ] Freeze demo-only backlog
-- [ ] Open `M1` epic + issue split (schema/repo/write/read/tests)
+- [x] Freeze demo-only backlog (no new mock/memory/localStorage/demo-only routes)
+- [x] Open `M1` epic + issue split (schema/repo/write/read/tests)
 - [ ] Assign owner ต่อ stream
-- [ ] Start implementation PR #1 (schema/migration)
+- [x] Start implementation PR #1 (schema/migration)
+- [x] Start Wave 1 in parallel (`A1` + `B1` + `D2` + `E1`)
+- [x] Integration checkpoint definition locked: critical writes must persist to DB and dashboard reads must come from DB-backed APIs
