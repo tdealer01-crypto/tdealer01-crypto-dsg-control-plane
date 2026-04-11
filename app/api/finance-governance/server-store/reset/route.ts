@@ -1,10 +1,7 @@
-import { NextResponse } from 'next/server';
-import { resetServerWorkflowState } from '../../../../../lib/finance-governance/server-memory-store';
+import { blockedServerStoreResponse } from '../../../../../lib/finance-governance/server-store-deprecated';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-  return NextResponse.json(resetServerWorkflowState(), {
-    status: 200,
-  });
+  return blockedServerStoreResponse();
 }

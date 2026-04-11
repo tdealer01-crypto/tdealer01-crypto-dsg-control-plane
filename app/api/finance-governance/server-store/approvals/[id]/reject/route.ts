@@ -1,27 +1,7 @@
-import { NextResponse } from 'next/server';
-import {
-  applyApprovalAction,
-  getServerWorkflowSnapshot,
-} from '../../../../../../../lib/finance-governance/server-memory-store';
+import { blockedServerStoreResponse } from '../../../../../../../lib/finance-governance/server-store-deprecated';
 
 export const dynamic = 'force-dynamic';
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
-export async function POST(_request: Request, context: RouteContext) {
-  const result = applyApprovalAction(context.params.id, 'reject');
-
-  return NextResponse.json(
-    {
-      result,
-      snapshot: getServerWorkflowSnapshot(),
-    },
-    {
-      status: 200,
-    }
-  );
+export async function POST() {
+  return blockedServerStoreResponse();
 }
