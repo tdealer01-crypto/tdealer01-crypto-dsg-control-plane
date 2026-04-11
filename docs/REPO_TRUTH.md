@@ -99,3 +99,267 @@ Suggested recovery flow:
 2. Check whether `origin/pr/216` or an equivalent branch exists.
 3. If PR 216 exists remotely, merge/cherry-pick by commit SHA, not PR number label.
 4. If PR 216 does not exist, continue from the latest merged baseline (`#220`) and re-open the missing changes as a new PR.
+
+## Production-ready inventory snapshot (April 11, 2026)
+
+This snapshot records the current production-ready file coverage and latest validated test status in `tdealer01-crypto-dsg-control-plane`.
+
+### Test status snapshot
+
+| Category | Pass | Fail | Notes |
+|---|---:|---:|---|
+| Unit | 41 | 0 | Passed |
+| Integration | 35 | 0 | Passed |
+| Failure (negative) | 4 | 0 | Passed |
+| Migrations | 5 | 0 | Passed |
+| E2E (Playwright) | 0 | 1 | Browser install/download issue (environment), not an application logic regression |
+
+Vitest aggregate status: **85 tests**, **41 test files**, **0 failures**.
+
+### Root config and entry surface
+
+- `package.json`
+- `tsconfig.json`
+- `next.config.js`
+- `middleware.ts`
+- `vitest.config.ts`
+- `playwright.config.ts`
+- `tailwind.config.js`
+- `postcss.config.js`
+- `vercel.json`
+- `.env.example`
+
+### Next.js app router surface (`app/`)
+
+Public/auth pages are present, including:
+
+- `app/layout.tsx`
+- `app/page.tsx`
+- `app/login/page.tsx`
+- `app/password-login/page.tsx`
+- `app/signup/page.tsx`
+- `app/pricing/page.tsx`
+- `app/quickstart/page.tsx`
+- `app/marketplace/page.tsx`
+- `app/marketplace-ui/page.tsx`
+- `app/app-shell/page.tsx`
+- `app/docs/page.tsx`
+- `app/request-access/page.tsx`
+- `app/globals.css`
+
+Auth flow folders:
+
+- `app/auth/confirm/`
+- `app/auth/continue/`
+- `app/auth/login/`
+- `app/auth/password-login/`
+- `app/auth/signout/`
+- `app/auth/signup/`
+
+SSO and enterprise proof folders:
+
+- `app/sso/start/`
+- `app/enterprise-proof/report/`
+- `app/enterprise-proof/start/`
+- `app/enterprise-proof/verified/`
+
+Dashboard surface includes:
+
+- `app/dashboard/layout.tsx`
+- `app/dashboard/page.tsx`
+- `app/dashboard/error.tsx`
+- `app/dashboard/agents/`
+- `app/dashboard/audit/`
+- `app/dashboard/billing/`
+- `app/dashboard/capacity/`
+- `app/dashboard/command-center/`
+- `app/dashboard/core-compat/`
+- `app/dashboard/executions/`
+- `app/dashboard/integration/`
+- `app/dashboard/ledger/`
+- `app/dashboard/mission/`
+- `app/dashboard/operations/`
+- `app/dashboard/policies/`
+- `app/dashboard/proofs/`
+- `app/dashboard/replay/`
+- `app/dashboard/settings/`
+- `app/dashboard/skills/`
+
+API surface (`app/api/`) includes:
+
+- `app/api/access/`
+- `app/api/adapter-plan/`
+- `app/api/agent-chat/`
+- `app/api/agents/`
+- `app/api/audit/`
+- `app/api/auth/`
+- `app/api/billing/`
+- `app/api/capacity/`
+- `app/api/checkpoint/`
+- `app/api/core-compat/`
+- `app/api/core/`
+- `app/api/demo/`
+- `app/api/effect-callback/`
+- `app/api/enterprise-proof/`
+- `app/api/execute/` (stable execution entry)
+- `app/api/executions/`
+- `app/api/executors/`
+- `app/api/health/`
+- `app/api/integration/`
+- `app/api/intent/` (intent endpoint)
+- `app/api/ledger/`
+- `app/api/mcp/`
+- `app/api/metrics/`
+- `app/api/onboarding/`
+- `app/api/policies/`
+- `app/api/proofs/`
+- `app/api/quickstart/`
+- `app/api/replay/`
+- `app/api/runtime-recovery/`
+- `app/api/runtime-summary/`
+- `app/api/settings/`
+- `app/api/spine/`
+- `app/api/usage/`
+
+### Core library surface (`lib/`)
+
+Spine execution engine:
+
+- `lib/spine/engine.ts`
+- `lib/spine/pipeline.ts`
+- `lib/spine/plugin.ts`
+- `lib/spine/register-defaults.ts`
+- `lib/spine/request.ts`
+- `lib/spine/types.ts`
+- `lib/spine/plugins/`
+
+DSG core integration:
+
+- `lib/dsg-core/index.ts`
+- `lib/dsg-core/internal.ts`
+- `lib/dsg-core/remote.ts`
+- `lib/dsg-core/types.ts`
+
+Gate:
+
+- `lib/gate/index.ts`
+- `lib/gate/registry.ts`
+- `lib/gate/types.ts`
+- `lib/gate/plugins/`
+
+Runtime:
+
+- `lib/runtime/approval.ts`
+- `lib/runtime/canonical.ts`
+- `lib/runtime/checkpoint.ts`
+- `lib/runtime/gate.ts`
+- `lib/runtime/makk8-arbiter.ts`
+- `lib/runtime/permissions.ts`
+- `lib/runtime/reconcile.ts`
+- `lib/runtime/recovery.ts`
+
+Auth and RBAC:
+
+- `lib/auth/access-policy.ts`
+- `lib/auth/directory-sync.ts`
+- `lib/auth/guest-access.ts`
+- `lib/auth/jit-provisioning.ts`
+- `lib/auth/login-context.ts`
+- `lib/auth/preflight.ts`
+- `lib/auth/rbac.ts`
+- `lib/auth/require-active-profile.ts`
+- `lib/auth/require-org-permission.ts`
+- `lib/auth/safe-next.ts`
+- `lib/auth/sign-in-events.ts`
+- `lib/auth/sso-config.ts`
+
+Billing:
+
+- `lib/billing/overage-config.ts`
+- `lib/billing/seat-activation.ts`
+
+Security:
+
+- `lib/security/api-error.ts`
+- `lib/security/audit-export.ts`
+- `lib/security/error-response.ts`
+- `lib/security/rate-limit.ts`
+- `lib/security/safe-log.ts`
+
+Agent tooling:
+
+- `lib/agent/context.ts`
+- `lib/agent/executor.ts`
+- `lib/agent/planner.ts`
+- `lib/agent/tools.ts`
+
+Enterprise proof:
+
+- `lib/enterprise/proof-access.ts`
+- `lib/enterprise/proof-public.ts`
+- `lib/enterprise/proof-runtime.ts`
+- `lib/enterprise/proof-types.ts`
+- `lib/enterprise/proof.ts`
+
+Executors:
+
+- `lib/executors/index.ts`
+- `lib/executors/browserbase.ts`
+- `lib/executors/social.ts`
+- `lib/executors/types.ts`
+
+Other key library files/folders:
+
+- `lib/supabase/`
+- `lib/onboarding/bootstrap.ts`
+- `lib/makk8/action-data.ts`
+- `lib/agent-auth.ts`
+- `lib/authz.ts`
+- `lib/core-compat.ts`
+- `lib/dsg-core.ts`
+- `lib/integration-status.ts`
+- `lib/resend.ts`
+- `lib/stripe-products.ts`
+- `lib/supabase-server.ts`
+
+### UI components (`components/`)
+
+- `components/GlobalNav.tsx`
+- `components/LoginForm.tsx`
+- `components/audit/entropy-matrix.tsx`
+- `components/canvas/EntropyField.tsx`
+
+### Database schema and migrations (`supabase/`)
+
+- `supabase/schema.sql`
+- `supabase/migrations/20260323053000_product_loop_scaffold.sql`
+- `supabase/migrations/20260323054500_product_loop_rls.sql`
+- `supabase/migrations/20260323110000_billing_checkout_flow.sql`
+- `supabase/migrations/20260323140000_schema_constraints_hardening.sql`
+- `supabase/migrations/20260323141000_rls_policy_hardening.sql`
+- `supabase/migrations/20260330_monitor_stats.sql`
+- `supabase/migrations/20260331_runtime_spine.sql`
+- `supabase/migrations/20260331_runtime_spine_rpc.sql`
+- `supabase/migrations/20260401093000_batch3_enterprise_identity_rollout.sql`
+- `supabase/migrations/20260401120000_enterprise_access_batch2.sql`
+- `supabase/migrations/20260401_runtime_rbac.sql`
+- `supabase/migrations/20260401_schema_policies_table.sql`
+- `supabase/migrations/20260402_billing_quota_in_rpc.sql`
+- `supabase/migrations/20260404_runtime_spine_rpc_hardening.sql`
+
+### Deployment and ops scripts (`scripts/`)
+
+- `scripts/check-error-handlers.sh`
+- `scripts/stripe-setup.ts`
+- `scripts/termux-deploy-all-in-one.sh`
+- `apply-billing-checkout-flow.sh`
+- `apply-complete-audit-hotfix.sh`
+- `set-vercel-runtime-env.sh`
+- `set-vercel-stripe-env.sh`
+
+### Documentation surface (`docs/`)
+
+- `docs/OPERATOR_SETUP_CHECKLIST.md`
+- `docs/PR_REVIEW_PACK_V1_RUNTIME_GAP_2026-03-31.md`
+- `docs/REPO_TRUTH.md`
+- `docs/RUNBOOK_DEPLOY.md`
