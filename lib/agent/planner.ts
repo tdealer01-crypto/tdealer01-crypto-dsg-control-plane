@@ -59,6 +59,12 @@ export function planGoal(message: string): AgentPlan {
     return { steps: [nextStep(1, 'capacity', {})] };
   }
 
+  if (/search|ค้นหา|ออนไลน์|online|เว็บ|web/.test(lower)) {
+    return {
+      steps: [nextStep(1, 'realtime_web_search', { query: text })],
+    };
+  }
+
   if (/policy|นโยบาย/.test(lower)) {
     return { steps: [nextStep(1, 'list_policies', {})] };
   }

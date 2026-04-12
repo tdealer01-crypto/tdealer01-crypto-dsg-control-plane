@@ -161,6 +161,22 @@ export const DSG_TOOLS: AgentTool[] = [
       }),
   },
   {
+    id: 'realtime_web_search',
+    name: 'Real-time Web Search',
+    description: 'Search live online information and return quick references.',
+    parameters: {
+      query: { type: 'string', required: true, description: 'Search query' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(
+        context,
+        `/api/realtime-search?q=${encodeURIComponent(String(params.query || ''))}`,
+        { method: 'GET' },
+      ),
+  },
+  {
     id: 'capacity',
     name: 'Check Quota & Capacity',
     description: 'Fetch quota remaining and utilization.',

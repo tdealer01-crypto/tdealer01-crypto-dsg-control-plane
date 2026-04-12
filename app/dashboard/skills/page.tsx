@@ -10,6 +10,7 @@ const TOOLS = [
   ["audit_summary", "GET /api/runtime-summary", "Read runtime truth + latest ledger entries"],
   ["checkpoint", "POST /api/checkpoint", "Create checkpoint hash from truth + ledger"],
   ["recovery_validate", "POST /api/runtime-recovery", "Validate lineage integrity and sequence continuity"],
+  ["realtime_web_search", "GET /api/realtime-search?q=...", "Search live online information in real time"],
   ["capacity", "GET /api/capacity", "Read quota and utilization"],
   ["list_agents", "GET /api/agents", "Read org agents and usage"],
   ["create_agent", "POST /api/agents", "Create new agent and one-time API key"],
@@ -35,6 +36,13 @@ export default function SkillsPage() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SetupResult | null>(null);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("bitcoin regulation latest");
+  const [searchResult, setSearchResult] = useState<Record<string, unknown> | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [customToolName, setCustomToolName] = useState("");
+  const [customToolPurpose, setCustomToolPurpose] = useState("");
+  const [customTools, setCustomTools] = useState<Array<{ name: string; purpose: string }>>([]);
 
   async function runAutoSetup() {
     setRunning(true);
@@ -53,6 +61,34 @@ export default function SkillsPage() {
     } finally {
       setRunning(false);
     }
+  }
+
+  async function runRealtimeSearch() {
+    setSearchLoading(true);
+    setSearchError("");
+    setSearchResult(null);
+    try {
+      const res = await fetch(`/api/realtime-search?q=${encodeURIComponent(query)}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) {
+        setSearchError(json.error || `Search failed (${res.status})`);
+        return;
+      }
+      setSearchResult(json);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  function addCustomTool() {
+    const name = customToolName.trim();
+    const purpose = customToolPurpose.trim();
+    if (!name || !purpose) return;
+    setCustomTools((current) => [...current, { name, purpose }]);
+    setCustomToolName("");
+    setCustomToolPurpose("");
   }
 
   return (
@@ -146,6 +182,76 @@ export default function SkillsPage() {
                 </div>
               )}
             </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
+          <h2 className="text-xl font-semibold">Tool Skills Studio (MCP + CLI Workflow)</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            ออกแบบ tool skills ใหม่สำหรับ workflow งานจริงแบบเรียลไทม์: รับงาน → แตกเป็นขั้นตอน →
+            map ไป MCP/API/CLI → ทดสอบผลลัพธ์
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <input
+              value={customToolName}
+              onChange={(event) => setCustomToolName(event.target.value)}
+              placeholder="ชื่อ tool ใหม่ เช่น sec_news_scan"
+              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
+            />
+            <input
+              value={customToolPurpose}
+              onChange={(event) => setCustomToolPurpose(event.target.value)}
+              placeholder="หน้าที่ เช่น สรุปข่าว compliance"
+              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
+            />
+            <button
+              onClick={addCustomTool}
+              className="rounded-xl bg-sky-400 px-4 py-3 text-sm font-semibold text-slate-950"
+            >
+              เพิ่มเครื่องมือ
+            </button>
+          </div>
+          {customTools.length > 0 && (
+            <ul className="mt-4 space-y-2 text-sm text-slate-200">
+              {customTools.map((tool, index) => (
+                <li key={`${tool.name}-${index}`} className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                  <span className="font-mono text-emerald-300">{tool.name}</span> — {tool.purpose}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
+          <h2 className="text-xl font-semibold">Realtime Online Search</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            ค้นหาข้อมูลออนไลน์แบบเรียลไทม์สำหรับงานที่ได้รับ โดยเรียกผ่าน{" "}
+            <code className="rounded bg-slate-800 px-2 py-1 text-emerald-300">GET /api/realtime-search</code>
+          </p>
+          <div className="mt-4 flex flex-col gap-3 md:flex-row">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="ค้นหาสิ่งที่ต้องการ..."
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
+            />
+            <button
+              onClick={() => void runRealtimeSearch()}
+              disabled={searchLoading}
+              className="rounded-xl bg-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
+            >
+              {searchLoading ? "กำลังค้นหา..." : "ค้นหาแบบเรียลไทม์"}
+            </button>
+          </div>
+          {searchError && (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+              {searchError}
+            </div>
+          )}
+          {searchResult && (
+            <pre className="mt-4 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs text-emerald-200">
+              {JSON.stringify(searchResult, null, 2)}
+            </pre>
           )}
         </section>
 

@@ -12,4 +12,11 @@ describe('agent planner chatbot intents', () => {
     const plan = planGoal('create chatbot agent "Finance Helper"');
     expect(plan.steps[1]?.params).toMatchObject({ name: 'Finance Helper' });
   });
+
+  it('routes online search prompts to realtime web search tool', () => {
+    const plan = planGoal('ค้นหาข่าว bitcoin online ตอนนี้');
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.toolId).toBe('realtime_web_search');
+    expect(plan.steps[0]?.params).toMatchObject({ query: 'ค้นหาข่าว bitcoin online ตอนนี้' });
+  });
 });
