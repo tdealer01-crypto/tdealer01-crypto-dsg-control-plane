@@ -6,12 +6,13 @@ export const dynamic = 'force-dynamic';
 
 const repository = new FinanceGovernanceRepository();
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   try {
     const orgId = resolveOrgId(request);
-    const result = await repository.applyAction(orgId, context.params.id, 'reject');
+    const { id } = await context.params;
+    const result = await repository.applyAction(orgId, id, 'reject');
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown_error';

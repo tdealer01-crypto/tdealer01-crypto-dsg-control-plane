@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { financeGovernanceFetch } from '../../request';
 
 type CaseDetailResponse = {
@@ -18,13 +19,9 @@ type CaseDetailResponse = {
   };
 };
 
-type PageProps = {
-  params: {
-    id: string;
-  };
-};
-
-export default function FinanceGovernanceLiveCaseDetailPage({ params }: PageProps) {
+export default function FinanceGovernanceLiveCaseDetailPage() {
+  const params = useParams<{ id: string }>();
+  const caseId = params?.id ?? '';
   const [data, setData] = useState<CaseDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,7 +34,7 @@ export default function FinanceGovernanceLiveCaseDetailPage({ params }: PageProp
         setLoading(true);
         setError('');
 
-        const response = await financeGovernanceFetch(`/api/finance-governance/cases/${params.id}`, {
+        const response = await financeGovernanceFetch(`/api/finance-governance/cases/${caseId}`, {
           cache: 'no-store',
         });
         const json = (await response.json()) as CaseDetailResponse;
@@ -65,13 +62,13 @@ export default function FinanceGovernanceLiveCaseDetailPage({ params }: PageProp
     return () => {
       active = false;
     };
-  }, [params.id]);
+  }, [caseId]);
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-16 text-white">
       <div className="max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-violet-200">Live case detail</p>
-        <h1 className="mt-4 text-4xl font-bold md:text-5xl">Case {params.id}</h1>
+        <h1 className="mt-4 text-4xl font-bold md:text-5xl">Case {caseId}</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
           This page loads case detail from the finance-governance case API and renders loading, error, and data states for one governed case.
         </p>

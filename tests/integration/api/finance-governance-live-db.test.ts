@@ -61,12 +61,12 @@ describeLive('finance governance API + repository + supabase (live)', () => {
     expect(submitResponse.status).toBe(200);
 
     const approveResponse = await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: { 'x-org-id': orgA } }), {
-      params: { id: 'APR-1001' },
+      params: Promise.resolve({ id: 'APR-1001' }),
     });
     expect(approveResponse.status).toBe(200);
 
     const caseResponse = await caseDetail(new Request('http://localhost/api/finance-governance/cases/sample-case', { headers: { 'x-org-id': orgA } }), {
-      params: { id: 'sample-case' },
+      params: Promise.resolve({ id: 'sample-case' }),
     });
     const caseBody = await caseResponse.json();
 
@@ -94,9 +94,9 @@ describeLive('finance governance API + repository + supabase (live)', () => {
       ).status
     ).toBe(200);
 
-    expect((await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: { id: 'APR-1001' } })).status).toBe(200);
-    expect((await reject(new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: { id: 'APR-1002' } })).status).toBe(200);
-    expect((await escalate(new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: { id: 'APR-1003' } })).status).toBe(200);
+    expect((await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: Promise.resolve({ id: 'APR-1001' }) })).status).toBe(200);
+    expect((await reject(new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: Promise.resolve({ id: 'APR-1002' }) })).status).toBe(200);
+    expect((await escalate(new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: Promise.resolve({ id: 'APR-1003' }) })).status).toBe(200);
 
     const { data: events } = await supabase
       .from('finance_workflow_action_events')

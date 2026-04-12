@@ -1,7 +1,7 @@
 type CaseDetailPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 const timeline = [
@@ -12,13 +12,15 @@ const timeline = [
   'Evidence bundle marked ready for export',
 ];
 
-export default function FinanceGovernanceCaseDetailPage({ params }: CaseDetailPageProps) {
+export default async function FinanceGovernanceCaseDetailPage({ params }: CaseDetailPageProps) {
+  const { id } = await params;
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-16 text-white">
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
           <p className="text-sm uppercase tracking-[0.3em] text-violet-200">Case detail</p>
-          <h1 className="mt-4 text-4xl font-bold md:text-5xl">Case {params.id}</h1>
+          <h1 className="mt-4 text-4xl font-bold md:text-5xl">Case {id}</h1>
           <p className="mt-6 text-lg leading-8 text-slate-300">
             This page is the skeleton for transaction summary, policy snapshot, approval chain, and decision context within one governed case.
           </p>

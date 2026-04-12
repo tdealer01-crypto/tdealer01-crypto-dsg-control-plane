@@ -45,7 +45,7 @@ describe('finance governance action routes', () => {
       headers: { 'x-org-id': 'org-test' },
     });
 
-    const response = await POST(request, { params: { id: 'APR-1001' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'APR-1001' }) });
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -62,7 +62,7 @@ describe('finance governance action routes', () => {
       headers: { 'x-org-id': 'org-test' },
     });
 
-    const response = await POST(request, { params: { id: 'APR-1002' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'APR-1002' }) });
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -79,7 +79,7 @@ describe('finance governance action routes', () => {
       headers: { 'x-org-id': 'org-test' },
     });
 
-    const response = await POST(request, { params: { id: 'APR-1003' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'APR-1003' }) });
     const body = await response.json();
 
     expect(response.status).toBe(200);

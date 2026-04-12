@@ -6,12 +6,13 @@ export const dynamic = 'force-dynamic';
 
 const repository = new FinanceGovernanceRepository();
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: RouteContext) {
   try {
     const orgId = resolveOrgId(request);
-    const detail = await repository.getCaseDetail(orgId, context.params.id);
+    const { id } = await context.params;
+    const detail = await repository.getCaseDetail(orgId, id);
     return NextResponse.json({ case: detail });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown_error';
