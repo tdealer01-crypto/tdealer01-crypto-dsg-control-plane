@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID, createHash } from 'crypto';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { createClient as createSupabaseServerClient } from '../../../lib/supabase/server';
 import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
 import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
@@ -50,7 +51,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: access.error }, { status: access.status, headers });
     }
 
-    const supabase = getSupabaseAdmin();
+    let supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> | ReturnType<typeof getSupabaseAdmin>;
+
+    try {
+      supabase = getSupabaseAdmin();
+    } catch {
+      // Fallback for environments that only expose public Supabase keys.
+      supabase = await createSupabaseServerClient();
+    }
     const now = new Date().toISOString().slice(0, 7);
     const url = new URL(request.url);
     const includeDisabled = url.searchParams.get('include_disabled') === 'true';

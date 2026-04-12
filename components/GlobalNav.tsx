@@ -8,6 +8,7 @@ const PUBLIC_NAV = [
   { href: '/', label: 'Home' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
+  { href: '/support', label: 'Support' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/app-shell', label: 'App Shell' },
 ];
