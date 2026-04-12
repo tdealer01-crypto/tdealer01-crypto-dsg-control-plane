@@ -1,6 +1,6 @@
 # M1 Master GO / NO-GO Checklist (ขายจริง)
 
-อัปเดต: 2026-04-11
+อัปเดต: 2026-04-12
 
 เอกสารนี้คือ checklist เดียวสำหรับตัดสิน **GO / NO-GO** โดยผูกกับ workflow อัตโนมัติ:
 
@@ -23,16 +23,23 @@
 - [x] แนบหลักฐาน run ล่าสุด
 
 ## C) Core product correctness
-- [ ] ไม่มีการเรียก `/api/finance-governance/server-store/*` เหลือใน app/lib/tests
-- [ ] เส้นทาง critical ใช้ DB-backed flow จริง (ยืนยันผ่าน integration + e2e live)
-- [ ] org isolation / audit / dashboard state ถูกต้อง (ยืนยันจาก test suite)
+- [x] ไม่มีการเรียก `/api/finance-governance/server-store/*` เหลือใน app/lib/tests  
+  ยืนยันโดย test guard `tests/integration/api/finance-governance-callers.test.ts` และ grep เชิงโค้ดทั้ง repo ก่อน release
+- [x] เส้นทาง critical ใช้ DB-backed flow จริง (ยืนยันผ่าน integration + e2e live)  
+  อ้างอิง `tests/integration/api/finance-governance-live-db.test.ts` + `tests/e2e/finance-governance-live-supabase.spec.ts`
+- [x] org isolation / audit / dashboard state ถูกต้อง (ยืนยันจาก test suite)  
+  อ้างอิง `tests/integration/api/enterprise-proof-runtime-report.test.ts`, `tests/integration/api/spine-execute.test.ts`, `tests/integration/ui/finance-governance-live-workflow.test.ts`
 
 ## D) Environment / secrets
-- [ ] Supabase secrets ครบ
-- [ ] Stripe secrets ครบ
-- [ ] Resend secret ครบ
-- [ ] ไม่มี shared/temp credential
-- [ ] มีแผน rotate secret หลัง deploy
+- [x] Supabase secrets ครบ (`SUPABASE_URL`, `SUPABASE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`)
+- [x] Stripe secrets ครบ (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`)
+- [x] Resend secret ครบ (`RESEND_API_KEY`)
+- [x] ไม่มี shared/temp credential (ใช้ GitHub/Vercel/Supabase secret store เท่านั้น)
+- [x] มีแผน rotate secret หลัง deploy:
+  1. Rotate `SUPABASE_SERVICE_ROLE_KEY` และ update Vercel env
+  2. Rotate `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
+  3. Rotate `RESEND_API_KEY`
+  4. บังคับ invalidate credential เก่า + rerun `production-readiness` workflow
 
 ## E) Governance / hardening
 - [x] lockfile guard ทำงานใน CI
@@ -55,10 +62,10 @@
 - [x] owner incident/support/release sign-off ชัดเจน
 
 ## H) Final release decision
-- [ ] มี release checklist เดียวที่รวม migration order, rollback plan, post-deploy verify
-- [ ] มี GO/NO-GO owner
-- [ ] ถ้าข้อ A/B/F/G ไม่ครบ = **NO-GO**
-- [ ] ครบทุกข้อเท่านั้น = **GO**
+- [x] มี release checklist เดียวที่รวม migration order, rollback plan, post-deploy verify (`docs/ops/GO_NO_GO.md`)
+- [x] มี GO/NO-GO owner: **Release Manager (on-duty) = final decision owner**, โดยต้องมี sign-off จาก QA/Security/Ops/Product ครบก่อนอนุมัติ
+- [x] ถ้าข้อ A/B/F/G ไม่ครบ = **NO-GO**
+- [x] ครบทุกข้อเท่านั้น = **GO**
 
 ---
 
