@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
 import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { isMissingRelationError } from '../../../lib/supabase/is-missing-relation';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,13 +86,15 @@ export async function GET(request: Request) {
         .eq('billing_period', now)
         .in('agent_id', agentIds);
 
-      if (usageError) {
+      if (usageError && !isMissingRelationError(usageError)) {
         logServerError(usageError, 'agents-get-usage');
         return serverErrorResponse({ headers });
       }
 
-      for (const row of usageRows || []) {
-        usageByAgent.set(String(row.agent_id), Number(row.executions || 0));
+      if (!usageError) {
+        for (const row of usageRows || []) {
+          usageByAgent.set(String(row.agent_id), Number(row.executions || 0));
+        }
       }
     }
 

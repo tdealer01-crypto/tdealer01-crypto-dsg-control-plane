@@ -4,6 +4,7 @@ import { requireOrgRole } from '../../../lib/authz';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
 import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
+import { isMissingRelationError } from '../../../lib/supabase/is-missing-relation';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,10 +50,7 @@ export async function GET() {
       .limit(1)
       .maybeSingle();
 
-    if (
-      subscriptionError &&
-      !/relation .* does not exist/i.test(subscriptionError.message)
-    ) {
+    if (subscriptionError && !isMissingRelationError(subscriptionError)) {
       logApiError('api/usage', subscriptionError, { stage: 'subscription-query' });
       return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }
@@ -67,7 +65,7 @@ export async function GET() {
       .eq('org_id', access.orgId)
       .eq('billing_period', billingPeriodKey);
 
-    if (usageError) {
+    if (usageError && !isMissingRelationError(usageError)) {
       logApiError('api/usage', usageError, { stage: 'usage-counter-query' });
       return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
     }

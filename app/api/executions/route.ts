@@ -3,6 +3,7 @@ import { createClient } from "../../../lib/supabase/server";
 import { getDSGCoreLedger, getDSGCoreMetrics } from "../../../lib/dsg-core";
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from "../../../lib/security/rate-limit";
 import { logServerError, serverErrorResponse } from "../../../lib/security/error-response";
+import { isMissingRelationError } from "../../../lib/supabase/is-missing-relation";
 
 export const dynamic = "force-dynamic";
 const EXECUTIONS_RATE_LIMIT = 60;
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
       getDSGCoreMetrics(),
     ]);
 
-    if (error) {
+    if (error && !isMissingRelationError(error)) {
       logServerError(error, "executions-get");
       return serverErrorResponse();
     }
@@ -85,6 +86,9 @@ export async function GET(request: Request) {
         metrics: metricsData,
         error: !coreLedger.ok ? coreLedger.error : metricsError,
       },
+      warnings: error && isMissingRelationError(error)
+        ? ["executions table not found; returning empty list"]
+        : [],
     });
   } catch (error) {
     logServerError(error, "executions-get");
