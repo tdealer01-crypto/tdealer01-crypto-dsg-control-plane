@@ -1249,6 +1249,785 @@ Audit / reporting
 
 ---
 
+
+## 0.10 Frontend UI Spec ต่อหน้า (สำหรับ Product / Design / Frontend)
+
+> ส่วนนี้กำหนด UI behavior ขั้นต่ำต่อหน้า  
+> เพื่อให้ทีม design / frontend / product สื่อสารตรงกันว่า  
+> หน้านี้ต้องมีอะไร, state อะไร, CTA อะไร, validation แบบไหน, และแสดงผลยังไง  
+> โดยยึดเป้าหมายหลัก 3 ข้อ:
+> 1. ลูกค้ารู้ว่าต้องทำอะไรต่อ
+> 2. ลูกค้าเข้าใจว่าระบบกำลังทำอะไร
+> 3. ลูกค้าเห็นผลลัพธ์และความเสี่ยงก่อน execute
+
+---
+
+### 0.10.1 Shared UI Principles
+
+ทุกหน้าที่อยู่ใน onboarding / setup / execution flow ต้องมีโครงมาตรฐานเดียวกัน
+
+#### Layout structure
+- Top bar
+  - Organization switcher
+  - User menu
+  - Notification / alert icon
+- Left navigation
+  - Dashboard
+  - Settings
+  - Policies
+  - Integrations
+  - Command Center
+  - Approvals
+  - Executions
+  - Audit
+  - Usage / Billing
+- Main content area
+  - Page title
+  - Helper text
+  - Primary CTA
+  - Contextual status banner (ถ้ามี)
+  - Main form / table / detail panel
+- Right rail (optional)
+  - Setup progress
+  - Tips
+  - Next step guidance
+  - Related links / docs
+
+#### Shared UI elements
+- Status badge
+- Toast notification
+- Inline validation
+- Empty state
+- Loading skeleton
+- Error state with recovery action
+- Confirmation modal
+- Audit-visible confirmation text for risky action
+
+#### Shared status colors
+- Success / Completed
+- Warning / Needs attention
+- Danger / Blocked / Failed
+- Neutral / Draft / Not started
+- Info / Pending review / Pending approval
+
+#### Shared CTA rules
+- มี primary CTA เด่นสุดแค่ 1 ปุ่มต่อหน้า
+- secondary CTA ต้องไม่แย่งความสนใจ
+- destructive action ต้องมี confirmation modal
+- risky action ต้องมี explanatory copy ก่อนยืนยัน
+
+---
+
+### 0.10.2 Signup Page
+
+**Route:** `/signup`
+
+#### Required components
+- Auth card container
+- Form fields:
+  - Work Email
+  - Password
+  - Confirm Password
+  - Organization Name
+  - Terms checkbox
+- Primary CTA: `Create Organization`
+- Secondary text link: `Already have an account? Log in`
+
+#### Page copy
+- Title: `Create your organization`
+- Helper text: `Start with your work email and create an isolated workspace for your team.`
+
+#### UI states
+- Default
+- Typing
+- Validation error
+- Submitting
+- Success redirect
+- Server error
+
+#### Validation behavior
+- validate on blur + submit
+- field error ต้องอยู่ใต้ field
+- form-level error ต้องอยู่บน form card
+
+#### Loading behavior
+- CTA เปลี่ยนเป็น loading state
+- disable duplicate submit
+- preserve entered form values ถ้า server error
+
+#### Success behavior
+- redirect ไป verification pending page
+- show success toast
+
+---
+
+### 0.10.3 Verification Pending / Email Verified
+
+**Route:** `/verify-email/pending` และ `/verify-email/result`
+
+#### Required components
+- Centered status card
+- Success / expired / invalid state illustration or icon
+- CTA:
+  - `Continue Setup`
+  - `Resend verification email`
+
+#### UI states
+- Pending verification
+- Verification success
+- Verification expired
+- Verification failed
+
+#### Expected behavior
+- success state ต้องพาไป login หรือ onboarding
+- expired state ต้องมี resend CTA
+- copy ต้องชัด ไม่ใช้ technical wording
+
+---
+
+### 0.10.4 Login Page
+
+**Route:** `/login`
+
+#### Required components
+- Email field
+- Password field
+- Primary CTA: `Log in`
+- Optional CTA:
+  - `Continue with SSO`
+  - `Forgot password`
+
+#### Page copy
+- Title: `Log in to your organization`
+- Helper text: `Use your work account to access your workspace.`
+
+#### UI states
+- Default
+- Invalid credentials
+- SSO redirecting
+- Login success
+- Locked / throttled (ถ้ามี)
+
+#### Expected behavior
+- success → redirect `/dashboard`
+- error → preserve email field
+- invalid credentials ต้องไม่บอกละเอียดเกินจำเป็นด้าน security
+
+---
+
+### 0.10.5 Dashboard First-Run Experience
+
+**Route:** `/dashboard`
+
+#### Required components
+- Welcome banner
+- Setup checklist card
+- Readiness status summary
+- Quick links:
+  - Set roles and access
+  - Create first policy
+  - Connect integration
+  - Run first execution
+
+#### Checklist component structure
+Each item must include:
+- Label
+- Short description
+- Status badge
+- CTA
+- Optional dependency note
+
+#### Example checklist item
+- Label: `Create your first policy`
+- Description: `Define what should be allowed, blocked, or escalated before execution.`
+- Status: `not_started`
+- CTA: `Start`
+
+#### Empty state behavior
+ถ้าลูกค้าเพิ่ง login ครั้งแรก:
+- checklist ต้องอยู่บน fold แรก
+- ห้ามเอา metrics card ขึ้นก่อน checklist
+
+#### Expected behavior
+- checklist state ดึงจาก backend
+- clicking item → navigate ไป route ที่เกี่ยวข้อง
+- completed item → เปลี่ยน CTA เป็น `Review`
+
+---
+
+### 0.10.6 Organization Settings Page
+
+**Route:** `/dashboard/settings/organization`
+
+#### Required components
+- Page header
+- Form card
+- Save bar / sticky footer CTA
+- Optional right rail:
+  - Why this matters
+  - Security owner note
+
+#### Fields
+- Organization Name
+- Industry
+- Team Size
+- Region / Country
+- Timezone
+- Security Contact Email
+
+#### CTA
+- `Save Organization Settings`
+
+#### UI states
+- Empty
+- Editing
+- Dirty state
+- Saving
+- Save success
+- Save error
+
+#### Expected behavior
+- dirty form should show unsaved changes indicator
+- save success should update checklist
+- invalid email must show inline error
+
+---
+
+### 0.10.7 Roles and Access Page
+
+**Route:** `/dashboard/settings/access`
+
+#### Required components
+- Role matrix table
+- User list table
+- Invite user modal / drawer
+- Assign role action menu
+- Warning banner when no approver exists
+
+#### Role matrix UI
+Columns:
+- Permission
+- Admin
+- Operator
+- Approver
+- Auditor
+
+Rows:
+- Run low-risk tasks
+- Run high-risk tasks
+- Approve high-risk tasks
+- View audit logs
+- Manage policies
+- Manage integrations
+
+#### User list table columns
+- Name / Email
+- Current Role
+- Status
+- Last Active
+- Actions
+
+#### Invite user modal fields
+- Email
+- Role
+
+#### CTA
+- `Invite User`
+- `Save Access Model`
+
+#### Important UX rules
+- if no approver exists, show blocking banner:
+  - `At least one approver is required before high-risk flows can go live.`
+- role change should require confirmation if permission is elevated
+- auditor role must visually indicate read-only
+
+---
+
+### 0.10.8 Policies List Page
+
+**Route:** `/dashboard/policies`
+
+#### Required components
+- Policy list table
+- Filter bar
+- Search input
+- Primary CTA: `Create Policy`
+
+#### Table columns
+- Policy Name
+- Status
+- Action
+- Risk Scope
+- Last Updated
+- Updated By
+- Actions
+
+#### Empty state
+- message: `No policies created yet`
+- CTA: `Create your first policy`
+
+#### Filters
+- Status
+- Action type
+- Risk level
+- Updated by
+
+---
+
+### 0.10.9 Create / Edit Policy Page
+
+**Route:** `/dashboard/policies/new` และ `/dashboard/policies/:id`
+
+#### Required components
+- Multi-section form
+- Sticky action bar
+- Policy outcome preview panel
+- Validation summary for missing critical fields
+
+#### Sections
+1. Basic Info
+2. Trigger Conditions
+3. Action
+4. Reason Code
+5. Approval Requirements
+6. Advanced Restrictions
+
+#### Fields
+- Policy Name
+- Description
+- Task Type
+- Data Sensitivity
+- Destination
+- Risk Level
+- Action
+- Reason Code
+- Approval Group
+- Ticket Required
+- Business Justification Required
+- Sandbox Only
+
+#### CTA
+- `Save Policy`
+- `Activate Policy`
+- `Preview Outcome`
+
+#### Important UX rules
+- preview ต้องเห็นก่อน activate
+- ถ้าเลือก `Require approval` ต้องโชว์ approval group field ทันที
+- ถ้าเลือก `Block` หรือ `Require approval` ต้องบังคับ reason code
+- activate action ต้องมี confirm modal
+
+#### Preview panel output
+ต้องแสดง sample results แบบอ่านง่าย:
+- Allowed
+- Blocked
+- Approval required
+
+---
+
+### 0.10.10 Integrations List Page
+
+**Route:** `/dashboard/integrations`
+
+#### Required components
+- Provider cards
+- Status badge
+- Search / filter (optional)
+- CTA per provider:
+  - `Connect`
+  - `Manage`
+  - `Test Connection`
+
+#### Provider card content
+- Provider name
+- Short description
+- Status
+- Last tested
+- Allowed scopes summary
+
+#### Empty state
+- message: `No integrations connected yet`
+- CTA: `Connect your first integration`
+
+---
+
+### 0.10.11 Integration Connect Drawer / Page
+
+**Route:** `/dashboard/integrations/:provider/connect`
+
+#### Required components
+- Provider setup form
+- Security scope explanation
+- Test result panel
+
+#### Example fields for Slack
+- Workspace Name
+- Credential / token
+- Allowed Channels
+- Allowed Scopes
+
+#### CTA
+- `Connect`
+- `Test Connection`
+
+#### UI states
+- Default
+- Connecting
+- Connected
+- Test success
+- Test failed
+- Missing scope warning
+
+#### Important UX rules
+- secret fields must be masked
+- allowed scope summary must be visible before save
+- test result must explain what failed, not just “Connection failed”
+
+---
+
+### 0.10.12 Readiness Check Page / Widget
+
+**Route:** `/dashboard/readiness`
+
+#### Required components
+- Summary header
+- Overall status badge
+- Checklist result cards
+- CTA per failed check
+
+#### Check item structure
+- Check name
+- Status
+- Explanation
+- Fix CTA
+
+#### Statuses
+- Pass
+- Warning
+- Fail
+
+#### Important UX rules
+- overall status must be obvious at first glance
+- fail checks should sort to top
+- each fail must link directly to fixing route
+
+---
+
+### 0.10.13 Command Center Page
+
+**Route:** `/dashboard/command-center`
+
+#### Required components
+- Request form
+- Guidance card
+- Recent requests panel
+- Optional templates panel
+
+#### Fields
+- Request / Instruction
+- Task Type
+- Business Justification
+- Ticket ID
+- Target System
+- Output Destination
+
+#### CTA
+- `Review Request`
+
+#### Page copy
+- Title: `Command Center`
+- Helper text: `Submit an automation request with enough context for policy and approval decisions.`
+
+#### Important UX rules
+- business context fields must not feel optional in enterprise flows
+- if a selected task type implies high risk, show inline guidance before submit
+- recent requests should help repeat common flows
+
+---
+
+### 0.10.14 Review Request Modal / Page
+
+**Route:** modal or `/dashboard/command-center/review/:executionId`
+
+#### Required components
+- Summary card
+- Risk assessment card
+- Policy match card
+- Target systems card
+- Expected output card
+- Next action CTA
+
+#### Possible CTAs
+- `Run Now`
+- `Submit for Approval`
+- `Edit Request`
+- `Cancel`
+
+#### Important UX rules
+- review must appear before actual execution
+- blocked outcome must visually differ strongly from allow outcome
+- high-risk outcome must call out reason code clearly
+
+---
+
+### 0.10.15 Approval Inbox Page
+
+**Route:** `/dashboard/approvals`
+
+#### Required components
+- Approval queue table
+- Filter bar
+- Approval detail drawer / side panel
+- Approve / reject modal
+
+#### Table columns
+- Approval ID
+- Request Summary
+- Requested By
+- Risk Level
+- Submitted At
+- Status
+- Actions
+
+#### Detail panel sections
+- Request summary
+- Business justification
+- Ticket ID
+- Matched policies
+- Data sensitivity
+- Scope
+- Previous approval history (if any)
+
+#### CTA
+- `Approve`
+- `Reject`
+- `Request Changes`
+
+#### Important UX rules
+- approver should never need to open multiple pages to make a decision
+- reject action must require reason
+- approve action should allow optional scope restriction
+
+---
+
+### 0.10.16 Executions List Page
+
+**Route:** `/dashboard/executions`
+
+#### Required components
+- Execution table
+- Filter bar
+- Search
+- Saved views (optional)
+
+#### Table columns
+- Execution ID
+- Request Summary
+- Requested By
+- Risk Level
+- Policy Result
+- Approval Status
+- Execution Status
+- Duration
+- Created At
+
+#### Filters
+- Status
+- Risk Level
+- Policy Result
+- Date Range
+- Team
+
+#### Important UX rules
+- blocked / failed / pending approval should be easy to isolate
+- row click should open detail view
+- execution list should support operational triage use
+
+---
+
+### 0.10.17 Execution Detail Page
+
+**Route:** `/dashboard/executions/:executionId`
+
+#### Required components
+- Header summary
+- Status badge
+- Timeline component
+- Policy decision panel
+- Approval panel
+- Output preview
+- Failure / recovery panel (when applicable)
+
+#### Header content
+- Execution ID
+- Request Summary
+- Requested By
+- Created At
+- Risk Level
+- Status
+
+#### Timeline component
+Each step should show:
+- Step name
+- Status
+- Timestamp
+- Expandable details (optional)
+
+#### Important UX rules
+- success, blocked, failed, recovered states must each have different empty / banner behavior
+- if failed, next action should be visible
+- if blocked, reason code and remediation path must be visible
+
+---
+
+### 0.10.18 Audit Page
+
+**Route:** `/dashboard/audit`
+
+#### Required components
+- Tabs:
+  - Audit Log
+  - Replay
+  - Proof
+  - Export
+- Filter bar
+- Results table
+- Detail drawer / preview panel
+
+#### Audit log table columns
+- Event Time
+- Actor
+- Action
+- Resource
+- Result
+- Reason Code
+- Correlation ID
+
+#### Important UX rules
+- audit view must be searchable
+- replay must be readable by humans, not only raw JSON
+- export CTA must be visible without entering deep menus
+
+---
+
+### 0.10.19 Usage / Billing Page
+
+**Route:** `/dashboard/usage` และ `/dashboard/billing`
+
+#### Required components
+- KPI cards
+- Team quota table
+- Spend trend chart
+- Alert panel
+- Cost per successful execution card
+
+#### KPI cards
+- Total Executions
+- Success Rate
+- Failure Rate
+- Monthly Spend
+- Burn Rate
+- Overage Risk
+
+#### Team quota table columns
+- Team
+- Used
+- Limit
+- Usage %
+- Trend
+- Alert
+
+#### Important UX rules
+- alerts should explain why it matters
+- cost view must connect usage to business impact
+- avoid showing only raw volume without governance context
+
+---
+
+### 0.10.20 Empty States That Must Exist
+
+ระบบต้องมี empty state อย่างน้อยในจุดต่อไปนี้:
+
+- No policies
+- No integrations
+- No pending approvals
+- No executions yet
+- No audit results
+- No alerts
+
+แต่ละ empty state ต้องมี:
+- plain-language message
+- 1 primary CTA
+- optional helper text
+
+ตัวอย่าง:
+- `No policies created yet`
+- `Create your first policy to control what gets allowed, blocked, or escalated.`
+
+---
+
+### 0.10.21 Error States That Must Exist
+
+ระบบต้องมี friendly error states อย่างน้อยในจุดต่อไปนี้:
+
+- Signup failed
+- Login failed
+- Save settings failed
+- Invite user failed
+- Policy activation failed
+- Integration test failed
+- Readiness check failed
+- Execution failed
+- Approval action failed
+- Audit export failed
+
+ทุก error state ต้องมี:
+- What happened
+- Why it may have happened
+- What the user should do next
+
+ตัวอย่าง:
+- `Connection test failed`
+- `The token is valid, but required scope 'send_messages' is missing.`
+- `Update the allowed scopes and test again.`
+
+---
+
+### 0.10.22 Global Notifications / Alerts
+
+ระบบควรมี notification center หรือ top-level alerts สำหรับ:
+
+- Pending approvals
+- Failed integrations
+- Quota nearing limit
+- Repeated blocked attempts
+- Audit export ready
+- Recovery required
+
+Alert example:
+- `3 high-risk requests are waiting for approval`
+- `Fraud Team has reached 82% of monthly quota`
+- `1 integration is degraded and may affect scheduled executions`
+
+---
+
+### 0.10.23 Frontend Acceptance Criteria
+
+ถือว่า frontend พร้อมใช้เมื่อครบทุกข้อ:
+
+- ผู้ใช้ใหม่ login แล้วเห็น onboarding checklist ทันที
+- ทุกหน้าใน flow มี title + helper text + primary CTA
+- ทุก form มี inline validation และ loading state
+- policy page มี preview outcome ก่อน activate
+- command center มี review-before-execute
+- blocked state มี reason code + next step
+- approval inbox ใช้งานได้ในหน้าเดียว
+- execution detail มี timeline อ่านง่าย
+- audit page search / filter / export ได้
+- usage page แสดง quota + burn rate + alerts
+- ทุก empty state และ error state มี CTA ที่ไปต่อได้
+
+
 ## 1) ฉากจำลองลูกค้า (Customer Persona)
 
 - ประเภทธุรกิจ: Fintech/Enterprise Operations
@@ -1749,3 +2528,927 @@ Audit / reporting
 
 > ถ้าเดโมยังไม่ครบ 4 เรื่องนี้ ถือว่ายังไม่ตอบคำถามลูกค้าองค์กรที่เข้มงวดพอ
 
+---
+
+## 11) QA Test Cases / UAT Checklist (End-to-End Enterprise Flow)
+
+> ส่วนนี้ใช้สำหรับ QA, UAT, PM, และทีม demo  
+> เพื่อยืนยันว่า flow ตั้งแต่ signup → policy → integration → execution → approval → audit → usage  
+> ทำงานครบจริง และให้ประสบการณ์ระดับ enterprise ตามที่ออกแบบไว้
+
+> รูปแบบการประเมิน:
+> - Pass
+> - Fail
+> - Blocked
+> - N/A
+
+> แนะนำให้รันอย่างน้อย 3 ชุด:
+> 1. Happy path
+> 2. Policy blocked path
+> 3. Approval required path
+
+---
+
+## 11.1 Test Data / Roles
+
+### Test users
+- Admin: `admin@acme-fintech.com`
+- Operator: `nont@acme-fintech.com`
+- Approver: `fon@acme-fintech.com`
+- Auditor: `audit@acme-fintech.com`
+
+### Sample policy
+- Name: `PII export approval required`
+- Condition:
+  - task type = data_export
+  - data sensitivity = pii
+  - destination = external
+  - risk = high
+- Action:
+  - require approval
+- Reason code:
+  - `HIGH_RISK_PII_EXPORT`
+
+### Sample integrations
+- Slack
+- Internal API
+
+### Sample requests
+1. Low-risk:
+   - `Generate daily operations summary and send to #ops-daily`
+2. High-risk blocked:
+   - `Export customer contact list and send externally`
+3. High-risk approval:
+   - `Export customer transaction anomalies for fraud review`
+
+---
+
+## 11.2 Signup / Verification / Login
+
+### TC-001 Signup success
+**Precondition**
+- ยังไม่มี account นี้ในระบบ
+
+**Steps**
+1. เปิด `/signup`
+2. กรอก work email
+3. กรอก password / confirm password
+4. กรอก organization name
+5. กดยอมรับ terms
+6. กด `Create Organization`
+
+**Expected**
+- ระบบสร้าง account สำเร็จ
+- แสดงข้อความให้ verify email
+- มี audit event:
+  - `account_created`
+  - `organization_created`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-002 Signup validation
+**Steps**
+1. เปิด `/signup`
+2. กรอก email ไม่ถูก format
+3. กรอก password สั้นกว่า 8 ตัว
+4. ไม่กรอก organization name
+5. กด submit
+
+**Expected**
+- เห็น inline validation ทุก field ที่ผิด
+- ไม่มี account ถูกสร้าง
+- ฟอร์มไม่ reset โดยไม่จำเป็น
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-003 Email verification success
+**Steps**
+1. เปิดลิงก์ verify จากอีเมล
+2. กดยืนยัน
+
+**Expected**
+- แสดงสถานะ verify สำเร็จ
+- พาไป login หรือ onboarding
+- มี audit event `email_verified`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-004 Login success
+**Precondition**
+- user verify email แล้ว
+
+**Steps**
+1. เปิด `/login`
+2. กรอก email / password ถูกต้อง
+3. กด `Log in`
+
+**Expected**
+- redirect ไป `/dashboard`
+- แสดง onboarding checklist
+- มี audit event `login_success`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-005 Login invalid credentials
+**Steps**
+1. เปิด `/login`
+2. กรอก password ผิด
+3. กด `Log in`
+
+**Expected**
+- แสดง `Invalid email or password`
+- ไม่ login สำเร็จ
+- มี audit event `login_failed`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.3 Onboarding Checklist
+
+### TC-006 Checklist first-run visibility
+**Steps**
+1. login เป็น admin ครั้งแรก
+2. เข้า `/dashboard`
+
+**Expected**
+- checklist แสดงบนส่วนบนของหน้า
+- มี 5 ขั้นตอนหลัก
+- แต่ละขั้นตอนมี status + CTA
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-007 Checklist progress update
+**Steps**
+1. กรอก organization settings ครบ
+2. save สำเร็จ
+3. กลับ dashboard
+
+**Expected**
+- checklist item `organization_profile` เปลี่ยนเป็น completed
+- CTA เปลี่ยนจาก Start เป็น Review
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.4 Organization Settings
+
+### TC-008 Save organization settings success
+**Steps**
+1. เปิด `/dashboard/settings/organization`
+2. กรอกทุก field ให้ครบ
+3. กด save
+
+**Expected**
+- save สำเร็จ
+- มี success toast
+- checklist update
+- มี audit event `organization_updated`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-009 Save organization settings validation
+**Steps**
+1. เปิดหน้า settings
+2. กรอก security contact email ไม่ถูกต้อง
+3. กด save
+
+**Expected**
+- แสดง inline validation
+- ไม่บันทึกข้อมูลผิด
+- form ไม่พัง
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.5 Roles and Access
+
+### TC-010 Invite operator success
+**Steps**
+1. เปิด `/dashboard/settings/access`
+2. กด `Invite User`
+3. กรอก email operator
+4. เลือก role = Operator
+5. กดยืนยัน
+
+**Expected**
+- invitation ถูกสร้าง
+- แสดง status pending
+- มี audit event `user_invited`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-011 Assign approver success
+**Steps**
+1. เลือก user ที่มีอยู่
+2. เปลี่ยน role เป็น Approver
+3. save
+
+**Expected**
+- role เปลี่ยนสำเร็จ
+- มี audit event `role_assigned` หรือ `role_changed`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-012 High-risk policy blocked without approver
+**Precondition**
+- ยังไม่มี approver ในระบบ
+
+**Steps**
+1. ไปสร้าง policy แบบ require approval
+2. กด activate
+
+**Expected**
+- ระบบไม่ให้ activate
+- แสดงข้อความว่าต้องมี approver อย่างน้อย 1 คน
+- ไม่มี policy active โดยผิดเงื่อนไข
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.6 Policies
+
+### TC-013 Create policy draft success
+**Steps**
+1. เปิด `/dashboard/policies`
+2. กด `Create Policy`
+3. กรอก fields ครบ
+4. กด `Save Policy`
+
+**Expected**
+- policy ถูกสร้างเป็น draft
+- มี audit event `policy_created`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-014 Policy preview success
+**Steps**
+1. เปิด policy draft
+2. กด `Preview Outcome`
+
+**Expected**
+- ระบบแสดง sample outcome:
+  - allow
+  - blocked
+  - approval required
+- ไม่มี error
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-015 Activate policy success
+**Precondition**
+- มี approver แล้ว
+- policy fields ครบ
+
+**Steps**
+1. กด `Activate Policy`
+2. ยืนยัน modal
+
+**Expected**
+- status เปลี่ยนเป็น active
+- มี audit event `policy_activated`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-016 Policy validation for missing reason code
+**Steps**
+1. เลือก action = Block หรือ Require approval
+2. ไม่กรอก reason code
+3. กด save หรือ activate
+
+**Expected**
+- ระบบ block การบันทึกหรือ activate
+- แจ้งว่าต้องมี reason code
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.7 Integrations
+
+### TC-017 Connect integration success
+**Steps**
+1. เปิด `/dashboard/integrations`
+2. เลือก Slack
+3. กรอก credential
+4. เลือก allowed channels / scopes
+5. กด connect
+
+**Expected**
+- integration connected
+- แสดง status healthy หรือพร้อม test
+- มี audit event `integration_connected`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-018 Test connection success
+**Steps**
+1. เปิด integration ที่เชื่อมแล้ว
+2. กด `Test Connection`
+
+**Expected**
+- ระบบแสดง test success
+- checks ผ่าน
+- มี audit event `integration_tested`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-019 Test connection missing scope
+**Steps**
+1. ใช้ credential ที่ขาด required scope
+2. กด `Test Connection`
+
+**Expected**
+- ระบบแจ้งว่าขาด scope ไหน
+- ไม่ขึ้น generic error อย่างเดียว
+- มี audit event `integration_failed`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.8 Readiness Check
+
+### TC-020 Readiness check pass / warning / fail
+**Steps**
+1. เปิด `/dashboard/readiness`
+2. กด `Run Check`
+
+**Expected**
+- ระบบแสดงผลรวม
+- แต่ละ check มี status pass / warning / fail
+- fail item มี CTA ไปแก้
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.9 Command Center / Review
+
+### TC-021 Create low-risk execution request
+**Steps**
+1. login เป็น operator
+2. เปิด `/dashboard/command-center`
+3. กรอก low-risk request
+4. กด `Review Request`
+
+**Expected**
+- execution ถูกสร้าง
+- status = pending_review
+- มี audit event `execution_request_created`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-022 Review low-risk request
+**Steps**
+1. เปิด review state ของ low-risk request
+
+**Expected**
+- detected intent แสดง
+- risk = low
+- policy outcome = allow
+- ปุ่ม `Run Now` แสดง
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-023 Run low-risk execution success
+**Steps**
+1. จาก review state
+2. กด `Run Now`
+
+**Expected**
+- execution status เปลี่ยนเป็น running → completed
+- timeline แสดงครบ
+- output preview มีข้อมูล
+- audit event:
+  - `execution_started`
+  - `execution_completed`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.10 Blocked Path
+
+### TC-024 High-risk blocked request without ticket
+**Steps**
+1. login เป็น operator
+2. ส่ง request `Export customer contact list and send externally`
+3. ไม่กรอก ticket
+4. กด review
+
+**Expected**
+- risk = high
+- status = blocked
+- reason code แสดง
+- next action แสดงชัด
+- ไม่มีปุ่ม run ตรงๆ
+- audit event:
+  - `execution_reviewed`
+  - `execution_blocked`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-025 Blocked state remediation guidance
+**Steps**
+1. เปิด execution ที่ถูก block
+
+**Expected**
+- เห็น reason code
+- เห็น explanation
+- เห็น CTA เช่น:
+  - Attach Ticket
+  - Submit for Approval
+  - Edit Request
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.11 Approval Required Path
+
+### TC-026 Submit high-risk request for approval
+**Steps**
+1. ส่ง request ที่เข้าข่าย high-risk
+2. กรอก business justification + ticket ครบ
+3. review แล้ว outcome = require approval
+4. กด `Submit for Approval`
+
+**Expected**
+- approval request ถูกสร้าง
+- execution status = pending_approval
+- audit event `approval_requested`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-027 Approver sees request in inbox
+**Steps**
+1. login เป็น approver
+2. เปิด `/dashboard/approvals`
+
+**Expected**
+- approval request แสดงใน queue
+- เปิด detail แล้วเห็น:
+  - request summary
+  - business justification
+  - ticket id
+  - matched policies
+  - risk level
+  - target systems
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-028 Approval granted success
+**Steps**
+1. approver เปิด approval detail
+2. กด `Approve`
+3. กรอก note
+4. ยืนยัน
+
+**Expected**
+- approval status = approved
+- execution ถูกปล่อยให้ run ได้
+- audit event `approval_granted`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-029 Approval rejected success
+**Steps**
+1. approver เปิด approval detail
+2. กด `Reject`
+3. กรอกเหตุผล
+4. ยืนยัน
+
+**Expected**
+- approval status = rejected
+- execution ไม่ถูก run
+- audit event `approval_rejected`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-030 Cannot run high-risk execution before approval
+**Steps**
+1. ใช้ execution ที่ pending approval
+2. พยายาม run ตรงๆ ผ่าน UI หรือ API
+
+**Expected**
+- ระบบ block
+- แสดง `Approval required`
+- execution ไม่เริ่ม
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.12 Executions List / Detail
+
+### TC-031 Executions list filter works
+**Steps**
+1. เปิด `/dashboard/executions`
+2. filter ตาม status = blocked
+3. filter ตาม pending approval
+4. filter ตาม date range
+
+**Expected**
+- รายการแสดงถูกต้องตาม filter
+- ไม่มี execution หายหรือมั่ว
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-032 Execution detail timeline visible
+**Steps**
+1. เปิด execution completed
+2. เปิด execution blocked
+3. เปิด execution failed (ถ้ามี)
+
+**Expected**
+- แต่ละ execution แสดง header summary
+- timeline ครบตาม state
+- blocked case มี reason code
+- failed case มี failure reason / recovery status
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.13 Audit / Replay / Proof
+
+### TC-033 Audit log searchable
+**Steps**
+1. เปิด `/dashboard/audit`
+2. filter ด้วย execution id หรือ actor
+3. ค้นหา event
+
+**Expected**
+- event ที่เกี่ยวข้องถูกแสดง
+- fields สำคัญครบ:
+  - actor
+  - action
+  - result
+  - reason code
+  - correlation id
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-034 Replay execution success
+**Steps**
+1. เปิด replay ของ execution ที่ run สำเร็จ
+
+**Expected**
+- เห็น original request
+- policy snapshot
+- approval snapshot
+- decision path
+- output trace
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-035 Proof / Export success
+**Steps**
+1. เปิด proof ของ execution
+2. export audit เป็น CSV หรือ PDF
+
+**Expected**
+- proof เปิดได้
+- export สำเร็จ
+- มี audit event:
+  - `proof_viewed`
+  - `audit_exported`
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.14 Usage / Billing
+
+### TC-036 Usage summary visible
+**Steps**
+1. เปิด `/dashboard/usage`
+
+**Expected**
+- เห็น KPI cards
+- เห็น team quota
+- เห็น burn rate
+- เห็น alerts ถ้ามี
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-037 Billing summary visible
+**Steps**
+1. เปิด `/dashboard/billing`
+
+**Expected**
+- เห็น current plan
+- estimated spend
+- cost per successful execution
+- overage risk
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-038 Quota warning alert visible
+**Precondition**
+- team usage เกิน threshold warning
+
+**Steps**
+1. เปิด usage page
+
+**Expected**
+- เห็น alert เช่น `Fraud Team has used 82% of monthly quota`
+- alert อธิบายได้ว่าเสี่ยงอะไร
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.15 Empty States / Error States
+
+### TC-039 Empty states show correct CTA
+**Steps**
+1. ใช้องค์กรใหม่ที่ยังไม่มี:
+   - policy
+   - integration
+   - execution
+   - approval
+
+**Expected**
+- แต่ละหน้าแสดง empty state ที่เหมาะสม
+- มี CTA ไป action ถัดไปได้ทันที
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-040 Friendly error state
+**Steps**
+1. ทำให้ integration test fail
+2. ทำให้ audit export fail
+3. ทำให้ execution fail
+
+**Expected**
+- ทุกกรณีมี:
+  - what happened
+  - why
+  - next action
+- ไม่แสดง generic error อย่างเดียว
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.16 Role-Based Access Control
+
+### TC-041 Operator cannot approve
+**Steps**
+1. login เป็น operator
+2. เปิด approval page หรือเรียก approve action
+
+**Expected**
+- ไม่เห็น approve CTA
+- หรือถูก block ที่ backend / API
+- มี result = forbidden
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-042 Auditor cannot execute
+**Steps**
+1. login เป็น auditor
+2. เปิด command center
+3. พยายาม run execution
+
+**Expected**
+- ไม่มี run CTA หรือถูก block
+- read-only behavior ชัดเจน
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+### TC-043 Admin can manage policy and integrations
+**Steps**
+1. login เป็น admin
+2. เข้า policy page
+3. เข้า integrations page
+
+**Expected**
+- admin ทำได้ครบตาม role
+- ไม่มีสิทธิ์ผิด role
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.17 Audit Event Completeness
+
+### TC-044 Critical actions must generate audit events
+**Steps**
+ทำ action ต่อไปนี้อย่างน้อย 1 ครั้ง:
+- signup
+- login
+- save organization settings
+- invite user
+- assign role
+- create policy
+- activate policy
+- connect integration
+- run readiness check
+- create execution
+- review execution
+- block execution
+- submit approval
+- approve / reject
+- run execution
+- export audit
+
+**Expected**
+- ทุก action มี audit event
+- event fields ครบ:
+  - timestamp
+  - actor
+  - action
+  - resource
+  - result
+  - correlation id
+
+**Result**
+- [ ] Pass
+- [ ] Fail
+
+---
+
+## 11.18 UAT Summary Table
+
+| Area | Scenario | Expected Outcome | Result | Notes |
+|---|---|---|---|---|
+| Auth | Signup | Create org successfully |  |  |
+| Auth | Login | Access dashboard |  |  |
+| Onboarding | Checklist | Visible and updates correctly |  |  |
+| Access | Roles | Correct permission boundaries |  |  |
+| Policies | Block / Approval | Correct policy outcomes |  |  |
+| Integrations | Connect / Test | Healthy or actionable error |  |  |
+| Readiness | Run check | Pass / warning / fail works |  |  |
+| Execution | Low-risk run | Completed with timeline |  |  |
+| Execution | High-risk blocked | Blocked with reason code |  |  |
+| Approval | High-risk approval | Approval flow works |  |  |
+| Audit | Replay / Proof / Export | Trace available |  |  |
+| Usage | Quota / Billing | Governance visible |  |  |
+
+---
+
+## 11.19 Release Gate / Exit Criteria
+
+ถือว่า feature set นี้ “พร้อม demo / พร้อม UAT / พร้อม pilot” เมื่อครบทุกข้อ:
+
+- signup → login → onboarding ใช้งานได้
+- checklist update ตามสถานะจริง
+- role boundaries ถูกต้อง
+- policy preview / activate / block / approval ทำงานได้
+- integration connect + test ทำงานได้
+- readiness check ใช้งานได้
+- low-risk execution run ได้จริง
+- high-risk blocked path ใช้งานได้
+- approval flow ใช้งานได้
+- audit / replay / proof / export ใช้งานได้
+- usage / billing / quota แสดงผลได้
+- critical audit events ครบ
+- ไม่มี blocker ระดับ security / data leakage / broken role permission
