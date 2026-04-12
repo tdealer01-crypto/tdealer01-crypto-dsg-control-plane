@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireOrgRole } from '../../../lib/authz';
-import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { isMissingRelationError } from '../../../lib/supabase/resolve-policy';
@@ -10,8 +9,8 @@ function isMissingColumnError(error: unknown) {
   return message.includes('column') && message.includes('does not exist');
 }
 
-export async function GET() {
-  const access = await requireOrgRole(RuntimeRouteRoles.policies_read);
+export async function GET(request: Request) {
+  const access = await requireRuntimeAccess(request, 'policies_read');
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const supabase = getSupabaseAdmin();
@@ -69,7 +68,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const access = await requireOrgRole(RuntimeRouteRoles.policies_write);
+  const access = await requireRuntimeAccess(request, 'policies_write');
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const body = await request.json().catch(() => null);

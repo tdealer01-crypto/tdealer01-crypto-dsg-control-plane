@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
-import { requireOrgRole } from '../../../lib/authz';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/overage-config';
-import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -29,9 +28,9 @@ function formatBillingPeriod(
   return fallback || new Date().toISOString().slice(0, 7);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const access = await requireOrgRole(RuntimeRouteRoles.usage_read);
+    const access = await requireRuntimeAccess(request, 'usage_read');
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }

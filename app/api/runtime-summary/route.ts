@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireOrgRole } from '../../../lib/authz';
-import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
@@ -8,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const access = await requireOrgRole(RuntimeRouteRoles.runtime_summary);
+    const access = await requireRuntimeAccess(request, 'runtime_summary');
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }

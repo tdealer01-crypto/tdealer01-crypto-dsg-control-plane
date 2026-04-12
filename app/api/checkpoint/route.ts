@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { requireOrgRole } from '../../../lib/authz';
-import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
+import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { buildCheckpointHash } from '../../../lib/runtime/checkpoint';
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export async function POST(request: Request) {
   try {
-    const access = await requireOrgRole(RuntimeRouteRoles.checkpoint);
+    const access = await requireRuntimeAccess(request, 'checkpoint');
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }

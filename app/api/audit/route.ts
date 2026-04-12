@@ -3,8 +3,7 @@ import {
   getDSGCoreAuditEvents,
   getDSGCoreDeterminism
 } from "../../../lib/dsg-core";
-import { requireOrgRole } from "../../../lib/authz";
-import { RuntimeRouteRoles } from "../../../lib/runtime/permissions";
+import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { internalErrorMessage, logApiError } from "../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,7 @@ function getDeterminismError(result: DeterminismResult): string {
 
 export async function GET(request: Request) {
   try {
-    const access = await requireOrgRole(RuntimeRouteRoles.monitor);
+    const access = await requireRuntimeAccess(request, 'monitor');
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
