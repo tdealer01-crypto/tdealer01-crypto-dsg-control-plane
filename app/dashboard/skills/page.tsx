@@ -13,6 +13,7 @@ const TOOLS = [
   ["capacity", "GET /api/capacity", "Read quota and utilization"],
   ["list_agents", "GET /api/agents", "Read org agents and usage"],
   ["create_agent", "POST /api/agents", "Create new agent and one-time API key"],
+  ["create_chatbot_agent", "POST /api/agents", "Create chatbot-ready agent with default monthly limit"],
   ["list_policies", "GET /api/policies", "Read available policies"],
   ["reconcile_effect", "POST /api/effect-callback", "Reconcile effect status"],
   ["auto_setup", "POST /api/setup/auto", "Auto-configure: policy + agent + execution + billing + onboarding"],

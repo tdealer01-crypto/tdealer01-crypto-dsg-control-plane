@@ -196,6 +196,27 @@ export const DSG_TOOLS: AgentTool[] = [
       }),
   },
   {
+    id: 'create_chatbot_agent',
+    name: 'Create Chatbot Agent',
+    description: 'Create a chatbot-ready agent with safe defaults for interactive usage.',
+    parameters: {
+      name: { type: 'string', required: false, description: 'Agent name (default: Chatbot Agent)' },
+      policy_id: { type: 'string', required: false, description: 'Policy ID (default policy if omitted)' },
+      monthly_limit: { type: 'number', required: false, description: 'Monthly execution limit (default: 50000)' },
+    },
+    riskLevel: 'write',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, '/api/agents', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: String(params.name || 'Chatbot Agent'),
+          policy_id: params.policy_id ? String(params.policy_id) : undefined,
+          monthly_limit: Number(params.monthly_limit || 50000),
+        }),
+      }),
+  },
+  {
     id: 'list_policies',
     name: 'List Policies',
     description: 'List available policies.',
