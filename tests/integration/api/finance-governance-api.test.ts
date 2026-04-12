@@ -71,9 +71,9 @@ describe('finance governance api routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/cases/sample-case', { headers: { 'x-org-id': 'org-test' } });
     const response = await GET(request, {
-      params: {
+      params: Promise.resolve({
         id: 'sample-case',
-      },
+      }),
     });
     const body = await response.json();
 
