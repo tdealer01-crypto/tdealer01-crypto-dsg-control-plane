@@ -54,3 +54,26 @@ It:
 Public outputs:
 - `/benchmark/`
 - `/benchmark/result.json`
+
+## Immediate rollout order (Now)
+
+Follow this exact sequence for production-facing benchmark publishing:
+
+1. **Merge this branch/PR first** so the latest workflow and benchmark site renderer are on `main`.
+2. **Configure GitHub repository settings**:
+   - `Settings -> Pages -> Build and deployment -> Source = GitHub Actions`
+   - `Settings -> Secrets and variables -> Actions`:
+     - `BENCHMARK_API_KEY`
+     - `BENCHMARK_AGENT_ID`
+3. **Run workflow `DSG Benchmark Pages` manually** with `base_url` set to the real staging/public URL.
+4. **Verify all three checks**:
+   - workflow run status is `Success`
+   - `https://<org>.github.io/<repo>/benchmark/` is reachable
+   - `https://<org>.github.io/<repo>/benchmark/result.json` metrics match real run output
+
+### Validation tips
+
+- Confirm `result.json` values match the run artifact `artifacts/benchmark/benchmark-result.json` from the same workflow run.
+- If Pages returns 404, re-check Pages Source is set to **GitHub Actions** (not branch deploy).
+- If workflow fails on auth, re-check `BENCHMARK_API_KEY` and `BENCHMARK_AGENT_ID` in repository secrets.
+
