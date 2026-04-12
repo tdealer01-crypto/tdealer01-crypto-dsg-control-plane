@@ -63,16 +63,31 @@ export default async function DashboardAccessSettingsPage() {
           <table className="w-full text-left text-sm">
             <thead className="text-slate-400">
               <tr>
-                <th className="pb-2">Email</th><th className="pb-2">Domain</th><th className="pb-2">Workspace</th><th className="pb-2">Created</th><th className="pb-2">Status</th>
+                <th className="pb-2">Email</th><th className="pb-2">Domain</th><th className="pb-2">Workspace</th><th className="pb-2">Created</th><th className="pb-2">Status</th><th className="pb-2">Action</th>
               </tr>
             </thead>
             <tbody>
               {requests.map((item) => (
                 <tr key={item.id} className="border-t border-slate-800">
                   <td className="py-2">{item.email}</td><td>{item.email_domain}</td><td>{item.workspace_name || '-'}</td><td>{new Date(item.created_at).toLocaleString()}</td><td>{item.status}</td>
+                  <td>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <form action="/api/access/review" method="post" className="inline-flex items-center gap-2">
+                        <input type="hidden" name="request_id" value={item.id} />
+                        <input type="hidden" name="action" value="approve" />
+                        <input type="hidden" name="role" value="operator" />
+                        <button className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-slate-950">Approve</button>
+                      </form>
+                      <form action="/api/access/review" method="post" className="inline-flex items-center gap-2">
+                        <input type="hidden" name="request_id" value={item.id} />
+                        <input type="hidden" name="action" value="reject" />
+                        <button className="rounded-lg border border-rose-500 px-3 py-1 text-xs font-semibold text-rose-300">Reject</button>
+                      </form>
+                    </div>
+                  </td>
                 </tr>
               ))}
-              {requests.length === 0 ? <tr><td colSpan={5} className="py-3 text-slate-400">No pending requests.</td></tr> : null}
+              {requests.length === 0 ? <tr><td colSpan={6} className="py-3 text-slate-400">No pending requests.</td></tr> : null}
             </tbody>
           </table>
         </div>
