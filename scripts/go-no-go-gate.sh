@@ -14,7 +14,7 @@ check_endpoint() {
   local url="${BASE_URL%/}${path}"
   local code
   code=$(curl -sS -o /tmp/go-no-go-response.json -w "%{http_code}" --max-time 20 "$url" || echo "000")
-  if [[ "$code" =~ ^2|3 ]]; then
+  if [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
     echo "✅ ${path} -> HTTP ${code}"
   else
     echo "❌ ${path} -> HTTP ${code}"
@@ -47,7 +47,7 @@ else
   failures=$((failures + 1))
 fi
 
-if rg -n '/api/finance-governance/server-store/' app lib; then
+if rg -n '/api/finance-governance/server-store/' app lib tests; then
   echo "❌ Legacy server-store caller(s) found"
   failures=$((failures + 1))
 else
