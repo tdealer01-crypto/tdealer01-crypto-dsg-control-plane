@@ -39,3 +39,18 @@ It should be interpreted together with:
 - replay proof
 - org-wide proof surfaces
 - enterprise runtime reports
+
+## Public benchmark site
+
+A GitHub Pages deployment workflow is available through:
+
+- `.github/workflows/benchmark-pages.yml`
+
+It:
+1. runs the benchmark
+2. renders a static public report
+3. publishes the report to GitHub Pages
+
+Public outputs:
+- `/benchmark/`
+- `/benchmark/result.json`
