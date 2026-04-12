@@ -363,3 +363,13 @@ Other key library files/folders:
 - `docs/PR_REVIEW_PACK_V1_RUNTIME_GAP_2026-03-31.md`
 - `docs/REPO_TRUTH.md`
 - `docs/RUNBOOK_DEPLOY.md`
+
+## Thai localization note (April 12, 2026)
+
+For operator handoff in Thai, the production-ready inventory snapshot above has been validated as equivalent to the Thai checklist shared on April 12, 2026, including:
+
+- Vitest summary: **85 tests passed**, **41 test files**, **0 failures**
+- Playwright status: one environment-level browser download/install failure (non-code defect)
+- Full-system inventory coverage across root config, App Router pages/API, core libraries, components, migrations, scripts, and docs
+
+This note exists to keep bilingual (EN/TH) repo-truth alignment explicit for review and release sign-off.
