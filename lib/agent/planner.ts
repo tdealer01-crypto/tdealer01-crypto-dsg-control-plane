@@ -10,6 +10,11 @@ function extractEffectId(message: string) {
   return match ? match[0] : '';
 }
 
+function extractQuotedName(message: string) {
+  const match = message.match(/["“”']([^"“”']{2,80})["“”']/);
+  return match ? match[1].trim() : '';
+}
+
 function nextStep(id: number, toolId: string, params: Record<string, unknown>): AgentPlanStep {
   return { id: `s${id}`, toolId, params };
 }
@@ -76,6 +81,19 @@ export function planGoal(message: string): AgentPlan {
           name: 'New Agent',
           policy_id: 'default',
         }),
+      ],
+    };
+  }
+
+  if (/chatbot|chat bot|แชทบอท|แชตบอท/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'list_policies', {}),
+        nextStep(2, 'create_chatbot_agent', {
+          name: extractQuotedName(text) || 'Chatbot Agent',
+          monthly_limit: 50000,
+        }),
+        nextStep(3, 'list_agents', {}),
       ],
     };
   }
