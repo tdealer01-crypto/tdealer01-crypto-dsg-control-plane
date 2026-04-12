@@ -373,3 +373,19 @@ For operator handoff in Thai, the production-ready inventory snapshot above has 
 - Full-system inventory coverage across root config, App Router pages/API, core libraries, components, migrations, scripts, and docs
 
 This note exists to keep bilingual (EN/TH) repo-truth alignment explicit for review and release sign-off.
+
+## Merge mismatch note: "286/294 merge ไม่ได้" (April 12, 2026)
+
+If a reviewer sees a merge-progress indicator like **286/294** and cannot merge, treat it as a **branch divergence/incomplete-sync signal**, not a product-readiness failure by default.
+
+Recommended triage order:
+
+1. Ensure local branch is synchronized with the latest protected target branch (`main` or release branch) and re-run CI on the rebased head.
+2. Re-check required status checks in GitHub branch protection (especially required workflow names after any CI workflow rename).
+3. Confirm there are no unresolved "outdated review" or "required conversation resolution" gates.
+4. If all checks are green but merge is still blocked, inspect merge queue / required linear-history settings and retry via the configured merge method.
+
+Operational interpretation for this repository:
+
+- The current control-plane inventory and Vitest baseline remain valid (85/85 tests passing, Playwright browser install issue is environment-related).
+- A `286/294` merge indicator should be handled as release-process metadata drift until a concrete failing required check is identified.
