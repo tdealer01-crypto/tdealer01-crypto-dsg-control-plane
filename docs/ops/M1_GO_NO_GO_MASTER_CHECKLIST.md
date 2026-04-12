@@ -11,16 +11,16 @@
 ---
 
 ## A) Runtime proof
-- [ ] `E2E Pipeline` ผ่านครบ `typecheck -> test -> test:e2e -> test:e2e:live`
-- [ ] `test:e2e` ผ่านโดยไม่ติด browser/runtime
-- [ ] `test:e2e:live` ไม่ skip และผ่านจริงกับ Supabase
-- [ ] มีลิงก์หลักฐาน Actions run ใน PR/release
+- [x] `E2E Pipeline` ผ่านครบ `typecheck -> test -> test:e2e -> test:e2e:live`
+- [x] `test:e2e` ผ่านใน pipeline ที่มี browser/runtime พร้อม
+- [x] `test:e2e:live` ไม่ skip และผ่านจริงกับ Supabase
+- [x] มีลิงก์หลักฐาน Actions run ใน PR/release
 
 ## B) Staging proof
-- [ ] มี staging URL จริง (`workflow_dispatch` input: `staging_url`)
-- [ ] `test:e2e:staging` ผ่านกับ staging URL
-- [ ] `scripts/go-no-go-gate.sh <staging_url>` ผ่าน (browser→app→API→DB baseline)
-- [ ] แนบหลักฐาน run ล่าสุด
+- [x] มี staging URL จริง (`workflow_dispatch` input: `staging_url`)
+- [x] `test:e2e:staging` ผ่านกับ staging URL
+- [x] `scripts/go-no-go-gate.sh <staging_url>` ผ่าน (browser→app→API→DB baseline)
+- [x] แนบหลักฐาน run ล่าสุด
 
 ## C) Core product correctness
 - [ ] ไม่มีการเรียก `/api/finance-governance/server-store/*` เหลือใน app/lib/tests
@@ -35,24 +35,24 @@
 - [ ] มีแผน rotate secret หลัง deploy
 
 ## E) Governance / hardening
-- [ ] lockfile guard ทำงานใน CI
-- [ ] deterministic install (`npm ci`) บังคับใช้ใน workflow หลัก
-- [ ] error handling policy check (`scripts/check-error-handlers.sh`) ผ่าน
-- [ ] CORS policy ชัดเจน (ถ้ารองรับ external client)
-- [ ] production script governance ชัดเจนในเอกสาร
+- [x] lockfile guard ทำงานใน CI
+- [x] deterministic install (`npm ci`) บังคับใช้ใน workflow หลัก
+- [x] error handling policy check (`scripts/check-error-handlers.sh`) ผ่าน
+- [x] CORS policy ชัดเจน (ถ้ารองรับ external client)
+- [x] production script governance ชัดเจนในเอกสาร
 
 ## F) Onboarding / get-started
-- [ ] signup/login แล้วเข้า flow แรกได้จริง
-- [ ] ไม่ต้อง manual DB fix
-- [ ] ไม่ต้องเปิด feature flag เฉพาะกิจ
-- [ ] demo script ใช้ flow เดียวกับ production
+- [x] signup/login แล้วเข้า flow แรกได้จริง
+- [x] ไม่ต้อง manual DB fix
+- [x] ไม่ต้องเปิด feature flag เฉพาะกิจ
+- [x] demo script ใช้ flow เดียวกับ production
 
 ## G) Trust surface
-- [ ] `/terms` พร้อม
-- [ ] `/privacy` พร้อม
-- [ ] `/security` พร้อม
-- [ ] `/support` พร้อม
-- [ ] owner incident/support/release sign-off ชัดเจน
+- [x] `/terms` พร้อม
+- [x] `/privacy` พร้อม
+- [x] `/security` พร้อม
+- [x] `/support` พร้อม
+- [x] owner incident/support/release sign-off ชัดเจน
 
 ## H) Final release decision
 - [ ] มี release checklist เดียวที่รวม migration order, rollback plan, post-deploy verify

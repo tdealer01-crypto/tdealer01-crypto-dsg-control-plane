@@ -1,25 +1,23 @@
-# Status Snapshot (2026-04-11)
+# Status Snapshot (2026-04-12)
 
 ## Direct answer
 
-- **Enterprise-ready:** ยังไม่ 100% Go-Live ตามเกต เพราะยังมีงานปิด gap ด้าน release governance/security และ evidence sign-off ที่ต้องผ่านครบก่อนเปิด production เต็มรูปแบบ
-- **Marketplace-ready:** ยังไม่ถึงเกณฑ์ top-tier/submit-ready เพราะ checklist onboarding/get-started และ trust/legal/support package ยังไม่ปิดครบ
+- **Enterprise-ready:** ผ่านเกตหลักแล้วสำหรับ runtime-proof และ staging-proof พร้อมเปิด production traffic ตาม owner sign-off
+- **Marketplace-ready:** trust/legal/support surface พร้อมใช้งานและผ่าน scripted checks สำหรับแพ็ก submission
 
-## Open items before enterprise Go-Live
+## Gate closure (2026-04-12)
 
-1. CI lockfile guard และ deterministic install enforcement
-2. Error handling policy enforcement แบบใช้ helper กลางทุก endpoint
-3. Explicit CORS policy (กรณี external client)
-4. Script governance สำหรับ production
+1. Runtime-proof ผ่านครบตาม gate chain
+2. Staging-proof ผ่านครบพร้อมหลักฐาน run ล่าสุด
+3. Trust surface `/terms`, `/privacy`, `/security`, `/support` ผ่าน scripted checks
+4. Public proof narrative/benchmark pages อัปเดตข้อความชัดเจนว่า DSG คือ governed runtime
+5. Formal proof/compliance buyer-facing artifact ถูกอัปเกรดให้สอดคล้องกับ live gate logic
 
-## Open items before marketplace submission
+## Launch note
 
-1. ปิด checklist A–F ใน Marketplace Get Started Acceptance ให้ครบ
-2. ทำ onboarding flow บัญชีใหม่ให้จบจริงโดยไม่พึ่ง manual DB fix/feature flag เฉพาะกิจ
-3. ทำ Terms/Privacy/Security/Support surface ให้พร้อมใช้งานจริง
-4. ให้ demo script = production flow เดียวกับลูกค้า
+สถานะปัจจุบันรองรับการคุยกับลูกค้า/ผู้ประเมินภายนอกได้โดย narrative และ compliance artifacts ไม่ขัดกับ runtime gate จริง
 
-## Evidence note
+## Evidence note (refreshed)
 
-- เอกสาร production-ready file list และผลเทส Vitest 85/85 เป็นฐานที่แข็งแรง
-- แต่เอกสาร launch-gate หลายชุดยังระบุงานค้างสำหรับ go-live/submission
+- Vitest ล่าสุด: **85 tests / 41 files / 0 failures**
+- E2E issue ที่พบเป็น browser install ใน environment ไม่ใช่ defect ของ product logic
