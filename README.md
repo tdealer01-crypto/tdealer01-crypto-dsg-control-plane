@@ -497,3 +497,31 @@ then DSG ONE is built in that direction.
 ## Keywords
 
 `#EnterpriseAI` `#AIRuntime` `#Auditability` `#VerifiedRuntime` `#Governance` `#ZeroTrust` `#Operators` `#ControlPlane` `#MissionVisibility` `#ExecutionEvidence`
+
+## DSG Public Benchmark
+
+[![DSG Benchmark](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark.yml/badge.svg)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark.yml)
+[![DSG Benchmark Pages](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark-pages.yml/badge.svg)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark-pages.yml)
+
+This repository includes a governed runtime benchmark for DSG execution flow.
+
+It validates:
+- gate decision accuracy
+- replay completeness
+- ledger match rate
+- proof presence
+- false allow rate
+- latency
+
+Live report:
+- Public benchmark report: `https://tdealer01-crypto.github.io/tdealer01-crypto-dsg-control-plane/benchmark/`
+- Latest benchmark JSON: `https://tdealer01-crypto.github.io/tdealer01-crypto-dsg-control-plane/benchmark/result.json`
+
+GitHub configuration requirements:
+- Pages source: `GitHub Actions`
+- Required secrets: `BENCHMARK_API_KEY`, `BENCHMARK_AGENT_ID`
+
+Usage:
+- Run benchmark only: use workflow **DSG Benchmark**
+- Run benchmark + publish Pages: use workflow **DSG Benchmark Pages** with `base_url` and optional `execute_path` / `replay_path_prefix`
+
