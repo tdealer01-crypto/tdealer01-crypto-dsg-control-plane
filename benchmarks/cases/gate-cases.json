@@ -1,0 +1,41 @@
+[
+  {
+    "case_id": "allow-low-risk",
+    "name": "Low risk should allow",
+    "expected_decision": "ALLOW",
+    "action": "scan",
+    "input": {
+      "amount": 100,
+      "asset": "BTC"
+    },
+    "context": {
+      "risk_score": 0.3
+    }
+  },
+  {
+    "case_id": "stabilize-medium-risk",
+    "name": "Medium risk should stabilize",
+    "expected_decision": "STABILIZE",
+    "action": "scan",
+    "input": {
+      "amount": 100,
+      "asset": "BTC"
+    },
+    "context": {
+      "risk_score": 0.5
+    }
+  },
+  {
+    "case_id": "block-high-risk",
+    "name": "High risk should block",
+    "expected_decision": "BLOCK",
+    "action": "scan",
+    "input": {
+      "amount": 100,
+      "asset": "BTC"
+    },
+    "context": {
+      "risk_score": 0.9
+    }
+  }
+]
