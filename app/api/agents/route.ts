@@ -4,6 +4,7 @@ import { logServerError, serverErrorResponse } from '../../../lib/security/error
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { createClient as createSupabaseServerClient } from '../../../lib/supabase/server';
 import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
+import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
@@ -46,9 +47,16 @@ export async function GET(request: Request) {
   }
 
   try {
-    const access = await requireActiveProfile();
-    if (!access.ok) {
-      return NextResponse.json({ error: access.error }, { status: access.status, headers });
+    const runtimeAccess = await requireRuntimeAccess(request, 'mcp_call');
+    let orgId = '';
+    if (runtimeAccess.ok) {
+      orgId = runtimeAccess.orgId;
+    } else {
+      const profileAccess = await requireActiveProfile();
+      if (!profileAccess.ok) {
+        return NextResponse.json({ error: profileAccess.error }, { status: profileAccess.status, headers });
+      }
+      orgId = profileAccess.orgId;
     }
 
     let supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> | ReturnType<typeof getSupabaseAdmin>;
@@ -67,7 +75,7 @@ export async function GET(request: Request) {
     let agentsQuery = supabase
       .from('agents')
       .select('id, name, policy_id, status, monthly_limit', { count: 'exact' })
-      .eq('org_id', access.orgId);
+      .eq('org_id', orgId);
 
     if (!includeDisabled) {
       agentsQuery = agentsQuery.neq('status', 'disabled');
@@ -89,7 +97,7 @@ export async function GET(request: Request) {
       const { data: usageRows, error: usageError } = await supabase
         .from('usage_counters')
         .select('agent_id, executions')
-        .eq('org_id', access.orgId)
+        .eq('org_id', orgId)
         .eq('billing_period', now)
         .in('agent_id', agentIds);
 
@@ -141,9 +149,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const access = await requireActiveProfile();
-    if (!access.ok) {
-      return NextResponse.json({ error: access.error }, { status: access.status, headers });
+    const runtimeAccess = await requireRuntimeAccess(request, 'mcp_call');
+    let orgId = '';
+    if (runtimeAccess.ok) {
+      orgId = runtimeAccess.orgId;
+    } else {
+      const profileAccess = await requireActiveProfile();
+      if (!profileAccess.ok) {
+        return NextResponse.json({ error: profileAccess.error }, { status: profileAccess.status, headers });
+      }
+      orgId = profileAccess.orgId;
     }
 
     const body = await request.json().catch(() => null);
@@ -163,7 +178,7 @@ export async function POST(request: Request) {
     const { count: existingCount, error: countError } = await supabase
       .from('agents')
       .select('id', { count: 'exact', head: true })
-      .eq('org_id', access.orgId)
+      .eq('org_id', orgId)
       .neq('status', 'disabled');
 
     if (countError) {
@@ -175,7 +190,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Maximum ${MAX_AGENTS_PER_ORG} agents per organization` }, { status: 400, headers });
     }
 
-    const resolvedPolicyId = await resolvePolicyId(access.orgId, requestedPolicyId);
+    const resolvedPolicyId = await resolvePolicyId(orgId, requestedPolicyId);
     if (!resolvedPolicyId) {
       return NextResponse.json({ error: 'policy_id is invalid or no policy is available' }, { status: 400, headers });
     }
@@ -189,7 +204,7 @@ export async function POST(request: Request) {
       .from('agents')
       .insert({
         id: agentId,
-        org_id: access.orgId,
+        org_id: orgId,
         name,
         policy_id: resolvedPolicyId,
         status: 'active',

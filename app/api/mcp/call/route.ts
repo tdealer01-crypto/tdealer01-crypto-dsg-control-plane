@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { requireOrgRole } from '../../../../lib/authz';
-import { RuntimeRouteRoles } from '../../../../lib/runtime/permissions';
+import { resolveAgentFromApiKey } from '../../../../lib/agent-auth';
+import { requireRuntimeAccess, type RuntimeAccessResult } from '../../../../lib/authz-runtime';
+import { requireInternalService } from '../../../../lib/auth/internal-service';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { issueSpineIntent, executeSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
 
@@ -22,7 +24,20 @@ export async function POST(request: Request) {
         { status: 429, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
       );
     }
-    const access = await requireOrgRole(RuntimeRouteRoles.mcp_call);
+    const internal = requireInternalService(request);
+
+    const access: RuntimeAccessResult = internal.ok
+      ? {
+          ok: true,
+          orgId: internal.orgId,
+          actorType: 'internal_service',
+          grantedRoles: [],
+          agentId: internal.agentId,
+          workspaceId: internal.workspaceId,
+          executionId: internal.executionId,
+        }
+      : await requireRuntimeAccess(request, 'mcp_call');
+
     if (!access.ok) {
       return NextResponse.json(
         { error: access.error },
@@ -31,22 +46,6 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => null);
-
-    const authHeader = request.headers.get('authorization') || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Missing Bearer token' },
-        { status: 401, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
-      );
-    }
-
-    const apiKey = authHeader.slice(7).trim();
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Empty API key' },
-        { status: 401, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
-      );
-    }
 
     const payload = normalizeSpinePayload({
       agent_id: body?.agent_id,
@@ -64,9 +63,30 @@ export async function POST(request: Request) {
       );
     }
 
+    const authHeader = request.headers.get('authorization') || '';
+    const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+    const resolvedAgent = internal.ok
+      ? await getSupabaseAdmin()
+          .from('agents')
+          .select('id, org_id, policy_id, status, monthly_limit')
+          .eq('id', request.headers.get('x-agent-id'))
+          .eq('org_id', internal.orgId)
+          .maybeSingle()
+      : apiKey
+        ? { data: await resolveAgentFromApiKey(payload.agentId, apiKey), error: null }
+        : { data: null, error: null };
+
+    if (!resolvedAgent.data) {
+      return NextResponse.json(
+        { error: 'Invalid agent identity' },
+        { status: 401, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
+      );
+    }
+
     const intentResult = await issueSpineIntent({
       orgId: access.orgId,
-      apiKey,
+      apiKey: internal.ok ? `internal:${internal.service}` : apiKey,
       payload,
     });
 
@@ -79,7 +99,7 @@ export async function POST(request: Request) {
 
     const executeResult = await executeSpineIntent({
       orgId: access.orgId,
-      apiKey,
+      apiKey: internal.ok ? `internal:${internal.service}` : apiKey,
       payload,
     });
 
