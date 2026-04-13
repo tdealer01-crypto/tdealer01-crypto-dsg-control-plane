@@ -67,6 +67,9 @@ describe('issueSpineIntent + executeSpineIntent approval flow', () => {
     const second = await issueSpineIntent({ orgId: 'org_1', apiKey: 'key1', payload });
     expect(second.ok).toBe(true);
     expect(second.status).toBe(200);
+    if (!('reused' in second.body) || !('request_id' in second.body) || !('request_id' in first.body)) {
+      throw new Error('Expected pending intent payload in response body');
+    }
     expect(second.body.reused).toBe(true);
     expect(second.body.request_id).toBe(first.body.request_id);
   });

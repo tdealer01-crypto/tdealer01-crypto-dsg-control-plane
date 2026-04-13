@@ -14,6 +14,7 @@
     "test:failure": "vitest run tests/failure",
     "test:migrations": "vitest run tests/migrations",
     "test:e2e": "./scripts/with-playwright-chromium.sh playwright test",
+    "screenshot": "./scripts/with-playwright-chromium.sh node scripts/capture-screenshot.mjs",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:install:shell": "playwright install --only-shell chromium",
     "test:e2e:live": "./scripts/with-playwright-chromium.sh playwright test tests/e2e/finance-governance-live-supabase.spec.ts",
