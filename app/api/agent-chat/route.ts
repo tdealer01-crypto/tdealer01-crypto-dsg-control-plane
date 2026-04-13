@@ -18,6 +18,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const message = String(body?.message || '').trim();
+  const pageContext = String(body?.pageContext || '').trim();
   if (!message) {
     return NextResponse.json({ error: 'message is required' }, { status: 400 });
   }
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const plan = planGoal(message);
+        const plan = planGoal(message, pageContext);
         controller.enqueue(encoder.encode(sseData({ type: 'plan', steps: plan.steps })));
 
         for (const step of plan.steps) {

@@ -257,6 +257,167 @@ export const DSG_TOOLS: AgentTool[] = [
         body: JSON.stringify(params),
       }),
   },
+
+  {
+    id: 'list_executions',
+    name: 'List Executions',
+    description: 'List recent executions for this organization.',
+    parameters: {
+      limit: { type: 'number', required: false, description: 'Max items (default 10)' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, `/api/executions?limit=${encodeURIComponent(String(params.limit || 10))}`, { method: 'GET' }),
+  },
+  {
+    id: 'get_execution_proof',
+    name: 'Get Execution Proof',
+    description: 'Get replay details and proof context for one execution.',
+    parameters: {
+      execution_id: { type: 'string', required: true, description: 'Execution ID' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, `/api/replay/${encodeURIComponent(String(params.execution_id || ''))}`, { method: 'GET' }),
+  },
+  {
+    id: 'list_proofs',
+    name: 'List Proofs',
+    description: 'List recent proof artifacts from audit logs.',
+    parameters: {
+      limit: { type: 'number', required: false, description: 'Max items (default 20)' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, `/api/proofs?limit=${encodeURIComponent(String(params.limit || 20))}`, { method: 'GET' }),
+  },
+  {
+    id: 'get_ledger',
+    name: 'Get Ledger',
+    description: 'Get combined ledger and core-ledger snapshot.',
+    parameters: {
+      limit: { type: 'number', required: false, description: 'Max items (default 20)' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, `/api/ledger?limit=${encodeURIComponent(String(params.limit || 20))}`, { method: 'GET' }),
+  },
+  {
+    id: 'get_audit',
+    name: 'Get Audit Events',
+    description: 'Get audit events and determinism checks.',
+    parameters: {
+      limit: { type: 'number', required: false, description: 'Max items (default 20)' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, `/api/audit?limit=${encodeURIComponent(String(params.limit || 20))}`, { method: 'GET' }),
+  },
+  {
+    id: 'get_usage',
+    name: 'Get Usage',
+    description: 'Get current plan usage and projected overage.',
+    parameters: {},
+    riskLevel: 'read',
+    requiredRole: 'usage_read',
+    execute: async (_params, context) => callJson(context, '/api/usage', { method: 'GET' }),
+  },
+  {
+    id: 'get_metrics',
+    name: 'Get Metrics',
+    description: 'Get current day control-plane performance metrics.',
+    parameters: {},
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (_params, context) => callJson(context, '/api/metrics', { method: 'GET' }),
+  },
+  {
+    id: 'get_integration',
+    name: 'Get Integration Status',
+    description: 'Fetch integration status and source-of-truth posture.',
+    parameters: {},
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (_params, context) => callJson(context, '/api/integration', { method: 'GET' }),
+  },
+  {
+    id: 'get_agent_detail',
+    name: 'Get Agent Detail',
+    description: 'Get details and monthly usage for one agent.',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Agent ID' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, { method: 'GET' }),
+  },
+  {
+    id: 'update_agent',
+    name: 'Update Agent',
+    description: 'Update agent metadata, status, policy, or monthly limit.',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Agent ID' },
+      name: { type: 'string', required: false, description: 'New name' },
+      status: { type: 'string', required: false, description: 'active or disabled' },
+      policy_id: { type: 'string', required: false, description: 'New policy ID' },
+      monthly_limit: { type: 'number', required: false, description: 'New monthly limit' },
+    },
+    riskLevel: 'write',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: params.name,
+          status: params.status,
+          policy_id: params.policy_id,
+          monthly_limit: params.monthly_limit,
+        }),
+      }),
+  },
+  {
+    id: 'rotate_agent_key',
+    name: 'Rotate Agent API Key',
+    description: 'Rotate and return a new one-time API key for an agent.',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Agent ID' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}/rotate-key`, {
+        method: 'POST',
+      }),
+  },
+  {
+    id: 'delete_agent',
+    name: 'Disable Agent',
+    description: 'Disable an agent (soft delete).',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Agent ID' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, {
+        method: 'DELETE',
+      }),
+  },
+  {
+    id: 'get_enterprise_proof',
+    name: 'Get Enterprise Proof Report',
+    description: 'Fetch public enterprise proof and attestation report.',
+    parameters: {},
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (_params, context) => callJson(context, '/api/enterprise-proof/report', { method: 'GET' }),
+  },
   {
     id: 'auto_setup',
     name: 'Run Org Auto Setup',

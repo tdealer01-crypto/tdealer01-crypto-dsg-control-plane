@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import AgentChatWidget from '../../components/AgentChatWidget';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
       {children}
+      <AgentChatWidget />
     </div>
   );
 }
