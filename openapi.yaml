@@ -1,0 +1,268 @@
+openapi: 3.1.0
+info:
+  title: DSG Control Plane API
+  version: 0.1.0
+  description: |
+    Initial OpenAPI surface for customer integration paths in DSG Control Plane.
+servers:
+  - url: https://tdealer01-crypto-dsg-control-plane.vercel.app
+paths:
+  /api/execute:
+    post:
+      summary: Execute an action via spine engine
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/mcp/call:
+    post:
+      summary: Call tools over MCP intent + execute flow
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agent_id:
+                  type: string
+                action:
+                  type: string
+                  default: mcp-call
+                tool_name:
+                  type: string
+                payload:
+                  type: object
+                  additionalProperties: true
+              required: [agent_id]
+      responses:
+        '200':
+          description: MCP dispatch decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runtime:
+                    type: object
+                    additionalProperties: true
+                  dispatch:
+                    type: object
+                    properties:
+                      tool_name:
+                        type: string
+                      dispatched:
+                        type: boolean
+                      bypass_prevented:
+                        type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/executors/dispatch:
+    post:
+      summary: Dispatch action to registered executor implementation
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutorDispatchRequest'
+      responses:
+        '200':
+          description: Executor dispatch accepted/completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutorDispatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/effect-callback:
+    post:
+      summary: Reconcile asynchronous effect callback
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EffectCallbackRequest'
+      responses:
+        '200':
+          description: Callback reconciled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectCallbackResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Effect id not found
+  /api/adapter-plan:
+    get:
+      summary: Read-side adapter path discovery
+      responses:
+        '200':
+          description: Adapter plan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+                  target_url:
+                    type: string
+                  inferred_profile:
+                    type: string
+                  inference_reason:
+                    type: string
+                  read_plan:
+                    type: object
+                    additionalProperties: true
+                  note:
+                    type: string
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ExecuteRequest:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        action:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+        context:
+          type: object
+          additionalProperties: true
+      required: [agent_id, action]
+    ExecuteResponse:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [ALLOW, BLOCK, REVIEW]
+        execution_id:
+          type: string
+        reason:
+          type: string
+      required: [decision]
+      additionalProperties: true
+    ExecutorDispatchRequest:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        action:
+          type: string
+        effect_id:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+      required: [agent_id, action]
+    ExecutorDispatchResponse:
+      type: object
+      properties:
+        effect_id:
+          type: string
+        dispatched:
+          type: boolean
+        provider:
+          type: string
+        status:
+          type: string
+        callbackMode:
+          type: string
+          enum: [sync, webhook]
+      required: [effect_id, dispatched, provider, status, callbackMode]
+      additionalProperties: true
+    EffectCallbackRequest:
+      type: object
+      properties:
+        effect_id:
+          type: string
+        status:
+          type: string
+          enum: [succeeded, failed]
+        payload:
+          type: object
+          additionalProperties: true
+      required: [effect_id, status]
+    EffectCallbackResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        idempotent:
+          type: boolean
+      required: [ok]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]

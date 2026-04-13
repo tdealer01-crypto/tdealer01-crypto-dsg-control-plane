@@ -1,0 +1,9 @@
+{
+  "name": "@dsg/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight DSG Control Plane client SDK",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts"
+}
