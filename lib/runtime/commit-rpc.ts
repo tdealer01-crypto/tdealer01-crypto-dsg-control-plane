@@ -32,8 +32,9 @@ function isRpcSignatureMismatch(message: string) {
 }
 
 function toLegacyArgs(args: RuntimeCommitRpcArgs) {
-  const { p_agent_monthly_limit: _agentLimit, p_org_plan_limit: _orgLimit, ...legacy } = args;
-  return legacy;
+  // Preserve quota parameters so schema-cache fallback cannot silently bypass
+  // agent/org billing guardrails by reverting them to SQL defaults.
+  return { ...args };
 }
 
 export async function invokeRuntimeCommitRpc(client: RpcClient, args: RuntimeCommitRpcArgs) {
