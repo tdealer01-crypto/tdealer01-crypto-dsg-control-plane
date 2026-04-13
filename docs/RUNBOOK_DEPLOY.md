@@ -162,6 +162,106 @@ Run migrations for the target environment before traffic cutover.
 
 - Validate schema changes via application smoke checks.
 
+### Runtime RPC drift recovery (`runtime_commit_execution`)
+If runtime requests fail with errors indicating missing/invalid runtime commit RPC behavior, recover with a **safe cutover**:
+
+1. Backup current function definition:
+
+```sql
+select pg_get_functiondef(p.oid)
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'runtime_commit_execution';
+```
+
+2. Rename the current function to keep rollback path:
+
+```sql
+alter function public.runtime_commit_execution(
+  text,
+  text,
+  uuid,
+  text,
+  text,
+  jsonb,
+  text,
+  jsonb,
+  integer,
+  jsonb,
+  jsonb,
+  text,
+  jsonb,
+  numeric,
+  timestamp with time zone,
+  integer,
+  integer
+)
+rename to runtime_commit_execution_legacy;
+```
+
+3. Recreate `public.runtime_commit_execution` using the canonical SQL in
+   `supabase/migrations/20260404_runtime_spine_rpc_hardening.sql`.
+   Do not `DROP FUNCTION` on the live signature.
+
+4. Re-apply function privileges:
+
+```sql
+revoke all on function public.runtime_commit_execution(
+  text,
+  text,
+  uuid,
+  text,
+  text,
+  jsonb,
+  text,
+  jsonb,
+  integer,
+  jsonb,
+  jsonb,
+  text,
+  jsonb,
+  numeric,
+  timestamptz,
+  integer,
+  integer
+) from public;
+
+grant execute on function public.runtime_commit_execution(
+  text,
+  text,
+  uuid,
+  text,
+  text,
+  jsonb,
+  text,
+  jsonb,
+  integer,
+  jsonb,
+  jsonb,
+  text,
+  jsonb,
+  numeric,
+  timestamptz,
+  integer,
+  integer
+) to service_role;
+```
+
+5. Verify end-to-end from deployed API:
+
+```bash
+curl -sS -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/spine/execute" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <redacted_live_key>" \
+  -d '{"agent_id":"2ea99317-7348-4457-a384-0a3e5990ada7","action":"scan","input":{},"context":{}}' | jq .
+```
+
+Pass criteria:
+- Response is not `{"error":"Runtime commit RPC is missing. Apply latest Supabase migrations"}`.
+- Response is not `{"error":"Invalid agent_id or API key"}`.
+- Successful responses should include runtime lineage fields (`request_id`, `ledger_sequence`, `truth_sequence`).
+
 Recommended CLI path:
 
 ```bash
