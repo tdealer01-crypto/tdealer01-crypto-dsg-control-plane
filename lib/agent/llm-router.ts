@@ -58,13 +58,14 @@ export function addMemory(sessionKey: string, entry: MemoryEntry) {
   const mem = memoryStore.get(sessionKey) || [];
   mem.push(entry);
 
+  cleanupStaleSessions(entry.timestamp);
+
   if (mem.length > MAX_MEMORY) {
     memoryStore.set(sessionKey, mem.slice(-MAX_MEMORY));
     return;
   }
 
   memoryStore.set(sessionKey, mem);
-  cleanupStaleSessions(entry.timestamp);
 }
 
 function cleanupStaleSessions(now: number) {
