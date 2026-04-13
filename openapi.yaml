@@ -3,15 +3,15 @@ info:
   title: DSG Control Plane API
   version: 0.1.0
   description: |
-    Initial OpenAPI surface for customer integration paths in DSG Control Plane.
+    Public integration surface for DSG control plane.
 servers:
   - url: https://tdealer01-crypto-dsg-control-plane.vercel.app
 paths:
   /api/execute:
     post:
-      summary: Execute an action via spine engine
+      summary: Execute an action through the DSG gate
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -20,94 +20,14 @@ paths:
               $ref: '#/components/schemas/ExecuteRequest'
       responses:
         '200':
-          description: Execution result
+          description: Gate decision
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecuteResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-  /api/mcp/call:
-    post:
-      summary: Call tools over MCP intent + execute flow
-      security:
-        - bearerAuth: []
-        - cookieAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                agent_id:
-                  type: string
-                action:
-                  type: string
-                  default: mcp-call
-                tool_name:
-                  type: string
-                payload:
-                  type: object
-                  additionalProperties: true
-              required: [agent_id]
-      responses:
-        '200':
-          description: MCP dispatch decision
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  runtime:
-                    type: object
-                    additionalProperties: true
-                  dispatch:
-                    type: object
-                    properties:
-                      tool_name:
-                        type: string
-                      dispatched:
-                        type: boolean
-                      bypass_prevented:
-                        type: boolean
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-  /api/executors/dispatch:
-    post:
-      summary: Dispatch action to registered executor implementation
-      security:
-        - cookieAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ExecutorDispatchRequest'
-      responses:
-        '200':
-          description: Executor dispatch accepted/completed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExecutorDispatchResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
   /api/effect-callback:
     post:
-      summary: Reconcile asynchronous effect callback
-      security:
-        - cookieAuth: []
+      summary: Reconcile external effect status
       requestBody:
         required: true
         content:
@@ -121,72 +41,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EffectCallbackResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: Effect id not found
-  /api/adapter-plan:
-    get:
-      summary: Read-side adapter path discovery
+  /api/integrations/register:
+    post:
+      summary: Self-service integration provisioning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterIntegrationRequest'
       responses:
-        '200':
-          description: Adapter plan
+        '201':
+          description: Integration created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                  timestamp:
-                    type: string
-                    format: date-time
-                  target_url:
-                    type: string
-                  inferred_profile:
-                    type: string
-                  inference_reason:
-                    type: string
-                  read_plan:
-                    type: object
-                    additionalProperties: true
-                  note:
-                    type: string
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+                $ref: '#/components/schemas/RegisterIntegrationResponse'
+  /api/integrations/webhooks:
+    post:
+      summary: Register integration webhook and CORS origins
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterWebhookRequest'
+      responses:
+        '200':
+          description: Webhook upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterWebhookResponse'
 components:
   securitySchemes:
-    bearerAuth:
+    BearerAuth:
       type: http
       scheme: bearer
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: sb-access-token
-  responses:
-    BadRequest:
-      description: Validation error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    Unauthorized:
-      description: Authentication required or invalid
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    TooManyRequests:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
   schemas:
     ExecuteRequest:
       type: object
+      required: [agent_id, action, input]
       properties:
         agent_id:
           type: string
@@ -198,9 +95,9 @@ components:
         context:
           type: object
           additionalProperties: true
-      required: [agent_id, action]
     ExecuteResponse:
       type: object
+      required: [decision, execution_id]
       properties:
         decision:
           type: string
@@ -209,39 +106,9 @@ components:
           type: string
         reason:
           type: string
-      required: [decision]
-      additionalProperties: true
-    ExecutorDispatchRequest:
-      type: object
-      properties:
-        agent_id:
-          type: string
-        action:
-          type: string
-        effect_id:
-          type: string
-        payload:
-          type: object
-          additionalProperties: true
-      required: [agent_id, action]
-    ExecutorDispatchResponse:
-      type: object
-      properties:
-        effect_id:
-          type: string
-        dispatched:
-          type: boolean
-        provider:
-          type: string
-        status:
-          type: string
-        callbackMode:
-          type: string
-          enum: [sync, webhook]
-      required: [effect_id, dispatched, provider, status, callbackMode]
-      additionalProperties: true
     EffectCallbackRequest:
       type: object
+      required: [effect_id, status]
       properties:
         effect_id:
           type: string
@@ -251,7 +118,6 @@ components:
         payload:
           type: object
           additionalProperties: true
-      required: [effect_id, status]
     EffectCallbackResponse:
       type: object
       properties:
@@ -259,10 +125,60 @@ components:
           type: boolean
         idempotent:
           type: boolean
-      required: [ok]
-    ErrorResponse:
+    RegisterIntegrationRequest:
+      type: object
+      required: [email, app_name]
+      properties:
+        email:
+          type: string
+          format: email
+        app_name:
+          type: string
+    RegisterIntegrationResponse:
+      type: object
+      required: [ok, org_id, agent_id, api_key]
+      properties:
+        ok:
+          type: boolean
+        org_id:
+          type: string
+        agent_id:
+          type: string
+        api_key:
+          type: string
+    RegisterWebhookRequest:
+      type: object
+      required: [agent_id, webhook_url]
+      properties:
+        agent_id:
+          type: string
+        webhook_url:
+          type: string
+          format: uri
+        allowed_origins:
+          type: array
+          items:
+            type: string
+            format: uri
+    RegisterWebhookResponse:
       type: object
       properties:
-        error:
-          type: string
-      required: [error]
+        ok:
+          type: boolean
+        integration:
+          type: object
+          properties:
+            id:
+              type: string
+            org_id:
+              type: string
+            agent_id:
+              type: string
+            webhook_url:
+              type: string
+            allowed_origins:
+              type: array
+              items:
+                type: string
+            status:
+              type: string
