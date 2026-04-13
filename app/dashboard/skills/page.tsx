@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const TOOLS = [
   ["readiness", "GET /api/core/monitor", "Read readiness, health, entropy, alerts, billing"],
@@ -33,9 +34,11 @@ type SetupResult = {
 };
 
 export default function SkillsPage() {
+  const router = useRouter();
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SetupResult | null>(null);
   const [error, setError] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
   const [query, setQuery] = useState("bitcoin regulation latest");
   const [searchResult, setSearchResult] = useState<Record<string, unknown> | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -55,11 +58,25 @@ export default function SkillsPage() {
         setError(json.error || `Setup failed (${res.status})`);
       } else {
         setResult(json);
+        if (json?.ok) {
+          setTimeout(() => router.push("/dashboard"), 1200);
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Network error");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function copyApiKey(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus("Copied API key");
+      setTimeout(() => setCopyStatus(""), 1800);
+    } catch {
+      setCopyStatus("Copy failed");
+      setTimeout(() => setCopyStatus(""), 1800);
     }
   }
 
@@ -142,6 +159,14 @@ export default function SkillsPage() {
                   <code className="mt-2 block break-all rounded bg-slate-950 p-3 text-xs text-emerald-300">
                     {result.api_key}
                   </code>
+                  <button
+                    onClick={() => void copyApiKey(result.api_key)}
+                    className="mt-3 rounded-lg border border-amber-200/40 px-3 py-2 text-xs font-semibold text-amber-100"
+                  >
+                    Copy to clipboard
+                  </button>
+                  {copyStatus ? <p className="mt-2 text-xs text-amber-100">{copyStatus}</p> : null}
+                  {result.ok ? <p className="mt-2 text-xs text-emerald-200">Setup complete. Redirecting to dashboard...</p> : null}
                 </div>
               )}
 

@@ -36,6 +36,11 @@ type UsageSummary = {
   projected_amount_usd: number;
 };
 
+type OnboardingState = {
+  bootstrap_status?: "pending" | "completed" | "failed";
+  checklist?: { steps?: string[]; next_action?: string };
+};
+
 function normalizeAgent(input: unknown): Agent | null {
   if (!input || typeof input !== "object") return null;
   const row = input as Record<string, unknown>;
@@ -142,6 +147,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [auditError, setAuditError] = useState<string>("");
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -173,12 +179,16 @@ export default function DashboardPage() {
             ok: r.ok,
             json: await r.json(),
           })),
+          fetch("/api/quickstart/onboarding", { cache: "no-store" }).then(async (r) => ({
+            ok: r.ok,
+            json: await r.json(),
+          })),
         ]);
 
         if (!alive) return;
 
         const warnings: string[] = [];
-        const [agentsResult, executionsResult, usageResult, healthResult, auditResult] = results;
+        const [agentsResult, executionsResult, usageResult, healthResult, auditResult, onboardingResult] = results;
 
         if (agentsResult.status === "fulfilled" && agentsResult.value.ok) {
           const normalizedAgents = Array.isArray(agentsResult.value.json?.items)
@@ -241,6 +251,10 @@ export default function DashboardPage() {
           );
         }
 
+        if (onboardingResult.status === "fulfilled" && onboardingResult.value.ok) {
+          setOnboarding(onboardingResult.value.json?.onboarding ?? null);
+        }
+
         if (warnings.length > 0) {
           setError(warnings.join(" | "));
         }
@@ -284,6 +298,19 @@ export default function DashboardPage() {
       ? "checking"
       : "ok";
 
+  const onboardingProgress = useMemo(() => {
+    const hasAgent = agents.length > 0;
+    const hasExecution = executions.length > 0;
+    const bootstrapped = onboarding?.bootstrap_status === "completed";
+    const completed = [hasAgent, hasExecution, bootstrapped].filter(Boolean).length;
+    const total = 3;
+    return {
+      percent: Math.round((completed / total) * 100),
+      completed,
+      total,
+    };
+  }, [agents.length, executions.length, onboarding?.bootstrap_status]);
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
@@ -307,6 +334,26 @@ export default function DashboardPage() {
         </div>
 
         {error ? <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
+
+        <section className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-200">Onboarding progress</p>
+              <p className="text-sm text-emerald-100/90">
+                {onboardingProgress.completed}/{onboardingProgress.total} completed
+              </p>
+            </div>
+            <Link href="/quickstart" className="rounded-xl border border-emerald-200/40 px-4 py-2 text-sm font-semibold text-emerald-100">
+              Continue quickstart
+            </Link>
+          </div>
+          <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
+            <div
+              className="h-2 rounded-full bg-emerald-300 transition-all"
+              style={{ width: `${onboardingProgress.percent}%` }}
+            />
+          </div>
+        </section>
 
         {!loading && !error && agents.length === 0 && executions.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">

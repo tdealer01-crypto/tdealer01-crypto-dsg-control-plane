@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 type AgentResponse = {
   agent_id: string;
@@ -36,12 +37,17 @@ type ExecuteResponse = {
 };
 
 export default function QuickstartPage() {
+  const router = useRouter();
   const [agent, setAgent] = useState<AgentResponse | null>(null);
   const [agentError, setAgentError] = useState('');
   const [execute, setExecute] = useState<ExecuteResponse | null>(null);
   const [executeError, setExecuteError] = useState('');
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isAutoSetupRunning, setIsAutoSetupRunning] = useState(false);
+  const [autoSetupSteps, setAutoSetupSteps] = useState<string[]>([]);
+  const [autoSetupExecutionId, setAutoSetupExecutionId] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState('');
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
   const [isEmptyOrg, setIsEmptyOrg] = useState(false);
 
@@ -72,6 +78,57 @@ export default function QuickstartPage() {
       setAgentError(error instanceof Error ? error.message : 'Failed to create starter agent');
     } finally {
       setIsCreatingAgent(false);
+    }
+  }
+
+  async function runOneClickSetup() {
+    try {
+      setIsAutoSetupRunning(true);
+      setAgentError('');
+      setExecuteError('');
+      setAutoSetupSteps([]);
+      setAutoSetupExecutionId(null);
+
+      const setupResponse = await fetch('/api/setup/auto', { method: 'POST', cache: 'no-store' });
+      const setupJson = await setupResponse.json();
+      if (!setupResponse.ok) {
+        throw new Error(String(setupJson?.error || 'Auto setup failed'));
+      }
+
+      setAutoSetupSteps(Array.isArray(setupJson?.steps) ? setupJson.steps : []);
+      setAutoSetupExecutionId(typeof setupJson?.execution_id === 'string' ? setupJson.execution_id : null);
+
+      if (typeof setupJson?.api_key === 'string' && setupJson.api_key.length > 0) {
+        setAgent({
+          agent_id: typeof setupJson.agent_id === 'string' ? setupJson.agent_id : 'auto-setup-agent',
+          name: 'Auto-Setup Agent',
+          policy_id: 'policy_default',
+          status: 'active',
+          monthly_limit: 10000,
+          api_key: setupJson.api_key,
+          api_key_preview: `${setupJson.api_key.slice(0, 12)}...`,
+          created: true,
+        });
+      }
+
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1200);
+    } catch (error) {
+      setAgentError(error instanceof Error ? error.message : 'Auto setup failed');
+    } finally {
+      setIsAutoSetupRunning(false);
+    }
+  }
+
+  async function copyApiKey(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus('Copied API key');
+      setTimeout(() => setCopyStatus(''), 1800);
+    } catch {
+      setCopyStatus('Copy failed');
+      setTimeout(() => setCopyStatus(''), 1800);
     }
   }
 
@@ -150,6 +207,30 @@ export default function QuickstartPage() {
         </section>
 
         <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-6">
+          <p className="text-lg font-semibold">One-click setup</p>
+          <p className="mt-2 text-sm text-slate-300">
+            Run full setup (policy + agent + verification execution + onboarding + billing) and continue to dashboard automatically.
+          </p>
+          <button
+            onClick={() => void runOneClickSetup()}
+            disabled={isAutoSetupRunning}
+            className="mt-4 rounded-xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950"
+          >
+            {isAutoSetupRunning ? 'Starting...' : 'Start One-Click Setup'}
+          </button>
+          {autoSetupExecutionId ? (
+            <p className="mt-3 text-sm text-emerald-200">Setup complete. Execution: {autoSetupExecutionId}. Redirecting to dashboard...</p>
+          ) : null}
+          {autoSetupSteps.length > 0 ? (
+            <ul className="mt-3 space-y-1 text-xs text-slate-300">
+              {autoSetupSteps.map((step) => (
+                <li key={step}>• {step}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-6">
           <p className="text-lg font-semibold">Create first agent</p>
           <button
             onClick={() => void createStarterAgent()}
@@ -173,6 +254,13 @@ export default function QuickstartPage() {
                 <div className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-100">
                   <p className="font-semibold">Copy API Key</p>
                   <code className="mt-1 block break-all text-xs">{agent.api_key}</code>
+                  <button
+                    onClick={() => void copyApiKey(agent.api_key)}
+                    className="mt-3 rounded-lg border border-emerald-200/40 px-3 py-2 text-xs font-semibold text-emerald-100"
+                  >
+                    Copy to clipboard
+                  </button>
+                  {copyStatus ? <p className="mt-2 text-xs">{copyStatus}</p> : null}
                 </div>
               ) : null}
             </div>
