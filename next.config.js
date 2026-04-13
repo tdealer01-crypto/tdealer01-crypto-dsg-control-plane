@@ -37,6 +37,14 @@ function buildConnectSrc() {
   return unique(["'self'", 'https://*.supabase.co', 'https://api.stripe.com', coreOrigin]).join(' ');
 }
 
+function buildScriptSrc() {
+  const base = ["'self'", "'unsafe-inline'", 'https://js.stripe.com'];
+  if (process.env.NODE_ENV !== 'production') {
+    base.push("'unsafe-eval'");
+  }
+  return unique(base).join(' ');
+}
+
 const allowedOrigins = buildAllowedOrigins();
 const primaryCorsOrigin = allowedOrigins[0] || null;
 
@@ -71,7 +79,7 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+              `script-src ${buildScriptSrc()}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data:",
               `connect-src ${buildConnectSrc()}`,
