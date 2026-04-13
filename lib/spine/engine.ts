@@ -70,6 +70,15 @@ function mapRpcError(error: unknown) {
   return { status: 500, body: { error: 'Internal server error' } };
 }
 
+function isMissingTableError(error: unknown, relation: string) {
+  const message = rpcErrorMessage(error).toLowerCase();
+  return (
+    message.includes(`relation "${relation.toLowerCase()}" does not exist`) ||
+    (message.includes('could not find the table') && message.includes(relation.toLowerCase())) ||
+    (message.includes('schema cache') && message.includes(relation.toLowerCase()))
+  );
+}
+
 async function resolveActiveAgent(orgId: string, agentId: string, apiKey: string) {
   const agent = await resolveAgentFromApiKey(agentId, apiKey);
   if (!agent || agent.org_id !== orgId) {
@@ -221,13 +230,17 @@ export async function executeSpineIntent(params: {
     return { ok: false as const, status: 429, body: { error: 'Agent monthly quota exceeded' } };
   }
 
-  const { data: subscription } = await supabase
+  const { data: subscription, error: subscriptionError } = await supabase
     .from('billing_subscriptions')
     .select('plan_key, status, current_period_start')
     .eq('org_id', agent.org_id)
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (subscriptionError && !isMissingTableError(subscriptionError, 'billing_subscriptions')) {
+    return { ok: false as const, status: 500, body: { error: 'Internal server error' } };
+  }
 
   const orgBillingPeriod = subscription?.current_period_start
     ? String(subscription.current_period_start).slice(0, 7)
