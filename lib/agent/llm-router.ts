@@ -43,8 +43,10 @@ export type MemoryEntry = {
   timestamp: number;
 };
 
+// In-memory only (best effort on serverless/warm instances).
 const memoryStore = new Map<string, MemoryEntry[]>();
 const MAX_MEMORY = 50;
+const SESSION_TTL_MS = 30 * 60 * 1000;
 
 type Intent = 'planning' | 'reasoning' | 'chat' | 'code';
 
@@ -62,6 +64,21 @@ export function addMemory(sessionKey: string, entry: MemoryEntry) {
   }
 
   memoryStore.set(sessionKey, mem);
+  cleanupStaleSessions(entry.timestamp);
+}
+
+function cleanupStaleSessions(now: number) {
+  for (const [key, entries] of memoryStore.entries()) {
+    const lastEntry = entries.at(-1);
+    if (!lastEntry) {
+      memoryStore.delete(key);
+      continue;
+    }
+
+    if (now - lastEntry.timestamp > SESSION_TTL_MS) {
+      memoryStore.delete(key);
+    }
+  }
 }
 
 function classifyIntent(message: string): Intent {
@@ -169,22 +186,36 @@ async function callOpenRouter(
     throw new Error('OPENROUTER_API_KEY not set');
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.APP_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
-      'X-Title': 'DSG Control Plane',
-    },
-    body: JSON.stringify({
-      model: model.openRouterId,
-      messages,
-      max_tokens: model.maxTokens,
-      temperature: 0.3,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  let response: Response;
+  try {
+    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.APP_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+        'X-Title': 'DSG Control Plane',
+      },
+      body: JSON.stringify({
+        model: model.openRouterId,
+        messages,
+        max_tokens: model.maxTokens,
+        temperature: 0.3,
+        response_format: { type: 'json_object' },
+      }),
+    });
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      throw new Error(`OpenRouter ${model.id} timeout after 15000ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const err = await response.text().catch(() => '');
