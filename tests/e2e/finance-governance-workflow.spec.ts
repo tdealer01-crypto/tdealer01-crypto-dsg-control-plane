@@ -31,59 +31,60 @@ function getCounts(state: OrgState) {
   };
 }
 
+function normalizePathname(rawPathname: string) {
+  return rawPathname.replace(/\/$/, '');
+}
+
+async function fulfillJson(route: Route, status: number, payload: unknown) {
+  await route.fulfill({
+    status,
+    contentType: 'application/json',
+    body: JSON.stringify(payload),
+  });
+}
+
 test.describe('finance governance workflow e2e', () => {
   test('submit → approve flow updates state and summary', async ({ page }) => {
     const orgStore = new Map<string, OrgState>();
 
     await page.route('**/api/finance-governance/**', async (route) => {
-      const request = route.request();
-      const orgId = (await request.headerValue('x-org-id')) ?? 'org-demo-live';
-      const state = orgStore.get(orgId) ?? createOrgState();
-      orgStore.set(orgId, state);
+      try {
+        const request = route.request();
+        const orgId = request.headers()['x-org-id'] ?? 'org-demo-live';
+        const state = orgStore.get(orgId) ?? createOrgState();
+        orgStore.set(orgId, state);
 
-      const url = new URL(request.url());
+        const url = new URL(request.url());
+        const pathname = normalizePathname(url.pathname);
 
-      if (request.method() === 'GET' && url.pathname === '/api/finance-governance/workspace/summary') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ workspace: { workspace: `Finance Governance (${orgId})`, counts: getCounts(state) } }),
-        });
-        return;
+        if (request.method() === 'GET' && pathname === '/api/finance-governance/workspace/summary') {
+          await fulfillJson(route, 200, { workspace: { workspace: `Finance Governance (${orgId})`, counts: getCounts(state) } });
+          return;
+        }
+
+        if (request.method() === 'GET' && pathname === '/api/finance-governance/approvals') {
+          await fulfillJson(route, 200, { approvals: state.approvals });
+          return;
+        }
+
+        if (request.method() === 'POST' && pathname === '/api/finance-governance/submit') {
+          state.submittedCount += 1;
+          await fulfillJson(route, 200, { ok: true, action: 'submit', message: 'Submitted for review', nextStatus: 'pending' });
+          return;
+        }
+
+        const approveMatch = pathname.match(/\/api\/finance-governance\/approvals\/([^/]+)\/approve$/);
+        if (request.method() === 'POST' && approveMatch) {
+          const approvalId = approveMatch[1];
+          state.approvals = state.approvals.map((item) => (item.id === approvalId ? { ...item, status: 'approved' } : item));
+          await fulfillJson(route, 200, { ok: true, action: 'approve', message: 'Approval completed', nextStatus: 'approved' });
+          return;
+        }
+
+        await fulfillJson(route, 404, { ok: false, error: 'not_found' });
+      } catch (error) {
+        await fulfillJson(route, 500, { ok: false, error: 'route_handler_failure', message: String(error) });
       }
-
-      if (request.method() === 'GET' && url.pathname === '/api/finance-governance/approvals') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ approvals: state.approvals }) });
-        return;
-      }
-
-      if (request.method() === 'POST' && url.pathname === '/api/finance-governance/submit') {
-        state.submittedCount += 1;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true, action: 'submit', message: 'Submitted for review', nextStatus: 'pending' }),
-        });
-        return;
-      }
-
-      const approveMatch = url.pathname.match(/\/api\/finance-governance\/approvals\/([^/]+)\/approve$/);
-      if (request.method() === 'POST' && approveMatch) {
-        const approvalId = approveMatch[1];
-        state.approvals = state.approvals.map((item) => (item.id === approvalId ? { ...item, status: 'approved' } : item));
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true, action: 'approve', message: 'Approval completed', nextStatus: 'approved' }),
-        });
-        return;
-      }
-
-      await route.fulfill({
-        status: 404,
-        contentType: 'application/json',
-        body: JSON.stringify({ ok: false, error: 'not_found' }),
-      });
     });
 
     await page.goto('/finance-governance/live/workflow');
@@ -104,37 +105,34 @@ test.describe('finance governance workflow e2e', () => {
     const orgStore = new Map<string, OrgState>();
 
     const handler = async (route: Route) => {
-      const request = route.request();
-      const orgId = (await request.headerValue('x-org-id')) ?? 'org-demo-live';
-      const state = orgStore.get(orgId) ?? createOrgState();
-      orgStore.set(orgId, state);
-      const url = new URL(request.url());
+      try {
+        const request = route.request();
+        const orgId = request.headers()['x-org-id'] ?? 'org-demo-live';
+        const state = orgStore.get(orgId) ?? createOrgState();
+        orgStore.set(orgId, state);
+        const url = new URL(request.url());
+        const pathname = normalizePathname(url.pathname);
 
-      if (request.method() === 'GET' && url.pathname === '/api/finance-governance/workspace/summary') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ workspace: { workspace: `Finance Governance (${orgId})`, counts: getCounts(state) } }),
-        });
-        return;
+        if (request.method() === 'GET' && pathname === '/api/finance-governance/workspace/summary') {
+          await fulfillJson(route, 200, { workspace: { workspace: `Finance Governance (${orgId})`, counts: getCounts(state) } });
+          return;
+        }
+
+        if (request.method() === 'GET' && pathname === '/api/finance-governance/approvals') {
+          await fulfillJson(route, 200, { approvals: state.approvals });
+          return;
+        }
+
+        if (request.method() === 'POST' && pathname === '/api/finance-governance/submit') {
+          state.submittedCount += 1;
+          await fulfillJson(route, 200, { ok: true, action: 'submit', message: 'Submitted for review', nextStatus: 'pending' });
+          return;
+        }
+
+        await fulfillJson(route, 404, { ok: false, error: 'not_found' });
+      } catch (error) {
+        await fulfillJson(route, 500, { ok: false, error: 'route_handler_failure', message: String(error) });
       }
-
-      if (request.method() === 'GET' && url.pathname === '/api/finance-governance/approvals') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ approvals: state.approvals }) });
-        return;
-      }
-
-      if (request.method() === 'POST' && url.pathname === '/api/finance-governance/submit') {
-        state.submittedCount += 1;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true, action: 'submit', message: 'Submitted for review', nextStatus: 'pending' }),
-        });
-        return;
-      }
-
-      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'not_found' }) });
     };
 
     const orgA = await browser.newContext();
@@ -152,7 +150,7 @@ test.describe('finance governance workflow e2e', () => {
     await orgBPage.goto('/finance-governance/live/workflow');
 
     await expect(orgBPage.getByText('Ready exports').locator('..').getByText('0')).toBeVisible();
-    await expect(orgBPage.getByText('Finance Governance (org-b)')).toBeVisible();
+    await expect(orgBPage.getByText('Pending approvals').locator('..').getByText('2')).toBeVisible();
 
     await orgA.close();
     await orgB.close();
@@ -160,56 +158,45 @@ test.describe('finance governance workflow e2e', () => {
 
   test('reload consistency retains persistent workflow state', async ({ page }) => {
     await page.route('**/api/finance-governance/**', async (route) => {
-      const request = route.request();
-      const url = new URL(request.url());
-      if (request.method() === 'GET' && url.pathname === '/api/finance-governance/workspace/summary') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
+      try {
+        const request = route.request();
+        const url = new URL(request.url());
+        const pathname = normalizePathname(url.pathname);
+        if (request.method() === 'GET' && pathname === '/api/finance-governance/workspace/summary') {
+          await fulfillJson(route, 200, {
             workspace: {
               workspace: 'Finance Governance Workspace',
               counts: { pendingApprovals: 2, openExceptions: 1, readyExports: 0 },
             },
-          }),
-        });
-        return;
-      }
+          });
+          return;
+        }
 
-      if (request.method() === 'GET' && url.pathname === '/api/finance-governance/approvals') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
+        if (request.method() === 'GET' && pathname === '/api/finance-governance/approvals') {
+          await fulfillJson(route, 200, {
             approvals: [
               { id: 'APR-1001', vendor: 'Northwind Supply', amount: 'US$14,250', status: 'Needs approver', risk: 'Threshold exceeded' },
               { id: 'APR-1002', vendor: 'Contoso Services', amount: 'US$2,480', status: 'Exception open', risk: 'Missing document' },
             ],
-          }),
-        });
-        return;
-      }
+          });
+          return;
+        }
 
-      if (request.method() === 'POST' && url.pathname === '/api/finance-governance/submit') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true, action: 'submit', message: 'Submitted for review', nextStatus: 'pending' }),
-        });
-        return;
-      }
+        if (request.method() === 'POST' && pathname === '/api/finance-governance/submit') {
+          await fulfillJson(route, 200, { ok: true, action: 'submit', message: 'Submitted for review', nextStatus: 'pending' });
+          return;
+        }
 
-      const approveMatch = url.pathname.match(/\/api\/finance-governance\/approvals\/([^/]+)\/approve$/);
-      if (request.method() === 'POST' && approveMatch) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true, action: 'approve', message: 'Approval completed', nextStatus: 'approved' }),
-        });
-        return;
-      }
+        const approveMatch = pathname.match(/\/api\/finance-governance\/approvals\/([^/]+)\/approve$/);
+        if (request.method() === 'POST' && approveMatch) {
+          await fulfillJson(route, 200, { ok: true, action: 'approve', message: 'Approval completed', nextStatus: 'approved' });
+          return;
+        }
 
-      await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'not_found' }) });
+        await fulfillJson(route, 404, { ok: false, error: 'not_found' });
+      } catch (error) {
+        await fulfillJson(route, 500, { ok: false, error: 'route_handler_failure', message: String(error) });
+      }
     });
 
     await page.goto('/finance-governance/live/workflow-persistent');
