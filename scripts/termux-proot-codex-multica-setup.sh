@@ -1,8 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-# Run this script in Termux (outside proot). It installs Debian via proot-distro,
-# then provisions Codex + Multica inside Debian as a non-root user setup.
+# Run in Termux (outside proot).
+# Provisions Debian + Codex + Multica with optional fast-path toggles.
+#
+# Speed toggles:
+# - TERMUX_SETUP_SKIP_UPGRADE=1 (default): skip `pkg upgrade` for faster bootstrap
+# - TERMUX_SETUP_FORCE_UPGRADE=1: run `pkg upgrade -y`
+# - TERMUX_SETUP_FORCE_REINSTALL=1: reinstall Codex/Multica even if present
 
 log() {
   printf "\n[%s] %s\n" "$(date '+%H:%M:%S')" "$*"
@@ -16,9 +21,18 @@ require_cmd() {
   }
 }
 
+TERMUX_SETUP_SKIP_UPGRADE="${TERMUX_SETUP_SKIP_UPGRADE:-1}"
+TERMUX_SETUP_FORCE_UPGRADE="${TERMUX_SETUP_FORCE_UPGRADE:-0}"
+TERMUX_SETUP_FORCE_REINSTALL="${TERMUX_SETUP_FORCE_REINSTALL:-0}"
+
 log "Step 1/4: Prepare Termux packages"
 pkg update -y
-pkg upgrade -y
+if [[ "$TERMUX_SETUP_FORCE_UPGRADE" == "1" || "$TERMUX_SETUP_SKIP_UPGRADE" != "1" ]]; then
+  log "Running pkg upgrade (forced)"
+  pkg upgrade -y
+else
+  log "Skipping pkg upgrade for faster bootstrap (set TERMUX_SETUP_FORCE_UPGRADE=1 to enable)"
+fi
 pkg install -y proot-distro curl
 
 require_cmd proot-distro
@@ -30,8 +44,10 @@ else
   log "Debian already present, skipping install"
 fi
 
-log "Step 3/4: Create Debian bootstrap script"
-cat > "$HOME/.termux-debian-codex-multica.sh" <<'DEBIAN_EOF'
+DEBIAN_SCRIPT="$HOME/.termux-debian-codex-multica.sh"
+
+log "Step 3/4: Create Debian bootstrap script at $DEBIAN_SCRIPT"
+cat > "$DEBIAN_SCRIPT" <<'DEBIAN_EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -39,18 +55,25 @@ log() {
   printf "\n[%s] %s\n" "$(date '+%H:%M:%S')" "$*"
 }
 
+FORCE_REINSTALL="${TERMUX_SETUP_FORCE_REINSTALL:-0}"
+export DEBIAN_FRONTEND=noninteractive
+
 log "Debian: install base dependencies"
 apt update
-apt install -y curl ca-certificates git xz-utils tar nodejs npm procps
+apt install -y --no-install-recommends curl ca-certificates git xz-utils tar nodejs npm procps
 
-log "Debian: install Codex CLI via npm"
-npm install -g @openai/codex
+log "Debian: install Codex CLI"
+if command -v codex >/dev/null 2>&1 && [[ "$FORCE_REINSTALL" != "1" ]]; then
+  log "Codex already installed, skipping (set TERMUX_SETUP_FORCE_REINSTALL=1 to reinstall)"
+else
+  npm install -g @openai/codex
+fi
 codex --version
 
 log "Debian: configure Codex default settings"
 mkdir -p "$HOME/.codex"
 cat > "$HOME/.codex/config.toml" <<'CONFIG_EOF'
-model = "gpt-5.4"
+model = "gpt-5.3-codex"
 approval_policy = "on-request"
 CONFIG_EOF
 
@@ -68,13 +91,25 @@ case "$ARCH" in
     ;;
 esac
 
-LATEST="$(curl -sI https://github.com/multica-ai/multica/releases/latest | awk -F'/' '/^location:/I{print $NF}' | tr -d '\r\n')"
+if command -v multica >/dev/null 2>&1 && [[ "$FORCE_REINSTALL" != "1" ]]; then
+  log "Multica already installed, skipping download (set TERMUX_SETUP_FORCE_REINSTALL=1 to reinstall)"
+else
+  LATEST="$(
+    curl -fsSLI https://github.com/multica-ai/multica/releases/latest \
+      | awk -F'/' '/^location:/I{print $NF}' \
+      | tr -d '\r\n'
+  )"
 
-curl -sL "https://github.com/multica-ai/multica/releases/download/${LATEST}/multica_${OS}_${ARCH}.tar.gz" -o /tmp/multica.tar.gz
-tar -xzf /tmp/multica.tar.gz -C /tmp multica
-mv /tmp/multica "$HOME/.local/bin/multica"
-chmod +x "$HOME/.local/bin/multica"
-rm -f /tmp/multica.tar.gz
+  if [[ -z "$LATEST" ]]; then
+    printf "ERROR: failed to resolve latest Multica release tag\n" >&2
+    exit 1
+  fi
+
+  curl -fsSL "https://github.com/multica-ai/multica/releases/download/${LATEST}/multica_${OS}_${ARCH}.tar.gz" -o /tmp/multica.tar.gz
+  tar -xzf /tmp/multica.tar.gz -C /tmp multica
+  install -m 0755 /tmp/multica "$HOME/.local/bin/multica"
+  rm -f /tmp/multica /tmp/multica.tar.gz
+fi
 
 grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc" || \
   echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
@@ -97,9 +132,9 @@ If Codex is not detected:
 NEXT_STEPS
 DEBIAN_EOF
 
-chmod +x "$HOME/.termux-debian-codex-multica.sh"
+chmod +x "$DEBIAN_SCRIPT"
 
 log "Step 4/4: Execute bootstrap inside Debian"
-proot-distro login debian -- /bin/bash -lc '$HOME/.termux-debian-codex-multica.sh'
+proot-distro login debian -- /bin/bash -lc "TERMUX_SETUP_FORCE_REINSTALL='${TERMUX_SETUP_FORCE_REINSTALL}' '$DEBIAN_SCRIPT'"
 
 log "Done. Enter Debian with: proot-distro login debian"
