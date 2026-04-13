@@ -162,6 +162,28 @@ Run migrations for the target environment before traffic cutover.
 
 - Validate schema changes via application smoke checks.
 
+### One-command runtime RPC + PostgREST cache recovery
+When `rpc_commit` fails because PostgREST cannot find `public.runtime_commit_execution(...)` in schema cache:
+
+```bash
+SUPABASE_DB_URL='postgres://...' ./scripts/apply-runtime-rpc-fix.sh
+```
+
+This script:
+1. Re-applies `20260402_billing_quota_in_rpc.sql`
+2. Re-applies `20260404_runtime_spine_rpc_hardening.sql`
+3. Sends `NOTIFY pgrst, 'reload schema'`
+4. Verifies `runtime_commit_execution` has the expected argument count (>= 17)
+
+You can also run it via npm script:
+
+```bash
+SUPABASE_DB_URL='postgres://...' npm run ops:runtime-rpc-fix
+```
+
+For Termux auto-install flow, `scripts/termux-deploy-all-in-one.sh` now prompts for `SUPABASE_DB_URL` and runs this fix automatically when provided.
+For CI/non-interactive mode, set `SUPABASE_DB_URL` in environment before running `scripts/termux-deploy-all-in-one.sh` (the script will skip the prompt when `CI=true`).
+
 ### Runtime RPC drift recovery (`runtime_commit_execution`)
 If runtime requests fail with errors indicating missing/invalid runtime commit RPC behavior, recover with a **safe cutover**:
 

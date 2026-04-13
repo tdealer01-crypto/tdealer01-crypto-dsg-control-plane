@@ -3,6 +3,7 @@ import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../billing/overage-confi
 import { getSupabaseAdmin } from '../supabase-server';
 import { buildApprovalKey } from '../runtime/approval';
 import { canonicalHash, canonicalJson, type CanonicalInput } from '../runtime/canonical';
+import { invokeRuntimeCommitRpc } from '../runtime/commit-rpc';
 import { runPipeline, SpineInfraError } from './pipeline';
 import type { SpineIntentPayload, TruthState } from './types';
 
@@ -339,7 +340,7 @@ export async function executeSpineIntent(params: {
     },
   };
 
-  const { data: commitResult, error: rpcError } = await supabase.rpc('runtime_commit_execution', {
+  const { data: commitResult, error: rpcError } = await invokeRuntimeCommitRpc(supabase, {
     p_org_id: agent.org_id,
     p_agent_id: agent.id,
     p_request_id: approvalRequest.id,

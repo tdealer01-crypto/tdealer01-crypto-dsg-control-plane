@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { canonicalHash, canonicalJson } from '../../../../lib/runtime/canonical';
 import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
+import { invokeRuntimeCommitRpc } from '../../../../lib/runtime/commit-rpc';
 import { getOverageRateUsd } from '../../../../lib/billing/overage-config';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
       expires_at: new Date(Date.now() + 5 * 60_000).toISOString(),
     });
 
-    const { data: commit, error: commitError } = await supabase.rpc('runtime_commit_execution', {
+    const { data: commit, error: commitError } = await invokeRuntimeCommitRpc(supabase, {
       p_org_id: orgId,
       p_agent_id: agentId,
       p_request_id: approvalId,
