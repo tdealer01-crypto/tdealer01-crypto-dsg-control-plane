@@ -90,7 +90,11 @@ export default function QuickstartPage() {
       const json = await response.json();
 
       if (!response.ok) {
-        throw new Error(json?.error || 'Failed to run sample execution');
+        const rawError = String(json?.error || 'Failed to run sample execution');
+        const message = rawError === 'Internal server error'
+          ? 'Internal server error: quickstart backend setup is incomplete. Check runtime migrations/logs.'
+          : rawError;
+        throw new Error(message);
       }
 
       setExecute(json as ExecuteResponse);

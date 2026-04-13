@@ -22,6 +22,26 @@ function mapRpcError(error: unknown) {
   const message = rpcErrorMessage(error).toLowerCase();
   const hasAny = (...patterns: string[]) => patterns.some((pattern) => message.includes(pattern));
 
+  if (
+    hasAny(
+      'runtime_commit_execution',
+      'function public.runtime_commit_execution',
+      'could not find the function public.runtime_commit_execution'
+    )
+  ) {
+    return {
+      status: 500,
+      body: { error: 'Runtime commit RPC is missing. Apply latest Supabase migrations.' },
+    };
+  }
+
+  if (hasAny('runtime_approval_requests', 'relation "runtime_approval_requests" does not exist')) {
+    return {
+      status: 500,
+      body: { error: 'Runtime spine tables are missing. Apply latest Supabase migrations.' },
+    };
+  }
+
   if (hasAny('agent_quota_exceeded', 'agent quota exceeded')) {
     return { status: 429, body: { error: 'Agent monthly quota exceeded' } };
   }
