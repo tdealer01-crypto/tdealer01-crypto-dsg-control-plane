@@ -24,7 +24,8 @@
     "go:no-go": "./scripts/go-no-go-gate.sh",
     "benchmark": "node scripts/benchmark-dsg.mjs",
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
-    "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs"
+    "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
+    "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",

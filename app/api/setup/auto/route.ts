@@ -5,6 +5,7 @@ import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../../lib/billing/
 import { bootstrapOrgStarterState } from '../../../../lib/onboarding/bootstrap';
 import { canonicalHash, canonicalJson } from '../../../../lib/runtime/canonical';
 import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
+import { invokeRuntimeCommitRpc } from '../../../../lib/runtime/commit-rpc';
 import { handleApiError } from '../../../../lib/security/api-error';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
@@ -168,7 +169,7 @@ export async function POST(_request: Request) {
         (results.steps as string[]).push(toStepStatus('approval', approvalError));
       }
     } else {
-      const { data: commit, error: commitError } = await admin.rpc('runtime_commit_execution', {
+      const { data: commit, error: commitError, mode: commitMode } = await invokeRuntimeCommitRpc(admin, {
         p_org_id: orgId,
         p_agent_id: agentId,
         p_request_id: approvalId,
@@ -195,7 +196,9 @@ export async function POST(_request: Request) {
         results.execution_id = row?.execution_id;
         results.ledger_id = row?.ledger_id;
         results.truth_state_id = row?.truth_state_id;
-        (results.steps as string[]).push(`rpc_commit: OK (execution=${row?.execution_id})`);
+        (results.steps as string[]).push(
+          `rpc_commit: OK${commitMode === 'legacy' ? ' (legacy-signature)' : ''} (execution=${row?.execution_id})`,
+        );
 
         if (row?.ledger_id && row?.truth_state_id) {
           const cpHash = buildCheckpointHash({

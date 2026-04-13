@@ -64,10 +64,23 @@ set_vercel_env "NEXT_PUBLIC_APP_URL" "$APP_URL"
 set_vercel_env "APP_URL" "$APP_URL"
 set_vercel_env "DSG_CORE_MODE" "internal"
 
-log "Step 2/5: Supabase link + migration push"
+log "Step 2/6: Supabase link + migration push"
 supabase login
 supabase link --project-ref "$SUPABASE_PROJECT_REF"
 supabase db push
+
+if [[ -z "${SUPABASE_DB_URL:-}" && "${CI:-}" != "true" ]]; then
+  read -r -p "SUPABASE_DB_URL สำหรับ reload PostgREST cache (ถ้ายังไม่มีให้กด Enter ข้าม): " SUPABASE_DB_URL
+fi
+
+if [[ -n "${SUPABASE_DB_URL:-}" ]]; then
+  log "Step 3/6: Apply runtime RPC hardening + reload PostgREST schema cache"
+  SUPABASE_DB_URL="${SUPABASE_DB_URL}" ./scripts/apply-runtime-rpc-fix.sh
+else
+  log "Step 3/6: ข้าม runtime RPC fix (ไม่ได้ใส่ SUPABASE_DB_URL)"
+  echo "  สามารถรันทีหลังได้ด้วย:"
+  echo "  SUPABASE_DB_URL='postgres://...' ./scripts/apply-runtime-rpc-fix.sh"
+fi
 
 cat <<'NOTE'
 
@@ -78,10 +91,10 @@ cat <<'NOTE'
    - Redirect URL: https://tdealer01-crypto-dsg-control-plane.vercel.app/auth/confirm
 NOTE
 
-log "Step 3/5: Deploy production บน Vercel"
+log "Step 4/6: Deploy production บน Vercel"
 vercel --prod
 
-log "Step 4/5: Health checks"
+log "Step 5/6: Health checks"
 printf "\n/api/health =>\n"
 curl -sS "${APP_URL}/api/health" | sed 's/^/  /'
 printf "\n\n/api/core/monitor =>\n"
