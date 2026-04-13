@@ -3,6 +3,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+const PLACEHOLDER_HINTS = ["<API_KEY", "<Agent_ID", "<AGENT_ID", "<your", "YOUR_"];
+
 const BASE_URL = mustGetEnv("BENCHMARK_BASE_URL");
 const API_KEY = mustGetEnv("BENCHMARK_API_KEY");
 const AGENT_ID = mustGetEnv("BENCHMARK_AGENT_ID");
@@ -24,6 +26,11 @@ async function main() {
   for (const testCase of cases) {
     const result = await runCase(testCase);
     results.push(result);
+
+    const fatalSetupMessage = getFatalSetupMessage(result);
+    if (fatalSetupMessage) {
+      throw new Error(fatalSetupMessage);
+    }
   }
 
   const summary = buildSummary(results);
@@ -55,6 +62,32 @@ async function main() {
   }
 }
 
+function getFatalSetupMessage(result) {
+  const status = Number(result?.execute_status || 0);
+  const message = String(result?.execute_response?.error || "");
+  const lower = message.toLowerCase();
+
+  if (status === 401 && lower.includes("invalid agent_id or api key")) {
+    return [
+      "Benchmark stopped: invalid BENCHMARK_AGENT_ID or BENCHMARK_API_KEY.",
+      "- Ensure API key belongs to the same agent_id.",
+      "- Reissue a new agent API key and export both values again.",
+      "- Quick check:",
+      `  curl -s -X POST \"${BASE_URL}${EXECUTE_PATH}\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer <API_KEY>\" -d '{\"agent_id\":\"<AGENT_ID>\",\"action\":\"scan\",\"input\":{},\"context\":{}}' | jq .`,
+    ].join("\n");
+  }
+
+  if (status === 401 && lower.includes("missing bearer token")) {
+    return "Benchmark stopped: missing Authorization Bearer token. Check BENCHMARK_API_KEY export.";
+  }
+
+  if (status === 403 && lower.includes("agent is not active")) {
+    return "Benchmark stopped: agent is not active. Activate the agent before running benchmark.";
+  }
+
+  return null;
+}
+
 async function loadCases(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
   const parsed = JSON.parse(raw);
@@ -80,6 +113,18 @@ async function runCase(testCase) {
     body: JSON.stringify(executePayload),
   });
 
+  if (!executeRes.ok && !executeRes.network_error) {
+    console.error(
+      `[benchmark][${testCase.case_id}] execute failed: status=${executeRes.status} path=${EXECUTE_PATH} error=${extractErrorMessage(executeRes.data)}`,
+    );
+  }
+
+  if (executeRes.network_error) {
+    console.error(
+      `[benchmark][${testCase.case_id}] execute network error: ${executeRes.network_error}`,
+    );
+  }
+
   const executionId = findExecutionId(executeRes.data);
   let replayRes = null;
 
@@ -91,6 +136,12 @@ async function runCase(testCase) {
         headers: authHeaders(),
       },
     );
+
+    if (!replayRes.ok && !replayRes.network_error) {
+      console.error(
+        `[benchmark][${testCase.case_id}] replay failed: status=${replayRes.status} path=${REPLAY_PATH_PREFIX}/${executionId} error=${extractErrorMessage(replayRes.data)}`,
+      );
+    }
   }
 
   const finishedAt = Date.now();
@@ -125,6 +176,7 @@ async function runCase(testCase) {
     latency_ms: latencyMs,
     execute_status: executeRes.status,
     replay_status: replayRes?.status ?? null,
+    network_error: executeRes.network_error || replayRes?.network_error || null,
     request: executePayload,
     execute_response: executeRes.data,
     replay_response: replayRes?.data ?? null,
@@ -225,7 +277,21 @@ ${rows}
 }
 
 async function fetchJson(url, init) {
-  const res = await fetch(url, init);
+  let res;
+  try {
+    res = await fetch(url, init);
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      data: {
+        error: "Network request failed",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      network_error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
   const text = await res.text();
   let data;
   try {
@@ -238,7 +304,13 @@ async function fetchJson(url, init) {
     ok: res.ok,
     status: res.status,
     data,
+    network_error: null,
   };
+}
+
+function extractErrorMessage(data) {
+  if (!data || typeof data !== "object") return "unknown";
+  return data.error || data.message || "unknown";
 }
 
 function authHeaders() {
@@ -303,6 +375,13 @@ function mustGetEnv(name) {
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
+
+  if (PLACEHOLDER_HINTS.some((hint) => value.includes(hint))) {
+    throw new Error(
+      `Environment variable ${name} still has placeholder text. Replace it with a real value before running benchmark.`,
+    );
+  }
+
   return value;
 }
 

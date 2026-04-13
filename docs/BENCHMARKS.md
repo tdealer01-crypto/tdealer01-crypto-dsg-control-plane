@@ -25,6 +25,22 @@ Use the **DSG Benchmark** workflow and provide:
 - optional `execute_path`
 - optional `replay_path_prefix`
 
+For local CLI runs:
+
+```bash
+export BENCHMARK_BASE_URL="https://<your-domain>"
+export BENCHMARK_API_KEY="dsg_live_xxx"
+export BENCHMARK_AGENT_ID="<agent-uuid>"
+export BENCHMARK_EXECUTE_PATH="/api/execute"
+export BENCHMARK_REPLAY_PATH_PREFIX="/api/replay"
+node scripts/benchmark-dsg.mjs
+```
+
+Troubleshooting:
+- Do not leave placeholder values like `<API_KEY ของคุณ>` or `<Agent_ID ของคุณ>`; the script now rejects placeholder-looking values.
+- If execution/replay fails, the script prints per-case status + server error to stderr so you can quickly identify auth/route/runtime issues.
+- If API key/agent mismatch is detected (`Invalid agent_id or API key`), benchmark stops immediately with a curl command you can copy to verify credentials.
+
 ## Output
 
 The workflow produces:
@@ -76,4 +92,3 @@ Follow this exact sequence for production-facing benchmark publishing:
 - Confirm `result.json` values match the run artifact `artifacts/benchmark/benchmark-result.json` from the same workflow run.
 - If Pages returns 404, re-check Pages Source is set to **GitHub Actions** (not branch deploy).
 - If workflow fails on auth, re-check `BENCHMARK_API_KEY` and `BENCHMARK_AGENT_ID` in repository secrets.
-
