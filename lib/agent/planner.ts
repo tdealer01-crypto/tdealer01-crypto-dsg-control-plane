@@ -19,10 +19,33 @@ function nextStep(id: number, toolId: string, params: Record<string, unknown>): 
   return { id: `s${id}`, toolId, params };
 }
 
-export function planGoal(message: string): AgentPlan {
+export function planGoal(message: string, pageContext?: string): AgentPlan {
   const text = message.trim();
   const lower = text.toLowerCase();
   const agentId = extractAgentId(text);
+
+
+  if (/^(ช่วย|help|แนะนำ|suggest)$/i.test(lower)) {
+    switch (pageContext) {
+      case '/dashboard/agents':
+        return { steps: [nextStep(1, 'list_agents', {})] };
+      case '/dashboard/policies':
+        return { steps: [nextStep(1, 'list_policies', {})] };
+      case '/dashboard/billing':
+      case '/dashboard/capacity':
+        return { steps: [nextStep(1, 'capacity', {})] };
+      case '/dashboard/executions':
+      case '/dashboard/operations':
+        return {
+          steps: [
+            nextStep(1, 'audit_summary', { agent_id: agentId }),
+            nextStep(2, 'recovery_validate', { agent_id: agentId }),
+          ],
+        };
+      default:
+        return { steps: [nextStep(1, 'readiness', {})] };
+    }
+  }
 
   if (/readiness|health|status|สถานะ/.test(lower)) {
     return { steps: [nextStep(1, 'readiness', {})] };
@@ -55,6 +78,41 @@ export function planGoal(message: string): AgentPlan {
     };
   }
 
+
+  if (/execution|executions|proof|replay|หลักฐาน/.test(lower)) {
+    const executionId = text.match(/exec_[a-zA-Z0-9_-]+/)?.[0] || '';
+    if (executionId) {
+      return { steps: [nextStep(1, 'get_execution_proof', { execution_id: executionId })] };
+    }
+
+    if (/proof/.test(lower)) {
+      return { steps: [nextStep(1, 'list_proofs', {})] };
+    }
+
+    return { steps: [nextStep(1, 'list_executions', {})] };
+  }
+
+  if (/ledger|บัญชี/.test(lower)) {
+    return { steps: [nextStep(1, 'get_ledger', {})] };
+  }
+
+  if (/usage|billing|ค่าใช้จ่าย|แพลน|plan/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'get_usage', {}),
+        nextStep(2, 'capacity', {}),
+      ],
+    };
+  }
+
+  if (/metric|latency|allow rate|block rate/.test(lower)) {
+    return { steps: [nextStep(1, 'get_metrics', {})] };
+  }
+
+  if (/integration|เชื่อมต่อ/.test(lower)) {
+    return { steps: [nextStep(1, 'get_integration', {})] };
+  }
+
   if (/quota|capacity|โควต้า/.test(lower)) {
     return { steps: [nextStep(1, 'capacity', {})] };
   }
@@ -63,6 +121,11 @@ export function planGoal(message: string): AgentPlan {
     return {
       steps: [nextStep(1, 'realtime_web_search', { query: text })],
     };
+  }
+
+
+  if (/list agents|show agents|agents|เอเจนต์ทั้งหมด/.test(lower)) {
+    return { steps: [nextStep(1, 'list_agents', {})] };
   }
 
   if (/policy|นโยบาย/.test(lower)) {
@@ -89,6 +152,19 @@ export function planGoal(message: string): AgentPlan {
         }),
       ],
     };
+  }
+
+
+  if (/agent detail|รายละเอียดเอเจนต์/.test(lower) && agentId) {
+    return { steps: [nextStep(1, 'get_agent_detail', { agent_id: agentId })] };
+  }
+
+  if (/rotate key|rotate api key/.test(lower) && agentId) {
+    return { steps: [nextStep(1, 'rotate_agent_key', { agent_id: agentId })] };
+  }
+
+  if (/delete agent|disable agent|ลบเอเจนต์/.test(lower) && agentId) {
+    return { steps: [nextStep(1, 'delete_agent', { agent_id: agentId })] };
   }
 
   if (/chatbot|chat bot|แชทบอท|แชตบอท/.test(lower)) {

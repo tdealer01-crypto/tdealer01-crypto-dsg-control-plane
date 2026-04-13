@@ -19,4 +19,21 @@ describe('agent planner chatbot intents', () => {
     expect(plan.steps[0]?.toolId).toBe('realtime_web_search');
     expect(plan.steps[0]?.params).toMatchObject({ query: 'ค้นหาข่าว bitcoin online ตอนนี้' });
   });
+
+
+  it('uses page context for help prompt', () => {
+    const plan = planGoal('help', '/dashboard/policies');
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.toolId).toBe('list_policies');
+  });
+
+  it('routes execution intent to list executions and replay tools', () => {
+    const listPlan = planGoal('show executions');
+    expect(listPlan.steps[0]?.toolId).toBe('list_executions');
+
+    const replayPlan = planGoal('show proof exec_abc123');
+    expect(replayPlan.steps[0]?.toolId).toBe('get_execution_proof');
+    expect(replayPlan.steps[0]?.params).toMatchObject({ execution_id: 'exec_abc123' });
+  });
+
 });
