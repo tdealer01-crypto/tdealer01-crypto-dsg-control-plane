@@ -19,6 +19,7 @@ const stats = [
   { label: 'Decision modes', value: 'ALLOW / STABILIZE / BLOCK' },
   { label: 'Commercial motion', value: 'Trial → Pro → Business → Enterprise' },
   { label: 'Built for', value: 'AI operations, governance, audit-heavy teams' },
+  { label: 'Playground', value: 'Try gate evaluation free — no signup required' },
 ];
 
 const verificationHighlights = [
@@ -78,6 +79,12 @@ export default function HomePage() {
             </p>
 
             <div className="mt-10 flex flex-wrap gap-4">
+              <Link
+                href="/playground"
+                className="rounded-2xl bg-white px-6 py-4 text-base font-semibold text-slate-950 transition hover:scale-[1.01]"
+              >
+                Try it free — no signup
+              </Link>
               <Link
                 href="/login"
                 aria-label="Continue with email login"
