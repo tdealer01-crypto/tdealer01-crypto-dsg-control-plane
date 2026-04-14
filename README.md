@@ -24,18 +24,20 @@
 
 ---
 
-## Latest Update (April 8, 2026)
+## Latest Update (April 14, 2026)
 
-- Hardened `/auth/continue` rate-limit key generation to avoid runtime/test instability when `request.nextUrl` is unavailable by falling back to `new URL(request.url).pathname`.
-- Re-ran validation checks after the update.
+- Synced README repo-truth with the current codebase structure (runtime control plane + finance governance surfaces now present in `app/` and `lib/`).
+- Re-validated the full automated test suite.
 
 ### Test Results (latest run)
 
 ```bash
-npm run test       # PASS (45 files, 100 tests)
-npm run typecheck  # PASS
-npm run lint       # PASS
+npm run test  # PASS (62 files passed, 1 skipped; 185 tests passed, 3 skipped)
 ```
+
+Notes:
+- The skipped file is `tests/integration/api/finance-governance-live-db.test.ts` (live DB integration guard).
+- E2E Playwright depends on browser availability in environment setup.
 
 ---
 
@@ -120,6 +122,11 @@ A product can have a public AI-readable narrative for positioning, while still k
 ### Enterprise proof surfaces
 - **Public proof narrative** for external evaluation
 - **Verified runtime evidence** for authenticated, org-scoped review
+
+### Current repository snapshot (April 14, 2026)
+- App Router pages are available across 19 top-level product surfaces (for example: `app/`, `dashboard/`, `finance-governance/`, `playground/`, `security/`, `support/`).
+- API layer currently exposes 40 route groups under `app/api/*` (including control-plane flows such as `execute`, `spine`, `intent`, `runtime-recovery`, `finance-governance`, `agent-execute`, and `integrations`).
+- The automated Vitest suite is green on this branch; Playwright E2E still depends on external browser download availability in the execution environment.
 
 ---
 
@@ -524,4 +531,3 @@ GitHub configuration requirements:
 Usage:
 - Run benchmark only: use workflow **DSG Benchmark**
 - Run benchmark + publish Pages: use workflow **DSG Benchmark Pages** with `base_url` and optional `execute_path` / `replay_path_prefix`
-
