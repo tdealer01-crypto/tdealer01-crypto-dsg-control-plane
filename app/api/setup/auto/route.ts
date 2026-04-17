@@ -65,6 +65,16 @@ export async function POST(_request: Request) {
     let onboardingStatus: SetupStatus = 'FAIL';
     let runtimeRolesStatus: SetupStatus = 'FAIL';
 
+    const fail = (payload: Record<string, unknown>, status = 500) =>
+      NextResponse.json(
+        {
+          ...results,
+          ...payload,
+          ok: false,
+        },
+        { status },
+      );
+
     let { error: policyError } = await admin.from('policies').upsert(
       {
         id: 'policy_default',
@@ -95,11 +105,21 @@ export async function POST(_request: Request) {
       policyStatus = 'FAIL';
     }
 
-    const { data: existingAgents } = await admin
+    const existingAgentsResult = await admin
       .from('agents')
       .select('id, name')
       .eq('org_id', orgId)
       .limit(1);
+
+    if (existingAgentsResult.error) {
+      agentStatus = 'FAIL';
+      (results.steps as string[]).push(`agent_lookup: FAIL (${existingAgentsResult.error.message})`);
+      return fail({
+        error: 'Failed to inspect existing agents before Auto-Setup.',
+      });
+    }
+
+    const existingAgents = existingAgentsResult.data ?? [];
 
     let agentId: string;
     let apiKey: string | null = null;
@@ -167,6 +187,7 @@ export async function POST(_request: Request) {
           (results.steps as string[]).push(`approval: FAIL (${approvalError.message})`);
           (results.steps as string[]).push(`rpc_commit: FAIL (${legacyExecError?.message || 'legacy execution failed'})`);
           rpcCommitStatus = 'FAIL';
+          checkpointStatus = 'FAIL';
         } else {
           results.execution_id = execution.id;
           await admin.from('audit_logs').insert({
@@ -180,6 +201,7 @@ export async function POST(_request: Request) {
           });
           (results.steps as string[]).push('approval: OK (legacy fallback)');
           (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${execution.id})`);
+          (results.steps as string[]).push('checkpoint: FAIL (legacy fallback did not create runtime checkpoint)');
           rpcCommitStatus = 'OK';
         }
       } else {
@@ -228,7 +250,7 @@ export async function POST(_request: Request) {
             latestTruthSequence: Number(row.truth_sequence || 0),
           });
 
-          await admin.from('runtime_checkpoints').upsert(
+          const { error: checkpointError } = await admin.from('runtime_checkpoints').upsert(
             {
               org_id: orgId,
               agent_id: agentId,
@@ -239,10 +261,17 @@ export async function POST(_request: Request) {
             },
             { onConflict: 'org_id,agent_id,checkpoint_hash', ignoreDuplicates: true },
           );
-          (results.steps as string[]).push('checkpoint: OK');
-          checkpointStatus = 'OK';
+
+          if (checkpointError) {
+            (results.steps as string[]).push(`checkpoint: FAIL (${checkpointError.message})`);
+            checkpointStatus = 'FAIL';
+          } else {
+            (results.steps as string[]).push('checkpoint: OK');
+            checkpointStatus = 'OK';
+          }
         } else {
           (results.steps as string[]).push('checkpoint: FAIL (missing ledger/truth references from runtime commit)');
+          checkpointStatus = 'FAIL';
         }
       }
     }
@@ -292,7 +321,7 @@ export async function POST(_request: Request) {
       onboardingStatus = 'FAIL';
     }
 
-    await admin.from('runtime_roles').upsert(
+    const { error: runtimeRolesError } = await admin.from('runtime_roles').upsert(
       [
         { org_id: orgId, user_id: access.userId, role: 'org_admin' },
         { org_id: orgId, user_id: access.userId, role: 'operator' },
@@ -301,8 +330,14 @@ export async function POST(_request: Request) {
       ],
       { onConflict: 'org_id,user_id,role', ignoreDuplicates: true },
     );
-    (results.steps as string[]).push('runtime_roles: OK');
-    runtimeRolesStatus = 'OK';
+
+    if (runtimeRolesError) {
+      (results.steps as string[]).push(`runtime_roles: FAIL (${runtimeRolesError.message})`);
+      runtimeRolesStatus = 'FAIL';
+    } else {
+      (results.steps as string[]).push('runtime_roles: OK');
+      runtimeRolesStatus = 'OK';
+    }
 
     const coreMode = process.env.DSG_CORE_MODE;
     results.env_check = {
