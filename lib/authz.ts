@@ -1,101 +1,107 @@
 import { createClient } from './supabase/server';
+import { getSupabaseAdmin } from './supabase-server';
 
 export type RuntimeRole = 'org_admin' | 'operator' | 'reviewer' | 'runtime_auditor' | 'billing_admin';
 
-type RoleRow = { role?: unknown };
-
-function mapOrgRoleToRuntimeRole(role: string): RuntimeRole | null {
-  const normalized = role.trim().toLowerCase();
-  if (normalized === 'owner' || normalized === 'admin') return 'org_admin';
-  if (normalized === 'operator') return 'operator';
-  if (normalized === 'reviewer' || normalized === 'viewer') return 'reviewer';
-  if (normalized === 'runtime_auditor' || normalized === 'auditor') return 'runtime_auditor';
-  if (normalized === 'billing' || normalized === 'billing_admin') return 'billing_admin';
-  return null;
+function includesRequiredRole(userRoles: string[], requiredRoles: string[]) {
+  return requiredRoles.some((role) => userRoles.includes(role));
 }
 
-function hasMissingRelationError(error: unknown) {
-  if (!error || typeof error !== 'object') return false;
-  const message = String((error as { message?: unknown }).message || '').toLowerCase();
-  return message.includes('does not exist') || message.includes('undefined table') || message.includes('relation');
-}
-
-function hasUnavailableRuntimeRolesError(error: unknown) {
-  if (!error || typeof error !== 'object') return false;
-  const message = String((error as { message?: unknown }).message || '').toLowerCase();
-  return (
-    hasMissingRelationError(error) ||
-    message.includes('permission denied') ||
-    message.includes('not authorized') ||
-    message.includes('schema cache')
-  );
-}
-
-function collectRoles(rows: RoleRow[] | null | undefined): Set<RuntimeRole> {
-  const out = new Set<RuntimeRole>();
-  for (const row of rows || []) {
-    const mapped = mapOrgRoleToRuntimeRole(String(row.role || ''));
-    if (mapped) out.add(mapped);
-  }
-  return out;
-}
-
-export async function requireOrgRole(roles: RuntimeRole[]) {
+export async function requireOrgRole(requiredRoles: RuntimeRole[]){
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) return { ok: false as const, status: 401, error: 'Unauthorized' };
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
+  if (authError || !user?.id) {
+    return {
+      ok: false as const,
+      status: 401,
+      error: 'Unauthorized',
+    };
+  }
+
+  const admin = getSupabaseAdmin();
+
+  // runtime_roles.user_id references public.users.id, NOT auth.users.id.
+  // Map auth.users.id -> public.users.id first.
+  const profile = await admin
     .from('users')
     .select('id, org_id, is_active, role')
-    .eq('auth_user_id', auth.user.id)
+    .eq('auth_user_id', user.id)
     .maybeSingle();
 
-  if (!profile?.org_id || !profile.is_active) {
-    return { ok: false as const, status: 403, error: 'Forbidden' };
+  if (profile.error) {
+    return {
+      ok: false as const,
+      status: 500,
+      error: profile.error.message,
+    };
   }
 
-  let granted = new Set<RuntimeRole>();
+  if (!profile.data?.id || !profile.data?.org_id || !profile.data?.is_active) {
+    return {
+      ok: false as const,
+      status: 401,
+      error: 'Unauthorized',
+    };
+  }
 
-  const { data: runtimeRoleRows, error: runtimeRoleError } = await supabase
+  const appUserId = String(profile.data.id);
+  const orgId = String(profile.data.org_id);
+  const baseRole = String(profile.data.role || '').trim().toLowerCase();
+
+  const runtimeRolesResult = await admin
     .from('runtime_roles')
     .select('role')
-    .eq('org_id', profile.org_id)
-    .eq('user_id', profile.id);
+    .eq('org_id', orgId)
+    .eq('user_id', appUserId);
 
-  if (!runtimeRoleError) {
-    granted = collectRoles(runtimeRoleRows as RoleRow[]);
-  } else if (hasUnavailableRuntimeRolesError(runtimeRoleError)) {
-    const fallbackRows: RoleRow[] = [];
-
-    const { data: userOrgRoleRows, error: userOrgRoleError } = await supabase
-      .from('user_org_roles')
-      .select('role')
-      .eq('org_id', profile.org_id)
-      .eq('user_id', profile.id);
-
-    if (!userOrgRoleError) {
-      fallbackRows.push(...((userOrgRoleRows || []) as RoleRow[]));
-    }
-
-    if (profile.role) {
-      fallbackRows.push({ role: profile.role });
-    }
-
-    granted = collectRoles(fallbackRows);
+  if (runtimeRolesResult.error) {
+    return {
+      ok: false as const,
+      status: 500,
+      error: runtimeRolesResult.error.message,
+    };
   }
 
-  if (granted.size === 0 && profile.role) {
-    const mapped = mapOrgRoleToRuntimeRole(String(profile.role));
-    if (mapped) {
-      granted.add(mapped);
-    }
+  const runtimeRoles = (runtimeRolesResult.data ?? [])
+    .map((row) => String(row.role))
+    .filter((role): role is RuntimeRole => {
+      return role === 'org_admin' || role === 'operator' || role === 'reviewer' || role === 'runtime_auditor' || role === 'billing_admin';
+    });
+
+  // Bootstrap fallback for first-run seed state.
+  const effectiveRoles = new Set<string>(runtimeRoles);
+
+  if (baseRole === 'owner' || baseRole === 'admin') {
+    effectiveRoles.add('org_admin');
+    effectiveRoles.add('operator');
+    effectiveRoles.add('reviewer');
+    effectiveRoles.add('runtime_auditor');
+    effectiveRoles.add('billing_admin');
   }
 
-  const hasRole = roles.some((role) => granted.has(role));
-  if (!hasRole) {
-    return { ok: false as const, status: 403, error: 'Insufficient role', orgId: String(profile.org_id), userId: String(profile.id) };
+  if (baseRole === 'viewer' || baseRole === 'guest_auditor') {
+    effectiveRoles.add('reviewer');
   }
 
-  return { ok: true as const, orgId: String(profile.org_id), userId: String(profile.id), grantedRoles: Array.from(granted) };
+  const effectiveRolesList = Array.from(effectiveRoles);
+
+  if (!includesRequiredRole(effectiveRolesList, requiredRoles)) {
+    return {
+      ok: false as const,
+      status: 403,
+      error: 'Forbidden',
+    };
+  }
+
+  return {
+    ok: true as const,
+    orgId,
+    userId: appUserId,
+    authUserId: String(user.id),
+    grantedRoles: effectiveRolesList as RuntimeRole[],
+  };
 }
