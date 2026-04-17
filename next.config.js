@@ -33,6 +33,7 @@ function buildScriptSrc() {
 
 const nextConfig = {
   async headers() {
+    // API CORS is intentionally handled at route level via lib/security/cors.ts.
     return [
       {
         source: '/(.*)',
@@ -57,10 +58,6 @@ const nextConfig = {
               "base-uri 'self'",
               "object-src 'none'",
             ].join('; '),
-          },
-          {
-            key: 'X-Api-Cors-Owner',
-            value: 'route-level-lib/security/cors.ts',
           },
         ],
       },
