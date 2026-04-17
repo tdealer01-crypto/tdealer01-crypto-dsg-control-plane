@@ -356,7 +356,7 @@ Response:
       },
       {
         "key": "first_execution",
-        "label": "Run your first execution",
+        "label": "Complete Auto-Setup",
         "status": "not_started",
         "route": "/dashboard/command-center"
       }
@@ -1427,7 +1427,7 @@ Audit / reporting
   - Set roles and access
   - Create first policy
   - Connect integration
-  - Run first execution
+  - Complete Auto-Setup
 
 #### Checklist component structure
 Each item must include:

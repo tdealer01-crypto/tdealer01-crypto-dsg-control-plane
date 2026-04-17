@@ -112,9 +112,9 @@ A product can have a public AI-readable narrative for positioning, while still k
 - trial signup and provisioning flow
 
 ### Agent and execution layer
-- starter-agent creation
+- Auto-Setup creates policy + agent + execution + billing subscription + onboarding + runtime roles
 - one-time API key generation
-- sample execution path
+- stable real-run execution path via `POST /api/execute`
 - execution decisions, latency, and audit references
 
 ### Monitoring and control-plane surfaces
@@ -169,23 +169,23 @@ This surface is:
 
 ---
 
-## Quickstart Experience
+## First-Run Experience (Auto-Setup)
 
-A new workspace can be evaluated through a guided flow:
+A new workspace should follow the main first-run flow:
 
 1. Sign up for a trial workspace
 2. Confirm the magic link
-3. Enter `/quickstart`
-4. Create the first starter agent
-5. Copy the one-time API key
-6. Run the first sample execution through `/api/execute`
-7. Inspect mission, app-shell, and enterprise-proof surfaces
+3. Open `/dashboard/skills`
+4. Run **Auto-Setup** (creates policy + agent + execution + billing subscription + onboarding + runtime roles)
+5. Copy the one-time API key after setup completes
+6. Run real execution through `/api/execute` (stable entry point)
+7. Continue from `/dashboard/executions` for post-setup operations
 
-Quickstart currently includes:
+First-run Auto-Setup currently includes:
 - 14-day trial
 - 1,000 included executions
-- first-agent creation
-- first-execution walkthrough
+- first agent creation + first execution in one flow
+- post-setup landing at `/dashboard/executions`
 - links into live monitoring surfaces
 
 ---
@@ -202,7 +202,7 @@ Use this as the anonymous/public baseline availability probe for deployment and 
 ### Stable execution compatibility entry
 - `POST /api/execute`
 
-This is the stable compatibility entry used by quickstart and sample execution flows.
+This is the stable execution entry used for real-run traffic after first-run setup.
 
 Important:
 - this route is **not** an anonymous public execution endpoint
@@ -336,7 +336,7 @@ This path:
 - creates a pending trial-signup record
 - sends a magic link
 - provisions organization, user, and trial subscription during confirmation
-- redirects the user into `/quickstart`
+- redirects the user into `/dashboard/skills`
 
 ### `/login`
 For already provisioned operator accounts only.
@@ -373,7 +373,7 @@ Organizations using DSG ONE get:
 - a clearer runtime control layer for AI execution
 - better operational evidence for review
 - separation between public positioning and real runtime proof
-- visible quickstart paths from signup to first execution
+- visible first-run Auto-Setup path from signup to first execution
 - operator-facing surfaces for mission, execution, and readiness workflows
 - an architecture designed for review, not only for demos
 
@@ -409,8 +409,8 @@ It is through inspection.
 Review:
 - signup and login behavior
 - provisioning rules
-- quickstart flow
-- starter-agent creation
+- first-run Auto-Setup flow
+- Auto-Setup creates policy + agent + execution + billing subscription + onboarding + runtime roles
 - execution path and returned decision data
 - public enterprise-proof surfaces
 - verified runtime proof surfaces
@@ -431,8 +431,8 @@ A practical evaluation path is:
 1. Open the public proof narrative
 2. Start a trial workspace
 3. Complete magic-link confirmation
-4. Use quickstart to create the first agent
-5. Run the first execution
+4. Run Auto-Setup in `/dashboard/skills`
+5. Continue in `/dashboard/executions`
 6. Open mission and dashboard surfaces
 7. Inspect the verified runtime proof path
 8. Compare runtime behavior against the product claims and research direction
@@ -494,7 +494,7 @@ If your organization needs AI systems to operate with:
 - explicit runtime control
 - visible execution evidence
 - authenticated operator workflows
-- structured quickstart-to-production paths
+- structured first-run-to-production paths
 - public proof for external evaluation
 - verified proof for real runtime review
 
