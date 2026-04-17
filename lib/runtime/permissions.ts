@@ -8,6 +8,7 @@ export const RuntimeRouteRoles: Record<string, RuntimeRole[]> = {
   checkpoint: ['runtime_auditor', 'org_admin'],
   runtime_summary: ['runtime_auditor', 'reviewer', 'org_admin'],
   monitor: ['operator', 'org_admin', 'runtime_auditor'],
+  executions_read: ['operator', 'org_admin', 'runtime_auditor'],
   usage_read: ['billing_admin', 'org_admin'],
   policies_read: ['reviewer', 'org_admin', 'runtime_auditor'],
   policies_write: ['org_admin', 'reviewer'],
