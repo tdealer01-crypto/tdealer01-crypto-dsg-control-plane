@@ -252,13 +252,31 @@ export async function GET(request: NextRequest) {
     source: 'auth_confirm',
   });
 
+  const appUserId = provisionedUser?.id || existingUser?.id || null;
+
+  if (appUserId) {
+    const { error: runtimeRolesError } = await admin.from('runtime_roles').upsert(
+      [
+        { org_id: orgId, user_id: appUserId, role: 'org_admin' },
+        { org_id: orgId, user_id: appUserId, role: 'operator' },
+        { org_id: orgId, user_id: appUserId, role: 'runtime_auditor' },
+        { org_id: orgId, user_id: appUserId, role: 'billing_admin' },
+      ],
+      { onConflict: 'org_id,user_id,role', ignoreDuplicates: true },
+    );
+
+    if (runtimeRolesError) {
+      console.error('[auth-confirm] runtime_roles bootstrap failed:', runtimeRolesError);
+    }
+  }
+
   try {
-    await bootstrapOrgStarterState(orgId, { initiatedByUserId: user.id });
+    await bootstrapOrgStarterState(orgId, { initiatedByUserId: appUserId });
   } catch (bootstrapError) {
     console.error('[auth-confirm] bootstrap failed:', bootstrapError);
     await admin.from('org_onboarding_states').upsert({
       org_id: orgId,
-      bootstrap_status: 'failed',
+      bootstrap_status: 'pending',
       checklist: {
         steps: [
           'Create or inspect your first agent',
@@ -267,7 +285,7 @@ export async function GET(request: NextRequest) {
           'Inspect evidence or audit output',
           'Review quota/billing basics',
         ],
-        next_action: 'Set up starter workspace',
+        next_action: 'Complete Auto-Setup in Skills to create your first execution',
       },
       updated_at: nowIso,
     }, { onConflict: 'org_id' });
