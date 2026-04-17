@@ -36,6 +36,24 @@ type ExecuteResponse = {
   request_id: string;
 };
 
+type IntegrationPack = {
+  env: {
+    DSG_BASE_URL: string;
+    DSG_AGENT_ID: string;
+    DSG_API_KEY: string;
+  };
+  smoke_test: {
+    health_check: string;
+    execute: string;
+  };
+  sdk: {
+    language: string;
+    function_name: string;
+    snippet: string;
+  };
+  next_step: string;
+};
+
 export default function QuickstartPage() {
   const router = useRouter();
   const [agent, setAgent] = useState<AgentResponse | null>(null);
@@ -44,12 +62,14 @@ export default function QuickstartPage() {
   const [executeError, setExecuteError] = useState('');
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isGeneratingPack, setIsGeneratingPack] = useState(false);
   const [isAutoSetupRunning, setIsAutoSetupRunning] = useState(false);
   const [autoSetupSteps, setAutoSetupSteps] = useState<string[]>([]);
   const [autoSetupExecutionId, setAutoSetupExecutionId] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState('');
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
   const [isEmptyOrg, setIsEmptyOrg] = useState(false);
+  const [integrationPack, setIntegrationPack] = useState<IntegrationPack | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -159,6 +179,36 @@ export default function QuickstartPage() {
       setExecuteError(error instanceof Error ? error.message : 'Failed to run sample execution');
     } finally {
       setIsExecuting(false);
+    }
+  }
+
+  async function generateIntegrationPack() {
+    try {
+      setIsGeneratingPack(true);
+      setAgentError('');
+
+      const response = await fetch('/api/quickstart/integration-pack', { method: 'POST' });
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(String(json?.error || 'Failed to generate integration pack'));
+      }
+
+      const pack = json as IntegrationPack;
+      setIntegrationPack(pack);
+      setAgent({
+        agent_id: pack.env.DSG_AGENT_ID,
+        name: 'Starter Agent',
+        policy_id: agent?.policy_id || 'policy_default',
+        status: 'active',
+        monthly_limit: agent?.monthly_limit || 1000,
+        api_key: pack.env.DSG_API_KEY,
+        api_key_preview: `${pack.env.DSG_API_KEY.slice(0, 12)}...`,
+        created: true,
+      });
+    } catch (error) {
+      setAgentError(error instanceof Error ? error.message : 'Failed to generate integration pack');
+    } finally {
+      setIsGeneratingPack(false);
     }
   }
 
@@ -296,6 +346,42 @@ export default function QuickstartPage() {
               <p>Latency: {execute.latency_ms} ms</p>
               <p>Execution ID: {execute.request_id}</p>
               <p>Audit ID: {execute.audit_id || 'n/a'}</p>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-[1.5rem] border border-emerald-400/30 bg-emerald-500/10 p-6">
+          <p className="text-lg font-semibold">Auto integration pack (recommended)</p>
+          <p className="mt-2 text-sm text-slate-200">
+            Generate backend-ready environment variables, smoke test commands, and a TypeScript helper with one click.
+          </p>
+          <button
+            onClick={() => void generateIntegrationPack()}
+            disabled={isGeneratingPack}
+            className="mt-4 rounded-xl bg-emerald-300 px-4 py-3 font-semibold text-slate-950"
+          >
+            {isGeneratingPack ? 'Generating...' : 'Generate Pack'}
+          </button>
+          {integrationPack ? (
+            <div className="mt-4 space-y-4 text-xs text-emerald-50">
+              <div className="rounded-xl border border-emerald-200/30 bg-slate-950/70 p-4">
+                <p className="text-sm font-semibold">.env for your backend</p>
+                <pre className="mt-2 overflow-auto whitespace-pre-wrap">
+{`DSG_BASE_URL=${integrationPack.env.DSG_BASE_URL}
+DSG_AGENT_ID=${integrationPack.env.DSG_AGENT_ID}
+DSG_API_KEY=${integrationPack.env.DSG_API_KEY}`}
+                </pre>
+              </div>
+              <div className="rounded-xl border border-emerald-200/30 bg-slate-950/70 p-4">
+                <p className="text-sm font-semibold">Smoke test commands</p>
+                <pre className="mt-2 overflow-auto whitespace-pre-wrap">{integrationPack.smoke_test.health_check}</pre>
+                <pre className="mt-3 overflow-auto whitespace-pre-wrap">{integrationPack.smoke_test.execute}</pre>
+              </div>
+              <div className="rounded-xl border border-emerald-200/30 bg-slate-950/70 p-4">
+                <p className="text-sm font-semibold">TypeScript helper ({integrationPack.sdk.function_name})</p>
+                <pre className="mt-2 overflow-auto whitespace-pre-wrap">{integrationPack.sdk.snippet}</pre>
+              </div>
+              <p className="text-sm text-emerald-100">{integrationPack.next_step}</p>
             </div>
           ) : null}
         </section>
