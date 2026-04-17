@@ -352,10 +352,16 @@ Other key library files/folders:
 - `scripts/check-error-handlers.sh`
 - `scripts/stripe-setup.ts`
 - `scripts/termux-deploy-all-in-one.sh`
+- `scripts/apply-runtime-rpc-fix.sh`
+- `scripts/go-no-go-gate.sh`
+- `scripts/with-playwright-chromium.sh`
+- `scripts/benchmark-dsg.mjs`
+- `scripts/render-benchmark-site.mjs`
 - `apply-billing-checkout-flow.sh`
 - `apply-complete-audit-hotfix.sh`
 - `set-vercel-runtime-env.sh`
 - `set-vercel-stripe-env.sh`
+- `redeploy-vercel-prod.sh`
 
 ### Documentation surface (`docs/`)
 
