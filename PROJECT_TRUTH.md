@@ -64,6 +64,16 @@ Authoritative evidence files:
 
 Working rule: preserve older snapshots as historical context, but treat the April 17, 2026 artifact set as the current repo baseline until superseded by a newer committed run.
 
+
+## Production-readiness status boundary
+
+Repository test truth and production go-live truth are intentionally separate:
+
+- Test truth (current): April 17, 2026 committed Vitest baseline = `185 passed, 3 skipped, 0 failed`.
+- Go-live truth (current): **not yet complete** until runbook evidence is closed for deployment readiness, env validation, migration apply state, deployed smoke checks, authenticated operator checks, and live staging/E2E validation.
+
+Do not claim full production readiness from Vitest evidence alone.
+
 ## Working rule for future sessions
 
 Before patching, deploying, or updating docs:

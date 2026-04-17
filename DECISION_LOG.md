@@ -74,3 +74,21 @@ Authoritative evidence:
 Interpretation rule:
 - Keep April 11 documents for historical traceability.
 - Treat April 17 committed evidence as current truth until superseded by a newer committed run.
+
+
+### Decision 007
+Status: accepted
+Type: production-readiness gating
+
+The April 17, 2026 Vitest baseline (**185 passed, 3 skipped, 0 failed**) is necessary but not sufficient to declare production go-live complete.
+
+Go-live remains blocked until RUNBOOK evidence is closed for:
+- Vercel production deployment status = `Ready`
+- production environment variables complete and validated
+- Supabase migrations applied in-order on target environment
+- `/api/health` smoke check passes on deployed target
+- `/api/core/monitor` and authenticated operator checks pass
+- staging/live E2E validation is recorded
+
+Documentation rule:
+- keep test-baseline truth and production-readiness truth as separate sections so test success is not misread as full cutover completion.

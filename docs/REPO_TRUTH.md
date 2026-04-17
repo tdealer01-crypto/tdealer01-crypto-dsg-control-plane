@@ -116,6 +116,24 @@ Evidence pointers:
 Historical context:
 - The April 11 snapshot below remains preserved for timeline/history purposes only.
 
+
+## Production-readiness gap snapshot (April 17, 2026)
+
+Runbook-aligned status is **not yet closed** from repository evidence alone.
+
+| Runbook requirement (`docs/RUNBOOK_DEPLOY.md`) | Current repo evidence status |
+|---|---|
+| Vercel production deployment is `Ready` | Not proven by committed artifact in this repository. |
+| Production env vars complete/validated | Not proven by committed artifact in this repository. |
+| Supabase migrations applied on target environment | Migration files exist; applied-state evidence for production target is not committed here. |
+| Deployed smoke check `GET /api/health` | Not proven against deployed production target in committed evidence set. |
+| `/api/core/monitor` + authenticated operator checks | Not proven against deployed production target in committed evidence set. |
+| Live E2E/staging validation | Not fully proven; Vitest baseline is green, but live browser/E2E evidence is incomplete. |
+
+Interpretation:
+- Treat the April 17 test baseline as repository-test truth.
+- Do **not** mark go-live complete until the runbook evidence above is collected and recorded.
+
 ## Historical production-ready inventory snapshot (April 11, 2026)
 
 This historical snapshot records production-ready file coverage and validated test status as of April 11, 2026 in `tdealer01-crypto-dsg-control-plane`.
