@@ -100,7 +100,7 @@ After signup/login succeeds and an org-scoped operator session exists, verify:
 
 1. Go to `/login`
 2. Click **Start Free Trial** tab
-3. Enter email: `t.dealer01@dsg.pics`
+3. Enter organization test email from your secure credential vault (do not hardcode in docs)
 4. Enter Workspace name, for example `DSG Ops`
 5. Click **Start free trial**
 6. Check email for magic link → click to complete login
