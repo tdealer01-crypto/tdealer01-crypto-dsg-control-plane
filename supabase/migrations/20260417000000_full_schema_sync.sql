@@ -1,4 +1,57 @@
+begin;
+
 create extension if not exists pgcrypto;
+
+-- ============================================================
+-- 0) Drop old objects
+-- ============================================================
+
+drop materialized view if exists public.org_current_readiness cascade;
+drop view if exists public.org_current_readiness cascade;
+drop view if exists public.policy_versions cascade;
+
+drop function if exists public.runtime_commit_execution(
+  text, text, uuid, text, text, jsonb, text, jsonb, integer, jsonb, jsonb, text, jsonb, numeric, timestamptz, integer, integer
+) cascade;
+
+drop table if exists public.agent_stats_daily cascade;
+drop table if exists public.alert_events cascade;
+drop table if exists public.readiness_history cascade;
+drop table if exists public.core_monitor_snapshots cascade;
+
+drop table if exists public.org_onboarding_states cascade;
+drop table if exists public.seat_activations cascade;
+drop table if exists public.org_billing_policies cascade;
+drop table if exists public.sign_in_events cascade;
+drop table if exists public.guest_access_grants cascade;
+drop table if exists public.directory_sync_events cascade;
+drop table if exists public.directory_group_role_mappings cascade;
+drop table if exists public.directory_sync_configs cascade;
+drop table if exists public.org_sso_configs cascade;
+drop table if exists public.access_requests cascade;
+drop table if exists public.trial_signups cascade;
+
+drop table if exists public.runtime_policy_governance_events cascade;
+drop table if exists public.runtime_policies cascade;
+drop table if exists public.runtime_roles cascade;
+drop table if exists public.runtime_checkpoints cascade;
+drop table if exists public.runtime_effects cascade;
+drop table if exists public.audit_logs cascade;
+drop table if exists public.runtime_ledger_entries cascade;
+drop table if exists public.executions cascade;
+drop table if exists public.runtime_truth_states cascade;
+drop table if exists public.runtime_approval_requests cascade;
+
+drop table if exists public.usage_counters cascade;
+drop table if exists public.usage_events cascade;
+drop table if exists public.billing_events cascade;
+drop table if exists public.billing_subscriptions cascade;
+drop table if exists public.billing_customers cascade;
+
+drop table if exists public.agents cascade;
+drop table if exists public.policies cascade;
+drop table if exists public.users cascade;
+drop table if exists public.organizations cascade;
 
 -- ============================================================
 -- 1) Core product tables
@@ -884,3 +937,5 @@ revoke all on function public.runtime_commit_execution(
 grant execute on function public.runtime_commit_execution(
   text, text, uuid, text, text, jsonb, text, jsonb, integer, jsonb, jsonb, text, jsonb, numeric, timestamptz, integer, integer
 ) to service_role;
+
+commit;
