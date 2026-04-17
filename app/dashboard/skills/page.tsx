@@ -59,7 +59,7 @@ export default function SkillsPage() {
       } else {
         setResult(json);
         if (json?.ok) {
-          setTimeout(() => router.push("/dashboard"), 1200);
+          setTimeout(() => router.push("/dashboard/executions"), 1200);
         }
       }
     } catch (e) {
@@ -166,7 +166,7 @@ export default function SkillsPage() {
                     Copy to clipboard
                   </button>
                   {copyStatus ? <p className="mt-2 text-xs text-amber-100">{copyStatus}</p> : null}
-                  {result.ok ? <p className="mt-2 text-xs text-emerald-200">Setup complete. Redirecting to dashboard...</p> : null}
+                  {result.ok ? <p className="mt-2 text-xs text-emerald-200">Setup complete. Redirecting to executions...</p> : null}
                 </div>
               )}
 

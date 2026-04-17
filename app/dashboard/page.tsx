@@ -179,7 +179,7 @@ export default function DashboardPage() {
             ok: r.ok,
             json: await r.json(),
           })),
-          fetch("/api/quickstart/onboarding", { cache: "no-store" }).then(async (r) => ({
+          fetch("/api/onboarding/state", { cache: "no-store" }).then(async (r) => ({
             ok: r.ok,
             json: await r.json(),
           })),
@@ -343,8 +343,8 @@ export default function DashboardPage() {
                 {onboardingProgress.completed}/{onboardingProgress.total} completed
               </p>
             </div>
-            <Link href="/quickstart" className="rounded-xl border border-emerald-200/40 px-4 py-2 text-sm font-semibold text-emerald-100">
-              Continue quickstart
+            <Link href="/dashboard/skills" className="rounded-xl border border-emerald-200/40 px-4 py-2 text-sm font-semibold text-emerald-100">
+              Run Auto-Setup
             </Link>
           </div>
           <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
@@ -359,9 +359,9 @@ export default function DashboardPage() {
           <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">
             <p className="text-lg font-semibold text-emerald-100">Welcome to DSG Control Plane</p>
             <p className="mt-2 text-sm leading-7 text-emerald-200/80">
-              Your authenticated dashboard is still empty. Head to the{" "}
-              <Link href="/quickstart" className="underline font-semibold text-emerald-200">Quickstart</Link>{" "}
-              page to create your first agent and run a sample execution, or visit{" "}
+              Your authenticated dashboard is still empty. Head to{" "}
+              <Link href="/dashboard/skills" className="underline font-semibold text-emerald-200">Skills Auto-Setup</Link>{" "}
+              to provision your first agent and first execution through the production runtime path, or visit{" "}
               <Link href="/pricing" className="underline font-semibold text-emerald-200">Pricing</Link>{" "}
               to review plan changes.
             </p>

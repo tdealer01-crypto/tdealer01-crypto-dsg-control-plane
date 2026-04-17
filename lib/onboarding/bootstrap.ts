@@ -20,7 +20,7 @@ export async function bootstrapOrgStarterState(orgId: string, opts?: { initiated
   const now = new Date().toISOString();
   const checklist = {
     steps: STARTER_STEPS,
-    next_action: (agents.count ?? 0) > 0 ? 'Open quickstart and run your first controlled execution' : 'Set up starter workspace',
+    next_action: (agents.count ?? 0) > 0 ? 'Open executions dashboard to validate your first controlled execution' : 'Complete Auto-Setup in Skills to create your first execution',
     initiated_by_user_id: opts?.initiatedByUserId ?? null,
   };
 

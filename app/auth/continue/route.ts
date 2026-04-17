@@ -323,7 +323,7 @@ async function handleTrialSignup(args: {
   });
 
   const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin(args.request));
-  confirmUrl.searchParams.set('next', '/quickstart');
+  confirmUrl.searchParams.set('next', '/dashboard/skills');
   confirmUrl.searchParams.set('signup', 'trial');
 
   const { error } = await sendMagicLink(
