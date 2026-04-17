@@ -15,6 +15,9 @@ type PlaygroundResult = {
     oscillation_window: number;
     oscillation_spread: number;
   };
+  metrics?: {
+    total_latency_ms: number;
+  };
   evaluated_at: string;
 };
 
@@ -32,6 +35,7 @@ export default function PlaygroundPage() {
   const [result, setResult] = useState<PlaygroundResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lastRoundTripMs, setLastRoundTripMs] = useState<number | null>(null);
 
   const scoreColor = useMemo(() => {
     if (riskScore >= 0.8) return 'text-rose-400';
@@ -47,6 +51,13 @@ export default function PlaygroundPage() {
     [riskScore]
   );
 
+  const estimatedTokens = useMemo(() => {
+    const prompt = `action:${action};risk:${riskScore.toFixed(2)};recent:${recentScores}`;
+    return Math.max(24, Math.ceil(prompt.length / 3.6));
+  }, [action, recentScores, riskScore]);
+
+  const estimatedCostUsd = useMemo(() => Number(((estimatedTokens / 1000) * 0.0025).toFixed(5)), [estimatedTokens]);
+
   async function evaluate(values?: { risk: number; recent: string; actionValue: string }) {
     const nextRisk = values?.risk ?? riskScore;
     const nextRecent = values?.recent ?? recentScores;
@@ -56,6 +67,7 @@ export default function PlaygroundPage() {
     setError('');
 
     try {
+      const clientStart = performance.now();
       const response = await fetch('/api/playground/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,9 +86,11 @@ export default function PlaygroundPage() {
       }
 
       setResult(json as PlaygroundResult);
+      setLastRoundTripMs(Number((performance.now() - clientStart).toFixed(2)));
     } catch {
       setResult(null);
       setError('Network error while evaluating risk score');
+      setLastRoundTripMs(null);
     } finally {
       setLoading(false);
     }
@@ -104,6 +118,12 @@ export default function PlaygroundPage() {
           <p className="max-w-4xl text-lg text-slate-300">
             ลองประเมิน risk score แล้วดูว่า DSG gate ตัดสินใจอย่างไร — ไม่ต้องสมัคร ไม่ต้อง login
           </p>
+          <div className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4 text-sm text-cyan-100">
+            <p className="font-semibold text-cyan-200">Runtime Enforcement (Agentic Control)</p>
+            <p className="mt-1">
+              Playground นี้ไม่ได้แค่ส่ง prompt เข้าโมเดล แต่บังคับใช้นโยบายระหว่าง runtime พร้อม proof hash สำหรับ audit และป้องกันการตอบที่เสี่ยงต่อ hallucination/data leakage
+            </p>
+          </div>
           <nav className="flex flex-wrap gap-3 text-sm">
             <Link href="/" className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 hover:border-white/40">
               Back to home
@@ -113,6 +133,9 @@ export default function PlaygroundPage() {
             </Link>
             <Link href="/login" className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 hover:border-white/40">
               Login
+            </Link>
+            <Link href="/docs" className="rounded-xl border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 text-cyan-100 hover:border-cyan-200">
+              View API Reference
             </Link>
           </nav>
         </header>
@@ -194,6 +217,18 @@ export default function PlaygroundPage() {
                 >
                   Oscillation
                 </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    runPreset({
+                      risk: 0.97,
+                      recent: '0.12, 0.18, 0.83, 0.95',
+                    })
+                  }
+                  className="rounded-xl border border-rose-300/40 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
+                >
+                  Dangerous prompt scenario
+                </button>
               </div>
             </div>
           </div>
@@ -224,6 +259,20 @@ export default function PlaygroundPage() {
                 <p className="truncate font-mono text-sm text-slate-300" title={result.proof_hash}>
                   {result.proof_hash}
                 </p>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  <div className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 p-3">
+                    <p className="text-xs uppercase tracking-wide text-cyan-200">Server enforcement latency</p>
+                    <p className="mt-1 text-xl font-semibold text-cyan-100">
+                      {result.metrics?.total_latency_ms?.toFixed(2) ?? '—'} ms
+                    </p>
+                    <p className="text-xs text-cyan-100/80">Target overhead: &lt; 50ms</p>
+                  </div>
+                  <div className="rounded-xl border border-violet-300/30 bg-violet-400/10 p-3">
+                    <p className="text-xs uppercase tracking-wide text-violet-200">Client round-trip latency</p>
+                    <p className="mt-1 text-xl font-semibold text-violet-100">{lastRoundTripMs?.toFixed(2) ?? '—'} ms</p>
+                    <p className="text-xs text-violet-100/80">Includes network + gate evaluation</p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">block: {result.policy.block_threshold}</div>
                   <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">stabilize: {result.policy.stabilize_threshold}</div>
@@ -267,6 +316,20 @@ export default function PlaygroundPage() {
         </section>
 
         <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-300">Estimated tokens / call</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-300">{estimatedTokens}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-300">Estimated cost / call</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-300">${estimatedCostUsd.toFixed(5)}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-300">Cost control mode</p>
+              <p className="mt-1 text-sm text-slate-100">Per-request token + spend visibility</p>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-xl font-semibold">ใช้ใน production — แค่ 3 บรรทัด</h3>
             <button
