@@ -28,6 +28,7 @@
 
 - Synced README repo-truth to the committed April 17, 2026 evidence refresh.
 - Re-validated the full automated test suite and aligned this README with the authoritative artifact set (`qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, `docs/STATUS_SNAPSHOT_2026-04-17.md`).
+- Clarified production-readiness status: test baseline is green, but runbook go-live evidence remains open until deployment, environment, migration, smoke, operator, and live E2E checks are closed.
 
 ### Test Results (latest run)
 
@@ -39,6 +40,7 @@ npm run test  # PASS (62 files passed, 1 skipped; 185 tests passed, 3 skipped)
 Notes:
 - The skipped file is `tests/integration/api/finance-governance-live-db.test.ts` (live DB integration guard).
 - E2E Playwright depends on browser availability in environment setup.
+- `npm run test` PASS alone is not equivalent to production cutover completion; follow `docs/RUNBOOK_DEPLOY.md` for go-live validation gates.
 
 ---
 
