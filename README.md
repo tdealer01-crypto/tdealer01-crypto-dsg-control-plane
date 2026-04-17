@@ -33,6 +33,7 @@
 
 ```bash
 npm run test  # PASS (62 files passed, 1 skipped; 185 tests passed, 3 skipped)
+# Evidence: qa-logs/npm-test-2026-04-17.log (UTC)
 ```
 
 Notes:
