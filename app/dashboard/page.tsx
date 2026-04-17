@@ -36,9 +36,21 @@ type UsageSummary = {
   projected_amount_usd: number;
 };
 
-type OnboardingState = {
-  bootstrap_status?: "pending" | "completed" | "failed";
-  checklist?: { steps?: string[]; next_action?: string };
+type OnboardingStatePayload = {
+  org_id?: string;
+  onboarding?: {
+    bootstrap_status?: string;
+    checklist?: {
+      steps?: string[];
+      next_action?: string;
+    };
+    bootstrapped_at?: string | null;
+  } | null;
+  is_empty?: boolean;
+  has_agent?: boolean;
+  has_first_execution?: boolean;
+  first_run_complete?: boolean;
+  next_action?: string;
 };
 
 function normalizeAgent(input: unknown): Agent | null {
@@ -144,10 +156,10 @@ export default function DashboardPage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [auditItems, setAuditItems] = useState<AuditEvent[]>([]);
   const [determinism, setDeterminism] = useState<DeterminismResult[]>([]);
+  const [onboardingState, setOnboardingState] = useState<OnboardingStatePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [auditError, setAuditError] = useState<string>("");
-  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -252,7 +264,13 @@ export default function DashboardPage() {
         }
 
         if (onboardingResult.status === "fulfilled" && onboardingResult.value.ok) {
-          setOnboarding(onboardingResult.value.json?.onboarding ?? null);
+          setOnboardingState(onboardingResult.value.json as OnboardingStatePayload);
+        } else {
+          warnings.push(
+            onboardingResult.status === "fulfilled"
+              ? onboardingResult.value.json?.error || "Failed to load onboarding state"
+              : "Failed to load onboarding state"
+          );
         }
 
         if (warnings.length > 0) {
@@ -299,17 +317,18 @@ export default function DashboardPage() {
       : "ok";
 
   const onboardingProgress = useMemo(() => {
-    const hasAgent = agents.length > 0;
-    const hasExecution = executions.length > 0;
-    const bootstrapped = onboarding?.bootstrap_status === "completed";
-    const completed = [hasAgent, hasExecution, bootstrapped].filter(Boolean).length;
+    const completed = [
+      Boolean(onboardingState?.org_id),
+      Boolean(onboardingState?.has_agent),
+      Boolean(onboardingState?.first_run_complete),
+    ].filter(Boolean).length;
     const total = 3;
     return {
       percent: Math.round((completed / total) * 100),
       completed,
       total,
     };
-  }, [agents.length, executions.length, onboarding?.bootstrap_status]);
+  }, [onboardingState?.first_run_complete, onboardingState?.has_agent, onboardingState?.org_id]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -343,8 +362,11 @@ export default function DashboardPage() {
                 {onboardingProgress.completed}/{onboardingProgress.total} completed
               </p>
             </div>
-            <Link href="/dashboard/skills" className="rounded-xl border border-emerald-200/40 px-4 py-2 text-sm font-semibold text-emerald-100">
-              Run Auto-Setup
+            <Link
+              href={onboardingState?.first_run_complete ? "/dashboard/executions" : "/dashboard/skills"}
+              className="rounded-xl border border-emerald-200/40 px-4 py-2 text-sm font-semibold text-emerald-100"
+            >
+              {onboardingState?.first_run_complete ? "Open Executions" : "Run Auto-Setup"}
             </Link>
           </div>
           <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
@@ -365,6 +387,7 @@ export default function DashboardPage() {
               <Link href="/pricing" className="underline font-semibold text-emerald-200">Pricing</Link>{" "}
               to review plan changes.
             </p>
+            {onboardingState?.next_action ? <p className="mt-3 text-xs text-emerald-100/80">Next: {onboardingState.next_action}</p> : null}
           </div>
         ) : null}
 

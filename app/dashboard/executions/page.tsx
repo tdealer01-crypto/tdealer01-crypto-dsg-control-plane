@@ -325,13 +325,13 @@ export default function ExecutionsPage() {
                         href="/dashboard/skills"
                         className="rounded-xl bg-[#81ecff] px-4 py-3 text-sm font-semibold text-black"
                       >
-                        Run Auto-Setup
+                        Complete Auto-Setup
                       </Link>
                       <Link
                         href="/dashboard/skills"
                         className="rounded-xl border border-[#81ecff]/40 px-4 py-3 text-sm font-semibold text-[#81ecff] hover:bg-[#81ecff]/10"
                       >
-                        Open Skills
+                        Open Auto-Setup
                       </Link>
                     </div>
                   </div>

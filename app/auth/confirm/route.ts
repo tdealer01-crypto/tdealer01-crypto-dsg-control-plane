@@ -291,6 +291,6 @@ export async function GET(request: NextRequest) {
     }, { onConflict: 'org_id' });
   }
 
-  const redirectTo = new URL(next || '/dashboard/skills', request.url);
+  const redirectTo = new URL(next || '/dashboard/skills?source=auth-confirm', request.url);
   return NextResponse.redirect(redirectTo, { status: 302 });
 }

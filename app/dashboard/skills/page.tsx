@@ -3,6 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type SetupResult = {
+  ok?: boolean;
+  org_id?: string;
+  agent_id?: string;
+  execution_id?: string;
+  ledger_id?: string;
+  truth_state_id?: string;
+  api_key?: string;
+  api_key_warning?: string;
+  steps?: string[];
+  env_check?: Record<string, string>;
+  next_steps?: string[];
+  error?: string;
+  first_run_complete?: boolean;
+  policy?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+  agent?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+  rpc_commit?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+  checkpoint?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+  billing?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+  onboarding?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+  runtime_roles?: "OK" | "CREATED" | "EXISTS" | "FAIL";
+};
+
 const TOOLS = [
   ["readiness", "GET /api/core/monitor", "Read readiness, health, entropy, alerts, billing"],
   ["execute_action", "POST /api/mcp/call", "Create intent + execute through DSG gate"],
@@ -20,18 +43,6 @@ const TOOLS = [
   ["reconcile_effect", "POST /api/effect-callback", "Reconcile effect status"],
   ["auto_setup", "POST /api/setup/auto", "Auto-configure: policy + agent + execution + billing + onboarding"],
 ] as const;
-
-type SetupResult = {
-  ok?: boolean;
-  org_id?: string;
-  execution_id?: string;
-  api_key?: string;
-  api_key_warning?: string;
-  steps?: string[];
-  env_check?: Record<string, string>;
-  next_steps?: string[];
-  error?: string;
-};
 
 export default function SkillsPage() {
   const router = useRouter();
@@ -53,12 +64,13 @@ export default function SkillsPage() {
     setResult(null);
     try {
       const res = await fetch("/api/setup/auto", { method: "POST", cache: "no-store" });
-      const json = await res.json();
+      const json: SetupResult = await res.json();
       if (!res.ok) {
         setError(json.error || `Setup failed (${res.status})`);
+        setResult(json);
       } else {
         setResult(json);
-        if (json?.ok) {
+        if (json?.first_run_complete) {
           setTimeout(() => router.push("/dashboard/executions"), 1200);
         }
       }
@@ -145,13 +157,36 @@ export default function SkillsPage() {
             <div className="mt-4 space-y-4">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <p className="font-semibold text-emerald-300">
-                  {result.ok ? "✅ Setup สำเร็จ" : "⚠️ Setup มีปัญหาบางส่วน"}
+                  {result.first_run_complete ? "✅ First-run complete" : "⚠️ Setup มีปัญหาบางส่วน"}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">Org: {result.org_id}</p>
+                {result.agent_id && (
+                  <p className="text-sm text-slate-400">Agent: {result.agent_id}</p>
+                )}
                 {result.execution_id && (
                   <p className="text-sm text-slate-400">Execution: {result.execution_id}</p>
                 )}
+                {typeof result.first_run_complete === "boolean" && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    first_run_complete: {String(result.first_run_complete)}
+                  </p>
+                )}
               </div>
+
+              {(result.policy || result.rpc_commit || result.billing || result.runtime_roles) && (
+                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <p className="font-semibold">Status:</p>
+                  <ul className="mt-2 space-y-1 text-sm text-slate-300">
+                    <li>policy: {result.policy || "-"}</li>
+                    <li>agent: {result.agent || "-"}</li>
+                    <li>rpc_commit: {result.rpc_commit || "-"}</li>
+                    <li>checkpoint: {result.checkpoint || "-"}</li>
+                    <li>billing: {result.billing || "-"}</li>
+                    <li>onboarding: {result.onboarding || "-"}</li>
+                    <li>runtime_roles: {result.runtime_roles || "-"}</li>
+                  </ul>
+                </div>
+              )}
 
               {result.api_key && (
                 <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
@@ -166,7 +201,7 @@ export default function SkillsPage() {
                     Copy to clipboard
                   </button>
                   {copyStatus ? <p className="mt-2 text-xs text-amber-100">{copyStatus}</p> : null}
-                  {result.ok ? <p className="mt-2 text-xs text-emerald-200">Setup complete. Redirecting to executions...</p> : null}
+                  {result.first_run_complete ? <p className="mt-2 text-xs text-emerald-200">First-run complete. Redirecting to executions...</p> : null}
                 </div>
               )}
 
@@ -302,6 +337,16 @@ export default function SkillsPage() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
+          <h2 className="text-xl font-semibold">Production Path</h2>
+          <p className="mt-3 text-sm text-slate-300">
+            First-run และ real-run ใช้ path เดียวกัน:
+            <code className="mx-2 rounded bg-slate-800 px-2 py-1 text-emerald-300">POST /api/execute</code>
+            หลัง Auto-Setup สำเร็จ ให้ดู execution แรกที่
+            <code className="mx-2 rounded bg-slate-800 px-2 py-1 text-emerald-300">/dashboard/executions</code>
+          </p>
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
