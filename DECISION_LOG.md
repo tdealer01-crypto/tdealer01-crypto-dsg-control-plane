@@ -16,16 +16,16 @@ Reason:
 These files already contain the verified topology, route truth, deployment steps, migration order, and smoke-check guidance.
 
 ### Decision 002
-Status: accepted
-Type: conflict handling
+Status: superseded
+Type: conflict handling (historical)
 
-Test-status disagreement between `README.md` and `docs/REPO_TRUTH.md` must be treated as an open conflict.
+Test-status disagreement between `README.md` and `docs/REPO_TRUTH.md` was treated as an unresolved mismatch before fresh evidence was committed.
 
-Observed values:
+Observed values at that time:
 - README: `185 tests passed, 3 skipped`
 - REPO_TRUTH snapshot: `85 tests`, `41 test files`, `0 failures`
 
-Rule:
+Historical rule:
 Do not normalize or rewrite this into one number until revalidated.
 
 ### Decision 003
@@ -54,3 +54,23 @@ Before any repo modification:
 2. classify fact / inference / next step
 3. stop on conflict
 4. patch only after source review
+
+### Decision 006
+Status: accepted
+Type: test-baseline reconciliation
+
+The April 17, 2026 committed artifact set resolves the earlier 85-vs-185 conflict in favor of **185** as the current authoritative Vitest baseline.
+
+Current baseline:
+- `62 test files passed, 1 skipped, 0 failed`
+- `185 tests passed, 3 skipped, 0 failed`
+
+Authoritative evidence:
+- `qa-logs/npm-test-2026-04-17.log`
+- `qa-logs/npm-test.log`
+- `qa-logs/test-summary.md`
+- `docs/STATUS_SNAPSHOT_2026-04-17.md`
+
+Interpretation rule:
+- Keep April 11 documents for historical traceability.
+- Treat April 17 committed evidence as current truth until superseded by a newer committed run.
