@@ -322,16 +322,16 @@ export default function ExecutionsPage() {
 
                     <div className="mt-4 flex gap-2">
                       <Link
-                        href="/quickstart"
+                        href="/dashboard/skills"
                         className="rounded-xl bg-[#81ecff] px-4 py-3 text-sm font-semibold text-black"
                       >
-                        Run first execution
+                        Run Auto-Setup
                       </Link>
                       <Link
-                        href="/quickstart"
+                        href="/dashboard/skills"
                         className="rounded-xl border border-[#81ecff]/40 px-4 py-3 text-sm font-semibold text-[#81ecff] hover:bg-[#81ecff]/10"
                       >
-                        Open quickstart
+                        Open Skills
                       </Link>
                     </div>
                   </div>

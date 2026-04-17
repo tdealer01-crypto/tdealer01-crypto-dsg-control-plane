@@ -10,6 +10,7 @@ import { handleApiError } from '../../../../lib/security/api-error';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
+type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL';
 
 function isMissingSchemaError(message: string, identifier: string) {
   const normalized = message.toLowerCase();
@@ -56,6 +57,13 @@ export async function POST(_request: Request) {
     const now = new Date().toISOString();
     const suffix = randomUUID().slice(0, 8);
     const results: Record<string, unknown> = { org_id: orgId, steps: [] as string[] };
+    let policyStatus: SetupStatus = 'OK';
+    let agentStatus: SetupStatus | null = null;
+    let rpcCommitStatus: SetupStatus = 'FAIL';
+    let checkpointStatus: SetupStatus = 'FAIL';
+    let billingStatus: SetupStatus = 'FAIL';
+    let onboardingStatus: SetupStatus = 'FAIL';
+    let runtimeRolesStatus: SetupStatus = 'FAIL';
 
     let { error: policyError } = await admin.from('policies').upsert(
       {
@@ -83,6 +91,9 @@ export async function POST(_request: Request) {
       policyError = retry.error;
     }
     (results.steps as string[]).push(toStepStatus('policy', policyError));
+    if (policyError) {
+      policyStatus = 'FAIL';
+    }
 
     const { data: existingAgents } = await admin
       .from('agents')
@@ -95,6 +106,8 @@ export async function POST(_request: Request) {
 
     if (existingAgents && existingAgents.length > 0) {
       agentId = String(existingAgents[0].id);
+      results.agent_id = agentId;
+      agentStatus = 'EXISTS';
       (results.steps as string[]).push(`agent: EXISTS (${agentId})`);
     } else {
       agentId = `agent-${suffix}`;
@@ -108,6 +121,8 @@ export async function POST(_request: Request) {
         api_key_hash: createHash('sha256').update(apiKey).digest('hex'),
         monthly_limit: 10000,
       });
+      results.agent_id = agentId;
+      agentStatus = agentError ? 'FAIL' : 'CREATED';
       (results.steps as string[]).push(agentError ? `agent: FAIL (${agentError.message})` : `agent: CREATED (${agentId})`);
     }
 
@@ -151,6 +166,7 @@ export async function POST(_request: Request) {
         if (legacyExecError || !execution) {
           (results.steps as string[]).push(`approval: FAIL (${approvalError.message})`);
           (results.steps as string[]).push(`rpc_commit: FAIL (${legacyExecError?.message || 'legacy execution failed'})`);
+          rpcCommitStatus = 'FAIL';
         } else {
           results.execution_id = execution.id;
           await admin.from('audit_logs').insert({
@@ -164,9 +180,11 @@ export async function POST(_request: Request) {
           });
           (results.steps as string[]).push('approval: OK (legacy fallback)');
           (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${execution.id})`);
+          rpcCommitStatus = 'OK';
         }
       } else {
         (results.steps as string[]).push(toStepStatus('approval', approvalError));
+        rpcCommitStatus = 'FAIL';
       }
     } else {
       const { data: commit, error: commitError, mode: commitMode } = await invokeRuntimeCommitRpc(admin, {
@@ -191,6 +209,7 @@ export async function POST(_request: Request) {
 
       if (commitError) {
         (results.steps as string[]).push(`rpc_commit: FAIL (${commitError.message})`);
+        rpcCommitStatus = 'FAIL';
       } else {
         const row = Array.isArray(commit) ? commit[0] : commit;
         results.execution_id = row?.execution_id;
@@ -199,6 +218,7 @@ export async function POST(_request: Request) {
         (results.steps as string[]).push(
           `rpc_commit: OK${commitMode === 'legacy' ? ' (legacy-signature)' : ''} (execution=${row?.execution_id})`,
         );
+        rpcCommitStatus = 'OK';
 
         if (row?.ledger_id && row?.truth_state_id) {
           const cpHash = buildCheckpointHash({
@@ -220,6 +240,9 @@ export async function POST(_request: Request) {
             { onConflict: 'org_id,agent_id,checkpoint_hash', ignoreDuplicates: true },
           );
           (results.steps as string[]).push('checkpoint: OK');
+          checkpointStatus = 'OK';
+        } else {
+          (results.steps as string[]).push('checkpoint: FAIL (missing ledger/truth references from runtime commit)');
         }
       }
     }
@@ -232,8 +255,10 @@ export async function POST(_request: Request) {
 
     if (existingSubError && isMissingInfraError(existingSubError.message, 'billing_subscriptions')) {
       (results.steps as string[]).push('billing: OK (trial-default fallback)');
+      billingStatus = 'OK';
     } else if (existingSubError) {
       (results.steps as string[]).push(`billing: FAIL (${existingSubError.message})`);
+      billingStatus = 'FAIL';
     } else
     if (!existingSub || existingSub.length === 0) {
       const { error: subError } = await admin.from('billing_subscriptions').insert({
@@ -250,17 +275,21 @@ export async function POST(_request: Request) {
       (results.steps as string[]).push(
         subError ? toStepStatus('billing', subError) : 'billing: CREATED (trial)',
       );
+      billingStatus = subError ? 'FAIL' : 'CREATED';
     } else {
       (results.steps as string[]).push('billing: EXISTS');
+      billingStatus = 'EXISTS';
     }
 
     try {
       await bootstrapOrgStarterState(orgId, { initiatedByUserId: access.userId });
       (results.steps as string[]).push('onboarding: OK');
+      onboardingStatus = 'OK';
     } catch (error) {
       (results.steps as string[]).push(
         `onboarding: FAIL (${error instanceof Error ? error.message : 'unknown'})`,
       );
+      onboardingStatus = 'FAIL';
     }
 
     await admin.from('runtime_roles').upsert(
@@ -273,6 +302,7 @@ export async function POST(_request: Request) {
       { onConflict: 'org_id,user_id,role', ignoreDuplicates: true },
     );
     (results.steps as string[]).push('runtime_roles: OK');
+    runtimeRolesStatus = 'OK';
 
     const coreMode = process.env.DSG_CORE_MODE;
     results.env_check = {
@@ -288,7 +318,27 @@ export async function POST(_request: Request) {
       results.api_key_warning = '⚠️ เก็บ key นี้ไว้ — จะไม่แสดงอีก';
     }
 
-    results.ok = true;
+    results.policy = policyStatus;
+    results.agent = agentStatus ?? 'FAIL';
+    results.rpc_commit = rpcCommitStatus;
+    results.checkpoint = checkpointStatus;
+    results.billing = billingStatus;
+    results.onboarding = onboardingStatus;
+    results.runtime_roles = runtimeRolesStatus;
+
+    const hasFirstExecution = typeof results.execution_id === 'string' && results.execution_id.length > 0;
+    const firstRunComplete =
+      hasFirstExecution &&
+      policyStatus !== 'FAIL' &&
+      (agentStatus === 'CREATED' || agentStatus === 'EXISTS') &&
+      rpcCommitStatus === 'OK' &&
+      checkpointStatus === 'OK' &&
+      (billingStatus === 'OK' || billingStatus === 'CREATED' || billingStatus === 'EXISTS') &&
+      onboardingStatus === 'OK' &&
+      runtimeRolesStatus === 'OK';
+
+    results.first_run_complete = firstRunComplete;
+    results.ok = firstRunComplete;
     results.next_steps = [] as string[];
     if (!coreMode) {
       (results.next_steps as string[]).push('ตั้ง DSG_CORE_MODE=internal บน Vercel');
@@ -297,7 +347,17 @@ export async function POST(_request: Request) {
       (results.next_steps as string[]).push('ตั้ง STRIPE_SECRET_KEY บน Vercel (ถ้าจะใช้ billing)');
     }
 
-    return NextResponse.json(results);
+    if (!firstRunComplete) {
+      return NextResponse.json(
+        {
+          ...results,
+          error: 'Auto-Setup did not complete first-run requirements. Check step statuses and fix failing infrastructure.',
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(results, { status: 200 });
   } catch (error) {
     return handleApiError('api/setup/auto', error);
   }
