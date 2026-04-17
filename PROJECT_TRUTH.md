@@ -48,17 +48,21 @@ Minimum deployment truth includes:
 - authenticated operator checks must include runtime/control-plane surfaces
 - live E2E against Supabase/staging is part of the intended validation path
 
-## Known unresolved conflict
+## Test baseline resolution (April 17, 2026)
 
-### Test-count conflict
+The earlier 85-vs-185 mismatch is now resolved in favor of the latest committed evidence set.
 
-Two real files disagree:
+- Historical snapshot (valid for April 11, 2026): `85 tests`, `41 test files`, `0 failures`
+- Current authoritative baseline (committed April 17, 2026): `185 tests passed, 3 skipped, 0 failed` and `62 test files passed, 1 skipped, 0 failed`
 
-- `README.md` latest update (April 14, 2026): `185 tests passed, 3 skipped`
-- `docs/REPO_TRUTH.md` production-ready snapshot (April 11, 2026): `85 tests`, `41 test files`, `0 failures`
+Authoritative evidence files:
 
-This conflict must remain explicit until revalidated from CI or a fresh test run.
-Do not collapse these numbers into a single truth without verification.
+- `qa-logs/npm-test-2026-04-17.log`
+- `qa-logs/npm-test.log`
+- `qa-logs/test-summary.md`
+- `docs/STATUS_SNAPSHOT_2026-04-17.md`
+
+Working rule: preserve older snapshots as historical context, but treat the April 17, 2026 artifact set as the current repo baseline until superseded by a newer committed run.
 
 ## Working rule for future sessions
 

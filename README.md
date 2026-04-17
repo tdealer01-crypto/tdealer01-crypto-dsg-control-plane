@@ -24,10 +24,10 @@
 
 ---
 
-## Latest Update (April 14, 2026)
+## Latest Update (April 17, 2026)
 
-- Synced README repo-truth with the current codebase structure (runtime control plane + finance governance surfaces now present in `app/` and `lib/`).
-- Re-validated the full automated test suite.
+- Synced README repo-truth to the committed April 17, 2026 evidence refresh.
+- Re-validated the full automated test suite and aligned this README with the authoritative artifact set (`qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, `docs/STATUS_SNAPSHOT_2026-04-17.md`).
 
 ### Test Results (latest run)
 
@@ -124,7 +124,7 @@ A product can have a public AI-readable narrative for positioning, while still k
 - **Public proof narrative** for external evaluation
 - **Verified runtime evidence** for authenticated, org-scoped review
 
-### Current repository snapshot (April 14, 2026)
+### Current repository snapshot (April 17, 2026)
 - App Router pages are available across 19 top-level product surfaces (for example: `app/`, `dashboard/`, `finance-governance/`, `playground/`, `security/`, `support/`).
 - API layer currently exposes 40 route groups under `app/api/*` (including control-plane flows such as `execute`, `spine`, `intent`, `runtime-recovery`, `finance-governance`, `agent-execute`, and `integrations`).
 - The automated Vitest suite is green on this branch; Playwright E2E still depends on external browser download availability in the execution environment.

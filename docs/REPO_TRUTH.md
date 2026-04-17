@@ -100,9 +100,25 @@ Suggested recovery flow:
 3. If PR 216 exists remotely, merge/cherry-pick by commit SHA, not PR number label.
 4. If PR 216 does not exist, continue from the latest merged baseline (`#220`) and re-open the missing changes as a new PR.
 
-## Production-ready inventory snapshot (April 11, 2026)
+## Current test baseline (April 17, 2026)
 
-This snapshot records the current production-ready file coverage and latest validated test status in `tdealer01-crypto-dsg-control-plane`.
+This section is the active baseline for test-status truth in this repository.
+
+- Test files: **62 passed, 1 skipped, 0 failed**
+- Tests: **185 passed, 3 skipped, 0 failed**
+
+Evidence pointers:
+- `qa-logs/npm-test-2026-04-17.log`
+- `qa-logs/npm-test.log`
+- `qa-logs/test-summary.md`
+- `docs/STATUS_SNAPSHOT_2026-04-17.md`
+
+Historical context:
+- The April 11 snapshot below remains preserved for timeline/history purposes only.
+
+## Historical production-ready inventory snapshot (April 11, 2026)
+
+This historical snapshot records production-ready file coverage and validated test status as of April 11, 2026 in `tdealer01-crypto-dsg-control-plane`.
 
 ### Test status snapshot
 
@@ -114,7 +130,7 @@ This snapshot records the current production-ready file coverage and latest vali
 | Migrations | 5 | 0 | Passed |
 | E2E (Playwright) | 0 | 1 | Browser install/download issue (environment), not an application logic regression |
 
-Vitest aggregate status: **85 tests**, **41 test files**, **0 failures**.
+Vitest aggregate status at that historical point: **85 tests**, **41 test files**, **0 failures**.
 
 ### Root config and entry surface
 
@@ -374,7 +390,7 @@ Other key library files/folders:
 
 For operator handoff in Thai, the production-ready inventory snapshot above has been validated as equivalent to the Thai checklist shared on April 12, 2026, including:
 
-- Vitest summary: **85 tests passed**, **41 test files**, **0 failures**
+- Historical Vitest summary (April 11 snapshot): **85 tests passed**, **41 test files**, **0 failures**
 - Playwright status: one environment-level browser download/install failure (non-code defect)
 - Full-system inventory coverage across root config, App Router pages/API, core libraries, components, migrations, scripts, and docs
 
@@ -393,5 +409,5 @@ Recommended triage order:
 
 Operational interpretation for this repository:
 
-- The current control-plane inventory and Vitest baseline remain valid (85/85 tests passing, Playwright browser install issue is environment-related).
+- The April 11 control-plane inventory remains historically valid for that date; current test baseline is the April 17 committed result (185 passed, 3 skipped; 62 files passed, 1 skipped).
 - A `286/294` merge indicator should be handled as release-process metadata drift until a concrete failing required check is identified.

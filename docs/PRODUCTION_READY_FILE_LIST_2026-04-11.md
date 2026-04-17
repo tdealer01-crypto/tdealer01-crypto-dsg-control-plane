@@ -1,7 +1,11 @@
+> [!WARNING]
+> **Historical snapshot (superseded).** The Vitest numbers in this file (`85 tests`, `41 test files`) are historical for April 11-13, 2026 only.
+> Current authoritative baseline: `62 test files passed, 1 skipped, 0 failed` and `185 tests passed, 3 skipped, 0 failed`, evidenced by `qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, and `docs/STATUS_SNAPSHOT_2026-04-17.md`.
+
 # รายการไฟล์ Production-Ready ของ `tdealer01-crypto-dsg-control-plane`
 
 เอกสารนี้บันทึกรายการไฟล์ production-ready ครบระบบตามข้อมูลที่ผู้ใช้ยืนยันว่าเทสผ่านแล้ว
-(Vitest: **85 tests**, **41 test files**, **0 failures**)
+(Historical Vitest snapshot: **85 tests**, **41 test files**, **0 failures**)
 
 อัปเดตล่าสุด: **2026-04-13 (UTC)** จากข้อมูลยืนยันรอบล่าสุดของผู้ใช้
 
@@ -350,7 +354,7 @@ ollama launch claude --model glm-5.1:cloud
 - **Database** (14 migrations + schema)
 - **Security** (rate-limit, safe-log, error handling)
 
-Vitest ผ่านครบ **85/85 tests** ใน 41 test files โดย E2E fail เฉพาะเรื่อง Playwright browser download (403) ไม่ใช่ bug ของโค้ด
+[Historical snapshot] Vitest ผ่านครบ **85/85 tests** ใน 41 test files โดย E2E fail เฉพาะเรื่อง Playwright browser download (403) ไม่ใช่ bug ของโค้ด
 
 ---
 

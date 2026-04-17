@@ -1,3 +1,7 @@
+> [!WARNING]
+> **Historical snapshot (superseded).** This file records status as of April 11-12, 2026.
+> For the current authoritative baseline, see `docs/STATUS_SNAPSHOT_2026-04-17.md` and the April 17 evidence set in `qa-logs/`.
+
 # Status Snapshot (2026-04-12)
 
 ## Direct answer
@@ -19,5 +23,5 @@
 
 ## Evidence note (refreshed)
 
-- Vitest ล่าสุด: **85 tests / 41 files / 0 failures**
+- Vitest ณ ช่วงเวลาของ snapshot นี้ (historical): **85 tests / 41 files / 0 failures**
 - E2E issue ที่พบเป็น browser install ใน environment ไม่ใช่ defect ของ product logic

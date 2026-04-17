@@ -34,5 +34,6 @@
 
 ## Summary
 
-- Application code quality is strong based on provided results (85/85 Vitest passed).
+- Historical note (April 11 context): application code quality was strong based on then-current results (85/85 Vitest passed).
+- Current baseline has been superseded by the April 17, 2026 committed evidence set (185 passed, 3 skipped; 62 files passed, 1 skipped).
 - Main remaining risk is **environment/infrastructure readiness** (especially E2E runtime and deployment operations), not core feature completeness.
