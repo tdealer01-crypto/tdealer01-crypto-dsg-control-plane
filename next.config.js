@@ -17,20 +17,6 @@ function unique(values) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
-function buildAllowedOrigins() {
-  const explicitList = String(process.env.DSG_ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((item) => parseOrigin(item))
-    .filter(Boolean);
-
-  const appOrigin = parseOrigin(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL);
-  const vercelOrigin = parseOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL)
-    ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
-    : null;
-
-  return unique([...explicitList, appOrigin, vercelOrigin]);
-}
-
 function buildConnectSrc() {
   const coreOrigin = parseOrigin(process.env.DSG_CORE_URL);
 
@@ -45,26 +31,9 @@ function buildScriptSrc() {
   return unique(base).join(' ');
 }
 
-const allowedOrigins = buildAllowedOrigins();
-const primaryCorsOrigin = allowedOrigins[0] || null;
-
-const apiCorsHeaders = primaryCorsOrigin
-  ? [
-      { key: 'Access-Control-Allow-Origin', value: primaryCorsOrigin },
-      { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,PATCH,DELETE,OPTIONS' },
-      {
-        key: 'Access-Control-Allow-Headers',
-        value: 'Authorization,Content-Type,X-Requested-With,Idempotency-Key',
-      },
-      { key: 'Access-Control-Allow-Credentials', value: 'true' },
-      { key: 'Access-Control-Max-Age', value: '600' },
-      { key: 'Vary', value: 'Origin' },
-    ]
-  : [];
-
 const nextConfig = {
   async headers() {
-    const routes = [
+    return [
       {
         source: '/(.*)',
         headers: [
@@ -89,18 +58,13 @@ const nextConfig = {
               "object-src 'none'",
             ].join('; '),
           },
+          {
+            key: 'X-Api-Cors-Owner',
+            value: 'route-level-lib/security/cors.ts',
+          },
         ],
       },
     ];
-
-    if (apiCorsHeaders.length > 0) {
-      routes.push({
-        source: '/api/:path*',
-        headers: apiCorsHeaders,
-      });
-    }
-
-    return routes;
   },
 };
 
