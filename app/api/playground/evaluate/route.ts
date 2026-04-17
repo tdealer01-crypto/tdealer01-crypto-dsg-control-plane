@@ -20,6 +20,7 @@ type PlaygroundPayload = {
 };
 
 export async function POST(request: Request) {
+  const startedAt = performance.now();
   const rate = await applyRateLimit({
     key: getRateLimitKey(request, 'playground'),
     limit: PLAYGROUND_RATE_LIMIT,
@@ -71,6 +72,8 @@ export async function POST(request: Request) {
     reason,
     timestamp: evaluatedAt,
   });
+  const evaluatedAtMs = performance.now();
+  const totalLatencyMs = Number((evaluatedAtMs - startedAt).toFixed(2));
 
   return NextResponse.json(
     {
@@ -84,6 +87,9 @@ export async function POST(request: Request) {
         stabilize_threshold: 0.4,
         oscillation_window: 4,
         oscillation_spread: 0.35,
+      },
+      metrics: {
+        total_latency_ms: totalLatencyMs,
       },
       evaluated_at: evaluatedAt,
     },
