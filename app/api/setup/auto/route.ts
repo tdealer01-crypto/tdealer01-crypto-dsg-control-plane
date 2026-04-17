@@ -12,6 +12,25 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 export const dynamic = 'force-dynamic';
 type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL';
 
+
+function logAutoSetupEvent(
+  event:
+    | 'auto_setup_started'
+    | 'auto_setup_completed'
+    | 'auto_setup_failed'
+    | 'auto_setup_partial_failure',
+  payload: Record<string, unknown>,
+) {
+  console.info(
+    '[auto-setup]',
+    JSON.stringify({
+      event,
+      at: new Date().toISOString(),
+      ...payload,
+    }),
+  );
+}
+
 function isMissingSchemaError(message: string, identifier: string) {
   const normalized = message.toLowerCase();
   return normalized.includes('schema cache') && normalized.includes(identifier.toLowerCase());
@@ -54,6 +73,11 @@ export async function POST(_request: Request) {
 
     const orgId = access.orgId;
     const admin = getSupabaseAdmin();
+    logAutoSetupEvent('auto_setup_started', {
+      org_id: orgId,
+      user_id: access.userId,
+      roles: access.grantedRoles,
+    });
     const now = new Date().toISOString();
     const suffix = randomUUID().slice(0, 8);
     const results: Record<string, unknown> = { org_id: orgId, steps: [] as string[] };
@@ -383,6 +407,19 @@ export async function POST(_request: Request) {
     }
 
     if (!firstRunComplete) {
+      logAutoSetupEvent('auto_setup_partial_failure', {
+        org_id: orgId,
+        user_id: access.userId,
+        policy: policyStatus,
+        agent: agentStatus ?? 'FAIL',
+        rpc_commit: rpcCommitStatus,
+        checkpoint: checkpointStatus,
+        billing: billingStatus,
+        onboarding: onboardingStatus,
+        runtime_roles: runtimeRolesStatus,
+        execution_id: results.execution_id ?? null,
+        steps: results.steps,
+      });
       return NextResponse.json(
         {
           ...results,
@@ -392,8 +429,20 @@ export async function POST(_request: Request) {
       );
     }
 
+    logAutoSetupEvent('auto_setup_completed', {
+      org_id: orgId,
+      user_id: access.userId,
+      execution_id: results.execution_id ?? null,
+      agent_id: results.agent_id ?? null,
+      api_key_issued: Boolean(results.api_key),
+      steps: results.steps,
+    });
+
     return NextResponse.json(results, { status: 200 });
   } catch (error) {
+    logAutoSetupEvent('auto_setup_failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
     return handleApiError('api/setup/auto', error);
   }
 }
