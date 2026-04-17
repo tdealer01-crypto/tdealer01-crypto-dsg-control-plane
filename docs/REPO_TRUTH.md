@@ -49,7 +49,7 @@ This is the baseline public availability probe for deployment and smoke-check pu
 ### Stable execution entry
 - `POST /api/execute`
 
-This path remains the stable compatibility entry for sample and quickstart execution.
+This path remains the stable execution entry for real-run traffic after first-run setup.
 Internally, it forwards to the current spine execution handler.
 
 ### Current execution implementation layer

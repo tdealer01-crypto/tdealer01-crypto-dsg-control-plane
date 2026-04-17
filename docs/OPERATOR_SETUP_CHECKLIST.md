@@ -92,7 +92,7 @@ After signup/login succeeds and an org-scoped operator session exists, verify:
 
 ### Execution route note
 
-- `POST /api/execute` is the stable compatibility entry for sample execution and quickstart use.
+- `POST /api/execute` is the stable execution entry for real-run traffic after Auto-Setup.
 - The current implementation forwards into the spine execution handler.
 - Do not treat `/api/usage` as a public health check; it is an authenticated operator route.
 

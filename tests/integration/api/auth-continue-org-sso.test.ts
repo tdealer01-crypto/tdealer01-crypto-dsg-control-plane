@@ -4,7 +4,7 @@ function buildReq() {
   const form = new FormData();
   form.set('email', 'user@acme.com');
   form.set('org', 'acme');
-  form.set('next', '/quickstart');
+  form.set('next', '/dashboard/skills');
   return new Request('http://localhost/auth/continue', { method: 'POST', body: form });
 }
 

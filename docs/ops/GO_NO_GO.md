@@ -96,7 +96,7 @@
 
 ### 7) Quickstart / Auth flows
 
-- **What:** Signup -> magic-link -> quickstart -> create starter-agent -> first execution -> inspect enterprise-proof & verified runtime.
+- **What:** Signup -> magic-link -> /dashboard/skills -> run Auto-Setup -> verify first execution -> land on /dashboard/executions -> inspect enterprise-proof & verified runtime.
 - **Expected evidence:** Screenshots / session trace / Playwright E2E logs showing flow success. 
 
 ### 8) Monitoring & Alerts

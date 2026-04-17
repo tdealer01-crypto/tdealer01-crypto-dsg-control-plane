@@ -60,7 +60,7 @@ export default function DocsPage() {
           <h1 className="text-4xl font-bold md:text-5xl">DSG Control Plane Documentation</h1>
           <p className="mt-4 text-lg text-slate-300">
             Current product documentation for DSG ONE Control Plane,
-            including route overview, quickstart flow, and operator/runtime
+            including route overview, first-run Auto-Setup, and operator/runtime
             entry points.
           </p>
         </div>
@@ -105,14 +105,14 @@ export default function DocsPage() {
         <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">Execution Compatibility</h2>
           <p className="mt-4 text-sm text-slate-300">
-            Use <code>/api/execute</code> as the stable entry shown in quickstart.
+            Use <code>/api/execute</code> as the stable real-run entry after Auto-Setup.
             The current implementation forwards to the spine execution handler,
             so the execution logic remains centralized while the public path stays stable.
           </p>
         </section>
 
         <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-semibold">Quickstart</h2>
+          <h2 className="text-xl font-semibold">Real-run Example</h2>
           <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`curl -X POST http://localhost:3000/api/execute \\
   -H "Authorization: Bearer dsg_live_demo" \\
   -H "Content-Type: application/json" \\
