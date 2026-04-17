@@ -24,20 +24,26 @@
 
 ---
 
-## Latest Update (April 14, 2026)
+## Test Status Note (April 17, 2026)
 
-- Synced README repo-truth with the current codebase structure (runtime control plane + finance governance surfaces now present in `app/` and `lib/`).
-- Re-validated the full automated test suite.
+The repository currently contains two different test-status narratives:
 
-### Test Results (latest run)
+- `README.md` previously stated a newer run with `62 files passed, 1 skipped; 185 tests passed, 3 skipped`
+- committed repo evidence still centers on the earlier validated snapshot in:
+  - `qa-logs/test-summary.md`
+  - `docs/REPO_TRUTH.md`
+  - `docs/STATUS_SNAPSHOT_2026-04-11.md`
+  - `docs/PRODUCTION_READY_FILE_LIST_2026-04-11.md`
 
-```bash
-npm run test  # PASS (62 files passed, 1 skipped; 185 tests passed, 3 skipped)
-```
+### Current working rule
+
+- Treat **85 tests / 41 files / 0 failures** as the latest committed evidence in the repository.
+- Treat the **185 tests / 62 files** statement as pending revalidation until fresh raw test artifacts or CI evidence are checked in.
+- See `PROJECT_TRUTH.md` for the acknowledged conflict state and update rules.
 
 Notes:
-- The skipped file is `tests/integration/api/finance-governance-live-db.test.ts` (live DB integration guard).
-- E2E Playwright depends on browser availability in environment setup.
+- The earlier committed snapshot also records the Playwright browser-install issue as an environment problem rather than an application-logic regression.
+- This README section is intentionally conservative until new test evidence is committed.
 
 ---
 
