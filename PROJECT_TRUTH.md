@@ -1,8 +1,8 @@
 # PROJECT_TRUTH
 
 Last reviewed: 2026-04-17
-Mode: dry-run
-Status: derived from real repository files only
+Mode: active
+Status: merged into main; derived from real repository files only
 
 ## Canonical sources
 
