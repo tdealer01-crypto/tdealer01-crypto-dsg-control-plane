@@ -24,11 +24,12 @@
 
 ---
 
-## Latest Update (April 17, 2026)
+## Latest Update (April 18, 2026)
 
 - Synced README repo-truth to the committed April 17, 2026 evidence refresh.
 - Re-validated the full automated test suite and aligned this README with the authoritative artifact set (`qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, `docs/STATUS_SNAPSHOT_2026-04-17.md`).
 - Clarified production-readiness status: test baseline is green, but runbook go-live evidence remains open until deployment, environment, migration, smoke, operator, and live E2E checks are closed.
+- April 18, 2026 wording clarification: separated repository test truth from deployment go-live truth to avoid readiness ambiguity.
 
 ### Test Results (latest run)
 
