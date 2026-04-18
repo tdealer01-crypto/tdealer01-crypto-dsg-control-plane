@@ -40,7 +40,7 @@
     "stripe": "^14.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "1.58.2",
     "@types/node": "^20.17.0",
     "@types/react": "^18.2.79",
     "@vitest/coverage-v8": "^2.1.9",
