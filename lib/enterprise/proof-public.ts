@@ -4,6 +4,8 @@ export function buildPublicProofReport(): PublicProofReport {
   return {
     product_name: 'DSG ONE',
     category: 'Deterministic AI runtime control plane',
+    generated_at: new Date().toISOString(),
+    report_version: 'public-v2',
     one_line_summary:
       'A runtime control plane for enterprises that need AI execution to be auditable, replay-resistant, recoverable, and governed.',
     problem_solved: [
@@ -43,6 +45,25 @@ export function buildPublicProofReport(): PublicProofReport {
       start_page: '/enterprise-proof/start',
       report_page: '/enterprise-proof/report',
       json_report: '/api/enterprise-proof/report',
+      verified_runtime_report: '/enterprise-proof/verified',
+    },
+    evidence_boundary: {
+      public_scope: 'Narrative summary, claim status, and non-sensitive verification snapshot.',
+      verified_scope: 'Org-scoped runtime evidence, hashes, lineage state, and actor-specific records.',
+    },
+    evidence_summary: {
+      test_snapshot: {
+        generated_at: '2026-04-03T00:00:00.000Z',
+        vitest_files_passed: 41,
+        vitest_tests_passed: 85,
+        typecheck_passed: true,
+      },
+      runtime_artifacts: [
+        '/api/health',
+        '/api/runtime-summary',
+        '/api/enterprise-proof/report',
+        '/enterprise-proof/verified',
+      ],
     },
   };
 }

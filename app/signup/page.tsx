@@ -181,8 +181,8 @@ export default async function SignupPage({
             <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Trial includes</p>
             <div className="mt-6 grid gap-4 text-sm text-slate-200">
               {[
-                '14-day free trial',
-                '1,000 executions included',
+                'Free plan — no card required',
+                '1,000 executions / month',
                 'Quickstart path to first agent and first sample execution',
                 'Authenticated operator views for dashboard, mission, and audit context',
               ].map((item) => (

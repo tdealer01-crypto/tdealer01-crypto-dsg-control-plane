@@ -60,7 +60,7 @@ export default function DocsPage() {
           <h1 className="text-4xl font-bold md:text-5xl">DSG Control Plane Documentation</h1>
           <p className="mt-4 text-lg text-slate-300">
             Current product documentation for DSG ONE Control Plane,
-            including route overview, first-run Auto-Setup, and operator/runtime
+            including route overview, first-run setup flow, and operator/runtime
             entry points.
           </p>
         </div>
@@ -103,6 +103,16 @@ export default function DocsPage() {
         </div>
 
         <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">First-run Setup (Auto-Setup path)</h2>
+          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300">
+            <li>Create a workspace from <code>/signup</code> and complete email confirmation.</li>
+            <li>Open <code>/dashboard/skills</code> and run Auto-Setup to create your first agent and baseline policies.</li>
+            <li>Copy the generated API key (shown once), then test execution with <code>/api/execute</code> or <code>/api/spine/execute</code>.</li>
+            <li>Review execution, audit, and usage status in authenticated dashboard routes.</li>
+          </ol>
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">Execution Compatibility</h2>
           <p className="mt-4 text-sm text-slate-300">
             Use <code>/api/execute</code> as the stable real-run entry after Auto-Setup.
@@ -113,7 +123,7 @@ export default function DocsPage() {
 
         <section className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">Real-run Example</h2>
-          <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`curl -X POST http://localhost:3000/api/execute \\
+          <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \\
   -H "Authorization: Bearer dsg_live_demo" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -128,7 +138,7 @@ export default function DocsPage() {
           <p className="mt-4 text-sm text-slate-400">
             Runtime execution requires a bearer API key, a valid <code>agent_id</code>,
             and a resolved active agent. External clients can call OPTIONS first for
-            explicit preflight handling before POST execution.
+            explicit preflight handling before POST execution. For local development, replace the host with <code>http://localhost:3000</code>.
           </p>
         </section>
       </div>

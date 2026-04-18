@@ -152,6 +152,7 @@ export default function AppShellPage() {
   const readinessStatus = monitor?.readiness?.status || 'unknown';
   const entropy = monitor?.core?.determinism?.data?.max_entropy ?? null;
   const deterministic = monitor?.core?.determinism?.data?.deterministic ?? null;
+  const coreOk = monitor?.core?.health?.ok;
   const control = monitor?.control_plane;
   const alerts = monitor?.alerts || [];
 
@@ -372,12 +373,15 @@ export default function AppShellPage() {
             <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
               <p className="text-sm font-semibold text-slate-200">Core Readiness</p>
               <div className="mt-3 space-y-2 text-sm text-slate-300">
-                <p>Core OK: {monitor?.core?.health?.ok ? 'yes' : 'no'}</p>
+                <p>Core OK: {typeof coreOk === 'boolean' ? (coreOk ? 'yes' : 'no') : 'unknown'}</p>
                 <p>Deterministic: {deterministic === null ? 'unknown' : deterministic ? 'yes' : 'no'}</p>
                 <p>Entropy: {typeof entropy === 'number' ? entropy.toFixed(3) : '-'}</p>
                 <p>Gate Action: {monitor?.core?.determinism?.data?.gate_action || '-'}</p>
                 <p>Sequence: {monitor?.core?.determinism?.data?.sequence || '-'}</p>
               </div>
+              <p className="mt-3 text-xs text-slate-400">
+                Public smoke check is available at <code>/api/health</code>. This panel reflects authenticated monitor payloads.
+              </p>
             </div>
 
             <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">

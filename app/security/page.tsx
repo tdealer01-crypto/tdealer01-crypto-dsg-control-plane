@@ -35,7 +35,7 @@ export default function SecurityPage() {
         <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Security overview</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Security and governance posture</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          DSG Finance Governance Control Plane is designed to help organizations govern approvals, policy routing, evidence packaging, and billing-backed workspace access without making public surfaces the system of record.
+          DSG ONE Control Plane is designed to help organizations govern runtime actions, policy routing, evidence packaging, and workspace access without making public surfaces the system of record.
         </p>
       </div>
 
