@@ -42,6 +42,15 @@ Notes:
 - E2E Playwright depends on browser availability in environment setup.
 - `npm run test` PASS alone is not equivalent to production cutover completion; follow `docs/RUNBOOK_DEPLOY.md` for go-live validation gates.
 
+## Deployment Status Note
+
+Repository test status and deployment readiness are intentionally tracked separately.
+
+- Repository baseline: the automated test suite is green on the current branch.
+- Deployment baseline: production-readiness is only claimed when deployed health, core connectivity, environment configuration, migrations, smoke checks, authenticated first-run flow, and operator/runtime verification are all confirmed in the target environment.
+
+Passing repository tests alone does not mean the deployed environment is production-ready.
+
 ---
 
 ## What DSG ONE Is
@@ -421,6 +430,13 @@ Review:
 The standard is not whether the README sounds impressive.
 
 The standard is whether the runtime is reviewable under actual use.
+
+Evaluation should use all three layers together:
+- repository evidence (tests, docs, artifacts)
+- deployment evidence (`/api/health`, readiness, smoke checks)
+- authenticated operator/runtime evidence in the target environment
+
+Do not treat green repository tests alone as final proof of deployment readiness.
 
 ---
 
