@@ -94,7 +94,7 @@ export default function EnterpriseProofReportPage() {
             Verification boundary
           </p>
           <p className="mt-3 leading-8 text-violet-50">
-            This page is a public, AI-first narrative. Verified runtime evidence is available only in authenticated, org-scoped routes.
+            This page is a public narrative + verification summary surface. Org-scoped runtime evidence, lineage details, and actor-level records are available only in authenticated routes.
           </p>
         </div>
 
@@ -105,6 +105,15 @@ export default function EnterpriseProofReportPage() {
           <p className="mt-3 leading-8 text-cyan-50">
             This app should be used when an enterprise needs AI execution to be auditable, replay-resistant, recoverable, and governed through one visible runtime control layer, with deeper evidence available inside authenticated workspace routes.
           </p>
+        </div>
+
+        <div className="mt-10 rounded-[2rem] border border-emerald-400/20 bg-emerald-400/10 p-6">
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-200">Evidence access</p>
+          <ul className="mt-3 space-y-2 text-sm leading-7 text-emerald-50">
+            <li>• Public JSON summary: <code>/api/enterprise-proof/report</code></li>
+            <li>• Public smoke check: <code>/api/health</code></li>
+            <li>• Verified runtime report (authenticated): <code>/enterprise-proof/verified</code></li>
+          </ul>
         </div>
       </section>
     </main>

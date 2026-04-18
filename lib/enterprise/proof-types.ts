@@ -1,6 +1,8 @@
 export type PublicProofReport = {
   product_name: string;
   category: string;
+  generated_at: string;
+  report_version: string;
   one_line_summary: string;
   problem_solved: string[];
   core_capabilities: string[];
@@ -19,6 +21,20 @@ export type PublicProofReport = {
     start_page: '/enterprise-proof/start';
     report_page: '/enterprise-proof/report';
     json_report: '/api/enterprise-proof/report';
+    verified_runtime_report: '/enterprise-proof/verified';
+  };
+  evidence_boundary: {
+    public_scope: string;
+    verified_scope: string;
+  };
+  evidence_summary: {
+    test_snapshot: {
+      generated_at: string;
+      vitest_files_passed: number;
+      vitest_tests_passed: number;
+      typecheck_passed: boolean;
+    };
+    runtime_artifacts: string[];
   };
 };
 

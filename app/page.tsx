@@ -68,7 +68,7 @@ export default function HomePage() {
         <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200 shadow-glow">
-              Commercial-ready DSG control plane
+              Production-focused DSG control plane
             </div>
             <h1 className="mt-8 max-w-4xl text-5xl font-bold leading-tight md:text-7xl">
               Govern AI execution with an interface that looks premium and sells clearly.
@@ -202,7 +202,7 @@ export default function HomePage() {
               <p className="text-xs uppercase tracking-[0.3em] text-cyan-200">Enterprise verification</p>
               <h2 className="mt-3 text-3xl font-bold md:text-4xl">Evidence-first testing and correctness proof.</h2>
               <p className="mt-4 max-w-3xl text-slate-300">
-                Designed for executive sharing: every claim ties back to test outcomes, proof endpoints, and runtime artifacts already present in this repository.
+                Designed for executive sharing: public pages summarize current verification status, while deeper runtime evidence is available in authenticated org-scoped routes.
               </p>
             </div>
             <Link
@@ -229,6 +229,9 @@ export default function HomePage() {
           <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-8">
             <p className="text-xs uppercase tracking-[0.3em] text-emerald-200">Proof surfaces</p>
             <h3 className="mt-3 text-2xl font-bold">Share-ready links for customer, auditor, and board review.</h3>
+            <p className="mt-3 text-sm text-slate-300">
+              Public proof links provide an evidence summary and verification boundaries. Runtime-level lineage and org-specific records stay authenticated.
+            </p>
             <div className="mt-6 grid gap-3">
               {proofSurfaces.map((surface) => (
                 <Link

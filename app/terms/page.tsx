@@ -1,7 +1,7 @@
 const sections = [
   {
     title: 'Commercial use',
-    text: 'DSG Finance Governance Control Plane is intended for organizational use, controlled workflow operations, policy enforcement, and audit-related export flows.',
+    text: 'DSG ONE Control Plane is intended for organizational use, governed execution operations, policy enforcement, and audit-related export flows.',
   },
   {
     title: 'Workspace responsibility',
@@ -13,7 +13,7 @@ const sections = [
   },
   {
     title: 'Rollout note',
-    text: 'This page is a product-facing trust placeholder and must be replaced or expanded with final legal terms before broad commercial release.',
+    text: 'This page is a terms overview. Binding obligations, SLA terms, and data processing commitments are governed by executed customer agreements.',
   },
 ];
 
@@ -24,7 +24,7 @@ export default function TermsPage() {
         <p className="text-sm uppercase tracking-[0.3em] text-violet-200">Terms</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Terms of service overview</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          This page gives the product a buyer-visible legal surface while implementation and GTM work continue. Final terms still require legal review before general availability.
+          This overview explains key operational expectations for product usage, while contract-level legal obligations are finalized through the customer agreement process.
         </p>
       </div>
 

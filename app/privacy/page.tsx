@@ -1,11 +1,11 @@
 const sections = [
   {
     title: 'What this page covers',
-    text: 'This page summarizes how DSG handles product data, workspace scope, approval records, and exportable evidence within the finance-governance product surface.',
+    text: 'This page summarizes how DSG Control Plane handles product data, workspace scope, execution records, and exportable evidence.',
   },
   {
     title: 'Product data scope',
-    text: 'Organizations use DSG to manage approval workflows, policy context, exceptions, audit records, and evidence exports. The customer ERP or accounting system remains the financial system of record.',
+    text: 'Organizations use DSG to manage governed execution workflows, policy context, exceptions, audit records, and evidence exports. Customer systems remain the source of record for underlying business data.',
   },
   {
     title: 'Workspace scoping',
@@ -13,7 +13,7 @@ const sections = [
   },
   {
     title: 'Operational note',
-    text: 'This page is an implementation placeholder for marketplace and trust-surface readiness. It should be replaced or expanded with final legal language before broad commercial rollout.',
+    text: 'This is a product privacy overview for buyers and operators. Binding legal terms are defined in customer agreements, including the applicable MSA/DPA.',
   },
 ];
 
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">Privacy</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Privacy overview</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          This page establishes a buyer-facing privacy surface so the product reads like a real enterprise application rather than a prototype. Final legal review is still required before production rollout.
+          This page provides a clear buyer-facing privacy summary for DSG ONE Control Plane and how data boundaries are enforced across public and authenticated surfaces.
         </p>
       </div>
 
