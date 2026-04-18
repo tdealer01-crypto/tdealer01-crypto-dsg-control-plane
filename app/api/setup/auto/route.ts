@@ -10,7 +10,7 @@ import { handleApiError } from '../../../../lib/security/api-error';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
-type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL';
+type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL' | 'WARN';
 
 
 function logAutoSetupEvent(
@@ -356,8 +356,13 @@ export async function POST(_request: Request) {
     );
 
     if (runtimeRolesError) {
-      (results.steps as string[]).push(`runtime_roles: FAIL (${runtimeRolesError.message})`);
-      runtimeRolesStatus = 'FAIL';
+      if (isMissingInfraError(runtimeRolesError.message, 'runtime_roles')) {
+        (results.steps as string[]).push('runtime_roles: WARN (table missing in API cache: run runtime RBAC migrations)');
+        runtimeRolesStatus = 'WARN';
+      } else {
+        (results.steps as string[]).push(`runtime_roles: FAIL (${runtimeRolesError.message})`);
+        runtimeRolesStatus = 'FAIL';
+      }
     } else {
       (results.steps as string[]).push('runtime_roles: OK');
       runtimeRolesStatus = 'OK';
@@ -394,7 +399,7 @@ export async function POST(_request: Request) {
       checkpointStatus === 'OK' &&
       (billingStatus === 'OK' || billingStatus === 'CREATED' || billingStatus === 'EXISTS') &&
       onboardingStatus === 'OK' &&
-      runtimeRolesStatus === 'OK';
+      (runtimeRolesStatus === 'OK' || runtimeRolesStatus === 'WARN');
 
     results.first_run_complete = firstRunComplete;
     results.ok = firstRunComplete;
