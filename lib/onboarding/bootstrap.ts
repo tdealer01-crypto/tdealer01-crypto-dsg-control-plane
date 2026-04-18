@@ -12,6 +12,9 @@ export async function bootstrapOrgStarterState(orgId: string, opts?: { initiated
   const admin = getSupabaseAdmin();
   const existing = await admin.from('org_onboarding_states').select('id, bootstrap_status').eq('org_id', orgId).maybeSingle();
   if (existing.error) throw existing.error;
+  if (existing.data?.id && existing.data.bootstrap_status === 'completed') {
+    return { status: 'completed' as const, created: false };
+  }
 
   const agents = await admin.from('agents').select('id', { count: 'exact', head: true }).eq('org_id', orgId);
   if (agents.error) throw agents.error;
