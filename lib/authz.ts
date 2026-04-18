@@ -1,10 +1,22 @@
 import { createClient } from './supabase/server';
 import { getSupabaseAdmin } from './supabase-server';
+import { isMissingRelationError } from './supabase/resolve-policy';
 
 export type RuntimeRole = 'org_admin' | 'operator' | 'reviewer' | 'runtime_auditor' | 'billing_admin';
 
 function includesRequiredRole(userRoles: string[], requiredRoles: string[]) {
   return requiredRoles.some((role) => userRoles.includes(role));
+}
+
+function isMissingRuntimeRolesError(error: { message?: string; code?: string | null }) {
+  if (error.code === 'PGRST205') return true;
+  if (isMissingRelationError(error)) return true;
+
+  const message = String(error.message || '').toLowerCase();
+  return (
+    message.includes('schema cache') &&
+    message.includes('runtime_roles')
+  );
 }
 
 export async function requireOrgRole(requiredRoles: RuntimeRole[]){
@@ -59,6 +71,44 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[]){
     .eq('user_id', appUserId);
 
   if (runtimeRolesResult.error) {
+    if (isMissingRuntimeRolesError(runtimeRolesResult.error)) {
+      const fallbackRoles = new Set<RuntimeRole>();
+
+      if (baseRole === 'owner' || baseRole === 'admin') {
+        fallbackRoles.add('org_admin');
+        fallbackRoles.add('operator');
+        fallbackRoles.add('reviewer');
+        fallbackRoles.add('runtime_auditor');
+        fallbackRoles.add('billing_admin');
+      } else if (baseRole === 'viewer' || baseRole === 'guest_auditor') {
+        fallbackRoles.add('reviewer');
+      } else if (
+        baseRole === 'operator' ||
+        baseRole === 'reviewer' ||
+        baseRole === 'runtime_auditor' ||
+        baseRole === 'billing_admin'
+      ) {
+        fallbackRoles.add(baseRole);
+      }
+
+      const fallbackList = Array.from(fallbackRoles);
+      if (!includesRequiredRole(fallbackList, requiredRoles)) {
+        return {
+          ok: false as const,
+          status: 403,
+          error: 'Forbidden',
+        };
+      }
+
+      return {
+        ok: true as const,
+        orgId,
+        userId: appUserId,
+        authUserId: String(user.id),
+        grantedRoles: fallbackList,
+      };
+    }
+
     return {
       ok: false as const,
       status: 500,
