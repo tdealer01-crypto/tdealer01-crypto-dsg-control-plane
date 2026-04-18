@@ -9,16 +9,6 @@ type PlaygroundResult = {
   risk_score: number;
   oscillation_detected: boolean;
   proof_hash: string;
-  policy: {
-    block_threshold: number;
-    stabilize_threshold: number;
-    oscillation_window: number;
-    oscillation_spread: number;
-  };
-  metrics?: {
-    total_latency_ms: number;
-  };
-  evaluated_at: string;
 };
 
 function parseRecentScores(input: string): number[] {
@@ -35,7 +25,6 @@ export default function PlaygroundPage() {
   const [result, setResult] = useState<PlaygroundResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [lastRoundTripMs, setLastRoundTripMs] = useState<number | null>(null);
 
   const scoreColor = useMemo(() => {
     if (riskScore >= 0.8) return 'text-rose-400';
@@ -44,10 +33,7 @@ export default function PlaygroundPage() {
   }, [riskScore]);
 
   const codeSnippet = useMemo(
-    () => `curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \\
-  -H "Authorization: Bearer $DSG_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{"agent_id":"$AGENT_ID","action":"scan","input":{"risk_score":${riskScore.toFixed(2)}}}'`,
+    () => `curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \\\n  -H "Authorization: Bearer $DSG_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"agent_id":"$AGENT_ID","action":"scan","input":{"risk_score":${riskScore.toFixed(2)}}}'`,
     [riskScore]
   );
 
@@ -55,26 +41,20 @@ export default function PlaygroundPage() {
     const prompt = `action:${action};risk:${riskScore.toFixed(2)};recent:${recentScores}`;
     return Math.max(24, Math.ceil(prompt.length / 3.6));
   }, [action, recentScores, riskScore]);
-
   const estimatedCostUsd = useMemo(() => Number(((estimatedTokens / 1000) * 0.0025).toFixed(5)), [estimatedTokens]);
 
-  async function evaluate(values?: { risk: number; recent: string; actionValue: string }) {
-    const nextRisk = values?.risk ?? riskScore;
-    const nextRecent = values?.recent ?? recentScores;
-    const nextAction = values?.actionValue ?? action;
-
+  async function evaluate() {
     setLoading(true);
     setError('');
 
     try {
-      const clientStart = performance.now();
       const response = await fetch('/api/playground/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          risk_score: nextRisk,
-          recent_risk_scores: parseRecentScores(nextRecent),
-          action: nextAction,
+          risk_score: riskScore,
+          recent_risk_scores: parseRecentScores(recentScores),
+          action,
         }),
       });
 
@@ -86,265 +66,130 @@ export default function PlaygroundPage() {
       }
 
       setResult(json as PlaygroundResult);
-      setLastRoundTripMs(Number((performance.now() - clientStart).toFixed(2)));
     } catch {
       setResult(null);
       setError('Network error while evaluating risk score');
-      setLastRoundTripMs(null);
     } finally {
       setLoading(false);
     }
   }
 
-  async function copySnippet() {
-    await navigator.clipboard.writeText(codeSnippet);
-  }
-
-  async function runPreset(preset: { risk: number; recent?: string }) {
-    const nextRecent = preset.recent ?? '';
-    setRiskScore(preset.risk);
-    setRecentScores(nextRecent);
-    await evaluate({ risk: preset.risk, recent: nextRecent, actionValue: action });
-  }
-
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-14 text-white">
       <div className="mx-auto max-w-7xl space-y-10">
-        <header className="space-y-6">
-          <div className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">
-            Free — no signup required
-          </div>
-          <h1 className="text-4xl font-bold md:text-6xl">AI Governance Playground</h1>
+        <header className="space-y-4">
+          <h1 className="text-4xl font-bold md:text-6xl">Test the AI gate in under a minute</h1>
           <p className="max-w-4xl text-lg text-slate-300">
-            ลองประเมิน risk score แล้วดูว่า DSG gate ตัดสินใจอย่างไร — ไม่ต้องสมัคร ไม่ต้อง login
+            Adjust the risk score and see how DSG decides: ALLOW, STABILIZE, or BLOCK.
           </p>
-          <div className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4 text-sm text-cyan-100">
-            <p className="font-semibold text-cyan-200">Runtime Enforcement (Agentic Control)</p>
-            <p className="mt-1">
-              Playground นี้ไม่ได้แค่ส่ง prompt เข้าโมเดล แต่บังคับใช้นโยบายระหว่าง runtime พร้อม proof hash สำหรับ audit และป้องกันการตอบที่เสี่ยงต่อ hallucination/data leakage
-            </p>
-          </div>
-          <nav className="flex flex-wrap gap-3 text-sm">
-            <Link href="/" className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 hover:border-white/40">
-              Back to home
-            </Link>
-            <Link href="/pricing" className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 hover:border-white/40">
-              View pricing
-            </Link>
-            <Link href="/login" className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 hover:border-white/40">
-              Login
-            </Link>
-            <Link href="/docs" className="rounded-xl border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 text-cyan-100 hover:border-cyan-200">
-              View API Reference
-            </Link>
-          </nav>
+          <p className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4 text-sm text-cyan-100">
+            No signup required. This page is for public evaluation only.
+          </p>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
-            <h2 className="text-2xl font-semibold">Input</h2>
-            <div className="mt-6 space-y-5">
-              <div>
-                <p className="text-sm text-slate-300">Risk Score</p>
-                <p className={`mt-2 text-5xl font-bold ${scoreColor}`}>{riskScore.toFixed(2)}</p>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={riskScore}
-                  onChange={(event) => setRiskScore(Number(event.target.value))}
-                  className="mt-4 w-full"
-                />
-              </div>
+            <h2 className="text-2xl font-semibold">What you are testing</h2>
+            <ul className="mt-4 space-y-2 text-slate-200">
+              <li>• Risk threshold behavior</li>
+              <li>• Decision visibility</li>
+              <li>• Estimated token and cost impact</li>
+            </ul>
 
-              <label className="block">
-                <span className="text-sm text-slate-300">Recent Risk Scores</span>
-                <input
-                  type="text"
-                  value={recentScores}
-                  onChange={(event) => setRecentScores(event.target.value)}
-                  placeholder="0.1, 0.6, 0.2, 0.58"
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-sm text-slate-300">Action name</span>
-                <input
-                  type="text"
-                  value={action}
-                  onChange={(event) => setAction(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3"
-                />
-              </label>
-
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => evaluate()}
-                className="rounded-2xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? 'Evaluating...' : 'Evaluate'}
-              </button>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => runPreset({ risk: 0.1 })}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm"
-                >
-                  Low risk (0.1)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runPreset({ risk: 0.5 })}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm"
-                >
-                  Medium risk (0.5)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runPreset({ risk: 0.9 })}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm"
-                >
-                  High risk (0.9)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runPreset({ risk: 0.2, recent: '0.1, 0.6, 0.2, 0.58' })}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm"
-                >
-                  Oscillation
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    runPreset({
-                      risk: 0.97,
-                      recent: '0.12, 0.18, 0.83, 0.95',
-                    })
-                  }
-                  className="rounded-xl border border-rose-300/40 bg-rose-400/10 px-3 py-2 text-sm text-rose-100"
-                >
-                  Dangerous prompt scenario
-                </button>
-              </div>
+            <div className="mt-6">
+              <p className="text-sm text-slate-300">Risk score</p>
+              <p className={`mt-2 text-5xl font-bold ${scoreColor}`}>{riskScore.toFixed(2)}</p>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={riskScore}
+                onChange={(event) => setRiskScore(Number(event.target.value))}
+                className="mt-4 w-full"
+              />
             </div>
+
+            <label className="mt-6 block">
+              <span className="text-sm text-slate-300">Recent scores (optional)</span>
+              <input
+                type="text"
+                value={recentScores}
+                onChange={(event) => setRecentScores(event.target.value)}
+                placeholder="0.1, 0.6, 0.2"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3"
+              />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="text-sm text-slate-300">Action</span>
+              <input
+                type="text"
+                value={action}
+                onChange={(event) => setAction(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3"
+              />
+            </label>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => evaluate()}
+              className="mt-6 rounded-2xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-60"
+            >
+              {loading ? 'Evaluating...' : 'Run decision'}
+            </button>
           </div>
 
           <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
-            <h2 className="text-2xl font-semibold">Result</h2>
+            <h2 className="text-2xl font-semibold">Runtime decision</h2>
+            <p className="mt-2 text-sm text-slate-300">
+              This public sandbox shows threshold behavior only. Authenticated workspace executions include workspace-scoped review and governance context.
+            </p>
             {error ? <p className="mt-4 rounded-xl bg-rose-500/20 px-3 py-2 text-rose-200">{error}</p> : null}
             {result ? (
-              <div className="mt-5 space-y-4">
-                <p
-                  className={`text-4xl font-bold ${
-                    result.decision === 'ALLOW'
-                      ? 'text-emerald-300'
-                      : result.decision === 'STABILIZE'
-                        ? 'text-amber-300'
-                        : 'text-rose-400'
-                  }`}
-                >
-                  {result.decision}
-                </p>
+              <div className="mt-5 space-y-3">
+                <p className="text-4xl font-bold">{result.decision}</p>
                 <p className="text-slate-200">{result.reason}</p>
-                <p>
-                  Oscillation detected:{' '}
-                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs">
-                    {result.oscillation_detected ? 'yes' : 'no'}
-                  </span>
-                </p>
-                <p className="truncate font-mono text-sm text-slate-300" title={result.proof_hash}>
-                  {result.proof_hash}
-                </p>
-                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                  <div className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 p-3">
-                    <p className="text-xs uppercase tracking-wide text-cyan-200">Server enforcement latency</p>
-                    <p className="mt-1 text-xl font-semibold text-cyan-100">
-                      {result.metrics?.total_latency_ms?.toFixed(2) ?? '—'} ms
-                    </p>
-                    <p className="text-xs text-cyan-100/80">Target overhead: &lt; 50ms</p>
-                  </div>
-                  <div className="rounded-xl border border-violet-300/30 bg-violet-400/10 p-3">
-                    <p className="text-xs uppercase tracking-wide text-violet-200">Client round-trip latency</p>
-                    <p className="mt-1 text-xl font-semibold text-violet-100">{lastRoundTripMs?.toFixed(2) ?? '—'} ms</p>
-                    <p className="text-xs text-violet-100/80">Includes network + gate evaluation</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">block: {result.policy.block_threshold}</div>
-                  <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">stabilize: {result.policy.stabilize_threshold}</div>
-                  <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">window: {result.policy.oscillation_window}</div>
-                  <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">spread: {result.policy.oscillation_spread}</div>
-                </div>
-                <p className="text-sm text-slate-400">Evaluated at: {result.evaluated_at}</p>
-                <div className="rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Decision Transparency Timeline</p>
-                  <p className="mt-2 text-xs text-cyan-100">Codex proposed this feature to increase trust between people and AI.</p>
-                  <ol className="mt-3 space-y-2 text-sm text-slate-100">
-                    <li>1) Input received — risk_score {result.risk_score.toFixed(2)}.</li>
-                    <li>2) Policy applied — threshold + oscillation checks executed.</li>
-                    <li>3) Decision issued — {result.decision} ({result.reason}).</li>
-                    <li>4) Proof generated — hash anchored for audit traceability.</li>
-                  </ol>
-                </div>
+                <p className="text-sm text-slate-300">Risk score: {result.risk_score.toFixed(2)}</p>
+                <p className="text-sm text-slate-300">Estimated tokens: {estimatedTokens}</p>
+                <p className="text-sm text-slate-300">Estimated cost: ${estimatedCostUsd} USD</p>
               </div>
             ) : (
-              <p className="mt-4 text-slate-400">Run evaluation to see decision details.</p>
+              <p className="mt-5 text-sm text-slate-400">Run a test to see ALLOW, STABILIZE, or BLOCK.</p>
             )}
-          </div>
-        </section>
 
-        <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
-          <h3 className="text-xl font-semibold">Threshold visualization</h3>
-          <div className="mt-4">
-            <div className="relative h-4 rounded-full bg-gradient-to-r from-emerald-400 via-amber-300 to-rose-500">
-              <span
-                className="absolute -top-2 h-8 w-1 rounded bg-white"
-                style={{ left: `${Math.max(0, Math.min(100, riskScore * 100))}%` }}
-              />
-            </div>
-            <div className="mt-2 flex justify-between text-xs text-slate-300">
-              <span>0</span>
-              <span>0.4 (ALLOW)</span>
-              <span>0.8 (STABILIZE)</span>
-              <span>1.0 (BLOCK)</span>
+            <div className="mt-8 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+              <p className="font-semibold text-emerald-100">Want to test this in your own workspace?</p>
+              <p className="mt-2 text-sm text-emerald-50">
+                Create a trial workspace to run authenticated executions, manage agents, and review usage and audit views.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href="/signup" className="rounded-xl bg-white px-4 py-3 font-semibold text-slate-950">
+                  Start workspace trial
+                </Link>
+                <Link href="/docs" className="rounded-xl border border-white/25 bg-white/10 px-4 py-3 font-semibold text-white">
+                  Read API docs
+                </Link>
+              </div>
             </div>
           </div>
         </section>
 
+        <section className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6">
+          <h2 className="text-2xl font-semibold">Production example</h2>
+          <p className="mt-2 text-sm text-slate-300">Use this route inside a workspace setup with your authenticated configuration.</p>
+          <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{codeSnippet}</pre>
+        </section>
+
         <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
-          <div className="mb-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-300">Estimated tokens / call</p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-300">{estimatedTokens}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-300">Estimated cost / call</p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-300">${estimatedCostUsd.toFixed(5)}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-300">Cost control mode</p>
-              <p className="mt-1 text-sm text-slate-100">Per-request token + spend visibility</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-xl font-semibold">ใช้ใน production — แค่ 3 บรรทัด</h3>
-            <button
-              type="button"
-              onClick={() => void copySnippet()}
-              className="rounded-2xl bg-emerald-400 px-4 py-2 font-semibold text-slate-950"
-            >
-              Copy
-            </button>
-          </div>
-          <pre className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm text-emerald-200">
-            <code>{codeSnippet}</code>
-          </pre>
-          <Link href="/signup" className="mt-4 inline-flex text-emerald-400 hover:text-emerald-300">
-            Start Free Trial →
+          <h2 className="text-2xl font-semibold">What changes inside a workspace?</h2>
+          <p className="mt-3 text-slate-200">
+            Public evaluation helps you understand the gate. A workspace trial adds authenticated execution, agent setup,
+            usage visibility, and governance review surfaces.
+          </p>
+          <Link href="/signup" className="mt-5 inline-flex rounded-2xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950">
+            Create your workspace
           </Link>
         </section>
       </div>

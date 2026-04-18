@@ -1,255 +1,112 @@
-'use client';
-
 import Link from 'next/link';
-import { useState } from 'react';
 
-type BillingInterval = 'monthly' | 'yearly';
-type PaidPlanKey = 'pro' | 'business' | 'enterprise';
-
-type PlanCard = {
-  key: 'trial' | PaidPlanKey;
-  name: string;
-  monthlyPrice: string;
-  yearlyPrice: string;
-  subtitle: string;
-  trial: string;
-  features: string[];
-  cta: string;
-  highlighted?: boolean;
-};
-
-const plans: PlanCard[] = [
+const plans = [
   {
-    key: 'trial',
-    name: 'Trial',
-    monthlyPrice: 'Free',
-    yearlyPrice: 'Free',
-    subtitle: 'Best for first evaluation and stakeholder review',
-    trial: 'No card required',
+    title: 'Playground',
+    price: 'Free',
+    body: 'Best for quick evaluation of runtime threshold behavior.',
     features: [
-      '1 agent sandbox',
-      '1,000 executions / month',
-      'Dashboard visibility',
-      'Basic workflow testing',
+      'No signup required',
+      'Public sandbox access',
+      'Visible ALLOW, STABILIZE, and BLOCK behavior',
+      'Estimated token and cost view',
     ],
-    cta: 'Start Trial',
+    cta: 'Try the Playground',
+    href: '/playground',
   },
   {
-    key: 'pro',
-    name: 'Pro',
-    monthlyPrice: 'US$99/mo',
-    yearlyPrice: 'US$990/yr',
-    subtitle: 'Best for solo founders and lean product teams',
-    trial: '14-day free trial',
+    title: 'Pro',
+    price: '14-day free trial, then paid',
+    body: 'Best for first authenticated workspace testing.',
     features: [
-      '5 agents',
-      '10,000 executions included',
-      'Hosted subscription checkout',
-      'Supabase + webhook billing sync',
+      '1,000 executions included',
+      'Create and manage agents',
+      'Authenticated execution flow',
+      'Usage and audit visibility',
+      'Policy and governance views',
     ],
-    cta: 'Start Pro',
-    highlighted: true,
+    cta: 'Start Pro trial',
+    href: '/signup',
   },
   {
-    key: 'business',
-    name: 'Business',
-    monthlyPrice: 'US$299/mo',
-    yearlyPrice: 'US$2,990/yr',
-    subtitle: 'Best for production AI workflows',
-    trial: '14-day free trial',
+    title: 'Business',
+    price: '14-day free trial, then paid',
+    body: 'Best for teams running governed workflows across users and environments.',
     features: [
-      '25 agents',
-      '100,000 executions included',
-      'Production workflow support',
-      'Multi-user operations',
+      'Higher execution limits',
+      'Team access',
+      'Operational governance support',
+      'Expanded usage visibility',
+      'Shared workspace controls',
     ],
-    cta: 'Start Business',
+    cta: 'Start Business trial',
+    href: '/signup',
   },
   {
-    key: 'enterprise',
-    name: 'Enterprise',
-    monthlyPrice: 'US$999/mo',
-    yearlyPrice: 'US$9,990/yr',
-    subtitle: 'Best for audit-heavy and governance-first deployments',
-    trial: '30-day pilot',
-    features: [
-      'Custom quotas',
-      'Longer pilot window',
-      'Governance onboarding',
-      'Audit exports + rollout support',
-    ],
-    cta: 'Start Enterprise Pilot',
+    title: 'Enterprise',
+    price: 'Custom',
+    body: 'Best for governance-heavy deployments and controlled rollout programs.',
+    features: ['Custom quotas', 'Deployment planning', 'Governance onboarding', 'Evidence review support', 'Enterprise rollout path'],
+    cta: 'Request Enterprise pilot',
+    href: '/contact',
   },
 ];
 
-function isPaidPlanKey(planKey: PlanCard['key']): planKey is PaidPlanKey {
-  return planKey === 'pro' || planKey === 'business' || planKey === 'enterprise';
-}
-
 export default function PricingPage() {
-  const [interval, setInterval] = useState<BillingInterval>('monthly');
-  const [loadingPlan, setLoadingPlan] = useState<PaidPlanKey | null>(null);
-  const [error, setError] = useState('');
-
-  async function startCheckout(plan: PaidPlanKey) {
-    try {
-      setLoadingPlan(plan);
-      setError('');
-
-      const response = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          plan,
-          interval,
-        }),
-      });
-
-      const json = await response.json();
-
-      if (!response.ok || !json?.url) {
-        throw new Error(json?.error || 'Failed to start checkout');
-      }
-
-      window.location.href = json.url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start checkout');
-    } finally {
-      setLoadingPlan(null);
-    }
-  }
-
   return (
     <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-7xl">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">
-            Pricing aligned to execution volume and operator scope
-          </div>
-          <h1 className="mt-8 text-4xl font-bold md:text-6xl">Choose the plan that matches your control-plane usage.</h1>
+        <div className="mx-auto max-w-4xl text-center">
+          <h1 className="text-4xl font-bold md:text-6xl">Start free. Upgrade when your runtime needs more control.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-300">
-            DSG pricing is built around trial evaluation, authenticated operator workflows, and subscription-backed execution usage. Public proof pages stay open, while usage and billing surfaces remain workspace-scoped.
+            Begin with the public Playground, then move into a workspace trial when you are ready to test authenticated
+            usage, audit, and policy workflows.
           </p>
-
-          <div className="mt-8 inline-flex rounded-2xl border border-white/10 bg-white/5 p-1">
-            <button
-              type="button"
-              onClick={() => setInterval('monthly')}
-              className={[
-                'rounded-xl px-5 py-3 text-sm font-semibold transition',
-                interval === 'monthly' ? 'bg-emerald-400 text-slate-950' : 'text-slate-300',
-              ].join(' ')}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setInterval('yearly')}
-              className={[
-                'rounded-xl px-5 py-3 text-sm font-semibold transition',
-                interval === 'yearly' ? 'bg-emerald-400 text-slate-950' : 'text-slate-300',
-              ].join(' ')}
-            >
-              Yearly
-            </button>
+          <div className="mt-8 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-left">
+            <p className="font-semibold text-emerald-100">Two ways to evaluate DSG:</p>
+            <p className="mt-2 text-sm text-emerald-50">Playground: free, no signup</p>
+            <p className="text-sm text-emerald-50">Workspace trial: 14 days, no card required</p>
           </div>
         </div>
 
-        {error ? (
-          <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-            {error}
-          </div>
-        ) : null}
-
-        <div className="mt-14 grid gap-6 lg:grid-cols-4">
-          {plans.map((plan) => {
-            const price = interval === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
-
-            return (
-              <div
-                key={plan.name}
-                className={[
-                  'rounded-[1.75rem] border p-6 backdrop-blur-sm',
-                  plan.highlighted
-                    ? 'border-emerald-400/50 bg-emerald-400/10 shadow-glow'
-                    : 'border-white/10 bg-white/5',
-                ].join(' ')}
-              >
-                <div className="mb-6">
-                  {plan.highlighted ? (
-                    <div className="mb-4 inline-flex rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-950">
-                      Most popular
-                    </div>
-                  ) : null}
-                  <h2 className="text-2xl font-bold">{plan.name}</h2>
-                  <p className="mt-3 text-4xl font-semibold">{price}</p>
-                  <p className="mt-3 text-sm text-emerald-200">{plan.trial}</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-400">{plan.subtitle}</p>
-                </div>
-
-                <ul className="space-y-3 text-sm text-slate-200">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3">
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                {plan.key === 'trial' ? (
-                  <Link
-                    href="/login"
-                    aria-label="Start trial from login"
-                    className="mt-8 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center font-semibold text-white"
-                  >
-                    {plan.cta}
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isPaidPlanKey(plan.key)) {
-                        void startCheckout(plan.key);
-                      }
-                    }}
-                    disabled={loadingPlan !== null}
-                    className={[
-                      'mt-8 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-center font-semibold transition',
-                      plan.highlighted
-                        ? 'bg-emerald-400 text-slate-950'
-                        : 'border border-white/10 bg-white/5 text-white',
-                      loadingPlan !== null ? 'opacity-70' : '',
-                    ].join(' ')}
-                  >
-                    {loadingPlan === plan.key ? 'Redirecting...' : plan.cta}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+        <div className="mt-12 grid gap-6 lg:grid-cols-4">
+          {plans.map((plan) => (
+            <div key={plan.title} className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
+              <h2 className="text-2xl font-bold">{plan.title}</h2>
+              <p className="mt-3 text-xl font-semibold text-emerald-200">{plan.price}</p>
+              <p className="mt-3 text-sm leading-7 text-slate-300">{plan.body}</p>
+              <ul className="mt-5 space-y-2 text-sm text-slate-200">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link href={plan.href} className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950">
+                {plan.cta}
+              </Link>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
-            <p className="text-lg font-semibold text-white">Why this pricing works</p>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
-              <li>• Trial lowers friction for product and stakeholder evaluation.</li>
-              <li>• Pro creates a clean self-serve path for smaller operator teams.</li>
-              <li>• Business supports larger production workflow volume and team usage.</li>
-              <li>• Enterprise gives room for pilots, governance onboarding, and audit-oriented rollout support.</li>
-            </ul>
-          </div>
-          <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6">
-            <p className="text-lg font-semibold text-white">Billing notes</p>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
-              <li>• Pro and Business start with a 14-day free trial.</li>
-              <li>• Enterprise starts with a 30-day pilot configuration.</li>
-              <li>• Checkout uses subscription pricing from configured Stripe env values.</li>
-              <li>• Usage, overage, and billing visibility are authenticated operator surfaces, not public proof pages.</li>
-            </ul>
-          </div>
+        <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/60 p-6 text-sm leading-7 text-slate-300">
+          Public proof pages remain open. Usage, billing, audit, policy, and execution review are workspace-scoped.
         </div>
+
+        <section className="mt-10 grid gap-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-xl font-semibold">What is free?</h3>
+            <p className="mt-2 text-slate-300">The public Playground is free and does not require signup. Workspace trials are free for 14 days and do not require a card to begin.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-xl font-semibold">What is included in the trial?</h3>
+            <p className="mt-2 text-slate-300">Trial workspaces include 1,000 executions, agent setup, and access to authenticated runtime views.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-xl font-semibold">When do I need Enterprise?</h3>
+            <p className="mt-2 text-slate-300">Enterprise is for teams that need rollout planning, governance onboarding, and custom execution capacity.</p>
+          </div>
+        </section>
       </div>
     </main>
   );
