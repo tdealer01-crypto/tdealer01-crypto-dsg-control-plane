@@ -62,6 +62,11 @@ export default function PricingPage() {
             Begin with the public Playground, then move into a workspace trial when you are ready to test authenticated
             usage, audit, and policy workflows.
           </p>
+          <div className="mt-6">
+            <Link href="/login" className="inline-flex rounded-xl border border-white/20 bg-white/5 px-5 py-3 font-semibold">
+              Start Trial
+            </Link>
+          </div>
           <div className="mt-8 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-left">
             <p className="font-semibold text-emerald-100">Two ways to evaluate DSG:</p>
             <p className="mt-2 text-sm text-emerald-50">Playground: free, no signup</p>
