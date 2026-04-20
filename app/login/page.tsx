@@ -6,6 +6,10 @@ import { getSafeNext } from '../../lib/auth/safe-next';
 
 function getMessage(message?: string, error?: string) {
   if (message === 'check-email') return { tone: 'success', text: 'Check your email for the recovery link.' };
+  if (error === 'approval-required') return { tone: 'error', text: 'This workspace requires admin approval before sign in.' };
+  if (error === 'sso-required') return { tone: 'error', text: 'This organization requires single sign-on for login.' };
+  if (error === 'not-allowed') return { tone: 'error', text: 'Your account is not allowed to access this workspace.' };
+  if (error === 'invalid-email') return { tone: 'error', text: 'Please enter a valid work email address.' };
   if (error) return { tone: 'error', text: 'Unable to complete login. Please try again.' };
   return null;
 }
@@ -61,10 +65,16 @@ export default async function LoginPage({
           <Link href="/signup" className="mt-5 inline-flex rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950">
             Start workspace trial
           </Link>
+          <button type="button" className="mt-3 block text-sm font-semibold text-emerald-200">
+            Continue with SSO
+          </button>
 
           <p className="mt-8 text-sm text-slate-400">
             Usage, audit, policy, capacity, and execution review are available inside authenticated workspaces.
           </p>
+          <Link href="/request-access" className="mt-4 inline-flex text-sm font-semibold text-emerald-200 underline">
+            Request access
+          </Link>
         </div>
       </div>
     </main>

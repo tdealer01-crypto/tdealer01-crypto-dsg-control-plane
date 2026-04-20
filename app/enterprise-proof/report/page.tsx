@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 
 export default function EnterpriseProofReportPage() {
@@ -7,6 +8,9 @@ export default function EnterpriseProofReportPage() {
         <h1 className="text-4xl font-bold">Why governed runtime matters</h1>
         <p className="mt-4 max-w-4xl text-lg text-slate-300">
           DSG is built for teams that need AI execution to be controlled, reviewable, and operationally trustworthy.
+        </p>
+        <p className="mt-3 max-w-4xl text-sm text-slate-400">
+          This page is the public, AI-first narrative for external review and orientation.
         </p>
 
         <div className="mt-10 grid gap-5">
@@ -44,6 +48,9 @@ export default function EnterpriseProofReportPage() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/enterprise-proof/verified" className="rounded-2xl bg-white px-5 py-3 font-semibold text-slate-950">
+            Open Verified Runtime Report
+          </Link>
           <Link href="/playground" className="rounded-2xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950">
             Try the Playground
           </Link>
