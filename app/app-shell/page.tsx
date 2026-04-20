@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import EntropyField from '../../components/canvas/EntropyField';
+import { parseSseData, formatAgentEventMessage } from '../../lib/agent/chat-event';
 
 type MonitorPayload = {
   ok: boolean;
@@ -204,17 +205,18 @@ export default function AppShellPage() {
 
         for (const raw of events) {
           if (!raw.startsWith('data: ')) continue;
-          const event = JSON.parse(raw.slice(6));
-          if (event.type === 'step_result' || event.type === 'step_error') {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `a-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                role: 'assistant',
-                content: JSON.stringify(event, null, 2),
-              },
-            ]);
-          }
+          const event = parseSseData(raw);
+          if (!event) continue;
+          const message = formatAgentEventMessage(event);
+          if (!message) continue;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `a-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              role: 'assistant',
+              content: message,
+            },
+          ]);
         }
       }
     } catch (err) {
