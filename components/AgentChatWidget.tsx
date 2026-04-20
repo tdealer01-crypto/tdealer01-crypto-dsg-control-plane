@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { parseSseData, formatAgentEventMessage } from '../lib/agent/chat-event';
 
 type ChatLine = {
   id: string;
@@ -107,10 +108,11 @@ export default function AgentChatWidget() {
 
         for (const raw of events) {
           if (!raw.startsWith('data: ')) continue;
-          const event = JSON.parse(raw.slice(6));
-          if (event.type === 'step_result' || event.type === 'step_error') {
-            setLines((prev) => [...prev, makeLine('assistant', JSON.stringify(event, null, 2))]);
-          }
+          const event = parseSseData(raw);
+          if (!event) continue;
+          const message = formatAgentEventMessage(event);
+          if (!message) continue;
+          setLines((prev) => [...prev, makeLine('assistant', message)]);
         }
       }
     } catch (err) {

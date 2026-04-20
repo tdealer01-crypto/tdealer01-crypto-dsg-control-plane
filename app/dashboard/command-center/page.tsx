@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { parseSseData, formatAgentEventMessage } from '../../../lib/agent/chat-event';
 
 type HealthPayload = {
   service?: string;
@@ -187,10 +188,11 @@ export default function CommandCenterPage() {
 
         for (const raw of events) {
           if (!raw.startsWith('data: ')) continue;
-          const event = JSON.parse(raw.slice(6));
-          if (event.type === 'step_result' || event.type === 'step_error') {
-            setChatOutput((prev) => [...prev, JSON.stringify(event, null, 2)]);
-          }
+          const event = parseSseData(raw);
+          if (!event) continue;
+          const message = formatAgentEventMessage(event);
+          if (!message) continue;
+          setChatOutput((prev) => [...prev, message]);
         }
       }
 
