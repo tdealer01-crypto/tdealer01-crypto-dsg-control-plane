@@ -52,6 +52,8 @@ Repository test status and deployment readiness are intentionally tracked separa
 
 Passing repository tests alone does not mean the deployed environment is production-ready.
 
+For a Thai step-by-step guide focused on making the UI run with live data (not static image/mock), see `docs/HOW_TO_RUN_REAL_UI_TH.md`. You can also run `npm run ops:live-ui-check` for a quick readiness check.
+
 ---
 
 ## What DSG ONE Is

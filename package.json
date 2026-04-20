@@ -27,7 +27,8 @@
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
-    "verify:production-manifest": "node scripts/verify-production-manifest.mjs"
+    "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
+    "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
