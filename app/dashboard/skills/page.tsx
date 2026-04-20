@@ -54,10 +54,10 @@ export default function SkillsPage() {
     try {
       const res = await fetch("/api/setup/auto", { method: "POST", cache: "no-store" });
       const json = await res.json();
+      setResult(json);
       if (!res.ok) {
         setError(json.error || `Setup failed (${res.status})`);
       } else {
-        setResult(json);
         if (json?.ok) {
           setTimeout(() => router.push("/dashboard/executions"), 1200);
         }
