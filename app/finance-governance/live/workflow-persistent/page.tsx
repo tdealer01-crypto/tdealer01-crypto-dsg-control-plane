@@ -76,7 +76,7 @@ export default function FinanceGovernanceLiveWorkflowPersistentPage() {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
     } catch {
-      // ignore localStorage failures in demo mode
+      // ignore localStorage failures in local runtime mode
     }
   }, []);
 
@@ -233,10 +233,10 @@ export default function FinanceGovernanceLiveWorkflowPersistentPage() {
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-16 text-white">
       <div className="max-w-3xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Persistent workflow demo</p>
+        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Persistent workflow state</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Workflow state that persists in the browser</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          This page starts from the finance-governance API, then keeps action results in local storage so approval statuses and summary counts stay changed across refreshes until you reset the demo.
+          This page starts from the finance-governance API, then keeps action results in local storage so approval statuses and summary counts stay changed across refreshes until you reset the local state.
         </p>
       </div>
 
@@ -248,7 +248,7 @@ export default function FinanceGovernanceLiveWorkflowPersistentPage() {
           {refreshing ? 'Refreshing...' : 'Refresh from storage'}
         </button>
         <button type="button" onClick={() => void resetDemo()} disabled={busyKey !== null || refreshing} className="rounded-2xl border border-red-400/30 bg-red-500/10 px-6 py-3 font-semibold text-red-100 disabled:opacity-70">
-          Reset demo state
+          Reset local state
         </button>
       </div>
 

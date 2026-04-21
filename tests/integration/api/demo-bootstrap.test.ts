@@ -1,9 +1,14 @@
 import { POST } from '../../../app/api/demo/bootstrap/route';
 
 describe('/api/demo/bootstrap', () => {
-  it('is disabled by default in tests', async () => {
-    const req = new Request('http://localhost/api/demo/bootstrap', { method: 'POST' });
-    const res = await POST(req);
-    expect(res.status).toBe(403);
+  it('returns 410 because demo bootstrap was removed', async () => {
+    const res = await POST();
+    expect(res.status).toBe(410);
+
+    const payload = await res.json();
+    expect(payload).toMatchObject({
+      ok: false,
+      code: 'DEMO_BOOTSTRAP_REMOVED',
+    });
   });
 });

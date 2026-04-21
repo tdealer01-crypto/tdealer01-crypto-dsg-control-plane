@@ -68,9 +68,9 @@ export async function GET() {
       subscriptionRes,
     ] = await Promise.all([
       getDSGCoreHealth(),
-      getDSGCoreMetrics(),
-      getDSGCoreLedger(10),
-      getDSGCoreAuditEvents(10),
+      getDSGCoreMetrics({ orgId }),
+      getDSGCoreLedger(10, { orgId }),
+      getDSGCoreAuditEvents(10, { orgId }),
       admin
         .from("executions")
         .select("decision, latency_ms, created_at")
@@ -148,7 +148,7 @@ export async function GET() {
 
     const determinism =
       latestSequence > 0
-        ? await getDSGCoreDeterminism(latestSequence)
+        ? await getDSGCoreDeterminism(latestSequence, { orgId })
         : { ok: false as const, error: "No sequence available" };
 
     const billingOk = !subscriptionRes.error;

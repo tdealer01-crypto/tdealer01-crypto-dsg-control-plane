@@ -35,19 +35,19 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get("limit") || "20"), 100);
 
-    const auditEvents = await getDSGCoreAuditEvents(limit);
+    const auditEvents = await getDSGCoreAuditEvents(limit, { orgId: access.orgId });
 
-    const sequences = Array.from(
-      new Set(
+    const sequences: number[] = Array.from(
+      new Set<number>(
         (auditEvents.items || [])
           .map((item) => Number(item.sequence))
-          .filter((n) => Number.isFinite(n))
+          .filter((n): n is number => Number.isFinite(n))
       )
     ).slice(0, 5);
 
     const determinismResults = await Promise.all(
       sequences.map(async (sequence) => {
-        const result = await getDSGCoreDeterminism(sequence);
+        const result = await getDSGCoreDeterminism(sequence, { orgId: access.orgId });
         const data = getDeterminismData(result);
 
         if (data) {
