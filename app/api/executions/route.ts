@@ -50,8 +50,8 @@ export async function GET(request: Request) {
         .eq("org_id", access.orgId)
         .order("created_at", { ascending: false })
         .limit(limit),
-      getDSGCoreLedger(limit),
-      getDSGCoreMetrics(),
+      getDSGCoreLedger(limit, { orgId: access.orgId }),
+      getDSGCoreMetrics({ orgId: access.orgId }),
     ]);
 
     if (error) {

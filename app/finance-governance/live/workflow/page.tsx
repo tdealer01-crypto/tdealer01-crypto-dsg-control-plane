@@ -147,7 +147,7 @@ export default function FinanceGovernanceLiveWorkflowPage() {
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-16 text-white">
       <div className="max-w-3xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live workflow demo</p>
+        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live workflow</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Read, act, and refresh in one workflow surface</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
           This page combines live reads from the finance-governance API with workflow actions and then refreshes the summary and queue so the state transition loop is visible in one place.

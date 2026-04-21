@@ -94,7 +94,7 @@ export default function FinanceGovernanceLiveActionsPage() {
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-16 text-white">
       <div className="max-w-3xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live action demo</p>
+        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live actions</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Trigger finance-governance workflow actions</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
           This page calls the submit, approve, reject, and escalate endpoints directly so the repo now has a concrete action surface on top of the live UI and API skeleton.
