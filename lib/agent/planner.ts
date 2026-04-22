@@ -15,6 +15,11 @@ function extractQuotedName(message: string) {
   return match ? match[1].trim() : '';
 }
 
+function extractUrl(message: string) {
+  const match = message.match(/https?:\/\/[^\s)]+/i);
+  return match ? match[0] : '';
+}
+
 function nextStep(id: number, toolId: string, params: Record<string, unknown>): AgentPlanStep {
   return { id: `s${id}`, toolId, params };
 }
@@ -115,6 +120,18 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
 
   if (/quota|capacity|โควต้า/.test(lower)) {
     return { steps: [nextStep(1, 'capacity', {})] };
+  }
+
+  if (/browser|navigate|open url|เปิดเว็บ|เปิดลิงก์|เข้าเว็บ/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'browser_navigate', {
+          agent_id: agentId,
+          url: extractUrl(text),
+          extract: '',
+        }),
+      ],
+    };
   }
 
   if (/search|ค้นหา|ออนไลน์|online|เว็บ|web/.test(lower)) {

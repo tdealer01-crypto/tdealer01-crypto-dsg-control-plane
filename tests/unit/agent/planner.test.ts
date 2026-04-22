@@ -20,6 +20,16 @@ describe('agent planner chatbot intents', () => {
     expect(plan.steps[0]?.params).toMatchObject({ query: 'ค้นหาข่าว bitcoin online ตอนนี้' });
   });
 
+  it('routes browser control prompt to browser navigate tool', () => {
+    const plan = planGoal('เปิดเว็บ https://example.com ด้วย browser ให้หน่อย agt_ops_01');
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]?.toolId).toBe('browser_navigate');
+    expect(plan.steps[0]?.params).toMatchObject({
+      agent_id: 'agt_ops_01',
+      url: 'https://example.com',
+    });
+  });
+
 
   it('uses page context for help prompt', () => {
     const plan = planGoal('help', '/dashboard/policies');
