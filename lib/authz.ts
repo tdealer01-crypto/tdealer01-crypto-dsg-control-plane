@@ -34,7 +34,13 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[]){
     };
   }
 
-  const admin = getSupabaseAdmin();
+  let admin: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof getSupabaseAdmin>;
+  try {
+    admin = getSupabaseAdmin();
+  } catch {
+    // Fallback for deployments that only expose public Supabase keys.
+    admin = await createClient();
+  }
 
   // runtime_roles.user_id references public.users.id, NOT auth.users.id.
   // Map auth.users.id -> public.users.id first.
