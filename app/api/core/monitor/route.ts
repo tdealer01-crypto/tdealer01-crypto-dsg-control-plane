@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../lib/supabase-server";
+import { createClient as createSupabaseServerClient } from "../../../../lib/supabase/server";
 import { requireOrgRole } from "../../../../lib/authz";
 import { RuntimeRouteRoles } from "../../../../lib/runtime/permissions";
 import { internalErrorMessage, logApiError } from "../../../../lib/security/api-error";
@@ -53,7 +54,13 @@ export async function GET() {
     }
 
     const orgId = access.orgId;
-    const admin = getSupabaseAdmin();
+    let admin: Awaited<ReturnType<typeof createSupabaseServerClient>> | ReturnType<typeof getSupabaseAdmin>;
+    try {
+      admin = getSupabaseAdmin();
+    } catch {
+      // Fallback for deployments that do not expose service-role env vars.
+      admin = await createSupabaseServerClient();
+    }
     const today = todayKey();
     const billingPeriod = monthKey();
 
