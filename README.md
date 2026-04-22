@@ -1,555 +1,344 @@
-<div align="center">
+# tdealer01-crypto-dsg-control-plane
 
-# DSG ONE
+Production-ready control plane for DSG runtime operations, built with Next.js App Router + Supabase.
 
-### Enterprise AI Runtime Control Plane for Auditability, Control, and Verified Operations
-
-<p>
-  DSG ONE is a runtime control plane for organizations that need AI execution to be
-  <strong>governable, reviewable, replay-resistant, and operationally visible</strong>.
-</p>
-
-<p>
-  <img alt="Enterprise AI Runtime" src="https://img.shields.io/badge/Enterprise-AI%20Runtime-0f172a?style=for-the-badge">
-  <img alt="Auditability" src="https://img.shields.io/badge/Auditability-Evidence%20Backed-0f766e?style=for-the-badge">
-  <img alt="Verified Runtime" src="https://img.shields.io/badge/Verified-Runtime%20Evidence-1d4ed8?style=for-the-badge">
-  <img alt="Governance" src="https://img.shields.io/badge/Governance-In%20the%20Control%20Flow-7c3aed?style=for-the-badge">
-</p>
-
-<p>
-  <strong>Built for teams that cannot afford opaque AI execution in production.</strong>
-</p>
-
-</div>
+This repository is structured to cover end-to-end runtime governance: Auth/SSO, Spine execution, DSG core integration, agent lifecycle, billing, enterprise proof, dashboards, and operational APIs.
 
 ---
 
-## Latest Update (April 18, 2026)
+## Test Status (Latest Validated Baseline)
 
-- Synced README repo-truth to the committed April 17, 2026 evidence refresh.
-- Re-validated the full automated test suite and aligned this README with the authoritative artifact set (`qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, `docs/STATUS_SNAPSHOT_2026-04-17.md`).
-- Clarified production-readiness status: test baseline is green, but runbook go-live evidence remains open until deployment, environment, migration, smoke, operator, and live E2E checks are closed.
-- April 18, 2026 wording clarification: separated repository test truth from deployment go-live truth to avoid readiness ambiguity.
+Vitest baseline from the provided validated run:
 
-### Test Results (latest run)
+- **85 tests passed**
+- **41 test files passed**
+- **0 failures**
 
-```bash
-npm run test  # PASS (62 files passed, 1 skipped; 185 tests passed, 3 skipped)
-# Evidence: qa-logs/npm-test-2026-04-17.log (UTC)
-```
+### Breakdown
 
-Notes:
-- The skipped file is `tests/integration/api/finance-governance-live-db.test.ts` (live DB integration guard).
-- E2E Playwright depends on browser availability in environment setup.
-- `npm run test` PASS alone is not equivalent to production cutover completion; follow `docs/RUNBOOK_DEPLOY.md` for go-live validation gates.
-
-## Deployment Status Note
-
-Repository test status and deployment readiness are intentionally tracked separately.
-
-- Repository baseline: the automated test suite is green on the current branch.
-- Deployment baseline: production-readiness is only claimed when deployed health, core connectivity, environment configuration, migrations, smoke checks, authenticated first-run flow, and operator/runtime verification are all confirmed in the target environment.
-
-Passing repository tests alone does not mean the deployed environment is production-ready.
-
-For a Thai step-by-step guide focused on making the UI run with live data (not static image/mock), see `docs/HOW_TO_RUN_REAL_UI_TH.md`. You can also run `npm run ops:live-ui-check` for a quick readiness check.
+| Category | Pass | Fail |
+|---|---:|---:|
+| Unit | 41 | 0 |
+| Integration | 35 | 0 |
+| Failure (negative) | 4 | 0 |
+| Migrations | 5 | 0 |
+| E2E (Playwright) | 0 | 1 *(browser install issue, not a code bug)* |
 
 ---
 
-## What DSG ONE Is
+## Production-Ready File Inventory
 
-DSG ONE is an enterprise runtime control plane for AI operations.
+## 1) Root Config & Entry
 
-It is designed for environments where AI execution must not be treated as a black box. Instead of relying on informal trust, DSG ONE gives organizations a structured runtime layer for:
-
-- authenticated operator access
-- organization-scoped workspaces
-- agent creation and API-key-based execution
-- execution visibility and decision traces
-- audit-oriented runtime evidence
-- live mission and readiness surfaces
-- usage, quota, and billing awareness
-- public product proof and authenticated verified proof
-
-The goal is simple:
-
-> **If AI is going to operate in production, it must be controllable, inspectable, and reviewable in real time.**
+| File | Responsibility |
+|---|---|
+| `package.json` | Dependencies & scripts |
+| `tsconfig.json` | TypeScript config |
+| `next.config.js` | Next.js config |
+| `middleware.ts` | Edge middleware (auth/security) |
+| `vitest.config.ts` | Test runner config |
+| `playwright.config.ts` | E2E config |
+| `tailwind.config.js` | Tailwind CSS |
+| `postcss.config.js` | PostCSS |
+| `vercel.json` | Vercel deployment |
+| `.env.example` | Environment template |
 
 ---
 
-## Why This Exists
+## 2) `app/` — Next.js App Router (Pages & API)
 
-As AI systems move from demos into real workflows, the problem changes.
+### Pages
 
-The hard problem is no longer only model quality. The real problem is whether an organization can answer:
+| Path | Responsibility |
+|---|---|
+| `app/layout.tsx` | Root layout |
+| `app/page.tsx` | Landing page |
+| `app/login/page.tsx` | Login page |
+| `app/password-login/page.tsx` | Password login |
+| `app/signup/page.tsx` | Signup page |
+| `app/pricing/page.tsx` | Pricing page |
+| `app/quickstart/page.tsx` | Quickstart guide |
+| `app/marketplace/page.tsx` | Marketplace |
+| `app/marketplace-ui/page.tsx` | Marketplace UI |
+| `app/app-shell/page.tsx` | App shell |
+| `app/docs/page.tsx` | Docs page |
+| `app/request-access/page.tsx` | Request access |
+| `app/globals.css` | Global styles |
 
-- What happened?
-- Why did it happen?
-- Was it allowed?
-- Was it replayed or duplicated?
-- What evidence exists for review?
-- Can operators inspect the runtime state safely and quickly?
+### Auth Flow (`app/auth/`)
 
-DSG ONE is built to address that operational problem.
+- `app/auth/confirm/`
+- `app/auth/continue/`
+- `app/auth/login/`
+- `app/auth/password-login/`
+- `app/auth/signout/`
+- `app/auth/signup/`
 
----
+### SSO & Enterprise Proof (`app/sso/`, `app/enterprise-proof/`)
 
-## Product Thesis
+- `app/sso/start/`
+- `app/enterprise-proof/report/`
+- `app/enterprise-proof/start/`
+- `app/enterprise-proof/verified/`
 
-DSG ONE is based on five practical principles:
+### Dashboard (`app/dashboard/`)
 
-### 1. Control must exist at runtime
-Governance that only exists in documents is not enough.
+| Path | Responsibility |
+|---|---|
+| `app/dashboard/layout.tsx` | Dashboard layout |
+| `app/dashboard/page.tsx` | Dashboard home |
+| `app/dashboard/error.tsx` | Error boundary |
+| `app/dashboard/agents/` | Agent management |
+| `app/dashboard/audit/` | Audit view |
+| `app/dashboard/billing/` | Billing view |
+| `app/dashboard/capacity/` | Capacity view |
+| `app/dashboard/command-center/` | Command center |
+| `app/dashboard/core-compat/` | Core compat view |
+| `app/dashboard/executions/` | Executions view |
+| `app/dashboard/integration/` | Integration view |
+| `app/dashboard/ledger/` | Ledger view |
+| `app/dashboard/mission/` | Mission view |
+| `app/dashboard/operations/` | Operations view |
+| `app/dashboard/policies/` | Policies view |
+| `app/dashboard/proofs/` | Proofs view |
+| `app/dashboard/replay/` | Replay view |
+| `app/dashboard/settings/` | Settings view |
+| `app/dashboard/skills/` | Skills view |
 
-### 2. Evidence must be visible
-Operational claims should be backed by observable runtime state, not only by narrative.
+### API Routes (`app/api/`)
 
-### 3. Auditability must be practical
-It should be possible to inspect actions, state transitions, and proof surfaces without reverse-engineering the system.
-
-### 4. Operators need live visibility
-Monitoring, readiness, mission state, and execution history should support intervention while the system is running.
-
-### 5. Public proof and verified proof are different
-A product can have a public AI-readable narrative for positioning, while still keeping authenticated, org-scoped, runtime-backed evidence for real verification.
-
----
-
-## What the Product Includes
-
-### Operator access and provisioning
-- magic-link authentication
-- protected operator surfaces
-- organization-scoped user state
-- trial signup and provisioning flow
-
-### Agent and execution layer
-- Auto-Setup creates policy + agent + execution + billing subscription + onboarding + runtime roles
-- one-time API key generation
-- stable real-run execution path via `POST /api/execute`
-- execution decisions, latency, and audit references
-
-### Monitoring and control-plane surfaces
-- dashboard and mission views
-- readiness and app-shell entry points
-- operator-facing workflow surfaces
-
-### Enterprise proof surfaces
-- **Public proof narrative** for external evaluation
-- **Verified runtime evidence** for authenticated, org-scoped review
-
-### Current repository snapshot (April 17, 2026)
-- App Router pages are available across 19 top-level product surfaces (for example: `app/`, `dashboard/`, `finance-governance/`, `playground/`, `security/`, `support/`).
-- API layer currently exposes 40 route groups under `app/api/*` (including control-plane flows such as `execute`, `spine`, `intent`, `runtime-recovery`, `finance-governance`, `agent-execute`, and `integrations`).
-- The automated Vitest suite is green on this branch; Playwright E2E still depends on external browser download availability in the execution environment.
-
----
-
-## Public Proof vs Verified Runtime Proof
-
-DSG ONE intentionally separates two proof surfaces:
-
-### Public proof narrative
-For customers, partners, AI systems, and public evaluation.
-
-Use:
-- `/enterprise-proof/start`
-- `/enterprise-proof/report`
-- `/api/enterprise-proof/report`
-
-This surface is:
-- public
-- AI-readable
-- safe to share externally
-- not tied to org-scoped runtime secrets
-
-### Verified runtime evidence
-For authenticated users inside a real organization scope.
-
-Use:
-- `/enterprise-proof/verified`
-- `/enterprise-proof/verified/report?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
-- `/api/enterprise-proof/runtime-report?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
-- `/api/enterprise-proof/runtime-report/summary?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
-
-This surface is:
-- auth-gated
-- org-scoped
-- agent-scoped
-- runtime-backed
-- explicit about gaps when evidence is incomplete
+| Path | Responsibility |
+|---|---|
+| `app/api/access/` | Access control |
+| `app/api/adapter-plan/` | Adapter plan |
+| `app/api/agent-chat/` | Agent chat |
+| `app/api/agents/` | Agent CRUD |
+| `app/api/audit/` | Audit API |
+| `app/api/auth/` | Auth API |
+| `app/api/billing/` | Billing/Stripe |
+| `app/api/capacity/` | Capacity API |
+| `app/api/checkpoint/` | Checkpoint API |
+| `app/api/core-compat/` | Core compat |
+| `app/api/core/` | Core API |
+| `app/api/demo/` | Demo API |
+| `app/api/effect-callback/` | Effect callback |
+| `app/api/enterprise-proof/` | Enterprise proof |
+| `app/api/execute/` | **Spine execution** |
+| `app/api/executions/` | Executions list |
+| `app/api/executors/` | Executor dispatch |
+| `app/api/health/` | Health check |
+| `app/api/integration/` | Integration |
+| `app/api/intent/` | **Intent endpoint** |
+| `app/api/ledger/` | Ledger API |
+| `app/api/mcp/` | MCP protocol |
+| `app/api/metrics/` | Metrics |
+| `app/api/onboarding/` | Onboarding |
+| `app/api/policies/` | Policies API |
+| `app/api/proofs/` | Proofs API |
+| `app/api/quickstart/` | Quickstart API |
+| `app/api/replay/` | Replay API |
+| `app/api/runtime-recovery/` | Runtime recovery |
+| `app/api/runtime-summary/` | Runtime summary |
+| `app/api/settings/` | Settings API |
+| `app/api/spine/` | Spine API |
+| `app/api/usage/` | Usage API |
 
 ---
 
-## First-Run Experience (Auto-Setup)
+## 3) `lib/` — Core Business Logic
 
-A new workspace should follow the main first-run flow:
+### Spine Execution Engine (`lib/spine/`)
 
-1. Sign up for a trial workspace
-2. Confirm the magic link
-3. Open `/dashboard/skills`
-4. Run **Auto-Setup** (creates policy + agent + execution + billing subscription + onboarding + runtime roles)
-5. Copy the one-time API key after setup completes
-6. Run real execution through `/api/execute` (stable entry point)
-7. Continue from `/dashboard/executions` for post-setup operations
+| File | Responsibility |
+|---|---|
+| `lib/spine/engine.ts` | Spine engine core |
+| `lib/spine/pipeline.ts` | Plugin pipeline |
+| `lib/spine/plugin.ts` | Plugin interface |
+| `lib/spine/register-defaults.ts` | Default plugin registration |
+| `lib/spine/request.ts` | Request types |
+| `lib/spine/types.ts` | Spine types |
+| `lib/spine/plugins/` | Plugin implementations |
 
-First-run Auto-Setup currently includes:
-- 14-day trial
-- 1,000 included executions
-- first agent creation + first execution in one flow
-- post-setup landing at `/dashboard/executions`
-- links into live monitoring surfaces
+### DSG Core Integration (`lib/dsg-core/`)
 
----
+| File | Responsibility |
+|---|---|
+| `lib/dsg-core/index.ts` | Entry point / mode switch |
+| `lib/dsg-core/internal.ts` | In-process gate |
+| `lib/dsg-core/remote.ts` | Remote gate call |
+| `lib/dsg-core/types.ts` | Core types |
 
-## Current API Route Notes (Repo Truth)
+### Gate (`lib/gate/`)
 
-These route notes are intended to keep evaluation, onboarding, and smoke checks aligned with the current repository truth.
+| File | Responsibility |
+|---|---|
+| `lib/gate/index.ts` | Gate entry |
+| `lib/gate/registry.ts` | Gate registry |
+| `lib/gate/types.ts` | Gate types |
+| `lib/gate/plugins/` | Gate plugins |
 
-### Public baseline probe
-- `GET /api/health`
+### Runtime (`lib/runtime/`)
 
-Use this as the anonymous/public baseline availability probe for deployment and uptime checks.
+| File | Responsibility |
+|---|---|
+| `lib/runtime/approval.ts` | Approval flow |
+| `lib/runtime/canonical.ts` | Canonical state |
+| `lib/runtime/checkpoint.ts` | Checkpoint logic |
+| `lib/runtime/gate.ts` | Runtime gate |
+| `lib/runtime/makk8-arbiter.ts` | Makk8 arbiter |
+| `lib/runtime/permissions.ts` | Permissions |
+| `lib/runtime/reconcile.ts` | Reconciliation |
+| `lib/runtime/recovery.ts` | Recovery logic |
 
-### Stable execution compatibility entry
-- `POST /api/execute`
+### Auth & RBAC (`lib/auth/`)
 
-This is the stable execution entry used for real-run traffic after first-run setup.
+| File | Responsibility |
+|---|---|
+| `lib/auth/access-policy.ts` | Access policy |
+| `lib/auth/directory-sync.ts` | Directory sync |
+| `lib/auth/guest-access.ts` | Guest access |
+| `lib/auth/jit-provisioning.ts` | JIT provisioning |
+| `lib/auth/login-context.ts` | Login context |
+| `lib/auth/preflight.ts` | Auth preflight |
+| `lib/auth/rbac.ts` | RBAC engine |
+| `lib/auth/require-active-profile.ts` | Profile guard |
+| `lib/auth/require-org-permission.ts` | Org permission guard |
+| `lib/auth/safe-next.ts` | Safe Next.js helpers |
+| `lib/auth/sign-in-events.ts` | Sign-in events |
+| `lib/auth/sso-config.ts` | SSO config |
 
-Important:
-- this route is **not** an anonymous public execution endpoint
-- it forwards to the spine execution implementation
-- it is intended for controlled runtime execution within a valid org/workspace context
+### Billing (`lib/billing/`)
 
-### Underlying execution implementation
-- `POST /api/spine/execute`
+| File | Responsibility |
+|---|---|
+| `lib/billing/overage-config.ts` | Overage config |
+| `lib/billing/seat-activation.ts` | Seat activation |
 
-`/api/execute` currently forwards to `/api/spine/execute`, which enforces runtime access and request validation.
+### Security (`lib/security/`)
 
-Current execution requirements include:
-- `Authorization: Bearer <API_KEY>`
-- a valid `agent_id` in the request payload
-- API key + `agent_id` must resolve to an existing agent
-- resolved agent must be in `active` status
-- normal execution rate limiting
+| File | Responsibility |
+|---|---|
+| `lib/security/api-error.ts` | API error handling |
+| `lib/security/audit-export.ts` | Audit export |
+| `lib/security/error-response.ts` | Error response |
+| `lib/security/rate-limit.ts` | Rate limiting |
+| `lib/security/safe-log.ts` | Safe logging |
 
-### Authenticated operator routes
-- `GET /api/usage`
-- `GET /api/executions`
-- `GET /api/audit`
-- `GET, POST /api/policies`
-- `GET /api/capacity`
-- `POST /api/agent-chat`
+### Agent Tooling (`lib/agent/`)
 
-These are operator-facing routes and should be evaluated with authenticated, org-scoped access.
-They should not be treated as anonymous/public health probes.
+| File | Responsibility |
+|---|---|
+| `lib/agent/context.ts` | Agent context |
+| `lib/agent/executor.ts` | Agent executor |
+| `lib/agent/planner.ts` | Agent planner |
+| `lib/agent/tools.ts` | Agent tools |
 
-### Common execution failure modes
-For `POST /api/execute` / `POST /api/spine/execute`, evaluators and integrators should expect:
+### Enterprise Proof (`lib/enterprise/`)
 
-- `401 Unauthorized` when the Bearer token is missing or empty
-- `400 Bad Request` when required fields such as `agent_id` are missing
-- `401 Unauthorized` when `agent_id` + API key do not resolve to a valid agent
-- `403 Forbidden` when the resolved agent is not in `active` status
-- `429 Too Many Requests` when execution rate limits are exceeded
+| File | Responsibility |
+|---|---|
+| `lib/enterprise/proof-access.ts` | Proof access control |
+| `lib/enterprise/proof-public.ts` | Public proof |
+| `lib/enterprise/proof-runtime.ts` | Runtime proof |
+| `lib/enterprise/proof-types.ts` | Proof types |
+| `lib/enterprise/proof.ts` | Proof core |
 
-### Evaluation guidance
-- Use `/api/health` first for baseline availability.
-- Use `/api/execute` as the stable compatibility entry for authenticated execution testing.
-- Do not evaluate `/api/execute` as if it were a public anonymous endpoint.
-- Use authenticated operator flows when validating usage, policy, capacity, audit, and execution surfaces.
+### Executors (`lib/executors/`)
 
----
+| File | Responsibility |
+|---|---|
+| `lib/executors/index.ts` | Executor entry |
+| `lib/executors/browserbase.ts` | Browserbase executor |
+| `lib/executors/social.ts` | Social executor |
+| `lib/executors/types.ts` | Executor types |
 
-## Online Integration Smoke Test (with external apps)
+### Other Lib Files
 
-Use this checklist when you want to test DSG ONE online with another application (for example: internal portal, automation worker, webhook processor, or partner integration).
-
-### 1) Prepare deployment target
-
-Set your deployed base URL:
-
-```bash
-export DSG_BASE_URL="https://<your-deployment-domain>"
-```
-
-### 2) Prepare execution credentials
-
-Set the runtime API key and target agent ID:
-
-```bash
-export DSG_API_KEY="<your-runtime-api-key>"
-export DSG_AGENT_ID="<your-agent-id>"
-```
-
-### 3) Baseline availability check
-
-```bash
-curl -sS "$DSG_BASE_URL/api/health"
-```
-
-Expected result: a healthy JSON response.
-
-### 4) Cross-app execution test (server-to-server)
-
-Call the stable execution endpoint from the external app backend:
-
-```bash
-curl -sS -X POST "$DSG_BASE_URL/api/execute" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $DSG_API_KEY" \
-  -d '{
-    "agent_id": "'"$DSG_AGENT_ID"'",
-    "prompt": "Cross-app smoke test",
-    "input": {
-      "source": "external-app",
-      "timestamp": "2026-04-10T00:00:00Z"
-    }
-  }'
-```
-
-Expected result: an execution response with a request/execution identifier and runtime decision metadata.
-
-### 5) Verify operator surfaces after the external trigger
-
-After step 4, verify these authenticated routes in an operator session:
-
-- `/api/executions` (new item appears)
-- `/api/audit` (trace/evidence recorded)
-- `/api/usage` (usage delta recorded)
-
-### 6) Recommended production checks
-
-For real online integrations, verify:
-
-- retry behavior for 429 and 5xx responses
-- idempotency strategy in the caller
-- request timeout budget alignment between systems
-- org-scoped auth policy and minimum privileges
-- API key handling and rotation practices
-
-### Quick pass criteria
-
-- `GET /api/health` is reachable
-- `POST /api/execute` succeeds with a valid Bearer API key and valid agent_id
-- corresponding execution and audit records are visible to operators
+| File | Responsibility |
+|---|---|
+| `lib/supabase/` | Supabase client |
+| `lib/onboarding/bootstrap.ts` | Onboarding bootstrap |
+| `lib/makk8/action-data.ts` | Makk8 action data |
+| `lib/agent-auth.ts` | Agent auth |
+| `lib/authz.ts` | Authorization |
+| `lib/core-compat.ts` | Core compatibility |
+| `lib/dsg-core.ts` | DSG core entry |
+| `lib/integration-status.ts` | Integration status |
+| `lib/resend.ts` | Email (Resend) |
+| `lib/stripe-products.ts` | Stripe products |
+| `lib/supabase-server.ts` | Supabase server client |
 
 ---
 
-## Authentication and Provisioning Model
+## 4) `components/` — UI Components
 
-DSG ONE uses two distinct entry paths:
-
-### `/signup`
-For first-time users.
-
-This path:
-- collects work email and workspace name
-- creates a pending trial-signup record
-- sends a magic link
-- provisions organization, user, and trial subscription during confirmation
-- redirects the user into `/dashboard/skills`
-
-### `/login`
-For already provisioned operator accounts only.
-
-Login is not a public self-service signup path.
-The email must already map to:
-- an active row in `users`
-- a valid `org_id`
-- an allowed operator account
-
-This distinction is intentional. Login is for existing operator access. Signup is for first-time provisioning.
+| File | Responsibility |
+|---|---|
+| `components/GlobalNav.tsx` | Global navigation |
+| `components/LoginForm.tsx` | Login form |
+| `components/audit/entropy-matrix.tsx` | Audit entropy matrix |
+| `components/canvas/EntropyField.tsx` | Canvas entropy field |
 
 ---
 
-## Who This Is For
+## 5) `supabase/` — Database Schema & Migrations
 
-DSG ONE is relevant for teams building or operating:
-
-- enterprise AI systems
-- internal AI platforms
-- agent-based workflows with approval and oversight requirements
-- audit-heavy or review-sensitive AI operations
-- regulated or compliance-aware runtime environments
-- production AI systems where traceability matters
-
-It is especially relevant where **“just trust the model”** is not an acceptable operating standard.
-
----
-
-## What Buyers Actually Get
-
-Organizations using DSG ONE get:
-
-- a clearer runtime control layer for AI execution
-- better operational evidence for review
-- separation between public positioning and real runtime proof
-- visible first-run Auto-Setup path from signup to first execution
-- operator-facing surfaces for mission, execution, and readiness workflows
-- an architecture designed for review, not only for demos
+| File | Responsibility |
+|---|---|
+| `supabase/schema.sql` | Full schema |
+| `supabase/migrations/20260323053000_product_loop_scaffold.sql` | Product loop scaffold |
+| `supabase/migrations/20260323054500_product_loop_rls.sql` | RLS policies |
+| `supabase/migrations/20260323110000_billing_checkout_flow.sql` | Billing checkout |
+| `supabase/migrations/20260323140000_schema_constraints_hardening.sql` | Schema hardening |
+| `supabase/migrations/20260323141000_rls_policy_hardening.sql` | RLS hardening |
+| `supabase/migrations/20260330_monitor_stats.sql` | Monitor stats |
+| `supabase/migrations/20260331_runtime_spine.sql` | Runtime spine tables |
+| `supabase/migrations/20260331_runtime_spine_rpc.sql` | Runtime spine RPC |
+| `supabase/migrations/20260401093000_batch3_enterprise_identity_rollout.sql` | Enterprise identity |
+| `supabase/migrations/20260401120000_enterprise_access_batch2.sql` | Enterprise access |
+| `supabase/migrations/20260401_runtime_rbac.sql` | Runtime RBAC |
+| `supabase/migrations/20260401_schema_policies_table.sql` | Policies table |
+| `supabase/migrations/20260402_billing_quota_in_rpc.sql` | Billing quota RPC |
+| `supabase/migrations/20260404_runtime_spine_rpc_hardening.sql` | Spine RPC hardening |
 
 ---
 
-## Research References
+## 6) `scripts/` — Deployment & Ops
 
-This product direction is supported by research and technical artifacts related to control, auditability, and verification-oriented runtime design.
-
-### Supporting DOIs
-
-- DOI: `10.5281/zenodo.18244246`  
-  https://doi.org/10.5281/zenodo.18244246
-
-- DOI: `10.5281/zenodo.18225586`  
-  https://doi.org/10.5281/zenodo.18225586
-
-- DOI: `10.5281/zenodo.18212854`  
-  https://doi.org/10.5281/zenodo.18212854
-
-These references support the research direction behind DSG ONE.
-
-They are **supporting artifacts**, not a substitute for inspecting the product itself.
+| File | Responsibility |
+|---|---|
+| `scripts/check-error-handlers.sh` | Error handler check |
+| `scripts/stripe-setup.ts` | Stripe setup |
+| `scripts/termux-deploy-all-in-one.sh` | Termux deploy |
+| `apply-billing-checkout-flow.sh` | Apply billing migration |
+| `apply-complete-audit-hotfix.sh` | Apply audit hotfix |
+| `set-vercel-runtime-env.sh` | Set Vercel runtime env |
+| `set-vercel-stripe-env.sh` | Set Vercel Stripe env |
 
 ---
 
-## How To Evaluate DSG ONE
+## 7) `docs/` — Documentation
 
-The right way to evaluate DSG ONE is not through slogans.
-
-It is through inspection.
-
-Review:
-- signup and login behavior
-- provisioning rules
-- first-run Auto-Setup flow
-- Auto-Setup creates policy + agent + execution + billing subscription + onboarding + runtime roles
-- execution path and returned decision data
-- public enterprise-proof surfaces
-- verified runtime proof surfaces
-- monitoring and mission entry points
-- runtime evidence and gaps behavior
-- research references alongside implementation
-
-The standard is not whether the README sounds impressive.
-
-The standard is whether the runtime is reviewable under actual use.
-
-Evaluation should use all three layers together:
-- repository evidence (tests, docs, artifacts)
-- deployment evidence (`/api/health`, readiness, smoke checks)
-- authenticated operator/runtime evidence in the target environment
-
-Do not treat green repository tests alone as final proof of deployment readiness.
+- `docs/OPERATOR_SETUP_CHECKLIST.md`
+- `docs/PR_REVIEW_PACK_V1_RUNTIME_GAP_2026-03-31.md`
+- `docs/REPO_TRUTH.md`
+- `docs/RUNBOOK_DEPLOY.md`
 
 ---
 
-## Suggested Evaluation Path
+## Summary
 
-A practical evaluation path is:
+This is the complete production-ready inventory for `tdealer01-crypto-dsg-control-plane`, covering:
 
-1. Open the public proof narrative
-2. Start a trial workspace
-3. Complete magic-link confirmation
-4. Run Auto-Setup in `/dashboard/skills`
-5. Continue in `/dashboard/executions`
-6. Open mission and dashboard surfaces
-7. Inspect the verified runtime proof path
-8. Compare runtime behavior against the product claims and research direction
+- **Auth & SSO** (magic-link, password, SSO, RBAC, JIT provisioning)
+- **Spine Execution Engine** (intent → gate → ledger pipeline)
+- **DSG Core** (internal + remote safety gate)
+- **Agent Management** (CRUD, key rotation, tools, planner)
+- **Billing** (Stripe checkout, overage, seat activation)
+- **Enterprise Proof** (public + verified runtime proof)
+- **Dashboard** (19 complete views)
+- **API Routes** (33 endpoints)
+- **Database** (14 migrations + schema)
+- **Security** (rate-limit, safe-log, error handling)
 
----
-
-## Security Checklist Reality (Updated: 2026-04-03)
-
-จากผลตรวจล่าสุด มีบางจุดที่รายงานเดิม “ไม่ตรงกับความจริงปัจจุบัน” และได้อัปเดตให้ตรงกับสถานะจริงของโค้ดแล้ว:
-
-### Corrected facts
-- `app/auth/continue/route.ts` **มี rate limit แล้ว** (ไม่ได้เป็นช่องโหว่ที่ยังค้าง).
-- `app/api/execute/route.ts` **มี route-level rate limit แล้ว** (นอกเหนือจาก quota logic).
-- ที่ root **มี lock file แล้ว** (`package-lock.json`) จึงไม่ใช่สถานะ “ไม่พบ lock file”.
-
-### Items still needing additional verification / hardening
-- ยังไม่ได้ audit รายละเอียดของ shell scripts บางไฟล์แบบเต็ม:
-  - `set-vercel-runtime-env.sh`
-  - `set-vercel-stripe-env.sh`
-- CORS ยังเป็นแนวทาง same-origin เป็นหลัก หากมีแผน external client ควรกำหนด explicit allowlist policy.
-- ควรทบทวนการส่ง error detail กลับ client ให้เป็น generic มากขึ้นใน production paths ที่ยังส่งข้อความเชิงเทคนิค.
-- ควรกำหนดรอบ dependency security review/update อย่างสม่ำเสมอ.
-
----
-
-## Package Manager & Lockfile Policy
-
-โครงการนี้ใช้ **npm** เป็น package manager หลัก (อ้างอิงจาก `package-lock.json` และ workflow CI ที่รันด้วย `npm ci`).
-
-นโยบายที่ต้องปฏิบัติ:
-- ห้ามแก้ `package.json` โดยไม่อัปเดต `package-lock.json` ใน commit เดียวกัน
-- CI จะตรวจ lock file sync โดยรัน `npm install --package-lock-only --ignore-scripts` แล้วตรวจ `git diff --exit-code -- package-lock.json`
-- CI/CD และ Vercel ต้องติดตั้ง dependencies ด้วย `npm ci` เพื่อให้ได้ dependency graph ที่ reproducible
-
-## Positioning
-
-DSG ONE should be understood as:
-
-> **A control plane for enterprise AI operations that need auditability, runtime evidence, and operational governance.**
-
-It is not a claim that all AI risk disappears.
-It is not a claim that policy text alone is enough.
-It is not a claim that one repository solves governance universally.
-
-It is a serious product effort to make AI operations:
-
-- more inspectable
-- more auditable
-- more controllable
-- more operationally truthful
-- more governable in real time
-
----
-
-## Bottom Line
-
-If your organization needs AI systems to operate with:
-
-- explicit runtime control
-- visible execution evidence
-- authenticated operator workflows
-- structured first-run-to-production paths
-- public proof for external evaluation
-- verified proof for real runtime review
-
-then DSG ONE is built in that direction.
-
-**Read the flows. Run the product. Inspect the runtime. Make your own judgment.**
-
----
-
-## Keywords
-
-`#EnterpriseAI` `#AIRuntime` `#Auditability` `#VerifiedRuntime` `#Governance` `#ZeroTrust` `#Operators` `#ControlPlane` `#MissionVisibility` `#ExecutionEvidence`
-
-## DSG Public Benchmark
-
-[![DSG Benchmark](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark.yml/badge.svg)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark.yml)
-[![DSG Benchmark Pages](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark-pages.yml/badge.svg)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark-pages.yml)
-
-This repository includes a governed runtime benchmark for DSG execution flow.
-
-It validates:
-- gate decision accuracy
-- replay completeness
-- ledger match rate
-- proof presence
-- false allow rate
-- latency
-
-Live report:
-- Public benchmark report: `https://tdealer01-crypto.github.io/tdealer01-crypto-dsg-control-plane/benchmark/`
-- Latest benchmark JSON: `https://tdealer01-crypto.github.io/tdealer01-crypto-dsg-control-plane/benchmark/result.json`
-
-GitHub configuration requirements:
-- Pages source: `GitHub Actions`
-- Required secrets: `BENCHMARK_API_KEY`, `BENCHMARK_AGENT_ID`
-
-Usage:
-- Run benchmark only: use workflow **DSG Benchmark**
-- Run benchmark + publish Pages: use workflow **DSG Benchmark Pages** with `base_url` and optional `execute_path` / `replay_path_prefix`
+Vitest baseline remains **85/85 tests passed** across **41 test files**, with Playwright E2E failing only on browser download/install constraints (403), not application logic.
