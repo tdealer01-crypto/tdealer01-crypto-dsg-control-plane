@@ -108,6 +108,27 @@ Use this checklist:
    - temporarily disable `Require Verified Commits` (only with explicit approval).
 5. Redeploy only after commit verification is fixed; otherwise cancellation will repeat.
 
+
+### Emergency bypass with GitHub Actions (no Vercel Git integration)
+If Git integration keeps canceling deployment before build (for example from `Require Verified Commits`), run the manual workflow:
+- **GitHub Actions → `Vercel Production CLI Bypass` → Run workflow**
+- Input `ref` must be `main` (workflow guardrail blocks non-main refs for production).
+- This workflow deploys with Vercel CLI (`vercel pull` + `vercel build` + `vercel deploy --prebuilt --prod`) and does not depend on Vercel Git checks.
+
+Required GitHub repository secrets:
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+Workflow behavior:
+1. Fails fast if required secrets are missing.
+2. Deploys the selected `main` ref to production.
+3. Runs `/api/health` check automatically and requires `ok: true`.
+4. Publishes deployment URL + health endpoint in workflow summary.
+
+After workflow success:
+1. Continue with production gate checks (`Production Readiness Check` / `go-no-go`).
+
 ### CLI-first recovery when deployment is canceled
 If the unverified commit issue cannot be resolved immediately, use Vercel CLI to deploy directly:
 
