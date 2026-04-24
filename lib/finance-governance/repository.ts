@@ -12,6 +12,11 @@ import type {
 import { getSupabaseAdmin } from '../supabase-server';
 
 export class FinanceGovernanceRepository {
+  private async hasControlLayerTables(supabase: any) {
+    const { error } = await supabase.from('finance_transactions').select('id').limit(1);
+    return !error;
+  }
+
   async getWorkspaceSummary(orgId: string): Promise<FinanceGovernanceWorkspaceSummary> {
     const approvals = await this.getApprovals(orgId);
     const pendingApprovals = approvals.filter(
@@ -44,6 +49,25 @@ export class FinanceGovernanceRepository {
 
   async getApprovals(orgId: string): Promise<FinanceGovernanceApprovalItem[]> {
     const supabase = getSupabaseAdmin() as any;
+
+    if (await this.hasControlLayerTables(supabase)) {
+      const { data, error } = await supabase
+        .from('finance_approval_requests')
+        .select('id,status,risk,finance_transactions(vendor,amount)')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: true });
+
+      if (!error && Array.isArray(data)) {
+        return data.map((row: any) => ({
+          id: row.id,
+          vendor: row.finance_transactions?.vendor ?? 'Unknown vendor',
+          amount: `US$${row.finance_transactions?.amount ?? '0'}`,
+          status: row.status,
+          risk: row.risk ?? 'N/A',
+        }));
+      }
+    }
+
     const { data, error } = await supabase
       .from('finance_workflow_approvals')
       .select('id,vendor,amount,status,risk')
@@ -59,6 +83,38 @@ export class FinanceGovernanceRepository {
 
   async getCaseDetail(orgId: string, id: string): Promise<FinanceGovernanceCaseDetail> {
     const supabase = getSupabaseAdmin() as any;
+
+    if (await this.hasControlLayerTables(supabase)) {
+      const { data: row, error } = await supabase
+        .from('finance_transactions')
+        .select('id,status,vendor,amount,currency')
+        .eq('org_id', orgId)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!error && row) {
+        const { data: decisions } = await supabase
+          .from('finance_approval_decisions')
+          .select('decision,reason')
+          .eq('org_id', orgId)
+          .eq('approval_request_id', id)
+          .order('created_at', { ascending: true });
+
+        return {
+          id: row.id,
+          status: row.status,
+          exportStatus: 'Ready',
+          transaction: {
+            vendor: row.vendor,
+            amount: String(row.amount),
+            currency: row.currency,
+            workflow: 'Finance governance control layer',
+          },
+          timeline: (decisions ?? []).map((item: { decision: string; reason: string }) => `${item.decision}: ${item.reason ?? ''}`),
+        };
+      }
+    }
+
     const { data: row, error } = await supabase
       .from('finance_workflow_cases')
       .select('id,status,export_status,vendor,amount,currency,workflow')
@@ -95,6 +151,67 @@ export class FinanceGovernanceRepository {
     };
   }
 
+  async getDecisions(orgId: string, caseOrApprovalId: string) {
+    const supabase = getSupabaseAdmin() as any;
+
+    if (await this.hasControlLayerTables(supabase)) {
+      const { data, error } = await supabase
+        .from('finance_approval_decisions')
+        .select('id,decision,reason,actor,created_at')
+        .eq('org_id', orgId)
+        .eq('approval_request_id', caseOrApprovalId)
+        .order('created_at', { ascending: true });
+      if (!error) return data ?? [];
+    }
+
+    const { data } = await supabase
+      .from('finance_workflow_action_events')
+      .select('id,action,message,created_at')
+      .eq('org_id', orgId)
+      .eq('approval_id', caseOrApprovalId)
+      .order('created_at', { ascending: true });
+
+    return (data ?? []).map((item: any) => ({
+      id: item.id,
+      decision: item.action,
+      reason: item.message,
+      actor: 'workflow',
+      created_at: item.created_at,
+    }));
+  }
+
+  async getExceptions(orgId: string, caseOrApprovalId: string) {
+    const supabase = getSupabaseAdmin() as any;
+
+    if (await this.hasControlLayerTables(supabase)) {
+      const { data, error } = await supabase
+        .from('finance_exceptions')
+        .select('id,status,reason,created_at,resolved_at')
+        .eq('org_id', orgId)
+        .eq('approval_request_id', caseOrApprovalId)
+        .order('created_at', { ascending: false });
+      if (!error) return data ?? [];
+    }
+
+    return [];
+  }
+
+  async getEvidenceBundles(orgId: string, caseOrApprovalId: string) {
+    const supabase = getSupabaseAdmin() as any;
+
+    if (await this.hasControlLayerTables(supabase)) {
+      const { data, error } = await supabase
+        .from('finance_evidence_bundles')
+        .select('id,status,uri,created_at')
+        .eq('org_id', orgId)
+        .eq('approval_request_id', caseOrApprovalId)
+        .order('created_at', { ascending: false });
+      if (!error) return data ?? [];
+    }
+
+    return [];
+  }
+
   async submit(orgId: string, caseId: string): Promise<FinanceGovernanceActionResult> {
     const result = buildSubmitResult(caseId);
     await this.writeAction(orgId, result, caseId, null);
@@ -108,6 +225,50 @@ export class FinanceGovernanceRepository {
   ) {
     const result = buildApprovalActionResult(action, approvalId);
     const supabase = getSupabaseAdmin() as any;
+    const useControlLayer = await this.hasControlLayerTables(supabase);
+
+    if (useControlLayer) {
+      const now = new Date().toISOString();
+      await supabase.from('finance_approval_decisions').insert({
+        org_id: orgId,
+        approval_request_id: approvalId,
+        decision: action,
+        reason: result.message,
+        actor: 'api',
+        metadata: result,
+        created_at: now,
+      });
+
+      await supabase
+        .from('finance_approval_requests')
+        .update({ status: result.nextStatus, updated_at: now })
+        .eq('org_id', orgId)
+        .eq('id', approvalId);
+
+      await supabase
+        .from('finance_transactions')
+        .update({ status: result.nextStatus, updated_at: now })
+        .eq('org_id', orgId)
+        .eq('id', approvalId);
+
+      if (action === 'escalate') {
+        await supabase.from('finance_exceptions').insert({
+          org_id: orgId,
+          approval_request_id: approvalId,
+          status: 'open',
+          reason: result.message,
+        });
+      }
+
+      if (action === 'approve') {
+        await supabase.from('finance_evidence_bundles').insert({
+          org_id: orgId,
+          approval_request_id: approvalId,
+          status: 'ready',
+          uri: `evidence://${approvalId}`,
+        });
+      }
+    }
 
     const { data: approval } = await supabase
       .from('finance_workflow_approvals')

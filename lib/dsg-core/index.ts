@@ -2,6 +2,7 @@ import {
   getInternalDSGCoreHealth,
 } from './internal';
 import {
+  executeOnRemoteDSGCore,
   getRemoteDSGCoreAuditEvents,
   getRemoteDSGCoreDeterminism,
   getRemoteDSGCoreHealth,
@@ -176,6 +177,11 @@ export async function getDSGCoreHealth() {
 }
 
 export async function executeOnDSGCore(payload: import('./types').DSGCoreExecutionRequest) {
+  const mode = parseMode();
+  if (mode === 'remote') {
+    return executeOnRemoteDSGCore(getRemoteConfig(), payload);
+  }
+
   const { resolveGate } = await import('../gate');
   const gate = resolveGate();
   return gate.evaluate({
