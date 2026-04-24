@@ -7,6 +7,17 @@ import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../..
 const QUICKSTART_INTEGRATION_PACK_RATE_LIMIT = 10;
 const QUICKSTART_INTEGRATION_PACK_WINDOW_MS = 60 * 1000;
 
+function starterAgentClientError(code: string) {
+  switch (code) {
+    case 'starter-agent-disabled':
+      return 'Starter agent setup is disabled.';
+    case 'policy-missing':
+      return 'Starter agent policy is missing.';
+    default:
+      return 'Starter agent request failed.';
+  }
+}
+
 function buildExecuteCurl(baseUrl: string, agentId: string, apiKey: string) {
   return `curl -sS -X POST "${baseUrl}/api/execute" \\
   -H "Content-Type: application/json" \\
@@ -90,7 +101,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof StarterAgentError) {
       if (error.code === 'starter-agent-disabled' || error.code === 'policy-missing') {
-        return NextResponse.json({ error: error.message }, { status: 400, headers });
+        return NextResponse.json({ error: starterAgentClientError(error.code) }, { status: 400, headers });
       }
     }
 

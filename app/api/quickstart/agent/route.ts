@@ -7,6 +7,17 @@ import { ensureStarterAgent, StarterAgentError } from '../../../../lib/quickstar
 const QUICKSTART_AGENT_RATE_LIMIT = 10;
 const QUICKSTART_AGENT_RATE_WINDOW_MS = 60 * 1000;
 
+function starterAgentClientError(code: string) {
+  switch (code) {
+    case 'starter-agent-disabled':
+      return 'Starter agent setup is disabled.';
+    case 'policy-missing':
+      return 'Starter agent policy is missing.';
+    default:
+      return 'Starter agent request failed.';
+  }
+}
+
 export async function POST(request: Request) {
   const rateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'quickstart-agent'),
@@ -30,7 +41,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof StarterAgentError) {
       if (error.code === 'starter-agent-disabled' || error.code === 'policy-missing') {
-        return NextResponse.json({ error: error.message }, { status: 400, headers });
+        return NextResponse.json({ error: starterAgentClientError(error.code) }, { status: 400, headers });
       }
     }
 

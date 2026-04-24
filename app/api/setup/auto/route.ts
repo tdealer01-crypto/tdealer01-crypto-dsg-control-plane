@@ -31,6 +31,14 @@ function logAutoSetupEvent(
   );
 }
 
+function errorMessageOf(value: unknown) {
+  if (value && typeof value === 'object' && 'message' in value) {
+    const message = (value as { message?: unknown }).message;
+    return typeof message === 'string' && message.length > 0 ? message : 'unknown';
+  }
+  return 'unknown';
+}
+
 function isMissingSchemaError(message: string, identifier: string) {
   const normalized = message.toLowerCase();
   return normalized.includes('schema cache') && normalized.includes(identifier.toLowerCase());
@@ -346,7 +354,7 @@ export async function POST(_request: Request) {
       onboardingStatus = 'OK';
     } catch (error) {
       (results.steps as string[]).push(
-        `onboarding: FAIL (${error instanceof Error ? error.message : 'unknown'})`,
+        `onboarding: FAIL (${errorMessageOf(error)})`,
       );
       onboardingStatus = 'FAIL';
     }
@@ -452,7 +460,7 @@ export async function POST(_request: Request) {
     return NextResponse.json(results, { status: 200 });
   } catch (error) {
     logAutoSetupEvent('auto_setup_failed', {
-      error: error instanceof Error ? error.message : 'unknown',
+      error: errorMessageOf(error),
     });
     return handleApiError('api/setup/auto', error);
   }
