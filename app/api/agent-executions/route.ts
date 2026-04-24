@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { requireRuntimeAccess } from '../../../lib/authz-runtime';
+import { handleApiError } from '../../../lib/security/api-error';
 
 export async function GET(req: Request) {
   const auth = await requireRuntimeAccess(req, 'monitor');
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
     .limit(limit);
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return handleApiError('api/agent-executions', error);
   }
 
   return NextResponse.json({ ok: true, items: data ?? [] });
