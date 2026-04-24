@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import GlobalNav from '../components/GlobalNav';
 
 export const metadata: Metadata = {
-  title: 'DSG Control Plane',
-  description: 'Deterministic control plane for AI systems',
+  title: 'DSG Finance Governance Control Plane',
+  description: 'Govern AI-assisted finance operations with deterministic policy gates and auditable runtime controls.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
