@@ -2,8 +2,12 @@ import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSafeNext } from './lib/auth/safe-next';
 
-function isDashboardPath(pathname: string) {
-  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+function isProtectedPath(pathname: string) {
+  return (
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/app-shell'
+  );
 }
 
 export async function middleware(request: NextRequest) {
@@ -19,7 +23,12 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !key) {
-    if (isDashboardPath(request.nextUrl.pathname)) {
+    if (isProtectedPath(request.nextUrl.pathname)) {
+      if (request.nextUrl.pathname === '/app-shell') {
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('next', '/app-shell');
+        return NextResponse.redirect(loginUrl);
+      }
       return new NextResponse(
         'Service unavailable — authentication not configured',
         { status: 503 }
@@ -51,7 +60,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(next, request.url));
   }
 
-  if (isDashboardPath(request.nextUrl.pathname) && !user) {
+  if (isProtectedPath(request.nextUrl.pathname) && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set(
       'next',

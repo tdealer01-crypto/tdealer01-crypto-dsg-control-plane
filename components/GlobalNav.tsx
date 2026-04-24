@@ -9,8 +9,7 @@ const PUBLIC_NAV = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
   { href: '/support', label: 'Support' },
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/app-shell', label: 'App Shell' },
+  { href: '/request-access', label: 'Request Access' },
 ];
 
 export default function GlobalNav() {

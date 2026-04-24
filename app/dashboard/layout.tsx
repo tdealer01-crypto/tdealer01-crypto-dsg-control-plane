@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { createClient } from '../../lib/supabase/server';
 import Link from 'next/link';
 import AgentChatWidget from '../../components/AgentChatWidget';
 
@@ -23,7 +25,16 @@ const NAV = [
   { href: '/app-shell', label: 'App Shell' },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login?next=/dashboard');
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="border-b border-slate-800 bg-slate-950/80">

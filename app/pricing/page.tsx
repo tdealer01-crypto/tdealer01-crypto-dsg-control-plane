@@ -57,7 +57,7 @@ export default function PricingPage() {
     <main className="min-h-screen px-6 py-16 text-white">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-4xl text-center">
-          <h1 className="text-4xl font-bold md:text-6xl">Start free. Upgrade when your runtime needs more control.</h1>
+          <h1 className="text-4xl font-bold md:text-6xl">Start free. Upgrade when your finance governance runtime needs more control.</h1>
           <p className="mt-6 text-lg leading-8 text-slate-300">
             Begin with the public Playground, then move into a workspace trial when you are ready to test authenticated
             usage, audit, and policy workflows.
@@ -95,7 +95,7 @@ export default function PricingPage() {
         </div>
 
         <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/60 p-6 text-sm leading-7 text-slate-300">
-          Public proof pages remain open. Usage, billing, audit, policy, and execution review are workspace-scoped.
+          Public proof pages remain open. Finance usage, billing, audit, policy, and execution review are workspace-scoped.
         </div>
 
         <section className="mt-10 grid gap-4">

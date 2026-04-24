@@ -12,9 +12,9 @@ export default async function RequestAccessPage({
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
       <div className="mx-auto max-w-3xl rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
         <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Request access</p>
-        <h1 className="mt-4 text-4xl font-bold">Your organization requires approval</h1>
+        <h1 className="mt-4 text-4xl font-bold">Your finance organization requires approval</h1>
         <p className="mt-4 text-base leading-7 text-slate-300">
-          Submit this request when your organization restricts workspace access. Public proof pages can remain open for evaluation, while protected workspace pages require approved access.
+          Submit this request when your organization restricts governed workspace access. Public proof pages can remain open for evaluation, while protected finance workspace pages require approved access.
         </p>
 
         {success ? (

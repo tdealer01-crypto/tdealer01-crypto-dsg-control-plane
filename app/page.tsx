@@ -42,11 +42,10 @@ export default function HomePage() {
           Playground: free, no signup
         </p>
         <h1 className="mt-7 max-w-4xl text-5xl font-bold leading-tight md:text-7xl">
-          Govern AI actions before they reach production.
+          Govern AI-driven finance actions before they reach production.
         </h1>
         <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-100">
-          DSG adds a runtime control layer that scores risk, applies policy, and returns a clear decision: ALLOW,
-          STABILIZE, or BLOCK.
+          DSG adds a deterministic finance governance layer that scores risk, applies policy, and returns a clear decision: ALLOW, STABILIZE, or BLOCK.
         </p>
 
         <div className="mt-10 flex flex-wrap gap-4">
