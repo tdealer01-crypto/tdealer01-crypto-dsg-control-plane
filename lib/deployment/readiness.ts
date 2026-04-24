@@ -19,6 +19,8 @@ export type ReadinessReport = {
   timestamp: string;
 };
 
+const READINESS_TIMEOUT_MS = 5_000;
+
 function buildCheck(ok: boolean, detail?: string): CheckResult {
   return { ok, ...(detail ? { detail } : {}) };
 }
@@ -31,6 +33,20 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean) {
   return fallback;
 }
 
+async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = READINESS_TIMEOUT_MS): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   const requiredEnv = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'DSG_CORE_MODE'];
   const missingEnv = requiredEnv.filter((name) => !process.env[name]);
@@ -41,7 +57,10 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   let supabaseServiceRole = buildCheck(false, 'not_checked');
   try {
     const admin = getSupabaseAdmin() as any;
-    const { error } = await admin.from('organizations').select('id').limit(1);
+    const { error } = await withTimeout(
+      admin.from('organizations').select('id').limit(1),
+      'supabase_service_role'
+    );
     supabaseServiceRole = buildCheck(!error, error?.message);
   } catch (error) {
     supabaseServiceRole = buildCheck(false, error instanceof Error ? error.message : 'supabase_unreachable');
@@ -55,7 +74,10 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     const missingRemoteUrl = config.mode === 'remote' && !config.url;
     dsgCoreConfig = buildCheck(!missingRemoteUrl, missingRemoteUrl ? 'DSG_CORE_URL missing for remote mode' : undefined);
 
-    const health = await getDSGCoreHealth() as Record<string, unknown>;
+    const health = await withTimeout(
+      getDSGCoreHealth() as Promise<Record<string, unknown>>,
+      'dsg_core_health'
+    );
     dsgCoreHealth = buildCheck(Boolean(health.ok), health.ok ? undefined : String(health.error ?? 'core_unreachable'));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'dsg_core_unreachable';

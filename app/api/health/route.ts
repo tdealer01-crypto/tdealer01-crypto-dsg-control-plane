@@ -1,8 +1,40 @@
 import { getDSGCoreHealth } from '../../../lib/dsg-core';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
-import { getDeploymentReadiness } from '../../../lib/deployment/readiness';
+import { getDeploymentReadiness, type ReadinessReport } from '../../../lib/deployment/readiness';
 import { handleApiError } from '../../../lib/security/api-error';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+
+const HEALTH_TIMEOUT_MS = 5_000;
+const UNAVAILABLE_CHECK = { ok: false, detail: 'health_dependency_unavailable' };
+
+async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = HEALTH_TIMEOUT_MS): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function unavailableReadiness(detail: string): ReadinessReport {
+  return {
+    ok: false,
+    checks: {
+      env: UNAVAILABLE_CHECK,
+      nextAuthSecret: UNAVAILABLE_CHECK,
+      supabaseServiceRole: { ok: false, detail },
+      dsgCoreConfig: { ok: false, detail },
+      dsgCoreHealth: { ok: false, detail },
+      financeGovernanceSurface: UNAVAILABLE_CHECK,
+    },
+    timestamp: new Date().toISOString(),
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -18,20 +50,36 @@ export async function GET(request: Request) {
       );
     }
 
-
     let dbOk = false;
     try {
       const admin = getSupabaseAdmin();
-      const { error: dbError } = await admin.from('organizations').select('id').limit(1);
+      const { error: dbError } = await withTimeout(
+        admin.from('organizations').select('id').limit(1),
+        'health_db'
+      );
       dbOk = !dbError;
     } catch {
       dbOk = false;
     }
 
-    const [core, readiness] = await Promise.all([
-      getDSGCoreHealth(),
-      getDeploymentReadiness(),
+    const [coreResult, readinessResult] = await Promise.allSettled([
+      withTimeout(getDSGCoreHealth(), 'health_core'),
+      withTimeout(getDeploymentReadiness(), 'health_readiness', 7_000),
     ]);
+
+    const core = coreResult.status === 'fulfilled'
+      ? coreResult.value
+      : {
+          ok: false,
+          error: coreResult.reason instanceof Error ? coreResult.reason.message : 'core_unreachable',
+        };
+
+    const readiness = readinessResult.status === 'fulfilled'
+      ? readinessResult.value
+      : unavailableReadiness(
+          readinessResult.reason instanceof Error ? readinessResult.reason.message : 'readiness_unavailable'
+        );
+
     const coreDetails = core as {
       status?: unknown;
       version?: unknown;
