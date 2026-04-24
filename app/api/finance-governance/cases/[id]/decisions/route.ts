@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { handleFinanceGovernanceApiError } from '../../../../../../lib/finance-governance/api-error';
 import { resolveOrgId } from '../../../../../../lib/finance-governance/org-scope';
 import { FinanceGovernanceRepository } from '../../../../../../lib/finance-governance/repository';
 
@@ -13,7 +14,6 @@ export async function GET(request: Request, context: RouteContext) {
     const decisions = await repository.getDecisions(orgId, id);
     return NextResponse.json({ decisions });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown_error';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return handleFinanceGovernanceApiError('api/finance-governance', error);
   }
 }

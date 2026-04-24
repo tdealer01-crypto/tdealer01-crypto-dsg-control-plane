@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { handleFinanceGovernanceApiError } from '../../../../../lib/finance-governance/api-error';
 import { resolveOrgId } from '../../../../../lib/finance-governance/org-scope';
 import { FinanceGovernanceRepository } from '../../../../../lib/finance-governance/repository';
 
@@ -12,8 +13,6 @@ export async function GET(request: Request) {
     const workspace = await repository.getWorkspaceSummary(orgId);
     return NextResponse.json({ workspace });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown_error';
-    const status = message === 'missing_org_id' ? 400 : 500;
-    return NextResponse.json({ ok: false, error: message }, { status });
+    return handleFinanceGovernanceApiError('api/finance-governance', error);
   }
 }
