@@ -10,7 +10,7 @@
 - Standardize finance governance API error handling so known domain errors remain explicit and unknown/internal errors pass through safe error handling.
 
 ## Why this PR
-This PR closes launch-blocking reliability and data-safety gaps that were still possible after the base finance governance merge:
+This PR closes launch-blocking reliability and data-safety gaps after the base finance governance merge:
 - false-positive readiness gating from string booleans,
 - migration failure on new database projects with no legacy tables,
 - incorrect row updates when action IDs were treated as transaction IDs,
@@ -19,7 +19,8 @@ This PR closes launch-blocking reliability and data-safety gaps that were still 
 - and inconsistent API error behavior for unknown internal failures.
 
 ## Validation checklist
-- [x] `git diff --cached --check`
-- [ ] `npm run typecheck` *(requires `npm ci`/dependencies in this environment)*
-- [ ] `npm test` *(requires `npm ci`/dependencies in this environment)*
-- [ ] `npm run build` *(requires `npm ci`/dependencies in this environment)*
+- [ ] `npm run typecheck`
+- [ ] `npm test`
+- [ ] `npm run build`
+- [ ] Apply Supabase migration on staging
+- [ ] Hit `/api/readiness` and confirm HTTP 200
