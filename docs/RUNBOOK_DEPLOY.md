@@ -127,7 +127,22 @@ Workflow behavior:
 4. Publishes deployment URL + health endpoint in workflow summary.
 
 After workflow success:
-1. Continue with production gate checks (`Production Readiness Check` / `go-no-go`).
+1. Capture `Deployment URL` and `Health endpoint` from the workflow summary for incident log/audit.
+2. Verify the production alias points to the new deployment (Vercel dashboard or `vercel ls`).
+3. Re-check health endpoint manually:
+
+```bash
+curl -fsSL "<deployment-url>/api/health"
+```
+
+4. Continue with production gate checks (`Production Readiness Check` / `go-no-go`).
+
+#### One-run closeout checklist (recommended)
+Use this when Vercel Git integration keeps returning `CANCELED` before build:
+1. Run **Vercel Production CLI Bypass** on `main`.
+2. Confirm workflow steps complete: `npm ci` → `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`.
+3. Confirm workflow health gate is green (`/api/health` contains `ok: true`).
+4. Record the summary links (`Deployment URL`, `Health endpoint`) in the ticket/incident.
 
 ### CLI-first recovery when deployment is canceled
 If the unverified commit issue cannot be resolved immediately, use Vercel CLI to deploy directly:
