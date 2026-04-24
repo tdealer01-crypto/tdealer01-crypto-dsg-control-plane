@@ -48,7 +48,7 @@ else
   failures=$((failures + 1))
 fi
 
-if rg -n '/api/finance-governance/server-store/' app lib components scripts; then
+if rg -n --glob '!scripts/go-no-go-gate.sh' '/api/finance-governance/server-store/' app lib components scripts; then
   echo "❌ Legacy server-store caller(s) found"
   failures=$((failures + 1))
 else
