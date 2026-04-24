@@ -6,6 +6,9 @@ import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../..
 
 const HEALTH_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_CHECK = { ok: false, detail: 'health_dependency_unavailable' };
+type SupabaseProbeResult = {
+  error: { message?: string } | null;
+};
 
 async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = HEALTH_TIMEOUT_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -53,10 +56,11 @@ export async function GET(request: Request) {
     let dbOk = false;
     try {
       const admin = getSupabaseAdmin();
-      const { error: dbError } = await withTimeout(
-        admin.from('organizations').select('id').limit(1),
+      const dbResult = await withTimeout<SupabaseProbeResult>(
+        admin.from('organizations').select('id').limit(1) as Promise<SupabaseProbeResult>,
         'health_db'
       );
+      const dbError = dbResult.error;
       dbOk = !dbError;
     } catch {
       dbOk = false;
