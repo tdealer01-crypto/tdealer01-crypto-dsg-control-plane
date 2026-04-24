@@ -66,13 +66,27 @@ jobs:
       - name: Check CRITICAL variables
         id: check_critical
         run: |
-          CRITICAL_VARS="NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY DSG_CORE_MODE"
+          CRITICAL_VARS="NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DSG_CORE_MODE"
           MISSING=""
           for var in $CRITICAL_VARS; do
             if ! grep -q "^${var}=" .env.check || grep -q "^${var}=$" .env.check; then
               MISSING="$MISSING $var"
             fi
           done
+
+          HAS_ANON=false
+          if grep -q "^NEXT_PUBLIC_SUPABASE_ANON_KEY=" .env.check && ! grep -q "^NEXT_PUBLIC_SUPABASE_ANON_KEY=$" .env.check; then
+            HAS_ANON=true
+          fi
+
+          HAS_PUBLISHABLE=false
+          if grep -q "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=" .env.check && ! grep -q "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$" .env.check; then
+            HAS_PUBLISHABLE=true
+          fi
+
+          if [ "$HAS_ANON" = "false" ] && [ "$HAS_PUBLISHABLE" = "false" ]; then
+            MISSING="$MISSING NEXT_PUBLIC_SUPABASE_ANON_KEY|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          fi
 
           if [ -z "$MISSING" ]; then
             echo "status=pass" >> $GITHUB_OUTPUT
