@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+// Build trigger: ensures Vercel evaluates updated deployment config.
 const trustBar = [
   'No signup required to test the gate',
   'Visible runtime decisions and thresholds',
