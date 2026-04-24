@@ -30,6 +30,7 @@ check_endpoint "/support"
 
 echo "== Runtime baseline checks =="
 check_endpoint "/api/health"
+check_endpoint "/api/readiness"
 
 monitor_code=$(curl -sS -o /tmp/go-no-go-monitor.json -w "%{http_code}" --max-time 20 "${BASE_URL%/}/api/core/monitor" || echo "000")
 if [[ "$monitor_code" == "200" ]]; then

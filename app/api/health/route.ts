@@ -1,5 +1,6 @@
 import { getDSGCoreHealth } from '../../../lib/dsg-core';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { getDeploymentReadiness } from '../../../lib/deployment/readiness';
 import { handleApiError } from '../../../lib/security/api-error';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
@@ -27,7 +28,10 @@ export async function GET(request: Request) {
       dbOk = false;
     }
 
-    const core = await getDSGCoreHealth();
+    const [core, readiness] = await Promise.all([
+      getDSGCoreHealth(),
+      getDeploymentReadiness(),
+    ]);
     const coreDetails = core as {
       status?: unknown;
       version?: unknown;
@@ -36,19 +40,20 @@ export async function GET(request: Request) {
     };
 
     return Response.json({
-      ok: core.ok && dbOk,
+      ok: core.ok && dbOk && readiness.ok,
       service: 'dsg-control-plane',
       timestamp: new Date().toISOString(),
       core_ok: core.ok,
       db_ok: dbOk,
-      error: (core.ok && dbOk) ? null : (!dbOk ? 'db_unreachable' : (coreDetails.error ?? null)),
+      error: (core.ok && dbOk && readiness.ok) ? null : (!dbOk ? 'db_unreachable' : (coreDetails.error ?? 'release_not_ready')),
       core: {
-        ok: core.ok && dbOk,
+        ok: core.ok && dbOk && readiness.ok,
         status: coreDetails.status ?? null,
         version: coreDetails.version ?? null,
         timestamp: coreDetails.timestamp ?? null,
         error: core.ok ? null : coreDetails.error ?? 'core_unreachable',
       },
+      readiness,
     }, { headers: buildRateLimitHeaders(rateLimit, 60) });
   } catch (error) {
     return handleApiError('api/health', error);
