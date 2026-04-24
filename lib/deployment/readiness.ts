@@ -23,6 +23,14 @@ function buildCheck(ok: boolean, detail?: string): CheckResult {
   return { ok, ...(detail ? { detail } : {}) };
 }
 
+function parseBooleanFlag(value: string | undefined, fallback: boolean) {
+  if (value == null) return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
 export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   const requiredEnv = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'DSG_CORE_MODE'];
   const missingEnv = requiredEnv.filter((name) => !process.env[name]);
@@ -55,9 +63,10 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     dsgCoreHealth = buildCheck(false, message);
   }
 
+  const financeGovernanceEnabled = parseBooleanFlag(process.env.DSG_FINANCE_GOVERNANCE_ENABLED, true);
   const financeGovernanceSurface = buildCheck(
-    Boolean(process.env.DSG_FINANCE_GOVERNANCE_ENABLED ?? 'true'),
-    process.env.DSG_FINANCE_GOVERNANCE_ENABLED === 'false' ? 'finance_governance_disabled' : undefined
+    financeGovernanceEnabled,
+    financeGovernanceEnabled ? undefined : 'finance_governance_disabled'
   );
 
   const checks = {

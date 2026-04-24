@@ -28,6 +28,9 @@ function buildClient() {
             }
             return Promise.resolve({ data: { id: 'sample-case', status: 'pending', export_status: 'Ready', vendor: 'v', amount: 1, currency: 'USD', workflow: 'wf' } });
           }
+          if (table === 'finance_approval_requests') {
+            return Promise.resolve({ data: { id: 'APR-1001', transaction_id: 'sample-case' } });
+          }
           return Promise.resolve({ data: { case_id: 'sample-case' } });
         },
         upsert(payload: unknown) {
