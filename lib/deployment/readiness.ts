@@ -20,6 +20,9 @@ export type ReadinessReport = {
 };
 
 const READINESS_TIMEOUT_MS = 5_000;
+type SupabaseProbeResult = {
+  error: { message?: string } | null;
+};
 
 function buildCheck(ok: boolean, detail?: string): CheckResult {
   return { ok, ...(detail ? { detail } : {}) };
@@ -57,10 +60,11 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   let supabaseServiceRole = buildCheck(false, 'not_checked');
   try {
     const admin = getSupabaseAdmin() as any;
-    const { error } = await withTimeout(
-      admin.from('organizations').select('id').limit(1),
+    const probeResult = await withTimeout<SupabaseProbeResult>(
+      admin.from('organizations').select('id').limit(1) as Promise<SupabaseProbeResult>,
       'supabase_service_role'
     );
+    const error = probeResult.error;
     supabaseServiceRole = buildCheck(!error, error?.message);
   } catch (error) {
     supabaseServiceRole = buildCheck(false, error instanceof Error ? error.message : 'supabase_unreachable');
