@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          rm -f launch-readiness-report.md
+          rm -f launch-readiness-report.md launch-readiness-summary.md
 
           run_check() {
             local name="$1"
@@ -51,21 +51,31 @@ jobs:
           }
 
           run_check npm_ci npm ci
+          npm_ci_status=$?
+          npm_ci_status=$(grep '^npm_ci=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
           run_check typecheck npm run typecheck
+          typecheck_status=$(grep '^typecheck=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
           run_check test npm test
+          test_status=$(grep '^test=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
           run_check build npm run build
+          build_status=$(grep '^build=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
           run_check manifest npm run verify:production-manifest
+          manifest_status=$(grep '^manifest=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
 
           {
             echo "### Launch readiness diagnostic summary"
             echo ""
             echo "| Check | Exit |"
             echo "| --- | ---: |"
-            echo "| npm ci | ${{ steps.diagnostics.outputs.npm_ci || 'pending' }} |"
-            echo "| typecheck | ${{ steps.diagnostics.outputs.typecheck || 'pending' }} |"
-            echo "| test | ${{ steps.diagnostics.outputs.test || 'pending' }} |"
-            echo "| build | ${{ steps.diagnostics.outputs.build || 'pending' }} |"
-            echo "| manifest | ${{ steps.diagnostics.outputs.manifest || 'pending' }} |"
+            echo "| npm ci | ${npm_ci_status:-missing} |"
+            echo "| typecheck | ${typecheck_status:-missing} |"
+            echo "| test | ${test_status:-missing} |"
+            echo "| build | ${build_status:-missing} |"
+            echo "| manifest | ${manifest_status:-missing} |"
           } > launch-readiness-summary.md
 
       - name: Comment launch readiness diagnostics
