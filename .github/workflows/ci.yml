@@ -64,3 +64,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Production manifest gate
+        run: npm run verify:production-manifest
