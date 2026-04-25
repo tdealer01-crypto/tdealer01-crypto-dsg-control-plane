@@ -14,12 +14,32 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type WarningItem = {
+  level: "warning" | "error";
+  code: string;
+  stage: string;
+  message: string;
+};
+
 function monthKey() {
   return new Date().toISOString().slice(0, 7);
 }
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function isSupabaseSchemaDriftError(error: unknown) {
+  const message = String((error as { message?: unknown })?.message || "").toLowerCase();
+  return (
+    message.includes("pgrst") ||
+    message.includes("schema cache") ||
+    message.includes("undefined table") ||
+    message.includes("does not exist") ||
+    message.includes("relation") ||
+    message.includes("could not find") ||
+    message.includes("function")
+  );
 }
 
 function formatReadinessStatus(args: {
@@ -29,6 +49,7 @@ function formatReadinessStatus(args: {
   auditOk: boolean;
   determinismOk: boolean;
   billingOk: boolean;
+  usageOk: boolean;
 }) {
   const reasons: string[] = [];
 
@@ -38,10 +59,11 @@ function formatReadinessStatus(args: {
   if (!args.auditOk) reasons.push("CORE_AUDIT_UNAVAILABLE");
   if (!args.determinismOk) reasons.push("CORE_DETERMINISM_UNAVAILABLE");
   if (!args.billingOk) reasons.push("BILLING_UNAVAILABLE");
+  if (!args.usageOk) reasons.push("USAGE_UNAVAILABLE");
 
   const ready = reasons.length === 0;
   const status = ready ? "ready" : args.coreHealthOk ? "degraded" : "down";
-  const score = Math.max(0, 100 - reasons.length * 18);
+  const score = Math.max(0, 100 - reasons.length * 16);
 
   return { ready, status, score, reasons };
 }
@@ -61,6 +83,9 @@ export async function GET() {
       // Fallback for deployments that do not expose service-role env vars.
       admin = await createSupabaseServerClient();
     }
+
+    const warnings: WarningItem[] = [];
+
     const today = todayKey();
     const billingPeriod = monthKey();
 
@@ -105,28 +130,63 @@ export async function GET() {
 
     if (executionsRes.error) {
       logApiError("api/core/monitor", executionsRes.error, { stage: "executions-query" });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      if (isSupabaseSchemaDriftError(executionsRes.error)) {
+        warnings.push({
+          level: "warning",
+          code: "EXECUTIONS_UNAVAILABLE",
+          stage: "executions-query",
+          message: "Executions query unavailable (schema drift or missing relation).",
+        });
+      } else {
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
     }
 
     if (activeAgentsRes.error) {
       logApiError("api/core/monitor", activeAgentsRes.error, { stage: "agents-query" });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      if (isSupabaseSchemaDriftError(activeAgentsRes.error)) {
+        warnings.push({
+          level: "warning",
+          code: "AGENTS_UNAVAILABLE",
+          stage: "agents-query",
+          message: "Agents query unavailable (schema drift or missing relation).",
+        });
+      } else {
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
     }
 
     if (usageCountersRes.error) {
       logApiError("api/core/monitor", usageCountersRes.error, { stage: "usage-counters-query" });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      if (isSupabaseSchemaDriftError(usageCountersRes.error)) {
+        warnings.push({
+          level: "warning",
+          code: "USAGE_COUNTERS_UNAVAILABLE",
+          stage: "usage-counters-query",
+          message: "Usage counters unavailable (schema drift or missing relation).",
+        });
+      } else {
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
     }
 
-    if (
-      subscriptionRes.error &&
-      !/relation .* does not exist/i.test(subscriptionRes.error.message)
-    ) {
-      logApiError("api/core/monitor", subscriptionRes.error, { stage: "subscription-query" });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+    if (subscriptionRes.error) {
+      // Billing table may not exist yet in early deployments.
+      if (isSupabaseSchemaDriftError(subscriptionRes.error)) {
+        logApiError("api/core/monitor", subscriptionRes.error, { stage: "subscription-query" });
+        warnings.push({
+          level: "warning",
+          code: "SUBSCRIPTION_UNAVAILABLE",
+          stage: "subscription-query",
+          message: "Billing subscription unavailable (schema drift or missing relation).",
+        });
+      } else {
+        logApiError("api/core/monitor", subscriptionRes.error, { stage: "subscription-query" });
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
     }
 
-    const executions = executionsRes.data || [];
+    const executions = executionsRes.error ? [] : executionsRes.data || [];
     const todayExecutions = executions.filter((row) =>
       String(row.created_at || "").startsWith(today)
     );
@@ -142,11 +202,13 @@ export async function GET() {
         )
       : 0;
 
-    const activeAgents = Number(activeAgentsRes.count || 0);
-    const executionsThisMonth = (usageCountersRes.data || []).reduce(
-      (sum, row) => sum + Number(row.executions || 0),
-      0
-    );
+    const activeAgents = activeAgentsRes.error ? 0 : Number(activeAgentsRes.count || 0);
+    const executionsThisMonth = usageCountersRes.error
+      ? 0
+      : (usageCountersRes.data || []).reduce(
+          (sum, row) => sum + Number(row.executions || 0),
+          0
+        );
 
     const latestSequence =
       coreAudit.ok && Array.isArray(coreAudit.items) && coreAudit.items.length > 0
@@ -159,6 +221,8 @@ export async function GET() {
         : { ok: false as const, error: "No sequence available" };
 
     const billingOk = !subscriptionRes.error;
+    const usageOk = !usageCountersRes.error;
+
     const readiness = formatReadinessStatus({
       coreHealthOk: !!coreHealth.ok,
       coreMetricsOk: !!coreMetrics.ok,
@@ -166,14 +230,17 @@ export async function GET() {
       auditOk: !!coreAudit.ok,
       determinismOk: !!determinism.ok,
       billingOk,
+      usageOk,
     });
 
     const alerts = [
+      ...warnings,
       ...(!coreHealth.ok
         ? [
             {
-              level: "error",
+              level: "error" as const,
               code: "CORE_DOWN",
+              stage: "core-health",
               message: ("error" in coreHealth ? coreHealth.error : null) || "DSG core is unavailable",
             },
           ]
@@ -181,8 +248,9 @@ export async function GET() {
       ...(!coreMetrics.ok
         ? [
             {
-              level: "warning",
+              level: "warning" as const,
               code: "CORE_METRICS_UNAVAILABLE",
+              stage: "core-metrics",
               message: ("error" in coreMetrics ? coreMetrics.error : null) || "Core metrics unavailable",
             },
           ]
@@ -190,8 +258,9 @@ export async function GET() {
       ...(!determinism.ok
         ? [
             {
-              level: "warning",
+              level: "warning" as const,
               code: "DETERMINISM_UNAVAILABLE",
+              stage: "core-determinism",
               message:
                 "error" in determinism
                   ? determinism.error
@@ -202,8 +271,9 @@ export async function GET() {
       ...(subscriptionRes.data?.status === "past_due"
         ? [
             {
-              level: "warning",
+              level: "warning" as const,
               code: "BILLING_PAST_DUE",
+              stage: "billing",
               message: "Billing status is past_due",
             },
           ]
@@ -211,8 +281,9 @@ export async function GET() {
       ...(subscriptionRes.data?.status === "unpaid"
         ? [
             {
-              level: "error",
+              level: "error" as const,
               code: "BILLING_UNPAID",
+              stage: "billing",
               message: "Billing status is unpaid",
             },
           ]
