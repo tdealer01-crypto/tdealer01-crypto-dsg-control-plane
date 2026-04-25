@@ -4,18 +4,108 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: launch-readiness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - name: production-manifest
-        run: test -f .env.example
+
+      - name: Run launch readiness diagnostics
+        id: diagnostics
+        shell: bash
+        run: |
+          set +e
+          rm -f launch-readiness-report.md launch-readiness-summary.md
+
+          run_check() {
+            local name="$1"
+            shift
+            local log_file="launch-${name}.log"
+            echo "## ${name}" >> launch-readiness-report.md
+            echo '```text' >> launch-readiness-report.md
+            "$@" > "${log_file}" 2>&1
+            local status=$?
+            tail -n 80 "${log_file}" >> launch-readiness-report.md
+            echo '```' >> launch-readiness-report.md
+            echo "exit_code=${status}" >> launch-readiness-report.md
+            echo "" >> launch-readiness-report.md
+            echo "${name}=${status}" >> "$GITHUB_OUTPUT"
+            return 0
+          }
+
+          run_check npm_ci npm ci
+          npm_ci_status=$?
+          npm_ci_status=$(grep '^npm_ci=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
+          run_check typecheck npm run typecheck
+          typecheck_status=$(grep '^typecheck=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
+          run_check test npm test
+          test_status=$(grep '^test=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
+          run_check build npm run build
+          build_status=$(grep '^build=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
+          run_check manifest npm run verify:production-manifest
+          manifest_status=$(grep '^manifest=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2)
+
+          {
+            echo "### Launch readiness diagnostic summary"
+            echo ""
+            echo "| Check | Exit |"
+            echo "| --- | ---: |"
+            echo "| npm ci | ${npm_ci_status:-missing} |"
+            echo "| typecheck | ${typecheck_status:-missing} |"
+            echo "| test | ${test_status:-missing} |"
+            echo "| build | ${build_status:-missing} |"
+            echo "| manifest | ${manifest_status:-missing} |"
+          } > launch-readiness-summary.md
+
+      - name: Comment launch readiness diagnostics
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('launch-readiness-summary.md', 'utf8');
+            const details = fs.readFileSync('launch-readiness-report.md', 'utf8');
+            const body = `${summary}\n\n<details><summary>Command output tails</summary>\n\n${details}\n</details>`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Enforce launch readiness gate
+        shell: bash
+        run: |
+          failed=0
+          for status in \
+            "${{ steps.diagnostics.outputs.npm_ci }}" \
+            "${{ steps.diagnostics.outputs.typecheck }}" \
+            "${{ steps.diagnostics.outputs.test }}" \
+            "${{ steps.diagnostics.outputs.build }}" \
+            "${{ steps.diagnostics.outputs.manifest }}"; do
+            if [ "$status" != "0" ]; then
+              failed=1
+            fi
+          done
+          exit "$failed"
