@@ -61,10 +61,9 @@ function formatDate(value?: string) {
 
 function resultTone(result?: string) {
   const normalized = (result || '').toUpperCase();
-  if (normalized.includes('BLOCK') || normalized.includes('FREEZE')) return 'text-rose-300 border-rose-500/20';
-  if (normalized.includes('WARN')) return 'text-amber-200 border-amber-500/20';
-  if (normalized.includes('PASS') || normalized.includes('ALLOW') || normalized.includes('SUCCESS')) return 'text-emerald-200 border-emerald-500/20';
-  return 'text-slate-200 border-slate-700';
+  if (normalized.includes('BLOCK') || normalized.includes('FREEZE')) return 'border-red-400/25 bg-red-500/10 text-red-100';
+  if (normalized.includes('WARN') || normalized.includes('STABILIZE')) return 'border-amber-300/25 bg-amber-300/10 text-amber-100';
+  return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100';
 }
 
 export default function CommandCenterPage() {
@@ -119,9 +118,7 @@ export default function CommandCenterPage() {
         if (auditRes.status === 'fulfilled') setAudit(auditRes.value);
         else errors.push(auditRes.reason?.message || 'Failed to load audit');
 
-        if (errors.length > 0) {
-          setError(errors.join(' • '));
-        }
+        if (errors.length > 0) setError(errors.join(' • '));
       })
       .catch((err) => {
         if (!alive) return;
@@ -150,12 +147,22 @@ export default function CommandCenterPage() {
 
   const suggestedActions = useMemo(() => {
     const actions: string[] = [];
-    if (!health?.core_ok) actions.push('Run /api/health diagnostics and verify DSG core connectivity.');
-    if ((capacity?.utilization ?? 0) > 0.8) actions.push('Reduce execution load or upgrade plan before quota exhaustion.');
-    if (alerts.length > 0) actions.push('Review latest BLOCK/FREEZE audit events before approving new executions.');
-    if (actions.length === 0) actions.push('System is stable. Continue monitoring entropy and latency trends.');
+    if (!health?.core_ok) actions.push('Verify DSG core connectivity and runtime credentials.');
+    if ((capacity?.utilization ?? 0) > 0.8) actions.push('Reduce execution load or expand plan capacity before quota pressure becomes operational risk.');
+    if (alerts.length > 0) actions.push('Review the latest BLOCK or FREEZE events before releasing more approvals.');
+    if (actions.length === 0) actions.push('System posture is stable. Continue monitoring audit entropy and queue pressure.');
     return actions;
-  }, [health?.core_ok, capacity?.utilization, alerts.length]);
+  }, [alerts.length, capacity?.utilization, health?.core_ok]);
+
+  const metrics = useMemo(
+    () => [
+      { label: 'Core status', value: health?.core_ok ? 'Online' : 'Offline', helper: health?.core?.version || 'No version reported' },
+      { label: 'Executions', value: String(capacity?.executions ?? 0), helper: usage?.billing_period || 'Current period' },
+      { label: 'Quota remaining', value: String(capacity?.remaining_executions ?? 0), helper: `${Math.round((capacity?.utilization ?? 0) * 100)}% utilized` },
+      { label: 'Projected billing', value: `$${(capacity?.projected_amount_usd ?? 0).toFixed(2)}`, helper: usage?.plan || '-' },
+    ],
+    [capacity?.executions, capacity?.projected_amount_usd, capacity?.remaining_executions, capacity?.utilization, health?.core?.version, health?.core_ok, usage?.billing_period, usage?.plan],
+  );
 
   async function submitCommand() {
     const value = command.trim();
@@ -205,122 +212,127 @@ export default function CommandCenterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0d0e11] px-6 pb-12 pt-8 text-[#f7f6f9]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-12">
-        <section className="relative overflow-hidden bg-[#1e2023] p-8 md:col-span-8">
-          <div className="relative z-10">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="font-mono text-sm uppercase tracking-[0.3em] text-[#00e5ff]">DSG ONE · COMMAND CENTER</h1>
-                <p className="mt-3 text-3xl font-bold uppercase tracking-tight text-[#81ecff]">System Health Matrix</p>
-                <p className="mt-2 text-sm text-slate-300">Autonomous reconciliation monitoring active.</p>
-              </div>
-              <span className="rounded-full border border-[#00fe66]/30 bg-[#00fe66]/10 px-3 py-1 font-mono text-xs text-[#00fe66]">{overallStatus}</span>
+    <main className="min-h-screen bg-[#090a0d] px-6 pb-12 pt-8 text-slate-100">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="border border-white/10 bg-[linear-gradient(135deg,rgba(120,14,21,0.2),rgba(10,11,14,0.92)_35%,rgba(245,197,92,0.08)_120%)] p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">DSG Command Center</p>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">Live operator surface for readiness, evidence, and intervention.</h1>
+              <p className="mt-4 text-sm leading-7 text-slate-300">
+                Use this room to scan control posture, review active audit signals, and run guided diagnostics before approving more runtime activity.
+              </p>
             </div>
-
-            <div className="mt-8 grid gap-4 md:grid-cols-2">
-              <div className="border-l-2 border-[#00e5ff] bg-[#121316] p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Core Status</p>
-                <p className="mt-1 font-mono text-2xl">{health?.core_ok ? 'ONLINE' : 'OFFLINE'}</p>
-              </div>
-              <div className="border-l-2 border-[#00e5ff] bg-[#121316] p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Executions</p>
-                <p className="mt-1 font-mono text-2xl">{capacity?.executions ?? 0}</p>
-              </div>
-              <div className="border-l-2 border-[#ff6e85] bg-[#121316] p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Quota Remaining</p>
-                <p className="mt-1 font-mono text-2xl">{capacity?.remaining_executions ?? 0}</p>
-              </div>
-              <div className="border-l-2 border-[#00e5ff] bg-[#121316] p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Projected Billing</p>
-                <p className="mt-1 font-mono text-2xl">${(capacity?.projected_amount_usd ?? 0).toFixed(2)}</p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={submitCommand}
-                disabled={chatBusy}
-                className="bg-[#81ecff] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
-              >
-                {chatBusy ? 'Running…' : 'Run Diagnostics'}
-              </button>
-              <span className="border border-[#81ecff]/30 px-4 py-2 font-mono text-xs uppercase tracking-wider text-[#81ecff]">
-                Last check: {formatDate(health?.timestamp)}
-              </span>
-            </div>
-          </div>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,227,253,0.18),transparent_60%)]" />
-        </section>
-
-        <section className="bg-[#181a1d] p-6 md:col-span-4">
-          <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Compliance Scorecard</h2>
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between border-l-4 border-[#00fe66] bg-[#121316] p-4">
-              <p className="text-xs uppercase tracking-wider text-slate-400">Plan</p>
-              <p className="font-mono text-lg">{usage?.plan || '-'}</p>
-            </div>
-            <div className="flex items-center justify-between border-l-4 border-[#ff6e85] bg-[#121316] p-4">
-              <p className="text-xs uppercase tracking-wider text-slate-400">Active Alerts</p>
-              <p className="font-mono text-lg text-[#ff6e85]">{alerts.length}</p>
-            </div>
-            <div className="flex items-center justify-between border-l-4 border-[#81ecff] bg-[#121316] p-4">
-              <p className="text-xs uppercase tracking-wider text-slate-400">Utilization</p>
-              <p className="font-mono text-lg">{Math.round((capacity?.utilization ?? 0) * 100)}%</p>
-            </div>
-          </div>
-
-          <div className="mt-6 border-t border-slate-700/50 pt-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Suggested Actions</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-200">
-              {suggestedActions.map((action) => (
-                <li key={action}>• {action}</li>
-              ))}
-            </ul>
+            <span className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.24em] ${overallStatus === 'READY' ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100' : 'border-red-400/25 bg-red-500/10 text-red-100'}`}>
+              {overallStatus}
+            </span>
           </div>
         </section>
 
-        <section className="border border-slate-800 bg-black/30 p-6 md:col-span-12">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div>
-              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Chat / Agent Console</h2>
-              <p className="mt-2 text-sm text-slate-400">Prompt the agent for summaries and recovery procedures.</p>
+        <section className="grid gap-4 md:grid-cols-4">
+          {metrics.map((item) => (
+            <div key={item.label} className="border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
+              <p className="mt-4 text-3xl font-semibold text-white">{item.value}</p>
+              <p className="mt-2 text-sm text-slate-400">{item.helper}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[0.78fr_1.22fr]">
+          <div className="space-y-6">
+            <div className="border border-white/10 bg-white/[0.03] p-6">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Control scorecard</p>
+              <div className="mt-5 space-y-3">
+                <div className="flex items-center justify-between border-l border-emerald-400/35 bg-black/20 p-4">
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Plan</span>
+                  <span className="font-semibold text-white">{usage?.plan || '-'}</span>
+                </div>
+                <div className="flex items-center justify-between border-l border-red-400/35 bg-black/20 p-4">
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Active alerts</span>
+                  <span className="font-semibold text-red-100">{alerts.length}</span>
+                </div>
+                <div className="flex items-center justify-between border-l border-amber-300/35 bg-black/20 p-4">
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Utilization</span>
+                  <span className="font-semibold text-white">{Math.round((capacity?.utilization ?? 0) * 100)}%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-white/10 bg-white/[0.03] p-6">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Suggested actions</p>
+              <div className="mt-4 space-y-3">
+                {suggestedActions.map((action) => (
+                  <div key={action} className="border-l border-amber-300/35 bg-black/20 p-4 text-sm leading-7 text-slate-200">
+                    {action}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
+              Core version: {health?.core?.version || '-'} · Status: {health?.core?.status || '-'} · Error: {health?.core?.error || '-'}
+            </div>
+          </div>
+
+          <div className="grid gap-6">
+            <div className="border border-white/10 bg-[#0d0f12] p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Agent console</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">Run diagnostics and operator prompts</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={submitCommand}
+                  disabled={chatBusy}
+                  className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
+                >
+                  {chatBusy ? 'Running…' : 'Run diagnostics'}
+                </button>
+              </div>
+
               <textarea
                 value={command}
                 onChange={(e) => setCommand(e.target.value)}
-                placeholder="Ask readiness/audit/capacity/execute..."
-                className="mt-3 h-28 w-full border border-slate-700 bg-[#0d0e11] p-3 font-mono text-sm text-slate-100 outline-none focus:border-[#81ecff]"
+                placeholder="Ask readiness, audit, capacity, or recovery questions..."
+                className="mt-5 h-32 w-full border border-white/10 bg-black/30 p-4 text-sm text-slate-100 outline-none transition focus:border-amber-300/40"
               />
-              {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
-              <div className="mt-4 max-h-60 space-y-2 overflow-y-auto pr-2">
+              {error ? <p className="mt-3 text-sm text-red-200">{error}</p> : null}
+
+              <div className="mt-5 max-h-72 space-y-3 overflow-y-auto pr-1">
                 {chatOutput.length === 0 ? <p className="text-sm text-slate-500">No output yet.</p> : null}
                 {chatOutput.map((line, index) => (
-                  <pre key={`${index}-${line.slice(0, 8)}`} className="overflow-x-auto border border-slate-700 bg-[#121316] p-3 text-xs text-slate-200">
+                  <pre key={`${index}-${line.slice(0, 8)}`} className="overflow-x-auto border border-white/10 bg-black/20 p-4 text-xs leading-6 text-slate-200">
                     {line}
                   </pre>
                 ))}
               </div>
             </div>
 
-            <div>
-              <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-[#81ecff]">Monitor / Control Panel</h2>
-              <p className="mt-2 text-sm text-slate-400">Latest audit stream and gate results.</p>
-              <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-2">
+            <div className="border border-white/10 bg-[#0d0f12] p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Audit stream</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">Latest gate results and state evidence</h2>
+                </div>
+                <p className="text-sm text-slate-500">Last check: {formatDate(health?.timestamp)}</p>
+              </div>
+
+              <div className="mt-5 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
                 {(audit?.items || []).map((item) => (
-                  <div key={`${item.id}-${item.created_at}`} className={`border bg-[#121316] p-3 text-sm ${resultTone(item.gate_result)}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold uppercase">{item.gate_result || '-'}</p>
+                  <div key={`${item.id}-${item.created_at}`} className={`border p-4 ${resultTone(item.gate_result)}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em]">{item.gate_result || '-'}</p>
                       <p className="text-xs text-slate-400">{formatDate(item.created_at)}</p>
                     </div>
-                    <p className="mt-1 text-xs text-slate-300">Entropy: {typeof item.entropy === 'number' ? item.entropy.toFixed(4) : '-'}</p>
-                    <p className="mt-1 break-all text-xs text-slate-500">State hash: {item.state_hash || '-'}</p>
+                    <p className="mt-3 text-xs text-slate-300">Entropy: {typeof item.entropy === 'number' ? item.entropy.toFixed(4) : '-'}</p>
+                    <p className="mt-2 break-all text-xs text-slate-500">State hash: {item.state_hash || '-'}</p>
                   </div>
                 ))}
                 {auditUnavailableInInternalMode ? <p className="text-sm text-slate-500">Audit unavailable in internal mode.</p> : null}
                 {!auditUnavailableInInternalMode && audit?.items?.length === 0 ? <p className="text-sm text-slate-500">No audit events found.</p> : null}
               </div>
-              <div className="mt-3 border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Core version: {health?.core?.version || '-'} · Status: {health?.core?.status || '-'} · Error: {health?.core?.error || '-'}</div>
             </div>
           </div>
         </section>
