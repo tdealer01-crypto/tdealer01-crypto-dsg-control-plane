@@ -270,14 +270,13 @@ button:not(:disabled),
 a.rounded-xl,
 a.rounded-2xl,
 a.rounded-full {
-  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 button:not(:disabled):hover,
 a.rounded-xl:hover,
 a.rounded-2xl:hover,
 a.rounded-full:hover {
-  transform: translateY(-1px);
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24), 0 0 22px rgba(212, 175, 55, 0.08);
 }
 
