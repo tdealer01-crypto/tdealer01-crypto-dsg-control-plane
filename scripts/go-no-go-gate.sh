@@ -8,12 +8,28 @@ if [[ -z "$BASE_URL" ]]; then
 fi
 
 failures=0
+TMP_ROOT="${TMPDIR:-}"
+if [[ -z "$TMP_ROOT" || ! -d "$TMP_ROOT" || ! -w "$TMP_ROOT" ]]; then
+  TMP_ROOT="$(pwd)/.tmp"
+  mkdir -p "$TMP_ROOT"
+fi
+
+response_file="${TMP_ROOT%/}/go-no-go-response.json"
+monitor_file="${TMP_ROOT%/}/go-no-go-monitor.json"
+
+http_code() {
+  local url="$1"
+  local output_file="$2"
+  local code
+  code=$(curl -sS -o "$output_file" -w "%{http_code}" --max-time 20 "$url") || code="000"
+  printf '%s' "$code"
+}
 
 check_endpoint() {
   local path="$1"
   local url="${BASE_URL%/}${path}"
   local code
-  code=$(curl -sS -o /tmp/go-no-go-response.json -w "%{http_code}" --max-time 20 "$url" || echo "000")
+  code=$(http_code "$url" "$response_file")
   if [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
     echo "✅ ${path} -> HTTP ${code}"
   else
@@ -32,9 +48,9 @@ echo "== Runtime baseline checks =="
 check_endpoint "/api/health"
 check_endpoint "/api/readiness"
 
-monitor_code=$(curl -sS -o /tmp/go-no-go-monitor.json -w "%{http_code}" --max-time 20 "${BASE_URL%/}/api/core/monitor" || echo "000")
+monitor_code=$(http_code "${BASE_URL%/}/api/core/monitor" "$monitor_file")
 if [[ "$monitor_code" == "200" ]]; then
-  status=$(jq -r '.readiness.status // .readiness_status // "unknown"' /tmp/go-no-go-monitor.json 2>/dev/null || echo "unknown")
+  status=$(jq -r '.readiness.status // .readiness_status // "unknown"' "$monitor_file" 2>/dev/null || echo "unknown")
   if [[ "$status" == "ready" ]]; then
     echo "✅ /api/core/monitor readiness=$status"
   else
