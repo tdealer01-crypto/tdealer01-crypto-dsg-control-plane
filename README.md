@@ -6,23 +6,75 @@ This repository is structured to cover end-to-end runtime governance: Auth/SSO, 
 
 ---
 
+## Production Launch Checkpoint — 2026-04-25
+
+**DSG Action Layer Gate: GO**
+
+This checkpoint records the validated production launch baseline for the DSG control plane after the lockfile, manifest, runtime readiness, and Termux go/no-go gate fixes were merged.
+
+| Area | Status | Evidence |
+|---|---:|---|
+| Production deployment | ✅ PASS | Vercel production deployment `dpl_43qqZowFMo7JpsBXgkropG5bLjfb` is `READY` on commit `e4b194b` |
+| Production URL | ✅ PASS | `https://tdealer01-crypto-dsg-control-plane.vercel.app` |
+| Health endpoint | ✅ PASS | `/api/health` returns HTTP 200 with `ok: true` |
+| Readiness endpoint | ✅ PASS | `/api/readiness` returns HTTP 200 with `ok: true` |
+| Trust pages | ✅ PASS | `/terms`, `/privacy`, `/security`, `/support` return HTTP 200 |
+| Protected monitor endpoint | ✅ PASS | `/api/core/monitor` returns HTTP 401 when unauthenticated, which is expected |
+| Legacy server-store callers | ✅ PASS | No legacy `/api/finance-governance/server-store` callers found |
+| Go/no-go script | ✅ PASS | `GO/NO-GO RESULT: PASS (all scripted checks green)` |
+
+### Re-run the launch gate
+
+```bash
+BASE="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+./scripts/go-no-go-gate.sh "$BASE"
+```
+
+Expected result:
+
+```text
+GO/NO-GO RESULT: PASS (all scripted checks green)
+```
+
+### Runtime readiness requirements
+
+Production readiness depends on these environment-backed checks staying green:
+
+- `NEXTAUTH_SECRET`
+- Supabase service role configuration
+- DSG core configuration
+- DSG core health
+- Finance governance surface
+
+If any readiness check returns `ok: false`, the launch state falls back to **NO-GO** until fixed and redeployed.
+
+---
+
 ## Test Status (Latest Validated Baseline)
 
-Vitest baseline from the provided validated run:
+Validated local and runtime baseline from the launch repair run:
 
-- **85 tests passed**
-- **41 test files passed**
-- **0 failures**
+- **199 tests passed**
+- **67 test files passed**
+- **3 tests skipped**
+- **1 test file skipped**
+- **Typecheck passed** with exit code `0`
+- **Production manifest gate passed** with **186 paths present**
+- **Vercel production build passed**
+- **Runtime health/readiness passed**
+- **Go/no-go gate passed**
 
 ### Breakdown
 
-| Category | Pass | Fail |
-|---|---:|---:|
-| Unit | 41 | 0 |
-| Integration | 35 | 0 |
-| Failure (negative) | 4 | 0 |
-| Migrations | 5 | 0 |
-| E2E (Playwright) | 0 | 1 *(browser install issue, not a code bug)* |
+| Check | Result |
+|---|---:|
+| Vitest test suite | 199 passed / 3 skipped |
+| Test files | 67 passed / 1 skipped |
+| TypeScript typecheck | PASS |
+| Production manifest gate | PASS — 186 paths present |
+| Vercel production deployment | PASS — READY |
+| Runtime smoke | PASS |
+| DSG Action Layer Gate | GO |
 
 ---
 
@@ -33,6 +85,7 @@ Vitest baseline from the provided validated run:
 | File | Responsibility |
 |---|---|
 | `package.json` | Dependencies & scripts |
+| `package-lock.json` | Locked dependency graph for reproducible Vercel/Linux installs |
 | `tsconfig.json` | TypeScript config |
 | `next.config.js` | Next.js config |
 | `middleware.ts` | Edge middleware (auth/security) |
@@ -60,9 +113,13 @@ Vitest baseline from the provided validated run:
 | `app/quickstart/page.tsx` | Quickstart guide |
 | `app/marketplace/page.tsx` | Marketplace |
 | `app/marketplace-ui/page.tsx` | Marketplace UI |
-| `app/app-shell/page.tsx` | App shell |
+| `app/app-shell/page.tsx` | App shell server wrapper |
 | `app/docs/page.tsx` | Docs page |
 | `app/request-access/page.tsx` | Request access |
+| `app/terms/page.tsx` | Terms page |
+| `app/privacy/page.tsx` | Privacy page |
+| `app/security/page.tsx` | Security page |
+| `app/support/page.tsx` | Support page |
 | `app/globals.css` | Global styles |
 
 ### Auth Flow (`app/auth/`)
@@ -120,6 +177,7 @@ Vitest baseline from the provided validated run:
 | `app/api/checkpoint/` | Checkpoint API |
 | `app/api/core-compat/` | Core compat |
 | `app/api/core/` | Core API |
+| `app/api/core/monitor/` | Protected core monitor |
 | `app/api/demo/` | Demo API |
 | `app/api/effect-callback/` | Effect callback |
 | `app/api/enterprise-proof/` | Enterprise proof |
@@ -127,6 +185,7 @@ Vitest baseline from the provided validated run:
 | `app/api/executions/` | Executions list |
 | `app/api/executors/` | Executor dispatch |
 | `app/api/health/` | Health check |
+| `app/api/readiness/` | Production readiness check |
 | `app/api/integration/` | Integration |
 | `app/api/intent/` | **Intent endpoint** |
 | `app/api/ledger/` | Ledger API |
@@ -275,6 +334,7 @@ Vitest baseline from the provided validated run:
 | File | Responsibility |
 |---|---|
 | `components/GlobalNav.tsx` | Global navigation |
+| `components/AppShellClient.tsx` | App shell client UI |
 | `components/LoginForm.tsx` | Login form |
 | `components/audit/entropy-matrix.tsx` | Audit entropy matrix |
 | `components/canvas/EntropyField.tsx` | Canvas entropy field |
@@ -308,6 +368,8 @@ Vitest baseline from the provided validated run:
 | File | Responsibility |
 |---|---|
 | `scripts/check-error-handlers.sh` | Error handler check |
+| `scripts/go-no-go-gate.sh` | Launch go/no-go smoke gate |
+| `scripts/verify-production-manifest.mjs` | Production route/file manifest gate |
 | `scripts/stripe-setup.ts` | Stripe setup |
 | `scripts/termux-deploy-all-in-one.sh` | Termux deploy |
 | `apply-billing-checkout-flow.sh` | Apply billing migration |
@@ -337,8 +399,8 @@ This is the complete production-ready inventory for `tdealer01-crypto-dsg-contro
 - **Billing** (Stripe checkout, overage, seat activation)
 - **Enterprise Proof** (public + verified runtime proof)
 - **Dashboard** (19 complete views)
-- **API Routes** (33 endpoints)
-- **Database** (14 migrations + schema)
-- **Security** (rate-limit, safe-log, error handling)
+- **API Routes** (health, readiness, runtime, governance, agent, audit, billing, policy, proof, and spine surfaces)
+- **Database** (migrations + schema)
+- **Security** (rate-limit, safe-log, error handling, CSP/security headers)
 
-Vitest baseline remains **85/85 tests passed** across **41 test files**, with Playwright E2E failing only on browser download/install constraints (403), not application logic.
+Latest validated baseline: **DSG Action Layer Gate: GO** after Vercel production build, runtime health/readiness, trust surface checks, and `scripts/go-no-go-gate.sh` all passed.
