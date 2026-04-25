@@ -2,12 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --dsg-bg: #050505;
+  --dsg-bg-2: #0B0B0F;
+  --dsg-surface: #14151C;
+  --dsg-surface-2: #191A22;
+  --dsg-border: rgba(255,255,255,0.08);
+  --dsg-red: #E10600;
+  --dsg-red-deep: #8B0000;
+  --dsg-gold: #D4AF37;
+  --dsg-gold-soft: #F5D76E;
+  --dsg-text: #F7F7F2;
+  --dsg-muted: #A7A9B4;
+  --dsg-success: #33D17A;
+  --dsg-warning: #F5C542;
+  --dsg-error: #FF4D4D;
+}
+
 html,
 body {
   margin: 0;
   min-height: 100%;
-  background: #020617;
-  color: #f8fafc;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(225, 6, 0, 0.14), transparent 30%),
+    radial-gradient(circle at 88% 6%, rgba(212, 175, 55, 0.12), transparent 32%),
+    linear-gradient(180deg, var(--dsg-bg), var(--dsg-bg-2) 52%, var(--dsg-bg));
+  color: var(--dsg-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -27,6 +47,44 @@ button {
 
 main {
   position: relative;
+}
+
+/* DSG UI UP coverage layer
+   This layer keeps legacy utility-heavy pages visually aligned with the DSG
+   mission-control system without changing page logic, routing, APIs, auth,
+   database, billing, or runtime behavior. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent 74%);
+}
+
+::selection {
+  background: rgba(212, 175, 55, 0.32);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--dsg-gold);
+  outline-offset: 3px;
+}
+
+input,
+textarea,
+select {
+  color: var(--dsg-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(167, 169, 180, 0.72);
 }
 
 .min-h-screen { min-height: 100vh; }
@@ -132,8 +190,106 @@ main {
 .opacity-70 { opacity: 0.7; }
 .bg-hero-radial {
   background:
-    radial-gradient(circle at top, rgba(16, 185, 129, 0.18), transparent 35%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 1));
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.16), transparent 35%),
+    radial-gradient(circle at right, rgba(225, 6, 0, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(11, 11, 15, 0.94), rgba(5, 5, 5, 1));
+}
+
+/* Legacy utility remap for app-wide DSG coverage. These override older slate/emerald defaults
+   into the approved red / black / gold cockpit system while preserving class names and behavior. */
+.bg-slate-950,
+.bg-slate-950\/40,
+.bg-slate-900\/70,
+.bg-slate-900\/80,
+.bg-slate-900,
+.bg-slate-800,
+.bg-slate-800\/70,
+.bg-white\/5 {
+  background-color: rgba(20, 21, 28, 0.84) !important;
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012)) !important;
+}
+
+.border-slate-800,
+.border-slate-700,
+.border-white\/10 {
+  border-color: var(--dsg-border) !important;
+}
+
+.text-slate-100,
+.text-slate-200 {
+  color: var(--dsg-text) !important;
+}
+
+.text-slate-300,
+.text-slate-400,
+.text-slate-500 {
+  color: var(--dsg-muted) !important;
+}
+
+.text-emerald-200,
+.text-emerald-300,
+.text-emerald-400 {
+  color: var(--dsg-gold-soft) !important;
+}
+
+.bg-emerald-400,
+.bg-emerald-500 {
+  background: var(--dsg-gold) !important;
+  color: #050505 !important;
+}
+
+.bg-emerald-400\/10,
+.bg-emerald-500\/10 {
+  background: rgba(212, 175, 55, 0.11) !important;
+}
+
+.border-emerald-400\/20,
+.border-emerald-400\/30,
+.border-emerald-400\/50,
+.border-emerald-500\/30 {
+  border-color: rgba(212, 175, 55, 0.34) !important;
+}
+
+.text-red-200,
+.text-rose-200,
+.text-rose-300 {
+  color: #ffd0d0 !important;
+}
+
+.bg-red-500\/10,
+.bg-rose-500\/10 {
+  background: rgba(225, 6, 0, 0.12) !important;
+}
+
+.border-red-500\/30,
+.border-rose-500\/30 {
+  border-color: rgba(225, 6, 0, 0.34) !important;
+}
+
+button:not(:disabled),
+a.rounded-xl,
+a.rounded-2xl,
+a.rounded-full {
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+button:not(:disabled):hover,
+a.rounded-xl:hover,
+a.rounded-2xl:hover,
+a.rounded-full:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.24), 0 0 22px rgba(212, 175, 55, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 @media (min-width: 768px) {
