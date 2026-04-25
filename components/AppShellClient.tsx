@@ -79,15 +79,15 @@ const navLinks = [
 function badgeTone(status?: string) {
   switch (status) {
     case 'ready':
-      return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200';
+      return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100 shadow-[0_0_24px_rgba(51,209,122,0.12)]';
     case 'degraded':
-      return 'border-amber-400/30 bg-amber-400/10 text-amber-200';
+      return 'border-amber-300/35 bg-amber-300/10 text-amber-100 shadow-[0_0_24px_rgba(245,197,66,0.12)]';
     case 'blocked':
-      return 'border-orange-400/30 bg-orange-400/10 text-orange-200';
+      return 'border-orange-300/35 bg-orange-400/10 text-orange-100';
     case 'down':
-      return 'border-red-400/30 bg-red-400/10 text-red-200';
+      return 'border-red-400/35 bg-red-500/10 text-red-100 shadow-[0_0_24px_rgba(225,6,0,0.12)]';
     default:
-      return 'border-slate-700 bg-slate-800 text-slate-300';
+      return 'border-white/10 bg-white/[0.04] text-slate-300';
   }
 }
 
@@ -95,11 +95,11 @@ function alertTone(level: string) {
   switch (level) {
     case 'critical':
     case 'error':
-      return 'border-red-500/30 bg-red-500/10 text-red-200';
+      return 'border-red-400/35 bg-red-500/10 text-red-100';
     case 'warning':
-      return 'border-amber-500/30 bg-amber-500/10 text-amber-200';
+      return 'border-amber-300/35 bg-amber-300/10 text-amber-100';
     default:
-      return 'border-slate-700 bg-slate-800 text-slate-300';
+      return 'border-white/10 bg-white/[0.04] text-slate-300';
   }
 }
 
@@ -118,7 +118,7 @@ export default function AppShellPage() {
       id: 'm0',
       role: 'system',
       content:
-        'Authenticated command workspace ready. Use the monitor on the right to assess readiness, entropy, alerts, and current operator context before acting.',
+        'Authenticated command workspace ready. Review readiness, entropy, alerts, and operator context before taking action.',
     },
   ]);
 
@@ -167,6 +167,27 @@ export default function AppShellPage() {
       { label: 'Stabilize Rate', value: pct(control?.stabilize_rate) },
     ],
     [control],
+  );
+
+  const missionCards = useMemo(
+    () => [
+      {
+        label: 'Runtime authority',
+        value: readinessStatus.toUpperCase(),
+        helper: 'Authenticated monitor truth, refreshed every 5 seconds.',
+      },
+      {
+        label: 'Human action gate',
+        value: alerts.length > 0 ? `${alerts.length} alert(s)` : 'Clear',
+        helper: 'Review warnings before approving execution pressure.',
+      },
+      {
+        label: 'Determinism',
+        value: deterministic === null ? 'Unknown' : deterministic ? 'Stable' : 'Drift',
+        helper: typeof entropy === 'number' ? `Max entropy ${entropy.toFixed(3)}` : 'Waiting for entropy signal.',
+      },
+    ],
+    [alerts.length, deterministic, entropy, readinessStatus],
   );
 
   async function submitPrompt() {
@@ -234,196 +255,219 @@ export default function AppShellPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="border-b border-slate-800 bg-slate-950/80">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+    <main className="min-h-screen overflow-hidden bg-[#050505] text-[#F7F7F2]">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(225,6,0,0.18),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(212,175,55,0.14),transparent_30%),linear-gradient(180deg,#050505_0%,#0b0b0f_48%,#050505_100%)]" />
+
+      <div className="relative border-b border-white/10 bg-black/65 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</p>
-            <h1 className="text-2xl font-semibold">Unified Command Workspace</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Split-pane chat and live monitor with authenticated monitor data and command execution in one place.
+            <p className="text-[11px] uppercase tracking-[0.34em] text-[#D4AF37]">DSG One · Authenticated Cockpit</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Unified Command Workspace</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+              Split-pane agent chat, mission telemetry, and protected runtime evidence in one operator-first surface.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {navLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-emerald-400"
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${badgeTone(readinessStatus)}`}>
+              {loading ? 'loading' : readinessStatus}
+            </span>
+            <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#F5D76E]">
+              Operator session
+            </span>
           </div>
+        </div>
+
+        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-6 pb-5">
+          {navLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="shrink-0 rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/10 hover:text-[#F5D76E]"
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-7xl gap-6 px-6 py-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <section className="flex min-h-[780px] flex-col rounded-[1.75rem] border border-slate-800 bg-slate-900/80">
-          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Agent Console</p>
-              <p className="text-xs text-slate-400">
-                Issue commands, ask for analysis, and review operator guidance from authenticated runtime paths.
-              </p>
+      <div className="relative mx-auto max-w-7xl space-y-6 px-6 py-6">
+        <section className="grid gap-4 lg:grid-cols-3">
+          {missionCards.map((card) => (
+            <div key={card.label} className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.22)]">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{card.label}</p>
+              <p className="mt-3 text-2xl font-semibold text-white">{card.value}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{card.helper}</p>
             </div>
-            <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
-              Operator Session
-            </span>
-          </div>
+          ))}
+        </section>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={
-                  message.role === 'user'
-                    ? 'ml-auto max-w-[88%] rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50'
-                    : message.role === 'assistant'
-                      ? 'max-w-[88%] rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100'
-                      : 'max-w-[92%] rounded-2xl border border-indigo-400/20 bg-indigo-400/10 px-4 py-3 text-sm text-indigo-100'
-                }
-              >
-                {message.content}
+        <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+          <section className="flex min-h-[780px] flex-col rounded-[2rem] border border-white/10 bg-[#0B0B0F]/90 shadow-[0_24px_120px_rgba(0,0,0,0.34)]">
+            <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-sm font-semibold text-white">Agent Console</p>
+                <p className="text-xs leading-5 text-slate-400">
+                  Ask for readiness, active alerts, audit status, policies, capacity, or execution context.
+                </p>
               </div>
-            ))}
-          </div>
+              <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#F5D76E]">
+                Human-reviewed actions
+              </span>
+            </div>
 
-          <div className="border-t border-slate-800 p-4">
-            <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Ask for readiness, active alerts, audit status, policies, capacity, or execution context..."
-                className="min-h-[112px] rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
-              />
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={submitPrompt}
-                  disabled={chatBusy}
-                  className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
-                >
-                  {chatBusy ? 'Running…' : 'Run in Agent Chat'}
-                </button>
-                <button
-                  onClick={() =>
-                    setDraft(
-                      'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend the next operator action.',
-                    )
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={
+                    message.role === 'user'
+                      ? 'ml-auto max-w-[88%] rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-4 py-3 text-sm leading-6 text-[#F7F7F2]'
+                      : message.role === 'assistant'
+                        ? 'max-w-[88%] rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm leading-6 text-slate-100'
+                        : 'max-w-[92%] rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-50'
                   }
-                  className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200"
                 >
-                  Use Readiness Prompt
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-6 rounded-[1.75rem] border border-slate-800 bg-slate-900/80 p-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Live Monitor</p>
-              <p className="text-xs text-slate-400">Authenticated core truth, readiness, entropy pattern, and active alerts.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeTone(readinessStatus)}`}
-              >
-                {loading ? 'loading' : readinessStatus}
-              </span>
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                {monitor?.generated_at ? new Date(monitor.generated_at).toLocaleTimeString() : 'waiting'}
-              </span>
-            </div>
-          </div>
-
-          {error ? (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-              {error}
-            </div>
-          ) : null}
-
-          <EntropyField
-            width={720}
-            height={340}
-            cols={56}
-            rows={26}
-            status={readinessStatus}
-            entropy={entropy ?? 0}
-            latencyMs={control?.avg_latency_ms ?? 0}
-            activeAgents={control?.active_agents ?? 0}
-            allowRate={control?.allow_rate ?? 0}
-            blockRate={control?.block_rate ?? 0}
-            stabilizeRate={control?.stabilize_rate ?? 0}
-            deterministic={deterministic ?? false}
-            animated={true}
-            className="w-full"
-          />
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {quickStats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-400">{stat.label}</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-100">{stat.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-              <p className="text-sm font-semibold text-slate-200">Core Readiness</p>
-              <div className="mt-3 space-y-2 text-sm text-slate-300">
-                <p>Core OK: {typeof coreOk === 'boolean' ? (coreOk ? 'yes' : 'no') : 'unknown'}</p>
-                <p>Deterministic: {deterministic === null ? 'unknown' : deterministic ? 'yes' : 'no'}</p>
-                <p>Entropy: {typeof entropy === 'number' ? entropy.toFixed(3) : '-'}</p>
-                <p>Gate Action: {monitor?.core?.determinism?.data?.gate_action || '-'}</p>
-                <p>Sequence: {monitor?.core?.determinism?.data?.sequence || '-'}</p>
-              </div>
-              <p className="mt-3 text-xs text-slate-400">
-                Public smoke check is available at <code>/api/health</code>. This panel reflects authenticated monitor payloads.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-              <p className="text-sm font-semibold text-slate-200">Billing / Capacity</p>
-              <div className="mt-3 space-y-2 text-sm text-slate-300">
-                <p>Plan: {monitor?.billing?.subscription?.plan_key || '-'}</p>
-                <p>Interval: {monitor?.billing?.subscription?.billing_interval || '-'}</p>
-                <p>Status: {monitor?.billing?.subscription?.status || '-'}</p>
-                <p>Executions this month: {monitor?.billing?.executions_this_month ?? 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-200">Active Alerts</p>
-              <span className="text-xs text-slate-400">{alerts.length} item(s)</span>
-            </div>
-            <div className="mt-3 space-y-3">
-              {alerts.length === 0 ? (
-                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-400">
-                  No active alerts.
+                  {message.content}
                 </div>
-              ) : (
-                alerts.map((alert, index) => (
-                  <div
-                    key={`${alert.code}-${index}`}
-                    className={`rounded-xl border p-3 text-sm ${alertTone(alert.level)}`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold">{alert.code}</span>
-                      <span className="text-xs uppercase tracking-wide">{alert.level}</span>
-                    </div>
-                    <p className="mt-2">{alert.message}</p>
-                  </div>
-                ))
-              )}
+              ))}
             </div>
-          </div>
-        </section>
+
+            <div className="border-t border-white/10 p-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Ask for readiness, active alerts, audit status, policies, capacity, or execution context..."
+                  className="min-h-[112px] rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-600 transition focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
+                />
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={submitPrompt}
+                    disabled={chatBusy}
+                    className="rounded-2xl bg-[#D4AF37] px-5 py-3 text-sm font-semibold text-black shadow-[0_18px_60px_rgba(212,175,55,0.18)] transition hover:bg-[#F5D76E] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
+                  >
+                    {chatBusy ? 'Running…' : 'Run in Agent Chat'}
+                  </button>
+                  <button
+                    onClick={() =>
+                      setDraft(
+                        'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend the next operator action.',
+                      )
+                    }
+                    className="rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-50"
+                  >
+                    Use Readiness Prompt
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-6 rounded-[2rem] border border-white/10 bg-[#0B0B0F]/90 p-5 shadow-[0_24px_120px_rgba(0,0,0,0.34)]">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">Live Monitor</p>
+                <p className="text-xs leading-5 text-slate-400">Protected core truth, readiness, entropy pattern, and active alerts.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeTone(readinessStatus)}`}
+                >
+                  {loading ? 'loading' : readinessStatus}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  {monitor?.generated_at ? new Date(monitor.generated_at).toLocaleTimeString() : 'waiting'}
+                </span>
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-red-400/35 bg-red-500/10 p-4 text-sm text-red-100">
+                {error}
+              </div>
+            ) : null}
+
+            <EntropyField
+              width={720}
+              height={340}
+              cols={56}
+              rows={26}
+              status={readinessStatus}
+              entropy={entropy ?? 0}
+              latencyMs={control?.avg_latency_ms ?? 0}
+              activeAgents={control?.active_agents ?? 0}
+              allowRate={control?.allow_rate ?? 0}
+              blockRate={control?.block_rate ?? 0}
+              stabilizeRate={control?.stabilize_rate ?? 0}
+              deterministic={deterministic ?? false}
+              animated={true}
+              className="w-full rounded-[1.5rem] border border-white/10 bg-black/35"
+            />
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {quickStats.map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                <p className="text-sm font-semibold text-white">Core Readiness</p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                  <p>Core OK: {typeof coreOk === 'boolean' ? (coreOk ? 'yes' : 'no') : 'unknown'}</p>
+                  <p>Deterministic: {deterministic === null ? 'unknown' : deterministic ? 'yes' : 'no'}</p>
+                  <p>Entropy: {typeof entropy === 'number' ? entropy.toFixed(3) : '-'}</p>
+                  <p>Gate Action: {monitor?.core?.determinism?.data?.gate_action || '-'}</p>
+                  <p>Sequence: {monitor?.core?.determinism?.data?.sequence || '-'}</p>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  Public smoke check is available at <code>/api/health</code>. This panel reflects authenticated monitor payloads.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                <p className="text-sm font-semibold text-white">Billing / Capacity</p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                  <p>Plan: {monitor?.billing?.subscription?.plan_key || '-'}</p>
+                  <p>Interval: {monitor?.billing?.subscription?.billing_interval || '-'}</p>
+                  <p>Status: {monitor?.billing?.subscription?.status || '-'}</p>
+                  <p>Executions this month: {monitor?.billing?.executions_this_month ?? 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-white">Active Alerts</p>
+                <span className="text-xs text-slate-500">{alerts.length} item(s)</span>
+              </div>
+              <div className="mt-3 space-y-3">
+                {alerts.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-400">
+                    No active alerts.
+                  </div>
+                ) : (
+                  alerts.map((alert, index) => (
+                    <div
+                      key={`${alert.code}-${index}`}
+                      className={`rounded-xl border p-3 text-sm ${alertTone(alert.level)}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold">{alert.code}</span>
+                        <span className="text-xs uppercase tracking-wide">{alert.level}</span>
+                      </div>
+                      <p className="mt-2 leading-6">{alert.message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );
