@@ -6,10 +6,13 @@ import { useState } from 'react';
 
 const PUBLIC_NAV = [
   { href: '/', label: 'Home' },
+  { href: '/finance-governance', label: 'Finance Governance' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
+  { href: '/sync-center', label: 'Sync Center' },
   { href: '/support', label: 'Support' },
-  { href: '/request-access', label: 'Request Access' },
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/app-shell', label: 'App Shell' },
 ];
 
 export default function GlobalNav() {
@@ -21,10 +24,16 @@ export default function GlobalNav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</span>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08090b]/85 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+        <Link href="/" className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/10 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+            DSG
+          </span>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Finance Governance</p>
+            <p className="text-sm font-semibold text-slate-100">Action Layer</p>
+          </div>
         </Link>
 
         <nav className="hidden items-center gap-2 md:flex">
@@ -35,8 +44,8 @@ export default function GlobalNav() {
               className={[
                 'rounded-xl border px-3 py-2 text-sm font-semibold transition',
                 pathname === item.href
-                  ? 'border-emerald-400/50 bg-emerald-400/10 text-emerald-200'
-                  : 'border-slate-800 bg-slate-900 text-slate-100 hover:border-emerald-400',
+                  ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                  : 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-amber-300/30 hover:text-amber-50',
               ].join(' ')}
             >
               {item.label}
@@ -44,7 +53,7 @@ export default function GlobalNav() {
           ))}
           <Link
             href="/login"
-            className="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950"
+            className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950"
           >
             Login
           </Link>
@@ -52,7 +61,7 @@ export default function GlobalNav() {
 
         <button
           onClick={() => setOpen(!open)}
-          className="rounded-lg border border-slate-700 p-2 text-slate-300 md:hidden"
+          className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-slate-300 md:hidden"
           aria-label="Toggle menu"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -66,7 +75,7 @@ export default function GlobalNav() {
       </div>
 
       {open ? (
-        <nav className="space-y-2 border-t border-slate-800 px-6 py-4 md:hidden">
+        <nav className="space-y-2 border-t border-white/10 px-6 py-4 md:hidden">
           {PUBLIC_NAV.map((item) => (
             <Link
               key={item.href}
@@ -75,8 +84,8 @@ export default function GlobalNav() {
               className={[
                 'block rounded-xl border px-4 py-3 text-sm font-semibold',
                 pathname === item.href
-                  ? 'border-emerald-400/50 bg-emerald-400/10 text-emerald-200'
-                  : 'border-slate-800 bg-slate-900 text-slate-100',
+                  ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                  : 'border-white/10 bg-white/[0.03] text-slate-100',
               ].join(' ')}
             >
               {item.label}
@@ -85,7 +94,7 @@ export default function GlobalNav() {
           <Link
             href="/login"
             onClick={() => setOpen(false)}
-            className="block rounded-xl bg-emerald-400 px-4 py-3 text-center text-sm font-semibold text-slate-950"
+            className="block rounded-xl bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-slate-950"
           >
             Login
           </Link>
