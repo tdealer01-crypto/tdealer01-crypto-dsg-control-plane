@@ -24,6 +24,12 @@ async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = HE
   }
 }
 
+async function probeSupabaseOrganizations(): Promise<SupabaseProbeResult> {
+  const admin = getSupabaseAdmin();
+  const result = await admin.from('organizations').select('id').limit(1);
+  return { error: result.error };
+}
+
 function unavailableReadiness(detail: string): ReadinessReport {
   return {
     ok: false,
@@ -55,9 +61,8 @@ export async function GET(request: Request) {
 
     let dbOk = false;
     try {
-      const admin = getSupabaseAdmin();
-      const dbResult = await withTimeout<SupabaseProbeResult>(
-        admin.from('organizations').select('id').limit(1) as Promise<SupabaseProbeResult>,
+      const dbResult = await withTimeout(
+        probeSupabaseOrganizations(),
         'health_db'
       );
       const dbError = dbResult.error;
