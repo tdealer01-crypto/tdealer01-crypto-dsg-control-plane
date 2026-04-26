@@ -16,6 +16,8 @@ function makeLine(role: ChatLine['role'], content: string): ChatLine {
   };
 }
 
+const quickPrompts = ['ดูเดโม่', 'ราคา', 'ขอ demo', 'DSG Agent คืออะไร', 'เริ่มใช้งาน'];
+
 export default function PublicChatWidget() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
@@ -66,7 +68,7 @@ export default function PublicChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-[80] flex h-[480px] w-[min(380px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
+    <div className="fixed bottom-5 right-5 z-[80] flex h-[500px] w-[min(390px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-100">DSG Public Assistant</p>
@@ -75,6 +77,21 @@ export default function PublicChatWidget() {
         <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close public chat">
           ✕
         </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-b border-slate-800 px-4 py-3">
+        <a
+          href="/enterprise-proof/demo"
+          className="rounded-xl bg-emerald-400 px-3 py-2 text-center text-xs font-bold text-black hover:bg-emerald-300"
+        >
+          ดูเดโม่
+        </a>
+        <a
+          href="/request-access"
+          className="rounded-xl border border-emerald-400/40 px-3 py-2 text-center text-xs font-bold text-emerald-100 hover:bg-emerald-400/10"
+        >
+          ขอสิทธิ์ทดลอง
+        </a>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -95,7 +112,7 @@ export default function PublicChatWidget() {
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-slate-800 px-4 py-2">
-        {['ราคา', 'ขอ demo', 'DSG Agent คืออะไร', 'เริ่มใช้งาน'].map((item) => (
+        {quickPrompts.map((item) => (
           <button
             key={item}
             onClick={() => submit(item)}
