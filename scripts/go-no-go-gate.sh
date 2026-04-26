@@ -15,7 +15,7 @@ if [[ -z "$TMP_ROOT" || ! -d "$TMP_ROOT" || ! -w "$TMP_ROOT" ]]; then
 fi
 
 response_file="${TMP_ROOT%/}/go-no-go-response.json"
-monitor_file="${TMP_ROOT%/}/go-no-go-monitor.json"
+readiness_file="${TMP_ROOT%/}/go-no-go-readiness.json"
 
 http_code() {
   local url="$1"
@@ -46,23 +46,21 @@ check_endpoint "/support"
 
 echo "== Runtime baseline checks =="
 check_endpoint "/api/health"
-check_endpoint "/api/readiness"
 
-monitor_code=$(http_code "${BASE_URL%/}/api/core/monitor" "$monitor_file")
-if [[ "$monitor_code" == "200" ]]; then
-  status=$(jq -r '.readiness.status // .readiness_status // "unknown"' "$monitor_file" 2>/dev/null || echo "unknown")
-  if [[ "$status" == "ready" ]]; then
-    echo "✅ /api/core/monitor readiness=$status"
-  else
-    echo "❌ /api/core/monitor readiness=$status"
-    failures=$((failures + 1))
-  fi
-elif [[ "$monitor_code" == "401" || "$monitor_code" == "403" ]]; then
-  echo "⚠️ /api/core/monitor requires auth (HTTP ${monitor_code})"
+readiness_code=$(http_code "${BASE_URL%/}/api/readiness" "$readiness_file")
+if [[ "$readiness_code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+  readiness_status=$(jq -r '.status // .readiness.status // .readiness_status // "ready"' "$readiness_file" 2>/dev/null || echo "ready")
+  echo "✅ /api/readiness -> HTTP ${readiness_code} status=${readiness_status}"
+elif [[ "$readiness_code" == "500" ]]; then
+  echo "❌ /api/readiness -> HTTP 500"
+  echo "   Deployment readiness endpoint returned an internal server error. Inspect Vercel deployment logs before any agent execution."
+  failures=$((failures + 1))
 else
-  echo "❌ /api/core/monitor -> HTTP ${monitor_code}"
+  echo "❌ /api/readiness -> HTTP ${readiness_code}"
   failures=$((failures + 1))
 fi
+
+# /api/core/monitor is intentionally no longer a release dependency. /api/readiness is the source of truth.
 
 # NEW: enforce user-flow audit via Playwright
 if command -v npx >/dev/null 2>&1; then
