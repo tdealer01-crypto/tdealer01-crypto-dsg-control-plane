@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${origin}/release-gate?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/release-gate?checkout=cancelled`,
+    metadata: {
+      product: 'release-gate-pro'
+    }
   });
 
   return NextResponse.json({ url: session.url });
