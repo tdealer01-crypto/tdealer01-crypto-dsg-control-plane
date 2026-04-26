@@ -1,6 +1,16 @@
 import { createClient } from '../supabase/server';
 import { getSupabaseAdmin } from '../supabase-server';
 
+export class OrgAuthError extends Error {
+  status: number;
+
+  constructor(message = 'Unauthorized', status = 401) {
+    super(message);
+    this.name = 'OrgAuthError';
+    this.status = status;
+  }
+}
+
 export async function getOrg() {
   const supabase = await createClient();
   const {
@@ -9,7 +19,7 @@ export async function getOrg() {
   } = await supabase.auth.getUser();
 
   if (authError || !user?.id) {
-    throw new Error('unauthorized');
+    throw new OrgAuthError('Unauthorized', 401);
   }
 
   const admin = getSupabaseAdmin() as any;
@@ -20,20 +30,13 @@ export async function getOrg() {
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
-  if (profile.data?.org_id && profile.data.is_active !== false) {
-    return String(profile.data.org_id);
+  if (profile.error) {
+    throw profile.error;
   }
 
-  const orgMembership = await admin
-    .from('org_members')
-    .select('org_id')
-    .eq('auth_user_id', user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (orgMembership.data?.org_id) {
-    return String(orgMembership.data.org_id);
+  if (!profile.data?.org_id || profile.data.is_active !== true) {
+    throw new OrgAuthError('Unauthorized', 401);
   }
 
-  throw new Error(profile.error?.message || orgMembership.error?.message || 'unauthorized');
+  return String(profile.data.org_id);
 }
