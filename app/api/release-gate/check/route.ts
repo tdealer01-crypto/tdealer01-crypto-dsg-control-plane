@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { runReleaseGate } from '../../../../lib/release-gate/checker';
+import { hasReleaseGateProAccess } from '../../../../lib/release-gate/entitlements';
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get('url');
@@ -10,15 +11,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'missing_url' }, { status: 400 });
   }
 
-  // Free mode: allow basic checks
   let isPro = false;
 
   if (sessionId && process.env.STRIPE_SECRET_KEY) {
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
       const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const email = session.customer_details?.email ?? null;
 
-      if (session.payment_status === 'paid') {
+      isPro = await hasReleaseGateProAccess(email);
+
+      if (!isPro && session.payment_status === 'paid') {
         isPro = true;
       }
     } catch (e) {
