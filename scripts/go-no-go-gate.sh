@@ -7,6 +7,13 @@ if [[ -z "$BASE_URL" ]]; then
   exit 2
 fi
 
+if [[ "$BASE_URL" == *"your-preview-url"* || "$BASE_URL" == *"<"* || "$BASE_URL" == *">"* ]]; then
+  echo "❌ Invalid base URL: ${BASE_URL}"
+  echo "   Replace the placeholder with a real deployed URL, for example:"
+  echo "   ./scripts/go-no-go-gate.sh https://your-real-preview.vercel.app"
+  exit 2
+fi
+
 failures=0
 TMP_ROOT="${TMPDIR:-}"
 if [[ -z "$TMP_ROOT" || ! -d "$TMP_ROOT" || ! -w "$TMP_ROOT" ]]; then
@@ -62,8 +69,9 @@ fi
 
 # /api/core/monitor is intentionally no longer a release dependency. /api/readiness is the source of truth.
 
-# NEW: enforce user-flow audit via Playwright
-if command -v npx >/dev/null 2>&1; then
+if [[ "$(uname -o 2>/dev/null || true)" == "Android" ]]; then
+  echo "⚠️ Android/Termux detected; skipping Playwright user-flow audit locally. Run this gate in GitHub Actions, Vercel CI, or a Linux/macOS workstation before merge."
+elif command -v npx >/dev/null 2>&1; then
   echo "== User-flow audit gate (Playwright) =="
   if ! PLAYWRIGHT_BASE_URL="$BASE_URL" npx playwright test tests/e2e/finance-governance-live-supabase.spec.ts; then
     echo "❌ user-flow audit failed"
