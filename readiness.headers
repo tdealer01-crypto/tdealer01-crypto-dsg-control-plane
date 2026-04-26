@@ -1,0 +1,19 @@
+HTTP/2 503 
+age: 0
+cache-control: public, max-age=0, must-revalidate
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.stripe.com; frame-src https://js.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+content-type: application/json
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: same-origin
+date: Sat, 25 Apr 2026 05:04:31 GMT
+permissions-policy: camera=(), microphone=(), geolocation=()
+referrer-policy: strict-origin-when-cross-origin
+server: Vercel
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-matched-path: /api/readiness
+x-vercel-cache: MISS
+x-vercel-id: sin1::iad1::zks26-1777093470337-99d4eb64499c
+

@@ -1,0 +1,1 @@
+{"ok":false,"checks":{"env":{"ok":true},"nextAuthSecret":{"ok":false,"detail":"NEXTAUTH_SECRET missing"},"supabaseServiceRole":{"ok":true},"dsgCoreConfig":{"ok":true},"dsgCoreHealth":{"ok":true},"financeGovernanceSurface":{"ok":true}},"timestamp":"2026-04-25T05:04:31.090Z"}
