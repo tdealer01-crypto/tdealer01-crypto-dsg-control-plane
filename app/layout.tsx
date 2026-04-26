@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/next';
 import GlobalNav from '../components/GlobalNav';
+import PublicChatWidget from '../components/PublicChatWidget';
 
 export const metadata: Metadata = {
   title: 'DSG Finance Governance Control Plane',
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
         <GlobalNav />
         {children}
+        <PublicChatWidget />
         <Analytics />
       </body>
     </html>
