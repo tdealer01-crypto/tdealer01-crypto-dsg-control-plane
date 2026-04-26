@@ -1,0 +1,27 @@
+{
+  "name": "@tdealer01/release-gate",
+  "version": "0.1.0",
+  "description": "Deterministic production release gate CLI for health, readiness, user-flow, and audit checks.",
+  "type": "module",
+  "bin": {
+    "release-gate": "./bin/release-gate.mjs"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": [
+    "release-gate",
+    "go-no-go",
+    "ci",
+    "production-readiness",
+    "audit"
+  ],
+  "scripts": {
+    "check": "node ./bin/release-gate.mjs"
+  }
+}
