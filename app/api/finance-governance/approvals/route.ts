@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { handleFinanceGovernanceApiError } from '../../../../lib/finance-governance/api-error';
-import { resolveOrgId } from '../../../../lib/finance-governance/org-scope';
 import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/repository';
+import { getOrg } from '../../../../lib/server/getOrg';
 
 export const dynamic = 'force-dynamic';
 
 const repository = new FinanceGovernanceRepository();
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const orgId = resolveOrgId(request);
+    const orgId = await getOrg();
     const approvals = await repository.getApprovals(orgId);
     return NextResponse.json({ approvals });
   } catch (error) {
