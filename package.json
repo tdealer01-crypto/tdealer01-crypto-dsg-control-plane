@@ -28,7 +28,8 @@
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
-    "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh"
+    "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh",
+    "termux:smoke-install": "bash scripts/termux-smoke-install.sh"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
