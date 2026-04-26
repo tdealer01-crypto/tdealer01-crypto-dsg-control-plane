@@ -8,6 +8,10 @@ function sseData(payload: unknown) {
   return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
+function hasApprovalToken(value: unknown) {
+  return typeof value === 'string' && value.trim().length >= 8;
+}
+
 export async function POST(request: Request) {
   const access = await requireOrgRole(['operator', 'org_admin']);
   if (!access.ok) {
@@ -17,6 +21,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const message = String(body?.message || '').trim();
   const pageContext = String(body?.pageContext || '').trim();
+  const executeApprovedPlan = body?.executeApprovedPlan === true;
+  const approvalToken = body?.approvalToken;
   if (!message) {
     return NextResponse.json({ error: 'message is required' }, { status: 400 });
   }
@@ -49,11 +55,12 @@ export async function POST(request: Request) {
           encoder.encode(
             sseData({
               type: 'assistant_reply',
-              reply: modelReply?.reply || 'DSG Agent v2 พร้อมใช้งานจาก skills bundle',
+              reply: modelReply?.reply || 'DSG Agent v2 สร้างแผนแล้ว โปรดตรวจและอนุมัติก่อน execution',
               model: modelReply?.modelUsed || 'skills-v2',
               provider: modelReply?.provider || 'internal-skills',
               providerSource: modelReply?.providerSource || 'runtime',
               runtimeGoverned: true,
+              approval: { required_for_execution: true, runtime_gate: true },
             }),
           ),
         );
@@ -62,11 +69,30 @@ export async function POST(request: Request) {
           encoder.encode(
             sseData({
               type: 'plan',
-              steps: plan.map((step) => ({ id: step.id, toolId: step.toolId })),
+              steps: plan.map((step) => ({ id: step.id, toolId: step.toolId, toolName: step.toolName })),
+              executionMode: executeApprovedPlan ? 'approved_execution_requested' : 'plan_only',
               runtimeGoverned: true,
+              definitionOfSuccess: [
+                'User reviews the plan',
+                'Execution request includes executeApprovedPlan=true and approvalToken',
+                'Runtime tool result confirms the action outcome',
+              ],
             }),
           ),
         );
+
+        if (!executeApprovedPlan || !hasApprovalToken(approvalToken)) {
+          controller.enqueue(
+            encoder.encode(
+              sseData({
+                type: 'approval_required',
+                message: 'Plan only. Send executeApprovedPlan=true with approvalToken to run planned steps.',
+              }),
+            ),
+          );
+          controller.enqueue(encoder.encode(sseData({ type: 'done' })));
+          return;
+        }
 
         for (const step of plan) {
           controller.enqueue(encoder.encode(sseData({ type: 'step_start', step: step.id, tool: step.toolName })));
