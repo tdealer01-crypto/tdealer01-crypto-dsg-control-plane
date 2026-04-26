@@ -4,6 +4,7 @@ export type AgentContext = {
   origin: string;
   authHeader: string;
   cookieHeader: string;
+  approvalToken?: string;
 };
 
 export type AgentPlanStep = {
