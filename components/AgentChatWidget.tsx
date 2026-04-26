@@ -12,12 +12,14 @@ type ChatLine = {
 
 const STORAGE_KEY = 'dsg_chat_history';
 const MAX_HISTORY = 100;
+const AGENT_CHAT_ENDPOINT = '/api/agent-chat-v2';
 
 const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
   '/dashboard': [{ label: 'Check readiness', prompt: 'check readiness' }],
   '/dashboard/agents': [
     { label: 'Create agent', prompt: 'create agent' },
     { label: 'List agents', prompt: 'list agents' },
+    { label: 'Create chatbot', prompt: 'create chatbot "Support Bot"' },
   ],
   '/dashboard/policies': [{ label: 'List policies', prompt: 'list policies' }],
   '/dashboard/executions': [{ label: 'Check audit', prompt: 'audit lineage' }],
@@ -41,7 +43,7 @@ export default function AgentChatWidget() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'DSG Agent พร้อมช่วย — พิมพ์คำสั่งหรือกดปุ่มลัดตามหน้าที่ใช้งาน'),
+    makeLine('system', 'DSG Agent v2 พร้อมช่วย — ใช้ skills bundle ใหม่สำหรับ chatbot/agent runtime'),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +83,7 @@ export default function AgentChatWidget() {
     setDraft('');
 
     try {
-      const res = await fetch('/api/agent-chat', {
+      const res = await fetch(AGENT_CHAT_ENDPOINT, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message, pageContext: pathname }),
@@ -144,7 +146,7 @@ export default function AgentChatWidget() {
     <div className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-slate-100">DSG Agent</p>
+          <p className="text-sm font-semibold text-slate-100">DSG Agent v2</p>
           <p className="text-[10px] text-slate-400">{pathname}</p>
         </div>
         <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close agent chat">
