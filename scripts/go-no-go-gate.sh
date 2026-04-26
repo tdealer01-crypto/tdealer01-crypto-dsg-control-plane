@@ -8,12 +8,28 @@ if [[ -z "$BASE_URL" ]]; then
 fi
 
 failures=0
+TMP_ROOT="${TMPDIR:-}"
+if [[ -z "$TMP_ROOT" || ! -d "$TMP_ROOT" || ! -w "$TMP_ROOT" ]]; then
+  TMP_ROOT="$(pwd)/.tmp"
+  mkdir -p "$TMP_ROOT"
+fi
+
+response_file="${TMP_ROOT%/}/go-no-go-response.json"
+readiness_file="${TMP_ROOT%/}/go-no-go-readiness.json"
+
+http_code() {
+  local url="$1"
+  local output_file="$2"
+  local code
+  code=$(curl -sS -o "$output_file" -w "%{http_code}" --max-time 20 "$url") || code="000"
+  printf '%s' "$code"
+}
 
 check_endpoint() {
   local path="$1"
   local url="${BASE_URL%/}${path}"
   local code
-  code=$(curl -sS -o /tmp/go-no-go-response.json -w "%{http_code}" --max-time 20 "$url" || echo "000")
+  code=$(http_code "$url" "$response_file")
   if [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
     echo "✅ ${path} -> HTTP ${code}"
   else
@@ -30,23 +46,21 @@ check_endpoint "/support"
 
 echo "== Runtime baseline checks =="
 check_endpoint "/api/health"
-check_endpoint "/api/readiness"
 
-monitor_code=$(curl -sS -o /tmp/go-no-go-monitor.json -w "%{http_code}" --max-time 20 "${BASE_URL%/}/api/core/monitor" || echo "000")
-if [[ "$monitor_code" == "200" ]]; then
-  status=$(jq -r '.readiness.status // .readiness_status // "unknown"' /tmp/go-no-go-monitor.json 2>/dev/null || echo "unknown")
-  if [[ "$status" == "ready" ]]; then
-    echo "✅ /api/core/monitor readiness=$status"
-  else
-    echo "❌ /api/core/monitor readiness=$status"
-    failures=$((failures + 1))
-  fi
-elif [[ "$monitor_code" == "401" || "$monitor_code" == "403" ]]; then
-  echo "⚠️ /api/core/monitor requires auth (HTTP ${monitor_code})"
+readiness_code=$(http_code "${BASE_URL%/}/api/readiness" "$readiness_file")
+if [[ "$readiness_code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+  readiness_status=$(jq -r '.status // .readiness.status // .readiness_status // "ready"' "$readiness_file" 2>/dev/null || echo "ready")
+  echo "✅ /api/readiness -> HTTP ${readiness_code} status=${readiness_status}"
+elif [[ "$readiness_code" == "500" ]]; then
+  echo "❌ /api/readiness -> HTTP 500"
+  echo "   Deployment readiness endpoint returned an internal server error. Inspect Vercel deployment logs before any agent execution."
+  failures=$((failures + 1))
 else
-  echo "❌ /api/core/monitor -> HTTP ${monitor_code}"
+  echo "❌ /api/readiness -> HTTP ${readiness_code}"
   failures=$((failures + 1))
 fi
+
+# /api/core/monitor is intentionally no longer a release dependency. /api/readiness is the source of truth.
 
 if rg -n --glob '!scripts/go-no-go-gate.sh' '/api/finance-governance/server-store/' app lib components scripts; then
   echo "❌ Legacy server-store caller(s) found"
