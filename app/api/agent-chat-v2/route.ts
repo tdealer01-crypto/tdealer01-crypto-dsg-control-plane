@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
+import { generateRuntimeGovernedModelReply } from '../../../lib/agent-v2/openrouter-provider';
 import type { ChatbotSkillContext } from '../../../lib/agent-v2/skills';
 import { planChatbotSkills } from '../../../lib/agent-v2/skills';
 
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const message = String(body?.message || '').trim();
+  const pageContext = String(body?.pageContext || '').trim();
   if (!message) {
     return NextResponse.json({ error: 'message is required' }, { status: 400 });
   }
@@ -32,12 +34,26 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        let modelReply = null as Awaited<ReturnType<typeof generateRuntimeGovernedModelReply>>;
+        try {
+          modelReply = await generateRuntimeGovernedModelReply({
+            orgId: access.orgId,
+            message,
+            pageContext,
+          });
+        } catch {
+          modelReply = null;
+        }
+
         controller.enqueue(
           encoder.encode(
             sseData({
               type: 'assistant_reply',
-              reply: 'DSG Agent v2 พร้อมใช้งานจาก skills bundle',
-              model: 'skills-v2',
+              reply: modelReply?.reply || 'DSG Agent v2 พร้อมใช้งานจาก skills bundle',
+              model: modelReply?.modelUsed || 'skills-v2',
+              provider: modelReply?.provider || 'internal-skills',
+              providerSource: modelReply?.providerSource || 'runtime',
+              runtimeGoverned: true,
             }),
           ),
         );
@@ -47,6 +63,7 @@ export async function POST(request: Request) {
             sseData({
               type: 'plan',
               steps: plan.map((step) => ({ id: step.id, toolId: step.toolId })),
+              runtimeGoverned: true,
             }),
           ),
         );
