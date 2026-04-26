@@ -21,7 +21,7 @@ describeLive('finance governance live e2e against supabase', () => {
     await supabase.from('finance_workflow_cases').delete().eq('org_id', orgId);
   }
 
-  test('submit -> approve persists to Supabase and updates workflow UI', async ({ page }) => {
+  test('submit -> approve persists to Supabase, updates UI, and writes audit evidence', async ({ page }) => {
     const orgId = `pw-live-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
     await cleanupOrg(orgId);
@@ -47,12 +47,19 @@ describeLive('finance governance live e2e against supabase', () => {
 
     const { data: events, error: eventsError } = await supabase
       .from('finance_workflow_action_events')
-      .select('action')
+      .select('action,actor,result,target,created_at')
       .eq('org_id', orgId)
       .order('created_at', { ascending: true });
 
     expect(eventsError).toBeNull();
     expect((events ?? []).map((item) => item.action)).toEqual(expect.arrayContaining(['submit', 'approve']));
+
+    for (const event of events ?? []) {
+      expect(event.actor).toBe('api');
+      expect(event.result).toBe('ok');
+      expect(event.target).toBeTruthy();
+      expect(event.created_at).toBeTruthy();
+    }
 
     const { data: approval, error: approvalError } = await supabase
       .from('finance_workflow_approvals')
