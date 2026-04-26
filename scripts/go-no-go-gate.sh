@@ -64,6 +64,19 @@ else
   failures=$((failures + 1))
 fi
 
+# NEW: enforce user-flow audit via Playwright
+if command -v npx >/dev/null 2>&1; then
+  echo "== User-flow audit gate (Playwright) =="
+  if ! PLAYWRIGHT_BASE_URL="$BASE_URL" npx playwright test tests/e2e/finance-governance-live-supabase.spec.ts; then
+    echo "❌ user-flow audit failed"
+    failures=$((failures + 1))
+  else
+    echo "✅ user-flow audit passed"
+  fi
+else
+  echo "⚠️ playwright not available, skipping user-flow audit gate"
+fi
+
 if rg -n --glob '!scripts/go-no-go-gate.sh' '/api/finance-governance/server-store/' app lib components scripts; then
   echo "❌ Legacy server-store caller(s) found"
   failures=$((failures + 1))
