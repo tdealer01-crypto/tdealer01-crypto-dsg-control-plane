@@ -170,7 +170,7 @@ export class FinanceGovernanceRepository {
 
     const { data } = await supabase
       .from('finance_workflow_action_events')
-      .select('id,action,message,created_at')
+      .select('id,action,message,actor,created_at')
       .eq('org_id', orgId)
       .eq('approval_id', caseOrApprovalId)
       .order('created_at', { ascending: true });
@@ -179,7 +179,7 @@ export class FinanceGovernanceRepository {
       id: item.id,
       decision: item.action,
       reason: item.message,
-      actor: 'workflow',
+      actor: item.actor ?? 'api',
       created_at: item.created_at,
     }));
   }
@@ -346,6 +346,9 @@ export class FinanceGovernanceRepository {
       case_id: caseId,
       approval_id: approvalId,
       action: result.action,
+      actor: 'api',
+      result: result.ok ? 'ok' : 'error',
+      target: approvalId ?? caseId,
       message: result.message,
       next_status: result.nextStatus,
       payload: result,
