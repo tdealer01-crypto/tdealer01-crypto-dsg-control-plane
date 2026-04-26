@@ -34,15 +34,19 @@ async function callJson(
   return json;
 }
 
+function isPresent(value: unknown) {
+  return typeof value === 'string' ? value.trim().length > 0 : value !== undefined && value !== null;
+}
+
 export const DSG_TOOLS: AgentTool[] = [
   {
     id: 'readiness',
     name: 'Check System Readiness',
-    description: 'Fetch readiness, health, entropy, alerts, and billing state.',
+    description: 'Fetch production readiness status.',
     parameters: {},
     riskLevel: 'read',
     requiredRole: 'monitor',
-    execute: async (_params, context) => callJson(context, '/api/core/monitor', { method: 'GET' }),
+    execute: async (_params, context) => callJson(context, '/api/readiness', { method: 'GET' }),
   },
   {
     id: 'execute_action',
@@ -63,6 +67,29 @@ export const DSG_TOOLS: AgentTool[] = [
           action: params.action,
           payload: params.payload || {},
           tool_name: 'agent-chat',
+        }),
+      }),
+  },
+  {
+    id: 'chatbot_message',
+    name: 'Chat with Chatbot Agent',
+    description: 'Send a chatbot message through the governed DSG execution path.',
+    parameters: {
+      agent_id: { type: 'string', required: true, description: 'Target chatbot agent ID' },
+      message: { type: 'string', required: true, description: 'Message to send to the chatbot agent' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'execute',
+    execute: async (params, context) =>
+      callJson(context, '/api/mcp/call', {
+        method: 'POST',
+        body: JSON.stringify({
+          agent_id: params.agent_id,
+          action: 'chatbot.message',
+          payload: {
+            message: String(params.message || ''),
+          },
+          tool_name: 'chatbot_message',
         }),
       }),
   },
@@ -125,10 +152,14 @@ export const DSG_TOOLS: AgentTool[] = [
     },
     riskLevel: 'read',
     requiredRole: 'runtime_summary',
-    execute: async (params, context) =>
-      callJson(context, `/api/runtime-summary?org_id=${encodeURIComponent(context.orgId)}&agent_id=${encodeURIComponent(String(params.agent_id || ''))}`, {
+    execute: async (params, context) => {
+      if (!isPresent(params.agent_id)) {
+        return callJson(context, '/api/audit?limit=20', { method: 'GET' });
+      }
+      return callJson(context, `/api/runtime-summary?org_id=${encodeURIComponent(context.orgId)}&agent_id=${encodeURIComponent(String(params.agent_id || ''))}`, {
         method: 'GET',
-      }),
+      });
+    },
   },
   {
     id: 'checkpoint',
@@ -154,11 +185,15 @@ export const DSG_TOOLS: AgentTool[] = [
     },
     riskLevel: 'read',
     requiredRole: 'checkpoint',
-    execute: async (params, context) =>
-      callJson(context, '/api/runtime-recovery', {
+    execute: async (params, context) => {
+      if (!isPresent(params.agent_id)) {
+        return callJson(context, '/api/executions?limit=10', { method: 'GET' });
+      }
+      return callJson(context, '/api/runtime-recovery', {
         method: 'POST',
         body: JSON.stringify({ org_id: context.orgId, agent_id: params.agent_id }),
-      }),
+      });
+    },
   },
   {
     id: 'realtime_web_search',
@@ -200,16 +235,24 @@ export const DSG_TOOLS: AgentTool[] = [
     description: 'Create a new agent with one-time API key return.',
     parameters: {
       name: { type: 'string', required: true, description: 'Agent name' },
-      policy_id: { type: 'string', required: true, description: 'Policy ID' },
+      policy_id: { type: 'string', required: false, description: 'Policy ID' },
       monthly_limit: { type: 'number', required: false, description: 'Monthly execution limit' },
     },
     riskLevel: 'write',
     requiredRole: 'execute',
-    execute: async (params, context) =>
-      callJson(context, '/api/agents', {
+    execute: async (params, context) => {
+      const body: Record<string, unknown> = {
+        name: String(params.name || 'New Agent'),
+        monthly_limit: Number(params.monthly_limit || 10000),
+      };
+      if (isPresent(params.policy_id)) {
+        body.policy_id = params.policy_id;
+      }
+      return callJson(context, '/api/agents', {
         method: 'POST',
-        body: JSON.stringify(params),
-      }),
+        body: JSON.stringify(body),
+      });
+    },
   },
   {
     id: 'create_chatbot_agent',
@@ -222,15 +265,19 @@ export const DSG_TOOLS: AgentTool[] = [
     },
     riskLevel: 'write',
     requiredRole: 'execute',
-    execute: async (params, context) =>
-      callJson(context, '/api/agents', {
+    execute: async (params, context) => {
+      const body: Record<string, unknown> = {
+        name: String(params.name || 'Chatbot Agent'),
+        monthly_limit: Number(params.monthly_limit || 50000),
+      };
+      if (isPresent(params.policy_id)) {
+        body.policy_id = params.policy_id;
+      }
+      return callJson(context, '/api/agents', {
         method: 'POST',
-        body: JSON.stringify({
-          name: String(params.name || 'Chatbot Agent'),
-          policy_id: params.policy_id ? String(params.policy_id) : undefined,
-          monthly_limit: Number(params.monthly_limit || 50000),
-        }),
-      }),
+        body: JSON.stringify(body),
+      });
+    },
   },
   {
     id: 'list_policies',
