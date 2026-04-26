@@ -1,11 +1,8 @@
 import type { AgentPlan, AgentPlanStep } from './context';
 
 function extractAgentId(message: string) {
-  const explicit = message.match(/agt_[a-zA-Z0-9_-]+/);
-  if (explicit) return explicit[0];
-
-  const uuid = message.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-  return uuid ? uuid[0] : '';
+  const match = message.match(/agt_[a-zA-Z0-9_-]+/);
+  return match ? match[0] : '';
 }
 
 function extractEffectId(message: string) {
@@ -23,12 +20,6 @@ function extractUrl(message: string) {
   return match ? match[0] : '';
 }
 
-function extractChatMessage(message: string) {
-  const quoted = extractQuotedName(message);
-  if (quoted) return quoted;
-  return message.replace(/chatbot|chat bot|แชทบอท|แชตบอท|ถามบอท|คุยกับบอท/gi, '').trim() || message.trim();
-}
-
 function nextStep(id: number, toolId: string, params: Record<string, unknown>): AgentPlanStep {
   return { id: `s${id}`, toolId, params };
 }
@@ -37,6 +28,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
   const text = message.trim();
   const lower = text.toLowerCase();
   const agentId = extractAgentId(text);
+
 
   if (/^(ช่วย|help|แนะนำ|suggest)$/i.test(lower)) {
     switch (pageContext) {
@@ -49,19 +41,12 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
         return { steps: [nextStep(1, 'capacity', {})] };
       case '/dashboard/executions':
       case '/dashboard/operations':
-        return agentId
-          ? {
-              steps: [
-                nextStep(1, 'audit_summary', { agent_id: agentId }),
-                nextStep(2, 'recovery_validate', { agent_id: agentId }),
-              ],
-            }
-          : {
-              steps: [
-                nextStep(1, 'get_audit', {}),
-                nextStep(2, 'list_executions', { limit: 10 }),
-              ],
-            };
+        return {
+          steps: [
+            nextStep(1, 'audit_summary', { agent_id: agentId }),
+            nextStep(2, 'recovery_validate', { agent_id: agentId }),
+          ],
+        };
       default:
         return { steps: [nextStep(1, 'readiness', {})] };
     }
@@ -69,40 +54,6 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
 
   if (/readiness|health|status|สถานะ/.test(lower)) {
     return { steps: [nextStep(1, 'readiness', {})] };
-  }
-
-  if (/chatbot|chat bot|แชทบอท|แชตบอท/.test(lower)) {
-    if (/create|สร้าง|new|เพิ่ม/.test(lower)) {
-      return {
-        steps: [
-          nextStep(1, 'list_policies', {}),
-          nextStep(2, 'create_chatbot_agent', {
-            name: extractQuotedName(text) || 'Chatbot Agent',
-            monthly_limit: 50000,
-          }),
-          nextStep(3, 'list_agents', {}),
-        ],
-      };
-    }
-
-    if (agentId) {
-      return {
-        steps: [
-          nextStep(1, 'readiness', {}),
-          nextStep(2, 'chatbot_message', {
-            agent_id: agentId,
-            message: extractChatMessage(text),
-          }),
-        ],
-      };
-    }
-
-    return {
-      steps: [
-        nextStep(1, 'list_agents', {}),
-        nextStep(2, 'list_policies', {}),
-      ],
-    };
   }
 
   if (/execute|run|รัน|ทำงาน/.test(lower)) {
@@ -115,31 +66,23 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
   }
 
   if (/audit|lineage|ตรวจสอบ/.test(lower)) {
-    return agentId
-      ? {
-          steps: [
-            nextStep(1, 'audit_summary', { agent_id: agentId }),
-            nextStep(2, 'recovery_validate', { agent_id: agentId }),
-          ],
-        }
-      : {
-          steps: [
-            nextStep(1, 'get_audit', {}),
-            nextStep(2, 'list_executions', { limit: 10 }),
-          ],
-        };
+    return {
+      steps: [
+        nextStep(1, 'audit_summary', { agent_id: agentId }),
+        nextStep(2, 'recovery_validate', { agent_id: agentId }),
+      ],
+    };
   }
 
   if (/checkpoint|บันทึก/.test(lower)) {
-    return agentId
-      ? {
-          steps: [
-            nextStep(1, 'recovery_validate', { agent_id: agentId }),
-            nextStep(2, 'checkpoint', { agent_id: agentId }),
-          ],
-        }
-      : { steps: [nextStep(1, 'list_agents', {})] };
+    return {
+      steps: [
+        nextStep(1, 'recovery_validate', { agent_id: agentId }),
+        nextStep(2, 'checkpoint', { agent_id: agentId }),
+      ],
+    };
   }
+
 
   if (/execution|executions|proof|replay|หลักฐาน/.test(lower)) {
     const executionId = text.match(/exec_[a-zA-Z0-9_-]+/)?.[0] || '';
@@ -197,6 +140,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     };
   }
 
+
   if (/list agents|show agents|agents|เอเจนต์ทั้งหมด/.test(lower)) {
     return { steps: [nextStep(1, 'list_agents', {})] };
   }
@@ -220,12 +164,13 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     return {
       steps: [
         nextStep(1, 'create_agent', {
-          name: extractQuotedName(text) || 'New Agent',
-          monthly_limit: 10000,
+          name: 'New Agent',
+          policy_id: 'default',
         }),
       ],
     };
   }
+
 
   if (/agent detail|รายละเอียดเอเจนต์/.test(lower) && agentId) {
     return { steps: [nextStep(1, 'get_agent_detail', { agent_id: agentId })] };
@@ -237,6 +182,19 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
 
   if (/delete agent|disable agent|ลบเอเจนต์/.test(lower) && agentId) {
     return { steps: [nextStep(1, 'delete_agent', { agent_id: agentId })] };
+  }
+
+  if (/chatbot|chat bot|แชทบอท|แชตบอท/.test(lower)) {
+    return {
+      steps: [
+        nextStep(1, 'list_policies', {}),
+        nextStep(2, 'create_chatbot_agent', {
+          name: extractQuotedName(text) || 'Chatbot Agent',
+          monthly_limit: 50000,
+        }),
+        nextStep(3, 'list_agents', {}),
+      ],
+    };
   }
 
   return {
