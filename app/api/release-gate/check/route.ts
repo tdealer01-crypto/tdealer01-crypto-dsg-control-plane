@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runReleaseGate } from '@/lib/release-gate/checker';
+import { runReleaseGate } from '../../../../lib/release-gate/checker';
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get('url');
