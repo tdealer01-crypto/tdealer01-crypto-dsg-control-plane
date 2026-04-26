@@ -24,6 +24,19 @@ type ApprovalsResponse = {
   }>;
 };
 
+type CaseItem = {
+  id: string;
+  vendor?: string;
+  amount?: string | number;
+  currency?: string;
+  status?: string;
+  workflow?: string;
+};
+
+type CasesResponse = {
+  cases: CaseItem[];
+};
+
 type ActionResponse = {
   ok: true;
   action: 'submit' | 'approve' | 'reject' | 'escalate';
@@ -41,6 +54,8 @@ type ActionBanner = {
 export default function FinanceGovernanceLiveWorkflowPage() {
   const [workspace, setWorkspace] = useState<WorkspaceSummaryResponse['workspace'] | null>(null);
   const [approvals, setApprovals] = useState<ApprovalsResponse['approvals']>([]);
+  const [cases, setCases] = useState<CaseItem[]>([]);
+  const [selectedCaseId, setSelectedCaseId] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -56,20 +71,25 @@ export default function FinanceGovernanceLiveWorkflowPage() {
       }
       setError('');
 
-      const [workspaceResponse, approvalsResponse] = await Promise.all([
+      const [workspaceResponse, approvalsResponse, casesResponse] = await Promise.all([
         financeGovernanceFetch('/api/finance-governance/workspace/summary', { cache: 'no-store' }),
         financeGovernanceFetch('/api/finance-governance/approvals', { cache: 'no-store' }),
+        financeGovernanceFetch('/api/cases', { cache: 'no-store' }),
       ]);
 
       const workspaceJson = (await workspaceResponse.json()) as WorkspaceSummaryResponse;
       const approvalsJson = (await approvalsResponse.json()) as ApprovalsResponse;
+      const casesJson = (await casesResponse.json()) as CasesResponse;
 
-      if (!workspaceResponse.ok || !approvalsResponse.ok) {
+      if (!workspaceResponse.ok || !approvalsResponse.ok || !casesResponse.ok) {
         throw new Error('Failed to refresh workflow data');
       }
 
+      const nextCases = casesJson.cases ?? [];
       setWorkspace(workspaceJson.workspace);
       setApprovals(approvalsJson.approvals);
+      setCases(nextCases);
+      setSelectedCaseId((current) => current || nextCases[0]?.id || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh workflow data');
     } finally {
@@ -87,12 +107,16 @@ export default function FinanceGovernanceLiveWorkflowPage() {
       setBusyKey('submit');
       setBanner(null);
 
+      if (!selectedCaseId) {
+        throw new Error('No workflow case is available to submit. Create or import a case first.');
+      }
+
       const response = await financeGovernanceFetch('/api/finance-governance/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ caseId: 'case-001' }),
+        body: JSON.stringify({ caseId: selectedCaseId }),
       });
       const json = (await response.json()) as ActionResponse;
 
@@ -154,16 +178,35 @@ export default function FinanceGovernanceLiveWorkflowPage() {
         </p>
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-4">
+      <div className="mt-8 grid gap-4 rounded-[1.75rem] border border-white/10 bg-white/5 p-5 md:grid-cols-[1fr_auto_auto] md:items-end">
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-200">Workflow case</span>
+          <select
+            value={selectedCaseId}
+            onChange={(event) => setSelectedCaseId(event.target.value)}
+            disabled={busyKey !== null || cases.length === 0}
+            className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white disabled:opacity-70"
+          >
+            {cases.length === 0 ? (
+              <option value="">No workflow cases available</option>
+            ) : (
+              cases.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.vendor ? `${item.vendor} - ` : ''}{item.id} {item.status ? `(${item.status})` : ''}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
         <button
           type="button"
           onClick={() => {
             void runSubmit();
           }}
-          disabled={busyKey !== null}
+          disabled={busyKey !== null || !selectedCaseId}
           className="rounded-2xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-70"
         >
-          {busyKey === 'submit' ? 'Submitting...' : 'Submit sample workflow item'}
+          {busyKey === 'submit' ? 'Submitting...' : 'Submit selected workflow item'}
         </button>
         <button
           type="button"
