@@ -81,12 +81,12 @@ export default function HomePage() {
                 >
                   ดูเดโม่ / View demo
                 </Link>
-                <a
+                <Link
                   href="#public-chat"
                   className="rounded-2xl border border-emerald-200/40 bg-black/20 px-5 py-3 text-sm font-bold text-emerald-100 transition hover:border-emerald-100"
                 >
                   ถาม DSG
-                </a>
+                </Link>
               </div>
             </div>
 
