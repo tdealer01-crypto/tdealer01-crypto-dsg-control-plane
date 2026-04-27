@@ -96,6 +96,7 @@ export async function POST(_request: Request) {
     let billingStatus: SetupStatus = 'FAIL';
     let onboardingStatus: SetupStatus = 'FAIL';
     let runtimeRolesStatus: SetupStatus = 'FAIL';
+    let usedLegacyExecutionFallback = false;
 
     const fail = (payload: Record<string, unknown>, status = 500) =>
       NextResponse.json(
@@ -188,6 +189,40 @@ export async function POST(_request: Request) {
       reason: 'Auto-setup verification execution',
     };
 
+    const runLegacyExecutionFallback = async () => {
+      const { data: execution, error: legacyExecError } = await admin
+        .from('executions')
+        .insert({
+          org_id: orgId,
+          agent_id: agentId,
+          decision: 'ALLOW',
+          latency_ms: 1,
+          request_payload: canonical.input,
+          context_payload: canonical.context,
+          policy_version: 'v1',
+          reason: 'Auto-setup verification execution (legacy fallback)',
+        })
+        .select('id')
+        .single();
+
+      if (legacyExecError || !execution) {
+        return { ok: false as const, error: legacyExecError?.message || 'legacy execution failed' };
+      }
+
+      results.execution_id = execution.id;
+      usedLegacyExecutionFallback = true;
+      await admin.from('audit_logs').insert({
+        org_id: orgId,
+        agent_id: agentId,
+        execution_id: execution.id,
+        policy_version: 'v1',
+        decision: 'ALLOW',
+        reason: 'Auto-setup verification execution (legacy fallback)',
+        evidence: { source: 'auto_setup_legacy_fallback', canonical },
+      });
+      return { ok: true as const, executionId: execution.id };
+    };
+
     const { error: approvalError } = await admin.from('runtime_approval_requests').insert({
       id: approvalId,
       org_id: orgId,
@@ -200,39 +235,15 @@ export async function POST(_request: Request) {
 
     if (approvalError) {
       if (isMissingInfraError(approvalError.message, 'runtime_approval_requests')) {
-        const { data: execution, error: legacyExecError } = await admin
-          .from('executions')
-          .insert({
-            org_id: orgId,
-            agent_id: agentId,
-            decision: 'ALLOW',
-            latency_ms: 1,
-            request_payload: canonical.input,
-            context_payload: canonical.context,
-            policy_version: 'v1',
-            reason: 'Auto-setup verification execution (legacy fallback)',
-          })
-          .select('id')
-          .single();
-
-        if (legacyExecError || !execution) {
+        const fallback = await runLegacyExecutionFallback();
+        if (!fallback.ok) {
           (results.steps as string[]).push(`approval: FAIL (${approvalError.message})`);
-          (results.steps as string[]).push(`rpc_commit: FAIL (${legacyExecError?.message || 'legacy execution failed'})`);
+          (results.steps as string[]).push(`rpc_commit: FAIL (${fallback.error})`);
           rpcCommitStatus = 'FAIL';
           checkpointStatus = 'FAIL';
         } else {
-          results.execution_id = execution.id;
-          await admin.from('audit_logs').insert({
-            org_id: orgId,
-            agent_id: agentId,
-            execution_id: execution.id,
-            policy_version: 'v1',
-            decision: 'ALLOW',
-            reason: 'Auto-setup verification execution (legacy fallback)',
-            evidence: { source: 'auto_setup_legacy_fallback', canonical },
-          });
-          (results.steps as string[]).push('approval: OK (legacy fallback)');
-          (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${execution.id})`);
+          (results.steps as string[]).push('approval: WARN (runtime approval table missing; using legacy path)');
+          (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${fallback.executionId})`);
           (results.steps as string[]).push('checkpoint: WARN (legacy fallback did not create runtime checkpoint)');
           rpcCommitStatus = 'OK';
           checkpointStatus = 'WARN';
@@ -263,8 +274,24 @@ export async function POST(_request: Request) {
       });
 
       if (commitError) {
-        (results.steps as string[]).push(`rpc_commit: FAIL (${commitError.message})`);
-        rpcCommitStatus = 'FAIL';
+        if (isMissingInfraError(commitError.message, 'runtime_commit_execution')) {
+          const fallback = await runLegacyExecutionFallback();
+          if (!fallback.ok) {
+            (results.steps as string[]).push(`rpc_commit: FAIL (${fallback.error})`);
+            rpcCommitStatus = 'FAIL';
+            checkpointStatus = 'FAIL';
+          } else {
+            (results.steps as string[]).push('approval: OK');
+            (results.steps as string[]).push('rpc_commit: WARN (runtime RPC missing in schema cache; migrated legacy execution instead)');
+            (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${fallback.executionId})`);
+            (results.steps as string[]).push('checkpoint: WARN (legacy fallback did not create runtime checkpoint)');
+            rpcCommitStatus = 'OK';
+            checkpointStatus = 'WARN';
+          }
+        } else {
+          (results.steps as string[]).push(`rpc_commit: FAIL (${commitError.message})`);
+          rpcCommitStatus = 'FAIL';
+        }
       } else {
         const row = Array.isArray(commit) ? commit[0] : commit;
         results.execution_id = row?.execution_id;
@@ -423,6 +450,9 @@ export async function POST(_request: Request) {
     }
     if (!process.env.STRIPE_SECRET_KEY) {
       (results.next_steps as string[]).push('ตั้ง STRIPE_SECRET_KEY บน Vercel (ถ้าจะใช้ billing)');
+    }
+    if (usedLegacyExecutionFallback) {
+      (results.next_steps as string[]).push('รัน Supabase migrations ล่าสุดและ reload PostgREST schema cache เพื่อเปิดใช้งาน runtime RPC/checkpoint เต็มรูปแบบ');
     }
 
     if (!firstRunComplete) {
