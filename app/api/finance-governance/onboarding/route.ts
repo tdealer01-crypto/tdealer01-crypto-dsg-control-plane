@@ -32,7 +32,7 @@ function mapChecklistToSteps(checklist: ChecklistPayload, bootstrapStatus: strin
   });
 }
 
-export async function GET() {
+export async function GET(_request: Request) {
   try {
     const orgId = await getOrg();
     const admin = getSupabaseAdmin() as any;

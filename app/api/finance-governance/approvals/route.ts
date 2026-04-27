@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const repository = new FinanceGovernanceRepository();
 
-export async function GET() {
+export async function GET(_request: Request) {
   try {
     const orgId = await getOrg();
     const approvals = await repository.getApprovals(orgId);
