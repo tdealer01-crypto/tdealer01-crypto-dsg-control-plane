@@ -59,7 +59,7 @@ export default function PublicChatWidget() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-[80] rounded-full border border-emerald-300/30 bg-emerald-400 px-4 py-3 text-sm font-bold text-black shadow-2xl shadow-emerald-500/30 transition hover:scale-105"
+        className="fixed bottom-5 right-5 z-[9999] rounded-full border border-emerald-300/50 bg-emerald-300 px-5 py-4 text-sm font-extrabold text-black shadow-2xl shadow-emerald-500/40 ring-2 ring-black/50 transition hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-200"
         aria-label="Open public DSG chat"
       >
         ถาม DSG
@@ -68,7 +68,7 @@ export default function PublicChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-[80] flex h-[500px] w-[min(390px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
+    <div className="fixed bottom-5 right-5 z-[9999] flex h-[500px] w-[min(390px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-100">DSG Public Assistant</p>
