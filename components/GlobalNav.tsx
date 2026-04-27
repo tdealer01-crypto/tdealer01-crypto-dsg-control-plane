@@ -10,6 +10,7 @@ const PUBLIC_NAV = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
   { href: '/sync-center', label: 'Sync Center' },
+  { href: '/pro-mode', label: 'Pro Mode' },
   { href: '/support', label: 'Support' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/app-shell', label: 'App Shell' },
