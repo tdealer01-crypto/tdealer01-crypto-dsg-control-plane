@@ -74,7 +74,8 @@ function isMissingTable(error: unknown) {
 }
 
 async function customerCredential(orgId: string): Promise<Credential | null> {
-  const { data, error } = await getSupabaseAdmin()
+  const supabase = getSupabaseAdmin() as any;
+  const { data, error } = await supabase
     .from(PROVIDER_TABLE)
     .select('encrypted_api_key')
     .eq('org_id', orgId)
@@ -101,7 +102,8 @@ async function resolveCredential(orgId: string): Promise<Credential | null> {
 
 export async function getOpenRouterProviderStatus(orgId: string) {
   const systemConfigured = Boolean(process.env.OPENROUTER_API_KEY);
-  const { data, error } = await getSupabaseAdmin()
+  const supabase = getSupabaseAdmin() as any;
+  const { data, error } = await supabase
     .from(PROVIDER_TABLE)
     .select('api_key_preview, updated_at')
     .eq('org_id', orgId)
@@ -122,7 +124,7 @@ export async function getOpenRouterProviderStatus(orgId: string) {
 export async function saveOpenRouterProviderKey(orgId: string, userId: string, apiKey: string) {
   const trimmed = apiKey.trim();
   if (!trimmed) throw new Error('api_key is required');
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
   const now = new Date().toISOString();
 
   await supabase
@@ -146,7 +148,8 @@ export async function saveOpenRouterProviderKey(orgId: string, userId: string, a
 }
 
 export async function disableOpenRouterProviderKey(orgId: string) {
-  const { error } = await getSupabaseAdmin()
+  const supabase = getSupabaseAdmin() as any;
+  const { error } = await supabase
     .from(PROVIDER_TABLE)
     .update({ status: 'disabled', updated_at: new Date().toISOString() })
     .eq('org_id', orgId)
