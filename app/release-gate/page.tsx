@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { releaseGatePlans } from '@/lib/release-gate/plans';
+import { releaseGatePlans } from '../../lib/release-gate/plans';
 
 export default function ReleaseGatePage() {
   const [url, setUrl] = useState('');
