@@ -12,6 +12,11 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 export const dynamic = 'force-dynamic';
 type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL' | 'WARN';
 
+const RUNTIME_INFRA_FIX_STEPS = [
+  'supabase migration up',
+  "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -c \"NOTIFY pgrst, 'reload schema';\"",
+  "./scripts/apply-runtime-rpc-fix.sh \"$SUPABASE_DB_URL\"",
+] as const;
 
 function logAutoSetupEvent(
   event:
@@ -97,6 +102,7 @@ export async function POST(_request: Request) {
     let onboardingStatus: SetupStatus = 'FAIL';
     let runtimeRolesStatus: SetupStatus = 'FAIL';
     let usedLegacyExecutionFallback = false;
+    let runtimeInfraNeedsRepair = false;
 
     const fail = (payload: Record<string, unknown>, status = 500) =>
       NextResponse.json(
@@ -242,6 +248,7 @@ export async function POST(_request: Request) {
           rpcCommitStatus = 'FAIL';
           checkpointStatus = 'FAIL';
         } else {
+          runtimeInfraNeedsRepair = true;
           (results.steps as string[]).push('approval: WARN (runtime approval table missing; using legacy path)');
           (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${fallback.executionId})`);
           (results.steps as string[]).push('checkpoint: WARN (legacy fallback did not create runtime checkpoint)');
@@ -281,6 +288,7 @@ export async function POST(_request: Request) {
             rpcCommitStatus = 'FAIL';
             checkpointStatus = 'FAIL';
           } else {
+            runtimeInfraNeedsRepair = true;
             (results.steps as string[]).push('approval: OK');
             (results.steps as string[]).push('rpc_commit: WARN (runtime RPC missing in schema cache; migrated legacy execution instead)');
             (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${fallback.executionId})`);
@@ -324,6 +332,7 @@ export async function POST(_request: Request) {
 
           if (checkpointError) {
             if (isMissingInfraError(checkpointError.message, 'runtime_checkpoints')) {
+              runtimeInfraNeedsRepair = true;
               (results.steps as string[]).push('checkpoint: WARN (table missing in API cache: run runtime spine migrations)');
               checkpointStatus = 'WARN';
             } else {
@@ -398,6 +407,7 @@ export async function POST(_request: Request) {
 
     if (runtimeRolesError) {
       if (isMissingInfraError(runtimeRolesError.message, 'runtime_roles')) {
+        runtimeInfraNeedsRepair = true;
         (results.steps as string[]).push('runtime_roles: WARN (table missing in API cache: run runtime RBAC migrations)');
         runtimeRolesStatus = 'WARN';
       } else {
@@ -437,10 +447,11 @@ export async function POST(_request: Request) {
       policyStatus !== 'FAIL' &&
       (agentStatus === 'CREATED' || agentStatus === 'EXISTS') &&
       rpcCommitStatus === 'OK' &&
-      (checkpointStatus === 'OK' || checkpointStatus === 'WARN') &&
+      checkpointStatus === 'OK' &&
       (billingStatus === 'OK' || billingStatus === 'CREATED' || billingStatus === 'EXISTS') &&
       onboardingStatus === 'OK' &&
-      (runtimeRolesStatus === 'OK' || runtimeRolesStatus === 'WARN');
+      runtimeRolesStatus === 'OK' &&
+      !runtimeInfraNeedsRepair;
 
     results.first_run_complete = firstRunComplete;
     results.ok = firstRunComplete;
@@ -451,8 +462,12 @@ export async function POST(_request: Request) {
     if (!process.env.STRIPE_SECRET_KEY) {
       (results.next_steps as string[]).push('ตั้ง STRIPE_SECRET_KEY บน Vercel (ถ้าจะใช้ billing)');
     }
-    if (usedLegacyExecutionFallback) {
+    if (usedLegacyExecutionFallback || runtimeInfraNeedsRepair) {
       (results.next_steps as string[]).push('รัน Supabase migrations ล่าสุดและ reload PostgREST schema cache เพื่อเปิดใช้งาน runtime RPC/checkpoint เต็มรูปแบบ');
+      results.runtime_infra_fix = {
+        required: true,
+        commands: [...RUNTIME_INFRA_FIX_STEPS],
+      };
     }
 
     if (!firstRunComplete) {
