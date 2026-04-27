@@ -69,7 +69,28 @@ export default function HomePage() {
               exception handling, and evidence bundles that are ready when auditors ask.
             </p>
 
-            <div className="mt-10 flex flex-wrap gap-4">
+            <div className="mt-8 rounded-3xl border border-emerald-300/25 bg-emerald-400/10 p-5 shadow-2xl shadow-emerald-950/30">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Try before login</p>
+              <p className="mt-2 text-sm leading-7 text-emerald-50">
+                เคยใช้ AI แล้วพังใช่ไหม? ดู proof/demo และถาม DSG ได้ก่อน โดย public mode ไม่ execute action และยังไม่ต้องย้ายข้อมูล.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href="/enterprise-proof/demo"
+                  className="rounded-2xl bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200"
+                >
+                  ดูเดโม่ / View demo
+                </Link>
+                <a
+                  href="#public-chat"
+                  className="rounded-2xl border border-emerald-200/40 bg-black/20 px-5 py-3 text-sm font-bold text-emerald-100 transition hover:border-emerald-100"
+                >
+                  ถาม DSG
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-4">
               <Link href="/finance-governance/app" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
                 Open finance workspace
               </Link>
@@ -128,6 +149,26 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="public-chat" className="border-b border-emerald-300/15 bg-[#07110f]">
+        <div className="mx-auto grid max-w-7xl gap-6 px-6 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Public DSG Assistant</p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">ถามก่อนล็อกอินได้ ไม่ execute action</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              ใช้ปุ่มแชทมุมขวาล่างหรือเริ่มจากหน้าเดโม่ เพื่อเช็กว่า DSG เหมาะกับ workflow ของคุณไหม ก่อน request access หรือย้ายข้อมูลจริง.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:justify-end">
+            <Link href="/enterprise-proof/demo" className="rounded-2xl bg-emerald-300 px-6 py-4 font-bold text-slate-950 hover:bg-emerald-200">
+              ดูเดโม่ตอนนี้
+            </Link>
+            <Link href="/request-access" className="rounded-2xl border border-emerald-300/40 px-6 py-4 font-bold text-emerald-100 hover:bg-emerald-300/10">
+              ขอสิทธิ์ทดลอง
+            </Link>
           </div>
         </div>
       </section>
