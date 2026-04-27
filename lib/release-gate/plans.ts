@@ -11,7 +11,7 @@ export const releaseGatePlans: ReleaseGatePlan[] = [
     id: 'free',
     name: 'Free',
     price: '$0',
-    description: 'Basic launch readiness check for a single public URL.',
+    description: 'Basic launch readiness check for one public URL.',
     features: [
       'Health and readiness URL guidance',
       'Trust page checklist',
