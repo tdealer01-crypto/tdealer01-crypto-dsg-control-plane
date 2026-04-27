@@ -80,8 +80,9 @@ export async function GET(request: Request) {
 
     const result = await fetchAuditLogsForExport(access.orgId, limit);
     if (!result.ok) {
-      const status = result.reason === 'relation-missing' ? 503 : 500;
-      return NextResponse.json({ ok: false, error: result.reason }, { status });
+      const reason = 'reason' in result ? result.reason : 'query-error';
+      const status = reason === 'relation-missing' ? 503 : 500;
+      return NextResponse.json({ ok: false, error: reason }, { status });
     }
 
     const rows = maskSecrets(result.rows) as Array<Record<string, unknown>>;

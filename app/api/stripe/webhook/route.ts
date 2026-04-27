@@ -11,9 +11,11 @@ async function upsertSubscriptionEntitlement(stripe: Stripe, subscription: Strip
   let email: string | null = null;
 
   if (customerId) {
-    const customer = await stripe.customers.retrieve(customerId);
-    if (!customer.deleted) {
-      email = customer.email ?? null;
+    const customer = (await stripe.customers.retrieve(customerId)) as Stripe.Customer | Stripe.DeletedCustomer;
+    if ('deleted' in customer && customer.deleted) {
+      email = null;
+    } else {
+      email = (customer as Stripe.Customer).email ?? null;
     }
   }
 
