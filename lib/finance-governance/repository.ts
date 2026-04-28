@@ -17,6 +17,11 @@ export class FinanceGovernanceRepository {
     return !error;
   }
 
+  private async hasLegacyWorkflowTables(supabase: any) {
+    const { error } = await supabase.from('finance_workflow_approvals').select('id').limit(1);
+    return !error;
+  }
+
   async getWorkspaceSummary(orgId: string): Promise<FinanceGovernanceWorkspaceSummary> {
     const approvals = await this.getApprovals(orgId);
     const pendingApprovals = approvals.filter(
@@ -281,24 +286,28 @@ export class FinanceGovernanceRepository {
       }
     }
 
-    const { data: approval } = await supabase
-      .from('finance_workflow_approvals')
-      .select('case_id')
-      .eq('org_id', orgId)
-      .eq('id', approvalId)
-      .maybeSingle();
+    let legacyApprovalCaseId: string | null = null;
+    if (await this.hasLegacyWorkflowTables(supabase)) {
+      const { data: approval } = await supabase
+        .from('finance_workflow_approvals')
+        .select('case_id')
+        .eq('org_id', orgId)
+        .eq('id', approvalId)
+        .maybeSingle();
+      legacyApprovalCaseId = approval?.case_id ?? null;
 
-    const { error } = await supabase
-      .from('finance_workflow_approvals')
-      .update({ status: result.nextStatus, updated_at: new Date().toISOString() })
-      .eq('org_id', orgId)
-      .eq('id', approvalId);
+      const { error } = await supabase
+        .from('finance_workflow_approvals')
+        .update({ status: result.nextStatus, updated_at: new Date().toISOString() })
+        .eq('org_id', orgId)
+        .eq('id', approvalId);
 
-    if (error) {
-      throw new Error(`failed_to_update_approval:${error.message}`);
+      if (error) {
+        throw new Error(`failed_to_update_approval:${error.message}`);
+      }
     }
 
-    await this.writeAction(orgId, result, approval?.case_id ?? null, approvalId);
+    await this.writeAction(orgId, result, legacyApprovalCaseId, approvalId);
     return result;
   }
 
