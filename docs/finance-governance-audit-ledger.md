@@ -4,15 +4,17 @@ This document tracks the backend cutover for the Finance Governance control plan
 
 ## Status
 
-This branch adds a dedicated audit ledger path for finance governance actions.
+The backend now has a dedicated audit ledger write path and verification API for finance governance actions.
 
-Implemented in this cutover:
+Implemented:
 
 - `finance_governance_audit_ledger` migration
 - stable SHA-256 request hash
 - stable SHA-256 record hash
 - repository-level audit ledger writer
 - workflow action payload now includes audit proof metadata
+- audit ledger list API
+- audit ledger verify API
 - unit coverage for audit ledger inserts and proof hashes
 
 ## Dataset / benchmark reference
@@ -77,12 +79,59 @@ Hashes are generated from stable JSON serialization with sorted object keys.
 - `request_hash`: hash of the normalized finance governance action event
 - `record_hash`: hash of the database ledger record payload including `request_hash`
 
+## API
+
+List audit ledger records for an organization:
+
+```http
+GET /api/finance-governance/audit-ledger?limit=50
+x-org-id: <org-id>
+```
+
+Verify one ledger record by hash:
+
+```http
+GET /api/finance-governance/audit-ledger/<recordHash>/verify
+x-org-id: <org-id>
+```
+
+Successful verification response shape:
+
+```json
+{
+  "ok": true,
+  "record": {
+    "record_hash": "<stored-record-hash>"
+  },
+  "verification": {
+    "ok": true,
+    "expectedRequestHash": "<sha256>",
+    "expectedRecordHash": "<sha256>",
+    "storedRequestHash": "<sha256>",
+    "storedRecordHash": "<sha256>",
+    "mismatches": []
+  }
+}
+```
+
+If data is tampered, `verification.ok` becomes `false` and `mismatches` identifies which hash failed.
+
 ## Validation
 
 Run the targeted unit test:
 
 ```bash
 npm run test:unit -- tests/unit/finance-governance-repository.test.ts
+```
+
+API smoke checks after deploying with migrations applied:
+
+```bash
+curl -H "x-org-id: <org-id>" \
+  "https://<host>/api/finance-governance/audit-ledger?limit=10"
+
+curl -H "x-org-id: <org-id>" \
+  "https://<host>/api/finance-governance/audit-ledger/<recordHash>/verify"
 ```
 
 On Android/Termux, `npm install` may fail because the Supabase package postinstall does not support Android arm64. Validate this PR in GitHub Actions, Vercel, or a Linux/macOS development environment instead of relying only on local Termux install.
