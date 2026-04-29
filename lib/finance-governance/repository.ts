@@ -4,6 +4,7 @@ import {
   type FinanceGovernanceActionName,
   type FinanceGovernanceActionResult,
 } from './actions';
+import { writeFinanceGovernanceAuditLedger } from './audit-ledger';
 import type {
   FinanceGovernanceApprovalItem,
   FinanceGovernanceCaseDetail,
@@ -350,6 +351,21 @@ export class FinanceGovernanceRepository {
       }
     }
 
+    const auditEvent = {
+      orgId,
+      caseId,
+      approvalId,
+      action: result.action,
+      actor: 'api',
+      result: result.ok ? 'ok' as const : 'error' as const,
+      target: approvalId ?? caseId,
+      message: result.message,
+      nextStatus: result.nextStatus,
+      payload: result,
+    };
+
+    const auditProof = await writeFinanceGovernanceAuditLedger(supabase, auditEvent);
+
     const { error } = await supabase.from('finance_workflow_action_events').insert({
       org_id: orgId,
       case_id: caseId,
@@ -360,7 +376,10 @@ export class FinanceGovernanceRepository {
       target: approvalId ?? caseId,
       message: result.message,
       next_status: result.nextStatus,
-      payload: result,
+      payload: {
+        ...result,
+        audit: auditProof,
+      },
     });
 
     if (error) {
