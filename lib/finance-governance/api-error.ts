@@ -7,6 +7,11 @@ const KNOWN_FINANCE_GOVERNANCE_ERRORS: Record<string, number> = {
   case_not_found: 404,
   approval_not_found: 404,
   audit_record_not_found: 404,
+  missing_actor_role: 403,
+  missing_org_plan: 403,
+  role_not_allowed: 403,
+  plan_not_entitled: 402,
+  finance_governance_access_denied: 403,
 };
 
 export function handleFinanceGovernanceApiError(route: string, error: unknown) {

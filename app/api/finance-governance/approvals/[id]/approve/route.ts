@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { handleFinanceGovernanceApiError } from '../../../../../../lib/finance-governance/api-error';
+import { requireFinanceGovernanceAccess } from '../../../../../../lib/finance-governance/access-gate';
 import { FinanceGovernanceRepository } from '../../../../../../lib/finance-governance/repository';
 import { resolveOrgId } from '../../../../../../lib/finance-governance/org-scope';
 
@@ -12,6 +13,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: RouteContext) {
   try {
     const orgId = resolveOrgId(request);
+    requireFinanceGovernanceAccess(request, orgId, 'approve');
     const { id } = await context.params;
     const result = await repository.applyAction(orgId, id, 'approve');
     return NextResponse.json(result, { status: 200 });
