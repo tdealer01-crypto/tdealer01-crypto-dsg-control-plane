@@ -6,6 +6,7 @@ const KNOWN_FINANCE_GOVERNANCE_ERRORS: Record<string, number> = {
   missing_org_id: 400,
   case_not_found: 404,
   approval_not_found: 404,
+  audit_record_not_found: 404,
 };
 
 export function handleFinanceGovernanceApiError(route: string, error: unknown) {
