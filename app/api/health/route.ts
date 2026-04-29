@@ -40,6 +40,7 @@ function unavailableReadiness(detail: string): ReadinessReport {
       dsgCoreConfig: { ok: false, detail },
       dsgCoreHealth: { ok: false, detail },
       financeGovernanceSurface: UNAVAILABLE_CHECK,
+      financeGovernanceBackend: { ok: false, detail },
     },
     timestamp: new Date().toISOString(),
   };
