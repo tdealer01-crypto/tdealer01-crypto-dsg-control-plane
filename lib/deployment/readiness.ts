@@ -1,4 +1,5 @@
 import { getDSGCoreConfig, getDSGCoreHealth } from '../dsg-core';
+import { checkFinanceGovernanceReadiness } from '../finance-governance/readiness';
 import { getSupabaseAdmin } from '../supabase-server';
 
 type CheckResult = {
@@ -15,6 +16,7 @@ export type ReadinessReport = {
     dsgCoreConfig: CheckResult;
     dsgCoreHealth: CheckResult;
     financeGovernanceSurface: CheckResult;
+    financeGovernanceBackend: CheckResult;
   };
   timestamp: string;
 };
@@ -95,6 +97,31 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     financeGovernanceEnabled ? undefined : 'finance_governance_disabled'
   );
 
+  let financeGovernanceBackend = buildCheck(false, 'not_checked');
+  if (financeGovernanceEnabled) {
+    try {
+      const financeReadiness = await withTimeout(
+        checkFinanceGovernanceReadiness(),
+        'finance_governance_backend',
+        7_000
+      );
+      const failedChecks = financeReadiness.checks
+        .filter((check) => check.required && !check.ok)
+        .map((check) => `${check.name}:${check.message ?? 'failed'}`);
+      financeGovernanceBackend = buildCheck(
+        financeReadiness.ok,
+        failedChecks.length ? failedChecks.join(';') : undefined
+      );
+    } catch (error) {
+      financeGovernanceBackend = buildCheck(
+        false,
+        error instanceof Error ? error.message : 'finance_governance_backend_unreachable'
+      );
+    }
+  } else {
+    financeGovernanceBackend = buildCheck(true, 'skipped:finance_governance_disabled');
+  }
+
   const checks = {
     env: envCheck,
     nextAuthSecret,
@@ -102,6 +129,7 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     dsgCoreConfig,
     dsgCoreHealth,
     financeGovernanceSurface,
+    financeGovernanceBackend,
   };
 
   return {
