@@ -1,0 +1,107 @@
+{
+  "suiteId": "dsg-public-vendor-baseline-v1",
+  "generatedFrom": "public documentation / official docs baseline",
+  "evidenceBoundary": "These vendor baselines are derived from public documentation and are not runtime benchmark results for those vendors. DSG evidence is production-tested separately. Do not claim DSG beat a vendor unless that vendor has been runtime-tested with the same suite.",
+  "dsgTestedEvidence": {
+    "command": "npm run benchmark:evidence",
+    "status": "tested",
+    "latestObserved": {
+      "fullEvidencePass": true,
+      "productionGatewayPassed": "6/6",
+      "smt2RuntimeInvariantPassed": "6/6",
+      "comparisonScore": "190/200",
+      "comparisonPercent": "95%"
+    }
+  },
+  "vendors": [
+    {
+      "id": "zapier",
+      "name": "Zapier",
+      "baselineType": "public_docs",
+      "runtimeTested": false,
+      "scoreEligible": false,
+      "category": "automation connector platform",
+      "sourceUrls": [
+        "https://help.zapier.com/hc/en-us/articles/8496288690317-Trigger-Zaps-from-webhooks",
+        "https://help.zapier.com/hc/en-us/articles/21986957116301-Easily-find-Zaps-by-the-URL-used-in-Webhooks-by-Zapier-steps"
+      ],
+      "capabilities": {
+        "webhookTrigger": "Catch Hook / Catch Raw Hook can trigger Zaps from webhooks.",
+        "httpMethods": "Catch Hook is documented for GET, PUT, or POST API endpoints.",
+        "endpointModel": "Webhook URL is provided in the Zap editor for that Zap.",
+        "runtimeEndpointRequired": true
+      }
+    },
+    {
+      "id": "n8n",
+      "name": "n8n",
+      "baselineType": "public_docs",
+      "runtimeTested": false,
+      "scoreEligible": false,
+      "category": "workflow automation platform",
+      "sourceUrls": [
+        "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+      ],
+      "capabilities": {
+        "webhookTrigger": "Webhook node receives requests and can trigger workflows.",
+        "testAndProductionUrls": "Webhook node has Test URL and Production URL.",
+        "productionExecutionHistory": "Production execution data can be viewed in the Executions tab.",
+        "runtimeEndpointRequired": true
+      }
+    },
+    {
+      "id": "make",
+      "name": "Make",
+      "baselineType": "public_docs",
+      "runtimeTested": false,
+      "scoreEligible": false,
+      "category": "automation connector platform",
+      "sourceUrls": [
+        "https://help.make.com/webhooks",
+        "https://apps.make.com/gateway"
+      ],
+      "capabilities": {
+        "customWebhook": "Custom webhooks create a URL that external apps or services can call.",
+        "scenarioExecution": "Webhooks can trigger scenario execution when the URL receives a request.",
+        "defaultResponses": "Documented default responses include 200 accepted, 400 queue full, and 429 rate limit.",
+        "runtimeEndpointRequired": true
+      }
+    },
+    {
+      "id": "workato",
+      "name": "Workato",
+      "baselineType": "public_docs",
+      "runtimeTested": false,
+      "scoreEligible": false,
+      "category": "enterprise automation / API platform",
+      "sourceUrls": [
+        "https://docs.workato.com/workato-api/api-platform",
+        "https://docs.workato.com/en/limits.html"
+      ],
+      "capabilities": {
+        "apiPlatform": "API Platform APIs manage endpoints, collections, clients, and access profiles.",
+        "rateLimit": "API platform endpoints are documented at up to 10 requests per second.",
+        "limits": "API platform limits include synchronous job timeout, payload, header, cache, and response/cache constraints.",
+        "runtimeEndpointRequired": true
+      }
+    },
+    {
+      "id": "temporal",
+      "name": "Temporal",
+      "baselineType": "public_docs",
+      "runtimeTested": false,
+      "scoreEligible": false,
+      "category": "durable execution / workflow orchestration",
+      "sourceUrls": [
+        "https://temporal.io/",
+        "https://docs.temporal.io/"
+      ],
+      "capabilities": {
+        "durableExecution": "Temporal Workflows capture state and can resume after failures.",
+        "workflowOrchestration": "Temporal is positioned as a reliable application / durable execution platform.",
+        "webhookModel": "Temporal is not a public webhook endpoint by default; HTTP benchmark requires a wrapper endpoint.",
+        "runtimeEndpointRequired": true
+      }
+    }
+  ]
+}
