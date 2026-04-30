@@ -1,0 +1,119 @@
+{
+  "suiteId": "dsg-gateway-market-comparison-v1",
+  "title": "AI Action Governance Gateway Market Comparison Suite",
+  "version": "1.0.0",
+  "evidenceBoundary": "This suite defines a common workload and scoring rubric. Scores are only valid when every vendor is evaluated with the same suite, same environment notes, and recorded evidence.",
+  "vendors": [
+    {
+      "id": "dsg",
+      "name": "DSG Gateway",
+      "category": "AI action governance gateway"
+    },
+    {
+      "id": "zapier",
+      "name": "Zapier",
+      "category": "automation connector platform"
+    },
+    {
+      "id": "make",
+      "name": "Make",
+      "category": "automation connector platform"
+    },
+    {
+      "id": "n8n",
+      "name": "n8n",
+      "category": "workflow automation platform"
+    },
+    {
+      "id": "workato",
+      "name": "Workato",
+      "category": "enterprise automation platform"
+    },
+    {
+      "id": "langsmith",
+      "name": "LangSmith / agent observability stack",
+      "category": "agent observability and tracing"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "pre_execution_policy_gate",
+      "label": "Pre-execution policy gate",
+      "weight": 12,
+      "description": "Can the platform make an allow/block/review decision before the action executes?"
+    },
+    {
+      "id": "risk_classification",
+      "label": "Tool/action risk classification",
+      "weight": 10,
+      "description": "Can individual tools/actions be assigned risk levels that influence execution?"
+    },
+    {
+      "id": "human_approval_gate",
+      "label": "Human approval gate",
+      "weight": 10,
+      "description": "Can high-risk actions require explicit approval before execution?"
+    },
+    {
+      "id": "customer_api_key_custody_avoidance",
+      "label": "Customer keeps API keys",
+      "weight": 12,
+      "description": "Can customers retain execution inside their own runtime without giving the governance layer production API keys?"
+    },
+    {
+      "id": "connector_execution",
+      "label": "Connector execution",
+      "weight": 8,
+      "description": "Can the platform execute a connector or webhook when configured to do so?"
+    },
+    {
+      "id": "audit_hash_proof",
+      "label": "Audit hash proof",
+      "weight": 12,
+      "description": "Does the platform return request/decision/record hashes or equivalent tamper-evident proof?"
+    },
+    {
+      "id": "audit_export",
+      "label": "Audit export",
+      "weight": 8,
+      "description": "Can evidence be exported for review?"
+    },
+    {
+      "id": "replay_or_history",
+      "label": "Replay/history visibility",
+      "weight": 7,
+      "description": "Can reviewers inspect historical executions or proof events?"
+    },
+    {
+      "id": "failure_closed_behavior",
+      "label": "Fail-closed behavior",
+      "weight": 9,
+      "description": "Does the platform block or fail closed when evidence cannot be written or provider execution fails?"
+    },
+    {
+      "id": "public_reproducible_benchmark",
+      "label": "Public reproducible benchmark evidence",
+      "weight": 12,
+      "description": "Is there a repeatable benchmark command/report that reviewers can rerun?"
+    }
+  ],
+  "scoreScale": {
+    "0": "Not supported or no evidence",
+    "1": "Possible only with substantial custom work or external glue",
+    "2": "Supported natively or by documented first-party pattern with evidence"
+  },
+  "workloads": [
+    {
+      "id": "governed_connector_execute",
+      "description": "Register a connector, map it to a tool, run a governed execution, and return proof fields."
+    },
+    {
+      "id": "monitor_mode_customer_runtime",
+      "description": "Request a pre-execution decision, let customer runtime execute, commit the result, and export proof."
+    },
+    {
+      "id": "blocked_or_failed_evidence_path",
+      "description": "Show that failed provider/evidence paths do not silently pass."
+    }
+  ]
+}
