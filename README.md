@@ -37,10 +37,12 @@ Verified production surfaces:
 - Audit export API: verified
 - `requestHash` / `recordHash`: generated and returned
 - Production gateway benchmark: 6/6 passed
+- Comparison rubric score: 190/200, 95%
+- Public vendor baseline pack: 5 vendors covered from public documentation
 - Published formal verification DOI: available
 - Deterministic SMT2-compatible runtime invariant evidence: available
 
-Production benchmark summary:
+Latest production benchmark summary:
 
 ```text
 pass: true
@@ -48,12 +50,22 @@ total: 6
 passed: 6
 failed: 0
 passRate: 100%
-avgLatencyMs: 1812
-minLatencyMs: 905
-maxLatencyMs: 3303
+avgLatencyMs: 2047
+minLatencyMs: 1029
+maxLatencyMs: 4254
 ```
 
-Evidence boundary: the benchmark is internal production evidence for marketplace/demo validation. It is not an independent third-party certification.
+Latest evidence summary:
+
+```text
+DSG Full Evidence Benchmark: PASS
+Production Gateway Benchmark: 6/6 passed, 100%
+SMT2 Runtime Invariants: 6/6 passed, 100%
+Comparison Rubric: 190/200, 95%
+Public Vendor Baseline: pass=true, publicDocVendors=5, vendorRuntimeTested=0
+```
+
+Evidence boundary: the benchmark is internal production evidence for marketplace/demo validation. It is not an independent third-party certification. Vendor runtime benchmark results are not claimed unless vendor endpoints are configured and tested with the same suite.
 
 ## Product purpose
 
@@ -74,6 +86,7 @@ It provides:
 - deterministic SMT2-compatible runtime invariant evidence
 - production benchmark evidence
 - comparison benchmark rubric for adjacent market tools
+- public vendor-baseline comparison derived from official/public market documentation
 
 ## Formal Verification & Deterministic Control
 
@@ -411,6 +424,19 @@ SMT2 deterministic invariant evidence:
 npm run benchmark:gateway:smt2
 ```
 
+Public vendor-baseline comparison:
+
+```bash
+npm run benchmark:vendors:baseline
+```
+
+Outputs:
+
+```text
+artifacts/public-vendor-baseline/public-vendor-baseline-result.json
+artifacts/public-vendor-baseline/public-vendor-baseline-report.md
+```
+
 ## Market comparison boundary
 
 The comparison suite is a same-criteria rubric for adjacent tools such as automation platforms, workflow systems, API gateways, observability stacks, and compliance evidence tools.
@@ -418,25 +444,36 @@ The comparison suite is a same-criteria rubric for adjacent tools such as automa
 Current DSG submitted score:
 
 ```text
-188 / 200
-94%
+190 / 200
+95%
+```
+
+Public vendor baseline coverage:
+
+```text
+Zapier
+n8n
+Make
+Workato
+Temporal
 ```
 
 Safe wording:
 
 ```text
-DSG has a 94% submitted score against its public AI Action Governance Gateway comparison rubric.
+DSG has production-tested evidence against a public vendor-baseline rubric derived from official/public market-leader documentation.
 ```
 
 Do not use:
 
 ```text
-DSG is 94% better than Zapier.
+DSG is 95% better than Zapier.
 DSG beats Workato.
+DSG runtime-tested and beat every vendor listed here.
 Certified best-in-market.
 ```
 
-Those claims require same-suite evidence for every vendor and ideally independent review.
+Those claims require same-suite runtime evidence for every vendor and ideally independent review.
 
 ## Production database tables
 
@@ -515,6 +552,10 @@ Current status:
 Finance governance backend smoke path: GO
 Gateway Mode production benchmark: GO
 Monitor Mode production benchmark: GO
+Production Gateway Benchmark: 6/6 passed, 100%
+SMT2 Runtime Invariants: 6/6 passed, 100%
+Comparison Rubric: 190/200, 95%
+Public Vendor Baseline: pass=true, publicDocVendors=5, vendorRuntimeTested=0
 Published formal verification artifact: available
 SMT2-compatible deterministic runtime invariant evidence: available
 Marketplace production evidence page: available
@@ -538,5 +579,6 @@ It includes:
 - production benchmark evidence
 - published formal verification evidence
 - deterministic SMT2-compatible runtime invariant evidence
+- public vendor-baseline comparison
 
-It is not a claim that DSG is universally better than every automation or governance vendor. Market comparison claims require same-suite evidence for every vendor and ideally independent review.
+It is not a claim that DSG is universally better than every automation or governance vendor. Market comparison claims require same-suite runtime evidence for every vendor and ideally independent review.
