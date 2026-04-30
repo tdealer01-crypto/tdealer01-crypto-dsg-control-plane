@@ -27,24 +27,36 @@ export async function createMonitorPlanCheck(request: GatewayToolRequest) {
   const decisionHash = hashGatewayValue({ requestHash: audit.requestHash, decision: policy.decision, reason: policy.reason ?? null });
 
   const supabase = getSupabaseAdmin() as any;
-  await supabase.from('gateway_monitor_events').insert({
-    org_id: request.orgId,
-    plan_id: request.planId ?? null,
-    tool_name: request.toolName,
-    action: request.action,
-    mode: 'monitor',
-    decision: policy.decision,
-    actor_id: request.actorId,
-    actor_role: request.actorRole,
-    risk: registryEntry?.risk ?? null,
-    status: policy.decision === 'allow' ? 'recorded' : 'rejected',
-    request_hash: audit.requestHash,
-    decision_hash: decisionHash,
-    record_hash: audit.recordHash,
-    audit_token: auditToken,
-    input: request.input,
-    constraints,
-  });
+  const { data: insertedEvent, error: insertError } = await supabase
+    .from('gateway_monitor_events')
+    .insert({
+      org_id: request.orgId,
+      plan_id: request.planId ?? null,
+      tool_name: request.toolName,
+      action: request.action,
+      mode: 'monitor',
+      decision: policy.decision,
+      actor_id: request.actorId,
+      actor_role: request.actorRole,
+      risk: registryEntry?.risk ?? null,
+      status: policy.decision === 'allow' ? 'recorded' : 'rejected',
+      request_hash: audit.requestHash,
+      decision_hash: decisionHash,
+      record_hash: audit.recordHash,
+      audit_token: auditToken,
+      input: request.input,
+      constraints,
+    })
+    .select('id, audit_token')
+    .single();
+
+  if (insertError) {
+    throw new Error(`failed_to_record_monitor_event:${insertError.message}`);
+  }
+
+  if (!insertedEvent?.id) {
+    throw new Error('failed_to_record_monitor_event:no_inserted_event');
+  }
 
   return {
     ok: policy.decision === 'allow',
