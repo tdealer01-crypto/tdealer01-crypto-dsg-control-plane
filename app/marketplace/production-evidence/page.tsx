@@ -21,6 +21,25 @@ const checks = [
   "Audit export API",
 ];
 
+const claimCards = [
+  {
+    title: "Deterministic control",
+    body: "DSG uses deterministic control logic for high-risk tool calls, reducing reliance on probabilistic model judgment at the execution boundary.",
+  },
+  {
+    title: "Action-layer hallucination risk reduction",
+    body: "DSG is designed to reduce hallucination-driven actions by preventing AI outputs from directly executing tools unless they satisfy policy and invariant checks.",
+  },
+  {
+    title: "Mathematical invariants",
+    body: "DSG enforces runtime safety invariants over organization identity, actor identity, registered tool/action matching, approval requirements, entitlement checks, and evidence writability.",
+  },
+  {
+    title: "Audit-proof state transitions",
+    body: "DSG turns AI tool execution into an auditable state transition with request hashes, record hashes, and exportable evidence.",
+  },
+];
+
 const publicBaselines = ["Zapier", "n8n", "Make", "Workato", "Temporal"];
 
 export default function MarketplaceProductionEvidencePage() {
@@ -33,9 +52,9 @@ export default function MarketplaceProductionEvidencePage() {
             DSG Gateway evidence: 6/6 passed, 95% rubric score
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            Latest internal production benchmark evidence verified the public DSG Gateway flow end-to-end: connector registration,
-            Gateway Mode execution, Monitor Mode plan-check, audit commit, audit events, and audit export. DSG is also measured
-            against a public vendor-baseline rubric derived from official/public market-leader documentation.
+            DSG is a deterministic AI Action Governance Gateway for high-risk tool execution. It places a verified control
+            layer between AI intent and production systems, checking policy, entitlement, risk, approval, and mathematical
+            invariants before an action can execute.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/gateway/monitor?orgId=org-smoke" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">
@@ -57,6 +76,18 @@ export default function MarketplaceProductionEvidencePage() {
               <p className="mt-2 text-3xl font-bold text-white">{metric.value}</p>
             </div>
           ))}
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-2xl font-bold">Deterministic governance claims</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {claimCards.map((claim) => (
+              <div key={claim.title} className="rounded-xl border border-emerald-400/20 bg-slate-950 p-5">
+                <h3 className="text-lg font-bold text-emerald-100">{claim.title}</h3>
+                <p className="mt-3 leading-7 text-slate-300">{claim.body}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -88,9 +119,10 @@ export default function MarketplaceProductionEvidencePage() {
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-2xl font-bold">Evidence boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            This page reports an internal production benchmark run for marketplace and demo validation. It is not an
-            independent third-party certification. Vendor runtime benchmark results are not claimed unless vendor endpoints
-            are configured and tested with the same suite.
+            This page reports an internal production benchmark run for marketplace and demo validation. DSG does not claim to make
+            language models hallucination-free. It controls whether AI-proposed actions can affect business systems by requiring
+            deterministic policy and invariant checks at the execution boundary. Cost reduction claims are design goals and
+            risk-reduction mechanisms unless supported by customer production studies.
           </p>
           <pre className="mt-5 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`npm run benchmark:evidence
 npm run benchmark:vendors:baseline
