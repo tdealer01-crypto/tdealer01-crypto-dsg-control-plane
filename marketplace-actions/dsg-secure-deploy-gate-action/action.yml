@@ -1,0 +1,60 @@
+name: "DSG Secure Deploy Gate"
+description: "Deterministic production readiness, security, and governance gate for CI/CD."
+author: "tdealer01-crypto"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  readiness_url:
+    description: "Production readiness endpoint URL."
+    required: true
+
+  expected_status:
+    description: "Expected HTTP status code."
+    required: false
+    default: "200"
+
+  require_json_ok:
+    description: "Require response JSON to contain ok=true."
+    required: false
+    default: "true"
+
+  protected_url:
+    description: "Optional protected route URL expected to return 401 or 403 when unauthenticated."
+    required: false
+    default: ""
+
+  protected_expected:
+    description: "Expected unauthenticated status for protected route. Comma-separated values are allowed."
+    required: false
+    default: "401,403"
+
+outputs:
+  verdict:
+    description: "GO or NO-GO result."
+    value: ${{ steps.dsg_gate.outputs.verdict }}
+
+  readiness_status:
+    description: "Readiness HTTP status."
+    value: ${{ steps.dsg_gate.outputs.readiness_status }}
+
+  evidence_hash:
+    description: "SHA256 hash of the gate evidence."
+    value: ${{ steps.dsg_gate.outputs.evidence_hash }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run DSG Secure Deploy Gate
+      id: dsg_gate
+      shell: bash
+      run: |
+        bash "$GITHUB_ACTION_PATH/scripts/dsg-gate.sh"
+      env:
+        DSG_READINESS_URL: ${{ inputs.readiness_url }}
+        DSG_EXPECTED_STATUS: ${{ inputs.expected_status }}
+        DSG_REQUIRE_JSON_OK: ${{ inputs.require_json_ok }}
+        DSG_PROTECTED_URL: ${{ inputs.protected_url }}
+        DSG_PROTECTED_EXPECTED: ${{ inputs.protected_expected }}
