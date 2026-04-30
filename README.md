@@ -88,6 +88,24 @@ It provides:
 - comparison benchmark rubric for adjacent market tools
 - public vendor-baseline comparison derived from official/public market documentation
 
+## Deterministic governance claims
+
+DSG is a deterministic AI Action Governance Gateway that checks policy, risk, approval, and mathematical invariants before tool execution.
+
+DSG uses deterministic control logic for high-risk tool calls, reducing reliance on probabilistic model judgment at the execution boundary.
+
+DSG is designed to reduce hallucination-driven actions by preventing AI outputs from directly executing tools unless they satisfy predefined policy and invariant checks.
+
+DSG enforces mathematical safety invariants over tool-execution requests and turns AI tool execution into an auditable state transition with request hashes, record hashes, and exportable evidence.
+
+Boundary:
+
+```text
+DSG does not claim to make language models hallucination-free. Instead, it controls whether AI-proposed actions can affect business systems by requiring deterministic policy and invariant checks at the execution boundary.
+
+Cost reduction claims are design goals and risk-reduction mechanisms unless supported by customer production studies.
+```
+
 ## Formal Verification & Deterministic Control
 
 DSG includes a published formal verification artifact:
