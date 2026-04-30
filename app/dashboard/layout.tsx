@@ -3,6 +3,8 @@ import { createClient } from '../../lib/supabase/server';
 import Link from 'next/link';
 import AgentChatWidget from '../../components/AgentChatWidget';
 
+export const dynamic = 'force-dynamic';
+
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/command-center', label: 'Command Center' },
