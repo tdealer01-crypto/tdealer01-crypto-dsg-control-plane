@@ -27,6 +27,7 @@
     "benchmark:gateway": "node scripts/benchmark-gateway-production.mjs",
     "benchmark:gateway:compare": "node scripts/score-gateway-comparison.mjs",
     "benchmark:gateway:smt2": "node scripts/verify-gateway-smt2-invariants.mjs",
+    "benchmark:evidence": "node scripts/benchmark-full-evidence.mjs",
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
@@ -56,7 +57,6 @@
     "postcss": "^8.4.38",
     "supabase": "^2.89.0",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.6.3",
     "vitest": "^2.1.9"
   }
 }
