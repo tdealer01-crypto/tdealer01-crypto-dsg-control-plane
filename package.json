@@ -29,6 +29,7 @@
     "benchmark:gateway:smt2": "node scripts/verify-gateway-smt2-invariants.mjs",
     "benchmark:evidence": "node scripts/benchmark-full-evidence.mjs",
     "benchmark:vendors": "node scripts/benchmark-vendors.mjs",
+    "benchmark:vendors:baseline": "node scripts/benchmark-public-baselines.mjs",
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
