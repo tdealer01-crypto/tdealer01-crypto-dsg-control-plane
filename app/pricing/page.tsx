@@ -2,117 +2,180 @@ import Link from 'next/link';
 
 const plans = [
   {
-    title: 'Playground',
-    price: 'Free',
-    body: 'Best for quick evaluation of runtime threshold behavior.',
+    name: 'Readiness Report',
+    price: '$9',
+    cadence: 'one-time',
+    description: 'A compact GO / NO-GO production readiness report for one release or deployment review.',
+    href: 'https://buy.stripe.com/4gMbJ20qQ0n1cUz5U43gk03',
+    cta: 'Buy report',
+    featured: false,
     features: [
-      'No signup required',
-      'Public sandbox access',
-      'Visible ALLOW, STABILIZE, and BLOCK behavior',
-      'Estimated token and cost view',
+      'Production readiness verdict',
+      'Endpoint status summary',
+      'Protected-route validation',
+      'SHA256 evidence hash',
+      'Remediation checklist',
     ],
-    cta: 'Try the Playground',
-    href: '/playground',
   },
   {
-    title: 'Pro',
-    price: '14-day free trial, then paid',
-    body: 'Best for first authenticated workspace testing.',
+    name: 'Solo',
+    price: '$19',
+    cadence: 'per month',
+    description: 'Hosted release evidence for one project with basic readiness history and proof reporting.',
+    href: 'https://buy.stripe.com/fZu5kEc9yd9N3jZeqA3gk04',
+    cta: 'Start Solo',
+    featured: false,
     features: [
-      '1,000 executions included',
-      'Create and manage agents',
-      'Authenticated execution flow',
-      'Usage and audit visibility',
-      'Policy and governance views',
+      '1 project',
+      'Daily readiness check',
+      'GO / NO-GO evidence history',
+      'Basic release proof reporting',
+      'Email-based onboarding',
     ],
-    cta: 'Start Pro trial',
-    href: '/signup',
   },
   {
-    title: 'Business',
-    price: '14-day free trial, then paid',
-    body: 'Best for teams running governed workflows across users and environments.',
+    name: 'Team',
+    price: '$49',
+    cadence: 'per month',
+    description: 'Release-governance package for small teams that need evidence dashboard and alerts.',
+    href: 'https://buy.stripe.com/28E9AUb5uc5J7Af0zK3gk05',
+    cta: 'Start Team',
+    featured: true,
     features: [
-      'Higher execution limits',
-      'Team access',
-      'Operational governance support',
-      'Expanded usage visibility',
-      'Shared workspace controls',
+      'Up to 5 projects',
+      'Evidence dashboard',
+      'Slack or email alerts',
+      'Vercel readiness checks',
+      'Supabase readiness checks',
     ],
-    cta: 'Start Business trial',
-    href: '/signup',
   },
   {
-    title: 'Enterprise',
-    price: 'Custom',
-    body: 'Best for governance-heavy deployments and controlled rollout programs.',
-    features: ['Custom quotas', 'Deployment planning', 'Governance onboarding', 'Evidence review support', 'Enterprise rollout path'],
-    cta: 'Request Enterprise pilot',
-    href: '/contact',
+    name: 'Production',
+    price: '$99',
+    cadence: 'per month',
+    description: 'Production governance with audit exports, policy rules, release approval history, and support.',
+    href: 'https://buy.stripe.com/eVq6oIb5uedRg6L0zK3gk06',
+    cta: 'Start Production',
+    featured: false,
+    features: [
+      'Up to 20 projects',
+      'Audit export',
+      'Policy rules',
+      'Release approval history',
+      'Priority support',
+    ],
+  },
+];
+
+const layers = [
+  {
+    title: 'Action Layer',
+    body: 'Free GitHub Action that blocks unsafe release workflows and emits deterministic GO / NO-GO output.',
+  },
+  {
+    title: 'Governance Layer',
+    body: 'Policy-ready release evidence for teams that need to explain why a release passed or stopped.',
+  },
+  {
+    title: 'Audit Layer',
+    body: 'Evidence hashes, history, reports, and exportable release records for production review.',
   },
 ];
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen px-6 py-16 text-white">
-      <div className="mx-auto max-w-7xl">
-        <div className="mx-auto max-w-4xl text-center">
-          <h1 className="text-4xl font-bold md:text-6xl">Start free. Upgrade when your finance governance runtime needs more control.</h1>
-          <p className="mt-6 text-lg leading-8 text-slate-300">
-            Begin with the public Playground, then move into a workspace trial when you are ready to test authenticated
-            usage, audit, and policy workflows.
+    <main className="min-h-screen bg-[#07080a] text-white">
+      <section className="relative overflow-hidden border-b border-white/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.26),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.16),transparent_30%),radial-gradient(circle_at_50%_70%,rgba(16,185,129,0.10),transparent_34%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#07080a_100%)]" />
+        <div className="relative mx-auto max-w-7xl px-6 py-16 lg:py-24">
+          <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
+            DSG Secure Deploy Gate Pricing
           </p>
-          <div className="mt-6">
-            <Link href="/login" className="inline-flex rounded-xl border border-white/20 bg-white/5 px-5 py-3 font-semibold">
-              Start Trial
+          <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
+            Sell release confidence with GO / NO-GO evidence.
+          </h1>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
+            Start with the free GitHub Action, buy a one-time readiness report, or subscribe to hosted release-governance workflows for teams that need audit-ready production proof.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-4">
+            <Link href="/readiness-report" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-amber-200">
+              View $9 report
+            </Link>
+            <Link href="https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action" className="rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/40">
+              Install free Action
             </Link>
           </div>
-          <div className="mt-8 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-left">
-            <p className="font-semibold text-emerald-100">Two ways to evaluate DSG:</p>
-            <p className="mt-2 text-sm text-emerald-50">Playground: free, no signup</p>
-            <p className="text-sm text-emerald-50">Workspace trial: 14 days, no card required</p>
-          </div>
         </div>
+      </section>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-4">
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="grid gap-5 lg:grid-cols-4">
           {plans.map((plan) => (
-            <div key={plan.title} className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6">
-              <h2 className="text-2xl font-bold">{plan.title}</h2>
-              <p className="mt-3 text-xl font-semibold text-emerald-200">{plan.price}</p>
-              <p className="mt-3 text-sm leading-7 text-slate-300">{plan.body}</p>
-              <ul className="mt-5 space-y-2 text-sm text-slate-200">
+            <article
+              key={plan.name}
+              className={`relative flex flex-col border p-6 ${
+                plan.featured
+                  ? 'border-amber-300/40 bg-amber-300/10 shadow-2xl shadow-amber-950/20'
+                  : 'border-white/10 bg-white/[0.03]'
+              }`}
+            >
+              {plan.featured ? (
+                <span className="absolute right-4 top-4 rounded-full border border-amber-300/30 bg-amber-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">
+                  Best start
+                </span>
+              ) : null}
+              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Plan</p>
+              <h2 className="mt-4 text-2xl font-semibold text-white">{plan.name}</h2>
+              <div className="mt-5 flex items-end gap-2">
+                <span className="text-5xl font-bold text-white">{plan.price}</span>
+                <span className="pb-2 text-sm text-slate-400">{plan.cadence}</span>
+              </div>
+              <p className="mt-5 min-h-[96px] text-sm leading-7 text-slate-300">{plan.description}</p>
+              <ul className="mt-5 flex-1 space-y-3">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2">
-                    {feature}
+                  <li key={feature} className="flex gap-3 text-sm leading-6 text-slate-200">
+                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-300" />
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
-              <Link href={plan.href} className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-3 font-semibold text-slate-950">
+              <a
+                href={plan.href}
+                className={`mt-7 rounded-2xl px-5 py-4 text-center text-sm font-bold transition ${
+                  plan.featured
+                    ? 'bg-amber-300 text-slate-950 hover:bg-amber-200'
+                    : 'border border-white/15 bg-black/20 text-slate-100 hover:border-amber-300/40'
+                }`}
+              >
                 {plan.cta}
-              </Link>
-            </div>
+              </a>
+            </article>
           ))}
         </div>
+      </section>
 
-        <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/60 p-6 text-sm leading-7 text-slate-300">
-          Public proof pages remain open. Finance usage, billing, audit, policy, and execution review are workspace-scoped.
+      <section className="border-y border-white/10 bg-[#0b0d10]">
+        <div className="mx-auto grid max-w-7xl gap-6 px-6 py-16 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Product stack</p>
+            <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">
+              SaaS, action-layer governance, and audit evidence in one path.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              The free Action proves the gate. The paid products package the evidence, reporting, and operating workflow teams need after the check runs.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {layers.map((layer) => (
+              <article key={layer.title} className="border border-white/10 bg-white/[0.03] p-6">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Layer</p>
+                <h3 className="mt-4 text-2xl font-semibold text-amber-50">{layer.title}</h3>
+                <p className="mt-4 text-sm leading-7 text-slate-300">{layer.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
-
-        <section className="mt-10 grid gap-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h3 className="text-xl font-semibold">What is free?</h3>
-            <p className="mt-2 text-slate-300">The public Playground is free and does not require signup. Workspace trials are free for 14 days and do not require a card to begin.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h3 className="text-xl font-semibold">What is included in the trial?</h3>
-            <p className="mt-2 text-slate-300">Trial workspaces include 1,000 executions, agent setup, and access to authenticated runtime views.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h3 className="text-xl font-semibold">When do I need Enterprise?</h3>
-            <p className="mt-2 text-slate-300">Enterprise is for teams that need rollout planning, governance onboarding, and custom execution capacity.</p>
-          </div>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }
