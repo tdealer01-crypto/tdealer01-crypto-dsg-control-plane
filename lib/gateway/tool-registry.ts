@@ -1,3 +1,4 @@
+import { findManagedGatewayTool } from './managed-connectors';
 import type { GatewayToolRegistryEntry } from './types';
 
 export const DEFAULT_GATEWAY_TOOL_REGISTRY: GatewayToolRegistryEntry[] = [
@@ -29,6 +30,15 @@ export const DEFAULT_GATEWAY_TOOL_REGISTRY: GatewayToolRegistryEntry[] = [
     description: 'Update a HubSpot deal through Zapier.',
   },
   {
+    name: 'custom_http.customer_webhook',
+    provider: 'custom_http',
+    action: 'post',
+    risk: 'medium',
+    executionMode: 'gateway',
+    requiresApproval: false,
+    description: 'Customer-managed HTTP webhook connector.',
+  },
+  {
     name: 'mock.safe.echo',
     provider: 'mock',
     action: 'echo',
@@ -39,6 +49,14 @@ export const DEFAULT_GATEWAY_TOOL_REGISTRY: GatewayToolRegistryEntry[] = [
   },
 ];
 
-export function findGatewayTool(name: string) {
+export function findDefaultGatewayTool(name: string) {
   return DEFAULT_GATEWAY_TOOL_REGISTRY.find((tool) => tool.name === name) ?? null;
+}
+
+export async function findGatewayTool(orgId: string, name: string) {
+  const managedTool = await findManagedGatewayTool(orgId, name);
+  if (managedTool) {
+    return managedTool;
+  }
+  return findDefaultGatewayTool(name);
 }

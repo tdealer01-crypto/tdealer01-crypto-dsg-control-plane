@@ -1,4 +1,4 @@
-import type { GatewayToolProviderResult, GatewayToolRequest } from './types';
+import type { GatewayToolProviderResult, GatewayToolRegistryEntry, GatewayToolRequest } from './types';
 
 function zapierEnvKey(toolName: string) {
   return `ZAPIER_WEBHOOK_${toolName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
@@ -16,6 +16,19 @@ async function executeMockProvider(request: GatewayToolRequest): Promise<Gateway
       deterministic: true,
     },
   };
+}
+
+async function parseProviderResponse(response: Response) {
+  const text = await response.text();
+  let result: Record<string, unknown> = { raw: text };
+
+  try {
+    result = text ? JSON.parse(text) : {};
+  } catch {
+    result = { raw: text };
+  }
+
+  return result;
 }
 
 async function executeZapierProvider(request: GatewayToolRequest): Promise<GatewayToolProviderResult> {
@@ -53,14 +66,7 @@ async function executeZapierProvider(request: GatewayToolRequest): Promise<Gatew
     }),
   });
 
-  const text = await response.text();
-  let result: Record<string, unknown> = { raw: text };
-
-  try {
-    result = text ? JSON.parse(text) : {};
-  } catch {
-    result = { raw: text };
-  }
+  const result = await parseProviderResponse(response);
 
   return {
     ok: response.ok,
@@ -73,9 +79,66 @@ async function executeZapierProvider(request: GatewayToolRequest): Promise<Gatew
   };
 }
 
-export async function executeGatewayProvider(request: GatewayToolRequest): Promise<GatewayToolProviderResult> {
+async function executeCustomHttpProvider(
+  request: GatewayToolRequest,
+  registryEntry?: GatewayToolRegistryEntry
+): Promise<GatewayToolProviderResult> {
+  const endpointUrl = registryEntry?.endpointUrl || process.env.CUSTOM_HTTP_WEBHOOK_URL;
+
+  if (!endpointUrl) {
+    return {
+      ok: false,
+      provider: 'custom_http',
+      toolName: request.toolName,
+      action: request.action,
+      target: request.toolName,
+      error: 'provider_not_configured',
+    };
+  }
+
+  const response = await fetch(endpointUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-dsg-org-id': request.orgId,
+      'x-dsg-actor-id': request.actorId,
+      'x-dsg-tool-name': request.toolName,
+      'x-dsg-action': request.action,
+    },
+    body: JSON.stringify({
+      orgId: request.orgId,
+      actorId: request.actorId,
+      actorRole: request.actorRole,
+      planId: request.planId ?? null,
+      toolName: request.toolName,
+      action: request.action,
+      input: request.input,
+    }),
+  });
+
+  const result = await parseProviderResponse(response);
+
+  return {
+    ok: response.ok,
+    provider: 'custom_http',
+    toolName: request.toolName,
+    action: request.action,
+    target: endpointUrl,
+    result,
+    error: response.ok ? undefined : `provider_http_${response.status}`,
+  };
+}
+
+export async function executeGatewayProvider(
+  request: GatewayToolRequest,
+  registryEntry?: GatewayToolRegistryEntry
+): Promise<GatewayToolProviderResult> {
   if (request.toolName.startsWith('mock.')) {
     return executeMockProvider(request);
+  }
+
+  if (registryEntry?.provider === 'custom_http' || request.toolName.startsWith('custom_http.')) {
+    return executeCustomHttpProvider(request, registryEntry);
   }
 
   if (request.toolName.startsWith('zapier.')) {
