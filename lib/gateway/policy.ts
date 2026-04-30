@@ -44,16 +44,10 @@ export function evaluateGatewayToolRequest(
     return { decision: 'block', reason: 'plan_not_entitled' };
   }
 
-  if (tool.risk === 'critical') {
-    return { decision: 'review', reason: 'critical_risk_requires_human_review' };
-  }
+  const approvalRequired = tool.requiresApproval || tool.risk === 'critical' || tool.executionMode === 'critical';
 
-  if (tool.requiresApproval && !request.approvalToken) {
+  if (approvalRequired && !request.approvalToken) {
     return { decision: 'review', reason: 'approval_required' };
-  }
-
-  if (tool.executionMode === 'critical' && !request.approvalToken) {
-    return { decision: 'review', reason: 'critical_mode_requires_approval' };
   }
 
   return { decision: 'allow' };
