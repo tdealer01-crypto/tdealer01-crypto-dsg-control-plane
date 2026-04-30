@@ -26,6 +26,7 @@
     "benchmark": "node scripts/benchmark-dsg.mjs",
     "benchmark:gateway": "node scripts/benchmark-gateway-production.mjs",
     "benchmark:gateway:compare": "node scripts/score-gateway-comparison.mjs",
+    "benchmark:gateway:smt2": "node scripts/verify-gateway-smt2-invariants.mjs",
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
