@@ -24,6 +24,7 @@
     "deploy:prod": "npx vercel deploy --prod --yes",
     "go:no-go": "./scripts/go-no-go-gate.sh",
     "benchmark": "node scripts/benchmark-dsg.mjs",
+    "benchmark:gateway": "node scripts/benchmark-gateway-production.mjs",
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
