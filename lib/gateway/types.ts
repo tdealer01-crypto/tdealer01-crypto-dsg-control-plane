@@ -4,14 +4,19 @@ export type GatewayExecutionMode = 'monitor' | 'gateway' | 'critical';
 
 export type GatewayDecision = 'allow' | 'block' | 'review' | 'ask_more_info';
 
+export type GatewayToolProvider = 'zapier' | 'mock' | 'custom_http';
+
 export type GatewayToolRegistryEntry = {
   name: string;
-  provider: 'zapier' | 'mock' | 'custom_http';
+  provider: GatewayToolProvider;
   action: string;
   risk: GatewayRiskLevel;
   executionMode: GatewayExecutionMode;
   requiresApproval: boolean;
   description: string;
+  connectorId?: string;
+  endpointUrl?: string;
+  authHeaders?: Record<string, string>;
 };
 
 export type GatewayToolRequest = {
