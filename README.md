@@ -8,6 +8,10 @@ Live deployment:
 
 - https://tdealer01-crypto-dsg-control-plane.vercel.app
 
+Published formal verification artifact:
+
+- https://doi.org/10.5281/zenodo.18225586
+
 Marketplace evidence:
 
 - `/marketplace`
@@ -33,6 +37,8 @@ Verified production surfaces:
 - Audit export API: verified
 - `requestHash` / `recordHash`: generated and returned
 - Production gateway benchmark: 6/6 passed
+- Published formal verification DOI: available
+- Deterministic SMT2-compatible runtime invariant evidence: available
 
 Production benchmark summary:
 
@@ -64,9 +70,51 @@ It provides:
 - Monitor Mode for customer-owned runtime execution
 - request and record hashing
 - audit event history and export APIs
-- deterministic SMT2-compatible invariant evidence
+- published formal verification evidence
+- deterministic SMT2-compatible runtime invariant evidence
 - production benchmark evidence
 - comparison benchmark rubric for adjacent market tools
+
+## Formal Verification & Deterministic Control
+
+DSG includes a published formal verification artifact:
+
+```text
+DOI: https://doi.org/10.5281/zenodo.18225586
+Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
+```
+
+The artifact describes DSG as a formally verified control-plane primitive for safety-critical, regulated, and sovereign computing environments.
+
+Published technical claims in the artifact abstract include:
+
+- deterministic behavior: identical inputs and states produce identical decisions
+- safety invariance: transitions into forbidden or unsafe states are mathematically unreachable
+- constant-time execution: decision latency is bounded as O(1) and independent of system history or data volume
+- machine-checkable formal proof using the Z3 theorem prover
+- SMT-LIB proof artifact and supporting documentation for technical due diligence and certification-oriented evaluation
+
+Repository runtime evidence complements the published formal verification artifact with:
+
+- Gateway Mode execution proof
+- Monitor Mode plan-check and audit commit proof
+- requestHash and recordHash audit evidence
+- deterministic SMT2-compatible gateway invariant evidence
+- production benchmark reports
+
+Correct wording:
+
+```text
+DSG combines published formal verification evidence with deterministic runtime invariant checks for governed AI/tool execution.
+```
+
+Boundary:
+
+```text
+The published DOI artifact is the formal verification evidence. The current repository SMT2 script emits SMT-LIB v2-compatible runtime invariant evidence and performs deterministic static checks unless an external solver is invoked separately.
+```
+
+Do not collapse the two layers into a single unsupported claim. The DOI artifact and the runtime gateway SMT2 evidence are related assurance layers, but they are not the same artifact.
 
 ## Core modes
 
@@ -293,11 +341,11 @@ GET /api/finance-governance/audit-ledger?limit=50
 GET /api/finance-governance/audit-ledger/:recordHash/verify
 ```
 
-## Deterministic SMT2-compatible invariants
+## Deterministic SMT2-compatible runtime invariants
 
-DSG emits deterministic SMT-LIB v2-compatible invariant evidence for gateway governance checks.
+DSG emits deterministic SMT-LIB v2-compatible invariant evidence for gateway governance checks in this repository.
 
-Covered invariants:
+Covered runtime invariants:
 
 - organization id required
 - actor id required
@@ -308,7 +356,7 @@ Covered invariants:
 - evidence must be writable before allow
 - high-risk / critical / approval-required actions require approval
 
-Run the invariant evidence suite:
+Run the runtime invariant evidence suite:
 
 ```bash
 npm run benchmark:gateway:smt2
@@ -321,15 +369,13 @@ artifacts/gateway-smt2/gateway-smt2-invariants-result.json
 artifacts/gateway-smt2/gateway-smt2-invariants-report.md
 ```
 
-Evidence boundary: the current SMT2 implementation emits SMT-LIB v2-compatible constraint text and hashes the SMT2 input/result. It performs deterministic static invariant evaluation without invoking an external Z3/cvc5 solver. External solver verification can be added later using the emitted SMT2 text.
+Evidence boundary: the current repository SMT2 implementation emits SMT-LIB v2-compatible constraint text and hashes the SMT2 input/result. It performs deterministic static runtime invariant evaluation without invoking an external Z3/cvc5 solver. The published DOI artifact is the formal verification reference.
 
 Safe wording:
 
 ```text
-DSG emits deterministic SMT2-compatible invariant evidence before governed AI/tool execution.
+DSG includes published formal verification evidence and emits deterministic SMT2-compatible runtime invariant evidence before governed AI/tool execution.
 ```
-
-Do not claim independent formal verification until external solver artifacts and independent review exist.
 
 ## Benchmarks
 
@@ -469,7 +515,8 @@ Current status:
 Finance governance backend smoke path: GO
 Gateway Mode production benchmark: GO
 Monitor Mode production benchmark: GO
-SMT2-compatible deterministic invariant evidence: available
+Published formal verification artifact: available
+SMT2-compatible deterministic runtime invariant evidence: available
 Marketplace production evidence page: available
 ```
 
@@ -489,6 +536,7 @@ It includes:
 - runtime hash verification APIs
 - audit export APIs
 - production benchmark evidence
-- deterministic SMT2-compatible invariant evidence
+- published formal verification evidence
+- deterministic SMT2-compatible runtime invariant evidence
 
-It is not a claim of independent third-party certification, nor a claim that DSG is universally better than every automation or governance vendor.
+It is not a claim that DSG is universally better than every automation or governance vendor. Market comparison claims require same-suite evidence for every vendor and ideally independent review.
