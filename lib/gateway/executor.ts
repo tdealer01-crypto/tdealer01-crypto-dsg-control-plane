@@ -32,7 +32,7 @@ export function normalizeGatewayToolRequest(raw: unknown, headers: Headers): Gat
 }
 
 export async function executeGatewayTool(request: GatewayToolRequest): Promise<GatewayToolExecutionResult> {
-  const registryEntry = findGatewayTool(request.toolName);
+  const registryEntry = await findGatewayTool(request.orgId, request.toolName);
   const policy = evaluateGatewayToolRequest(request, registryEntry);
 
   if (policy.decision !== 'allow') {
@@ -49,7 +49,7 @@ export async function executeGatewayTool(request: GatewayToolRequest): Promise<G
   let providerResult: GatewayToolProviderResult;
 
   try {
-    providerResult = await executeGatewayProvider(request);
+    providerResult = await executeGatewayProvider(request, registryEntry ?? undefined);
   } catch (error) {
     providerResult = {
       ok: false,
