@@ -38,7 +38,7 @@ const capabilities = [
 const reviewSteps = [
   "Open the product home and confirm the public landing page is reachable.",
   "Open /api/health and confirm the JSON baseline probe is returned.",
-  "Open the GitHub Marketplace Action and confirm v1.0.2 usage is visible.",
+  "Open the GitHub Marketplace Action and confirm v1 and v1.0.2 usage is visible.",
   "Use /login or /password-login to enter authenticated operator routes.",
   "Use protected execution and operator APIs only with valid credentials and organization-scoped access.",
 ];
@@ -59,28 +59,16 @@ export default function MarketplacePage() {
           </p>
 
           <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/"
-              className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-black"
-            >
+            <Link href="/" className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-black">
               Open Product Home
             </Link>
-            <Link
-              href={actionMarketplaceUrl}
-              className="rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white"
-            >
+            <Link href={actionMarketplaceUrl} className="rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white">
               Open GitHub Marketplace Action
             </Link>
-            <Link
-              href="/login"
-              className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200"
-            >
+            <Link href="/login" className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200">
               Open Login
             </Link>
-            <Link
-              href="/api/health"
-              className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200"
-            >
+            <Link href="/api/health" className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-200">
               Open Health Endpoint
             </Link>
           </div>
@@ -99,8 +87,18 @@ export default function MarketplacePage() {
               View v1.0.2 release
             </Link>
           </div>
-          <pre className="mt-5 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`- name: DSG Secure Deploy Gate
+          <div className="mt-5 space-y-3">
+            <div>
+              <p className="mb-2 text-sm font-semibold text-blue-100">Recommended stable major version</p>
+              <pre className="overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`- name: DSG Secure Deploy Gate
+  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1`}</pre>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold text-blue-100">Pinned exact release</p>
+              <pre className="overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`- name: DSG Secure Deploy Gate
   uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2`}</pre>
+            </div>
+          </div>
         </section>
 
         <section className="mt-8 grid gap-6 md:grid-cols-2">
