@@ -32,6 +32,7 @@
     "benchmark:vendors:baseline": "node scripts/benchmark-public-baselines.mjs",
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
+    "ux:routes": "node scripts/verify-ux-route-map.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
     "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh"

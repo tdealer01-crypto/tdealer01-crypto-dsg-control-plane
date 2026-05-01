@@ -23,6 +23,19 @@ Do not ship UI that only looks complete. Every user-facing surface must make the
 9. If a workflow has a UI route, include a visible button to that route.
 10. If a feature is planned but not implemented, label it as Planned and do not present it as usable.
 
+## Flow completion rule
+
+A flow is not complete until the team can answer all 4 questions below:
+
+```text
+1. What benefit does the user get?
+2. Where does the user click, or what command/API does the user run?
+3. What evidence proves the flow worked?
+4. Where is the tangible output: page, JSON, bundle, report, queue item, hash, status, or run result?
+```
+
+If any answer is missing, the flow must be tested from the user's point of view and fixed before it is treated as done.
+
 ## User-outcome test
 
 Before merging any UI, answer these questions:
@@ -85,3 +98,4 @@ A DSG UI change is done only when it has:
 5. boundary statement
 6. no dead links
 7. user can use it without asking what to do next
+8. a completed flow outcome statement covering benefit, action, evidence, and tangible output
