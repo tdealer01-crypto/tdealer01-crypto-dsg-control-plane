@@ -1,59 +1,174 @@
 # DSG AI Action Governance Gateway
 
-DSG is a production-oriented governance gateway for high-risk AI, agent, workflow, and finance actions.
+DSG is a deterministic governance gateway for high-risk AI, agent, workflow, finance, and deployment actions.
 
-It lets teams keep their existing agents, tools, APIs, and business systems while routing risky actions through deterministic policy, invariant, entitlement, approval, connector, and audit-proof controls.
+It routes risky actions through policy, invariant, entitlement, approval, connector, and audit-proof controls before those actions affect production systems.
 
-Live deployment:
+## Current status — 2026-05-01
 
-- https://tdealer01-crypto-dsg-control-plane.vercel.app
+### Repository status
 
-Published GitHub Marketplace Action:
+The `main` branch currently includes the Phase 1–5 product foundation:
 
-- https://github.com/marketplace/actions/dsg-secure-deploy-gate
-- Release: https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action/releases/tag/v1.0.2
+```text
+Phase 1 — Compliance Mapping Pack: complete
+Phase 2 — Compliance Landing / Evidence Pages: complete
+Phase 3 — Consult / Audit Toolkit: operational
+Phase 4 — Product Hardening Foundation: operational
+Phase 5 — Trust / External Validation Scaffold: added to main
+Phase 6 — Market Segment Packaging: documented
+```
+
+### Production deployment status
+
+Current production URL:
+
+```text
+https://tdealer01-crypto-dsg-control-plane.vercel.app
+```
+
+Important current boundary:
+
+```text
+The latest main branch contains Phase 5 trust routes, but the latest production redeploy was blocked by the Vercel free-plan deployment limit:
+
+Resource is limited - try again in 24 hours
+more than 100 api-deployments-free-per-day
+```
+
+Correct status:
+
+```text
+main branch: updated
+local UX route verifier: passed
+production redeploy of latest Phase 5 routes: blocked by Vercel quota until reset
+```
+
+Do not claim the latest Phase 5 routes are live until `npx vercel --prod` succeeds after quota reset.
+
+## Latest verified local UX result
+
+Command:
+
+```bash
+npm run ux:routes
+```
+
+Observed:
+
+```text
+ok: true
+failures: []
+routeChecks: 12
+flowOutcomeChecks: 3
+userOutcome: All audited DSG flows expose user benefit, real action, evidence, and tangible output.
+```
+
+Verified flow outcomes:
+
+```text
+controls → evidence
+approval decision
+signed evidence bundle
+```
+
+Verifier boundary:
+
+```text
+The current ux:routes verifier confirms core governance UX flows. Phase 5 trust routes must be added to the verifier before claiming full Phase 5 UX coverage.
+```
+
+## Live / expected product routes
+
+Core routes:
+
+```text
+/ai-compliance
+/iso-42001
+/nist-ai-rmf
+/evidence-pack
+/controls
+/approvals?orgId=org-smoke
+/gateway/monitor?orgId=org-smoke
+/marketplace
+/marketplace/production-evidence
+```
+
+Phase 5 trust routes now in main branch:
+
+```text
+/trust
+/reproducibility
+/security-review
+```
+
+These Phase 5 routes require a successful production redeploy before they can be treated as live on Vercel.
+
+## Published GitHub Marketplace Action
+
+Marketplace listing:
+
+```text
+https://github.com/marketplace/actions/dsg-secure-deploy-gate
+```
+
+Release:
+
+```text
+https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action/releases/tag/v1.0.2
+```
+
+Usage:
 
 ```yaml
 - name: DSG Secure Deploy Gate
   uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
 ```
 
-Published formal verification artifact:
+Boundary:
 
-- https://doi.org/10.5281/zenodo.18225586
+```text
+This Action provides a deterministic deployment gate. It does not claim independent third-party certification.
+```
 
-Marketplace evidence:
+## Published formal verification artifact
 
-- `/marketplace`
-- `/marketplace/production-evidence`
-- `/gateway/monitor?orgId=org-smoke`
-- `/api/gateway/audit/export?orgId=org-smoke`
+```text
+DOI: https://doi.org/10.5281/zenodo.18225586
+Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
+```
 
-## Current production status
+Boundary:
 
-Verified production surfaces:
+```text
+The DOI artifact is the formal verification reference. Repository runtime SMT2 scripts provide deterministic SMT-LIB-compatible runtime invariant evidence, but they are not the same artifact as the DOI publication.
+```
 
-- Vercel deployment: READY
-- Supabase runtime env: configured
-- Finance readiness endpoint: HTTP 200
-- Finance governance tables: reachable
-- RBAC-gated approve API: HTTP 200
-- Finance audit proof write path: verified
-- Gateway connector registry: verified
-- Gateway custom HTTP execution: verified
-- Monitor Mode plan-check: verified
-- Monitor Mode audit commit: verified
-- Audit events API: verified
-- Audit export API: verified
-- GitHub Marketplace Action: published as `dsg-secure-deploy-gate-action@v1.0.2`
-- `requestHash` / `recordHash`: generated and returned
-- Production gateway benchmark: 6/6 passed
-- Comparison rubric score: 190/200, 95%
-- Public vendor baseline pack: 5 vendors covered from public documentation
-- Published formal verification DOI: available
-- Deterministic SMT2-compatible runtime invariant evidence: available
+## Core capabilities
 
-Latest production benchmark summary:
+DSG currently provides:
+
+```text
+Deterministic AI/tool action governance
+Gateway Mode connector execution
+Monitor Mode customer-runtime audit flow
+Approval queue and approve/reject workflow
+requestHash and recordHash audit proof
+Signed/hash evidence bundle export
+Control template library
+Compliance positioning pages
+Consult and audit-readiness toolkit
+Production evidence pages
+GitHub Marketplace deployment gate
+Public vendor baseline comparison
+UX route and flow outcome verifier
+Trust scaffold for Phase 5 external validation
+Market segment packaging docs
+```
+
+## Evidence and benchmark status
+
+Latest production gateway benchmark previously observed:
 
 ```text
 pass: true
@@ -76,132 +191,23 @@ Comparison Rubric: 190/200, 95%
 Public Vendor Baseline: pass=true, publicDocVendors=5, vendorRuntimeTested=0
 ```
 
-Evidence boundary: the benchmark is internal production evidence for marketplace/demo validation. It is not an independent third-party certification. Vendor runtime benchmark results are not claimed unless vendor endpoints are configured and tested with the same suite.
-
-## Product purpose
-
-DSG prevents high-risk AI, agent, workflow, and finance actions from becoming ungoverned outputs.
-
-It provides:
-
-- deterministic approval decisions
-- finance action gating before execution
-- AI/tool action policy checks before execution
-- role and plan entitlement enforcement
-- connector registry for customer-managed HTTP endpoints
-- Gateway Mode for DSG-managed connector execution
-- Monitor Mode for customer-owned runtime execution
-- request and record hashing
-- audit event history and export APIs
-- published GitHub Marketplace Action for deterministic CI/CD deployment gating
-- published formal verification evidence
-- deterministic SMT2-compatible runtime invariant evidence
-- production benchmark evidence
-- comparison benchmark rubric for adjacent market tools
-- public vendor-baseline comparison derived from official/public market documentation
-
-## Deterministic governance claims
-
-DSG is a deterministic AI Action Governance Gateway that checks policy, risk, approval, and mathematical invariants before tool execution.
-
-DSG uses deterministic control logic for high-risk tool calls, reducing reliance on probabilistic model judgment at the execution boundary.
-
-DSG is designed to reduce hallucination-driven actions by preventing AI outputs from directly executing tools unless they satisfy predefined policy and invariant checks.
-
-DSG enforces mathematical safety invariants over tool-execution requests and turns AI tool execution into an auditable state transition with request hashes, record hashes, and exportable evidence.
-
-Boundary:
+Evidence boundary:
 
 ```text
-DSG does not claim to make language models hallucination-free. Instead, it controls whether AI-proposed actions can affect business systems by requiring deterministic policy and invariant checks at the execution boundary.
-
-Cost reduction claims are design goals and risk-reduction mechanisms unless supported by customer production studies.
+These are internal production and repository evidence results for product validation. They are not independent third-party certification. Vendor runtime benchmark results are not claimed unless vendor endpoints are configured and tested with the same suite.
 ```
-
-## Formal Verification & Deterministic Control
-
-DSG includes a published formal verification artifact:
-
-```text
-DOI: https://doi.org/10.5281/zenodo.18225586
-Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
-```
-
-The artifact describes DSG as a formally verified control-plane primitive for safety-critical, regulated, and sovereign computing environments.
-
-Published technical claims in the artifact abstract include:
-
-- deterministic behavior: identical inputs and states produce identical decisions
-- safety invariance: transitions into forbidden or unsafe states are mathematically unreachable
-- constant-time execution: decision latency is bounded as O(1) and independent of system history or data volume
-- machine-checkable formal proof using the Z3 theorem prover
-- SMT-LIB proof artifact and supporting documentation for technical due diligence and certification-oriented evaluation
-
-Repository runtime evidence complements the published formal verification artifact with:
-
-- Gateway Mode execution proof
-- Monitor Mode plan-check and audit commit proof
-- requestHash and recordHash audit evidence
-- deterministic SMT2-compatible gateway invariant evidence
-- production benchmark reports
-- DSG Secure Deploy Gate GitHub Marketplace Action for CI/CD gating
-
-Correct wording:
-
-```text
-DSG combines published formal verification evidence with deterministic runtime invariant checks for governed AI/tool execution.
-```
-
-Boundary:
-
-```text
-The published DOI artifact is the formal verification evidence. The current repository SMT2 script emits SMT-LIB v2-compatible runtime invariant evidence and performs deterministic static checks unless an external solver is invoked separately.
-```
-
-Do not collapse the two layers into a single unsupported claim. The DOI artifact and the runtime gateway SMT2 evidence are related assurance layers, but they are not the same artifact.
-
-## GitHub Marketplace Action
-
-DSG Secure Deploy Gate is published on GitHub Marketplace:
-
-```text
-https://github.com/marketplace/actions/dsg-secure-deploy-gate
-```
-
-Latest release:
-
-```text
-https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action/releases/tag/v1.0.2
-```
-
-Usage:
-
-```yaml
-- name: DSG Secure Deploy Gate
-  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
-```
-
-Action purpose:
-
-- deterministic deploy gate for GitHub Actions
-- fail-closed behavior for unsafe deploy conditions
-- CI/CD policy enforcement before production deployment
-- evidence-oriented deployment control
-- designed for regulated, high-assurance, and AI-assisted software delivery workflows
-
-Evidence boundary: this Action provides a deployment gate. It does not claim independent third-party certification.
 
 ## Core modes
 
 ### Gateway Mode
 
-DSG executes the configured connector after policy/risk/approval checks pass.
+DSG executes a configured connector after policy, risk, approval, entitlement, and invariant checks pass.
 
 ```text
 Agent / workflow
 → POST /api/gateway/tools/execute
-→ DSG checks role / plan / risk / approval
-→ DSG executes customer connector
+→ DSG checks policy / risk / entitlement / approval / invariants
+→ DSG executes configured connector
 → DSG returns provider result + audit proof
 ```
 
@@ -214,20 +220,28 @@ GET  /api/gateway/webhook/inbox
 POST /api/gateway/webhook/inbox
 ```
 
-Gateway Mode is useful when the customer wants DSG to execute a webhook or REST connector directly.
+Expected successful result:
+
+```text
+HTTP 200
+ok: true
+decision: allow
+requestHash: present
+recordHash: present
+```
 
 ### Monitor Mode
 
-DSG checks the action and returns a decision/audit token. The customer keeps execution inside their own runtime and commits the result back to DSG.
+Customer keeps execution inside their own runtime while DSG supplies governance decision and audit evidence.
 
 ```text
 Customer agent/tool runtime
 → POST /api/gateway/plan-check
 → DSG returns allow/block/review + auditToken + requestHash
-→ customer executes its own tool
+→ customer executes own tool
 → POST /api/gateway/audit/commit
-→ DSG writes final recordHash
-→ /gateway/monitor shows history and export
+→ DSG writes recordHash
+→ export evidence
 ```
 
 Core routes:
@@ -237,412 +251,206 @@ POST /api/gateway/plan-check
 POST /api/gateway/audit/commit
 GET  /api/gateway/audit/events
 GET  /api/gateway/audit/export
+GET  /api/gateway/evidence/bundle?orgId=org-smoke
 GET  /gateway/monitor?orgId=org-smoke
 ```
 
-Monitor Mode is useful when customers do not want DSG to hold production API keys.
+## Approval workflow
 
-## Gateway connector registry
+Approval route:
 
-Register a customer-managed webhook or REST endpoint:
+```text
+/approvals?orgId=org-smoke
+```
+
+API:
+
+```text
+GET  /api/gateway/approvals?orgId=org-smoke
+POST /api/gateway/approvals
+```
+
+User outcome:
+
+```text
+Reviewer can approve or reject a review-required action.
+Approval API records approvalHash and redirects with lastDecision.
+```
+
+Boundary:
+
+```text
+Approval queue decisions are DSG-generated workflow evidence. They are not independent certification or guaranteed compliance.
+```
+
+## Signed/hash evidence bundle
+
+Endpoint:
+
+```text
+GET /api/gateway/evidence/bundle?orgId=org-smoke
+```
+
+Bundle contents:
+
+```text
+bundleHash
+eventHashes
+signature metadata
+orgId
+auditToken
+events
+evidenceBoundary
+```
+
+Signing behavior:
+
+```text
+If DSG_EVIDENCE_SIGNING_SECRET is configured: hmac-sha256 signature
+If no signing secret is configured: hash-only signature metadata
+```
+
+## Consult / audit toolkit
+
+Main route in main branch:
+
+```text
+/consult
+```
+
+Consult artifacts:
+
+```text
+docs/consult-toolkit/README.md
+docs/consult-toolkit/client-intake-questionnaire.md
+docs/consult-toolkit/ai-workflow-inventory-template.md
+docs/consult-toolkit/risk-classification-checklist.md
+docs/consult-toolkit/client-report-template.md
+docs/consult-toolkit/implementation-playbook.md
+docs/consult-toolkit/consult-sales-one-pager.md
+docs/consult-toolkit/audit-readiness-checklist.md
+```
+
+User outcome:
+
+```text
+Consultants and buyers can run a repeatable AI governance readiness review, map controls, export evidence, and produce a client-facing readiness report.
+```
+
+Boundary:
+
+```text
+The toolkit supports readiness and implementation workflows. It is not a legal opinion, independent audit, or certification report.
+```
+
+## Phase 5 trust scaffold
+
+Routes added to main:
+
+```text
+/trust
+/reproducibility
+/security-review
+```
+
+Purpose:
+
+```text
+Organize buyer trust assets, reproducibility steps, and review boundaries for external validation growth.
+```
+
+Current Phase 5 boundary:
+
+```text
+Trust infrastructure exists in main. Real external validation still requires customer pilots, case studies, partner deployments, outside reviews, or formal certification if pursued.
+```
+
+## Market segment packaging
+
+Documentation:
+
+```text
+docs/market-segments/segment-packaging.md
+docs/trust/roadmap.md
+```
+
+Primary segments:
+
+```text
+Enterprise AI Governance
+Compliance Consulting
+DevSecOps / CI-CD Governance
+SaaS Governance Platform
+```
+
+## UX working rules
+
+Documentation:
+
+```text
+docs/UX_WORKING_RULES.md
+```
+
+Definition of done:
+
+```text
+Every user-facing flow must answer:
+1. What benefit does the user get?
+2. Where does the user click or what command/API does the user run?
+3. What evidence proves the flow worked?
+4. Where is the tangible output?
+```
+
+Verification:
 
 ```bash
-curl -i -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/gateway/connectors" \
-  -H "content-type: application/json" \
-  -H "x-org-id: org-smoke" \
-  -H "x-actor-id: admin-001" \
-  -H "x-actor-role: admin" \
-  -d '{
-    "name": "Internal gateway inbox",
-    "endpointUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/gateway/webhook/inbox",
-    "toolName": "custom_http.customer_webhook",
-    "action": "post",
-    "risk": "medium",
-    "requiresApproval": false,
-    "description": "Internal POST-capable gateway smoke receiver"
-  }'
+npm run ux:routes
 ```
 
-Execute the registered tool:
+Output:
+
+```text
+artifacts/ux-route-map/ux-route-map-result.json
+```
+
+## Safe claim rules
+
+Allowed wording:
+
+```text
+evidence-ready
+audit-ready
+governance-enabling
+compliance-enabling
+aligned workflow
+benchmarked
+```
+
+Do not claim unless independently verified:
+
+```text
+certified
+guaranteed compliant
+third-party audited
+NIST certified
+ISO certified
+better than every listed vendor
+```
+
+## Deployment commands
+
+After Vercel quota resets:
 
 ```bash
-curl -i -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/gateway/tools/execute" \
-  -H "content-type: application/json" \
-  -H "x-org-id: org-smoke" \
-  -H "x-actor-id: agent-001" \
-  -H "x-actor-role: agent_operator" \
-  -H "x-org-plan: enterprise" \
-  -d '{
-    "toolName": "custom_http.customer_webhook",
-    "action": "post",
-    "planId": "PLAN-CUSTOM-001",
-    "input": {
-      "message": "DSG managed connector execution"
-    }
-  }'
+git pull origin main
+npm run ux:routes
+npx vercel --prod
 ```
 
-Expected result:
+If Vercel returns the free-plan limit error again, do not retry repeatedly. Wait for quota reset or use a paid/approved deployment path.
 
-```text
-HTTP 200
-ok: true
-decision: allow
-provider: custom_http
-requestHash: present
-recordHash: present
-```
+## Current product boundary
 
-## Monitor Mode audit flow
+DSG is now a production-oriented governance product stack with marketplace action, compliance pages, control templates, approval workflow, evidence export, consult toolkit, and trust scaffold.
 
-Plan-check:
-
-```bash
-curl -i -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/gateway/plan-check" \
-  -H "content-type: application/json" \
-  -H "x-org-id: org-smoke" \
-  -H "x-actor-id: agent-001" \
-  -H "x-actor-role: agent_operator" \
-  -H "x-org-plan: enterprise" \
-  -d '{
-    "toolName": "custom_http.customer_webhook",
-    "action": "post",
-    "planId": "PLAN-MONITOR-001",
-    "input": {
-      "message": "Customer runtime will execute after DSG allow"
-    }
-  }'
-```
-
-Commit result after the customer runtime executes its own tool:
-
-```bash
-curl -i -X POST "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/gateway/audit/commit" \
-  -H "content-type: application/json" \
-  -H "x-org-id: org-smoke" \
-  -d '{
-    "auditToken": "gat_REPLACE_WITH_PLAN_CHECK_TOKEN",
-    "result": {
-      "ok": true,
-      "provider": "customer_runtime",
-      "target": "customer.tool",
-      "messageId": "msg_001"
-    }
-  }'
-```
-
-Expected result:
-
-```text
-HTTP 200
-ok: true
-committed: true
-recordHash: present
-```
-
-## Finance Governance
-
-DSG also includes a finance governance control plane for approval workflows.
-
-Finance readiness:
-
-```text
-GET /api/finance-governance/readiness
-```
-
-Expected healthy response:
-
-```json
-{
-  "ok": true,
-  "service": "finance-governance"
-}
-```
-
-Protected finance write routes:
-
-```text
-POST /api/finance-governance/approvals/:id/approve
-POST /api/finance-governance/approvals/:id/reject
-POST /api/finance-governance/approvals/:id/escalate
-```
-
-Required headers:
-
-```text
-x-org-id: <organization-id>
-x-actor-id: <user-or-agent-id>
-x-actor-role: finance_approver
-x-org-plan: enterprise
-```
-
-Allowed write roles:
-
-- owner
-- admin
-- finance_admin
-- finance_approver
-
-Allowed write plans:
-
-- enterprise
-- business
-- pro
-
-Denied requests return:
-
-- 403 for role/access failures
-- 402 for entitlement/plan failures
-
-Smoke-tested approval:
-
-```text
-org_id: org-smoke
-transaction_id: TX-SMOKE-001
-approval_id: APR-SMOKE-001
-action: approve
-result: ok
-next_status: approved
-
-Stored audit proof:
-request_hash: 5c1a727def56cf684cc5282f5c95e90d45a27809ec35e7da705804e5f459d5e9
-record_hash: 36bbe8fc4594abc9159868a22f6eb6a185c4e80220848f8be2008d1506b45179
-```
-
-Finance audit routes:
-
-```text
-GET /api/finance-governance/audit-ledger?limit=50
-GET /api/finance-governance/audit-ledger/:recordHash/verify
-```
-
-## Deterministic SMT2-compatible runtime invariants
-
-DSG emits deterministic SMT-LIB v2-compatible invariant evidence for gateway governance checks in this repository.
-
-Covered runtime invariants:
-
-- organization id required
-- actor id required
-- actor role required and allowed
-- organization plan required and entitled
-- tool must be registered
-- requested action must match registered tool action
-- evidence must be writable before allow
-- high-risk / critical / approval-required actions require approval
-
-Run the runtime invariant evidence suite:
-
-```bash
-npm run benchmark:gateway:smt2
-```
-
-Outputs:
-
-```text
-artifacts/gateway-smt2/gateway-smt2-invariants-result.json
-artifacts/gateway-smt2/gateway-smt2-invariants-report.md
-```
-
-Evidence boundary: the current repository SMT2 implementation emits SMT-LIB v2-compatible constraint text and hashes the SMT2 input/result. It performs deterministic static runtime invariant evaluation without invoking an external Z3/cvc5 solver. The published DOI artifact is the formal verification reference.
-
-Safe wording:
-
-```text
-DSG includes published formal verification evidence and emits deterministic SMT2-compatible runtime invariant evidence before governed AI/tool execution.
-```
-
-## Benchmarks
-
-Production gateway benchmark:
-
-```bash
-npm run benchmark:gateway
-```
-
-Outputs:
-
-```text
-artifacts/gateway-benchmark/gateway-benchmark-result.json
-artifacts/gateway-benchmark/gateway-benchmark-report.md
-```
-
-Market comparison scoring:
-
-```bash
-npm run benchmark:gateway:compare
-```
-
-Outputs:
-
-```text
-artifacts/gateway-comparison/gateway-comparison-result.json
-artifacts/gateway-comparison/gateway-comparison-report.md
-```
-
-SMT2 deterministic invariant evidence:
-
-```bash
-npm run benchmark:gateway:smt2
-```
-
-Public vendor-baseline comparison:
-
-```bash
-npm run benchmark:vendors:baseline
-```
-
-Outputs:
-
-```text
-artifacts/public-vendor-baseline/public-vendor-baseline-result.json
-artifacts/public-vendor-baseline/public-vendor-baseline-report.md
-```
-
-## Market comparison boundary
-
-The comparison suite is a same-criteria rubric for adjacent tools such as automation platforms, workflow systems, API gateways, observability stacks, and compliance evidence tools.
-
-Current DSG submitted score:
-
-```text
-190 / 200
-95%
-```
-
-Public vendor baseline coverage:
-
-```text
-Zapier
-n8n
-Make
-Workato
-Temporal
-```
-
-Safe wording:
-
-```text
-DSG has production-tested evidence against a public vendor-baseline rubric derived from official/public market-leader documentation.
-```
-
-Do not use:
-
-```text
-DSG is 95% better than Zapier.
-DSG beats Workato.
-DSG runtime-tested and beat every vendor listed here.
-Certified best-in-market.
-```
-
-Those claims require same-suite runtime evidence for every vendor and ideally independent review.
-
-## Production database tables
-
-Finance governance tables:
-
-```text
-finance_transactions
-finance_approval_requests
-finance_approval_decisions
-finance_governance_audit_ledger
-finance_workflow_action_events
-```
-
-Gateway tables:
-
-```text
-gateway_connectors
-gateway_tools
-gateway_monitor_events
-```
-
-Verified schema status:
-
-```text
-finance_transactions              OK
-finance_approval_requests         OK
-finance_approval_decisions        OK
-finance_governance_audit_ledger   OK
-finance_workflow_action_events    OK
-gateway_connectors                OK
-gateway_tools                     OK
-gateway_monitor_events            OK
-```
-
-## Deployment
-
-The app is deployed on Vercel and uses Supabase as the runtime database.
-
-Required environment variables include:
-
-```text
-NEXT_PUBLIC_SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY
-DSG_CORE_MODE
-NEXTAUTH_SECRET
-DSG_FINANCE_GOVERNANCE_ENABLED=true
-```
-
-Optional provider variables:
-
-```text
-ZAPIER_WEBHOOK_URL
-CUSTOM_HTTP_WEBHOOK_URL
-```
-
-Zapier note: Zapier Webhooks may require a paid Zapier plan or partner/OAuth path. DSG does not depend on Zapier for the current Gateway/Monitor production path.
-
-## GO / NO-GO
-
-Production GO requires:
-
-- Vercel deployment is READY
-- `/api/finance-governance/readiness` returns HTTP 200
-- Supabase tables exist and are reachable
-- RBAC-gated routes enforce role and plan headers
-- Gateway connector registration works
-- Gateway execution returns provider result and proof hashes
-- Monitor Mode plan-check records an audit token
-- Monitor Mode audit commit writes final record hash
-- audit export returns evidence JSON
-- benchmark scripts pass for the target deployment
-
-Current status:
-
-```text
-Finance governance backend smoke path: GO
-Gateway Mode production benchmark: GO
-Monitor Mode production benchmark: GO
-GitHub Marketplace Action: published at v1.0.2
-Production Gateway Benchmark: 6/6 passed, 100%
-SMT2 Runtime Invariants: 6/6 passed, 100%
-Comparison Rubric: 190/200, 95%
-Public Vendor Baseline: pass=true, publicDocVendors=5, vendorRuntimeTested=0
-Published formal verification artifact: available
-SMT2-compatible deterministic runtime invariant evidence: available
-Marketplace production evidence page: available
-```
-
-## Product boundary
-
-This repository is the DSG AI Action Governance Gateway backend and SaaS surface.
-
-It includes:
-
-- production readiness checks
-- Supabase-backed finance workflow records
-- RBAC-gated finance actions
-- customer-managed connector registry
-- Gateway Mode execution
-- Monitor Mode decision/audit flow
-- deterministic audit proof storage
-- runtime hash verification APIs
-- audit export APIs
-- GitHub Marketplace Action for deterministic deploy gating
-- production benchmark evidence
-- published formal verification evidence
-- deterministic SMT2-compatible runtime invariant evidence
-- public vendor-baseline comparison
-
-It is not a claim that DSG is universally better than every automation or governance vendor. Market comparison claims require same-suite runtime evidence for every vendor and ideally independent review.
+It is not yet externally validated at enterprise-trust level until real customer deployments, case studies, partner references, independent reviews, or formal certifications are completed.
