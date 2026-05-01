@@ -5,6 +5,8 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = {
   orgId?: string;
+  lastDecision?: string;
+  approvalHash?: string;
 };
 
 export default async function ApprovalsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -12,6 +14,8 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
   const orgId = params.orgId?.trim() || "org-smoke";
   const result = await listPendingGatewayApprovals(orgId);
   const approvals = result.ok ? result.approvals : [];
+  const lastDecision = params.lastDecision?.trim();
+  const approvalHash = params.approvalHash?.trim();
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-slate-100">
@@ -22,7 +26,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
             Review queue for governed AI actions
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG routes high-risk or approval-required actions to review before execution. This queue displays monitor events waiting for review and exposes approval/rejection through the approvals API.
+            DSG routes high-risk or approval-required actions to review before execution. This page is actionable: reviewers can approve or reject pending actions and DSG records an approval hash as workflow evidence.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-amber-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
@@ -30,6 +34,15 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
             <Link href="/controls" className="rounded-xl border border-slate-700 px-5 py-3 font-bold text-slate-200">View controls</Link>
           </div>
         </section>
+
+        {lastDecision ? (
+          <section className="mt-8 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-5">
+            <h2 className="text-xl font-bold text-emerald-100">Decision saved</h2>
+            <p className="mt-2 break-all text-slate-300">
+              Last decision: <span className="font-bold text-emerald-200">{lastDecision}</span>{approvalHash ? ` · approvalHash: ${approvalHash}` : ""}
+            </p>
+          </section>
+        ) : null}
 
         <section className="mt-8 grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
@@ -41,8 +54,8 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
             <p className="mt-2 text-3xl font-bold text-amber-300">{approvals.length}</p>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-sm text-slate-400">Decision API</p>
-            <p className="mt-2 text-lg font-bold text-white">POST /api/gateway/approvals</p>
+            <p className="text-sm text-slate-400">Working action</p>
+            <p className="mt-2 text-lg font-bold text-white">Approve / Reject buttons</p>
           </div>
         </section>
 
@@ -51,8 +64,12 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
               <h2 className="text-2xl font-bold text-white">No pending approval events</h2>
               <p className="mt-3 leading-7 text-slate-300">
-                There are currently no DSG monitor events with decision = review for this organization.
+                There are currently no DSG monitor events with decision = review for this organization. Open the JSON endpoint to verify the queue state or run a review-required plan-check to create a pending item.
               </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href={`/api/gateway/approvals?orgId=${orgId}`} className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-black">Verify queue JSON</Link>
+                <Link href="/gateway/monitor?orgId=org-smoke" className="rounded-xl border border-amber-300/40 px-4 py-2 text-sm font-bold text-amber-100">Open monitor flow</Link>
+              </div>
             </div>
           ) : (
             approvals.map((approval: any) => (
@@ -82,6 +99,33 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
                 <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
                   <p className="text-sm text-slate-400">Request hash</p>
                   <p className="mt-1 break-all font-mono text-sm text-slate-200">{approval.request_hash}</p>
+                </div>
+
+                <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/10 p-4">
+                  <h3 className="font-bold text-amber-100">Reviewer action</h3>
+                  <p className="mt-2 text-sm text-slate-300">These buttons call the approval API and record an approvalHash.</p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <form method="post" action="/api/gateway/approvals">
+                      <input type="hidden" name="orgId" value={orgId} />
+                      <input type="hidden" name="auditToken" value={approval.audit_token} />
+                      <input type="hidden" name="decision" value="approved" />
+                      <input type="hidden" name="reviewerId" value="reviewer-ui" />
+                      <input type="hidden" name="reviewerRole" value="finance_approver" />
+                      <input type="hidden" name="note" value="approved from DSG approval queue" />
+                      <input type="hidden" name="redirectTo" value={`/approvals?orgId=${orgId}`} />
+                      <button type="submit" className="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-bold text-black">Approve</button>
+                    </form>
+                    <form method="post" action="/api/gateway/approvals">
+                      <input type="hidden" name="orgId" value={orgId} />
+                      <input type="hidden" name="auditToken" value={approval.audit_token} />
+                      <input type="hidden" name="decision" value="rejected" />
+                      <input type="hidden" name="reviewerId" value="reviewer-ui" />
+                      <input type="hidden" name="reviewerRole" value="finance_approver" />
+                      <input type="hidden" name="note" value="rejected from DSG approval queue" />
+                      <input type="hidden" name="redirectTo" value={`/approvals?orgId=${orgId}`} />
+                      <button type="submit" className="rounded-xl bg-rose-400 px-4 py-2 text-sm font-bold text-black">Reject</button>
+                    </form>
+                  </div>
                 </div>
               </article>
             ))
