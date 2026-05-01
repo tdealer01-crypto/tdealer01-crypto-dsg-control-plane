@@ -5,68 +5,10 @@ import type {
   DeterministicProof,
   DeterministicProofRequest,
   DeterministicProofStatus,
-  DeterministicRiskLevel,
 } from './types';
-import { buildConstraintSetHash, buildProofHash, hashDeterministicValue } from './proof-hash';
-
-const CONSTRAINTS = [
-  {
-    constraintId: 'requirement_clear',
-    name: 'Requirement must be clear',
-    severity: 'high' as DeterministicRiskLevel,
-    evidenceKey: 'requirement_clear',
-    message: 'Requirement is missing or ambiguous.',
-  },
-  {
-    constraintId: 'tool_available',
-    name: 'Tool must be available',
-    severity: 'critical' as DeterministicRiskLevel,
-    evidenceKey: 'tool_available',
-    message: 'Requested tool is not available.',
-  },
-  {
-    constraintId: 'permission_granted',
-    name: 'Permission must be granted',
-    severity: 'critical' as DeterministicRiskLevel,
-    evidenceKey: 'permission_granted',
-    message: 'Actor does not have permission.',
-  },
-  {
-    constraintId: 'secret_bound',
-    name: 'Secret boundary must be satisfied',
-    severity: 'critical' as DeterministicRiskLevel,
-    evidenceKey: 'secret_bound',
-    message: 'Secret binding is missing.',
-  },
-  {
-    constraintId: 'dependency_resolved',
-    name: 'Dependencies must be resolved',
-    severity: 'high' as DeterministicRiskLevel,
-    evidenceKey: 'dependency_resolved',
-    message: 'Dependencies are unresolved.',
-  },
-  {
-    constraintId: 'testable',
-    name: 'Action must be testable',
-    severity: 'medium' as DeterministicRiskLevel,
-    evidenceKey: 'testable',
-    message: 'Action has no testable path.',
-  },
-  {
-    constraintId: 'deploy_target_ready',
-    name: 'Deploy target must be ready',
-    severity: 'high' as DeterministicRiskLevel,
-    evidenceKey: 'deploy_target_ready',
-    message: 'Deploy target is not ready.',
-  },
-  {
-    constraintId: 'audit_hook_available',
-    name: 'Audit hook must be available',
-    severity: 'critical' as DeterministicRiskLevel,
-    evidenceKey: 'audit_hook_available',
-    message: 'Audit hook is unavailable.',
-  },
-];
+import { buildProofHash, hashDeterministicValue } from './proof-hash';
+import { getDeterministicPolicyManifest } from './policy-manifest';
+import { getDeterministicSolverMetadata } from './solver-metadata';
 
 function boolValue(context: Record<string, unknown>, key: string) {
   return context[key] === true;
@@ -82,11 +24,13 @@ function statusFromFailures(failures: DeterministicFailureReason[]): Determinist
 export function proveDeterministicPlan(request: DeterministicProofRequest): DeterministicProof {
   const timestamp = new Date().toISOString();
   const proofId = `dpf_${crypto.randomBytes(16).toString('hex')}`;
-  const policyRef = request.policyRef ?? 'dsg.deterministic.default';
-  const policyVersion = request.policyVersion ?? '1.0';
+  const manifest = getDeterministicPolicyManifest();
+  const solver = getDeterministicSolverMetadata();
+  const policyRef = request.policyRef ?? manifest.policyRef;
+  const policyVersion = request.policyVersion ?? manifest.policyVersion;
   const context = request.context ?? {};
 
-  const constraints: DeterministicConstraintResult[] = CONSTRAINTS.map((constraint) => {
+  const constraints: DeterministicConstraintResult[] = manifest.constraints.map((constraint) => {
     const passed = boolValue(context, constraint.evidenceKey);
     return {
       ...constraint,
@@ -111,12 +55,12 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     policyVersion,
     riskLevel: request.riskLevel ?? 'medium',
   });
-  const constraintSetHash = buildConstraintSetHash(CONSTRAINTS.map((constraint) => constraint.constraintId));
+  const constraintSetHash = manifest.constraintSetHash;
   const proofHash = buildProofHash({
     proofId,
     status,
     timestamp,
-    solver: { name: 'static_check', version: 'dsg-deterministic-ts-1.0' },
+    solver: { name: solver.name, version: solver.version },
     policyRef,
     policyVersion,
     constraintsChecked: constraints.length,
@@ -132,8 +76,8 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     status,
     timestamp,
     solver: {
-      name: 'static_check',
-      version: 'dsg-deterministic-ts-1.0',
+      name: solver.name,
+      version: solver.version,
     },
     policyRef,
     policyVersion,
@@ -150,8 +94,8 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     constraints,
     evidenceBoundary: {
       statement:
-        'This DSG-native deterministic proof is a TypeScript static-check adapter mapped from the Z3 module. It does not claim that an external Z3 solver was invoked.',
-      externalSolverInvoked: false,
+        'This DSG-native deterministic proof is a TypeScript static-check adapter mapped from the Z3 module. It does not claim that an external Z3 solver was invoked unless solver metadata says so.',
+      externalSolverInvoked: solver.externalSolverInvoked,
       productionReadyClaim: false,
     },
   };
