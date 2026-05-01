@@ -27,6 +27,12 @@ export type DeterministicConstraintResult = {
   message: string;
 };
 
+export type DeterministicReplayProtection = {
+  nonce: string;
+  idempotencyKey: string;
+  requestHash: string;
+};
+
 export type DeterministicProof = {
   proofId: string;
   status: DeterministicProofStatus;
@@ -42,6 +48,7 @@ export type DeterministicProof = {
   constraintSetHash: string;
   proofHash: string;
   previousProofHash?: string;
+  replayProtection: DeterministicReplayProtection;
   model?: Record<string, unknown>;
   failureReasons: DeterministicFailureReason[];
   constraints: DeterministicConstraintResult[];
@@ -125,6 +132,8 @@ export type DeterministicProofRequest = {
   policyVersion?: string;
   riskLevel?: DeterministicRiskLevel;
   previousProofHash?: string;
+  nonce: string;
+  idempotencyKey: string;
   context: Record<string, unknown>;
 };
 
