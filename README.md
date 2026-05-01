@@ -4,7 +4,7 @@ DSG is a deterministic governance gateway for high-risk AI, agent, workflow, fin
 
 It routes risky actions through policy, invariant, entitlement, approval, connector, and audit-proof controls before those actions affect production systems.
 
-## Current status — 2026-05-01
+## Current status — 2026-05-02
 
 ### Repository status
 
@@ -27,24 +27,30 @@ Current production URL:
 https://tdealer01-crypto-dsg-control-plane.vercel.app
 ```
 
-Important current boundary:
-
-```text
-The latest main branch contains Phase 5 trust routes, but the latest production redeploy was blocked by the Vercel free-plan deployment limit:
-
-Resource is limited - try again in 24 hours
-more than 100 api-deployments-free-per-day
-```
-
-Correct status:
+Current status:
 
 ```text
 main branch: updated
 local UX route verifier: passed
-production redeploy of latest Phase 5 routes: blocked by Vercel quota until reset
+production redeploy: completed after prior Vercel quota block
 ```
 
-Do not claim the latest Phase 5 routes are live until `npx vercel --prod` succeeds after quota reset.
+User-provided live route checks after redeploy:
+
+```text
+/consult       HTTP/2 200
+/evidence-pack HTTP/2 200
+```
+
+Phase 5 trust routes are now in `main` and should be verified after deploy with:
+
+```bash
+curl -I https://tdealer01-crypto-dsg-control-plane.vercel.app/trust
+curl -I https://tdealer01-crypto-dsg-control-plane.vercel.app/reproducibility
+curl -I https://tdealer01-crypto-dsg-control-plane.vercel.app/security-review
+```
+
+Do not claim independent external validation or certification. Phase 5 currently provides trust infrastructure, reproducibility structure, and review boundaries; real external validation still requires customer pilots, case studies, partner deployments, outside reviews, or formal certification if pursued.
 
 ## Latest verified local UX result
 
@@ -75,7 +81,7 @@ signed evidence bundle
 Verifier boundary:
 
 ```text
-The current ux:routes verifier confirms core governance UX flows. Phase 5 trust routes must be added to the verifier before claiming full Phase 5 UX coverage.
+The current ux:routes verifier confirms core governance UX flows. Phase 5 trust routes should be added to the verifier before claiming full Phase 5 UX coverage.
 ```
 
 ## Live / expected product routes
@@ -92,17 +98,16 @@ Core routes:
 /gateway/monitor?orgId=org-smoke
 /marketplace
 /marketplace/production-evidence
+/consult
 ```
 
-Phase 5 trust routes now in main branch:
+Phase 5 trust routes in main:
 
 ```text
 /trust
 /reproducibility
 /security-review
 ```
-
-These Phase 5 routes require a successful production redeploy before they can be treated as live on Vercel.
 
 ## Published GitHub Marketplace Action
 
@@ -142,6 +147,63 @@ Boundary:
 
 ```text
 The DOI artifact is the formal verification reference. Repository runtime SMT2 scripts provide deterministic SMT-LIB-compatible runtime invariant evidence, but they are not the same artifact as the DOI publication.
+```
+
+## Z3 deterministic module status
+
+The uploaded `z3-logic-deterministic.zip` contains a standalone FastAPI + UI proof-of-concept with:
+
+```text
+backend/z3_engine.py
+backend/policy_engine.py
+backend/audit_ledger.py
+backend/main.py
+backend/test_deterministic.py
+ui/Z3Dashboard.tsx
+ui/PlanGate.tsx
+ui/AuditLedgerViewer.tsx
+ui/RuntimeMonitor.tsx
+ui/types.ts
+```
+
+Recommended DSG integration role:
+
+```text
+Deterministic Gate + Proof + Audit Module
+```
+
+Correct integration position:
+
+```text
+Agent / Operator Action
+→ DSG Intake & Validation
+→ DSG Policy Engine
+→ Z3 Deterministic Proof Engine
+→ DSG Gate Decision
+→ DSG Execution Orchestrator
+→ DSG Audit Ledger / Evidence Export
+```
+
+Integration boundary:
+
+```text
+Can map into DSG now: yes
+Can run as production evidence system immediately: not yet
+Best current role: deterministic proof module candidate
+```
+
+Required production fixes before calling the Z3 module enterprise-ready:
+
+```text
+real Ed25519/ECDSA signing instead of placeholder signing
+Postgres append-only or WORM-backed evidence storage
+structured failureReasons
+proofHash naming instead of z3ProofHash/hashChain
+actual solver version detection
+policy version and constraintSetHash in every proof
+JWT/JWKS auth
+replay protection with nonce/requestHash/idempotency key
+CI gates for lint/typecheck/unit/API/chain verification
 ```
 
 ## Core capabilities
@@ -312,7 +374,7 @@ If no signing secret is configured: hash-only signature metadata
 
 ## Consult / audit toolkit
 
-Main route in main branch:
+Main route:
 
 ```text
 /consult
@@ -345,7 +407,7 @@ The toolkit supports readiness and implementation workflows. It is not a legal o
 
 ## Phase 5 trust scaffold
 
-Routes added to main:
+Routes:
 
 ```text
 /trust
@@ -362,7 +424,7 @@ Organize buyer trust assets, reproducibility steps, and review boundaries for ex
 Current Phase 5 boundary:
 
 ```text
-Trust infrastructure exists in main. Real external validation still requires customer pilots, case studies, partner deployments, outside reviews, or formal certification if pursued.
+Trust infrastructure exists. Real external validation still requires customer pilots, case studies, partner deployments, outside reviews, or formal certification if pursued.
 ```
 
 ## Market segment packaging
@@ -439,15 +501,13 @@ better than every listed vendor
 
 ## Deployment commands
 
-After Vercel quota resets:
-
 ```bash
 git pull origin main
 npm run ux:routes
 npx vercel --prod
 ```
 
-If Vercel returns the free-plan limit error again, do not retry repeatedly. Wait for quota reset or use a paid/approved deployment path.
+If Vercel returns a free-plan limit error, do not retry repeatedly. Wait for quota reset or use a paid/approved deployment path.
 
 ## Current product boundary
 
