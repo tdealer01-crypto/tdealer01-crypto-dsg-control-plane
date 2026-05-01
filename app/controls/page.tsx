@@ -116,8 +116,8 @@ export default function ControlsPage() {
                   <Link href="/api/gateway/controls/templates" className="rounded-xl border border-cyan-300/40 px-4 py-2 text-sm font-bold text-cyan-100">
                     Open JSON
                   </Link>
-                  <Link href="/docs" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200">
-                    Docs
+                  <Link href="/ai-compliance" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200">
+                    Compliance guide
                   </Link>
                 </div>
               </article>
