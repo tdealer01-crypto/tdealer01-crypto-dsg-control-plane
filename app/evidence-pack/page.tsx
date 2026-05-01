@@ -6,8 +6,8 @@ const evidence = [
   ["Comparison Rubric", "190/200, 95% internal rubric score", "Implemented"],
   ["Public Vendor Baseline", "5 public documentation baselines, vendorRuntimeTested=0", "Implemented"],
   ["Audit Export API", "Exportable JSON audit evidence", "Implemented"],
+  ["Signed Evidence Bundle", "Portable bundle with bundleHash, eventHashes, and signature metadata", "Implemented"],
   ["GitHub Secure Deploy Gate Action", "CI/CD gate evidence with verdict and evidence hash", "Implemented"],
-  ["Signed Evidence Bundle", "Portable signed evidence package", "Planned"],
   ["PDF Evidence Report", "Human-readable reviewer report", "Planned"],
 ];
 
@@ -21,10 +21,11 @@ export default function EvidencePackPage() {
             Audit evidence for governed AI execution
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG produces structured AI action governance evidence with runtime decisions, request hashes, record hashes, benchmark evidence, invariant checks, and exportable audit records.
+            DSG produces structured AI action governance evidence with runtime decisions, request hashes, record hashes, benchmark evidence, invariant checks, signed evidence bundle metadata, and exportable audit records.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
+            <Link href="/api/gateway/evidence/bundle?orgId=org-smoke" className="rounded-xl border border-emerald-300/50 px-5 py-3 font-bold text-emerald-100">Download signed evidence bundle</Link>
             <Link href="/api/gateway/audit/export?orgId=org-smoke" className="rounded-xl border border-emerald-300/50 px-5 py-3 font-bold text-emerald-100">Open audit export JSON</Link>
             <Link href="/marketplace/production-evidence" className="rounded-xl border border-slate-700 px-5 py-3 font-bold text-slate-200">View production evidence</Link>
           </div>
@@ -44,36 +45,36 @@ export default function EvidencePackPage() {
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-2xl font-bold">Sample evidence structure</h2>
+          <h2 className="text-2xl font-bold">Sample signed bundle structure</h2>
           <pre className="mt-5 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`{
-  "evidenceType": "dsg-ai-action-governance",
-  "organizationId": "org-smoke",
-  "actorId": "agent-001",
-  "actorRole": "agent_operator",
-  "toolName": "custom_http.customer_webhook",
-  "action": "post",
-  "decision": "allow",
-  "risk": "medium",
-  "approvalRequired": false,
-  "requestHash": "sha256-request-placeholder",
-  "recordHash": "sha256-record-placeholder",
-  "auditToken": "gat_example",
-  "checks": {
-    "organizationIdentity": true,
-    "actorIdentity": true,
-    "roleAllowed": true,
-    "planEntitled": true,
-    "toolRegistered": true,
-    "actionMatchesTool": true,
-    "evidenceWritable": true
-  }
+  "type": "dsg-gateway-signed-evidence-bundle",
+  "version": "1.0",
+  "orgId": "org-smoke",
+  "count": 1,
+  "bundleHash": "sha256-bundle-placeholder",
+  "eventHashes": ["sha256-event-placeholder"],
+  "signature": {
+    "algorithm": "hmac-sha256",
+    "signature": "hmac-signature-placeholder",
+    "signatureMode": "hmac",
+    "keyId": "env:DSG_EVIDENCE_SIGNING_SECRET"
+  },
+  "events": [
+    {
+      "tool_name": "custom_http.customer_webhook",
+      "action": "post",
+      "decision": "allow",
+      "request_hash": "sha256-request-placeholder",
+      "record_hash": "sha256-record-placeholder"
+    }
+  ]
 }`}</pre>
         </section>
 
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            This page shows sample and internal production evidence. It is not an independent audit report. Signed evidence bundles and PDF reports are planned hardening items.
+            This page shows sample and internal production evidence. The signed evidence bundle is DSG-generated audit evidence, not an independent third-party audit report. If no signing secret is configured, DSG returns hash-only signature metadata instead of HMAC metadata.
           </p>
         </section>
       </div>
