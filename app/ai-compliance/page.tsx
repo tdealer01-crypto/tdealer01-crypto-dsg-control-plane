@@ -7,12 +7,14 @@ const controls = [
   "requestHash and recordHash audit proof",
   "Evidence export for reviewer and consultant workflows",
   "GitHub Marketplace Action for CI/CD deploy gating",
+  "Reusable control templates for compliance and consult workflows",
 ];
 
 const routes = [
   { href: "/iso-42001", title: "ISO/IEC 42001 Alignment", body: "AI Management System workflow support without certification claims." },
   { href: "/nist-ai-rmf", title: "NIST AI RMF Alignment", body: "Govern, Map, Measure, and Manage workflow support for AI risk management." },
-  { href: "/evidence-pack", title: "Evidence Pack", body: "Sample audit evidence, benchmark summary, requestHash, recordHash, and export structure." },
+  { href: "/controls", title: "Control Template Library", body: "Reusable DSG controls for identity, runtime invariants, approvals, evidence, and CI/CD gates." },
+  { href: "/evidence-pack", title: "Evidence Pack", body: "Sample audit evidence, benchmark summary, signed bundle, requestHash, recordHash, and export structure." },
   { href: "/marketplace/production-evidence", title: "Production Evidence", body: "Gateway benchmark, SMT2 invariant evidence, and public baseline boundary." },
 ];
 
@@ -31,6 +33,9 @@ export default function AICompliancePage() {
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/marketplace/production-evidence" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">
               View production evidence
+            </Link>
+            <Link href="/controls" className="rounded-xl border border-emerald-400/40 px-5 py-3 font-bold text-emerald-100">
+              View control templates
             </Link>
             <Link href="/evidence-pack" className="rounded-xl border border-emerald-400/40 px-5 py-3 font-bold text-emerald-100">
               View evidence pack
