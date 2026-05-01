@@ -3,6 +3,7 @@ import Link from "next/link";
 const controls = [
   "Deterministic action gate before AI or workflow execution",
   "Policy, risk, approval, entitlement, and invariant checks",
+  "Approval workflow queue for review-required actions",
   "Monitor Mode for customer-held runtime and API keys",
   "requestHash and recordHash audit proof",
   "Evidence export for reviewer and consultant workflows",
@@ -14,6 +15,7 @@ const routes = [
   { href: "/iso-42001", title: "ISO/IEC 42001 Alignment", body: "AI Management System workflow support without certification claims." },
   { href: "/nist-ai-rmf", title: "NIST AI RMF Alignment", body: "Govern, Map, Measure, and Manage workflow support for AI risk management." },
   { href: "/controls", title: "Control Template Library", body: "Reusable DSG controls for identity, runtime invariants, approvals, evidence, and CI/CD gates." },
+  { href: "/approvals", title: "Approval Workflow", body: "Review queue and decision API for high-risk or approval-required AI actions." },
   { href: "/evidence-pack", title: "Evidence Pack", body: "Sample audit evidence, benchmark summary, signed bundle, requestHash, recordHash, and export structure." },
   { href: "/marketplace/production-evidence", title: "Production Evidence", body: "Gateway benchmark, SMT2 invariant evidence, and public baseline boundary." },
 ];
@@ -33,6 +35,9 @@ export default function AICompliancePage() {
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/marketplace/production-evidence" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">
               View production evidence
+            </Link>
+            <Link href="/approvals" className="rounded-xl border border-emerald-400/40 px-5 py-3 font-bold text-emerald-100">
+              View approval queue
             </Link>
             <Link href="/controls" className="rounded-xl border border-emerald-400/40 px-5 py-3 font-bold text-emerald-100">
               View control templates
