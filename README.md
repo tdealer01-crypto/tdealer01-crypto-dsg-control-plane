@@ -8,6 +8,16 @@ Live deployment:
 
 - https://tdealer01-crypto-dsg-control-plane.vercel.app
 
+Published GitHub Marketplace Action:
+
+- https://github.com/marketplace/actions/dsg-secure-deploy-gate
+- Release: https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action/releases/tag/v1.0.2
+
+```yaml
+- name: DSG Secure Deploy Gate
+  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
+```
+
 Published formal verification artifact:
 
 - https://doi.org/10.5281/zenodo.18225586
@@ -35,6 +45,7 @@ Verified production surfaces:
 - Monitor Mode audit commit: verified
 - Audit events API: verified
 - Audit export API: verified
+- GitHub Marketplace Action: published as `dsg-secure-deploy-gate-action@v1.0.2`
 - `requestHash` / `recordHash`: generated and returned
 - Production gateway benchmark: 6/6 passed
 - Comparison rubric score: 190/200, 95%
@@ -82,6 +93,7 @@ It provides:
 - Monitor Mode for customer-owned runtime execution
 - request and record hashing
 - audit event history and export APIs
+- published GitHub Marketplace Action for deterministic CI/CD deployment gating
 - published formal verification evidence
 - deterministic SMT2-compatible runtime invariant evidence
 - production benchmark evidence
@@ -132,6 +144,7 @@ Repository runtime evidence complements the published formal verification artifa
 - requestHash and recordHash audit evidence
 - deterministic SMT2-compatible gateway invariant evidence
 - production benchmark reports
+- DSG Secure Deploy Gate GitHub Marketplace Action for CI/CD gating
 
 Correct wording:
 
@@ -146,6 +159,37 @@ The published DOI artifact is the formal verification evidence. The current repo
 ```
 
 Do not collapse the two layers into a single unsupported claim. The DOI artifact and the runtime gateway SMT2 evidence are related assurance layers, but they are not the same artifact.
+
+## GitHub Marketplace Action
+
+DSG Secure Deploy Gate is published on GitHub Marketplace:
+
+```text
+https://github.com/marketplace/actions/dsg-secure-deploy-gate
+```
+
+Latest release:
+
+```text
+https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action/releases/tag/v1.0.2
+```
+
+Usage:
+
+```yaml
+- name: DSG Secure Deploy Gate
+  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
+```
+
+Action purpose:
+
+- deterministic deploy gate for GitHub Actions
+- fail-closed behavior for unsafe deploy conditions
+- CI/CD policy enforcement before production deployment
+- evidence-oriented deployment control
+- designed for regulated, high-assurance, and AI-assisted software delivery workflows
+
+Evidence boundary: this Action provides a deployment gate. It does not claim independent third-party certification.
 
 ## Core modes
 
@@ -570,6 +614,7 @@ Current status:
 Finance governance backend smoke path: GO
 Gateway Mode production benchmark: GO
 Monitor Mode production benchmark: GO
+GitHub Marketplace Action: published at v1.0.2
 Production Gateway Benchmark: 6/6 passed, 100%
 SMT2 Runtime Invariants: 6/6 passed, 100%
 Comparison Rubric: 190/200, 95%
@@ -594,6 +639,7 @@ It includes:
 - deterministic audit proof storage
 - runtime hash verification APIs
 - audit export APIs
+- GitHub Marketplace Action for deterministic deploy gating
 - production benchmark evidence
 - published formal verification evidence
 - deterministic SMT2-compatible runtime invariant evidence
