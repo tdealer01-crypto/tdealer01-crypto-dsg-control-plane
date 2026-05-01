@@ -54,7 +54,14 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     policyRef,
     policyVersion,
     riskLevel: request.riskLevel ?? 'medium',
+    nonce: request.nonce,
+    idempotencyKey: request.idempotencyKey,
   });
+  const replayProtection = {
+    nonce: request.nonce,
+    idempotencyKey: request.idempotencyKey,
+    requestHash: inputHash,
+  };
   const constraintSetHash = manifest.constraintSetHash;
   const proofHash = buildProofHash({
     proofId,
@@ -69,7 +76,8 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     previousProofHash: request.previousProofHash,
     failureReasons,
     constraints,
-  });
+    replayProtection,
+  } as any);
 
   return {
     proofId,
@@ -86,6 +94,7 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     constraintSetHash,
     proofHash,
     previousProofHash: request.previousProofHash,
+    replayProtection,
     model: {
       planId: request.planId ?? null,
       riskLevel: request.riskLevel ?? 'medium',
