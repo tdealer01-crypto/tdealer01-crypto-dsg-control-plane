@@ -1,72 +1,38 @@
-# DSG AI Action Governance Gateway
+# DSG ONE — AI Runtime Control Plane
 
 DSG is a deterministic governance gateway for AI, agent, workflow, finance, and deployment actions.
 
 It routes governed actions through policy, entitlement, approval, deterministic proof, and audit controls before production execution.
 
-## Current status — 2026-05-02
+## Canonical docs
+
+- `docs/REPO_TRUTH.md`
+- `docs/RUNBOOK_DEPLOY.md`
+- `PROJECT_TRUTH.md`
+
+When statements conflict, prefer the newer verified evidence in those files.
+
+## Current status — 2026-05-02 (repository-aligned)
 
 ### Repository status
 
 ```text
-Phase 1 — Compliance Mapping Pack: complete
-Phase 2 — Compliance Landing / Evidence Pages: complete
-Phase 3 — Consult / Audit Toolkit: operational
-Phase 4 — Product Hardening Foundation: operational
-Phase 5 — Trust / External Validation Scaffold: added to main
-Phase 6 — Market Segment Packaging: documented
-Z3 / deterministic proof backend scaffold: merged to main
-Deterministic hardening follow-up: merged to main
+Product identity: DSG ONE
+Mode: active
+Test baseline (2026-04-17): 185 passed, 3 skipped, 0 failed
+Production-readiness gate: not yet closed from committed evidence
+Deterministic proof/gate scaffold: merged and operational in-repo
+Finance governance + gateway monitor migrations: present through 2026-04-30
 ```
 
-Merged deterministic PRs:
+
+### Deployment truth boundary
 
 ```text
-#458 — Map Z3 deterministic proof module into DSG backend
-#459 — Complete deterministic module hardening follow-up
-```
-
-### Production deployment status
-
-Production URL:
-
-```text
-https://tdealer01-crypto-dsg-control-plane.vercel.app
-```
-
-Latest observed deployment after #459:
-
-```text
-Production: https://tdealer01-crypto-dsg-control-plane-elul4vwfh.vercel.app
-Aliased: https://tdealer01-crypto-dsg-control-plane.vercel.app
-```
-
-Observed production API evidence:
-
-```text
-GET  /api/dsg/v1/policies/manifest  HTTP/2 200
-POST /api/dsg/v1/gates/evaluate     ok=true, gateStatus=PASS, proofStatus=PASS
-```
-
-Observed deterministic gate proof fields:
-
-```text
-proofHash: present
-inputHash: present
-constraintSetHash: present
-policyVersion: 1.0
-solver.name: static_check
-replayProtection.nonce: present
-replayProtection.idempotencyKey: present
-replayProtection.requestHash: present
-constraintsChecked: 8
-all tested constraints passed: true
-```
-
-Current live claim:
-
-```text
-DSG production exposes a live deterministic proof/gate scaffold with policyVersion, constraintSetHash, proofHash, structured constraints, and replay-protection evidence.
+Do not treat this repository alone as proof of go-live completion.
+Runbook evidence is still required for: deployment Ready state, env validation,
+Supabase applied-state proof, /api/health smoke, authenticated operator checks,
+and live staging/E2E validation.
 ```
 
 ## Deterministic proof / Z3 mapping
