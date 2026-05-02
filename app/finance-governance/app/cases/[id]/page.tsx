@@ -8,11 +8,13 @@ type CaseDetailPageProps = {
 };
 
 const repository = new FinanceGovernanceRepository();
+export const dynamic = 'force-dynamic';
 
 export default async function FinanceGovernanceCaseDetailPage({ params }: CaseDetailPageProps) {
   const { id } = await params;
   const orgId = await getOrg();
   const detail = await repository.getCaseDetail(orgId, id);
+  const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-16 text-white">
@@ -36,17 +38,21 @@ export default async function FinanceGovernanceCaseDetailPage({ params }: CaseDe
           </div>
         </section>
 
-        <section className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-7">
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-7">
           <h2 className="text-2xl font-semibold">Case timeline</h2>
           <div className="mt-6 grid gap-4">
-            {detail.timeline.map((item, index) => (
-              <div key={item} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-300/20 font-semibold text-cyan-100">
-                  {index + 1}
+            {timeline.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">No timeline events recorded for this case.</div>
+            ) : (
+              timeline.map((item, index) => (
+                <div key={`${item}-${index}`} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-300/20 font-semibold text-cyan-100">
+                    {index + 1}
+                  </div>
+                  <p className="text-sm text-slate-100">{item}</p>
                 </div>
-                <p className="text-sm text-slate-100">{item}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
       </div>

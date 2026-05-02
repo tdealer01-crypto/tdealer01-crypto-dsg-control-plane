@@ -5,6 +5,13 @@ type ChecklistPayload = {
   steps?: Array<string | { id?: string; label?: string; status?: 'todo' | 'in_progress' | 'done' }>;
 } | null;
 
+function toChecklistPayload(value: unknown): ChecklistPayload {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  return value as ChecklistPayload;
+}
+
 function mapChecklistToSteps(checklist: ChecklistPayload, bootstrapStatus: string | null | undefined) {
   const rawSteps = Array.isArray(checklist?.steps) ? checklist.steps : [];
   return rawSteps.map((step, index) => {
@@ -25,13 +32,16 @@ function mapChecklistToSteps(checklist: ChecklistPayload, bootstrapStatus: strin
 
 export default async function FinanceGovernanceOnboardingPage() {
   const orgId = await getOrg();
-  const admin = getSupabaseAdmin() as any;
-  const { data } = await admin
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
     .from('org_onboarding_states')
     .select('bootstrap_status, checklist')
     .eq('org_id', orgId)
     .maybeSingle();
-  const steps = mapChecklistToSteps(data?.checklist ?? null, data?.bootstrap_status);
+  if (error) {
+    throw new Error(`Failed to load onboarding state: ${error.message}`);
+  }
+  const steps = mapChecklistToSteps(toChecklistPayload(data?.checklist), data?.bootstrap_status);
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-16 text-white">
@@ -50,6 +60,9 @@ export default async function FinanceGovernanceOnboardingPage() {
               {index + 1}
             </div>
             <p className="text-base text-slate-100">{step.label}</p>
+            <span className="ml-auto rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">
+              {step.status}
+            </span>
           </section>
         ))}
       </div>
