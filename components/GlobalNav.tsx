@@ -7,6 +7,7 @@ import { useState } from 'react';
 const PUBLIC_NAV = [
   { href: '/', label: 'Home' },
   { href: '/finance-governance', label: 'Finance Governance' },
+  { href: '/automation', label: 'Automation' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
   { href: '/sync-center', label: 'Sync Center' },
