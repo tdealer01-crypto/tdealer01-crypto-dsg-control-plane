@@ -32,8 +32,8 @@ export default function GlobalNav() {
             DSG
           </span>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Finance Governance</p>
-            <p className="text-sm font-semibold text-slate-100">Action Layer</p>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">DSG ONE</p>
+            <p className="text-sm font-semibold text-slate-100">AI Runtime Control Plane</p>
           </div>
         </Link>
 

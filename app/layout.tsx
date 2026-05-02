@@ -6,8 +6,8 @@ import GlobalNav from '../components/GlobalNav';
 import PublicChatWidget from '../components/PublicChatWidget';
 
 export const metadata: Metadata = {
-  title: 'DSG Finance Governance Control Plane',
-  description: 'Govern AI-assisted finance operations with deterministic policy gates and auditable runtime controls.',
+  title: 'DSG ONE — AI Runtime Control Plane',
+  description: 'deterministic governance for AI, workflow, finance, and deployment actions before execution.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
