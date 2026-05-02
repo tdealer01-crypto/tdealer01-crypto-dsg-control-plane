@@ -65,7 +65,7 @@ export default function HomePage() {
               Govern AI actions before they reach production.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-              DSG ONE routes high-risk AI, workflow, finance, and deployment actions through policy, approval, deterministic gate checks, and audit evidence before execution.
+              DSG ONE is a runtime governance gateway for AI actions — not another GRC record system. It routes high-risk AI, workflow, finance, and deployment actions through policy, approval, deterministic gate checks, and audit evidence before execution.
             </p>
 
             <div className="mt-8 rounded-3xl border border-emerald-300/25 bg-emerald-400/10 p-5 shadow-2xl shadow-emerald-950/30">
