@@ -41,26 +41,39 @@ Production: https://tdealer01-crypto-dsg-control-plane-elul4vwfh.vercel.app
 Aliased: https://tdealer01-crypto-dsg-control-plane.vercel.app
 ```
 
-Local status observed before deploy:
+Observed production API evidence:
 
 ```text
-Next.js build: passed
-Phase 5 routes compile: passed
+GET  /api/dsg/v1/policies/manifest  HTTP/2 200
+POST /api/dsg/v1/gates/evaluate     ok=true, gateStatus=PASS, proofStatus=PASS
 ```
 
-Final live API verification still required:
+Observed deterministic gate proof fields:
 
-```bash
-curl -I https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/policies/manifest
+```text
+proofHash: present
+inputHash: present
+constraintSetHash: present
+policyVersion: 1.0
+solver.name: static_check
+replayProtection.nonce: present
+replayProtection.idempotencyKey: present
+replayProtection.requestHash: present
+constraintsChecked: 8
+all tested constraints passed: true
 ```
 
-Only claim deterministic backend is live after the manifest endpoint returns non-404 on production.
+Current live claim:
+
+```text
+DSG production exposes a live deterministic proof/gate scaffold with policyVersion, constraintSetHash, proofHash, structured constraints, and replay-protection evidence.
+```
 
 ## Deterministic proof / Z3 mapping
 
 The uploaded `z3-logic-deterministic.zip` was mapped into the existing DSG backend as a DSG-native deterministic proof and gate scaffold. The standalone FastAPI app was not imported directly.
 
-Backend routes in main:
+Backend routes in main and production:
 
 ```text
 POST /api/dsg/v1/proofs/prove
@@ -110,7 +123,7 @@ missing_idempotency_key
 Allowed claim:
 
 ```text
-DSG has a deterministic proof/gate backend scaffold mapped from the Z3 module, with proofHash, inputHash, constraintSetHash, policyVersion, structured failures, replay-protection fields, and a verification script.
+DSG has a live deterministic proof/gate backend scaffold mapped from the Z3 module, with proofHash, inputHash, constraintSetHash, policyVersion, structured failures, replay-protection fields, and a verification script.
 ```
 
 Do not claim yet:
@@ -149,7 +162,7 @@ Trust routes:
 /security-review
 ```
 
-Deterministic backend routes after successful redeploy:
+Deterministic backend routes:
 
 ```text
 /api/dsg/v1/policies/manifest
@@ -195,6 +208,18 @@ npm run build
 npx vercel --prod
 ```
 
+Live API checks:
+
+```bash
+curl -I https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/policies/manifest
+
+curl -s -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate \
+  -H "content-type: application/json" \
+  -H "x-dsg-nonce: test-nonce-001" \
+  -H "idempotency-key: idem-001" \
+  -d '{"planId":"PLAN-Z3-001","riskLevel":"high","context":{"requirement_clear":true,"tool_available":true,"permission_granted":true,"secret_bound":true,"dependency_resolved":true,"testable":true,"deploy_target_ready":true,"audit_hook_available":true}}'
+```
+
 ## Safe claim rules
 
 Allowed wording:
@@ -207,6 +232,7 @@ compliance-enabling
 aligned workflow
 benchmarked
 deterministic proof/gate scaffold
+live deterministic proof/gate scaffold
 ```
 
 Do not claim unless independently verified:
@@ -223,6 +249,6 @@ better than every listed vendor
 
 ## Current product boundary
 
-DSG is a production-oriented governance product stack with marketplace action, compliance pages, control templates, approval workflow, evidence export, consult toolkit, trust scaffold, and deterministic proof/gate backend scaffold.
+DSG is a production-oriented governance product stack with marketplace action, compliance pages, control templates, approval workflow, evidence export, consult toolkit, trust scaffold, and live deterministic proof/gate backend scaffold.
 
 It is not externally validated at enterprise-trust level until real customer deployments, case studies, partner references, independent reviews, or formal certifications are completed.
