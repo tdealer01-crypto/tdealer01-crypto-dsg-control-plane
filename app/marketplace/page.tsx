@@ -7,7 +7,7 @@ const reviewerChecks = [
   {
     title: "Product home",
     href: "/",
-    note: "Public landing page and product overview for DSG Control Plane.",
+    note: "Public landing page and product overview for DSG ONE.",
   },
   {
     title: "Health endpoint",
@@ -17,7 +17,7 @@ const reviewerChecks = [
   {
     title: "GitHub Marketplace Action",
     href: actionMarketplaceUrl,
-    note: "Published DSG Secure Deploy Gate Action for deterministic CI/CD deployment gating.",
+    note: "Published GitHub Marketplace Action surface for deterministic CI/CD deployment gating under DSG ONE.",
     external: true,
   },
   {
@@ -52,10 +52,10 @@ export default function MarketplacePage() {
             Marketplace Reviewer Page
           </p>
           <h1 className="mt-4 text-4xl font-bold leading-tight md:text-6xl">
-            DSG — Deterministic Safety Gate
+            DSG ONE Marketplace Surface
           </h1>
           <p className="mt-6 max-w-3xl text-lg text-slate-300">
-            DSG Control Plane exposes a public product surface, a public baseline health probe, a published GitHub Marketplace Action, and authenticated operator routes for governed AI execution. This page is designed to help marketplace reviewers distinguish public checks from protected runtime workflows.
+            DSG ONE exposes a public product surface, a public baseline health probe, a published GitHub Marketplace Action, and authenticated operator routes for governed AI execution. This page is designed to help marketplace reviewers distinguish public checks from protected runtime workflows.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-4">
@@ -105,7 +105,7 @@ export default function MarketplacePage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-2xl font-semibold">Product Summary</h2>
             <p className="mt-4 text-slate-300">
-              DSG is a control plane for governed AI execution. The public product surface is available for review, while dashboard, usage, audit, policy, capacity, and execution workflows remain protected operator routes.
+              DSG ONE is an AI Runtime Control Plane for governed AI execution. The public product surface is available for review, while dashboard, usage, audit, policy, capacity, and execution workflows remain protected operator routes.
             </p>
             <ul className="mt-6 space-y-3 text-slate-200">
               {capabilities.map((item) => (
