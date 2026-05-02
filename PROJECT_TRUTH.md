@@ -1,6 +1,6 @@
 # PROJECT_TRUTH
 
-Last reviewed: 2026-04-17
+Last reviewed: 2026-05-02
 Mode: active
 Status: merged into main; derived from real repository files only
 
