@@ -1,35 +1,18 @@
-const approvals = [
-  {
-    id: 'APR-1001',
-    vendor: 'Northwind Supply',
-    amount: 'US$14,250',
-    status: 'Needs approver',
-    risk: 'Threshold exceeded',
-  },
-  {
-    id: 'APR-1002',
-    vendor: 'Contoso Services',
-    amount: 'US$2,480',
-    status: 'Exception open',
-    risk: 'Missing document',
-  },
-  {
-    id: 'APR-1003',
-    vendor: 'Blue Ocean Partners',
-    amount: 'US$31,900',
-    status: 'Compliance review',
-    risk: 'High-risk vendor',
-  },
-];
+import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/repository';
+import { getOrg } from '../../../../lib/server/getOrg';
 
-export default function FinanceGovernanceApprovalsPage() {
+const repository = new FinanceGovernanceRepository();
+
+export default async function FinanceGovernanceApprovalsPage() {
+  const orgId = await getOrg();
+  const approvals = await repository.getApprovals(orgId);
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-16 text-white">
       <div className="max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Approval queue</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Pending finance approvals</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          This queue is the skeleton for role-aware approvals, filtering, and action handling across governed finance workflows.
+          Real-time governed approval queue mapped to the DSG backend for policy-aware decisioning and compliance operations.
         </p>
       </div>
 

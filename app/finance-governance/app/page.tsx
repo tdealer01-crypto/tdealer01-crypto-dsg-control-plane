@@ -1,30 +1,29 @@
 import Link from 'next/link';
+import { FinanceGovernanceRepository } from '../../../lib/finance-governance/repository';
+import { getOrg } from '../../../lib/server/getOrg';
 
-const quickLinks = [
-  { href: '/finance-governance/app/onboarding', label: 'Onboarding template' },
-  { href: '/finance-governance/app/approvals', label: 'Approval queue' },
-  { href: '/finance-governance/app/cases/sample-case', label: 'Sample case detail' },
-];
+const repository = new FinanceGovernanceRepository();
 
-const cards = [
-  {
-    title: 'Pending approvals',
-    value: '12',
-    text: 'Items waiting for reviewer action in the current workspace.',
-  },
-  {
-    title: 'Open exceptions',
-    value: '3',
-    text: 'Cases that require exception review, waiver, or follow-up.',
-  },
-  {
-    title: 'Ready exports',
-    value: '5',
-    text: 'Evidence bundles available for internal or external review.',
-  },
-];
-
-export default function FinanceGovernanceAppHomePage() {
+export default async function FinanceGovernanceAppHomePage() {
+  const orgId = await getOrg();
+  const workspace = await repository.getWorkspaceSummary(orgId);
+  const cards = [
+    {
+      title: 'Pending approvals',
+      value: String(workspace.counts.pendingApprovals),
+      text: 'Items waiting for reviewer action in the current workspace.',
+    },
+    {
+      title: 'Open exceptions',
+      value: String(workspace.counts.openExceptions),
+      text: 'Cases that require exception review, waiver, or follow-up.',
+    },
+    {
+      title: 'Ready exports',
+      value: String(workspace.counts.readyExports),
+      text: 'Evidence bundles available for internal or external review.',
+    },
+  ];
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-16 text-white">
       <div className="max-w-3xl">
@@ -48,7 +47,7 @@ export default function FinanceGovernanceAppHomePage() {
       <div className="mt-10 rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-7">
         <h2 className="text-2xl font-semibold">Quick links</h2>
         <div className="mt-5 flex flex-wrap gap-4">
-          {quickLinks.map((link) => (
+          {workspace.quickLinks.map((link) => (
             <Link key={link.href} href={link.href} className="rounded-2xl border border-white/20 bg-white/5 px-6 py-3 text-base font-semibold text-white">
               {link.label}
             </Link>
