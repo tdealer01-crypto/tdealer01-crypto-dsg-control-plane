@@ -105,6 +105,9 @@ function formatSubscriptionStatus(status: string | undefined): string {
     past_due: "Past due",
     unpaid: "Unpaid",
     canceled: "Canceled",
+    cancelled: "Canceled",
+    pastdue: "Past due",
+    in_trial: "Trialing",
     incomplete: "Incomplete",
     incomplete_expired: "Incomplete expired",
   };
