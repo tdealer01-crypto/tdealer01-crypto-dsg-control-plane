@@ -96,8 +96,22 @@ type DeterminismResult = {
 
 
 function formatSubscriptionStatus(status: string | undefined): string {
-  if (!status) return "-";
-  return status
+  if (!status) return "Not set";
+
+  const normalized = status.trim().toLowerCase();
+  const knownStatuses: Record<string, string> = {
+    active: "Active",
+    trialing: "Trialing",
+    past_due: "Past due",
+    unpaid: "Unpaid",
+    canceled: "Canceled",
+    incomplete: "Incomplete",
+    incomplete_expired: "Incomplete expired",
+  };
+
+  if (knownStatuses[normalized]) return knownStatuses[normalized];
+
+  return normalized
     .split(/[\s_-]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
@@ -486,7 +500,7 @@ export default function DashboardPage() {
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Subscription</p>
-              <p className="mt-3 text-sm text-slate-200">{formatSubscriptionStatus(summary?.subscription_status)}</p>
+              <p className="mt-3 text-sm font-medium text-slate-200">{formatSubscriptionStatus(summary?.subscription_status)}</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Period end</p>
