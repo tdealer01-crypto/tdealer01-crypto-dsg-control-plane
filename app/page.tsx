@@ -59,14 +59,13 @@ export default function HomePage() {
         <div className="relative mx-auto grid min-h-[calc(100svh-73px)] max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
             <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
-              Audit-Ready Approval Governance
+              Live Deterministic Gate Scaffold
             </p>
             <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
-              Govern every payment decision before it becomes an audit problem.
+              Govern AI actions before they reach production.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-              DSG gives finance teams one operational layer for policy-routed approvals, maker-checker controls,
-              exception handling, and evidence bundles that are ready when auditors ask.
+              DSG ONE routes high-risk AI, workflow, finance, and deployment actions through policy, approval, deterministic gate checks, and audit evidence before execution.
             </p>
 
             <div className="mt-8 rounded-3xl border border-emerald-300/25 bg-emerald-400/10 p-5 shadow-2xl shadow-emerald-950/30">
@@ -91,11 +90,11 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/finance-governance/app" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
-                Open finance workspace
+              <Link href="/enterprise-proof/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
+                View live gate evidence
               </Link>
-              <Link href="/request-access" className="rounded-2xl border border-red-300/35 bg-red-500/10 px-6 py-4 font-semibold text-red-100 transition hover:border-red-200/50 hover:bg-red-500/15">
-                Request enterprise pilot
+              <Link href="/finance-governance/app" className="rounded-2xl border border-red-300/35 bg-red-500/10 px-6 py-4 font-semibold text-red-100 transition hover:border-red-200/50 hover:bg-red-500/15">
+                Open control plane
               </Link>
               <Link href="/docs" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/30">
                 Review launch docs
@@ -193,7 +192,7 @@ export default function HomePage() {
             <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Launch Paths</p>
             <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">Move from one governed workflow to a real operating surface.</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-              Start with a single invoice or payment path, prove control quality in a bounded pilot, then expand into the daily approval workspace with shared evidence and runtime checks.
+              Finance Governance is one governed workflow under DSG ONE. Start with a single invoice or payment path, prove control quality in a bounded pilot, then expand into the daily approval workspace with shared evidence and runtime checks.
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
@@ -210,6 +209,32 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="border border-emerald-300/25 bg-emerald-400/5 p-6">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Live Gate Evidence Scaffold</p>
+          <h2 className="mt-3 text-3xl font-semibold text-white">Verified deterministic scaffold fields</h2>
+          <ul className="mt-6 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
+            <li>policyVersion</li>
+            <li>inputHash</li>
+            <li>constraintSetHash</li>
+            <li>proofHash</li>
+            <li>structured constraint results</li>
+            <li>replay-protection evidence</li>
+            <li>solver.name: static_check</li>
+            <li>solver.version: dsg-deterministic-ts-0.0.0</li>
+            <li>constraintsChecked: 8</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pb-20">
+        <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
+          <p className="mt-3">Current boundary: this is a deterministic TypeScript static_check scaffold. It does not claim external Z3 production invocation, JWT/JWKS auth completion, WORM storage completion, third-party certification, ISO/NIST certification, or a complete enterprise-ready proof system.</p>
+        </div>
+      </section>
+
     </main>
   );
 }
