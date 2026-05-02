@@ -1,7 +1,7 @@
 {
   "ok": true,
   "type": "dsg-ux-route-map-verification",
-  "checkedAt": "2026-05-02T10:22:50.035Z",
+  "checkedAt": "2026-05-02T10:31:26.426Z",
   "routeChecks": 12,
   "flowOutcomeChecks": 3,
   "failures": [],
@@ -42,7 +42,7 @@
     {
       "id": "signed-evidence-bundle",
       "benefit": "User can export portable audit evidence for buyer, auditor, or consultant review.",
-      "action": "Open /evidence-pack and click Download signed evidence bundle.",
+      "action": "Open /evidence-pack and click Download evidence bundle.",
       "evidence": "Evidence bundle API returns bundleHash, eventHashes, and signature metadata.",
       "output": "/api/gateway/evidence/bundle?orgId=org-smoke",
       "files": [
@@ -51,7 +51,7 @@
         "lib/gateway/evidence-bundle.ts"
       ],
       "requiredText": [
-        "Download signed evidence bundle",
+        "Download evidence bundle",
         "bundleHash",
         "signature"
       ]

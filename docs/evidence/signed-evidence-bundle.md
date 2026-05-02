@@ -1,4 +1,4 @@
-# DSG Signed Evidence Bundle
+# DSG Evidence Bundle with Hash/Signature Metadata
 
 Purpose: provide a portable JSON evidence package for governed AI/tool execution.
 
@@ -40,6 +40,8 @@ DSG_EVIDENCE_SIGNING_KEY_ID
 
 If no signing secret is configured, DSG still returns a deterministic `bundleHash` and `eventHashes`, but `signatureMode` is `hash-only`.
 
+Implementation boundary: DSG ONE returns HMAC signature metadata when `DSG_EVIDENCE_SIGNING_SECRET` is configured. If the signing secret is not configured, DSG ONE returns hash-only signature metadata.
+
 ## Sample
 
 ```json
@@ -67,7 +69,7 @@ If no signing secret is configured, DSG still returns a deterministic `bundleHas
 
 ## Safe wording
 
-DSG provides portable signed evidence bundles for governed AI/tool execution, including bundle hashes, event hashes, and signing metadata.
+DSG provides portable evidence bundles for governed AI/tool execution, including bundle hashes, event hashes, and hash/signature metadata.
 
 ## Not claimed
 
@@ -75,3 +77,6 @@ DSG provides portable signed evidence bundles for governed AI/tool execution, in
 - ISO certification
 - NIST certification
 - Guaranteed compliance
+- WORM storage
+- External attestation
+- Third-party audit

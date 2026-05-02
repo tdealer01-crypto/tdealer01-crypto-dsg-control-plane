@@ -54,11 +54,11 @@ const flowOutcomes = [
   {
     id: 'signed-evidence-bundle',
     benefit: 'User can export portable audit evidence for buyer, auditor, or consultant review.',
-    action: 'Open /evidence-pack and click Download signed evidence bundle.',
+    action: 'Open /evidence-pack and click Download evidence bundle.',
     evidence: 'Evidence bundle API returns bundleHash, eventHashes, and signature metadata.',
     output: '/api/gateway/evidence/bundle?orgId=org-smoke',
     files: ['app/evidence-pack/page.tsx', 'app/api/gateway/evidence/bundle/route.ts', 'lib/gateway/evidence-bundle.ts'],
-    requiredText: ['Download signed evidence bundle', 'bundleHash', 'signature'],
+    requiredText: ['Download evidence bundle', 'bundleHash', 'signature'],
   },
 ];
 
