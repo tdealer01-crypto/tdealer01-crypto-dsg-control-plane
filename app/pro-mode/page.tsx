@@ -14,34 +14,34 @@ const benchmarkMetrics = [
 
 const capabilities = [
   {
-    title: 'Multi-agent orchestration',
+    title: 'Runtime gate evidence',
     description:
-      'Coordinate deterministic planners, operator agents, and policy gates in one execution fabric with explainable handoffs.',
+      'Review deterministic proof/gate scaffold outputs with disclosed static_check outcomes for runtime governance evaluation.',
   },
   {
-    title: 'Dual-chain ledger controls',
+    title: 'Policy and approval context',
     description:
-      'Track governance outcomes and finance operations through auditable, dual-ledger evidence aligned to enterprise controls.',
+      'Inspect policyVersion, structured constraints, and approval context used in disclosed/internal evidence-pack decisions.',
   },
   {
-    title: 'Enterprise security posture',
+    title: 'Replay-protection evidence',
     description:
-      'Use role boundaries, runtime policy checks, and replay-safe automation lanes built for regulated environments.',
+      'Validate proofHash, inputHash, constraintSetHash, and replay-protection evidence exposed by the deterministic gate scaffold.',
   },
   {
-    title: 'Real-time operational processing',
+    title: 'Evidence-pack review',
     description:
-      'Monitor queue depth, failure domains, and decision traces with live service-level metrics and operator feedback loops.',
+      'Use audit-ready/evidence-ready summaries, architecture notes, and due-diligence references without claiming certification.',
   },
 ];
 
 const doiResearch = ['10.5281/zenodo.18244246', '10.5281/zenodo.18225586', '10.5281/zenodo.18212854'];
 
 const narrationBlocks = [
-  'Welcome to Pro Mode. This page summarizes benchmark evidence, architecture posture, and research references for enterprise evaluation.',
-  'Current benchmark snapshot reports 38 out of 38 tests passed, 98.2 percent success rate, 45.2 milliseconds average latency, 1,429 requests per minute, 99.99 percent uptime, and zero reported transaction loss.',
-  'Core capabilities include multi-agent orchestration, dual-chain ledger controls, enterprise security posture, and real-time operational processing.',
-  'For due diligence, this page includes DOI references and separates evidence-pack disclosure from third-party certification language to avoid over-claiming.',
+  'Welcome to DSG ONE Pro Mode. Pro Mode is an evidence review surface for DSG ONE runtime governance evaluation.',
+  'Benchmark values on this page are disclosed/internal evidence-pack outcomes for review and due diligence.',
+  'The live deterministic gate scaffold uses static_check and exposes policyVersion, proofHash, inputHash, constraintSetHash, structured constraints, and replay-protection evidence.',
+  'This page does not claim certification, external audit, WORM storage, or an enterprise-ready proof system.',
 ];
 
 export default function ProModePage() {
@@ -138,24 +138,31 @@ export default function ProModePage() {
         </section>
 
         <section className="rounded-[2rem] border border-amber-300/20 bg-gradient-to-br from-amber-400/15 via-slate-900 to-slate-950 p-8 md:p-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-200">Pro Mode</p>
-          <h1 className="mt-4 text-4xl font-bold leading-tight md:text-6xl">Evidence-first automation for finance-grade control planes</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-200">DSG ONE Pro Mode</p>
+          <h1 className="mt-4 text-4xl font-bold leading-tight md:text-6xl">Evidence review surface for DSG ONE runtime governance.</h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-slate-200 md:text-lg">
-            Pro Mode provides a public proof surface for enterprise evaluators: benchmark snapshots, architecture coverage,
-            governance design patterns, and research references in one operator-friendly page.
+            Pro Mode organizes benchmark snapshots, proof/gate evidence, architecture notes, and research references for
+            evaluators. It supports review and due diligence, but does not claim certification, external audit, WORM
+            storage, or enterprise-ready proof completion.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              href="/request-access"
+              href="/evidence-pack"
               className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.01]"
             >
-              Request workspace access
+              View evidence pack
             </Link>
             <Link
               href="/docs"
               className="rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100"
             >
-              Read technical docs
+              Read developer docs
+            </Link>
+            <Link
+              href="/support"
+              className="rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100"
+            >
+              Contact DSG ONE support
             </Link>
           </div>
         </section>
@@ -163,8 +170,8 @@ export default function ProModePage() {
         <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold md:text-3xl">Benchmark snapshot</h2>
-              <p className="mt-2 text-slate-300">Public metrics summarized from the published proof pack and performance release artifacts.</p>
+              <h2 className="text-2xl font-semibold md:text-3xl">Internal evidence snapshot</h2>
+              <p className="mt-2 text-slate-300">Disclosed/internal metrics summarized from the evidence pack and review artifacts.</p>
             </div>
             <span className="rounded-full border border-emerald-300/35 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
               Evidence Pack
@@ -180,15 +187,15 @@ export default function ProModePage() {
             ))}
           </div>
           <p className="mt-5 text-sm text-slate-400">
-            Note: these values are presented as disclosed evidence-pack outcomes and should not be interpreted as an independent third-party certification.
+            These metrics are disclosed/internal evidence-pack outcomes, not independent third-party certification or SLA guarantees.
           </p>
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
-          <h2 className="text-2xl font-semibold md:text-3xl">Control-plane architecture at a glance</h2>
+          <h2 className="text-2xl font-semibold md:text-3xl">DSG ONE runtime governance at a glance</h2>
           <p className="mt-3 max-w-3xl text-slate-300">
-            The Pro Mode surface mirrors marketplace announcement structure for technical buyers: core capabilities,
-            security posture, and processing model.
+            Pro Mode presents disclosed governance evidence for evaluators, including deterministic gate outputs and
+            policy context for audit-ready/evidence-ready review.
           </p>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -204,7 +211,7 @@ export default function ProModePage() {
         <section className="grid gap-6 lg:grid-cols-2">
           <article className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
             <h2 className="text-2xl font-semibold">Research references</h2>
-            <p className="mt-3 text-slate-300">Public DOI links used for review conversations and technical due-diligence.</p>
+            <p className="mt-3 text-slate-300">Public DOI links provided as research references and due-diligence materials.</p>
             <ul className="mt-5 space-y-3 text-sm">
               {doiResearch.map((doi) => (
                 <li key={doi}>
@@ -225,9 +232,9 @@ export default function ProModePage() {
             <h2 className="text-2xl font-semibold">Accuracy and claims boundary</h2>
             <p className="mt-3 text-slate-300">To avoid over-claiming, Pro Mode separates evidence-pack disclosures from certification language.</p>
             <ul className="mt-5 space-y-3 text-sm leading-6 text-slate-200">
-              <li>• Evidence pack: reproducible test summaries, throughput traces, and published benchmark artifacts.</li>
-              <li>• Third-party certification: only shown when an independent certifier and report are explicitly cited.</li>
-              <li>• Enterprise buyers can request deeper controls documentation through the access workflow.</li>
+              <li>• Evidence pack: disclosed/internal benchmark summaries, deterministic proof/gate scaffold outputs, and review artifacts.</li>
+              <li>• Research references: DOI materials support due diligence and technical review, not certification.</li>
+              <li>• This page does not claim ISO certification, NIST certification, third-party audit, WORM storage, external attestation, production SLA, or complete enterprise-ready proof system.</li>
             </ul>
             <Link
               href="/support"
