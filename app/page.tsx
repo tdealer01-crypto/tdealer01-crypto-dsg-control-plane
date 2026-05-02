@@ -1,4 +1,8 @@
 import Link from 'next/link';
+import { ActionPathGraph } from '../components/ActionPathGraph';
+import { ConstraintChecklist } from '../components/ConstraintChecklist';
+import { EvidenceDrawer } from '../components/EvidenceDrawer';
+import { GateResultCard } from '../components/GateResultCard';
 
 const trustBar = [
   'Policy-enforced approval routing',
@@ -48,6 +52,8 @@ const launchLinks = [
     href: '/docs',
   },
 ];
+
+const DEMO_LABEL = 'Sample action context (homepage proof rail demo)';
 
 export default function HomePage() {
   return (
@@ -211,20 +217,64 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-16">
-        <div className="border border-emerald-300/25 bg-emerald-400/5 p-6">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Live Gate Evidence Scaffold</p>
-          <h2 className="mt-3 text-3xl font-semibold text-white">Verified deterministic scaffold fields</h2>
-          <ul className="mt-6 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
-            <li>policyVersion</li>
-            <li>inputHash</li>
-            <li>constraintSetHash</li>
-            <li>proofHash</li>
-            <li>structured constraint results</li>
-            <li>replay-protection evidence</li>
-            <li>solver.name: static_check</li>
-            <li>solver.version: dsg-deterministic-ts-0.0.0</li>
-            <li>constraintsChecked: 8</li>
-          </ul>
+        <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Homepage proof rail</p>
+        <h2 className="mt-3 text-3xl font-semibold text-white">Live deterministic gate evidence (scaffold)</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
+          Demo/sample action context only. This rail shows verified live scaffold fields and deterministic TypeScript static_check outputs from the current boundary.
+        </p>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <GateResultCard
+            status="PASS"
+            summary="policyVersion 1.0 loaded and all 8 configured deterministic constraints evaluated as pass for this sample request."
+            reason="No threshold, actor-role, or replay-protection violations were detected in the sample action context."
+            ruleRefs={['policyVersion:1.0', 'solver:static_check@dsg-deterministic-ts-0.0.0', 'constraintsChecked:8']}
+            demoLabel={DEMO_LABEL}
+          />
+          <ActionPathGraph
+            actor={{ id: 'actor-1', title: 'AP Maker (sample)', subtitle: 'role: finance_maker' }}
+            action={{ id: 'action-1', title: 'Submit invoice approval request', subtitle: 'sample amount within configured threshold' }}
+            policies={[
+              { id: 'p-1', title: 'Policy version', subtitle: '1.0 observed' },
+              { id: 'p-2', title: 'Replay protection', subtitle: 'nonce/idempotency/request hash present' },
+              { id: 'p-3', title: 'Constraint engine', subtitle: 'static_check deterministic evaluation' },
+            ]}
+            gateResult="PASS"
+            finalDecision="ALLOW in sample action context"
+            demoLabel={DEMO_LABEL}
+          />
+          <ConstraintChecklist
+            demoLabel={DEMO_LABEL}
+            items={[
+              { id: 'c1', label: 'Policy version resolved', detail: 'policyVersion observed as 1.0.', state: 'pass' },
+              { id: 'c2', label: 'Input hash recorded', detail: 'inputHash present in scaffold output.', state: 'pass' },
+              { id: 'c3', label: 'Constraint set hash recorded', detail: 'constraintSetHash present in scaffold output.', state: 'pass' },
+              { id: 'c4', label: 'Proof hash recorded', detail: 'proofHash present in scaffold output.', state: 'pass' },
+              { id: 'c5', label: 'Structured constraint results', detail: 'Per-constraint deterministic pass/fail structure present.', state: 'pass' },
+              { id: 'c6', label: 'Replay nonce present', detail: 'replayProtection.nonce present.', state: 'pass' },
+              { id: 'c7', label: 'Idempotency key present', detail: 'replayProtection.idempotencyKey present.', state: 'pass' },
+              { id: 'c8', label: 'Request hash present', detail: 'replayProtection.requestHash present.', state: 'pass' },
+            ]}
+          />
+          <EvidenceDrawer
+            title="Evidence availability"
+            demoLabel={DEMO_LABEL}
+            fields={[
+              { key: 'policyVersion', label: 'policyVersion', availability: 'present', detail: 'Observed value: 1.0.' },
+              { key: 'inputHash', label: 'inputHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
+              { key: 'constraintSetHash', label: 'constraintSetHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
+              { key: 'proofHash', label: 'proofHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
+              { key: 'constraintResults', label: 'structured constraint results', availability: 'present', detail: 'Per-constraint structured outcomes are present.' },
+              { key: 'nonce', label: 'replayProtection.nonce', availability: 'present', detail: 'Replay nonce present.' },
+              { key: 'idempotency', label: 'replayProtection.idempotencyKey', availability: 'present', detail: 'Idempotency key present.' },
+              { key: 'requestHash', label: 'replayProtection.requestHash', availability: 'present', detail: 'Request hash present.' },
+              { key: 'solverName', label: 'solver.name', availability: 'present', detail: 'Observed solver.name: static_check.' },
+              { key: 'solverVersion', label: 'solver.version', availability: 'present', detail: 'Observed solver.version: dsg-deterministic-ts-0.0.0.' },
+              { key: 'constraintsChecked', label: 'constraintsChecked', availability: 'present', detail: 'Observed constraintsChecked: 8.' },
+              { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Not claimed in this scaffold boundary.' },
+              { key: 'jwtJwks', label: 'JWT/JWKS auth completion', availability: 'planned', detail: 'Not claimed as complete in this homepage proof rail.' },
+              { key: 'worm', label: 'WORM storage completion', availability: 'planned', detail: 'Not claimed as complete in this homepage proof rail.' },
+            ]}
+          />
         </div>
       </section>
 
