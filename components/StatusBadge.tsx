@@ -15,10 +15,20 @@ const STYLES: Record<GateStatus, string> = {
   UNSUPPORTED: "border-slate-500/60 bg-slate-800 text-slate-200"
 };
 
+const SYMBOLS: Record<GateStatus, string> = {
+  PASS: "✓",
+  BLOCK: "!",
+  REVIEW: "?",
+  UNSUPPORTED: "—"
+};
+
 export function StatusBadge({ status, explanation, className }: StatusBadgeProps) {
   return (
-    <div className={`inline-flex items-start gap-2 rounded-md border px-3 py-2 ${STYLES[status]} ${className ?? ""}`}>
-      <span className="text-xs font-semibold tracking-wide">{status}</span>
+    <div
+      className={`inline-flex items-start gap-2 rounded-md border px-3 py-2 ${STYLES[status]} ${className ?? ""}`}
+      aria-label={`${status}: ${explanation}`}
+    >
+      <span className="text-xs font-semibold tracking-wide">{SYMBOLS[status]} {status}</span>
       <span className="text-xs leading-5">{explanation}</span>
     </div>
   );

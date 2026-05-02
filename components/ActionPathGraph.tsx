@@ -1,5 +1,5 @@
 import React from "react";
-import { GateStatus } from "./StatusBadge";
+import { GateStatus, StatusBadge } from "./StatusBadge";
 
 type ActionPathNode = {
   id: string;
@@ -36,8 +36,7 @@ export function ActionPathGraph({ actor, action, policies, gateResult, finalDeci
         </div>
         <div className="rounded border border-slate-700 p-2">
           <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Gate outcome</p>
-          <p>{gateResult}</p>
-          <p className="text-slate-400">Final decision: {finalDecision}</p>
+          <StatusBadge status={gateResult} explanation={`Final decision: ${finalDecision}`} />
         </div>
       </div>
     </section>

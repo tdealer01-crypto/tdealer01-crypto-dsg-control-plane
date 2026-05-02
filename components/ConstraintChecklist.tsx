@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ConstraintState = "pass" | "fail" | "review";
+export type ConstraintState = "pass" | "fail" | "review" | "unsupported";
 
 type ConstraintItem = {
   id: string;
@@ -17,7 +17,8 @@ type ConstraintChecklistProps = {
 const stateLabel: Record<ConstraintState, string> = {
   pass: "PASS",
   fail: "BLOCK",
-  review: "REVIEW"
+  review: "REVIEW",
+  unsupported: "UNSUPPORTED"
 };
 
 export function ConstraintChecklist({ items, demoLabel }: ConstraintChecklistProps) {

@@ -22,6 +22,13 @@ const availabilityClass: Record<EvidenceAvailability, string> = {
   unsupported: "text-slate-300"
 };
 
+const availabilitySymbol: Record<EvidenceAvailability, string> = {
+  present: "✓",
+  missing: "!",
+  planned: "?",
+  unsupported: "—"
+};
+
 export function EvidenceDrawer({ title = "Evidence", fields, demoLabel }: EvidenceDrawerProps) {
   return (
     <aside className="rounded-lg border border-slate-700 bg-slate-900/90 p-4">
@@ -34,7 +41,9 @@ export function EvidenceDrawer({ title = "Evidence", fields, demoLabel }: Eviden
           <li key={field.key} className="rounded border border-slate-700 p-2">
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm text-slate-100">{field.label}</p>
-              <span className={`text-xs uppercase ${availabilityClass[field.availability]}`}>{field.availability}</span>
+              <span className={`text-xs uppercase ${availabilityClass[field.availability]}`}>
+                {availabilitySymbol[field.availability]} {field.availability}
+              </span>
             </div>
             <p className="mt-1 text-xs text-slate-400">{field.detail}</p>
           </li>
