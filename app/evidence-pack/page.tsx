@@ -6,7 +6,7 @@ const evidence = [
   ["Comparison Rubric", "190/200, 95% internal rubric score", "Implemented"],
   ["Public Vendor Baseline", "5 public documentation baselines, vendorRuntimeTested=0", "Implemented"],
   ["Audit Export API", "Exportable JSON audit evidence", "Implemented"],
-  ["Signed Evidence Bundle", "Portable bundle with bundleHash, eventHashes, and signature metadata", "Implemented"],
+  ["Evidence Bundle with Hash/Signature Metadata", "Portable bundle with bundleHash, eventHashes, and signature metadata", "Implemented"],
   ["GitHub Secure Deploy Gate Action", "CI/CD gate evidence with verdict and evidence hash", "Implemented"],
   ["PDF Evidence Report", "Human-readable reviewer report", "Planned"],
 ];
@@ -21,11 +21,11 @@ export default function EvidencePackPage() {
             Audit evidence for governed AI execution
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG ONE produces structured AI action governance evidence with runtime decisions, request hashes, record hashes, benchmark evidence, invariant checks, signed evidence bundle metadata, and exportable audit records.
+            DSG ONE produces structured AI action governance evidence with runtime decisions, request hashes, record hashes, benchmark evidence, invariant checks, evidence bundle hash/signature metadata, and exportable audit records.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
-            <Link href="/api/gateway/evidence/bundle?orgId=org-smoke" className="rounded-xl border border-emerald-300/50 px-5 py-3 font-bold text-emerald-100">Download signed evidence bundle</Link>
+            <Link href="/api/gateway/evidence/bundle?orgId=org-smoke" className="rounded-xl border border-emerald-300/50 px-5 py-3 font-bold text-emerald-100">Download evidence bundle</Link>
             <Link href="/api/gateway/audit/export?orgId=org-smoke" className="rounded-xl border border-emerald-300/50 px-5 py-3 font-bold text-emerald-100">Open audit export JSON</Link>
             <Link href="/marketplace/production-evidence" className="rounded-xl border border-slate-700 px-5 py-3 font-bold text-slate-200">View production evidence</Link>
           </div>
@@ -45,7 +45,7 @@ export default function EvidencePackPage() {
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-2xl font-bold">Sample signed bundle structure</h2>
+          <h2 className="text-2xl font-bold">Sample evidence bundle structure</h2>
           <pre className="mt-5 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-200">{`{
   "type": "dsg-gateway-signed-evidence-bundle",
   "version": "1.0",
@@ -74,7 +74,10 @@ export default function EvidencePackPage() {
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            This page shows sample and internal production evidence. The signed evidence bundle is DSG ONE-generated audit evidence, not an independent third-party audit report. If no signing secret is configured, DSG ONE returns hash-only signature metadata instead of HMAC metadata.
+            This page shows sample and internal production evidence. DSG ONE returns HMAC signature metadata when DSG_EVIDENCE_SIGNING_SECRET is configured. If the signing secret is not configured, DSG ONE returns hash-only signature metadata.
+          </p>
+          <p className="mt-3 leading-7 text-slate-300">
+            This page does not claim WORM storage, external attestation, third-party audit, or guaranteed compliance.
           </p>
         </section>
       </div>
