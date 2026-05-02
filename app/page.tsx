@@ -5,9 +5,9 @@ import { EvidenceDrawer } from '../components/EvidenceDrawer';
 import { GateResultCard } from '../components/GateResultCard';
 
 const trustBar = [
-  'Policy-enforced approval routing',
-  'Maker-checker and exception controls',
-  'Exportable audit evidence bundles',
+  'Policy-routed action control',
+  'Deterministic PASS/BLOCK/REVIEW/UNSUPPORTED gates',
+  'Audit-ready proof and replay evidence',
 ];
 
 const painCards = [
@@ -26,10 +26,10 @@ const painCards = [
 ];
 
 const howSteps = [
-  'Submit an invoice, payment, vendor, or finance exception into a governed case.',
-  'DSG resolves the approval route from policy, threshold, role, and maker-checker context.',
-  'Approvers decide with visible policy, exception, and evidence context.',
-  'The system records decisions, exceptions, and evidence bundles for audit review.',
+  'Submit a high-risk AI, workflow, finance, or deployment action.',
+  'DSG ONE resolves policy, entitlement, risk, and approval context.',
+  'The deterministic gate returns PASS, BLOCK, REVIEW, or UNSUPPORTED.',
+  'The system records proof/gate evidence for audit review.',
 ];
 
 const launchLinks = [
@@ -120,8 +120,8 @@ export default function HomePage() {
             <div className="border border-amber-300/20 bg-black/30 p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between border-b border-white/10 pb-5">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Finance Mission Room</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">Approval Control Stack</h2>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Runtime Control Room</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">Governed Action Stack</h2>
                 </div>
                 <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-200">
                   Ready
@@ -142,15 +142,15 @@ export default function HomePage() {
               <div className="mt-6 grid gap-3 md:grid-cols-3">
                 <div className="border border-white/10 bg-[#111317] p-4">
                   <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Policy</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-100">Route by threshold</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-100">Route by policy</p>
                 </div>
                 <div className="border border-white/10 bg-[#111317] p-4">
                   <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Evidence</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-100">Bundle at decision time</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-100">Evidence at decision time</p>
                 </div>
                 <div className="border border-white/10 bg-[#111317] p-4">
                   <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Exceptions</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-100">Escalate with controls</p>
+                  <p className="mt-2 text-lg font-semibold text-slate-100">Review with controls</p>
                 </div>
               </div>
             </div>
