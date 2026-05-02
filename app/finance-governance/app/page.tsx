@@ -3,6 +3,7 @@ import { FinanceGovernanceRepository } from '../../../lib/finance-governance/rep
 import { getOrg } from '../../../lib/server/getOrg';
 
 const repository = new FinanceGovernanceRepository();
+export const dynamic = 'force-dynamic';
 
 export default async function FinanceGovernanceAppHomePage() {
   const orgId = await getOrg();

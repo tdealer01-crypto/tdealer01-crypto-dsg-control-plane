@@ -2,6 +2,7 @@ import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/
 import { getOrg } from '../../../../lib/server/getOrg';
 
 const repository = new FinanceGovernanceRepository();
+export const dynamic = 'force-dynamic';
 
 export default async function FinanceGovernanceApprovalsPage() {
   const orgId = await getOrg();
@@ -28,15 +29,23 @@ export default async function FinanceGovernanceApprovalsPage() {
             </tr>
           </thead>
           <tbody>
-            {approvals.map((item) => (
-              <tr key={item.id} className="border-t border-white/10 align-top">
-                <td className="px-5 py-4 font-semibold text-white">{item.id}</td>
-                <td className="px-5 py-4 text-slate-200">{item.vendor}</td>
-                <td className="px-5 py-4 text-slate-200">{item.amount}</td>
-                <td className="px-5 py-4 text-emerald-100">{item.status}</td>
-                <td className="px-5 py-4 text-slate-300">{item.risk}</td>
+            {approvals.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-5 py-8 text-center text-slate-300">
+                  No pending approvals for this workspace.
+                </td>
               </tr>
-            ))}
+            ) : (
+              approvals.map((item) => (
+                <tr key={item.id} className="border-t border-white/10 align-top">
+                  <td className="px-5 py-4 font-semibold text-white">{item.id}</td>
+                  <td className="px-5 py-4 text-slate-200">{item.vendor}</td>
+                  <td className="px-5 py-4 text-slate-200">{item.amount}</td>
+                  <td className="px-5 py-4 text-emerald-100">{item.status}</td>
+                  <td className="px-5 py-4 text-slate-300">{item.risk}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
