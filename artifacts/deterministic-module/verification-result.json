@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "type": "dsg-deterministic-module-verification",
+  "checkedAt": "2026-05-02T10:24:26.481Z",
+  "requiredFiles": 9,
+  "requiredTextChecks": 13,
+  "failures": [],
+  "userOutcome": "Deterministic module has proof/gate APIs, policy manifest, solver metadata, replay protection, and UNSUPPORTED-is-never-PASS enforcement."
+}

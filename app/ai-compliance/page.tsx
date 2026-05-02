@@ -14,7 +14,7 @@ const controls = [
 const routes = [
   { href: "/iso-42001", title: "ISO/IEC 42001 Alignment", body: "AI Management System workflow support without certification claims." },
   { href: "/nist-ai-rmf", title: "NIST AI RMF Alignment", body: "Govern, Map, Measure, and Manage workflow support for AI risk management." },
-  { href: "/controls", title: "Control Template Library", body: "Reusable DSG controls for identity, runtime invariants, approvals, evidence, and CI/CD gates." },
+  { href: "/controls", title: "Control Template Library", body: "Reusable DSG ONE controls for identity, runtime invariants, approvals, evidence, and CI/CD gates." },
   { href: "/approvals", title: "Approval Workflow", body: "Review queue and decision API for high-risk or approval-required AI actions." },
   { href: "/evidence-pack", title: "Evidence Pack", body: "Sample audit evidence, benchmark summary, signed bundle, requestHash, recordHash, and export structure." },
   { href: "/marketplace/production-evidence", title: "Production Evidence", body: "Gateway benchmark, SMT2 invariant evidence, and public baseline boundary." },
@@ -30,7 +30,7 @@ export default function AICompliancePage() {
             Govern AI actions before they reach production systems
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG helps organizations turn AI-proposed actions into governed, auditable, deterministic state transitions. It sits between AI intent and real-world execution, checking policy, risk, approval, entitlement, and mathematical invariants before action or audit commit.
+            DSG ONE helps organizations turn AI-proposed actions into governed, auditable, deterministic state transitions. It sits between AI intent and real-world execution, checking policy, risk, approval, entitlement, and mathematical invariants before action or audit commit.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/marketplace/production-evidence" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">
@@ -70,7 +70,7 @@ export default function AICompliancePage() {
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-2xl font-bold">What DSG controls</h2>
+          <h2 className="text-2xl font-bold">What DSG ONE controls</h2>
           <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {controls.map((item) => (
               <div key={item} className="rounded-xl border border-emerald-400/20 bg-slate-950 p-4 font-semibold text-emerald-100">
@@ -93,7 +93,7 @@ export default function AICompliancePage() {
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            DSG is positioned as a compliance-enabling control layer. It supports ISO/IEC 42001-aligned and NIST AI RMF-style workflows, but this page does not claim ISO certification, NIST certification, independent third-party audit, or guaranteed compliance.
+            DSG ONE is positioned as a compliance-enabling control layer. It supports ISO/IEC 42001-aligned and NIST AI RMF-style workflows, but this page does not claim ISO certification, NIST certification, independent third-party audit, or guaranteed compliance.
           </p>
         </section>
       </div>

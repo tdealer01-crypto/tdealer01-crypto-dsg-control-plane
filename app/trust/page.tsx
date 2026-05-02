@@ -17,7 +17,7 @@ export default function TrustPage() {
           <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">Phase 5 External Trust</p>
           <h1 className="mt-4 text-4xl font-black md:text-6xl">Buyer trust and external validation hub</h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG trust assets help buyers, consultants, and reviewers verify what exists today, reproduce core evidence, and understand what still requires external validation.
+            DSG ONE trust assets help buyers, consultants, and reviewers verify what exists today, reproduce core evidence, and understand what still requires external validation.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/reproducibility" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">Run reproducibility path</Link>

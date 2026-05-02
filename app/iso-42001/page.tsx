@@ -5,7 +5,7 @@ const rows = [
   ["Policy and approval checks", "Documented control workflow for sensitive AI actions", "Implemented"],
   ["Invariant checks", "Repeatable required-condition checks before execution", "Implemented"],
   ["requestHash and recordHash", "Traceability for action decision and result evidence", "Implemented"],
-  ["Monitor Mode", "Customer keeps runtime/API keys while DSG records evidence", "Implemented"],
+  ["Monitor Mode", "Customer keeps runtime/API keys while DSG ONE records evidence", "Implemented"],
   ["Audit export", "Reviewable evidence records", "Implemented"],
   ["GitHub Secure Deploy Gate Action", "CI/CD gating evidence", "Implemented"],
   ["Signed evidence bundle", "Portable evidence package", "Planned"],
@@ -22,7 +22,7 @@ export default function ISO42001Page() {
             AI Management System workflow support
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            ISO/IEC 42001:2023 specifies requirements for establishing, implementing, maintaining, and continually improving an Artificial Intelligence Management System for organizations that provide or use AI-based products or services. DSG maps to this direction as a control and evidence layer for governed AI execution.
+            ISO/IEC 42001:2023 specifies requirements for establishing, implementing, maintaining, and continually improving an Artificial Intelligence Management System for organizations that provide or use AI-based products or services. DSG ONE maps to this direction as a control and evidence layer for governed AI execution.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-sky-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
@@ -32,7 +32,7 @@ export default function ISO42001Page() {
 
         <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
           <div className="grid grid-cols-3 border-b border-slate-800 bg-slate-950 p-4 text-sm font-bold uppercase tracking-wide text-slate-300">
-            <div>DSG capability</div><div>AIMS workflow support</div><div>Status</div>
+            <div>DSG ONE capability</div><div>AIMS workflow support</div><div>Status</div>
           </div>
           {rows.map(([capability, support, status]) => (
             <div key={capability} className="grid grid-cols-3 gap-4 border-b border-slate-800 p-4 last:border-b-0">
@@ -46,7 +46,7 @@ export default function ISO42001Page() {
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            DSG supports ISO/IEC 42001-aligned AI governance workflows. This is not a claim that DSG is ISO/IEC 42001 certified.
+            DSG ONE supports ISO/IEC 42001-aligned AI governance workflows. This is not a claim that DSG ONE is ISO/IEC 42001 certified.
           </p>
         </section>
       </div>

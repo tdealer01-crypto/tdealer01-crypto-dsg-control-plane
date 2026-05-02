@@ -21,7 +21,7 @@ export default function EvidencePackPage() {
             Audit evidence for governed AI execution
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG produces structured AI action governance evidence with runtime decisions, request hashes, record hashes, benchmark evidence, invariant checks, signed evidence bundle metadata, and exportable audit records.
+            DSG ONE produces structured AI action governance evidence with runtime decisions, request hashes, record hashes, benchmark evidence, invariant checks, signed evidence bundle metadata, and exportable audit records.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
@@ -74,7 +74,7 @@ export default function EvidencePackPage() {
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            This page shows sample and internal production evidence. The signed evidence bundle is DSG-generated audit evidence, not an independent third-party audit report. If no signing secret is configured, DSG returns hash-only signature metadata instead of HMAC metadata.
+            This page shows sample and internal production evidence. The signed evidence bundle is DSG ONE-generated audit evidence, not an independent third-party audit report. If no signing secret is configured, DSG ONE returns hash-only signature metadata instead of HMAC metadata.
           </p>
         </section>
       </div>

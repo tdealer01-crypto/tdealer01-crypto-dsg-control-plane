@@ -89,13 +89,13 @@ export default function PricingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.26),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.16),transparent_30%),radial-gradient(circle_at_50%_70%,rgba(16,185,129,0.10),transparent_34%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#07080a_100%)]" />
         <div className="relative mx-auto max-w-7xl px-6 py-16 lg:py-24">
           <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
-            DSG Secure Deploy Gate Pricing
+            DSG ONE Secure Deploy Gate Pricing
           </p>
           <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
             Sell release confidence with GO / NO-GO evidence.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-            Start with the free GitHub Action, buy a one-time readiness report, or subscribe to hosted release-governance workflows for teams that need audit-ready production proof.
+            Start with the free GitHub Action, buy a one-time readiness report, or subscribe to hosted DSG ONE release-governance workflows for teams that need evidence-ready production proof.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/readiness-report" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-amber-200">
@@ -174,6 +174,14 @@ export default function PricingPage() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-12">
+        <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-slate-200">
+          <p className="font-semibold text-amber-100">Boundary</p>
+          <p>This pricing page describes DSG ONE products and support alignment. It does not claim certification, external audit completion, or guaranteed compliance outcomes.</p>
+          <p className="mt-2">If an item is demo/scaffold in related evidence pages, treat it as non-production proof until verified.</p>
         </div>
       </section>
     </main>
