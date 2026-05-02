@@ -8,28 +8,28 @@ const benchmarkMetrics = [
   { label: 'Success rate', value: '98.2%' },
   { label: 'Average latency', value: '45.2 ms' },
   { label: 'Throughput', value: '1,429 req/min' },
-  { label: 'Observed uptime', value: '99.99%' },
-  { label: 'Transaction loss', value: '0 reported' },
+  { label: 'Observed uptime', value: 'No certification / no SLA guarantee boundary' },
+  { label: 'Transaction loss', value: 'Internal validation only' },
 ];
 
 const capabilities = [
   {
-    title: 'Multi-agent orchestration',
+    title: 'Runtime gate evidence',
     description:
       'Coordinate deterministic planners, operator agents, and policy gates in one execution fabric with explainable handoffs.',
   },
   {
-    title: 'Dual-chain ledger controls',
+    title: 'Policy and approval context',
     description:
       'Track governance outcomes and finance operations through auditable, dual-ledger evidence aligned to enterprise controls.',
   },
   {
-    title: 'Enterprise security posture',
+    title: 'Replay-protection evidence',
     description:
       'Use role boundaries, runtime policy checks, and replay-safe automation lanes built for regulated environments.',
   },
   {
-    title: 'Real-time operational processing',
+    title: 'Evidence-pack review',
     description:
       'Monitor queue depth, failure domains, and decision traces with live service-level metrics and operator feedback loops.',
   },
@@ -137,17 +137,16 @@ export default function ProModePage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-amber-300/20 bg-gradient-to-br from-amber-400/15 via-slate-900 to-slate-950 p-8 md:p-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-amber-200">Pro Mode</p>
-          <h1 className="mt-4 text-4xl font-bold leading-tight md:text-6xl">Evidence-first automation for finance-grade control planes</h1>
+        <section className="rounded-[2rem] border border-amber-300/20 bg-gradient-to-br from-red-500/20 via-slate-900 to-slate-950 p-8 md:p-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-red-200">Pro Mode</p>
+          <h1 className="mt-4 text-4xl font-bold leading-tight md:text-6xl">DSG ONE Pro Mode</h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-slate-200 md:text-lg">
-            Pro Mode provides a public proof surface for enterprise evaluators: benchmark snapshots, architecture coverage,
-            governance design patterns, and research references in one operator-friendly page.
+            Evidence review surface for DSG ONE runtime governance.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/request-access"
-              className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.01]"
+              className="rounded-xl bg-red-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.01]"
             >
               Request workspace access
             </Link>
@@ -163,11 +162,11 @@ export default function ProModePage() {
         <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold md:text-3xl">Benchmark snapshot</h2>
+              <h2 className="text-2xl font-semibold md:text-3xl">Internal evidence snapshot</h2>
               <p className="mt-2 text-slate-300">Public metrics summarized from the published proof pack and performance release artifacts.</p>
             </div>
             <span className="rounded-full border border-emerald-300/35 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
-              Evidence Pack
+              Evidence Review
             </span>
           </div>
 
@@ -194,7 +193,7 @@ export default function ProModePage() {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {capabilities.map((item) => (
               <article key={item.title} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                <h3 className="text-lg font-semibold text-amber-100">{item.title}</h3>
+                <h3 className="text-lg font-semibold text-red-100">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-300">{item.description}</p>
               </article>
             ))}
@@ -212,7 +211,7 @@ export default function ProModePage() {
                     href={`https://doi.org/${doi}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-amber-100 underline decoration-amber-300/40 underline-offset-4"
+                    className="inline-flex items-center gap-2 text-red-100 underline decoration-red-300/40 underline-offset-4"
                   >
                     {doi}
                   </a>
@@ -231,7 +230,7 @@ export default function ProModePage() {
             </ul>
             <Link
               href="/support"
-              className="mt-6 inline-block rounded-xl border border-amber-300/35 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-100"
+              className="mt-6 inline-block rounded-xl border border-amber-300/35 bg-red-300/10 px-4 py-2 text-sm font-semibold text-red-100"
             >
               Contact the DSG ONE team
             </Link>
