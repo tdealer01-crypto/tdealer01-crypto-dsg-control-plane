@@ -94,6 +94,16 @@ type DeterminismResult = {
   error: string | null;
 };
 
+
+function formatSubscriptionStatus(status: string | undefined): string {
+  if (!status) return "-";
+  return status
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function normalizeAgent(input: unknown): Agent | null {
   if (!input || typeof input !== "object") return null;
   const row = input as Record<string, unknown>;
@@ -476,7 +486,7 @@ export default function DashboardPage() {
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Subscription</p>
-              <p className="mt-3 text-sm text-slate-200">{summary?.subscription_status || "-"}</p>
+              <p className="mt-3 text-sm text-slate-200">{formatSubscriptionStatus(summary?.subscription_status)}</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Period end</p>
