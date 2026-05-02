@@ -1,16 +1,23 @@
 import React from "react";
 
 type AuditExportFormat = "JSON" | "CSV" | "PDF";
+type ExportAvailability = "available" | "planned" | "unsupported";
+
+type AvailableFormat = {
+  label: AuditExportFormat;
+  availability: ExportAvailability;
+};
 
 type AuditExportPanelProps = {
-  availableFormats: AuditExportFormat[];
+  availableFormats: AvailableFormat[];
   bundleLabel: string;
   exportTimestamp: string;
   packHash?: string;
   demoLabel?: string;
+  onExport?: (format: AuditExportFormat) => void;
 };
 
-export function AuditExportPanel({ availableFormats, bundleLabel, exportTimestamp, packHash, demoLabel }: AuditExportPanelProps) {
+export function AuditExportPanel({ availableFormats, bundleLabel, exportTimestamp, packHash, demoLabel, onExport }: AuditExportPanelProps) {
   return (
     <section className="rounded-lg border border-slate-700 bg-slate-900/90 p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -19,16 +26,24 @@ export function AuditExportPanel({ availableFormats, bundleLabel, exportTimestam
       </div>
       <p className="text-sm text-slate-200">Bundle: {bundleLabel}</p>
       <p className="mt-1 text-xs text-slate-400">Export timestamp: {exportTimestamp}</p>
-      <p className="mt-1 text-xs text-slate-400">Pack hash: {packHash ?? "missing"}</p>
+      <p className="mt-1 text-xs text-slate-400">
+        Pack hash: {packHash ? `present (${packHash})` : "missing — export evidence is incomplete"}
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {availableFormats.map((format) => (
           <button
             type="button"
-            key={format}
-            className="rounded border border-slate-600 px-3 py-1 text-xs text-slate-200"
-            aria-label={`Export ${bundleLabel} as ${format}`}
+            key={format.label}
+            disabled={format.availability !== "available" || !onExport}
+            className="rounded border border-slate-600 px-3 py-1 text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={`Export ${bundleLabel} as ${format.label}`}
+            onClick={() => onExport?.(format.label)}
           >
-            Export {format}
+            {format.availability === "available"
+              ? onExport
+                ? `Export ${format.label}`
+                : `Export ${format.label} (Export not wired)`
+              : `${format.label} (${format.availability})`}
           </button>
         ))}
       </div>
