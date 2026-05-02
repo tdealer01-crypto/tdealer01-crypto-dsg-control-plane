@@ -33,6 +33,7 @@
     "benchmark:site": "node scripts/render-benchmark-site.mjs",
     "benchmark:full": "node scripts/benchmark-dsg.mjs && node scripts/render-benchmark-site.mjs",
     "ux:routes": "node scripts/verify-ux-route-map.mjs",
+    "verify:deterministic": "node scripts/verify-deterministic-module.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
     "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh"
