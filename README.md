@@ -25,6 +25,36 @@ Deterministic proof/gate scaffold: merged and operational in-repo
 Finance governance + gateway monitor migrations: present through 2026-04-30
 ```
 
+## Latest live deterministic gate evidence (verified)
+
+Observed live deterministic gate response confirms:
+
+```text
+ok: true
+type: dsg-deterministic-gate-decision
+gateStatus: PASS
+proofStatus: PASS
+riskLevel: high
+proofHash: present
+inputHash: present
+constraintSetHash: present
+policyVersion: 1.0
+solver.name: static_check
+solver.version: dsg-deterministic-ts-0.0.0
+replayProtection.nonce: present
+replayProtection.idempotencyKey: present
+replayProtection.requestHash: present
+constraintsChecked: 8
+all constraints passed: true
+```
+
+Allowed product claim:
+
+```text
+DSG production now exposes a live deterministic proof/gate scaffold with policyVersion,
+constraintSetHash, proofHash, structured constraints, and replay-protection evidence.
+```
+
 
 ### Deployment truth boundary
 

@@ -3,6 +3,22 @@
 ## Scope
 Control Plane deployment on Vercel + dependency readiness checks for DSG Core and Supabase.
 
+## Deterministic gate truth boundary
+
+Current production claim scope allows:
+- live deterministic proof/gate scaffold
+- deterministic TypeScript static-check scaffold metadata
+- policyVersion / constraintSetHash / proofHash / inputHash evidence
+- structured constraint results and replay-protection evidence
+
+Current production claim scope does not allow:
+- external Z3 solver invoked in production
+- enterprise-ready proof system
+- JWT/JWKS auth complete
+- WORM evidence storage complete
+- real cryptographic signing complete
+- third-party certification claims
+
 ## Preconditions
 - Access to Vercel project linked to this repository.
 - Supabase project credentials and migration privileges.

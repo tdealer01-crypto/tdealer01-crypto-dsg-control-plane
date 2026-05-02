@@ -56,6 +56,19 @@ Internally, it forwards to the current spine execution handler.
 - `POST /api/intent`
 - `POST /api/spine/execute`
 
+### Live deterministic proof/gate scaffold status
+
+- `GET /api/dsg/v1/policies/manifest` is live.
+- `POST /api/dsg/v1/gates/evaluate` is live and returns deterministic gate decision payloads.
+- `POST /api/dsg/v1/proofs/prove` is live as deterministic proof scaffold.
+- Verified payload evidence includes `policyVersion`, `constraintSetHash`, `proofHash`, `inputHash`, structured constraint results, and replay-protection fields.
+- Solver boundary remains deterministic TypeScript static-check scaffold metadata (`static_check`, `dsg-deterministic-ts-0.0.0`).
+
+Claim boundary reminder:
+- do not claim external Z3 production-solver invocation
+- do not claim enterprise-ready proof system
+- do not claim third-party certification or complete production governance platform
+
 These routes reflect the current spine-oriented execution shape in the control-plane repo.
 
 ### Authenticated operator routes
