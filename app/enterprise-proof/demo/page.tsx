@@ -224,8 +224,8 @@ export default function EnterpriseProofDemoPage() {
             </p>
             <p className="mt-4 leading-7 text-slate-300">
               For a pure code asset, valuation is lower. For a strategic buyer looking for an AI execution governance
-              layer, deterministic MCP gateway, audit proof system, and production-ready control plane, the discussion
-              is different.
+              layer, deterministic MCP gateway, audit-ready decision payloads, and a live deterministic proof/gate
+              scaffold control plane, the discussion is different.
             </p>
           </article>
 

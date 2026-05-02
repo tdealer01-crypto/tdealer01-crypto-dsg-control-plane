@@ -36,6 +36,14 @@ Use these interpretations unless a newer verified source overrides them:
   - `GET /api/capacity`
   - `POST /api/agent-chat`
 
+Deterministic gate status (live scaffold):
+
+- `GET /api/dsg/v1/policies/manifest`: live
+- `POST /api/dsg/v1/gates/evaluate`: live deterministic gate decision payload
+- `POST /api/dsg/v1/proofs/prove`: live deterministic proof scaffold
+- Current observed gate payload includes `policyVersion`, `constraintSetHash`, `proofHash`, `inputHash`, structured constraint results, and replay-protection fields.
+- Current solver metadata claim boundary: deterministic TypeScript static-check scaffold (`solver.name=static_check`, `solver.version=dsg-deterministic-ts-0.0.0`).
+
 ## Deployment truth
 
 Deployment and production-readiness checks must be grounded in `docs/RUNBOOK_DEPLOY.md`.
@@ -73,6 +81,14 @@ Repository test truth and production go-live truth are intentionally separate:
 - Go-live truth (current): **not yet complete** until runbook evidence is closed for deployment readiness, env validation, migration apply state, deployed smoke checks, authenticated operator checks, and live staging/E2E validation.
 
 Do not claim full production readiness from Vitest evidence alone.
+
+Do not upgrade beyond scaffold truth without new evidence:
+
+- no external Z3 production-solver invocation claim
+- no JWT/JWKS auth-complete claim
+- no WORM evidence storage complete claim
+- no real cryptographic-signing complete claim
+- no third-party certification claim
 
 ## Working rule for future sessions
 
