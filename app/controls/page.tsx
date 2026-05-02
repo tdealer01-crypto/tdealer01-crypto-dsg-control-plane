@@ -35,7 +35,7 @@ export default function ControlsPage() {
             Reusable AI action governance controls
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            DSG control templates help compliance teams and consultants operationalize deterministic gates, evidence requirements, approval rules, customer key custody, deploy gating, and signed evidence workflows.
+            DSG ONE control templates help compliance teams and consultants operationalize deterministic gates, evidence requirements, approval rules, customer key custody, deploy gating, and signed evidence workflows.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-cyan-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
@@ -128,7 +128,7 @@ export default function ControlsPage() {
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            DSG control templates support governance workflow adoption. They are not certification claims by themselves and do not guarantee compliance without proper implementation, review, and operating controls.
+            DSG ONE control templates support governance workflow adoption. They are not certification claims by themselves and do not guarantee compliance without proper implementation, review, and operating controls.
           </p>
         </section>
       </div>

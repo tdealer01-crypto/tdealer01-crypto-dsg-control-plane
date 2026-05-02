@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "type": "dsg-ux-route-map-verification",
+  "checkedAt": "2026-05-02T10:22:50.035Z",
+  "routeChecks": 12,
+  "flowOutcomeChecks": 3,
+  "failures": [],
+  "flowOutcomes": [
+    {
+      "id": "controls-to-evidence",
+      "benefit": "User can turn a governance control into evidence review.",
+      "action": "Open /controls and click Open evidence pack or Open JSON.",
+      "evidence": "The evidence pack page or control templates API returns visible evidence/control data.",
+      "output": "/evidence-pack or /api/gateway/controls/templates",
+      "files": [
+        "app/controls/page.tsx",
+        "app/evidence-pack/page.tsx",
+        "app/api/gateway/controls/templates/route.ts"
+      ],
+      "requiredText": [
+        "Open evidence pack",
+        "Open JSON"
+      ]
+    },
+    {
+      "id": "approval-decision",
+      "benefit": "Reviewer can approve or reject a review-required AI action.",
+      "action": "Open /approvals?orgId=org-smoke and click Approve or Reject on a pending item.",
+      "evidence": "Approval API records approvalHash and redirects with lastDecision.",
+      "output": "/approvals?orgId=org-smoke&lastDecision=...",
+      "files": [
+        "app/approvals/page.tsx",
+        "app/api/gateway/approvals/route.ts"
+      ],
+      "requiredText": [
+        "Approve",
+        "Reject",
+        "approvalHash",
+        "lastDecision"
+      ]
+    },
+    {
+      "id": "signed-evidence-bundle",
+      "benefit": "User can export portable audit evidence for buyer, auditor, or consultant review.",
+      "action": "Open /evidence-pack and click Download signed evidence bundle.",
+      "evidence": "Evidence bundle API returns bundleHash, eventHashes, and signature metadata.",
+      "output": "/api/gateway/evidence/bundle?orgId=org-smoke",
+      "files": [
+        "app/evidence-pack/page.tsx",
+        "app/api/gateway/evidence/bundle/route.ts",
+        "lib/gateway/evidence-bundle.ts"
+      ],
+      "requiredText": [
+        "Download signed evidence bundle",
+        "bundleHash",
+        "signature"
+      ]
+    }
+  ],
+  "userOutcome": "All audited DSG flows expose user benefit, real action, evidence, and tangible output."
+}

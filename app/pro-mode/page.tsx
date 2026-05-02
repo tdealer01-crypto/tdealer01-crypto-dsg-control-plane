@@ -233,7 +233,7 @@ export default function ProModePage() {
               href="/support"
               className="mt-6 inline-block rounded-xl border border-amber-300/35 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-100"
             >
-              Contact the DSG team
+              Contact the DSG ONE team
             </Link>
           </article>
         </section>

@@ -12,7 +12,7 @@ const controls = [
   "Policy/risk/approval checks",
   "Runtime invariant checks",
   "requestHash and recordHash audit proof",
-  "Monitor Mode without DSG custody of customer API keys",
+  "Monitor Mode without DSG ONE custody of customer API keys",
   "GitHub deploy gate for CI/CD risk control",
 ];
 
@@ -26,7 +26,7 @@ export default function NistAiRmfPage() {
             Govern, Map, Measure, and Manage AI action risk
           </h1>
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">
-            NIST AI RMF is a voluntary framework for managing AI risk and improving trustworthy AI. DSG supports NIST AI RMF-style workflows by placing deterministic controls, invariant checks, and audit evidence at the AI action execution boundary.
+            NIST AI RMF is a voluntary framework for managing AI risk and improving trustworthy AI. DSG ONE supports NIST AI RMF-style workflows by placing deterministic controls, invariant checks, and audit evidence at the AI action execution boundary.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/ai-compliance" className="rounded-xl bg-purple-400 px-5 py-3 font-bold text-black">Back to AI compliance</Link>
@@ -45,7 +45,7 @@ export default function NistAiRmfPage() {
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-2xl font-bold">DSG controls used in this alignment</h2>
+          <h2 className="text-2xl font-bold">DSG ONE controls used in this alignment</h2>
           <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {controls.map((control) => (
               <div key={control} className="rounded-xl border border-purple-400/20 bg-slate-950 p-4 font-semibold text-purple-100">
@@ -58,7 +58,7 @@ export default function NistAiRmfPage() {
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
-            DSG helps operationalize NIST AI RMF-style workflows. NIST AI RMF is voluntary and this page does not claim NIST certification.
+            DSG ONE helps operationalize NIST AI RMF-style workflows. NIST AI RMF is voluntary and this page does not claim NIST certification.
           </p>
         </section>
       </div>
