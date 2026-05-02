@@ -64,13 +64,13 @@ export default function FinanceGovernancePage() {
       <section className="mx-auto max-w-7xl px-6 pb-16 pt-20">
         <div className="max-w-4xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200 shadow-glow">
-            Finance Governance Control Plane
+            DSG ONE workflow
           </div>
           <h1 className="mt-8 text-5xl font-bold leading-tight md:text-7xl">
-            Control financial approvals with policy, proof, and audit-ready evidence.
+            Finance Governance is one governed workflow under DSG ONE.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-100">
-            DSG helps finance, compliance, and audit teams govern how transactions and supporting documents are submitted, reviewed, approved, escalated, and exported for audit without replacing the ERP.
+            DSG ONE provides runtime governance for high-risk actions. This Finance Governance surface focuses on transaction approvals, exceptions, and evidence workflows without replacing your ERP.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-4">
