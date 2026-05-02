@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const narration = "DSG ONE is an AI runtime control plane. It governs high-risk AI, agent, finance, and deployment actions before they affect production systems. The live product exposes deterministic proof and gate APIs, a policy manifest, proof hashes, constraint set hashes, and replay protection evidence. The correct claim is a live deterministic proof and gate scaffold, not external Z3 production, certification, or third party audit.";
+const narration = "DSG ONE is an AI runtime control plane. It governs high-risk AI, agent, finance, and deployment actions before they affect production systems. The currently verified live product exposes deterministic proof and gate scaffold APIs, a policy manifest, proof hashes, constraint set hashes, and replay protection evidence. The correct claim is a live deterministic proof and gate scaffold, not external Z3 production, certification, or third party audit.";
 
 const evidence = [
   "GET /api/dsg/v1/policies/manifest returns HTTP 200",
@@ -15,9 +15,9 @@ const evidence = [
 const boundaries = [
   "No independent third-party certification claim",
   "No external Z3 solver production claim yet",
-  "JWT/JWKS hardening remains a roadmap item",
-  "WORM / append-only evidence storage remains a roadmap item",
-  "Real Ed25519/ECDSA signing remains a roadmap item",
+  "JWT/JWKS hardening is not claimed as complete",
+  "WORM / append-only evidence storage is not claimed as complete",
+  "Ed25519/ECDSA signing is not claimed as complete",
 ];
 
 const segments = [
@@ -99,7 +99,7 @@ export default function FundraisingPage() {
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-2">
         <div className="rounded-3xl border border-emerald-300/20 bg-emerald-400/[0.06] p-6">
-          <h2 className="text-2xl font-bold text-emerald-100">Production evidence</h2>
+          <h2 className="text-2xl font-bold text-emerald-100">Verified live scaffold evidence</h2>
           <div className="mt-5 space-y-3">
             {evidence.map((item) => <div key={item} className="rounded-2xl border border-emerald-300/10 bg-black/25 p-4 text-sm leading-6 text-emerald-50">{item}</div>)}
           </div>
@@ -125,7 +125,7 @@ export default function FundraisingPage() {
         <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
           <h2 className="text-2xl font-bold text-white">Investor-safe one-liner</h2>
           <p className="mt-4 text-lg leading-8 text-zinc-300">
-            DSG ONE is a live AI runtime control plane that converts policy, approval, deterministic proof, and audit evidence into enforceable runtime decisions for high-risk AI and enterprise actions.
+            DSG ONE routes high-risk AI and enterprise actions through policy, approval, deterministic gate checks, and audit evidence before execution.
           </p>
         </div>
       </section>
