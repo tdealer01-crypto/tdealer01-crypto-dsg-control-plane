@@ -13,7 +13,7 @@ export default function SyncCenterPage() {
         <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-4"><StatusBadge status="REVIEW" explanation="Sync posture requires operator review." /><p className="mt-3 text-sm text-slate-300">What this page is: sync readiness overview.</p></div>
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-4"><StatusBadge status="UNSUPPORTED" explanation="No verified live sync execution on this public surface." /><p className="mt-3 text-sm text-slate-300">Live two-way sync execution is unsupported on this route.</p></div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4"><StatusBadge status="PASS" explanation="Route exists and links to valid governance surfaces." /><p className="mt-3 text-sm text-slate-300">Next action: review deterministic gate APIs before integration rollout.</p></div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4"><StatusBadge status="REVIEW" explanation="Route available as a compatibility/readiness surface; live sync execution remains unverified." /><p className="mt-3 text-sm text-slate-300">Route available as a compatibility/readiness surface; live sync execution remains unverified.</p></div>
         </section>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-2xl font-semibold">Next useful actions</h2>
