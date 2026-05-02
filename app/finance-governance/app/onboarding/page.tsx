@@ -1,29 +1,55 @@
-const steps = [
-  'Create or confirm the workspace',
-  'Invite finance, approver, audit, and admin roles',
-  'Select invoice or payment approval template',
-  'Publish the first policy version',
-  'Submit the first governed item',
-];
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { getOrg } from '../../../../lib/server/getOrg';
 
-export default function FinanceGovernanceOnboardingPage() {
+type ChecklistPayload = {
+  steps?: Array<string | { id?: string; label?: string; status?: 'todo' | 'in_progress' | 'done' }>;
+} | null;
+
+function mapChecklistToSteps(checklist: ChecklistPayload, bootstrapStatus: string | null | undefined) {
+  const rawSteps = Array.isArray(checklist?.steps) ? checklist.steps : [];
+  return rawSteps.map((step, index) => {
+    if (typeof step === 'string') {
+      return {
+        id: `step-${index + 1}`,
+        label: step,
+        status: bootstrapStatus === 'completed' ? 'done' : index === 0 ? 'in_progress' : 'todo',
+      };
+    }
+    return {
+      id: step.id || `step-${index + 1}`,
+      label: step.label || `Step ${index + 1}`,
+      status: step.status || (bootstrapStatus === 'completed' ? 'done' : index === 0 ? 'in_progress' : 'todo'),
+    };
+  });
+}
+
+export default async function FinanceGovernanceOnboardingPage() {
+  const orgId = await getOrg();
+  const admin = getSupabaseAdmin() as any;
+  const { data } = await admin
+    .from('org_onboarding_states')
+    .select('bootstrap_status, checklist')
+    .eq('org_id', orgId)
+    .maybeSingle();
+  const steps = mapChecklistToSteps(data?.checklist ?? null, data?.bootstrap_status);
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-16 text-white">
       <div className="max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">Onboarding</p>
         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Finance workflow onboarding template</h1>
         <p className="mt-6 text-lg leading-8 text-slate-300">
-          This page is the skeleton for the first-run setup flow that turns a new organization into a configured finance-governance workspace.
+          Automated onboarding flow synced from backend checklist state so compliance setup progress is always live.
         </p>
       </div>
 
       <div className="mt-10 grid gap-4">
         {steps.map((step, index) => (
-          <section key={step} className="flex items-center gap-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-6">
+          <section key={step.id} className="flex items-center gap-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-300/20 font-semibold text-emerald-100">
               {index + 1}
             </div>
-            <p className="text-base text-slate-100">{step}</p>
+            <p className="text-base text-slate-100">{step.label}</p>
           </section>
         ))}
       </div>
