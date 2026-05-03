@@ -69,7 +69,7 @@ export function createAppBuilderProposedPlan(input: {
       requiresApproval: needsDb,
       allowedPaths: ['supabase/migrations/**', 'lib/**'],
       allowedCommands: ['npm run typecheck'],
-      requiredSecrets: needsDb ? ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] : [],
+      requiredSecrets: needsDb ? ['SUPABASE_DATABASE_URL_RESOLVED', 'SUPABASE_SERVICE_ROLE_KEY'] : [],
       expectedEvidence: ['migration-file', 'migration-check-output'],
     },
     {
@@ -80,7 +80,7 @@ export function createAppBuilderProposedPlan(input: {
       requiresApproval: needsAuth,
       allowedPaths: ['app/**', 'lib/**', 'supabase/migrations/**'],
       allowedCommands: ['npm run typecheck', 'npm run lint'],
-      requiredSecrets: needsAuth ? ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] : [],
+      requiredSecrets: needsAuth ? ['SUPABASE_DATABASE_URL_RESOLVED', 'SUPABASE_SERVICE_ROLE_KEY'] : [],
       expectedEvidence: ['auth-rbac-diff', 'auth-check-output'],
     },
     {

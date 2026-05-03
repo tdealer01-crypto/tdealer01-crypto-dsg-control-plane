@@ -80,7 +80,7 @@ Repository test truth and production go-live truth are intentionally separate:
 - Test truth (current): April 17, 2026 committed Vitest baseline = `185 passed, 3 skipped, 0 failed`.
 - Go-live truth (current): **not yet complete** until runbook evidence is closed for deployment readiness, env validation, migration apply state, deployed smoke checks, authenticated operator checks, and live staging/E2E validation.
 
-Do not claim full production readiness from Vitest evidence alone.
+Do not claim full production readiness from Vitest evidence alone. Latest runbook evidence: `qa-logs/go-live-evidence-2026-05-03.md` (NO-GO / not closed).
 
 Do not upgrade beyond scaffold truth without new evidence:
 

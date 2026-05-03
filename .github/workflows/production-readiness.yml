@@ -201,6 +201,8 @@ jobs:
     needs: preflight-secrets-check
     outputs:
       health_status: ${{ steps.health.outputs.status }}
+      readiness_status: ${{ steps.readiness.outputs.status }}
+      finance_readiness_status: ${{ steps.finance_readiness.outputs.status }}
       monitor_status: ${{ steps.monitor.outputs.status }}
       usage_status: ${{ steps.usage.outputs.status }}
     steps:
@@ -240,6 +242,37 @@ jobs:
           echo "status=fail" >> $GITHUB_OUTPUT
           echo "✗ Health check failed after $MAX_RETRIES attempts"
           exit 1
+
+
+      - name: Check /api/readiness
+        id: readiness
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          HTTP_CODE=$(curl -sS -o /tmp/readiness.json -w "%{http_code}" --max-time 15 "${BASE_URL}/api/readiness" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ] && jq -e '.ok == true' /tmp/readiness.json > /dev/null 2>&1; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ Readiness check passed"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Readiness check failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+      - name: Check /api/finance-governance/readiness
+        id: finance_readiness
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          HTTP_CODE=$(curl -sS -o /tmp/finance_readiness.json -w "%{http_code}" --max-time 15 "${BASE_URL}/api/finance-governance/readiness" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ] && jq -e '.ok == true' /tmp/finance_readiness.json > /dev/null 2>&1; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ Finance readiness check passed"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Finance readiness check failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
 
       - name: Check /api/core/monitor
         id: monitor
@@ -287,6 +320,8 @@ jobs:
           | Endpoint | Status |
           |----------|--------|
           | /api/health | ${{ steps.health.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
+          | /api/readiness | ${{ steps.readiness.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
+          | /api/finance-governance/readiness | ${{ steps.finance_readiness.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
           | /api/core/monitor | ${{ steps.monitor.outputs.status == 'ready' && '✅ Ready' || steps.monitor.outputs.status == 'auth_required' && '🔒 Auth Required' || '⚠️ ' }}${{ steps.monitor.outputs.status }} |
           | /api/usage | ${{ steps.usage.outputs.status == 'pass' && '✅ Pass' || steps.usage.outputs.status == 'auth_required' && '🔒 Auth Required' || '⚠️ ' }}${{ steps.usage.outputs.status }} |
           EOF
@@ -317,14 +352,46 @@ jobs:
 
           ## Health Checks
           - /api/health: ${{ needs.health-check.outputs.health_status == 'pass' && '✅ Healthy' || '❌ Down' }}
+          - /api/readiness: ${{ needs.health-check.outputs.readiness_status == 'pass' && '✅ Ready' || '❌ Not Ready' }}
+          - /api/finance-governance/readiness: ${{ needs.health-check.outputs.finance_readiness_status == 'pass' && '✅ Ready' || '❌ Not Ready' }}
           - /api/core/monitor: ${{ needs.health-check.outputs.monitor_status }}
           - /api/usage: ${{ needs.health-check.outputs.usage_status }}
 
           ## Overall Status
-          ${{ needs.health-check.outputs.health_status == 'pass' && (needs.env-var-check.result == 'success' || needs.env-var-check.result == 'skipped') && '### ✅ Production Ready' || '### ⚠️ Review Required' }}
+          ${{ needs.env-var-check.result == 'success' && needs.db-migration-check.result == 'success' && needs.health-check.outputs.health_status == 'pass' && needs.health-check.outputs.readiness_status == 'pass' && needs.health-check.outputs.finance_readiness_status == 'pass' && '### ✅ Production Ready' || '### ⚠️ Review Required' }}
 
           Generated: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EOF
+
+
+      - name: Enforce production readiness gate
+        run: |
+          if [ "${{ needs.env-var-check.result }}" != "success" ]; then
+            echo "env-var-check is not success"
+            exit 1
+          fi
+
+          if [ "${{ needs.db-migration-check.result }}" != "success" ]; then
+            echo "db-migration-check is not success"
+            exit 1
+          fi
+
+          if [ "${{ needs.health-check.outputs.health_status }}" != "pass" ]; then
+            echo "/api/health is not pass"
+            exit 1
+          fi
+
+          if [ "${{ needs.health-check.outputs.readiness_status }}" != "pass" ]; then
+            echo "/api/readiness is not pass"
+            exit 1
+          fi
+
+          if [ "${{ needs.health-check.outputs.finance_readiness_status }}" != "pass" ]; then
+            echo "/api/finance-governance/readiness is not pass"
+            exit 1
+          fi
+
+          echo "Production readiness gate passed"
 
       - name: Create issue on scheduled failure
         if: github.event_name == 'schedule' && (needs.preflight-secrets-check.result == 'failure' || needs.env-var-check.result == 'failure' || needs.db-migration-check.result == 'failure' || needs.health-check.result == 'failure')

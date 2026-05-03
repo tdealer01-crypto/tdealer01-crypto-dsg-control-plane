@@ -20,7 +20,7 @@ When statements conflict, prefer the newer verified evidence in those files.
 Product identity: DSG ONE
 Mode: active
 Test baseline (2026-04-17): 185 passed, 3 skipped, 0 failed
-Production-readiness gate: not yet closed from committed evidence
+Production-readiness gate: not yet closed from committed evidence (latest run: qa-logs/go-live-evidence-2026-05-03.md)
 Deterministic proof/gate scaffold: merged and operational in-repo
 Finance governance + gateway monitor migrations: present through 2026-04-30
 ```
