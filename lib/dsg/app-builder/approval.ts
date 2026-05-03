@@ -1,9 +1,9 @@
 import type {
-  AppBuilderApprovalDecision,
   AppBuilderApprovedPlan,
   AppBuilderGateResult,
   AppBuilderProposedPlan,
 } from './model';
+import type { AppBuilderApprovalDecision } from './status';
 import { hashAppBuilderObject } from './hash';
 
 export function createAppBuilderPlanHash(input: {
