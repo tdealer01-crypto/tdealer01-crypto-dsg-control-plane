@@ -1,0 +1,3 @@
+Supabase applied-state proof was not retrievable from this environment.
+Evidence source expected: production Supabase CLI run in CI with project secrets.
+Status: NOT VERIFIED (environment/network constrained)
