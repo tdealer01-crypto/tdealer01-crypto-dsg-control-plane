@@ -2,8 +2,8 @@ import type {
   AppBuilderGateIssue,
   AppBuilderGateResult,
   AppBuilderProposedPlan,
-  AppBuilderRiskLevel,
 } from './model';
+import type { AppBuilderRiskLevel } from './status';
 
 const blockedCommands = [
   'rm -rf /',
