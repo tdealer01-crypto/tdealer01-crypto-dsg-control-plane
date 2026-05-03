@@ -11,14 +11,25 @@ Run these commands from a machine with network access to Vercel and Supabase.
 
 ## Step 1: Vercel Environment Variables
 
+Set the Supabase public envs in **all three Vercel environments** so every deploy target can build:
+- Production
+- Preview
+- Development
+
+Use either `NEXT_PUBLIC_SUPABASE_ANON_KEY` **or** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (this codebase supports both).
+
 ```bash
 # Login to Vercel CLI
 npx vercel login
 
 # Add required env vars (values from your Supabase project Settings → API)
-npx vercel env add NEXT_PUBLIC_SUPABASE_URL production
-npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
-npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
+for ENV in production preview development; do
+  npx vercel env add NEXT_PUBLIC_SUPABASE_URL "$ENV"
+  npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY "$ENV"
+  # Optional alternative used by parts of the codebase
+  npx vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY "$ENV"
+  npx vercel env add SUPABASE_SERVICE_ROLE_KEY "$ENV"
+done
 
 # Set app URL
 echo "https://tdealer01-crypto-dsg-control-plane.vercel.app" | npx vercel env add APP_URL production
@@ -29,7 +40,21 @@ echo "internal" | npx vercel env add DSG_CORE_MODE production
 
 # Verify all vars are set
 npx vercel env ls production
+npx vercel env ls preview
+npx vercel env ls development
 ```
+
+## Step 1.1: GitHub Actions Secrets/Variables (for CI/Build)
+
+If CI/build runs in GitHub Actions, add the same public Supabase envs in repository **Secrets or Variables**:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)
+
+Recommended paths:
+- GitHub repo → **Settings → Secrets and variables → Actions → Variables** (for public, non-sensitive URL)
+- GitHub repo → **Settings → Secrets and variables → Actions → Secrets** (for keys)
+
+This repository’s `CI` workflow is now wired to read those values first and fallback to placeholders only when missing.
 
 ## Step 2: Supabase Migrations
 
