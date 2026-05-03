@@ -1,16 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
-  AppBuilderApprovalDecision,
   AppBuilderApprovedPlan,
   AppBuilderGateResult,
   AppBuilderGoalInput,
   AppBuilderJob,
-  AppBuilderJobStatus,
   AppBuilderPrd,
   AppBuilderProposedPlan,
   LockedAppBuilderGoal,
 } from '../../app-builder/model';
-import type { AppBuilderClaimStatus } from '../../app-builder/status';
+import type {
+  AppBuilderApprovalDecision,
+  AppBuilderClaimStatus,
+  AppBuilderJobStatus,
+} from '../../app-builder/status';
 
 export type AppBuilderRepositoryContext = {
   db: SupabaseClient;
