@@ -8,16 +8,16 @@ import { EvidenceDrawer } from '../../components/EvidenceDrawer';
 import { GateResultCard } from '../../components/GateResultCard';
 import type { GateStatus } from '../../components/StatusBadge';
 
-type DomainOption = 'agent_action' | 'workflow_automation' | 'finance_approval' | 'deployment_action' | 'connector_call';
+type DomainOption = 'ai_agent' | 'workflow_automation' | 'finance_action' | 'deployment_action' | 'connector_api_call';
 type RiskOption = 'low' | 'medium' | 'high' | 'critical';
 type ModeOption = 'monitor' | 'gateway' | 'dry_run';
 
 const domainLabels: Record<DomainOption, string> = {
-  agent_action: 'AI agent',
+  ai_agent: 'AI agent',
   workflow_automation: 'workflow automation',
-  finance_approval: 'finance action',
+  finance_action: 'finance action',
   deployment_action: 'deployment action',
-  connector_call: 'connector/API call',
+  connector_api_call: 'connector/API call',
 };
 
 const modeLabels: Record<ModeOption, string> = {
@@ -34,8 +34,26 @@ function deriveGateStatus(risk: RiskOption, mode: ModeOption): GateStatus {
 export default function AutomationPage() {
   const [goal, setGoal] = useState('Deploy AI agent to production with customer-data access');
   const [domain, setDomain] = useState<DomainOption>('deployment_action');
+  const [plannerResult, setPlannerResult] = useState<any>(null);
+  const [plannerLoading, setPlannerLoading] = useState(false);
   const [risk, setRisk] = useState<RiskOption>('high');
   const [mode, setMode] = useState<ModeOption>('dry_run');
+
+
+  async function generatePlan() {
+    setPlannerLoading(true);
+    try {
+      const response = await fetch('/api/dsg/v1/planner/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal, domain, riskLevel: risk, mode }),
+      });
+      const json = await response.json();
+      setPlannerResult(json);
+    } finally {
+      setPlannerLoading(false);
+    }
+  }
 
   const gateStatus = useMemo(() => deriveGateStatus(risk, mode), [risk, mode]);
   const requiredApproval = risk === 'high' || risk === 'critical' || domain === 'deployment_action';
@@ -78,7 +96,7 @@ export default function AutomationPage() {
           <p className="mt-6 max-w-4xl text-lg leading-8 text-slate-300">Describe the action you want. DSG ONE turns it into a governed plan, maps policy/evidence/approval, and evaluates the deterministic gate scaffold before execution.</p>
           <p className="mt-4 max-w-4xl rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-sm text-amber-100">Hard boundary: this page is draft UI for planning/evaluation and does not execute real actions or prove production-readiness by itself.</p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <button className="rounded-2xl bg-amber-300 px-6 py-4 font-semibold text-slate-950 hover:bg-amber-200">Generate governed plan</button>
+            <button onClick={generatePlan} className="rounded-2xl bg-amber-300 px-6 py-4 font-semibold text-slate-950 hover:bg-amber-200">{plannerLoading ? 'Generating...' : 'Generate governed plan'}</button>
             <button className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 hover:border-amber-300/30">View gate evidence</button>
           </div>
         </div>
@@ -116,14 +134,15 @@ export default function AutomationPage() {
             <span className="rounded-full border border-amber-200/30 bg-amber-200/10 px-3 py-1 text-xs text-amber-100">Generated draft — not executed</span>
           </div>
           <ul className="mt-4 space-y-2 text-sm text-slate-200">
-            <li><strong>requested action:</strong> {domain}</li>
+            <li><strong>requested action:</strong> {plannerResult?.plan?.requestedAction || domain}</li>
             <li><strong>actor:</strong> operator / workspace org-1</li>
             <li><strong>resource:</strong> {requestPreview.resource.type} ({requestPreview.resource.classification})</li>
-            <li><strong>policyVersion:</strong> 1.0 (draft mapping)</li>
-            <li><strong>required approval:</strong> {requiredApproval ? 'required' : 'not required'}</li>
+            <li><strong>policyVersion:</strong> {plannerResult?.plan?.policyVersion || '1.0'} (draft mapping)</li>
+            <li><strong>required approval:</strong> {plannerResult?.plan?.requiredApproval || (requiredApproval ? 'required' : 'not required')}</li>
             <li><strong>required evidence:</strong> policyVersion, inputHash, replayProtection</li>
-            <li><strong>connector dependency:</strong> deployment pipeline</li>
-            <li><strong>risk reason:</strong> {risk} risk selected for {domainLabels[domain]}</li>
+            <li><strong>connector dependency:</strong> {plannerResult?.plan?.connectorDependency || 'deployment pipeline'}</li>
+            <li><strong>risk reason:</strong> {plannerResult?.plan?.riskReason || `${risk} risk selected for ${domainLabels[domain]}`}</li>
+            <li><strong>planner source:</strong> {plannerResult?.source || 'not_generated'}</li>
             <li><strong>mode:</strong> {modeLabels[mode]}</li>
           </ul>
         </article>
