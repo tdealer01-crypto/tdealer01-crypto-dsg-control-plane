@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { parseSseData, formatAgentEventMessage } from '../../../lib/agent/chat-event';
 
 type GateStatus = 'PASS' | 'BLOCK' | 'REVIEW' | 'UNSUPPORTED';
@@ -100,6 +100,22 @@ type ClaimRow = {
   evidenceRequired: string;
 };
 
+type ApprovalItem = {
+  id: string;
+  requestedAction: string;
+  risk: 'HIGH' | 'CRITICAL';
+  approverRole: string;
+  reason: string;
+  evidence: string;
+  routeStatus: 'wired' | 'not_wired';
+};
+
+type OperatorControl = {
+  label: string;
+  status: 'wired' | 'not_wired';
+  reason: string;
+};
+
 function formatDate(value?: string) {
   if (!value) return '-';
   try {
@@ -128,7 +144,7 @@ function StatusPill({ status }: { status: GateStatus | RuntimeStatus | ClaimStat
   return <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusTone(status)}`}>{status}</span>;
 }
 
-function Panel({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
+function Panel({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
     <section className="border border-white/10 bg-[#0d0f12] p-6">
       <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{eyebrow}</p>
@@ -184,22 +200,42 @@ const proofFields: EvidenceItem[] = [
   { label: 'external Z3 production invocation', state: 'unsupported', detail: 'Not claimed. Current solver boundary is static_check.', source: 'truth boundary' },
 ];
 
-const evidenceItems: EvidenceItem[] = [
-  { label: 'Context graph JSON', state: 'planned', detail: 'Required by Graphify skill. Not treated as live until generated.', source: 'proposed /api/dsg/context-graph/build' },
-  { label: 'GRAPH_REPORT.md', state: 'planned', detail: 'Must list inspected files, inferred edges, missing evidence, and risks.', source: 'Graphify context evidence layer' },
-  { label: 'Evidence manifest', state: 'missing', detail: 'Required before upgrading claim beyond review surface.', source: 'evidence gate' },
-  { label: 'Audit ledger entries', state: audit?.items?.length ? 'present' : 'missing', detail: audit?.items?.length ? `${audit.items.length} latest audit item(s) loaded.` : 'No audit items loaded for this page.', source: '/api/audit?limit=8' },
-  { label: 'Replay proof', state: 'missing', detail: 'Required for VERIFIED/DEPLOYABLE claim upgrades.', source: 'replay gate' },
-  { label: 'Deployment proof', state: 'missing', detail: 'Required before DEPLOYABLE claim.', source: 'deployment gate' },
-  { label: 'Production flow proof', state: 'missing', detail: 'Required before PRODUCTION claim.', source: 'production claim gate' },
-];
-
 const claimRows: ClaimRow[] = [
   { claim: 'BUILDABLE', status: 'PASS', reason: 'Command Center and Graphify workflow are defined as an operator surface.', evidencePresent: 'route + UI contract', evidenceRequired: 'repo inspection and implementation plan' },
   { claim: 'IMPLEMENTED', status: 'PASS', reason: 'This route exists in code and renders live health/capacity/audit surfaces.', evidencePresent: 'app/dashboard/command-center/page.tsx', evidenceRequired: 'merged code' },
   { claim: 'VERIFIED', status: 'REVIEW', reason: 'Verification depends on test/build output and evidence manifests.', evidencePresent: 'deterministic scaffold fields are disclosed', evidenceRequired: 'test output + evidence manifest + replay proof' },
   { claim: 'DEPLOYABLE', status: 'BLOCK', reason: 'Deployment proof is not shown as present on this page.', evidencePresent: 'none on this surface', evidenceRequired: 'Vercel ready state + deployment proof + build pass' },
   { claim: 'PRODUCTION', status: 'BLOCK', reason: 'Production user-flow proof is missing.', evidencePresent: 'none on this surface', evidenceRequired: 'production flow proof + auth/RBAC proof + audit/replay/evidence proof' },
+];
+
+const approvalItems: ApprovalItem[] = [
+  {
+    id: 'sample-high-risk-approval',
+    requestedAction: 'Runtime handoff for graph-backed implementation plan',
+    risk: 'HIGH',
+    approverRole: 'approver / owner',
+    reason: 'High-risk code/runtime changes require human approval before controlled execution.',
+    evidence: 'graph report + plan gate result + approval record required',
+    routeStatus: 'not_wired',
+  },
+  {
+    id: 'sample-production-claim-review',
+    requestedAction: 'Upgrade claim from REVIEW to PRODUCTION',
+    risk: 'CRITICAL',
+    approverRole: 'owner + compliance reviewer',
+    reason: 'Production claim requires real production-flow proof and cannot be auto-approved.',
+    evidence: 'deployment proof + production flow proof + audit/replay/evidence proof required',
+    routeStatus: 'not_wired',
+  },
+];
+
+const operatorControls: OperatorControl[] = [
+  { label: 'Pause runtime', status: 'not_wired', reason: 'Runtime control route not wired on this page.' },
+  { label: 'Resume runtime', status: 'not_wired', reason: 'Runtime control route not wired on this page.' },
+  { label: 'Kill runtime', status: 'not_wired', reason: 'Runtime control route not wired on this page.' },
+  { label: 'Approve action', status: 'not_wired', reason: 'Approval mutation route is not invoked from this surface.' },
+  { label: 'Reject action', status: 'not_wired', reason: 'Approval mutation route is not invoked from this surface.' },
+  { label: 'Request changes', status: 'not_wired', reason: 'Reviewer feedback route is not wired on this page.' },
 ];
 
 export default function CommandCenterPage() {
@@ -276,6 +312,19 @@ export default function CommandCenterPage() {
     return events.filter((item) => ['BLOCK', 'FREEZE'].includes((item.gate_result || '').toUpperCase()));
   }, [audit]);
 
+  const evidenceItems = useMemo<EvidenceItem[]>(
+    () => [
+      { label: 'Context graph JSON', state: 'planned', detail: 'Required by Graphify skill. Not treated as live until generated.', source: 'proposed /api/dsg/context-graph/build' },
+      { label: 'GRAPH_REPORT.md', state: 'planned', detail: 'Must list inspected files, inferred edges, missing evidence, and risks.', source: 'Graphify context evidence layer' },
+      { label: 'Evidence manifest', state: 'missing', detail: 'Required before upgrading claim beyond review surface.', source: 'evidence gate' },
+      { label: 'Audit ledger entries', state: audit?.items?.length ? 'present' : 'missing', detail: audit?.items?.length ? `${audit.items.length} latest audit item(s) loaded.` : 'No audit items loaded for this page.', source: '/api/audit?limit=8' },
+      { label: 'Replay proof', state: 'missing', detail: 'Required for VERIFIED/DEPLOYABLE claim upgrades.', source: 'replay gate' },
+      { label: 'Deployment proof', state: 'missing', detail: 'Required before DEPLOYABLE claim.', source: 'deployment gate' },
+      { label: 'Production flow proof', state: 'missing', detail: 'Required before PRODUCTION claim.', source: 'production claim gate' },
+    ],
+    [audit?.items],
+  );
+
   const auditUnavailableInInternalMode = useMemo(() => {
     const message = (audit?.error || '').toLowerCase();
     return message.includes('internal dsg core mode');
@@ -300,6 +349,8 @@ export default function CommandCenterPage() {
     ],
     [alerts.length, health?.core?.version, overallStatus],
   );
+
+  const hasNoRuntimeJobs = !audit?.items?.length && (capacity?.executions ?? 0) === 0;
 
   async function submitCommand() {
     const value = command.trim();
@@ -378,6 +429,17 @@ export default function CommandCenterPage() {
           ))}
         </section>
 
+        {hasNoRuntimeJobs ? (
+          <Panel eyebrow="Empty state" title="No active runtime job found">
+            <p className="text-sm leading-7 text-slate-300">No live job or audit stream is available on this page yet. Start from a safe planning surface or inspect public evidence before claiming runtime completion.</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950" href="/automation">Create governed draft in Auto Mode</Link>
+              <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/enterprise-proof/demo">View live gate evidence</Link>
+              <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/evidence-pack">Open evidence pack</Link>
+            </div>
+          </Panel>
+        ) : null}
+
         <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
           <div className="space-y-6">
             <Panel eyebrow="Claim gate summary" title="What can be claimed now">
@@ -403,6 +465,36 @@ export default function CommandCenterPage() {
                     <p className="mt-2 text-xs text-amber-100">Next action: {blocker.nextAction}</p>
                     <p className="mt-1 text-xs text-slate-500">Evidence required: {blocker.evidenceRequired}</p>
                   </article>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel eyebrow="Approval queue" title="High-risk actions need human review">
+              <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs leading-5 text-slate-400">Sample approval queue — buttons stay disabled until approval routes are wired into this page.</div>
+              <div className="space-y-3">
+                {approvalItems.map((item) => (
+                  <article key={item.id} className="border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-start justify-between gap-3"><h3 className="font-semibold text-white">{item.requestedAction}</h3><StatusPill status="REVIEW" /></div>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.reason}</p>
+                    <p className="mt-2 text-xs text-slate-500">Risk: {item.risk} · Required role: {item.approverRole}</p>
+                    <p className="mt-1 text-xs text-slate-500">Evidence: {item.evidence}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {['Approve', 'Reject', 'Request changes'].map((label) => (
+                        <button key={label} type="button" disabled className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-400 disabled:cursor-not-allowed disabled:opacity-60">{label} — route not wired</button>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel eyebrow="Runtime controls" title="Control routes are explicit">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {operatorControls.map((control) => (
+                  <button key={control.label} type="button" disabled className="rounded-xl border border-slate-700 bg-black/20 p-4 text-left disabled:cursor-not-allowed disabled:opacity-70">
+                    <span className="block text-sm font-semibold text-slate-200">{control.label}</span>
+                    <span className="mt-2 block text-xs leading-5 text-slate-500">{control.reason}</span>
+                  </button>
                 ))}
               </div>
             </Panel>
