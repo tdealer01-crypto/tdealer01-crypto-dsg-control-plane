@@ -1,7 +1,7 @@
 {
   "ok": true,
   "type": "dsg-ux-route-map-verification",
-  "checkedAt": "2026-05-02T10:31:26.426Z",
+  "checkedAt": "2026-05-03T00:52:19.102Z",
   "routeChecks": 12,
   "flowOutcomeChecks": 3,
   "failures": [],
