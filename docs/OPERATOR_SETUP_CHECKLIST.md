@@ -28,8 +28,14 @@ for ENV in production preview development; do
   npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY "$ENV"
   # Optional alternative used by parts of the codebase
   npx vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY "$ENV"
-  npx vercel env add SUPABASE_SERVICE_ROLE_KEY "$ENV"
 done
+
+# Server-side service role keys.
+# Do not reuse the production service role key in preview or development.
+# Use separate Supabase projects/keys for non-production environments.
+npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
+npx vercel env add SUPABASE_SERVICE_ROLE_KEY preview
+npx vercel env add SUPABASE_SERVICE_ROLE_KEY development
 
 # Set app URL
 echo "https://tdealer01-crypto-dsg-control-plane.vercel.app" | npx vercel env add APP_URL production
