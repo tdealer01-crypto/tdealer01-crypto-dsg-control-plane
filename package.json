@@ -36,7 +36,8 @@
     "verify:deterministic": "node scripts/verify-deterministic-module.mjs",
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
-    "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh"
+    "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh",
+    "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
