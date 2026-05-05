@@ -46,7 +46,9 @@ jobs:
             "treeHash": "${{ inputs.tree_hash }}",
             "githubRunId": "${{ github.run_id }}",
             "githubSha": "${{ github.sha }}",
-            "status": "${{ job.status }}"
+            "status": "${{ job.status }}",
+            "startedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "completedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           JSON
 
@@ -56,3 +58,10 @@ jobs:
           name: dsg-build-proof-${{ inputs.job_id }}
           path: .dsg-build-proof/
           retention-days: 7
+
+      - name: Upload signed build proof callback
+        if: always()
+        env:
+          DSG_CALLBACK_SECRET: ${{ secrets.DSG_CALLBACK_SECRET }}
+          DSG_BUILD_PROOF_CALLBACK_URL: ${{ secrets.DSG_BUILD_PROOF_CALLBACK_URL }}
+        run: node scripts/dsg-upload-build-proof-evidence.mjs
