@@ -1,0 +1,45 @@
+name: Kaggle Community Showcase
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "benchmarks/kaggle-community/**"
+      - "scripts/kaggle-community-showcase.mjs"
+      - ".github/workflows/kaggle-community-showcase.yml"
+      - "package.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kaggle-community-showcase-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  showcase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate Kaggle community showcase artifacts
+        run: npm run benchmark:kaggle:community
+
+      - name: Run Python task self-test
+        run: python benchmarks/kaggle-community/dsg_finance_governance_tasks.py
+
+      - name: Publish report to job summary
+        run: cat artifacts/kaggle-community-showcase/kaggle-community-showcase-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Kaggle community showcase artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-kaggle-community-showcase
+          path: artifacts/kaggle-community-showcase
