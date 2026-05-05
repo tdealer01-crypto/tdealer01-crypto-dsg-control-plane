@@ -1,0 +1,65 @@
+{
+  "table": "tasks",
+  "create": {
+    "method": "POST",
+    "headers": [
+      "x-dsg-workspace-id",
+      "x-dsg-org-id"
+    ],
+    "payload": {
+      "title": "DSG Production Flow Test",
+      "done": false,
+      "metadata": {
+        "source": "dsg-production-flow"
+      }
+    },
+    "expect": {
+      "ok": true,
+      "status": 201
+    }
+  },
+  "read": {
+    "method": "GET",
+    "headers": [
+      "x-dsg-workspace-id",
+      "x-dsg-org-id"
+    ],
+    "expect": {
+      "ok": true,
+      "containsCreatedRecord": true
+    }
+  },
+  "update": {
+    "method": "PATCH",
+    "headers": [
+      "x-dsg-workspace-id",
+      "x-dsg-org-id"
+    ],
+    "payload": {
+      "id": "<created.id>",
+      "title": "DSG Production Flow Test Updated",
+      "done": true,
+      "metadata": {
+        "source": "dsg-production-flow",
+        "updated": true
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  "delete": {
+    "method": "DELETE",
+    "headers": [
+      "x-dsg-workspace-id",
+      "x-dsg-org-id"
+    ],
+    "query": {
+      "id": "<created.id>"
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  "contractHash": "sha256:2f327519092aface81bc830fe463bfb5ec8f2b121b5412edbe805f00bb592717"
+}

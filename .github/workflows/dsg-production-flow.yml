@@ -45,6 +45,10 @@ jobs:
           DSG_JOB_ID: ${{ inputs.job_id }}
           DSG_PREVIEW_URL: ${{ inputs.preview_url }}
           DSG_GATE_HASH: ${{ inputs.gate_hash }}
+          DSG_CRUD_CONTRACT_PATH: .dsg-contracts/tasks-crud-contract.json
+          DSG_TEST_WORKSPACE_ID: 00000000-0000-4000-8000-000000000101
+          DSG_TEST_ORG_ID: 00000000-0000-4000-8000-000000000201
+          DSG_CALLBACK_SECRET: ${{ secrets.DSG_CALLBACK_SECRET }}
           DSG_TEST_IDENTITY: ${{ secrets.DSG_TEST_IDENTITY }}
 
       - name: Upload DSG production flow evidence
