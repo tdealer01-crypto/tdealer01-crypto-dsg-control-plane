@@ -6,7 +6,8 @@ vi.mock('@/lib/dsg/server/repository', () => ({
   recordReplayProof: vi.fn(async () => ({ id: 'rp1' })),
 }));
 
-import { POST, computeBuildProofHash } from '@/app/api/dsg/runtime/build-proof/callback/route';
+import { POST } from '@/app/api/dsg/runtime/build-proof/callback/route';
+import { computeBuildProofHash } from '@/lib/dsg/server/build-proof';
 import { recordReplayProof } from '@/lib/dsg/server/repository';
 
 const basePayload = {

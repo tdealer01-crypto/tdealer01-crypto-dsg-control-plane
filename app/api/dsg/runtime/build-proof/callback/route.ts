@@ -1,21 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { computeBuildProofHash, type BuildProofPayload } from '@/lib/dsg/server/build-proof';
 import { recordReplayProof, writeEvidence } from '@/lib/dsg/server/repository';
-
-export type BuildProofPayload = {
-  jobId: string;
-  branch: string;
-  treeHash: string;
-  githubRunId: string;
-  githubSha: string;
-  status: string;
-  startedAt?: string;
-  completedAt?: string;
-};
-
-export function computeBuildProofHash(payload: BuildProofPayload): string {
-  return createHmac('sha256', 'dsg-build-proof-hash').update(JSON.stringify(payload)).digest('hex');
-}
 
 function verifySignature(rawBody: string, header: string | null, secret: string): boolean {
   if (!header || !header.startsWith('sha256=')) return false;
