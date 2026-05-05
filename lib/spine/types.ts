@@ -1,6 +1,7 @@
 import type { CanonicalInput } from '../runtime/canonical';
 
 export type Decision = 'ALLOW' | 'STABILIZE' | 'BLOCK';
+import type { CanonicalInput } from '../runtime/canonical';
 
 type CanonicalRecord = { [key: string]: CanonicalInput | undefined };
 
@@ -60,6 +61,8 @@ export type PipelineResult = {
   authoritative_plugin_id: string;
   stages: PipelineStageTrace[];
 };
+
+type CanonicalRecord = { [key: string]: CanonicalInput | undefined };
 
 export type SpineIntentPayload = {
   agentId: string;
