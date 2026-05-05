@@ -10,3 +10,6 @@ coverage/
 
 # TypeScript build cache
 tsconfig.tsbuildinfo
+
+# DSG local secrets
+.dsg-local/
