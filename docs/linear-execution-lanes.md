@@ -32,3 +32,7 @@ npm run dsg:verify
 ```
 
 If any check fails, PR must stay blocked until fixed.
+
+## Claim boundary
+
+This document coordinates execution only. It does not claim Manus parity, production readiness, build proof completion, deploy proof completion, Auth/RBAC proof completion, or CRUD proof completion.
