@@ -1,6 +1,8 @@
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { getOrg } from '../../../../lib/server/getOrg';
 
+export const dynamic = 'force-dynamic';
+
 type ChecklistPayload = {
   steps?: Array<string | { id?: string; label?: string; status?: 'todo' | 'in_progress' | 'done' }>;
 } | null;
