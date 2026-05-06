@@ -6,8 +6,9 @@ import { useState } from 'react';
 
 const PUBLIC_NAV = [
   { href: '/', label: 'Home' },
+  { href: '/proofgate', label: 'ProofGate' },
   { href: '/enterprise-ready', label: 'Enterprise Ready' },
-  { href: '/finance-governance', label: 'Finance Governance' },
+  { href: '/finance-governance', label: 'Finance' },
   { href: '/automation', label: 'Automation' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
@@ -31,7 +32,7 @@ export default function GlobalNav() {
           </span>
           <div>
             <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">DSG ONE</p>
-            <p className="text-sm font-semibold text-slate-100">AI Runtime Control Plane</p>
+            <p className="text-sm font-semibold text-slate-100">ProofGate Control Plane</p>
           </div>
         </Link>
 
@@ -50,10 +51,10 @@ export default function GlobalNav() {
               {item.label}
             </Link>
           ))}
-          <Link href="/enterprise-ready" className="rounded-xl bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950">
+          <Link href="/dashboard/integrations" className="dsg-btn-gold text-sm">
             Start setup
           </Link>
-          <Link href="/login" className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950">
+          <Link href="/login" className="dsg-btn-blue text-sm">
             Login
           </Link>
         </nav>
@@ -90,10 +91,10 @@ export default function GlobalNav() {
               {item.label}
             </Link>
           ))}
-          <Link href="/enterprise-ready" onClick={() => setOpen(false)} className="block rounded-xl bg-emerald-300 px-4 py-3 text-center text-sm font-semibold text-slate-950">
+          <Link href="/dashboard/integrations" onClick={() => setOpen(false)} className="block rounded-xl bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-slate-950">
             Start setup
           </Link>
-          <Link href="/login" onClick={() => setOpen(false)} className="block rounded-xl bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-slate-950">
+          <Link href="/login" onClick={() => setOpen(false)} className="block rounded-xl border border-blue-300/30 bg-blue-300/10 px-4 py-3 text-center text-sm font-semibold text-blue-200">
             Login
           </Link>
         </nav>
