@@ -12,6 +12,7 @@
     "dsg:runtime-check": "node scripts/dsg-deterministic-runtime-check.mjs",
     "dsg:typecheck": "tsc --noEmit",
     "dsg:production-flow-check": "node scripts/dsg-production-flow-check.mjs",
+    "dsg:product-ready": "node scripts/dsg-product-ready-check.mjs",
     "dsg:verify": "npm run dsg:claim-gate && npm run dsg:runtime-check && npm run dsg:typecheck && npm run lint",
     "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh",
     "smoke:app-builder-flow-proof": "node scripts/dsg-app-builder-flow-proof-smoke.mjs"
