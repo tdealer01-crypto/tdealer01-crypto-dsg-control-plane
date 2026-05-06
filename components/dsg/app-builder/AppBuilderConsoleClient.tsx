@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PRDViewer } from './PRDViewer';
 import { PlanObserverPanel } from './PlanObserverPanel';
 import { HandoffPanel } from './HandoffPanel';
@@ -43,6 +43,10 @@ type JobResponse = {
   error?: { code: string; message: string };
 };
 
+type PreviewMode = 'concept' | 'live' | 'monitor';
+
+const liveGeneratedAppPath = '/generated-apps/2f3b20b0-824c-4d4a-ae6a-250bd18f3392';
+
 const starterApps = [
   {
     label: 'เกม ABC เด็ก 3 ขวบ',
@@ -66,6 +70,18 @@ const starterApps = [
   },
 ];
 
+function statusTone(status: string) {
+  if (status.includes('BLOCK') || status.includes('FAILED') || status.includes('REQUIRED')) return 'border-rose-400/40 bg-rose-500/10 text-rose-100';
+  if (status.includes('JOB_CREATED') || status.includes('PRD') || status.includes('PLAN') || status.includes('APPROVED')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
+  return 'border-amber-400/40 bg-amber-500/10 text-amber-100';
+}
+
+function stateTone(state: string) {
+  if (state.includes('BLOCK') || state.includes('REQUIRED') || state.includes('NOT_CONFIGURED')) return 'border-rose-400/40 bg-rose-500/10 text-rose-100';
+  if (state.includes('ready') || state.includes('APPROVED') || state.includes('created')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
+  return 'border-slate-700 bg-slate-950 text-slate-300';
+}
+
 export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuilderPrd }) {
   const [goal, setGoal] = useState('Build a CRM dashboard for small teams with contacts, tasks, notes, and workspace roles.');
   const [criteria, setCriteria] = useState('User can create records\nUser can see saved data\nBackend/API/database proof is visible\nProduction claim stays blocked until evidence exists');
@@ -78,19 +94,26 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
   const [templateName, setTemplateName] = useState('Initial product console');
   const [status, setStatus] = useState('Ready. Pick an example or describe an app, then create a governed job.');
   const [createdJobUrl, setCreatedJobUrl] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('concept');
   const [loadingJob, setLoadingJob] = useState(false);
   const [loadingPrd, setLoadingPrd] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [loadingHandoff, setLoadingHandoff] = useState(false);
   const [loadingRuntimeGate, setLoadingRuntimeGate] = useState(false);
 
-  function successCriteria() {
-    return criteria.split('\n').map((line) => line.trim()).filter(Boolean);
-  }
+  const criteriaList = useMemo(() => criteria.split('\n').map((line) => line.trim()).filter(Boolean), [criteria]);
+  const timeline = useMemo(() => [
+    { label: 'Goal', state: goal.trim() ? 'ready' : 'BLOCKED', detail: goal.trim() ? 'User command captured' : 'Goal required' },
+    { label: 'PRD', state: prd ? 'ready' : 'waiting', detail: prd?.title || 'Generate PRD' },
+    { label: 'Plan', state: plan ? 'ready' : 'waiting', detail: plan ? 'Plan observer available' : 'Run Plan + Observer' },
+    { label: 'Handoff', state: handoff ? handoff.status : 'waiting', detail: handoff ? 'Approval handoff created' : 'Approval required' },
+    { label: 'Runtime gate', state: runtimeGate ? runtimeGate.status : 'waiting', detail: runtimeGate ? runtimeGate.status : 'Not executed' },
+  ], [goal, prd, plan, handoff, runtimeGate]);
 
   function applyStarter(app: (typeof starterApps)[number]) {
     setGoal(app.goal);
     setCriteria(app.criteria.join('\n'));
+    setPreviewMode('concept');
     setCreatedJobUrl(null);
     setStatus(`Loaded example: ${app.label}. Review the goal, then create a governed job.`);
   }
@@ -111,20 +134,10 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           goal: trimmedGoal,
-          successCriteria: successCriteria(),
-          targetStack: {
-            frontend: 'nextjs',
-            backend: 'next-api',
-            database: 'supabase-postgres',
-            auth: 'none',
-            deploy: 'vercel',
-          },
-          constraints: [
-            'no production-ready claim without build/deploy/evidence proof',
-            'no mock data presented as production evidence',
-            'show a user-visible next action when blocked',
-          ],
-          userNotes: 'Self-service builder job. Manus-style reference only: task-to-result UX, not brand/copy clone.',
+          successCriteria: criteriaList,
+          targetStack: { frontend: 'nextjs', backend: 'next-api', database: 'supabase-postgres', auth: 'none', deploy: 'vercel' },
+          constraints: ['no production-ready claim without build/deploy/evidence proof', 'no mock data presented as production evidence', 'show a user-visible next action when blocked'],
+          userNotes: 'Self-service builder job. App-builder UX reference: command, live preview, monitor, and evidence panel in one workspace.',
         }),
       });
       const json = (await response.json()) as JobResponse;
@@ -143,11 +156,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
     setLoadingPrd(true);
     setStatus('Generating deterministic PRD draft…');
     try {
-      const response = await fetch('/api/dsg/app-builder/prd', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ goal }),
-      });
+      const response = await fetch('/api/dsg/app-builder/prd', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ goal }) });
       const json = (await response.json()) as PrdResponse;
       if (!response.ok || !json.ok || !json.prd) throw new Error(json.error?.message || 'APP_BUILDER_PRD_FAILED');
       setPrd(json.prd);
@@ -169,11 +178,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
     setLoadingPlan(true);
     setStatus('Deriving plan draft and running observer…');
     try {
-      const response = await fetch('/api/dsg/app-builder/plan', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ prd }),
-      });
+      const response = await fetch('/api/dsg/app-builder/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prd }) });
       const json = (await response.json()) as PlanResponse;
       if (!response.ok || !json.ok || !json.plan || !json.observer) throw new Error(json.error?.message || 'APP_BUILDER_PLAN_FAILED');
       setPlan(json.plan);
@@ -197,11 +202,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
     setLoadingHandoff(true);
     setStatus('Evaluating approval gate and creating runtime handoff draft…');
     try {
-      const response = await fetch('/api/dsg/app-builder/handoff', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ plan, observer }),
-      });
+      const response = await fetch('/api/dsg/app-builder/handoff', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan, observer }) });
       const json = (await response.json()) as HandoffResponse;
       if (!response.ok || !json.ok || !json.approvalGate || !json.handoff) throw new Error(json.error?.message || 'APP_BUILDER_HANDOFF_FAILED');
       setApprovalGate(json.approvalGate);
@@ -229,26 +230,10 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           handoff,
-          approval: {
-            status: approvalGate?.approved ? 'APPROVED' : approvalGate?.status || 'BLOCKED',
-            signatureValid: approvalGate?.approved === true,
-          },
-          secrets: {
-            exists: false,
-            expired: true,
-            requiredSecrets,
-            availableSecrets: [],
-          },
-          executorPool: {
-            available: 0,
-            health: 'NOT_CONFIGURED',
-            mode: 'vercel-serverless-gate-only',
-          },
-          proofBundle: {
-            requiredFields: ['audit_export', 'evidence_manifest', 'deployment_proof', 'auth_rbac_proof'],
-            presentFields: [],
-            hashChainValid: false,
-          },
+          approval: { status: approvalGate?.approved ? 'APPROVED' : approvalGate?.status || 'BLOCKED', signatureValid: approvalGate?.approved === true },
+          secrets: { exists: false, expired: true, requiredSecrets, availableSecrets: [] },
+          executorPool: { available: 0, health: 'NOT_CONFIGURED', mode: 'vercel-serverless-gate-only' },
+          proofBundle: { requiredFields: ['audit_export', 'evidence_manifest', 'deployment_proof', 'auth_rbac_proof'], presentFields: [], hashChainValid: false },
         }),
       });
       const json = (await response.json()) as RuntimeGateResponse;
@@ -263,80 +248,110 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-300">Self-service App Builder</p>
-            <h2 className="mt-2 text-2xl font-black text-slate-100">ไม่ต้องรอคนมาทำให้ — เริ่มจากคำสั่งผู้ใช้</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              เลือกตัวอย่างหรือพิมพ์แอปที่ต้องการ แล้วสร้าง governed job ได้เอง จากนั้นค่อยผ่าน PRD, plan, approval, runtime gate และ evidence ตามลำดับ.
-            </p>
+    <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-300">Self-service App Builder</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-100">ไม่ต้องรอคนมาทำให้ — สั่งงานและดูพรีวิวข้างๆ</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">เลือกตัวอย่างหรือพิมพ์แอปที่ต้องการ แล้วดู PRD, plan, monitor, preview และ evidence ใน workspace เดียว.</p>
+            </div>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-200">EVIDENCE_FIRST</span>
           </div>
-          <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-200">EVIDENCE_FIRST</span>
-        </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {starterApps.map((app) => (
-            <button
-              key={app.label}
-              onClick={() => applyStarter(app)}
-              className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left hover:border-indigo-400/50 hover:bg-indigo-500/10"
-            >
-              <p className="font-black text-slate-100">{app.label}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-400">{app.goal}</p>
-            </button>
-          ))}
-        </div>
-
-        <textarea
-          value={goal}
-          onChange={(event) => setGoal(event.target.value)}
-          className="mt-5 min-h-32 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-slate-100 outline-none focus:border-indigo-500"
-          placeholder="Describe the app you want DSG to build…"
-        />
-        <textarea
-          value={criteria}
-          onChange={(event) => setCriteria(event.target.value)}
-          className="mt-3 min-h-24 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-slate-100 outline-none focus:border-indigo-500"
-          placeholder="Success criteria, one per line…"
-        />
-
-        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
-            <button onClick={() => void createGovernedJob()} disabled={loadingJob} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60">
-              {loadingJob ? 'Creating job…' : 'Create governed job'}
-            </button>
-            <button onClick={() => void generatePrd()} disabled={loadingPrd} className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">
-              {loadingPrd ? 'Generating…' : 'Generate PRD'}
-            </button>
-            <button onClick={() => void generatePlan()} disabled={loadingPlan} className="rounded-2xl border border-violet-400/40 bg-violet-500/10 px-5 py-3 text-sm font-black text-violet-100 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60">
-              {loadingPlan ? 'Observing…' : 'Plan + Observer'}
-            </button>
-            <button onClick={() => void createHandoff()} disabled={loadingHandoff || !plan || !observer} className="rounded-2xl border border-cyan-400/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60">
-              {loadingHandoff ? 'Hashing…' : 'Approval + Handoff'}
-            </button>
-            <button onClick={() => void startRuntimeGate()} disabled={loadingRuntimeGate || !handoff} className="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-5 py-3 text-sm font-black text-rose-100 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60">
-              {loadingRuntimeGate ? 'Checking…' : 'Start Runtime Gate'}
-            </button>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {starterApps.map((app) => (
+              <button key={app.label} onClick={() => applyStarter(app)} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left hover:border-indigo-400/50 hover:bg-indigo-500/10">
+                <p className="font-black text-slate-100">{app.label}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{app.goal}</p>
+              </button>
+            ))}
           </div>
-          <p className="text-sm text-slate-400">Selected template: <span className="font-bold text-slate-200">{templateName}</span></p>
-        </div>
 
-        <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-3 text-xs font-mono text-slate-400">
-          <p>{status}</p>
-          {createdJobUrl ? (
-            <a href={createdJobUrl} className="mt-2 inline-flex rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 hover:bg-emerald-500/20">
-              Open job timeline: {createdJobUrl}
-            </a>
+          <textarea value={goal} onChange={(event) => setGoal(event.target.value)} className="mt-5 min-h-32 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-slate-100 outline-none focus:border-indigo-500" placeholder="Describe the app you want DSG to build…" />
+          <textarea value={criteria} onChange={(event) => setCriteria(event.target.value)} className="mt-3 min-h-24 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-slate-100 outline-none focus:border-indigo-500" placeholder="Success criteria, one per line…" />
+
+          <div className="mt-4 flex flex-col gap-3 md:flex-row md:flex-wrap">
+            <button onClick={() => void createGovernedJob()} disabled={loadingJob} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60">{loadingJob ? 'Creating job…' : 'Create governed job'}</button>
+            <button onClick={() => void generatePrd()} disabled={loadingPrd} className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">{loadingPrd ? 'Generating…' : 'Generate PRD'}</button>
+            <button onClick={() => void generatePlan()} disabled={loadingPlan} className="rounded-2xl border border-violet-400/40 bg-violet-500/10 px-5 py-3 text-sm font-black text-violet-100 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingPlan ? 'Observing…' : 'Plan + Observer'}</button>
+            <button onClick={() => void createHandoff()} disabled={loadingHandoff || !plan || !observer} className="rounded-2xl border border-cyan-400/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingHandoff ? 'Hashing…' : 'Approval + Handoff'}</button>
+            <button onClick={() => void startRuntimeGate()} disabled={loadingRuntimeGate || !handoff} className="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-5 py-3 text-sm font-black text-rose-100 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingRuntimeGate ? 'Checking…' : 'Start Runtime Gate'}</button>
+          </div>
+
+          <div className={`mt-4 rounded-2xl border p-3 text-xs font-mono ${statusTone(status)}`}>
+            <p>{status}</p>
+            {createdJobUrl ? <a href={createdJobUrl} className="mt-2 inline-flex rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 hover:bg-emerald-500/20">Open job timeline: {createdJobUrl}</a> : null}
+          </div>
+        </section>
+
+        <PRDViewer prd={prd} />
+        {plan && observer && <PlanObserverPanel plan={plan} observer={observer} />}
+        {approvalGate && handoff && <HandoffPanel approvalGate={approvalGate} handoff={handoff} />}
+        {runtimeGate && <RuntimeGatePanel result={runtimeGate} />}
+      </div>
+
+      <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <section className="rounded-3xl border border-indigo-500/30 bg-indigo-500/10 p-5 shadow-2xl shadow-indigo-950/30">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-200">Live Preview</p>
+              <h2 className="mt-1 text-2xl font-black text-white">พรีวิวแอปข้างๆ</h2>
+            </div>
+            <div className="flex rounded-2xl border border-slate-800 bg-slate-950 p-1 text-xs font-bold">
+              {(['concept', 'live', 'monitor'] as PreviewMode[]).map((mode) => (
+                <button key={mode} onClick={() => setPreviewMode(mode)} className={`rounded-xl px-3 py-2 ${previewMode === mode ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>{mode}</button>
+              ))}
+            </div>
+          </div>
+
+          {previewMode === 'concept' ? (
+            <div className="mt-5 rounded-[2rem] border border-slate-800 bg-slate-950 p-4">
+              <div className="rounded-[1.5rem] border border-slate-800 bg-gradient-to-br from-indigo-950 to-slate-950 p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">Concept screen</p>
+                <h3 className="mt-3 text-2xl font-black text-white">{prd.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{prd.summary}</p>
+                <div className="mt-5 grid gap-3">
+                  {criteriaList.slice(0, 4).map((item) => <div key={item} className="rounded-2xl border border-slate-800 bg-slate-900 p-3 text-sm text-slate-200">✓ {item}</div>)}
+                </div>
+              </div>
+            </div>
           ) : null}
-        </div>
-      </section>
 
-      <PRDViewer prd={prd} />
-      {plan && observer && <PlanObserverPanel plan={plan} observer={observer} />}
-      {approvalGate && handoff && <HandoffPanel approvalGate={approvalGate} handoff={handoff} />}
-      {runtimeGate && <RuntimeGatePanel result={runtimeGate} />}
+          {previewMode === 'live' ? (
+            <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950">
+              <iframe title="Generated app live preview" src={liveGeneratedAppPath} className="h-[620px] w-full bg-slate-950" />
+              <a href={liveGeneratedAppPath} className="block border-t border-slate-800 px-4 py-3 text-sm font-bold text-indigo-200 hover:bg-slate-900">Open generated app full page</a>
+            </div>
+          ) : null}
+
+          {previewMode === 'monitor' ? (
+            <div className="mt-5 space-y-3">
+              {timeline.map((item) => (
+                <div key={item.label} className={`rounded-2xl border p-4 ${stateTone(String(item.state))}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-black text-white">{item.label}</p>
+                    <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs">{item.state}</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 opacity-85">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">User next action</p>
+          <div className="mt-4 grid gap-3 text-sm text-slate-300">
+            <p className="rounded-2xl bg-slate-950 p-3">1. Describe app or pick example.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">2. Create governed job.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">3. Generate PRD and plan.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">4. Approve handoff only when proof is visible.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">5. Open live preview and verify output.</p>
+          </div>
+        </section>
+      </aside>
     </div>
   );
 }
