@@ -43,9 +43,32 @@ type JobResponse = {
   error?: { code: string; message: string };
 };
 
-type PreviewMode = 'concept' | 'live' | 'monitor';
+type AgentLoopResponse = {
+  ok?: boolean;
+  error?: { code: string; message: string };
+  jobId?: string;
+  phase?: string;
+  risk?: { risk: string; state: string; reasons: string[] };
+  benefit?: { ok: boolean; userBenefit: string; easier: boolean; tangibleOutput: string; nextAction: string; missing: string[] };
+  truthBoundary?: { ok: boolean; blockedReasons: string[]; productionReadyClaim: false; note: string };
+  contextPack?: { id: string; contextHash: string; gateStatus: string; gateReasons: string[]; contextText: string } | null;
+  memories?: Array<{ id: string; kind: string; trust: string; status: string; summary: string }>;
+  nextActions?: string[];
+  verifiedInput?: { status: string; hash: string; evidence: string[] };
+  productionReadyClaim?: false;
+};
+
+type PreviewMode = 'concept' | 'live' | 'monitor' | 'brain';
 
 const liveGeneratedAppPath = '/generated-apps/2f3b20b0-824c-4d4a-ae6a-250bd18f3392';
+
+const dsgHeaders = {
+  'content-type': 'application/json',
+  'x-dsg-workspace-id': 'demo-workspace',
+  'x-dsg-actor-id': 'operator-ui',
+  'x-dsg-actor-role': 'operator',
+  'x-dsg-permissions': 'memory:read,memory:write',
+};
 
 const starterApps = [
   {
@@ -72,14 +95,19 @@ const starterApps = [
 
 function statusTone(status: string) {
   if (status.includes('BLOCK') || status.includes('FAILED') || status.includes('REQUIRED')) return 'border-rose-400/40 bg-rose-500/10 text-rose-100';
-  if (status.includes('JOB_CREATED') || status.includes('PRD') || status.includes('PLAN') || status.includes('APPROVED')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
+  if (status.includes('JOB_CREATED') || status.includes('PRD') || status.includes('PLAN') || status.includes('APPROVED') || status.includes('PASS')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
   return 'border-amber-400/40 bg-amber-500/10 text-amber-100';
 }
 
 function stateTone(state: string) {
   if (state.includes('BLOCK') || state.includes('REQUIRED') || state.includes('NOT_CONFIGURED')) return 'border-rose-400/40 bg-rose-500/10 text-rose-100';
-  if (state.includes('ready') || state.includes('APPROVED') || state.includes('created')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
+  if (state.includes('ready') || state.includes('APPROVED') || state.includes('created') || state.includes('PASS')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
   return 'border-slate-700 bg-slate-950 text-slate-300';
+}
+
+function extractCreatedJobId(url: string | null) {
+  if (!url) return 'ui-agent-loop';
+  return url.split('/').filter(Boolean).at(-1) || 'ui-agent-loop';
 }
 
 export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuilderPrd }) {
@@ -91,10 +119,12 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
   const [approvalGate, setApprovalGate] = useState<DsgAppBuilderApprovalGate | null>(null);
   const [handoff, setHandoff] = useState<DsgRuntimeHandoffDraft | null>(null);
   const [runtimeGate, setRuntimeGate] = useState<RuntimeExecutionGateResult | null>(null);
+  const [agentLoop, setAgentLoop] = useState<AgentLoopResponse | null>(null);
   const [templateName, setTemplateName] = useState('Initial product console');
   const [status, setStatus] = useState('Ready. Pick an example or describe an app, then create a governed job.');
   const [createdJobUrl, setCreatedJobUrl] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('concept');
+  const [loadingAgentLoop, setLoadingAgentLoop] = useState(false);
   const [loadingJob, setLoadingJob] = useState(false);
   const [loadingPrd, setLoadingPrd] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState(false);
@@ -104,18 +134,53 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
   const criteriaList = useMemo(() => criteria.split('\n').map((line) => line.trim()).filter(Boolean), [criteria]);
   const timeline = useMemo(() => [
     { label: 'Goal', state: goal.trim() ? 'ready' : 'BLOCKED', detail: goal.trim() ? 'User command captured' : 'Goal required' },
+    { label: 'Brain loop', state: agentLoop ? (agentLoop.ok ? 'PASS' : 'BLOCK_OR_REVIEW') : 'waiting', detail: agentLoop?.contextPack ? `Memory context ${agentLoop.contextPack.gateStatus}` : 'Run Brain Loop before execution' },
     { label: 'PRD', state: prd ? 'ready' : 'waiting', detail: prd?.title || 'Generate PRD' },
     { label: 'Plan', state: plan ? 'ready' : 'waiting', detail: plan ? 'Plan observer available' : 'Run Plan + Observer' },
     { label: 'Handoff', state: handoff ? handoff.status : 'waiting', detail: handoff ? 'Approval handoff created' : 'Approval required' },
     { label: 'Runtime gate', state: runtimeGate ? runtimeGate.status : 'waiting', detail: runtimeGate ? runtimeGate.status : 'Not executed' },
-  ], [goal, prd, plan, handoff, runtimeGate]);
+  ], [goal, prd, plan, handoff, runtimeGate, agentLoop]);
 
   function applyStarter(app: (typeof starterApps)[number]) {
     setGoal(app.goal);
     setCriteria(app.criteria.join('\n'));
     setPreviewMode('concept');
     setCreatedJobUrl(null);
-    setStatus(`Loaded example: ${app.label}. Review the goal, then create a governed job.`);
+    setAgentLoop(null);
+    setStatus(`Loaded example: ${app.label}. Review the goal, then run Brain Loop or create a governed job.`);
+  }
+
+  async function runAgentLoop(phase = 'planning') {
+    const trimmedGoal = goal.trim();
+    if (!trimmedGoal) {
+      setStatus('APP_BUILDER_GOAL_REQUIRED');
+      return;
+    }
+
+    setLoadingAgentLoop(true);
+    setStatus('Running memory-backed DSG Brain Loop…');
+    try {
+      const response = await fetch('/api/dsg/app-builder/agent-loop', {
+        method: 'POST',
+        headers: dsgHeaders,
+        body: JSON.stringify({
+          jobId: extractCreatedJobId(createdJobUrl),
+          phase,
+          goal: trimmedGoal,
+          successCriteria: criteriaList,
+          history: timeline.map((item) => `${item.label}:${item.state}`),
+        }),
+      });
+      const json = (await response.json()) as AgentLoopResponse;
+      if (!response.ok || json.error) throw new Error(json.error?.message || 'APP_BUILDER_AGENT_LOOP_FAILED');
+      setAgentLoop(json);
+      setPreviewMode('brain');
+      setStatus(`${json.ok ? 'AGENT_LOOP_PASS' : 'AGENT_LOOP_REVIEW'} · memory=${json.memories?.length || 0} · productionReadyClaim=false`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'APP_BUILDER_AGENT_LOOP_FAILED');
+    } finally {
+      setLoadingAgentLoop(false);
+    }
   }
 
   async function createGovernedJob() {
@@ -131,7 +196,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
     try {
       const response = await fetch('/api/dsg/app-builder/jobs', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: dsgHeaders,
         body: JSON.stringify({
           goal: trimmedGoal,
           successCriteria: criteriaList,
@@ -273,6 +338,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
           <textarea value={criteria} onChange={(event) => setCriteria(event.target.value)} className="mt-3 min-h-24 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-6 text-slate-100 outline-none focus:border-indigo-500" placeholder="Success criteria, one per line…" />
 
           <div className="mt-4 flex flex-col gap-3 md:flex-row md:flex-wrap">
+            <button onClick={() => void runAgentLoop('planning')} disabled={loadingAgentLoop} className="rounded-2xl bg-amber-500 px-5 py-3 text-sm font-black text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{loadingAgentLoop ? 'Thinking…' : 'Run Brain Loop'}</button>
             <button onClick={() => void createGovernedJob()} disabled={loadingJob} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60">{loadingJob ? 'Creating job…' : 'Create governed job'}</button>
             <button onClick={() => void generatePrd()} disabled={loadingPrd} className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60">{loadingPrd ? 'Generating…' : 'Generate PRD'}</button>
             <button onClick={() => void generatePlan()} disabled={loadingPlan} className="rounded-2xl border border-violet-400/40 bg-violet-500/10 px-5 py-3 text-sm font-black text-violet-100 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingPlan ? 'Observing…' : 'Plan + Observer'}</button>
@@ -300,7 +366,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
               <h2 className="mt-1 text-2xl font-black text-white">พรีวิวแอปข้างๆ</h2>
             </div>
             <div className="flex rounded-2xl border border-slate-800 bg-slate-950 p-1 text-xs font-bold">
-              {(['concept', 'live', 'monitor'] as PreviewMode[]).map((mode) => (
+              {(['concept', 'live', 'monitor', 'brain'] as PreviewMode[]).map((mode) => (
                 <button key={mode} onClick={() => setPreviewMode(mode)} className={`rounded-xl px-3 py-2 ${previewMode === mode ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>{mode}</button>
               ))}
             </div>
@@ -339,16 +405,52 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
               ))}
             </div>
           ) : null}
+
+          {previewMode === 'brain' ? (
+            <div className="mt-5 space-y-4">
+              {agentLoop ? (
+                <>
+                  <div className={`rounded-2xl border p-4 ${stateTone(agentLoop.ok ? 'PASS' : 'BLOCK')}`}>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em]">Brain decision</p>
+                    <p className="mt-2 text-2xl font-black text-white">{agentLoop.ok ? 'PASS' : 'REVIEW / BLOCK'}</p>
+                    <p className="mt-2 text-xs leading-5 opacity-85">Risk: {agentLoop.risk?.state || 'unknown'} · productionReadyClaim=false</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Context pack</p>
+                    <p className="mt-2 break-all text-xs text-slate-300">{agentLoop.contextPack?.contextHash || 'No context pack hash'}</p>
+                    <p className="mt-2 text-xs text-slate-400">Gate: {agentLoop.contextPack?.gateStatus || 'unavailable'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Next actions</p>
+                    <div className="mt-3 space-y-2">
+                      {(agentLoop.nextActions || []).map((action) => <p key={action} className="rounded-xl bg-slate-900 p-2 text-xs text-slate-300">{action}</p>)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Memory used</p>
+                    <div className="mt-3 space-y-2">
+                      {(agentLoop.memories || []).length ? (agentLoop.memories || []).map((memory) => <p key={memory.id} className="rounded-xl bg-slate-900 p-2 text-xs leading-5 text-slate-300">[{memory.kind}/{memory.trust}] {memory.summary}</p>) : <p className="text-xs text-slate-500">No allowed memory returned yet.</p>}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm leading-6 text-amber-100">
+                  Run Brain Loop first. It will search memory, create context pack, evaluate risk, record audit, and return next actions here.
+                </div>
+              )}
+            </div>
+          ) : null}
         </section>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">User next action</p>
           <div className="mt-4 grid gap-3 text-sm text-slate-300">
             <p className="rounded-2xl bg-slate-950 p-3">1. Describe app or pick example.</p>
-            <p className="rounded-2xl bg-slate-950 p-3">2. Create governed job.</p>
-            <p className="rounded-2xl bg-slate-950 p-3">3. Generate PRD and plan.</p>
-            <p className="rounded-2xl bg-slate-950 p-3">4. Approve handoff only when proof is visible.</p>
-            <p className="rounded-2xl bg-slate-950 p-3">5. Open live preview and verify output.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">2. Run Brain Loop to use memory and truth gate.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">3. Create governed job.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">4. Generate PRD and plan.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">5. Approve handoff only when proof is visible.</p>
+            <p className="rounded-2xl bg-slate-950 p-3">6. Open live preview and verify output.</p>
           </div>
         </section>
       </aside>
