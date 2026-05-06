@@ -1,172 +1,163 @@
 # DSG ONE — AI Runtime Control Plane
 
-DSG is a deterministic governance gateway for AI, agent, workflow, finance, and deployment actions.
+DSG ONE is a governance control-plane project for AI, agent, workflow, finance, and deployment actions.
 
-It routes governed actions through policy, entitlement, approval, deterministic proof, and audit controls before production execution.
+It routes governed actions through policy, entitlement, approval, deterministic gate checks, replay-protection inputs, proof metadata, and audit/evidence controls before execution claims are treated as safe.
 
-## Canonical docs
+This repository is public product and benchmark evidence. It is not, by itself, proof of completed production go-live, independent audit, certification, or guaranteed compliance.
 
-- `docs/REPO_TRUTH.md`
-- `docs/RUNBOOK_DEPLOY.md`
-- `PROJECT_TRUTH.md`
+## Source-of-truth documents
 
-When statements conflict, prefer the newer verified evidence in those files.
+Use these files as the canonical truth boundary for this repository:
 
-## Current status — 2026-05-02 (repository-aligned)
+```text
+docs/REPO_TRUTH.md
+docs/RUNBOOK_DEPLOY.md
+PROJECT_TRUTH.md
+qa-logs/test-summary.md
+qa-logs/go-live-evidence-2026-05-03.md
+```
 
-### Repository status
+When README text conflicts with those files, prefer the newer verified evidence in the source-of-truth files and update this README.
+
+## Current verified status
 
 ```text
 Product identity: DSG ONE
-Mode: active
-Test baseline (2026-04-17): 185 passed, 3 skipped, 0 failed
-Production-readiness gate: not yet closed from committed evidence (latest run: qa-logs/go-live-evidence-2026-05-03.md)
-Deterministic proof/gate scaffold: merged and operational in-repo
-Finance governance + gateway monitor migrations: present through 2026-04-30
+Package name: dsg-platform
+Repository mode: active
+Default branch: main
+Latest committed Vitest baseline: 185 passed, 3 skipped, 0 failed
+Test files baseline: 62 passed, 1 skipped, 0 failed
+Production-readiness gate: NOT CLOSED from committed evidence
+Latest go-live evidence run: qa-logs/go-live-evidence-2026-05-03.md
+Latest go-live decision: NO-GO / not closed
 ```
 
-## Latest live deterministic gate evidence (verified)
+Interpretation:
 
-Observed live deterministic gate response confirms:
+- The repository has a real Next.js/Supabase/Vercel product stack, deterministic gate scaffold, governance routes, benchmark assets, tests, migrations, docs, and deployment runbooks.
+- The committed unit/integration test baseline is green for the recorded run.
+- Production go-live is a separate claim and is not closed until deployment Ready state, environment validation, Supabase applied-state proof, live smoke checks, authenticated operator checks, and live staging/E2E evidence are recorded.
+
+## What this repository currently contains
+
+### Product stack
 
 ```text
-ok: true
-type: dsg-deterministic-gate-decision
-gateStatus: PASS
-proofStatus: PASS
-riskLevel: high
-proofHash: present
-inputHash: present
-constraintSetHash: present
-policyVersion: 1.0
-solver.name: static_check
-solver.version: dsg-deterministic-ts-0.0.0
-replayProtection.nonce: present
-replayProtection.idempotencyKey: present
-replayProtection.requestHash: present
-constraintsChecked: 8
-all constraints passed: true
+Next.js app router product surface
+Supabase-backed runtime/control-plane data layer
+Stripe billing integration hooks
+Vercel deployment workflow and runbook
+Governance, approval, audit, evidence, marketplace, and trust pages
+Operator-facing dashboard and runtime routes
 ```
 
-Allowed product claim:
+### Deterministic proof/gate scaffold
+
+Backend routes present in the repository:
 
 ```text
-DSG production now exposes a live deterministic proof/gate scaffold with policyVersion,
-constraintSetHash, proofHash, structured constraints, and replay-protection evidence.
-```
-
-
-### Deployment truth boundary
-
-```text
-Do not treat this repository alone as proof of go-live completion.
-Runbook evidence is still required for: deployment Ready state, env validation,
-Supabase applied-state proof, /api/health smoke, authenticated operator checks,
-and live staging/E2E validation.
-```
-
-## Deterministic proof / Z3 mapping
-
-The uploaded `z3-logic-deterministic.zip` was mapped into the existing DSG backend as a DSG-native deterministic proof and gate scaffold. The standalone FastAPI app was not imported directly.
-
-Backend routes in main and production:
-
-```text
+GET  /api/dsg/v1/policies/manifest
 POST /api/dsg/v1/proofs/prove
 POST /api/dsg/v1/gates/evaluate
-GET  /api/dsg/v1/policies/manifest
 ```
 
-Verifier command in main:
-
-```bash
-npm run verify:deterministic
-```
-
-Verifier output:
+Current deterministic gate behavior includes:
 
 ```text
-artifacts/deterministic-module/verification-result.json
-```
-
-Deterministic proof output includes:
-
-```text
-proofHash
-inputHash
-constraintSetHash
 policyVersion
+constraintSetHash
+inputHash
+proofHash
 solver metadata
-structured failureReasons
+structured constraint results
+structured failure reasons
 replayProtection.nonce
 replayProtection.idempotencyKey
 replayProtection.requestHash
 ```
 
-Critical invariant:
+Important invariant:
 
 ```text
 UNSUPPORTED is never PASS.
 ```
 
-Proof/gate APIs reject missing replay-protection inputs:
+The gate API rejects missing replay-protection inputs:
 
 ```text
 missing_nonce
 missing_idempotency_key
 ```
 
-Allowed claim:
+Current solver boundary:
 
 ```text
-DSG has a live deterministic proof/gate backend scaffold mapped from the Z3 module, with proofHash, inputHash, constraintSetHash, policyVersion, structured failures, replay-protection fields, and a verification script.
+solver.name: static_check
+solver.version: dsg-deterministic-ts-0.0.0
+externalSolverInvoked: false
 ```
 
-Do not claim yet:
+This means the repository contains a DSG-native deterministic TypeScript static-check scaffold mapped from the Z3/formal logic work. Do not claim that an external Z3 solver is invoked in production unless newer code and evidence prove that path.
+
+### Policy constraints used by the deterministic manifest
+
+The current deterministic policy manifest checks these evidence keys:
 
 ```text
-external Z3 solver invoked in production
-enterprise-ready proof system
-third-party certified evidence system
-JWT/JWKS auth complete
-WORM evidence storage complete
-real Ed25519/ECDSA signing complete
+requirement_clear
+tool_available
+permission_granted
+secret_bound
+dependency_resolved
+testable
+deploy_target_ready
+audit_hook_available
 ```
 
-## Product routes
+### Agent command gate
 
-Core routes:
+The repository includes an agent command gate library and API route for pre-action gating:
 
 ```text
-/ai-compliance
-/iso-42001
-/nist-ai-rmf
-/evidence-pack
-/controls
-/approvals?orgId=org-smoke
-/gateway/monitor?orgId=org-smoke
-/marketplace
-/marketplace/production-evidence
-/consult
+lib/dsg/agent-command-gate.ts
+app/api/dsg/agent-command-gate/route.ts
 ```
 
-Trust routes:
+The gate evaluates command lock, agent identity binding, RBAC permission, approval proof, idempotency, rollback plan, audit hook binding, and evidence hook binding before allowing an agent action envelope.
+
+Safe claim:
 
 ```text
-/trust
-/reproducibility
-/security-review
+DSG includes an in-repository agent command gate scaffold that can block, review, or allow agent actions based on locked command, RBAC, approval, idempotency, rollback, audit, and evidence invariants.
 ```
 
-Deterministic backend routes:
+Do not claim a fully completed agent execution lifecycle unless the callback/result route and deployed persistence evidence are verified for the target environment.
+
+## Kaggle/community benchmark materials
+
+The repository includes community benchmark preparation assets under:
 
 ```text
-/api/dsg/v1/policies/manifest
-/api/dsg/v1/proofs/prove
-/api/dsg/v1/gates/evaluate
+benchmarks/kaggle-community/dsg_finance_governance_tasks.py
 ```
 
-## Marketplace Action
+Current benchmark task areas:
+
+```text
+DSG-TASK-001 Payment Decision Control
+DSG-TASK-002 Policy Compliance Detection
+DSG-TASK-003 Audit Evidence Generation
+```
+
+Evidence boundary:
+
+```text
+These are author-provided benchmark preparation assets. They are not an independent third-party audit certification and are not an official Kaggle leaderboard result until saved as Kaggle tasks, collected into a Kaggle benchmark, and evaluated against supported Kaggle models.
+```
+
+## Marketplace action
 
 ```text
 https://github.com/marketplace/actions/dsg-secure-deploy-gate
@@ -190,25 +181,41 @@ Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for S
 Boundary:
 
 ```text
-The DOI artifact is the formal verification reference. Repository runtime SMT2 scripts provide deterministic SMT-LIB-compatible runtime invariant evidence, but they are not the same artifact as the DOI publication.
+The DOI artifact is the formal verification reference. Repository runtime SMT2 scripts and TypeScript static-check routes provide runtime invariant evidence/scaffold behavior, but they are not the same thing as an end-to-end formally verified SaaS deployment.
 ```
 
 ## Verification commands
 
+Local repository checks:
+
 ```bash
-git pull origin main
 npm install --ignore-scripts
+npm test
 npm run verify:deterministic
 npm run ux:routes
 npm run build
-npx vercel --prod
 ```
 
-Live API checks:
+Benchmark/evidence commands:
 
 ```bash
-curl -I https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/policies/manifest
+npm run benchmark
+npm run benchmark:gateway
+npm run benchmark:kaggle:community
+npm run benchmark:evidence
+```
 
+Deployment/runbook commands are documented in:
+
+```text
+docs/RUNBOOK_DEPLOY.md
+```
+
+Do not use local test success alone as proof of production readiness.
+
+## Live API check example
+
+```bash
 curl -s -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate \
   -H "content-type: application/json" \
   -H "x-dsg-nonce: test-nonce-001" \
@@ -216,9 +223,11 @@ curl -s -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1
   -d '{"planId":"PLAN-Z3-001","riskLevel":"high","context":{"requirement_clear":true,"tool_available":true,"permission_granted":true,"secret_bound":true,"dependency_resolved":true,"testable":true,"deploy_target_ready":true,"audit_hook_available":true}}'
 ```
 
+Expected successful shape includes a deterministic gate decision payload with `gateStatus`, `proofStatus`, `riskLevel`, `proof`, replay-protection fields, and a boundary stating that this route does not invoke an external Z3 solver.
+
 ## Safe claim rules
 
-Allowed wording:
+Allowed wording when supported by current repo evidence:
 
 ```text
 evidence-ready
@@ -229,9 +238,10 @@ aligned workflow
 benchmarked
 deterministic proof/gate scaffold
 live deterministic proof/gate scaffold
+DSG-native TypeScript static-check gate scaffold
 ```
 
-Do not claim unless independently verified:
+Do not claim unless newer independent evidence proves it:
 
 ```text
 certified
@@ -239,12 +249,32 @@ guaranteed compliant
 third-party audited
 NIST certified
 ISO certified
+enterprise-ready proof system
 external Z3 solver invoked in production
+WORM evidence storage complete
+real Ed25519/ECDSA signing complete
+JWT/JWKS auth complete
+full production go-live complete
 better than every listed vendor
 ```
 
-## Current product boundary
+## Deployment truth boundary
 
-DSG is a production-oriented governance product stack with marketplace action, compliance pages, control templates, approval workflow, evidence export, consult toolkit, trust scaffold, and live deterministic proof/gate backend scaffold.
+Runbook evidence is still required for:
 
-It is not externally validated at enterprise-trust level until real customer deployments, case studies, partner references, independent reviews, or formal certifications are completed.
+```text
+Vercel production deployment Ready state
+production environment variable validation
+Supabase migrations applied on the target environment
+/api/health production smoke check
+authenticated operator checks
+live staging/E2E validation
+```
+
+Current committed go-live evidence does not close those requirements.
+
+## Practical product boundary
+
+DSG ONE is a production-oriented governance product stack with a marketplace action, compliance pages, control templates, approval workflow, evidence export, consult toolkit, trust scaffold, benchmark assets, and live deterministic proof/gate scaffold.
+
+It is not externally validated at enterprise-trust level until real customer deployments, case studies, partner references, independent reviews, or formal certifications are completed and recorded.
