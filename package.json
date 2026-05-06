@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:termux": "DSG_TERMUX_DEV=true NEXT_TELEMETRY_DISABLED=1 next dev -H 0.0.0.0",
     "build": "DSG_DISABLE_WEBPACK_CACHE=true NEXT_TELEMETRY_DISABLED=1 node scripts/dsg-next-build.mjs",
     "build:next": "next build",
     "build:termux": "rm -rf .next node_modules/.cache && DSG_DISABLE_WEBPACK_CACHE=true NEXT_TELEMETRY_DISABLED=1 node scripts/dsg-next-build.mjs",
