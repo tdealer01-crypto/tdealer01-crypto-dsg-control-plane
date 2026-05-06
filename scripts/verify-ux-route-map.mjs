@@ -3,6 +3,8 @@
 import fs from 'node:fs';
 
 const routeChecks = [
+  { route: '/enterprise-ready', file: 'app/enterprise-ready/page.tsx', outcome: 'Enterprise setup page is reachable.' },
+  { route: '/dashboard/integrations', file: 'app/dashboard/integrations/page.tsx', outcome: 'Self-service integration setup page is reachable.' },
   { route: '/ai-compliance', file: 'app/ai-compliance/page.tsx', outcome: 'Compliance landing page is reachable.' },
   { route: '/iso-42001', file: 'app/iso-42001/page.tsx', outcome: 'ISO alignment page is reachable.' },
   { route: '/nist-ai-rmf', file: 'app/nist-ai-rmf/page.tsx', outcome: 'NIST AI RMF alignment page is reachable.' },
@@ -21,18 +23,34 @@ const forbiddenLinks = [
   { file: 'app/controls/page.tsx', text: 'href="/docs"', reason: 'Controls page must not link to missing docs route.' },
   { file: 'app/controls/page.tsx', text: 'href="#"', reason: 'Controls page must not use placeholder anchors.' },
   { file: 'app/ai-compliance/page.tsx', text: 'href="#"', reason: 'Compliance page must not use placeholder anchors.' },
+  { file: 'app/enterprise-ready/page.tsx', text: 'href="#"', reason: 'Enterprise setup page must not use placeholder anchors.' },
+  { file: 'app/dashboard/integrations/page.tsx', text: 'href="#"', reason: 'Integration setup page must not use placeholder anchors.' },
 ];
 
 const requiredText = [
   { file: 'docs/UX_WORKING_RULES.md', text: 'What benefit does the user get?', reason: 'UX working rules must include flow completion benefit question.' },
   { file: 'docs/UX_WORKING_RULES.md', text: 'What evidence proves the flow worked?', reason: 'UX working rules must require evidence proof.' },
   { file: 'docs/UX_WORKING_RULES.md', text: 'Where is the tangible output', reason: 'UX working rules must require tangible output.' },
+  { file: 'app/enterprise-ready/page.tsx', text: 'Four steps to first governed proof', reason: 'Enterprise setup page must expose clear setup steps.' },
+  { file: 'app/enterprise-ready/page.tsx', text: 'Connect DSG to the systems customers already use.', reason: 'Enterprise setup page must emphasize existing-system adoption.' },
+  { file: 'app/dashboard/integrations/page.tsx', text: 'Connect one existing workflow in minutes.', reason: 'Integrations page must make the install value obvious.' },
+  { file: 'app/dashboard/integrations/page.tsx', text: 'Quota-aware rollout', reason: 'Integrations page must preserve Vercel/deploy quota.' },
+  { file: 'docs/ENTERPRISE_READY_AUTOPILOT.md', text: 'one existing system -> one governed action -> one evidence trail -> one expansion decision', reason: 'Enterprise runbook must define the tangible user outcome.' },
   { file: 'app/controls/page.tsx', text: 'Action map', reason: 'Controls page must explain action outcomes.' },
   { file: 'app/approvals/page.tsx', text: 'Approve', reason: 'Approval page must expose approve action.' },
   { file: 'app/approvals/page.tsx', text: 'Reject', reason: 'Approval page must expose reject action.' },
 ];
 
 const flowOutcomes = [
+  {
+    id: 'enterprise-ready-to-integration-proof',
+    benefit: 'Customer can start from one existing system and reach a governed proof path without migration.',
+    action: 'Open /enterprise-ready, then click Start setup to /dashboard/integrations.',
+    evidence: 'Integration page exposes register, webhook, execute, and evidence checklist steps.',
+    output: '/dashboard/integrations and docs/ENTERPRISE_READY_AUTOPILOT.md',
+    files: ['app/enterprise-ready/page.tsx', 'app/dashboard/integrations/page.tsx', 'docs/ENTERPRISE_READY_AUTOPILOT.md'],
+    requiredText: ['Start setup', 'Register integration', 'Execute one governed action', 'one governed action'],
+  },
   {
     id: 'controls-to-evidence',
     benefit: 'User can turn a governance control into evidence review.',
