@@ -12,6 +12,38 @@ The first customer outcome is not a full migration. The first outcome is:
 one existing system -> one governed action -> one evidence trail -> one expansion decision
 ```
 
+## Product layer imported from zip
+
+```text
+/proofgate
+```
+
+The uploaded `dsg-proofgate-product-ready-fullstack.zip` was reviewed and converted into a native Next.js product page for this repo. The page communicates the ProofGate offer without copying the FastAPI/Vite stack into this Next app:
+
+- policy-gated AI and automation execution
+- approval routing for high-risk actions
+- tamper-evident audit and proof hashes
+- evidence export
+- deployment go/no-go gate
+- truth boundary against false certification or compliance claims
+
+## Brand direction
+
+The branch applies a unified red / gold / blue-sapphire visual system across the app shell:
+
+- red = blocked risk, urgent control, exception pressure
+- gold = proof, evidence, buyer trust, primary CTA
+- blue sapphire = enterprise infrastructure, runtime gateway, technical confidence
+- black = command center background
+
+The shared layer lives in:
+
+```text
+app/dsg-brand.css
+app/layout.tsx
+components/GlobalNav.tsx
+```
+
 ## New product surface
 
 ```text
