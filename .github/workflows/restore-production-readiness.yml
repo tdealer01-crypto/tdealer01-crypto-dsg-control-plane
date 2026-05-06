@@ -1,0 +1,188 @@
+name: Restore Production Readiness Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      production_url:
+        description: "Production or staging URL to verify"
+        required: true
+        default: "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+        type: string
+      recovery_org_id:
+        description: "Optional org_id for /api/runtime-recovery"
+        required: false
+        default: ""
+        type: string
+      recovery_agent_id:
+        description: "Optional agent_id for /api/runtime-recovery"
+        required: false
+        default: ""
+        type: string
+      commit_evidence:
+        description: "Commit qa-logs readiness evidence when all required checks pass"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: restore-production-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  restore-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      BASE_URL: ${{ inputs.production_url }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+      DSG_RECOVERY_BEARER_TOKEN: ${{ secrets.DSG_RECOVERY_BEARER_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Clear inherited proxy config
+        run: |
+          unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy || true
+          echo "NO_PROXY=*" >> "$GITHUB_ENV"
+          echo "no_proxy=*" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Repository baseline tests
+        run: npm test
+
+      - name: Deterministic module verification
+        run: npm run verify:deterministic
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Public trust and runtime smoke checks
+        run: ./scripts/go-no-go-gate.sh "$BASE_URL"
+
+      - name: Live deterministic gate smoke
+        run: |
+          set -euo pipefail
+          mkdir -p qa-logs
+          curl --noproxy '*' --proxy '' -fsS -X POST "${BASE_URL%/}/api/dsg/v1/gates/evaluate" \
+            -H "content-type: application/json" \
+            -H "x-dsg-nonce: restore-readiness-${GITHUB_RUN_ID}" \
+            -H "idempotency-key: restore-readiness-${GITHUB_RUN_ID}" \
+            -d '{"planId":"RESTORE-READINESS-001","riskLevel":"high","context":{"requirement_clear":true,"tool_available":true,"permission_granted":true,"secret_bound":true,"dependency_resolved":true,"testable":true,"deploy_target_ready":true,"audit_hook_available":true}}' \
+            | tee qa-logs/live-deterministic-gate-restore.json
+          jq -e '.ok == true and .gateStatus == "PASS" and .proofStatus == "PASS" and .boundary.externalSolverInvoked == false' qa-logs/live-deterministic-gate-restore.json
+
+      - name: Supabase applied-state smoke via REST
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_KEY:-}" ]; then
+            echo "Missing SUPABASE_URL or SUPABASE_KEY secret"
+            exit 1
+          fi
+          mkdir -p qa-logs
+          tables=(runtime_truth_states runtime_ledger_entries runtime_checkpoints runtime_approval_requests organizations agents)
+          : > qa-logs/supabase-applied-state-restore.log
+          for table in "${tables[@]}"; do
+            code=$(curl --noproxy '*' --proxy '' -sS -o /tmp/${table}.json -w "%{http_code}" \
+              "${SUPABASE_URL%/}/rest/v1/${table}?select=id&limit=1" \
+              -H "apikey: ${SUPABASE_KEY}" \
+              -H "authorization: Bearer ${SUPABASE_KEY}") || code="000"
+            echo "${table}: HTTP ${code}" | tee -a qa-logs/supabase-applied-state-restore.log
+            if [[ ! "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+              echo "Supabase applied-state smoke failed for table ${table}"
+              exit 1
+            fi
+          done
+
+      - name: Optional runtime recovery validation
+        if: ${{ inputs.recovery_org_id != '' && inputs.recovery_agent_id != '' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DSG_RECOVERY_BEARER_TOKEN:-}" ]; then
+            echo "DSG_RECOVERY_BEARER_TOKEN secret is required when recovery_org_id and recovery_agent_id are provided."
+            exit 1
+          fi
+          curl --noproxy '*' --proxy '' -fsS -X POST "${BASE_URL%/}/api/runtime-recovery" \
+            -H "content-type: application/json" \
+            -H "authorization: Bearer ${DSG_RECOVERY_BEARER_TOKEN}" \
+            -d '{"org_id":"${{ inputs.recovery_org_id }}","agent_id":"${{ inputs.recovery_agent_id }}"}' \
+            | tee qa-logs/runtime-recovery-restore.json
+          jq -e '.pass == true and .hash_match == true and (.missing_lineage | length == 0)' qa-logs/runtime-recovery-restore.json
+
+      - name: Write restore evidence summary
+        run: |
+          set -euo pipefail
+          ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          file="qa-logs/production-readiness-restore-${GITHUB_RUN_ID}.md"
+          gate_status=$(jq -r '.gateStatus' qa-logs/live-deterministic-gate-restore.json)
+          proof_status=$(jq -r '.proofStatus' qa-logs/live-deterministic-gate-restore.json)
+          {
+            echo "# Production Readiness Restore Evidence"
+            echo ""
+            echo "- Timestamp: ${ts}"
+            echo "- URL: ${BASE_URL}"
+            echo "- Commit SHA: ${GITHUB_SHA}"
+            echo "- GitHub run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo ""
+            echo "## Result"
+            echo ""
+            echo "GO — required restore checks passed in GitHub Actions."
+            echo ""
+            echo "## Checks"
+            echo ""
+            echo "- Repository baseline tests: PASS"
+            echo "- Deterministic module verification: PASS"
+            echo "- Public trust/runtime smoke via go-no-go gate: PASS"
+            echo "- Live deterministic gate: ${gate_status} / ${proof_status}"
+            echo "- Supabase applied-state REST smoke: PASS"
+            if [ -f qa-logs/runtime-recovery-restore.json ]; then
+              recovery_pass=$(jq -r '.pass' qa-logs/runtime-recovery-restore.json)
+              hash_match=$(jq -r '.hash_match' qa-logs/runtime-recovery-restore.json)
+              echo "- Runtime recovery validation: pass=${recovery_pass}, hash_match=${hash_match}"
+            else
+              echo "- Runtime recovery validation: SKIPPED (no org/agent input)"
+            fi
+          } | tee "$file"
+          echo "EVIDENCE_FILE=$file" >> "$GITHUB_ENV"
+
+      - name: Upload restore evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-readiness-restore-evidence
+          path: |
+            qa-logs/production-readiness-restore-*.md
+            qa-logs/live-deterministic-gate-restore.json
+            qa-logs/supabase-applied-state-restore.log
+            qa-logs/runtime-recovery-restore.json
+          if-no-files-found: ignore
+
+      - name: Commit restore evidence
+        if: ${{ inputs.commit_evidence }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$EVIDENCE_FILE" qa-logs/live-deterministic-gate-restore.json qa-logs/supabase-applied-state-restore.log
+          if [ -f qa-logs/runtime-recovery-restore.json ]; then
+            git add qa-logs/runtime-recovery-restore.json
+          fi
+          if git diff --cached --quiet; then
+            echo "No evidence changes to commit."
+            exit 0
+          fi
+          git commit -m "qa: restore production readiness evidence"
+          git push
