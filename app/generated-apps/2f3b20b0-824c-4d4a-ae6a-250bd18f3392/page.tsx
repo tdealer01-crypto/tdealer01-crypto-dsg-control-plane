@@ -43,7 +43,6 @@ export default function GeneratedDsgAbcGamePage() {
   const stars = useMemo(() => '⭐'.repeat(Math.max(0, Math.min(score, 6))), [score]);
 
   async function loadItems() {
-    setStatus('กำลังโหลดหลักฐาน backend…');
     const response = await fetch(`/api/generated-apps/${APP_ID}/items`, { cache: 'no-store' });
     const json = await response.json();
     if (!response.ok || !json.ok) throw new Error(json.error?.message || 'GENERATED_APP_BACKEND_FAILED');
@@ -98,7 +97,11 @@ export default function GeneratedDsgAbcGamePage() {
   }
 
   useEffect(() => {
-    loadItems().catch((error) => setStatus(error instanceof Error ? error.message : 'GENERATED_APP_LOAD_FAILED'));
+    const timer = window.setTimeout(() => {
+      loadItems().catch((error) => setStatus(error instanceof Error ? error.message : 'GENERATED_APP_LOAD_FAILED'));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   return (
