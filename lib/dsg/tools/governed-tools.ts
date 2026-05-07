@@ -65,7 +65,7 @@ export type DsgGovernedToolExecutionResult = {
   executionDecisionFrame?: DsgExecutionDecisionFrame;
 };
 
-type StoredRecord = {
+export type StoredRecord = {
   id: string;
   tool: DsgGovernedToolKind;
   action: DsgGovernedToolAction;
@@ -164,7 +164,7 @@ function activeStoredRecords(records: StoredRecord[]): StoredRecord[] {
   return [...latest.values()].filter((record) => !['deleted', 'deallocated'].includes(record.status));
 }
 
-type AdapterStepTrace = {
+export type AdapterStepTrace = {
   step: string;
   target: ReturnType<typeof samadhi>;
   verified: ReturnType<typeof verify<Record<string, unknown>>>;
@@ -196,7 +196,7 @@ function buildAdapterStepTrace(prepared: DsgGovernedToolPreparedRequest, step: s
   };
 }
 
-function assertAdapterStep(trace: AdapterStepTrace): void {
+export function assertAdapterStep(trace: AdapterStepTrace): void {
   if (trace.blockedReasons.length > 0 || trace.risk.state !== 'data_verified' || !trace.truthBoundary.ok) {
     throw new Error(`ADAPTER_STEP_BLOCKED:${trace.step}:${trace.blockedReasons.join(',') || trace.risk.state}`);
   }
@@ -214,6 +214,151 @@ function persistenceRoot(sandboxRoot: string): string {
 
 function persistenceFile(sandboxRoot: string, tool: DsgGovernedToolKind): string {
   return path.join(persistenceRoot(sandboxRoot), `${tool}.jsonl`);
+}
+
+
+type SchedulerRuntimeEntry = {
+  id: string;
+  kind: 'cron' | 'interval' | 'one_shot';
+  cron?: string;
+  intervalMs?: number;
+  nextRunAt?: string;
+  enabled: boolean;
+  targetLocked: boolean;
+  revision: number;
+  lastSyncedAt: string;
+  sourceEventHash?: string;
+};
+
+type ComputeRuntimeEntry = {
+  id: string;
+  handle: string;
+  name: string;
+  resourceClass: string;
+  ttlMs: number;
+  lifecycle: 'allocated' | 'deallocated';
+  allocatedAt: string;
+  expiresAt: string;
+  network: boolean;
+  revision: number;
+  lastSyncedAt: string;
+  sourceEventHash?: string;
+};
+
+type RuntimeManifest<T> = { entries: Record<string, T>; updatedAt: string };
+
+const scheduleTimers = new Map<string, NodeJS.Timeout>();
+
+function runtimeManifestFile(sandboxRoot: string, name: 'scheduler-runtime' | 'compute-runtime'): string {
+  return path.join(persistenceRoot(sandboxRoot), `${name}.json`);
+}
+
+async function readRuntimeManifest<T>(sandboxRoot: string, name: 'scheduler-runtime' | 'compute-runtime'): Promise<RuntimeManifest<T>> {
+  try {
+    const raw = await readFile(runtimeManifestFile(sandboxRoot, name), 'utf8');
+    const parsed = JSON.parse(raw) as RuntimeManifest<T>;
+    return { entries: isPlainObject(parsed.entries) ? (parsed.entries as Record<string, T>) : {}, updatedAt: asString(parsed.updatedAt) || new Date(0).toISOString() };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { entries: {}, updatedAt: new Date(0).toISOString() };
+    throw error;
+  }
+}
+
+async function writeRuntimeManifest<T>(sandboxRoot: string, name: 'scheduler-runtime' | 'compute-runtime', manifest: RuntimeManifest<T>): Promise<void> {
+  await mkdir(persistenceRoot(sandboxRoot), { recursive: true });
+  await writeFile(runtimeManifestFile(sandboxRoot, name), `${JSON.stringify({ ...manifest, updatedAt: new Date().toISOString() }, null, 2)}\n`, 'utf8');
+}
+
+function stopScheduleTimer(root: string, id: string): void {
+  const timerKey = `${path.resolve(root)}:${id}`;
+  const timer = scheduleTimers.get(timerKey);
+  if (timer) clearTimeout(timer);
+  scheduleTimers.delete(timerKey);
+}
+
+function startScheduleTimer(root: string, entry: SchedulerRuntimeEntry): void {
+  stopScheduleTimer(root, entry.id);
+  if (!entry.enabled) return;
+  const timerKey = `${path.resolve(root)}:${entry.id}`;
+  const intervalMs = entry.intervalMs ?? (entry.nextRunAt ? Math.max(Date.parse(entry.nextRunAt) - Date.now(), 60_000) : undefined);
+  if (!intervalMs) return;
+  const timer = setTimeout(() => undefined, intervalMs);
+  timer.unref?.();
+  scheduleTimers.set(timerKey, timer);
+}
+
+function schedulerStateFromRecord(record: StoredRecord): SchedulerRuntimeEntry {
+  const scheduler = isPlainObject(record.state.scheduler) ? record.state.scheduler : {};
+  const kind = asString(scheduler.kind) === 'cron' ? 'cron' : asString(scheduler.kind) === 'interval' ? 'interval' : 'one_shot';
+  return {
+    id: record.id,
+    kind,
+    cron: asString(record.state.cron) || asString(scheduler.cron) || undefined,
+    intervalMs: typeof record.state.intervalMs === 'number' ? record.state.intervalMs : typeof scheduler.intervalMs === 'number' ? scheduler.intervalMs : undefined,
+    nextRunAt: asString(record.state.nextRunAt) || asString(scheduler.nextRunAt) || undefined,
+    enabled: record.state.enabled !== false && record.status !== 'deleted',
+    targetLocked: true,
+    revision: record.revision,
+    lastSyncedAt: new Date().toISOString(),
+    sourceEventHash: record.eventHash,
+  };
+}
+
+function computeStateFromRecord(record: StoredRecord): ComputeRuntimeEntry {
+  return {
+    id: record.id,
+    handle: asString(record.state.computeHandle) || `pc:${sha256Json({ id: record.id, revision: record.revision }).slice(0, 24)}`,
+    name: asString(record.state.name) || record.id,
+    resourceClass: asString(record.state.resourceClass) || 'sandbox-worker',
+    ttlMs: typeof record.state.ttlMs === 'number' ? record.state.ttlMs : 3_600_000,
+    lifecycle: record.status === 'deallocated' ? 'deallocated' : 'allocated',
+    allocatedAt: asString(record.state.allocatedAt) || record.createdAt,
+    expiresAt: asString(record.state.expiresAt) || new Date(Date.now() + 3_600_000).toISOString(),
+    network: record.state.network === true,
+    revision: record.revision,
+    lastSyncedAt: new Date().toISOString(),
+    sourceEventHash: record.eventHash,
+  };
+}
+
+async function applyScheduleRuntime(root: string, action: DsgGovernedToolAction, record: StoredRecord): Promise<SchedulerRuntimeEntry | undefined> {
+  const manifest = await readRuntimeManifest<SchedulerRuntimeEntry>(root, 'scheduler-runtime');
+  if (action === 'delete') {
+    stopScheduleTimer(root, record.id);
+    delete manifest.entries[record.id];
+    await writeRuntimeManifest(root, 'scheduler-runtime', manifest);
+    return undefined;
+  }
+  const entry = schedulerStateFromRecord(record);
+  manifest.entries[record.id] = entry;
+  await writeRuntimeManifest(root, 'scheduler-runtime', manifest);
+  startScheduleTimer(root, entry);
+  return entry;
+}
+
+async function readScheduleRuntime(root: string, id?: string): Promise<SchedulerRuntimeEntry[]> {
+  const manifest = await readRuntimeManifest<SchedulerRuntimeEntry>(root, 'scheduler-runtime');
+  return Object.values(manifest.entries).filter((entry) => !id || entry.id === id);
+}
+
+async function applyComputeRuntime(root: string, action: DsgGovernedToolAction, record: StoredRecord): Promise<ComputeRuntimeEntry | undefined> {
+  const manifest = await readRuntimeManifest<ComputeRuntimeEntry>(root, 'compute-runtime');
+  if (action === 'deallocate') {
+    const existing = manifest.entries[record.id] ?? computeStateFromRecord(record);
+    const entry: ComputeRuntimeEntry = { ...existing, lifecycle: 'deallocated', revision: record.revision, lastSyncedAt: new Date().toISOString(), sourceEventHash: record.eventHash };
+    manifest.entries[record.id] = entry;
+    await writeRuntimeManifest(root, 'compute-runtime', manifest);
+    return entry;
+  }
+  const entry = computeStateFromRecord(record);
+  manifest.entries[record.id] = entry;
+  await writeRuntimeManifest(root, 'compute-runtime', manifest);
+  return entry;
+}
+
+async function readComputeRuntime(root: string, id?: string): Promise<ComputeRuntimeEntry[]> {
+  const manifest = await readRuntimeManifest<ComputeRuntimeEntry>(root, 'compute-runtime');
+  return Object.values(manifest.entries).filter((entry) => !id || entry.id === id);
 }
 
 function recordId(tool: DsgGovernedToolKind, action: DsgGovernedToolAction, args: Record<string, unknown>): string {
@@ -551,14 +696,14 @@ async function executeSearch(prepared: DsgGovernedToolPreparedRequest): Promise<
 }
 
 
-async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest): Promise<StoredRecord> {
+async function buildPersistentRecord(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest, stateOverride?: Record<string, unknown>): Promise<StoredRecord> {
   const root = String(input.sandboxRoot || process.cwd());
   const records = await readStoredRecords(root, prepared.tool);
   const id = asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args);
   const previous = records.filter((record) => record.id === id).at(-1);
   const now = new Date().toISOString();
   const status: StoredRecord['status'] = prepared.action === 'delete' ? 'deleted' : prepared.action === 'deallocate' ? 'deallocated' : prepared.tool === 'persistent_compute' ? 'allocated' : prepared.action === 'update' ? 'updated' : 'created';
-  const state = materializePersistentState(prepared.tool, prepared.action, prepared.args, previous);
+  const state = stateOverride ?? materializePersistentState(prepared.tool, prepared.action, prepared.args, previous);
   const baseRecord = {
     id,
     tool: prepared.tool,
@@ -574,7 +719,12 @@ async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGoverne
     status,
     state,
   } satisfies Omit<StoredRecord, 'eventHash'>;
-  const record: StoredRecord = { ...baseRecord, eventHash: sha256Json(baseRecord) };
+  return { ...baseRecord, eventHash: sha256Json(baseRecord) };
+}
+
+async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest, stateOverride?: Record<string, unknown>): Promise<StoredRecord> {
+  const root = String(input.sandboxRoot || process.cwd());
+  const record = await buildPersistentRecord(input, prepared, stateOverride);
   await mkdir(persistenceRoot(root), { recursive: true });
   await appendFile(persistenceFile(root, prepared.tool), `${JSON.stringify(record)}\n`, 'utf8');
   return record;
@@ -606,11 +756,29 @@ async function executePersistence(input: DsgGovernedToolRequest, prepared: DsgGo
   if (prepared.action === 'read') {
     const resultRecords = asString(prepared.args.id) ? records.filter((record) => record.id === id) : activeStoredRecords(records);
     const latest = resultRecords.at(-1);
-    const verifyTrace = buildAdapterStepTrace(prepared, 'verify_read_state', { id: asString(prepared.args.id) ? id : 'all-active', count: resultRecords.length, latestStatus: latest?.status }, [sha256Json(resultRecords)], resultRecords.length === 0 && asString(prepared.args.id) ? ['PERSISTENCE_RECORD_NOT_FOUND'] : []);
+    const runtimeState = prepared.tool === 'schedule'
+      ? await readScheduleRuntime(root, asString(prepared.args.id) ? id : undefined)
+      : prepared.tool === 'persistent_compute'
+        ? await readComputeRuntime(root, asString(prepared.args.id) ? id : undefined)
+        : [];
+    const runtimeIds = new Set(runtimeState.map((entry) => entry.id));
+    const missingRuntimeIds = resultRecords
+      .filter((record) => ['schedule', 'persistent_compute'].includes(record.tool) && !['deleted', 'deallocated'].includes(record.status) && !runtimeIds.has(record.id))
+      .map((record) => record.id);
+    const verifyTrace = buildAdapterStepTrace(
+      prepared,
+      'verify_read_state',
+      { id: asString(prepared.args.id) ? id : 'all-active', count: resultRecords.length, latestStatus: latest?.status, runtimeCount: runtimeState.length, missingRuntimeIds },
+      [sha256Json({ resultRecords, runtimeState })],
+      [
+        ...(resultRecords.length === 0 && asString(prepared.args.id) ? ['PERSISTENCE_RECORD_NOT_FOUND'] : []),
+        ...(missingRuntimeIds.length ? ['PERSISTENCE_RUNTIME_STATE_MISMATCH'] : []),
+      ],
+    );
     assertAdapterStep(verifyTrace);
     trace.push(verifyTrace);
-    const output = { operation: prepared.action, truth: prepared.audit.truth, record: latest, records: asString(prepared.args.id) ? undefined : resultRecords, adapterDecisionTrace: trace, outputHash: '' } satisfies PersistentAdapterOutput;
-    output.outputHash = sha256Json({ record: output.record, records: output.records, trace: trace.map((step) => step.evidenceHash) });
+    const output = { operation: prepared.action, truth: prepared.audit.truth, record: latest, records: asString(prepared.args.id) ? undefined : resultRecords, runtimeState, adapterDecisionTrace: trace, outputHash: '' } as PersistentAdapterOutput & { runtimeState: unknown[] };
+    output.outputHash = sha256Json({ record: output.record, records: output.records, runtimeState, trace: trace.map((step) => step.evidenceHash) });
     return output;
   }
 
@@ -629,13 +797,33 @@ async function executePersistence(input: DsgGovernedToolRequest, prepared: DsgGo
   assertAdapterStep(materializeTrace);
   trace.push(materializeTrace);
 
-  const record = await persistRecord(input, prepared);
+  const tentativeRecord = await buildPersistentRecord(input, prepared, materializedState);
+  let runtimeState: SchedulerRuntimeEntry | ComputeRuntimeEntry | undefined;
+  if (prepared.tool === 'schedule') {
+    const schedulerTrace = buildAdapterStepTrace(prepared, 'scheduler_apply', { id, action: prepared.action, revision: tentativeRecord.revision }, [tentativeRecord.eventHash]);
+    assertAdapterStep(schedulerTrace);
+    trace.push(schedulerTrace);
+    runtimeState = await applyScheduleRuntime(root, prepared.action, tentativeRecord);
+  } else if (prepared.tool === 'persistent_compute') {
+    const provisionerTrace = buildAdapterStepTrace(prepared, 'provisioner_apply', { id, action: prepared.action, revision: tentativeRecord.revision }, [tentativeRecord.eventHash]);
+    assertAdapterStep(provisionerTrace);
+    trace.push(provisionerTrace);
+    runtimeState = await applyComputeRuntime(root, prepared.action, tentativeRecord);
+  }
+
+  const runtimeVerifyTrace = buildAdapterStepTrace(prepared, 'verify_runtime_side_effect', { id, action: prepared.action, hasRuntimeState: Boolean(runtimeState), runtimeState }, [sha256Json(runtimeState ?? { removed: true, id })]);
+  assertAdapterStep(runtimeVerifyTrace);
+  trace.push(runtimeVerifyTrace);
+
+  const record = await persistRecord(input, prepared, { ...materializedState, runtimeState });
+  if (prepared.tool === 'schedule') runtimeState = await applyScheduleRuntime(root, prepared.action, record);
+  if (prepared.tool === 'persistent_compute') runtimeState = await applyComputeRuntime(root, prepared.action, record);
   const persistTrace = buildAdapterStepTrace(prepared, 'persist_append_only_record', { id, revision: record.revision, status: record.status }, [record.eventHash]);
   assertAdapterStep(persistTrace);
   trace.push(persistTrace);
 
-  const output = { operation: prepared.action, truth: prepared.audit.truth, record, adapterDecisionTrace: trace, outputHash: '' } satisfies PersistentAdapterOutput;
-  output.outputHash = sha256Json({ record, trace: trace.map((step) => step.evidenceHash) });
+  const output = { operation: prepared.action, truth: prepared.audit.truth, record, runtimeState, adapterDecisionTrace: trace, outputHash: '' } as PersistentAdapterOutput & { runtimeState?: SchedulerRuntimeEntry | ComputeRuntimeEntry };
+  output.outputHash = sha256Json({ record, runtimeState, trace: trace.map((step) => step.evidenceHash) });
   return output;
 }
 

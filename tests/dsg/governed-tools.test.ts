@@ -177,8 +177,14 @@ describe('DSG governed tooling layer', () => {
     expect(updated.ok).toBe(true);
     expect(deleted.ok).toBe(true);
     expect((updated.output as { record: { state: { scheduler: { kind: string } } } }).record.state.scheduler.kind).toBe('interval');
+    expect((updated.output as { adapterDecisionTrace: { step: string }[] }).adapterDecisionTrace.map((step) => step.step)).toEqual(
+      expect.arrayContaining(['scheduler_apply', 'verify_runtime_side_effect', 'persist_append_only_record']),
+    );
+    expect((updated.output as { runtimeState: { kind: string } }).runtimeState.kind).toBe('interval');
     expect((deleted.output as { record: { status: string; state: { lifecycle: string } } }).record.status).toBe('deleted');
     expect((deleted.output as { record: { status: string; state: { lifecycle: string } } }).record.state.lifecycle).toBe('deleted');
+    const schedulerAfterDelete = JSON.parse(await readFile(path.join(tempRoot, '.dsg-governed-tools', 'scheduler-runtime.json'), 'utf8'));
+    expect(schedulerAfterDelete.entries['schedule:daily-proof']).toBeUndefined();
   });
 
   it('supports persistent compute allocate, read, and deallocate lifecycles', async () => {
@@ -197,8 +203,59 @@ describe('DSG governed tooling layer', () => {
     expect(readAllocated.ok).toBe(true);
     expect(deallocated.ok).toBe(true);
     expect((allocated.output as { record: { state: { computeHandle: string } } }).record.state.computeHandle).toMatch(/^pc:/);
+    expect((allocated.output as { adapterDecisionTrace: { step: string }[] }).adapterDecisionTrace.map((step) => step.step)).toEqual(
+      expect.arrayContaining(['provisioner_apply', 'verify_runtime_side_effect', 'persist_append_only_record']),
+    );
+    expect((allocated.output as { runtimeState: { lifecycle: string } }).runtimeState.lifecycle).toBe('allocated');
     expect((deallocated.output as { record: { status: string; state: { lifecycle: string } } }).record.status).toBe('deallocated');
     expect((deallocated.output as { record: { status: string; state: { lifecycle: string } } }).record.state.lifecycle).toBe('deallocated');
+    const computeAfterDeallocate = JSON.parse(await readFile(path.join(tempRoot, '.dsg-governed-tools', 'compute-runtime.json'), 'utf8'));
+    expect(computeAfterDeallocate.entries['compute:worker-a'].lifecycle).toBe('deallocated');
+  });
+
+  it('records search adapter step tracing and fails closed on empty verified results', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200, headers: { 'content-type': 'text/plain' } })));
+
+    const result = await executeGovernedToolRequest({
+      tool: 'search',
+      action: 'query',
+      goal: 'Search governed docs',
+      args: { query: 'awakening frame', endpoint: 'https://search.example.com/query', allowedHosts: ['search.example.com'], approved: true },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.executionDecisionFrame?.blockedReasons).toContain('SEARCH_EMPTY_RESULTS');
+  });
+
+  it('records API adapter traces for allowlisted HTTPS requests', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } })));
+
+    const result = await executeGovernedToolRequest({
+      tool: 'api',
+      action: 'query',
+      goal: 'Query governed API',
+      args: { url: 'https://api.example.com/status', method: 'GET', allowedHosts: ['api.example.com'], approved: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect((result.output as { adapterDecisionTrace: { step: string }[] }).adapterDecisionTrace.map((step) => step.step)).toEqual(
+      expect.arrayContaining(['before_request', 'after_response', 'verify_response_body']),
+    );
+  });
+
+  it('fails closed for google workspace adapter HTTP errors with execution decision frame evidence', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'denied' }), { status: 403, headers: { 'content-type': 'application/json' } })));
+
+    const result = await executeGovernedToolRequest({
+      tool: 'google_workspace',
+      action: 'query',
+      goal: 'Search governed workspace docs',
+      args: { operation: 'drive.search', endpoint: 'https://workspace.example.com/adapter', allowedHosts: ['workspace.example.com'], approved: true },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.outputVerification).toBe('blocked_before_execution');
+    expect(result.executionDecisionFrame?.blockedReasons).toContain('GOOGLE_WORKSPACE_HTTP_NOT_OK');
   });
 
   it('adds adapter-level decision traces and fails closed for unverified browser responses', async () => {
