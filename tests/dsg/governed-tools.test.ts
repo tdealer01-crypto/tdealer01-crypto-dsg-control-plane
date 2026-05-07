@@ -52,6 +52,7 @@ describe('DSG governed tooling layer', () => {
   it('keeps browser operations blocked until explicit approval is supplied', () => {
     const prepared = prepareGovernedToolRequest({ tool: 'browser', action: 'navigate', goal: 'Read docs', args: { url: 'https://example.com' } });
     expect(prepared.ok).toBe(false);
+    expect(prepared.status).toBe('review');
     expect(prepared.audit.truth).toBe('external_data_pending_verification');
     expect(prepared.blockedReasons).toContain('BROWSER_CONFIRMATION_REQUIRED');
   });

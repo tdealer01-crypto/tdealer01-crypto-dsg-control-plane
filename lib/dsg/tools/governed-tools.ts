@@ -612,11 +612,12 @@ export function prepareGovernedToolRequest(input: DsgGovernedToolRequest): DsgGo
   const risk = kilesa(`${normalized.tool}:${normalized.action}:${normalized.goal || 'missing-goal'}`, verifiedInput.verified && reasons.length === 0, riskFlags);
   const boundary = truthBoundary({ verified: verifiedInput.verified && reasons.length === 0, containsSecret: false });
   const blockedReasons = [...new Set([...reasons, ...risk.reasons.filter((reason) => reason !== 'VERIFIED'), ...boundary.blockedReasons])];
+  const confirmationOnlyReview = reasons.length > 0 && reasons.every((reason) => reason.endsWith('_CONFIRMATION_REQUIRED'));
   const requestHash = sha256Json({ tool: normalized.tool, action: normalized.action, args: normalized.args, evidence });
 
   return {
     ok: blockedReasons.length === 0,
-    status: blockedReasons.length ? 'blocked' : readyStatus(normalized.tool, normalized.action),
+    status: blockedReasons.length ? (confirmationOnlyReview ? 'review' : 'blocked') : readyStatus(normalized.tool, normalized.action),
     tool: normalized.tool,
     action: normalized.action,
     goal: normalized.goal,

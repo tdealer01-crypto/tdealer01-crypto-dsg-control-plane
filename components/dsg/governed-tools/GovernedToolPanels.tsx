@@ -58,6 +58,11 @@ function externalUrl(output: unknown) {
   return typeof value === 'string' && value.startsWith('https://') ? value : null;
 }
 
+function outputField(output: unknown, key: string) {
+  if (!output || typeof output !== 'object') return undefined;
+  return (output as Record<string, unknown>)[key];
+}
+
 function InfoRow({ label, value }: { label: string; value?: unknown }) {
   if (value === undefined || value === null || value === '') return null;
   return (
@@ -98,7 +103,7 @@ function DecisionFramePanel({ prepared }: { prepared: DsgGovernedToolPreparedReq
     <section className="space-y-2 rounded-xl border border-[#c8c8c8]/15 bg-[#111113] p-3">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d6a63a]">Decision frame</p>
       <div className="grid gap-2 sm:grid-cols-2">
-        <InfoRow label="Risk status" value={frame.risk.state ?? 'unknown'} />
+        <InfoRow label="Risk status" value={(frame.risk as { status?: string; state?: string }).status ?? frame.risk.state ?? 'unknown'} />
         <InfoRow label="Truth ok" value={String(frame.truthBoundary.ok)} />
       </div>
       {Array.isArray(frame.risk.reasons) && frame.risk.reasons.length ? <BlockedReasonsList reasons={frame.risk.reasons} /> : null}
@@ -143,6 +148,20 @@ function ToolOutputViewer({ result }: { result: DsgGovernedToolExecutionResult }
   const output = result.output;
   const url = externalUrl(output);
   if (!output) return null;
+  const tool = result.prepared.tool;
+  const primaryFields = tool === 'browser'
+    ? ['url', 'status', 'contentType', 'title']
+    : tool === 'search'
+      ? ['endpoint', 'status']
+      : tool === 'api'
+        ? ['url', 'method', 'status']
+        : tool === 'google_workspace'
+          ? ['operation', 'status']
+          : tool === 'shell'
+            ? ['stdout', 'stderr']
+            : tool === 'file'
+              ? ['path', 'contentHash']
+              : ['operation', 'status'];
   return (
     <section className="space-y-2 rounded-xl border border-[#d6a63a]/25 bg-[#d6a63a]/5 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -152,8 +171,13 @@ function ToolOutputViewer({ result }: { result: DsgGovernedToolExecutionResult }
       <div className="grid gap-2 sm:grid-cols-2">
         <InfoRow label="Verification" value={result.outputVerification} />
         <InfoRow label="Execution phase" value={result.executionDecisionFrame?.phase} />
+        {primaryFields.map((field) => <InfoRow key={field} label={field} value={outputField(output, field)} />)}
       </div>
-      <JsonBlock label={`${result.prepared.tool} output`} value={output} />
+      {tool === 'browser' ? <JsonBlock label="Scraped text" value={outputField(output, 'text') ?? ''} /> : null}
+      {tool === 'search' ? <JsonBlock label="Search results" value={outputField(output, 'results') ?? []} /> : null}
+      {(tool === 'api' || tool === 'google_workspace') ? <JsonBlock label="Response body" value={outputField(output, 'body') ?? {}} /> : null}
+      {(tool === 'shell' || tool === 'file') ? <JsonBlock label={`${tool} details`} value={output} /> : null}
+      {!['browser', 'search', 'api', 'google_workspace', 'shell', 'file'].includes(tool) ? <JsonBlock label={`${tool} output`} value={output} /> : null}
     </section>
   );
 }
@@ -174,6 +198,7 @@ function PersistedRecordsView({ records }: { records: StoredRecord[] }) {
               <InfoRow label="Tool" value={record.tool} />
               <InfoRow label="Action" value={record.action} />
               <InfoRow label="Goal" value={record.goal} />
+              <InfoRow label="Created" value={record.createdAt} />
               <InfoRow label="Updated" value={record.updatedAt} />
               <InfoRow label="Request hash" value={record.requestHash} />
               <InfoRow label="Evidence hash" value={record.evidenceHash} />
