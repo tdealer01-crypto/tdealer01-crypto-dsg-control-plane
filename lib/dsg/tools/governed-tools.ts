@@ -44,11 +44,25 @@ export type DsgGovernedToolPreparedRequest = {
   userOutcome: string;
 };
 
+export type DsgExecutionDecisionFrame = {
+  ok: boolean;
+  phase: 'preflight' | 'adapter_execution' | 'output_verification';
+  target: ReturnType<typeof samadhi>;
+  verifiedInput: ReturnType<typeof verify<Record<string, unknown>>>;
+  risk: ReturnType<typeof kilesa>;
+  stats: ReturnType<typeof parami>;
+  benefit: ReturnType<typeof userBenefitGate>;
+  truthBoundary: ReturnType<typeof truthBoundary>;
+  blockedReasons: string[];
+  evidenceHash: string;
+};
+
 export type DsgGovernedToolExecutionResult = {
   ok: boolean;
   prepared: DsgGovernedToolPreparedRequest;
   output?: unknown;
   outputVerification: 'runtime_evidence' | 'blocked_before_execution';
+  executionDecisionFrame?: DsgExecutionDecisionFrame;
 };
 
 type StoredRecord = {
@@ -61,7 +75,11 @@ type StoredRecord = {
   updatedAt: string;
   requestHash: string;
   evidenceHash: string;
+  eventHash: string;
+  previousEventHash?: string;
+  revision: number;
   status: 'created' | 'updated' | 'allocated';
+  state: Record<string, unknown>;
 };
 
 const supportedActions: Record<DsgGovernedToolKind, DsgGovernedToolAction[]> = {
@@ -133,6 +151,103 @@ function persistenceFile(sandboxRoot: string, tool: DsgGovernedToolKind): string
 
 function recordId(tool: DsgGovernedToolKind, action: DsgGovernedToolAction, args: Record<string, unknown>): string {
   return `${tool}:${sha256Json({ action, args }).slice(0, 24)}`;
+}
+
+function buildExecutionDecisionFrame(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest, phase: DsgExecutionDecisionFrame['phase'], extraEvidence: string[] = [], extraBlockedReasons: string[] = []): DsgExecutionDecisionFrame {
+  const runtimeEvidence = [
+    prepared.audit.requestHash,
+    prepared.audit.id,
+    `tool:${prepared.tool}`,
+    `action:${prepared.action}`,
+    ...extraEvidence,
+  ].filter(Boolean);
+  const verifiedInput = verify(
+    { tool: prepared.tool, action: prepared.action, args: prepared.args, goal: input.goal.trim(), phase },
+    runtimeEvidence,
+  );
+  const blockedReasons = [...prepared.blockedReasons, ...extraBlockedReasons];
+  if (!prepared.ok) blockedReasons.push('PREPARED_REQUEST_NOT_OK');
+  if (prepared.status !== 'ready') blockedReasons.push(`PREPARED_STATUS_${prepared.status.toUpperCase()}`);
+  if (!prepared.decisionFrame.benefit.ok) blockedReasons.push('USER_BENEFIT_GATE_NOT_MET');
+  if (!prepared.decisionFrame.truthBoundary.ok) blockedReasons.push('TRUTH_BOUNDARY_NOT_OK');
+  if (prepared.decisionFrame.risk.state !== 'data_verified') blockedReasons.push('PREPARED_RISK_NOT_VERIFIED');
+  if (!verifiedInput.verified) blockedReasons.push('EXECUTION_EVIDENCE_REQUIRED');
+  const riskFlags = blockedReasons.filter((reason) => /BLOCKED|NOT_ALLOWLISTED|OUTSIDE|SENSITIVE|CONFIRMATION|ENDPOINT|PRIVATE|INVALID|REQUIRED|NOT_OK|NOT_VERIFIED|UNSUPPORTED|TOO_SHORT|OUT_OF_RANGE/.test(reason));
+  const risk = kilesa(`${prepared.tool}:${prepared.action}:${phase}`, verifiedInput.verified && blockedReasons.length === 0, riskFlags);
+  const truth = truthBoundary({ verified: verifiedInput.verified && blockedReasons.length === 0, containsSecret: false });
+  const finalBlockedReasons = [...new Set([...blockedReasons, ...risk.reasons.filter((reason) => reason !== 'VERIFIED'), ...truth.blockedReasons])];
+  return {
+    ok: finalBlockedReasons.length === 0,
+    phase,
+    target: samadhi(`dsg-tool-execution:${prepared.tool}`, input.goal.trim() || 'missing-goal'),
+    verifiedInput,
+    risk,
+    stats: parami([...(input.history ?? []), prepared.tool, prepared.action, phase]),
+    benefit: userBenefitGate({
+      userBenefit: 'User gets adapter execution that re-checks target, evidence, risk, truth boundary, and benefit at runtime.',
+      easier: true,
+      tangibleOutput: 'Execution-phase Decision Frame proof with a deterministic evidence hash.',
+      nextAction: finalBlockedReasons.length ? 'Fix execution guard blockers before adapter side effects.' : 'Execute adapter and verify output evidence.',
+    }),
+    truthBoundary: truth,
+    blockedReasons: finalBlockedReasons,
+    evidenceHash: sha256Json({ runtimeEvidence, phase, requestHash: prepared.audit.requestHash }),
+  };
+}
+
+function parseStoredRecord(line: string): StoredRecord | undefined {
+  if (!line.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(line) as StoredRecord;
+    if (!parsed || typeof parsed !== 'object' || !asString(parsed.id)) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readStoredRecords(sandboxRoot: string, tool: DsgGovernedToolKind): Promise<StoredRecord[]> {
+  try {
+    const raw = await readFile(persistenceFile(sandboxRoot, tool), 'utf8');
+    return raw.split('\n').map(parseStoredRecord).filter((record): record is StoredRecord => Boolean(record));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+function materializePersistentState(tool: DsgGovernedToolKind, action: DsgGovernedToolAction, args: Record<string, unknown>, previous?: StoredRecord): Record<string, unknown> {
+  const previousState = previous?.state ?? {};
+  if (tool === 'schedule') {
+    const intervalMs = typeof args.intervalMs === 'number' ? args.intervalMs : undefined;
+    const nowMs = Date.now();
+    return {
+      ...previousState,
+      title: asString(args.title) || previousState.title || 'Governed schedule',
+      cron: asString(args.cron) || previousState.cron,
+      intervalMs,
+      nextRunAt: asString(args.nextRunAt) || (intervalMs ? new Date(nowMs + intervalMs).toISOString() : previousState.nextRunAt),
+      enabled: args.enabled !== false,
+    };
+  }
+  if (tool === 'persistent_compute') {
+    const ttlMs = typeof args.ttlMs === 'number' ? args.ttlMs : 3_600_000;
+    return {
+      ...previousState,
+      name: asString(args.name),
+      resourceClass: asString(args.resourceClass) || 'sandbox-worker',
+      ttlMs,
+      expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+      network: asBoolean(args.network),
+    };
+  }
+  return {
+    ...previousState,
+    title: asString(args.title) || previousState.title,
+    steps: Array.isArray(args.steps) ? args.steps.map((step) => String(step || '').trim()).filter(Boolean) : previousState.steps,
+    status: asString(args.status) || previousState.status || (action === 'update' ? 'updated' : 'created'),
+    payload: args.payload ?? previousState.payload,
+  };
 }
 
 function textFromHtml(html: string): { title: string; text: string } {
@@ -301,20 +416,28 @@ async function executeSearch(prepared: DsgGovernedToolPreparedRequest): Promise<
 
 async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest): Promise<StoredRecord> {
   const root = String(input.sandboxRoot || process.cwd());
+  const records = await readStoredRecords(root, prepared.tool);
+  const id = asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args);
+  const previous = records.filter((record) => record.id === id).at(-1);
   const now = new Date().toISOString();
   const status = prepared.tool === 'persistent_compute' ? 'allocated' : prepared.action === 'update' ? 'updated' : 'created';
-  const record: StoredRecord = {
-    id: asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args),
+  const state = materializePersistentState(prepared.tool, prepared.action, prepared.args, previous);
+  const baseRecord = {
+    id,
     tool: prepared.tool,
     action: prepared.action,
     goal: input.goal.trim(),
     args: prepared.args,
-    createdAt: now,
+    createdAt: previous?.createdAt ?? now,
     updatedAt: now,
     requestHash: prepared.audit.requestHash,
-    evidenceHash: sha256Json({ truth: prepared.audit.truth, args: prepared.args, goal: input.goal }),
+    evidenceHash: sha256Json({ truth: prepared.audit.truth, args: prepared.args, goal: input.goal, state, previousEventHash: previous?.eventHash }),
+    previousEventHash: previous?.eventHash,
+    revision: (previous?.revision ?? 0) + 1,
     status,
-  };
+    state,
+  } satisfies Omit<StoredRecord, 'eventHash'>;
+  const record: StoredRecord = { ...baseRecord, eventHash: sha256Json(baseRecord) };
   await mkdir(persistenceRoot(root), { recursive: true });
   await appendFile(persistenceFile(root, prepared.tool), `${JSON.stringify(record)}\n`, 'utf8');
   return record;
@@ -354,32 +477,70 @@ async function executeGoogleWorkspace(prepared: DsgGovernedToolPreparedRequest):
 
 export async function executeGovernedToolRequest(input: DsgGovernedToolRequest): Promise<DsgGovernedToolExecutionResult> {
   const prepared = prepareGovernedToolRequest(input);
-  if (!prepared.ok || prepared.status !== 'ready') return { ok: false, prepared, outputVerification: 'blocked_before_execution' };
+  const executionFrame = buildExecutionDecisionFrame(input, prepared, 'preflight');
+  if (!executionFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: executionFrame };
 
   if (prepared.tool === 'shell') {
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:shell.exec']);
+    if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
     const { bin, args } = splitCommand(asString(prepared.args.command));
     const { stdout, stderr } = await execFileAsync(bin, args, { cwd: input.sandboxRoot || process.cwd(), timeout: Number(prepared.args.timeoutMs ?? 10_000), maxBuffer: 1024 * 1024 });
-    return { ok: true, prepared, output: { stdout, stderr }, outputVerification: 'runtime_evidence' };
+    const output = { stdout, stderr, outputHash: sha256Json({ stdout, stderr }) };
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
   }
 
   if (prepared.tool === 'file') {
     const checked = pathInsideSandbox(String(input.sandboxRoot || process.cwd()), asString(prepared.args.path));
-    if (!checked.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution' };
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:file', checked.absolutePath], checked.ok ? [] : [checked.reason ?? 'PATH_CHECK_FAILED']);
+    if (!adapterFrame.ok || !checked.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
     if (prepared.action === 'read') {
       const content = await readFile(checked.absolutePath, 'utf8');
-      return { ok: true, prepared, output: { path: prepared.args.path, content, contentHash: sha256Json({ content }) }, outputVerification: 'runtime_evidence' };
+      const output = { path: prepared.args.path, content, contentHash: sha256Json({ content }) };
+      return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [output.contentHash]) };
     }
     await mkdir(path.dirname(checked.absolutePath), { recursive: true });
     if (prepared.action === 'append') await appendFile(checked.absolutePath, String(prepared.args.content), 'utf8');
     else await writeFile(checked.absolutePath, String(prepared.args.content), 'utf8');
-    return { ok: true, prepared, output: { path: prepared.args.path, contentHash: sha256Json({ content: prepared.args.content }) }, outputVerification: 'runtime_evidence' };
+    const output = { path: prepared.args.path, contentHash: sha256Json({ content: prepared.args.content }) };
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [output.contentHash]) };
   }
 
-  if (prepared.tool === 'browser') return { ok: true, prepared, output: await executeBrowser(prepared), outputVerification: 'runtime_evidence' };
-  if (prepared.tool === 'search') return { ok: true, prepared, output: await executeSearch(prepared), outputVerification: 'runtime_evidence' };
-  if (persistedToolKinds.has(prepared.tool)) return { ok: true, prepared, output: await persistRecord(input, prepared), outputVerification: 'runtime_evidence' };
-  if (prepared.tool === 'api') return { ok: true, prepared, output: await executeApi(prepared), outputVerification: 'runtime_evidence' };
-  if (prepared.tool === 'google_workspace') return { ok: true, prepared, output: await executeGoogleWorkspace(prepared), outputVerification: 'runtime_evidence' };
+  if (prepared.tool === 'browser') {
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:browser']);
+    if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
+    const output = await executeBrowser(prepared);
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+  }
+  if (prepared.tool === 'search') {
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:search']);
+    if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
+    const output = await executeSearch(prepared);
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+  }
+  if (persistedToolKinds.has(prepared.tool)) {
+    const root = String(input.sandboxRoot || process.cwd());
+    const id = asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args);
+    const records = await readStoredRecords(root, prepared.tool);
+    const previous = records.filter((record) => record.id === id).at(-1);
+    const persistenceBlocked = prepared.action === 'update' && !previous ? ['PERSISTENCE_RECORD_NOT_FOUND'] : [];
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:persistence', id], persistenceBlocked);
+    if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
+    const output = await persistRecord(input, prepared);
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [(output as StoredRecord).eventHash]) };
+  }
+  if (prepared.tool === 'api') {
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:api']);
+    if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
+    const output = await executeApi(prepared);
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+  }
+  if (prepared.tool === 'google_workspace') {
+    const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:google_workspace']);
+    if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
+    const output = await executeGoogleWorkspace(prepared);
+    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+  }
 
-  return { ok: false, prepared, outputVerification: 'blocked_before_execution' };
+  const fallbackFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', [], ['ADAPTER_NOT_IMPLEMENTED']);
+  return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: fallbackFrame };
 }

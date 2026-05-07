@@ -109,4 +109,47 @@ describe('DSG governed tooling layer', () => {
     expect(result.ok).toBe(true);
     expect(result.output).toMatchObject({ status: 201, ok: true, method: 'POST', body: { saved: true } });
   });
+
+  it('blocks persistence updates when the append-only record does not exist', async () => {
+    tempRoot = await mkdtemp(path.join(tmpdir(), 'dsg-tool-'));
+    const result = await executeGovernedToolRequest({
+      tool: 'workflow',
+      action: 'update',
+      goal: 'Update missing workflow',
+      sandboxRoot: tempRoot,
+      args: { id: 'workflow:missing', status: 'done' },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.outputVerification).toBe('blocked_before_execution');
+    expect(result.executionDecisionFrame?.blockedReasons).toContain('PERSISTENCE_RECORD_NOT_FOUND');
+  });
+
+  it('persists updates as linked revisions with materialized state', async () => {
+    tempRoot = await mkdtemp(path.join(tmpdir(), 'dsg-tool-'));
+    const created = await executeGovernedToolRequest({
+      tool: 'workflow',
+      action: 'create',
+      goal: 'Create workflow',
+      sandboxRoot: tempRoot,
+      args: { id: 'workflow:rollout', title: 'Rollout', steps: ['prepare'] },
+    });
+    const updated = await executeGovernedToolRequest({
+      tool: 'workflow',
+      action: 'update',
+      goal: 'Update workflow',
+      sandboxRoot: tempRoot,
+      args: { id: 'workflow:rollout', status: 'done' },
+    });
+
+    expect(created.ok).toBe(true);
+    expect(updated.ok).toBe(true);
+    expect(updated.executionDecisionFrame?.ok).toBe(true);
+    const persisted = (await readFile(path.join(tempRoot, '.dsg-governed-tools', 'workflow.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(persisted).toHaveLength(2);
+    expect(persisted[1].revision).toBe(2);
+    expect(persisted[1].previousEventHash).toBe(persisted[0].eventHash);
+    expect(persisted[1].state).toMatchObject({ title: 'Rollout', status: 'done' });
+  });
+
 });
