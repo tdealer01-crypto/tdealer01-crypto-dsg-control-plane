@@ -7,18 +7,14 @@ import {
   Bell,
   CheckCircle2,
   ChevronRight,
-  Database,
   FileText,
-  Gauge,
   Lock,
   MessageSquare,
   RefreshCw,
   Search,
   Server,
   ShieldCheck,
-  Sparkles,
   Terminal,
-  Users,
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,127 +45,99 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { id: 'chat', label: { en: 'App Builder', th: 'ตัวสร้างแอป' }, helper: { en: 'Goal → PRD → Plan', th: 'เป้าหมาย → PRD → แผน' }, icon: MessageSquare },
-  { id: 'dashboard', label: { en: 'Mission Control', th: 'ศูนย์ควบคุม' }, helper: { en: 'Live operating view', th: 'ดูการทำงานแบบสด' }, icon: Activity },
-  { id: 'agents', label: { en: 'Agents & Runtime', th: 'เอเจนต์และรันไทม์' }, helper: { en: 'Tool and agent layer', th: 'ชั้นเครื่องมือและเอเจนต์' }, icon: Terminal },
-  { id: 'executions', label: { en: 'Evidence Boundary', th: 'ขอบเขตหลักฐาน' }, helper: { en: 'Proof before claims', th: 'มีหลักฐานก่อนเคลม' }, icon: ShieldCheck },
-  { id: 'governance', label: { en: 'Governance', th: 'กำกับดูแล' }, helper: { en: 'Policy and approval', th: 'นโยบายและอนุมัติ' }, icon: Lock },
-  { id: 'proof', label: { en: 'Enterprise Proof', th: 'หลักฐานองค์กร' }, helper: { en: 'Audit-ready view', th: 'พร้อมตรวจสอบ' }, icon: FileText },
+  { id: 'chat', label: { th: 'คุยกับเอเจนต์', en: 'Agent chat' }, helper: { th: 'เริ่มงานตรงนี้', en: 'Start work here' }, icon: MessageSquare },
+  { id: 'dashboard', label: { th: 'ภาพรวม', en: 'Overview' }, helper: { th: 'สถานะจริง', en: 'Real status' }, icon: Activity },
+  { id: 'agents', label: { th: 'เอเจนต์', en: 'Agents' }, helper: { th: 'เครื่องมือและรันไทม์', en: 'Tools and runtime' }, icon: Terminal },
+  { id: 'executions', label: { th: 'หลักฐาน', en: 'Evidence' }, helper: { th: 'ก่อนเคลม', en: 'Before claims' }, icon: ShieldCheck },
+  { id: 'governance', label: { th: 'กำกับดูแล', en: 'Governance' }, helper: { th: 'นโยบายและอนุมัติ', en: 'Policy and approval' }, icon: Lock },
+  { id: 'proof', label: { th: 'ตรวจสอบ', en: 'Audit' }, helper: { th: 'พร้อมตรวจ', en: 'Audit view' }, icon: FileText },
 ];
 
 const copy = {
-  en: {
-    brandSub: 'Governed runtime',
-    navTitle: 'User-first flow',
-    designRules: 'Design evidence rules',
-    principles: [
-      'Public research needs source citation before use',
-      'Show real endpoint state only',
-      'Fail closed when proof is missing',
-      'Separate deployable from production verified',
+  th: {
+    brandSub: 'รันไทม์มีหลักฐาน',
+    controlPlane: 'ศูนย์ควบคุม',
+    language: 'ภาษา',
+    searchPlaceholder: 'ค้นหาจะเปิดเมื่อมีดัชนีหลักฐานจริง',
+    notificationLabel: 'แจ้งเตือนยังไม่เปิดจนกว่าจะมี event จริง',
+    noMock: 'ไม่ใช้ข้อมูลจำลอง',
+    workTitle: 'พื้นที่ทำงานหลัก',
+    workSubtitle: 'คุยงานกับเอเจนต์เป็นหลัก หน้าจออื่นเป็นหมวดเสริม ไม่ใส่ช่องใหญ่ที่กดไม่ได้',
+    rulesTitle: 'กฎหน้าจอ',
+    rules: [
+      'ใช้เฉพาะข้อมูลจริงจาก endpoint หรือแหล่งสาธารณะที่อ้างอิงได้',
+      'ไม่เดาผลผู้บริโภค ไม่แตะหลังบ้าน และไม่แสดงตัวเลขปลอม',
+      'ทอง = ผ่าน/พร้อม, แดง = เสี่ยง/ติดขัด, เงิน = รายละเอียดตรวจต่อ',
     ],
-    operator: 'Operator',
-    evidenceMode: 'Evidence-first mode',
-    controlPlane: 'Control Plane',
-    searchPlaceholder: 'Search disabled until real evidence index exists',
-    notificationLabel: 'Notifications unavailable until evidence events exist',
-    noMock: 'No mock claims',
-    heroKicker: 'DSG App Builder Cockpit',
-    heroTitle: 'Build with evidence, monitor live, and never claim what is not proven.',
-    heroBody: 'Gold highlights verified operating state, red exposes risk, and silver holds neutral review details. The right monitor shows live processing status and proof boundaries for user trust.',
-    currentWorkspace: 'Current workspace',
-    currentWorkspaceBody: 'Status, evidence, and next action stay visible before execution.',
-    cards: {
-      readable: ['Readable priority', 'Large labels, clear sections, and one primary work surface at a time.'],
-      trust: ['Trust boundary', 'Risk and missing proof stay visible instead of being hidden behind success styling.'],
-      research: ['Public research ready', 'Consumer evidence must come from cited public sources before it shapes the claim layer.'],
-    },
     monitor: {
-      kicker: 'Live Monitor',
-      title: 'Real work, real proof',
-      refreshLabel: 'Refresh live monitor',
-      pass: 'PASS',
-      total: 'TOTAL',
-      block: 'BLOCK',
+      title: 'สด',
+      refresh: 'รีเฟรช',
+      pass: 'ผ่าน',
+      block: 'ติดขัด',
+      review: 'ตรวจต่อ',
+      checked: 'ตรวจ',
+      notChecked: 'ยังไม่ตรวจ',
+      probes: {
+        'product-ready': { label: 'Product-ready', defaultDetail: 'กำลังตรวจ readiness API จริง' },
+        katzilla: { label: 'Katzilla', defaultDetail: 'กำลังตรวจตัวดึงข้อมูลฟรี' },
+        'public-ux-research': { label: 'UX research', defaultDetail: 'ใช้ได้เมื่อมี citation จากแหล่งสาธารณะเท่านั้น' },
+      },
+      endpointOk: 'endpoint จริงตอบกลับแล้ว',
+      serverEvidenceMissing: 'หลักฐานฝั่ง server ยังหาย',
+      endpointHttp: 'HTTP',
+      endpointUnreachable: 'ติดต่อ endpoint ไม่ได้',
+      boundary: 'หลักฐานที่หายต้องแสดงว่าหาย ไม่แทนด้วย mock',
+    },
+  },
+  en: {
+    brandSub: 'Evidence runtime',
+    controlPlane: 'Control plane',
+    language: 'Language',
+    searchPlaceholder: 'Search opens after a real evidence index exists',
+    notificationLabel: 'Notifications open after real evidence events exist',
+    noMock: 'No mock data',
+    workTitle: 'Primary workspace',
+    workSubtitle: 'Agent chat is the main work area. Other screens are supporting categories. No large inactive blocks.',
+    rulesTitle: 'Screen rules',
+    rules: [
+      'Use only real endpoints or cited public research sources',
+      'No guessed consumer results, no back-office access, no fake metrics',
+      'Gold = ready, red = risk, silver = review detail',
+    ],
+    monitor: {
+      title: 'Live',
+      refresh: 'Refresh',
+      pass: 'Pass',
+      block: 'Block',
+      review: 'Review',
       checked: 'Checked',
-      trustBoundary: 'Trust Boundary',
-      trustBoundaryBody: 'No back-office data, no guessed survey claims, and no mock performance numbers. Public research must be cited before it becomes design evidence.',
       notChecked: 'not checked',
       probes: {
-        'product-ready': { label: 'Product-ready gate', defaultDetail: 'Checking live readiness API.' },
-        katzilla: { label: 'Katzilla agent catalog', defaultDetail: 'Checking optional free public-data connector.' },
-        'public-ux-research': { label: 'Public UX research evidence', defaultDetail: 'Use public consumer research and market UX benchmarks only after source citation is attached. No internal survey data or mock assumptions are shown.' },
+        'product-ready': { label: 'Product-ready', defaultDetail: 'Checking live readiness API' },
+        katzilla: { label: 'Katzilla', defaultDetail: 'Checking free data connector' },
+        'public-ux-research': { label: 'UX research', defaultDetail: 'Use only after cited public source is attached' },
       },
-      endpointOk: 'Live endpoint returned a usable response.',
-      serverEvidenceMissing: 'Required server-side evidence is missing.',
-      endpointHttp: 'Endpoint returned HTTP',
-      endpointUnreachable: 'Endpoint could not be reached.',
+      endpointOk: 'Live endpoint responded',
+      serverEvidenceMissing: 'Server-side evidence is missing',
+      endpointHttp: 'HTTP',
+      endpointUnreachable: 'Endpoint unreachable',
+      boundary: 'Missing evidence must stay missing, not replaced by mock data',
     },
-    language: 'Language',
-  },
-  th: {
-    brandSub: 'รันไทม์แบบมีการกำกับ',
-    navTitle: 'ลำดับงานในมุมผู้ใช้',
-    designRules: 'กฎหลักฐานในการออกแบบ',
-    principles: [
-      'ข้อมูลวิจัยสาธารณะต้องมีแหล่งอ้างอิงก่อนนำมาใช้',
-      'แสดงเฉพาะสถานะจาก endpoint จริง',
-      'ถ้าหลักฐานหายให้หยุดและบอกตรง ๆ',
-      'แยกคำว่า deployable ออกจาก production verified',
-    ],
-    operator: 'ผู้ปฏิบัติงาน',
-    evidenceMode: 'โหมดทำงานจากหลักฐานจริง',
-    controlPlane: 'ศูนย์ควบคุม',
-    searchPlaceholder: 'ปิดค้นหาไว้จนกว่าจะมีดัชนีหลักฐานจริง',
-    notificationLabel: 'แจ้งเตือนยังไม่เปิดจนกว่าจะมี event หลักฐานจริง',
-    noMock: 'ไม่ใช้ข้อมูลจำลอง',
-    heroKicker: 'DSG App Builder Cockpit',
-    heroTitle: 'สร้างด้วยหลักฐานจริง ดูการทำงานสด และไม่เคลมสิ่งที่ยังพิสูจน์ไม่ได้',
-    heroBody: 'สีทองใช้กับสถานะที่ผ่านแล้ว สีแดงใช้กับความเสี่ยงหรือสิ่งที่ติดขัด และสีเงินใช้กับรายละเอียดที่ต้องตรวจต่อ จอมอนิเตอร์ด้านขวาแสดงการประมวลผลและขอบเขตหลักฐานแบบสดเพื่อให้ผู้ใช้วางใจ',
-    currentWorkspace: 'พื้นที่ทำงานปัจจุบัน',
-    currentWorkspaceBody: 'ผู้ใช้เห็นสถานะ หลักฐาน และขั้นต่อไปก่อนเริ่มการทำงาน',
-    cards: {
-      readable: ['อ่านง่ายก่อน', 'ใช้หัวข้อใหญ่ แบ่งหมวดชัด และให้ผู้ใช้โฟกัสงานหลักครั้งละหนึ่งจุด'],
-      trust: ['ขอบเขตความวางใจ', 'ความเสี่ยงและหลักฐานที่หายต้องแสดงให้เห็น ไม่ซ่อนอยู่หลังสีเขียว'],
-      research: ['พร้อมใช้ข้อมูลวิจัยสาธารณะ', 'ข้อมูลผู้บริโภคต้องมาจากแหล่งสาธารณะที่อ้างอิงได้ก่อนนำมาออกแบบหรือใช้ใน claim layer'],
-    },
-    monitor: {
-      kicker: 'จอมอนิเตอร์สด',
-      title: 'งานจริง หลักฐานจริง',
-      refreshLabel: 'รีเฟรชจอมอนิเตอร์',
-      pass: 'ผ่าน',
-      total: 'ทั้งหมด',
-      block: 'ติดขัด',
-      checked: 'ตรวจล่าสุด',
-      trustBoundary: 'ขอบเขตความจริง',
-      trustBoundaryBody: 'ไม่ใช้ข้อมูลหลังบ้านที่ไม่ได้ยืนยัน ไม่เดาผลแบบสอบถาม และไม่ใส่ตัวเลขประสิทธิภาพปลอม ข้อมูลวิจัยสาธารณะต้องมีแหล่งอ้างอิงก่อนเป็นหลักฐานในการออกแบบ',
-      notChecked: 'ยังไม่ได้ตรวจ',
-      probes: {
-        'product-ready': { label: 'เกตความพร้อมสินค้า', defaultDetail: 'กำลังตรวจ readiness API จริง' },
-        katzilla: { label: 'แคตตาล็อกเอเจนต์ Katzilla', defaultDetail: 'กำลังตรวจตัวดึงข้อมูลสาธารณะฟรีแบบ optional' },
-        'public-ux-research': { label: 'หลักฐาน UX จากแหล่งสาธารณะ', defaultDetail: 'ใช้ข้อมูลผู้บริโภคและ benchmark เจ้าตลาดได้เมื่อมี citation/source แนบแล้วเท่านั้น ไม่มีการเดา ไม่มีข้อมูลจำลอง และไม่แตะหลังบ้าน' },
-      },
-      endpointOk: 'endpoint จริงตอบกลับและใช้งานได้',
-      serverEvidenceMissing: 'หลักฐานฝั่ง server ที่จำเป็นยังหายอยู่',
-      endpointHttp: 'endpoint ตอบกลับ HTTP',
-      endpointUnreachable: 'ยังติดต่อ endpoint ไม่ได้',
-    },
-    language: 'ภาษา',
   },
 } as const;
 
-function badgeClass(state: ProbeState) {
-  if (state === 'pass') return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
-  if (state === 'blocked') return 'border-red-500/50 bg-red-500/10 text-red-100';
-  if (state === 'checking') return 'border-amber-300/40 bg-amber-400/10 text-amber-100';
-  return 'border-slate-400/30 bg-slate-300/10 text-slate-200';
+function statusClass(state: ProbeState) {
+  if (state === 'pass') return 'border-[#d6a63a]/40 bg-[#d6a63a]/10 text-[#f5d27a]';
+  if (state === 'blocked') return 'border-[#b4232b]/50 bg-[#b4232b]/10 text-[#ffb4b8]';
+  if (state === 'checking') return 'border-[#d6a63a]/30 bg-[#d6a63a]/5 text-[#f5d27a]';
+  return 'border-[#c8c8c8]/25 bg-[#c8c8c8]/10 text-[#d9d9d9]';
 }
 
 function StatusIcon({ state }: { state: ProbeState }) {
-  if (state === 'pass') return <CheckCircle2 className="h-4 w-4" />;
-  if (state === 'blocked') return <XCircle className="h-4 w-4" />;
-  if (state === 'checking') return <RefreshCw className="h-4 w-4 animate-spin" />;
-  return <AlertCircle className="h-4 w-4" />;
+  if (state === 'pass') return <CheckCircle2 className="h-3.5 w-3.5" />;
+  if (state === 'blocked') return <XCircle className="h-3.5 w-3.5" />;
+  if (state === 'checking') return <RefreshCw className="h-3.5 w-3.5 animate-spin" />;
+  return <AlertCircle className="h-3.5 w-3.5" />;
 }
 
 function formatTime(value: string | undefined, lang: Lang) {
@@ -200,7 +168,7 @@ function LiveMonitor({ lang }: { lang: Lang }) {
   const [items, setItems] = useState<LiveProbe[]>([
     { id: 'product-ready', endpoint: '/api/dsg/product-ready', state: 'checking', detail: text.probes['product-ready'].defaultDetail },
     { id: 'katzilla', endpoint: '/api/dsg/katzilla/agents', state: 'checking', detail: text.probes.katzilla.defaultDetail },
-    { id: 'public-ux-research', endpoint: 'public citation required', state: 'review', detail: text.probes['public-ux-research'].defaultDetail },
+    { id: 'public-ux-research', endpoint: 'citation required', state: 'review', detail: text.probes['public-ux-research'].defaultDetail },
   ]);
 
   async function refresh() {
@@ -227,75 +195,48 @@ function LiveMonitor({ lang }: { lang: Lang }) {
   const counts = useMemo(() => ({
     pass: items.filter((item) => item.state === 'pass').length,
     blocked: items.filter((item) => item.state === 'blocked').length,
-    total: items.length,
+    review: items.filter((item) => item.state === 'review').length,
   }), [items]);
 
   return (
-    <aside className="hidden w-[380px] shrink-0 border-l border-amber-300/20 bg-gradient-to-b from-zinc-950 via-slate-950 to-zinc-950 xl:block">
-      <div className="sticky top-0 h-screen overflow-y-auto p-5">
-        <section className="rounded-3xl border border-amber-300/30 bg-amber-300/10 p-5 shadow-2xl shadow-amber-950/20">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-200">{text.kicker}</p>
-              <h2 className="mt-2 text-2xl font-black text-white">{text.title}</h2>
-            </div>
-            <button onClick={() => void refresh()} className="rounded-2xl border border-amber-300/30 bg-black/30 p-3 text-amber-100 hover:bg-amber-300/10" aria-label={text.refreshLabel}>
-              <RefreshCw className="h-5 w-5" />
-            </button>
+    <aside className="hidden w-80 shrink-0 border-l border-[#c8c8c8]/15 bg-[#0c0c0d] xl:block">
+      <div className="h-screen overflow-y-auto p-3">
+        <div className="mb-3 flex items-center justify-between rounded-2xl border border-[#d6a63a]/25 bg-[#d6a63a]/5 px-3 py-2">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#d6a63a]">{text.title}</p>
+            <p className="text-xs text-[#c8c8c8]">{text.boundary}</p>
           </div>
+          <button onClick={() => void refresh()} className="rounded-xl border border-[#d6a63a]/25 px-2 py-2 text-[#d6a63a]" aria-label={text.refresh}>
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3"><p className="text-xs text-emerald-200">{text.pass}</p><p className="mt-1 text-2xl font-black text-white">{counts.pass}</p></div>
-            <div className="rounded-2xl border border-slate-300/20 bg-slate-300/10 p-3"><p className="text-xs text-slate-300">{text.total}</p><p className="mt-1 text-2xl font-black text-white">{counts.total}</p></div>
-            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-3"><p className="text-xs text-red-200">{text.block}</p><p className="mt-1 text-2xl font-black text-white">{counts.blocked}</p></div>
-          </div>
-        </section>
+        <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="rounded-xl border border-[#d6a63a]/25 bg-[#d6a63a]/5 p-2 text-[#d6a63a]"><p>{text.pass}</p><p className="text-lg font-black">{counts.pass}</p></div>
+          <div className="rounded-xl border border-[#b4232b]/25 bg-[#b4232b]/5 p-2 text-[#ffb4b8]"><p>{text.block}</p><p className="text-lg font-black">{counts.blocked}</p></div>
+          <div className="rounded-xl border border-[#c8c8c8]/20 bg-[#c8c8c8]/5 p-2 text-[#c8c8c8]"><p>{text.review}</p><p className="text-lg font-black">{counts.review}</p></div>
+        </div>
 
-        <section className="mt-4 space-y-3">
+        <div className="space-y-2">
           {items.map((item) => (
-            <article key={item.id} className="rounded-3xl border border-slate-700 bg-slate-900/70 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-black text-slate-100">{text.probes[item.id].label}</h3>
-                  <p className="mt-1 max-w-[260px] truncate font-mono text-xs text-slate-500">{item.endpoint}</p>
+            <article key={item.id} className="rounded-2xl border border-[#c8c8c8]/15 bg-[#111113] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-[#f2f2f2]">{text.probes[item.id].label}</h3>
+                  <p className="truncate font-mono text-[11px] text-[#8d8d8d]">{item.endpoint}</p>
                 </div>
-                <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-black uppercase', badgeClass(item.state))}>
+                <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black uppercase', statusClass(item.state))}>
                   <StatusIcon state={item.state} />
                   {item.state}
                 </span>
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-300">{item.detail}</p>
-              <p className="mt-3 text-xs text-slate-500">{text.checked}: {formatTime(item.checkedAt, lang)}</p>
+              <p className="mt-2 text-xs leading-5 text-[#c8c8c8]">{item.detail}</p>
+              <p className="mt-2 text-[11px] text-[#8d8d8d]">{text.checked}: {formatTime(item.checkedAt, lang)}</p>
             </article>
           ))}
-        </section>
-
-        <section className="mt-4 rounded-3xl border border-red-400/25 bg-red-500/10 p-5">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">{text.trustBoundary}</p>
-          <p className="mt-3 text-sm leading-6 text-slate-200">{text.trustBoundaryBody}</p>
-        </section>
+        </div>
       </div>
     </aside>
-  );
-}
-
-function Hero({ label, lang }: { label: string; lang: Lang }) {
-  const text = copy[lang];
-  return (
-    <section className="mb-6 rounded-[2rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 via-slate-950 to-red-950/40 p-6 shadow-2xl shadow-black/30">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-black/30 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-amber-200"><Sparkles className="h-3.5 w-3.5" />{text.heroKicker}</div>
-          <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight text-white md:text-5xl">{text.heroTitle}</h1>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300">{text.heroBody}</p>
-        </div>
-        <div className="rounded-3xl border border-slate-600 bg-slate-950/70 p-4 lg:w-72">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{text.currentWorkspace}</p>
-          <p className="mt-2 text-2xl font-black text-amber-100">{label}</p>
-          <p className="mt-2 text-sm text-slate-400">{text.currentWorkspaceBody}</p>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -318,73 +259,108 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-zinc-950 text-slate-300 font-sans">
-      <div className="w-72 shrink-0 border-r border-amber-300/20 bg-gradient-to-b from-zinc-950 via-slate-950 to-zinc-950 flex flex-col">
-        <div className="h-20 flex items-center px-6 border-b border-amber-300/20">
-          <div className="flex items-center gap-3 text-amber-200 font-black text-xl tracking-wider">
-            <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-2"><Server className="w-5 h-5" /></div>
-            <div><span>DSG ONE</span><p className="text-xs font-medium tracking-normal text-slate-500">{text.brandSub}</p></div>
+    <div className="flex h-screen w-full bg-[#09090a] text-[#c8c8c8]">
+      <aside className="w-64 shrink-0 border-r border-[#c8c8c8]/15 bg-[#0c0c0d]">
+        <div className="flex h-14 items-center gap-2 border-b border-[#c8c8c8]/15 px-4">
+          <Server className="h-4 w-4 text-[#d6a63a]" />
+          <div>
+            <p className="text-sm font-black tracking-wide text-[#d6a63a]">DSG ONE</p>
+            <p className="text-[11px] text-[#8d8d8d]">{text.brandSub}</p>
           </div>
         </div>
-        <div className="p-4 flex-1 overflow-y-auto">
-          <div className="text-xs font-black text-slate-500 uppercase tracking-[0.22em] mb-4 px-2">{text.navTitle}</div>
-          <nav className="space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentView === item.id;
-              return (
-                <button key={item.id} onClick={() => setCurrentView(item.id)} className={cn('w-full rounded-2xl border p-3 text-left transition-colors duration-150', isActive ? 'border-amber-300/40 bg-amber-300/10 text-amber-100 shadow-lg shadow-amber-950/20' : 'border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-slate-100')}>
-                  <div className="flex items-center gap-3"><Icon className={cn('w-4 h-4', isActive ? 'text-amber-200' : 'text-slate-500')} /><span className="text-sm font-black">{item.label[lang]}</span></div>
-                  <p className="mt-1 pl-7 text-xs text-slate-500">{item.helper[lang]}</p>
-                </button>
-              );
-            })}
-          </nav>
-          <div className="mt-6 rounded-3xl border border-slate-700 bg-slate-900/70 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">{text.designRules}</p>
-            <div className="mt-3 space-y-2">
-              {text.principles.map((item) => <div key={item} className="flex items-start gap-2 text-xs leading-5 text-slate-300"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200" />{item}</div>)}
-            </div>
-          </div>
-        </div>
-        <div className="p-4 border-t border-amber-300/20">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-3 text-sm text-slate-500">
-            <div className="w-9 h-9 rounded-full border border-slate-600 bg-slate-800 flex items-center justify-center text-slate-300"><Users className="w-4 h-4" /></div>
-            <div className="flex flex-col"><span className="text-slate-200 font-bold">{text.operator}</span><span className="text-xs">{text.evidenceMode}</span></div>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-20 border-b border-amber-300/20 flex items-center justify-between px-8 bg-zinc-950/70 backdrop-blur-sm z-10 sticky top-0">
-          <div className="flex items-center text-sm text-slate-500"><span>{text.controlPlane}</span><ChevronRight className="w-4 h-4 mx-2 text-slate-700" /><span className="text-amber-100 font-bold capitalize">{current.label[lang]}</span></div>
-          <div className="flex items-center gap-4">
-            <div className="relative hidden md:block"><Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" /><input type="text" placeholder={text.searchPlaceholder} disabled className="bg-slate-900 border border-slate-700 rounded-full pl-9 pr-4 py-2 text-sm text-slate-500 focus:outline-none w-80 placeholder:text-slate-600" /></div>
-            <div className="flex items-center rounded-2xl border border-amber-300/25 bg-amber-300/10 p-1" aria-label={text.language}>
+        <nav className="space-y-1 p-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = currentView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id)}
+                className={cn(
+                  'w-full rounded-xl border px-3 py-2 text-left transition-colors',
+                  active ? 'border-[#d6a63a]/35 bg-[#d6a63a]/10 text-[#f5d27a]' : 'border-transparent text-[#c8c8c8] hover:border-[#c8c8c8]/20 hover:bg-[#c8c8c8]/5',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className={cn('h-4 w-4', active ? 'text-[#d6a63a]' : 'text-[#8d8d8d]')} />
+                  <span className="text-sm font-bold">{item.label[lang]}</span>
+                </div>
+                <p className="mt-0.5 pl-6 text-[11px] text-[#8d8d8d]">{item.helper[lang]}</p>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="mx-2 mt-2 rounded-xl border border-[#c8c8c8]/15 bg-[#111113] p-3">
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#d6a63a]">{text.rulesTitle}</p>
+          <div className="mt-2 space-y-1.5">
+            {text.rules.map((rule) => (
+              <div key={rule} className="flex gap-2 text-[11px] leading-4 text-[#c8c8c8]">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d6a63a]" />
+                <span>{rule}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <section className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 items-center justify-between border-b border-[#c8c8c8]/15 bg-[#0c0c0d] px-4">
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <span className="text-[#8d8d8d]">{text.controlPlane}</span>
+            <ChevronRight className="h-4 w-4 text-[#8d8d8d]" />
+            <span className="truncate font-bold text-[#f5d27a]">{current.label[lang]}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative hidden md:block">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8d8d8d]" />
+              <input
+                disabled
+                placeholder={text.searchPlaceholder}
+                className="h-9 w-72 rounded-xl border border-[#c8c8c8]/15 bg-[#111113] pl-8 pr-3 text-xs text-[#8d8d8d] outline-none"
+              />
+            </div>
+            <div className="flex rounded-xl border border-[#d6a63a]/25 bg-[#d6a63a]/5 p-0.5" aria-label={text.language}>
               {(['th', 'en'] as const).map((option) => (
-                <button key={option} onClick={() => setLang(option)} className={cn('rounded-xl px-3 py-1.5 text-xs font-black transition-colors', lang === option ? 'bg-amber-300 text-zinc-950' : 'text-amber-100 hover:bg-amber-300/10')}>
+                <button
+                  key={option}
+                  onClick={() => setLang(option)}
+                  className={cn('rounded-lg px-2.5 py-1.5 text-xs font-black', lang === option ? 'bg-[#d6a63a] text-[#09090a]' : 'text-[#d6a63a]')}
+                >
                   {option === 'th' ? 'ไทย' : 'EN'}
                 </button>
               ))}
             </div>
-            <button className="relative rounded-2xl border border-slate-700 p-2 text-slate-500" aria-label={text.notificationLabel}><Bell className="w-4 h-4" /></button>
-            <div className="px-3 py-2 bg-red-500/10 text-red-100 text-xs font-black rounded-2xl uppercase tracking-wide border border-red-500/25 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" />{text.noMock}</div>
+            <button className="rounded-xl border border-[#c8c8c8]/15 p-2 text-[#8d8d8d]" aria-label={text.notificationLabel}>
+              <Bell className="h-4 w-4" />
+            </button>
+            <span className="hidden rounded-xl border border-[#b4232b]/30 bg-[#b4232b]/10 px-2.5 py-2 text-[11px] font-black uppercase text-[#ffb4b8] lg:inline-flex">
+              {text.noMock}
+            </span>
           </div>
         </header>
 
         <div className="flex min-h-0 flex-1">
-          <main className="flex-1 overflow-y-auto bg-[#080b12] p-6">
-            <Hero label={current.label[lang]} lang={lang} />
-            <section className="mb-6 grid gap-3 md:grid-cols-3">
-              <div className="rounded-3xl border border-amber-300/25 bg-amber-300/10 p-4"><Gauge className="h-5 w-5 text-amber-200" /><p className="mt-3 text-sm font-black text-white">{text.cards.readable[0]}</p><p className="mt-1 text-sm leading-6 text-slate-400">{text.cards.readable[1]}</p></div>
-              <div className="rounded-3xl border border-red-400/25 bg-red-500/10 p-4"><ShieldCheck className="h-5 w-5 text-red-200" /><p className="mt-3 text-sm font-black text-white">{text.cards.trust[0]}</p><p className="mt-1 text-sm leading-6 text-slate-400">{text.cards.trust[1]}</p></div>
-              <div className="rounded-3xl border border-slate-500/30 bg-slate-400/10 p-4"><Database className="h-5 w-5 text-slate-200" /><p className="mt-3 text-sm font-black text-white">{text.cards.research[0]}</p><p className="mt-1 text-sm leading-6 text-slate-400">{text.cards.research[1]}</p></div>
+          <main className="min-w-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-2 flex items-center justify-between rounded-xl border border-[#c8c8c8]/15 bg-[#111113] px-3 py-2">
+              <div>
+                <h1 className="text-base font-black text-[#f2f2f2]">{text.workTitle}</h1>
+                <p className="text-xs text-[#8d8d8d]">{text.workSubtitle}</p>
+              </div>
+              <span className="rounded-full border border-[#d6a63a]/25 px-2.5 py-1 text-[11px] font-black text-[#d6a63a]">
+                {current.label[lang]}
+              </span>
+            </div>
+
+            <section className="min-h-[calc(100vh-5.5rem)] rounded-xl border border-[#c8c8c8]/15 bg-[#0c0c0d] p-3">
+              {renderView()}
             </section>
-            <section className="rounded-[2rem] border border-slate-800 bg-slate-950/80 p-4 shadow-2xl shadow-black/30">{renderView()}</section>
           </main>
           <LiveMonitor lang={lang} />
         </div>
-      </div>
+      </section>
     </div>
   );
 }
