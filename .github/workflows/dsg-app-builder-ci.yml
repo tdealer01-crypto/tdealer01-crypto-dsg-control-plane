@@ -1,0 +1,71 @@
+name: DSG App Builder CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'dsg-agent/**'
+      - 'dsg-release/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: dsg-app-builder-ci
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify DSG App Builder
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      DSG_DISABLE_WEBPACK_CACHE: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deterministic runtime check
+        run: npm run dsg:runtime-check
+
+      - name: Typecheck
+        run: npm run dsg:typecheck
+
+      - name: Product-ready gate
+        run: npm run dsg:product-ready
+
+      - name: Build
+        run: npm run build 2>&1 | tee dsg-build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-app-builder-build-log
+          path: dsg-build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Write DSG CI summary
+        if: always()
+        run: |
+          echo '## DSG App Builder CI' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '- productionReadyClaim: false' >> "$GITHUB_STEP_SUMMARY"
+          echo '- checks: runtime, typecheck, product-ready, build' >> "$GITHUB_STEP_SUMMARY"
