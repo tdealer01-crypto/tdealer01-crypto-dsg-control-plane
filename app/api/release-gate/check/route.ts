@@ -12,28 +12,69 @@ export async function GET(req: NextRequest) {
   }
 
   let isPro = false;
+  let accessSource = 'free';
 
+  // ✅ Step 1: Check Stripe session (if provided)
   if (sessionId && process.env.STRIPE_SECRET_KEY) {
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       const email = session.customer_details?.email ?? null;
 
-      isPro = await hasReleaseGateProAccess(email);
-
-      if (!isPro && session.payment_status === 'paid') {
+      if (email && session.payment_status === 'paid') {
+        // Payment confirmed in Stripe
         isPro = true;
+        accessSource = 'stripe_paid';
+      } else if (email) {
+        // Check if user has active subscription in DB
+        try {
+          const hasAccess = await hasReleaseGateProAccess(email);
+          if (hasAccess) {
+            isPro = true;
+            accessSource = 'subscription_active';
+          }
+        } catch (dbError) {
+          console.warn('Database check failed, allowing free tier', dbError);
+          // Graceful fallback: allow free tier if DB fails
+          isPro = false;
+          accessSource = 'free_fallback';
+        }
       }
-    } catch (e) {
-      console.error('stripe verify failed', e);
+    } catch (stripeError) {
+      console.error('Stripe verification failed', stripeError);
+      // ✅ Graceful fallback: if Stripe fails, don't block user
+      // User can still use free tier
+      isPro = false;
+      accessSource = 'free_fallback';
     }
   }
 
-  const result = await runReleaseGate(url);
+  // ✅ Step 2: Run release gate (available to all users)
+  let result: any;
+  try {
+    result = await runReleaseGate(url);
+  } catch (e) {
+    console.error('Release gate check failed', e);
+    return NextResponse.json(
+      { error: 'check_failed', message: 'Release gate check failed' },
+      { status: 500 }
+    );
+  }
 
+  // ✅ Step 3: Return result with tier information
   return NextResponse.json({
     ...result,
     pro: isPro,
-    note: isPro ? 'Pro access enabled' : 'Free mode (upgrade for full access)'
+    accessSource: accessSource,
+    note: isPro
+      ? 'Pro access enabled - full checks available'
+      : 'Free tier - basic checks only. Upgrade to Pro for advanced checks and report history.',
+    limitations: isPro
+      ? {}
+      : {
+          reports: 'cannot_save',
+          history: 'not_available',
+          scheduling: 'not_available',
+        },
   });
 }
