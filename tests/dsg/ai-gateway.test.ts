@@ -53,6 +53,39 @@ describe('DSG AI gateway', () => {
     expect(result.outputVerification).toBe('unverified_external_output');
   });
 
+
+
+  it('prepares OpenAI image generation with a mode-specific endpoint and review status', () => {
+    process.env.OPENAI_API_KEY = 'openai-secret';
+    const prepared = prepareDsgAiGatewayRequest({ provider: 'openai', goal: 'Create a safe product mockup', prompt: 'A neutral dashboard illustration', mode: 'image_generation' });
+    expect(prepared.ok).toBe(true);
+    expect(prepared.status).toBe('review');
+    expect(prepared.model).toBe('gpt-image-1');
+    expect(prepared.endpoint).toBe('https://api.openai.com/v1/images/generations');
+    expect(prepared.body).toMatchObject({ prompt: 'A neutral dashboard illustration', n: 1, size: '1024x1024' });
+  });
+
+  it('requires verified media evidence for image analysis', () => {
+    process.env.GEMINI_API_KEY = 'gemini-secret';
+    const missing = prepareDsgAiGatewayRequest({ provider: 'gemini', goal: 'Describe the image', prompt: 'What is shown?', mode: 'image_analysis' });
+    expect(missing.ok).toBe(false);
+    expect(missing.blockedReasons).toContain('MEDIA_REQUIRED');
+
+    const prepared = prepareDsgAiGatewayRequest({
+      provider: 'gemini',
+      goal: 'Describe the image',
+      prompt: 'What is shown?',
+      mode: 'image_analysis',
+      media: { url: 'https://example.com/image.png', mimeType: 'image/png' },
+    });
+    expect(prepared.ok).toBe(true);
+    expect(prepared.status).toBe('review');
+    expect(prepared.body.contents).toEqual([
+      { role: 'user', parts: [{ text: 'What is shown?' }, { fileData: { mimeType: 'image/png', fileUri: 'https://example.com/image.png' } }] },
+    ]);
+    expect(prepared.decisionFrame.verifiedInput.evidence.some((entry) => entry.startsWith('media_0_url_hash:sha256:'))).toBe(true);
+  });
+
   it('redacts helpers consistently', () => {
     expect(redactHeaders({ authorization: 'Bearer token', 'x-api-key': 'token', 'content-type': 'application/json' })).toEqual({
       authorization: 'REDACTED',

@@ -10,6 +10,20 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
 }
 
+function parseMedia(value: unknown): DsgAiGatewayRequest['media'] {
+  const normalize = (item: unknown) => {
+    const record = asRecord(item);
+    return {
+      url: typeof record.url === 'string' ? record.url.trim() : undefined,
+      base64: typeof record.base64 === 'string' ? record.base64.trim() : undefined,
+      mimeType: typeof record.mimeType === 'string' ? record.mimeType.trim() : undefined,
+    };
+  };
+  if (Array.isArray(value)) return value.map(normalize);
+  if (value && typeof value === 'object') return normalize(value);
+  return undefined;
+}
+
 function parseRequest(body: Record<string, unknown>): DsgAiGatewayRequest {
   return {
     provider: String(body.provider || '').trim() as DsgAiGatewayRequest['provider'],
@@ -19,6 +33,9 @@ function parseRequest(body: Record<string, unknown>): DsgAiGatewayRequest {
     mode: typeof body.mode === 'string' ? body.mode.trim() as DsgAiGatewayRequest['mode'] : undefined,
     history: stringArray(body.history),
     evidence: stringArray(body.evidence),
+    media: parseMedia(body.media),
+    image: asRecord(body.image),
+    audio: asRecord(body.audio),
     maxOutputTokens: typeof body.maxOutputTokens === 'number' ? body.maxOutputTokens : undefined,
     temperature: typeof body.temperature === 'number' ? body.temperature : undefined,
   };
