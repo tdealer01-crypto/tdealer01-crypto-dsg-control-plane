@@ -1,71 +1,90 @@
 'use client';
 
 import React from 'react';
-import { Lock, FileWarning, Key, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, Database, FileWarning, Key, Lock, RefreshCcw } from 'lucide-react';
+
+const policyFields = [
+  { id: 'policy_registry', name: 'Policy registry', state: 'Evidence missing', proof: 'No verified policy rows are connected to this UI yet.' },
+  { id: 'policy_infractions', name: 'Policy infractions', state: 'Not claimed', proof: 'No real 30-day violation ledger has been wired into this screen.' },
+  { id: 'rule_sync', name: 'Rule sync status', state: 'Not connected', proof: 'No sync job evidence or timestamp is available in this view.' },
+];
+
+const requiredEvidence = [
+  { label: 'Policy source', detail: 'Supabase/API row source for policies, rules, and version history.' },
+  { label: 'Infraction ledger', detail: 'Real audit rows with timestamp, actor, rule id, decision, and evidence hash.' },
+  { label: 'Sync proof', detail: 'Last sync job id, status, source hash, and updated_at proof.' },
+];
 
 export function GovernanceView() {
-  const policies = [
-    { id: 'pol_base_1', name: 'Global Data Minimization', rules: 4, type: 'Pre-Execution' },
-    { id: 'pol_auth_3', name: 'Strict Identity Binding', rules: 2, type: 'Authentication' },
-    { id: 'pol_fin_2', name: 'Financial Transaction Audit', rules: 7, type: 'Post-Execution' },
-  ];
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-start">
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 items-center flex gap-2">
-            Governance Policies
-          </h1>
-          <p className="text-slate-500 mt-1">Configure control flow rules and organizational policy checks.</p>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-100">Governance Policies</h1>
+          <p className="mt-1 text-slate-500">Shows only verified governance evidence. Missing data stays missing; no demo counts are displayed.</p>
         </div>
+        <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">No mock metrics</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 p-5 text-sm leading-7 text-rose-100">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-rose-200">
+          <AlertTriangle className="h-4 w-4" /> Truth boundary
+        </div>
+        <p className="mt-3">The previous numbers such as active policy count, 30-day infractions, and synced status were unverified UI seed data. They are removed until real policy/audit/sync evidence exists.</p>
+      </div>
+
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
         {[
-          { label: 'Active Policies', val: '12', icon: Lock },
-          { label: 'Policy Infractions (30d)', val: '142', icon: FileWarning, color: 'text-rose-400' },
-          { label: 'Rule Sync Status', val: 'Synced', icon: RefreshCcw, color: 'text-indigo-400' },
-        ].map((item, i) => {
+          { label: 'Active Policies', val: 'Evidence missing', icon: Lock },
+          { label: 'Policy Infractions (30d)', val: 'Not claimed', icon: FileWarning, color: 'text-rose-400' },
+          { label: 'Rule Sync Status', val: 'Not connected', icon: RefreshCcw, color: 'text-amber-400' },
+        ].map((item) => {
           const Icon = item.icon;
           return (
-            <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-              <div className="flex justify-between items-start text-slate-400 mb-2">
+            <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+              <div className="mb-2 flex items-start justify-between text-slate-400">
                 <span className="text-sm font-medium">{item.label}</span>
-                <Icon className={`w-4 h-4 ${item.color || 'text-slate-500'}`} />
+                <Icon className={`h-4 w-4 ${item.color || 'text-slate-500'}`} />
               </div>
-              <div className="text-3xl font-bold text-slate-200">{item.val}</div>
+              <div className="text-xl font-black text-slate-200">{item.val}</div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Connect real governance rows before showing counts or green status.</p>
             </div>
           );
         })}
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="font-semibold text-slate-200">Active Rule Definitions</h3>
-          <button className="text-sm text-indigo-400 hover:text-indigo-300 font-medium transition">Create Rule</button>
+      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+          <h3 className="font-semibold text-slate-200">Governance evidence fields</h3>
+          <button disabled className="text-sm font-medium text-slate-600">Create Rule disabled</button>
         </div>
         <div className="divide-y divide-slate-800">
-          {policies.map((pol) => (
-            <div key={pol.id} className="px-6 py-4 hover:bg-slate-800/30 transition-colors flex justify-between items-center">
+          {policyFields.map((field) => (
+            <div key={field.id} className="flex items-center justify-between gap-4 px-6 py-4">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700">
-                  <Key className="w-5 h-5 text-indigo-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+                  <Key className="h-5 w-5 text-indigo-400" />
                 </div>
                 <div>
-                  <h4 className="text-slate-200 font-medium">{pol.name}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="font-mono text-xs text-slate-500">{pol.id}</span>
-                    <span className="text-slate-700 text-xs">•</span>
-                    <span className="text-xs text-slate-400">{pol.rules} Active Checks</span>
-                  </div>
+                  <h4 className="font-medium text-slate-200">{field.name}</h4>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{field.proof}</p>
                 </div>
               </div>
-              <div>
-                <span className="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-xs font-semibold uppercase tracking-wider border border-slate-700">
-                  {pol.type}
-                </span>
-              </div>
+              <span className="rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-amber-100">{field.state}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-300">
+          <Database className="h-4 w-4" /> Required before showing numbers
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {requiredEvidence.map((item) => (
+            <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <p className="font-semibold text-slate-200">{item.label}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{item.detail}</p>
             </div>
           ))}
         </div>
