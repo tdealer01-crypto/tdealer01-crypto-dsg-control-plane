@@ -16,7 +16,11 @@ export async function POST(req: Request) {
     tool: String(body.tool || '').trim() as DsgGovernedToolRequest['tool'],
     action: String(body.action || '').trim() as DsgGovernedToolRequest['action'],
     goal: String(body.goal || '').trim(),
-    args: asRecord(body.args),
+    args: {
+      ...asRecord(body.args),
+      ...(body.approved === true ? { approved: true } : {}),
+      ...(Array.isArray(body.allowedHosts) ? { allowedHosts: stringArray(body.allowedHosts) } : {}),
+    },
     evidence: stringArray(body.evidence),
     history: stringArray(body.history),
     sandboxRoot: typeof body.sandboxRoot === 'string' ? body.sandboxRoot : undefined,
