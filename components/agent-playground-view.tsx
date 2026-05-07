@@ -1,3 +1,3 @@
 'use client';
 
-export { AppBuilderAgentRuntimeView as AgentPlaygroundView } from './app-builder-agent-runtime-view';
+export { GuidedAppBuilderView as AgentPlaygroundView } from './guided-app-builder-view';
