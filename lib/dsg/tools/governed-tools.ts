@@ -8,7 +8,7 @@ import { sha256Json } from '../runtime/hash';
 const execFileAsync = promisify(execFile);
 
 export type DsgGovernedToolKind = 'shell' | 'file' | 'browser' | 'search' | 'schedule' | 'plan' | 'workflow' | 'api' | 'google_workspace' | 'persistent_compute';
-export type DsgGovernedToolAction = 'exec' | 'read' | 'write' | 'append' | 'edit' | 'navigate' | 'scrape' | 'query' | 'create' | 'update' | 'allocate' | 'dry_run';
+export type DsgGovernedToolAction = 'exec' | 'read' | 'write' | 'append' | 'edit' | 'navigate' | 'scrape' | 'query' | 'create' | 'update' | 'delete' | 'allocate' | 'deallocate' | 'dry_run';
 export type DsgGovernedToolStatus = 'ready' | 'blocked' | 'review';
 
 export type DsgGovernedToolRequest = {
@@ -78,7 +78,7 @@ type StoredRecord = {
   eventHash: string;
   previousEventHash?: string;
   revision: number;
-  status: 'created' | 'updated' | 'allocated';
+  status: 'created' | 'updated' | 'deleted' | 'allocated' | 'deallocated' | 'read';
   state: Record<string, unknown>;
 };
 
@@ -87,12 +87,12 @@ const supportedActions: Record<DsgGovernedToolKind, DsgGovernedToolAction[]> = {
   file: ['read', 'write', 'append', 'edit'],
   browser: ['navigate', 'scrape', 'dry_run'],
   search: ['query', 'dry_run'],
-  schedule: ['create', 'dry_run'],
-  plan: ['create', 'update', 'dry_run'],
-  workflow: ['create', 'update', 'dry_run'],
+  schedule: ['create', 'read', 'update', 'delete', 'dry_run'],
+  plan: ['create', 'read', 'update', 'delete', 'dry_run'],
+  workflow: ['create', 'read', 'update', 'delete', 'dry_run'],
   api: ['query', 'create', 'update', 'dry_run'],
   google_workspace: ['query', 'create', 'update', 'dry_run'],
-  persistent_compute: ['allocate', 'dry_run'],
+  persistent_compute: ['allocate', 'read', 'deallocate', 'dry_run'],
 };
 
 const shellAllowlist = new Set(['pwd', 'node', 'npm', 'npx', 'rg', 'cat', 'sed', 'git']);
@@ -139,6 +139,73 @@ function parseHttpsUrl(value: unknown): { ok: boolean; url?: URL; reason?: strin
 function isAllowedHost(url: URL, allowedHosts: unknown): boolean {
   if (!Array.isArray(allowedHosts) || allowedHosts.length === 0) return true;
   return allowedHosts.map((host) => String(host).trim().toLowerCase()).filter(Boolean).includes(url.hostname.toLowerCase());
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidCronExpression(value: unknown): boolean {
+  const cron = asString(value);
+  if (!cron) return false;
+  const fields = cron.split(/\s+/);
+  if (![5, 6].includes(fields.length)) return false;
+  return fields.every((field) => /^[\d*/?,\-LW#]+$/i.test(field));
+}
+
+function isValidIsoDate(value: unknown): boolean {
+  const raw = asString(value);
+  return Boolean(raw && !Number.isNaN(Date.parse(raw)));
+}
+
+function activeStoredRecords(records: StoredRecord[]): StoredRecord[] {
+  const latest = new Map<string, StoredRecord>();
+  for (const record of records) latest.set(record.id, record);
+  return [...latest.values()].filter((record) => !['deleted', 'deallocated'].includes(record.status));
+}
+
+type AdapterStepTrace = {
+  step: string;
+  target: ReturnType<typeof samadhi>;
+  verified: ReturnType<typeof verify<Record<string, unknown>>>;
+  risk: ReturnType<typeof kilesa>;
+  stats: ReturnType<typeof parami>;
+  truthBoundary: ReturnType<typeof truthBoundary>;
+  evidenceHash: string;
+  blockedReasons: string[];
+};
+
+function buildAdapterStepTrace(prepared: DsgGovernedToolPreparedRequest, step: string, data: Record<string, unknown>, evidence: string[], riskFlags: string[] = []): AdapterStepTrace {
+  const stepEvidence = [prepared.audit.requestHash, prepared.audit.id, `adapter:${prepared.tool}`, `action:${prepared.action}`, `step:${step}`, ...evidence].filter(Boolean);
+  const target = samadhi(`adapter:${prepared.tool}:${step}`, `${prepared.action}:${asString(data.goal) || prepared.audit.id}`);
+  const verified = verify(data, stepEvidence);
+  const blockedReasons = [...riskFlags];
+  if (!verified.verified) blockedReasons.push('ADAPTER_STEP_EVIDENCE_REQUIRED');
+  const risk = kilesa(`${prepared.tool}:${prepared.action}:${step}`, verified.verified && blockedReasons.length === 0, blockedReasons);
+  const boundary = truthBoundary({ verified: verified.verified && blockedReasons.length === 0, containsSecret: false });
+  const finalBlockedReasons = [...new Set([...blockedReasons, ...risk.reasons.filter((reason) => reason !== 'VERIFIED'), ...boundary.blockedReasons])];
+  return {
+    step,
+    target,
+    verified,
+    risk,
+    stats: parami([prepared.tool, prepared.action, step]),
+    truthBoundary: boundary,
+    evidenceHash: sha256Json({ stepEvidence, data }),
+    blockedReasons: finalBlockedReasons,
+  };
+}
+
+function assertAdapterStep(trace: AdapterStepTrace): void {
+  if (trace.blockedReasons.length > 0 || trace.risk.state !== 'data_verified' || !trace.truthBoundary.ok) {
+    throw new Error(`ADAPTER_STEP_BLOCKED:${trace.step}:${trace.blockedReasons.join(',') || trace.risk.state}`);
+  }
+}
+
+function adapterErrorBlockedReasons(error: unknown): string[] {
+  const message = error instanceof Error ? error.message : String(error || 'UNKNOWN_ADAPTER_ERROR');
+  if (message.startsWith('ADAPTER_STEP_BLOCKED:')) return message.split(':').slice(2).join(':').split(',').filter(Boolean);
+  return ['ADAPTER_EXECUTION_FAILED'];
 }
 
 function persistenceRoot(sandboxRoot: string): string {
@@ -218,34 +285,63 @@ async function readStoredRecords(sandboxRoot: string, tool: DsgGovernedToolKind)
 
 function materializePersistentState(tool: DsgGovernedToolKind, action: DsgGovernedToolAction, args: Record<string, unknown>, previous?: StoredRecord): Record<string, unknown> {
   const previousState = previous?.state ?? {};
+  const nowMs = Date.now();
+  const now = new Date(nowMs).toISOString();
+
+  if (action === 'delete' || action === 'deallocate') {
+    return {
+      ...previousState,
+      lifecycle: action === 'deallocate' ? 'deallocated' : 'deleted',
+      enabled: false,
+      deletedAt: action === 'delete' ? now : previousState.deletedAt,
+      deallocatedAt: action === 'deallocate' ? now : previousState.deallocatedAt,
+      deletionReason: asString(args.reason) || previousState.deletionReason,
+    };
+  }
+
   if (tool === 'schedule') {
-    const intervalMs = typeof args.intervalMs === 'number' ? args.intervalMs : undefined;
-    const nowMs = Date.now();
+    const intervalMs = typeof args.intervalMs === 'number' ? args.intervalMs : typeof previousState.intervalMs === 'number' ? previousState.intervalMs : undefined;
+    const cron = asString(args.cron) || (typeof args.intervalMs === 'number' ? '' : asString(previousState.cron));
+    const nextRunAt = asString(args.nextRunAt) || (intervalMs ? new Date(nowMs + intervalMs).toISOString() : asString(previousState.nextRunAt));
     return {
       ...previousState,
-      title: asString(args.title) || previousState.title || 'Governed schedule',
-      cron: asString(args.cron) || previousState.cron,
+      lifecycle: 'active',
+      title: asString(args.title) || asString(previousState.title) || 'Governed schedule',
+      cron: cron || undefined,
       intervalMs,
-      nextRunAt: asString(args.nextRunAt) || (intervalMs ? new Date(nowMs + intervalMs).toISOString() : previousState.nextRunAt),
+      nextRunAt: nextRunAt || undefined,
       enabled: args.enabled !== false,
+      scheduler: {
+        kind: cron ? 'cron' : 'interval',
+        cron: cron || undefined,
+        intervalMs,
+        nextRunAt: nextRunAt || undefined,
+        targetLocked: true,
+      },
     };
   }
+
   if (tool === 'persistent_compute') {
-    const ttlMs = typeof args.ttlMs === 'number' ? args.ttlMs : 3_600_000;
+    const ttlMs = typeof args.ttlMs === 'number' ? args.ttlMs : typeof previousState.ttlMs === 'number' ? previousState.ttlMs : 3_600_000;
     return {
       ...previousState,
-      name: asString(args.name),
-      resourceClass: asString(args.resourceClass) || 'sandbox-worker',
+      lifecycle: 'allocated',
+      name: asString(args.name) || asString(previousState.name),
+      resourceClass: asString(args.resourceClass) || asString(previousState.resourceClass) || 'sandbox-worker',
       ttlMs,
-      expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+      allocatedAt: previousState.allocatedAt || now,
+      expiresAt: new Date(nowMs + ttlMs).toISOString(),
       network: asBoolean(args.network),
+      computeHandle: asString(previousState.computeHandle) || `pc:${sha256Json({ name: args.name, resourceClass: args.resourceClass, now }).slice(0, 24)}`,
     };
   }
+
   return {
     ...previousState,
-    title: asString(args.title) || previousState.title,
+    lifecycle: 'active',
+    title: asString(args.title) || asString(previousState.title),
     steps: Array.isArray(args.steps) ? args.steps.map((step) => String(step || '').trim()).filter(Boolean) : previousState.steps,
-    status: asString(args.status) || previousState.status || (action === 'update' ? 'updated' : 'created'),
+    status: asString(args.status) || asString(previousState.status) || (action === 'update' ? 'updated' : 'created'),
     payload: args.payload ?? previousState.payload,
   };
 }
@@ -294,17 +390,24 @@ function blockedReasonsFor(input: DsgGovernedToolRequest): string[] {
   }
 
   if (input.tool === 'schedule') {
-    if (!asString(args.cron) && typeof args.intervalMs !== 'number') reasons.push('SCHEDULE_CRON_OR_INTERVAL_REQUIRED');
-    if (typeof args.intervalMs === 'number' && args.intervalMs < 60_000) reasons.push('SCHEDULE_INTERVAL_TOO_SHORT');
+    if (['update', 'delete'].includes(input.action) && !asString(args.id)) reasons.push('SCHEDULE_ID_REQUIRED');
+    if (['create', 'update'].includes(input.action)) {
+      if (!asString(args.cron) && typeof args.intervalMs !== 'number' && !isValidIsoDate(args.nextRunAt)) reasons.push('SCHEDULE_CRON_OR_INTERVAL_REQUIRED');
+      if (asString(args.cron) && !isValidCronExpression(args.cron)) reasons.push('SCHEDULE_CRON_INVALID');
+      if (typeof args.intervalMs === 'number' && args.intervalMs < 60_000) reasons.push('SCHEDULE_INTERVAL_TOO_SHORT');
+      if (args.nextRunAt !== undefined && !isValidIsoDate(args.nextRunAt)) reasons.push('SCHEDULE_NEXT_RUN_AT_INVALID');
+    }
   }
 
   if (input.tool === 'plan' || input.tool === 'workflow') {
     if (input.action === 'create' && !asString(args.title)) reasons.push(`${input.tool.toUpperCase()}_TITLE_REQUIRED`);
-    if (input.action === 'update' && !asString(args.id)) reasons.push(`${input.tool.toUpperCase()}_ID_REQUIRED`);
+    if (['update', 'delete'].includes(input.action) && !asString(args.id)) reasons.push(`${input.tool.toUpperCase()}_ID_REQUIRED`);
+    if (['create', 'update'].includes(input.action) && args.payload !== undefined && !isPlainObject(args.payload)) reasons.push(`${input.tool.toUpperCase()}_PAYLOAD_INVALID`);
   }
 
   if (input.tool === 'persistent_compute') {
-    if (!asString(args.name)) reasons.push('PERSISTENT_COMPUTE_NAME_REQUIRED');
+    if (input.action === 'allocate' && !asString(args.name)) reasons.push('PERSISTENT_COMPUTE_NAME_REQUIRED');
+    if (input.action === 'deallocate' && !asString(args.id)) reasons.push('PERSISTENT_COMPUTE_ID_REQUIRED');
     if (typeof args.ttlMs === 'number' && (args.ttlMs < 60_000 || args.ttlMs > 86_400_000)) reasons.push('PERSISTENT_COMPUTE_TTL_OUT_OF_RANGE');
   }
 
@@ -391,19 +494,48 @@ export function prepareGovernedToolRequest(input: DsgGovernedToolRequest): DsgGo
 }
 
 async function executeBrowser(prepared: DsgGovernedToolPreparedRequest): Promise<unknown> {
-  const url = parseHttpsUrl(prepared.args.url).url!;
+  const trace: AdapterStepTrace[] = [];
+  const parsedUrl = parseHttpsUrl(prepared.args.url);
+  const beforeFetch = buildAdapterStepTrace(prepared, 'before_fetch', { url: asString(prepared.args.url), action: prepared.action }, [asString(prepared.args.url)], parsedUrl.ok ? [] : [`BROWSER_${parsedUrl.reason}`]);
+  assertAdapterStep(beforeFetch);
+  trace.push(beforeFetch);
+
+  const url = parsedUrl.url!;
   const response = await fetch(url, { headers: { accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8', 'user-agent': 'DSG-ONE-Governed-Tools/1.0' } });
   const contentType = response.headers.get('content-type') ?? '';
+  const afterFetch = buildAdapterStepTrace(prepared, 'after_fetch', { url: url.toString(), status: response.status, ok: response.ok, contentType }, [`http_status:${response.status}`, `content_type:${contentType}`], response.ok ? [] : ['BROWSER_HTTP_NOT_OK']);
+  assertAdapterStep(afterFetch);
+  trace.push(afterFetch);
+
   const body = (await response.text()).slice(0, Number(prepared.args.maxBytes ?? 250_000));
+  const bodyHash = sha256Json({ body });
+  const beforeParse = buildAdapterStepTrace(prepared, 'before_parse', { contentType, bodyBytes: body.length }, [bodyHash]);
+  assertAdapterStep(beforeParse);
+  trace.push(beforeParse);
+
   const extracted = contentType.includes('html') ? textFromHtml(body) : { title: '', text: body.replace(/\s+/g, ' ').trim() };
   const textLimit = Number(prepared.args.textLimit ?? (prepared.action === 'scrape' ? 12_000 : 2_000));
-  return { url: url.toString(), status: response.status, ok: response.ok, contentType, title: extracted.title, text: extracted.text.slice(0, textLimit), contentHash: sha256Json({ body }) };
+  const afterParse = buildAdapterStepTrace(prepared, 'after_parse', { title: extracted.title, textLength: extracted.text.length, textLimit }, [sha256Json(extracted)], extracted.text ? [] : ['BROWSER_EMPTY_TEXT']);
+  assertAdapterStep(afterParse);
+  trace.push(afterParse);
+
+  return { url: url.toString(), status: response.status, ok: response.ok, contentType, title: extracted.title, text: extracted.text.slice(0, textLimit), contentHash: bodyHash, adapterDecisionTrace: trace };
 }
 
 async function executeSearch(prepared: DsgGovernedToolPreparedRequest): Promise<unknown> {
-  const endpoint = parseHttpsUrl(prepared.args.endpoint ?? process.env.DSG_SEARCH_ENDPOINT).url!;
+  const trace: AdapterStepTrace[] = [];
+  const parsedEndpoint = parseHttpsUrl(prepared.args.endpoint ?? process.env.DSG_SEARCH_ENDPOINT);
+  const beforeQuery = buildAdapterStepTrace(prepared, 'before_query', { endpoint: asString(prepared.args.endpoint ?? process.env.DSG_SEARCH_ENDPOINT), query: asString(prepared.args.query) }, [sha256Json({ query: prepared.args.query })], parsedEndpoint.ok ? [] : [`SEARCH_ENDPOINT_${parsedEndpoint.reason}`]);
+  assertAdapterStep(beforeQuery);
+  trace.push(beforeQuery);
+
+  const endpoint = parsedEndpoint.url!;
   endpoint.searchParams.set('q', asString(prepared.args.query));
   const response = await fetch(endpoint, { headers: { accept: 'application/json,text/plain;q=0.8', 'user-agent': 'DSG-ONE-Governed-Tools/1.0' } });
+  const afterResponse = buildAdapterStepTrace(prepared, 'after_response', { endpoint: endpoint.toString(), status: response.status, ok: response.ok }, [`http_status:${response.status}`], response.ok ? [] : ['SEARCH_HTTP_NOT_OK']);
+  assertAdapterStep(afterResponse);
+  trace.push(afterResponse);
+
   const raw = (await response.text()).slice(0, Number(prepared.args.maxBytes ?? 250_000));
   let parsed: unknown = raw;
   try {
@@ -411,8 +543,13 @@ async function executeSearch(prepared: DsgGovernedToolPreparedRequest): Promise<
   } catch {
     parsed = { text: raw.slice(0, Number(prepared.args.textLimit ?? 4_000)) };
   }
-  return { endpoint: endpoint.toString(), status: response.status, ok: response.ok, results: parsed, resultHash: sha256Json({ raw }) };
+  const parsedTrace = buildAdapterStepTrace(prepared, 'verify_results', { responseBytes: raw.length, parsedType: Array.isArray(parsed) ? 'array' : typeof parsed }, [sha256Json({ raw })], raw ? [] : ['SEARCH_EMPTY_RESULTS']);
+  assertAdapterStep(parsedTrace);
+  trace.push(parsedTrace);
+
+  return { endpoint: endpoint.toString(), status: response.status, ok: response.ok, results: parsed, resultHash: sha256Json({ raw }), adapterDecisionTrace: trace };
 }
+
 
 async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest): Promise<StoredRecord> {
   const root = String(input.sandboxRoot || process.cwd());
@@ -420,7 +557,7 @@ async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGoverne
   const id = asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args);
   const previous = records.filter((record) => record.id === id).at(-1);
   const now = new Date().toISOString();
-  const status = prepared.tool === 'persistent_compute' ? 'allocated' : prepared.action === 'update' ? 'updated' : 'created';
+  const status: StoredRecord['status'] = prepared.action === 'delete' ? 'deleted' : prepared.action === 'deallocate' ? 'deallocated' : prepared.tool === 'persistent_compute' ? 'allocated' : prepared.action === 'update' ? 'updated' : 'created';
   const state = materializePersistentState(prepared.tool, prepared.action, prepared.args, previous);
   const baseRecord = {
     id,
@@ -443,11 +580,80 @@ async function persistRecord(input: DsgGovernedToolRequest, prepared: DsgGoverne
   return record;
 }
 
+type PersistentAdapterOutput = {
+  operation: DsgGovernedToolAction;
+  truth: DsgGovernedToolPreparedRequest['audit']['truth'];
+  record?: StoredRecord;
+  records?: StoredRecord[];
+  adapterDecisionTrace: AdapterStepTrace[];
+  outputHash: string;
+};
+
+async function executePersistence(input: DsgGovernedToolRequest, prepared: DsgGovernedToolPreparedRequest): Promise<PersistentAdapterOutput> {
+  const root = String(input.sandboxRoot || process.cwd());
+  const id = asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args);
+  const trace: AdapterStepTrace[] = [];
+
+  const targetTrace = buildAdapterStepTrace(prepared, 'target_lock', { goal: input.goal, id, action: prepared.action }, [id]);
+  assertAdapterStep(targetTrace);
+  trace.push(targetTrace);
+
+  const records = await readStoredRecords(root, prepared.tool);
+  const readTrace = buildAdapterStepTrace(prepared, 'read_stored_records', { root: persistenceRoot(root), count: records.length }, [sha256Json({ ids: records.map((record) => record.id), count: records.length })]);
+  assertAdapterStep(readTrace);
+  trace.push(readTrace);
+
+  if (prepared.action === 'read') {
+    const resultRecords = asString(prepared.args.id) ? records.filter((record) => record.id === id) : activeStoredRecords(records);
+    const latest = resultRecords.at(-1);
+    const verifyTrace = buildAdapterStepTrace(prepared, 'verify_read_state', { id: asString(prepared.args.id) ? id : 'all-active', count: resultRecords.length, latestStatus: latest?.status }, [sha256Json(resultRecords)], resultRecords.length === 0 && asString(prepared.args.id) ? ['PERSISTENCE_RECORD_NOT_FOUND'] : []);
+    assertAdapterStep(verifyTrace);
+    trace.push(verifyTrace);
+    const output = { operation: prepared.action, truth: prepared.audit.truth, record: latest, records: asString(prepared.args.id) ? undefined : resultRecords, adapterDecisionTrace: trace, outputHash: '' } satisfies PersistentAdapterOutput;
+    output.outputHash = sha256Json({ record: output.record, records: output.records, trace: trace.map((step) => step.evidenceHash) });
+    return output;
+  }
+
+  const previous = records.filter((record) => record.id === id).at(-1);
+  const existingActive = previous && !['deleted', 'deallocated'].includes(previous.status);
+  const riskFlags: string[] = [];
+  if (['update', 'delete', 'deallocate'].includes(prepared.action) && !existingActive) riskFlags.push('PERSISTENCE_RECORD_NOT_FOUND');
+  if (prepared.action === 'create' && existingActive) riskFlags.push('PERSISTENCE_RECORD_ALREADY_EXISTS');
+  if (prepared.tool === 'schedule' && ['create', 'update'].includes(prepared.action) && asString(prepared.args.cron) && !isValidCronExpression(prepared.args.cron)) riskFlags.push('SCHEDULE_CRON_INVALID');
+  const verifyTrace = buildAdapterStepTrace(prepared, 'verify_mutation_request', { id, previousRevision: previous?.revision, previousStatus: previous?.status, args: prepared.args }, [sha256Json({ previous, args: prepared.args })], riskFlags);
+  assertAdapterStep(verifyTrace);
+  trace.push(verifyTrace);
+
+  const materializedState = materializePersistentState(prepared.tool, prepared.action, prepared.args, previous);
+  const materializeTrace = buildAdapterStepTrace(prepared, 'materialize_state', { id, state: materializedState }, [sha256Json(materializedState)]);
+  assertAdapterStep(materializeTrace);
+  trace.push(materializeTrace);
+
+  const record = await persistRecord(input, prepared);
+  const persistTrace = buildAdapterStepTrace(prepared, 'persist_append_only_record', { id, revision: record.revision, status: record.status }, [record.eventHash]);
+  assertAdapterStep(persistTrace);
+  trace.push(persistTrace);
+
+  const output = { operation: prepared.action, truth: prepared.audit.truth, record, adapterDecisionTrace: trace, outputHash: '' } satisfies PersistentAdapterOutput;
+  output.outputHash = sha256Json({ record, trace: trace.map((step) => step.evidenceHash) });
+  return output;
+}
+
 async function executeApi(prepared: DsgGovernedToolPreparedRequest): Promise<unknown> {
-  const url = parseHttpsUrl(prepared.args.url).url!;
+  const trace: AdapterStepTrace[] = [];
+  const parsedUrl = parseHttpsUrl(prepared.args.url);
   const method = asString(prepared.args.method || (prepared.action === 'query' ? 'GET' : 'POST')).toUpperCase();
   const body = method === 'GET' ? undefined : JSON.stringify(prepared.args.body ?? {});
+  const beforeRequest = buildAdapterStepTrace(prepared, 'before_request', { url: asString(prepared.args.url), method, hasBody: body !== undefined }, [sha256Json({ url: prepared.args.url, method, body })], parsedUrl.ok ? [] : [`API_${parsedUrl.reason}`]);
+  assertAdapterStep(beforeRequest);
+  trace.push(beforeRequest);
+
+  const url = parsedUrl.url!;
   const response = await fetch(url, { method, headers: { accept: 'application/json,text/plain;q=0.8', 'content-type': 'application/json' }, body });
+  const afterResponse = buildAdapterStepTrace(prepared, 'after_response', { url: url.toString(), method, status: response.status, ok: response.ok }, [`http_status:${response.status}`], response.ok ? [] : ['API_HTTP_NOT_OK']);
+  assertAdapterStep(afterResponse);
+  trace.push(afterResponse);
+
   const raw = (await response.text()).slice(0, Number(prepared.args.maxBytes ?? 250_000));
   let parsed: unknown = raw;
   try {
@@ -455,16 +661,32 @@ async function executeApi(prepared: DsgGovernedToolPreparedRequest): Promise<unk
   } catch {
     parsed = { text: raw.slice(0, Number(prepared.args.textLimit ?? 4_000)) };
   }
-  return { url: url.toString(), method, status: response.status, ok: response.ok, body: parsed, bodyHash: sha256Json({ raw }) };
+  const verifyResponse = buildAdapterStepTrace(prepared, 'verify_response_body', { responseBytes: raw.length, parsedType: Array.isArray(parsed) ? 'array' : typeof parsed }, [sha256Json({ raw })]);
+  assertAdapterStep(verifyResponse);
+  trace.push(verifyResponse);
+
+  return { url: url.toString(), method, status: response.status, ok: response.ok, body: parsed, bodyHash: sha256Json({ raw }), adapterDecisionTrace: trace };
 }
 
 async function executeGoogleWorkspace(prepared: DsgGovernedToolPreparedRequest): Promise<unknown> {
-  const endpoint = parseHttpsUrl(prepared.args.endpoint ?? process.env.DSG_GOOGLE_WORKSPACE_ENDPOINT).url!;
+  const trace: AdapterStepTrace[] = [];
+  const parsedEndpoint = parseHttpsUrl(prepared.args.endpoint ?? process.env.DSG_GOOGLE_WORKSPACE_ENDPOINT);
+  const operation = asString(prepared.args.operation);
+  const requestPayload = { operation, payload: prepared.args.payload ?? {} };
+  const beforeRequest = buildAdapterStepTrace(prepared, 'before_workspace_request', { endpoint: asString(prepared.args.endpoint ?? process.env.DSG_GOOGLE_WORKSPACE_ENDPOINT), operation }, [sha256Json(requestPayload)], parsedEndpoint.ok ? [] : [`GOOGLE_WORKSPACE_ENDPOINT_${parsedEndpoint.reason}`]);
+  assertAdapterStep(beforeRequest);
+  trace.push(beforeRequest);
+
+  const endpoint = parsedEndpoint.url!;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { accept: 'application/json,text/plain;q=0.8', 'content-type': 'application/json' },
-    body: JSON.stringify({ operation: prepared.args.operation, payload: prepared.args.payload ?? {} }),
+    body: JSON.stringify(requestPayload),
   });
+  const afterResponse = buildAdapterStepTrace(prepared, 'after_workspace_response', { endpoint: endpoint.toString(), operation, status: response.status, ok: response.ok }, [`http_status:${response.status}`], response.ok ? [] : ['GOOGLE_WORKSPACE_HTTP_NOT_OK']);
+  assertAdapterStep(afterResponse);
+  trace.push(afterResponse);
+
   const raw = (await response.text()).slice(0, Number(prepared.args.maxBytes ?? 250_000));
   let parsed: unknown = raw;
   try {
@@ -472,8 +694,13 @@ async function executeGoogleWorkspace(prepared: DsgGovernedToolPreparedRequest):
   } catch {
     parsed = { text: raw.slice(0, Number(prepared.args.textLimit ?? 4_000)) };
   }
-  return { operation: prepared.args.operation, status: response.status, ok: response.ok, body: parsed, bodyHash: sha256Json({ raw }) };
+  const verifyResponse = buildAdapterStepTrace(prepared, 'verify_workspace_body', { responseBytes: raw.length, parsedType: Array.isArray(parsed) ? 'array' : typeof parsed }, [sha256Json({ raw })]);
+  assertAdapterStep(verifyResponse);
+  trace.push(verifyResponse);
+
+  return { operation, status: response.status, ok: response.ok, body: parsed, bodyHash: sha256Json({ raw }), adapterDecisionTrace: trace };
 }
+
 
 export async function executeGovernedToolRequest(input: DsgGovernedToolRequest): Promise<DsgGovernedToolExecutionResult> {
   const prepared = prepareGovernedToolRequest(input);
@@ -508,37 +735,58 @@ export async function executeGovernedToolRequest(input: DsgGovernedToolRequest):
   if (prepared.tool === 'browser') {
     const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:browser']);
     if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
-    const output = await executeBrowser(prepared);
-    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    try {
+      const output = await executeBrowser(prepared);
+      return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    } catch (error) {
+      return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:browser:fail_closed'], adapterErrorBlockedReasons(error)) };
+    }
   }
   if (prepared.tool === 'search') {
     const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:search']);
     if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
-    const output = await executeSearch(prepared);
-    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    try {
+      const output = await executeSearch(prepared);
+      return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    } catch (error) {
+      return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:search:fail_closed'], adapterErrorBlockedReasons(error)) };
+    }
   }
   if (persistedToolKinds.has(prepared.tool)) {
     const root = String(input.sandboxRoot || process.cwd());
     const id = asString(prepared.args.id) || recordId(prepared.tool, prepared.action, prepared.args);
     const records = await readStoredRecords(root, prepared.tool);
     const previous = records.filter((record) => record.id === id).at(-1);
-    const persistenceBlocked = prepared.action === 'update' && !previous ? ['PERSISTENCE_RECORD_NOT_FOUND'] : [];
+    const previousActive = previous && !['deleted', 'deallocated'].includes(previous.status);
+    const persistenceBlocked = ['update', 'delete', 'deallocate'].includes(prepared.action) && !previousActive ? ['PERSISTENCE_RECORD_NOT_FOUND'] : [];
     const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:persistence', id], persistenceBlocked);
     if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
-    const output = await persistRecord(input, prepared);
-    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [(output as StoredRecord).eventHash]) };
+    try {
+      const output = await executePersistence(input, prepared);
+      return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [output.outputHash]) };
+    } catch (error) {
+      return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:persistence:fail_closed', id], adapterErrorBlockedReasons(error)) };
+    }
   }
   if (prepared.tool === 'api') {
     const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:api']);
     if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
-    const output = await executeApi(prepared);
-    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    try {
+      const output = await executeApi(prepared);
+      return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    } catch (error) {
+      return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:api:fail_closed'], adapterErrorBlockedReasons(error)) };
+    }
   }
   if (prepared.tool === 'google_workspace') {
     const adapterFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:google_workspace']);
     if (!adapterFrame.ok) return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: adapterFrame };
-    const output = await executeGoogleWorkspace(prepared);
-    return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    try {
+      const output = await executeGoogleWorkspace(prepared);
+      return { ok: true, prepared, output, outputVerification: 'runtime_evidence', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'output_verification', [sha256Json(output)]) };
+    } catch (error) {
+      return { ok: false, prepared, outputVerification: 'blocked_before_execution', executionDecisionFrame: buildExecutionDecisionFrame(input, prepared, 'adapter_execution', ['adapter:google_workspace:fail_closed'], adapterErrorBlockedReasons(error)) };
+    }
   }
 
   const fallbackFrame = buildExecutionDecisionFrame(input, prepared, 'adapter_execution', [], ['ADAPTER_NOT_IMPLEMENTED']);

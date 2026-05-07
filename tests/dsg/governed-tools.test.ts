@@ -152,4 +152,63 @@ describe('DSG governed tooling layer', () => {
     expect(persisted[1].state).toMatchObject({ title: 'Rollout', status: 'done' });
   });
 
+
+  it('supports full schedule CRUD with verified append-only state transitions', async () => {
+    tempRoot = await mkdtemp(path.join(tmpdir(), 'dsg-tool-'));
+    const created = await executeGovernedToolRequest({
+      tool: 'schedule',
+      action: 'create',
+      goal: 'Create governed reminder schedule',
+      sandboxRoot: tempRoot,
+      args: { id: 'schedule:daily-proof', title: 'Daily proof', cron: '0 9 * * *' },
+    });
+    const readCreated = await executeGovernedToolRequest({ tool: 'schedule', action: 'read', goal: 'Read governed schedule', sandboxRoot: tempRoot, args: { id: 'schedule:daily-proof' } });
+    const updated = await executeGovernedToolRequest({
+      tool: 'schedule',
+      action: 'update',
+      goal: 'Update governed reminder schedule',
+      sandboxRoot: tempRoot,
+      args: { id: 'schedule:daily-proof', intervalMs: 120_000, enabled: true },
+    });
+    const deleted = await executeGovernedToolRequest({ tool: 'schedule', action: 'delete', goal: 'Delete governed schedule', sandboxRoot: tempRoot, args: { id: 'schedule:daily-proof', reason: 'No longer needed' } });
+
+    expect(created.ok).toBe(true);
+    expect(readCreated.ok).toBe(true);
+    expect(updated.ok).toBe(true);
+    expect(deleted.ok).toBe(true);
+    expect((updated.output as { record: { state: { scheduler: { kind: string } } } }).record.state.scheduler.kind).toBe('interval');
+    expect((deleted.output as { record: { status: string; state: { lifecycle: string } } }).record.status).toBe('deleted');
+    expect((deleted.output as { record: { status: string; state: { lifecycle: string } } }).record.state.lifecycle).toBe('deleted');
+  });
+
+  it('supports persistent compute allocate, read, and deallocate lifecycles', async () => {
+    tempRoot = await mkdtemp(path.join(tmpdir(), 'dsg-tool-'));
+    const allocated = await executeGovernedToolRequest({
+      tool: 'persistent_compute',
+      action: 'allocate',
+      goal: 'Allocate sandbox worker',
+      sandboxRoot: tempRoot,
+      args: { id: 'compute:worker-a', name: 'worker-a', ttlMs: 600_000, resourceClass: 'sandbox-worker' },
+    });
+    const readAllocated = await executeGovernedToolRequest({ tool: 'persistent_compute', action: 'read', goal: 'Read sandbox worker', sandboxRoot: tempRoot, args: { id: 'compute:worker-a' } });
+    const deallocated = await executeGovernedToolRequest({ tool: 'persistent_compute', action: 'deallocate', goal: 'Deallocate sandbox worker', sandboxRoot: tempRoot, args: { id: 'compute:worker-a', reason: 'Task complete' } });
+
+    expect(allocated.ok).toBe(true);
+    expect(readAllocated.ok).toBe(true);
+    expect(deallocated.ok).toBe(true);
+    expect((allocated.output as { record: { state: { computeHandle: string } } }).record.state.computeHandle).toMatch(/^pc:/);
+    expect((deallocated.output as { record: { status: string; state: { lifecycle: string } } }).record.status).toBe('deallocated');
+    expect((deallocated.output as { record: { status: string; state: { lifecycle: string } } }).record.state.lifecycle).toBe('deallocated');
+  });
+
+  it('adds adapter-level decision traces and fails closed for unverified browser responses', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('not found', { status: 404, headers: { 'content-type': 'text/plain' } })));
+
+    const result = await executeGovernedToolRequest({ tool: 'browser', action: 'navigate', goal: 'Read missing docs', args: { url: 'https://example.com/missing', approved: true } });
+
+    expect(result.ok).toBe(false);
+    expect(result.outputVerification).toBe('blocked_before_execution');
+    expect(result.executionDecisionFrame?.blockedReasons).toContain('BROWSER_HTTP_NOT_OK');
+  });
+
 });
