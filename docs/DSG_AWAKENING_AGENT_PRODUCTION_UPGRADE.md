@@ -30,9 +30,11 @@ Implemented execution today:
 - `shell.exec`: allowlisted local commands only (`pwd`, `node`, `npm`, `npx`, `rg`, `cat`, `sed`, `git`) with denied destructive/network/system-control patterns.
 - `file.read`, `file.write`, `file.append`, `file.edit`: sandbox-confined paths with sensitive path blocking and runtime evidence hashes.
 
-Prepared/review-only governance today:
+Adapter and persistence governance today:
 
-- `browser`, `search`, `schedule`, `plan`, `workflow`, `api`, `google_workspace`, and `persistent_compute` requests receive deterministic audit hashes, truth labels, and blocked/review reasons. External or persistent actions remain blocked unless a real adapter, confirmation flow, and persistence backend are added.
+- `browser.navigate`/`browser.scrape`, `search.query`, `api.query`/`api.create`/`api.update`, and `google_workspace.query`/`google_workspace.create`/`google_workspace.update` execute only after explicit approval and HTTPS/allowlist checks, then emit adapter-level Decision Frame traces for substeps such as target lock, request, response, parsing, and output verification.
+- `schedule`, `plan`, and `workflow` support append-only `create`, `read`, `update`, and `delete` persistence with materialized state, linked revisions, truth labels, and fail-closed missing-record checks.
+- `persistent_compute` supports append-only `allocate`, `read`, and `deallocate` lifecycles with deterministic compute handles, TTL validation, linked revisions, truth labels, and fail-closed missing-record checks.
 
 ## Output contract
 
