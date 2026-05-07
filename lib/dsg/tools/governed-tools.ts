@@ -26,6 +26,7 @@ export type DsgGovernedToolPreparedRequest = {
   status: DsgGovernedToolStatus;
   tool: DsgGovernedToolKind;
   action: DsgGovernedToolAction;
+  goal: string;
   args: Record<string, unknown>;
   audit: {
     id: string;
@@ -618,6 +619,7 @@ export function prepareGovernedToolRequest(input: DsgGovernedToolRequest): DsgGo
     status: blockedReasons.length ? 'blocked' : readyStatus(normalized.tool, normalized.action),
     tool: normalized.tool,
     action: normalized.action,
+    goal: normalized.goal,
     args: normalized.args ?? {},
     audit: { id: `tool:${requestHash}`, truth: truthFor(normalized.tool), requestHash },
     decisionFrame: {

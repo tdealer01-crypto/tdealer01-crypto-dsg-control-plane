@@ -13,6 +13,8 @@ import {
   Wrench,
   XCircle,
 } from 'lucide-react';
+import { GovernedToolPanel } from '@/components/dsg/governed-tools/GovernedToolPanels';
+import type { DsgGovernedToolExecutionResult, DsgGovernedToolPreparedRequest, DsgGovernedToolRequest } from '@/lib/dsg/tools/governed-tools';
 import { cn } from '@/lib/utils';
 
 type ApiResult<T> = { ok: true; data: T } | { ok: false; error: { code?: string; message?: string } };
@@ -83,6 +85,8 @@ export function AppBuilderAgentRuntimeView() {
   const [job, setJob] = useState<BuilderJob | null>(null);
   const [handoff, setHandoff] = useState<Handoff | null>(null);
   const [toolCall, setToolCall] = useState<ToolCall | null>(null);
+  const [governedPrepared, setGovernedPrepared] = useState<DsgGovernedToolPreparedRequest | null>(null);
+  const [governedResult, setGovernedResult] = useState<DsgGovernedToolExecutionResult | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +105,24 @@ export function AppBuilderAgentRuntimeView() {
     return readResult(json);
   }
 
+  async function governedTool(input: DsgGovernedToolRequest, execute = false) {
+    const response = await fetch('/api/dsg/tools', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...input, execute }),
+    });
+    const json = (await response.json().catch(() => ({ ok: false, error: { message: 'INVALID_GOVERNED_TOOL_JSON' } }))) as DsgGovernedToolPreparedRequest | DsgGovernedToolExecutionResult;
+    if (!response.ok && !('prepared' in json)) throw new Error('GOVERNED_TOOL_PREPARE_FAILED');
+    if ('prepared' in json) {
+      setGovernedResult(json);
+      setGovernedPrepared(json.prepared);
+    } else {
+      setGovernedResult(null);
+      setGovernedPrepared(json);
+    }
+    return json;
+  }
+
   async function runStep(name: string, fn: () => Promise<void>) {
     setBusy(name);
     setError(null);
@@ -116,6 +138,8 @@ export function AppBuilderAgentRuntimeView() {
   const createJob = () => runStep('goal', async () => {
     setHandoff(null);
     setToolCall(null);
+    setGovernedPrepared(null);
+    setGovernedResult(null);
     const data = await api<BuilderJob>('/api/dsg/app-builder/jobs', {
       method: 'POST',
       body: JSON.stringify({
@@ -132,7 +156,21 @@ export function AppBuilderAgentRuntimeView() {
     if (!job) throw new Error('APP_BUILDER_JOB_REQUIRED');
     setHandoff(null);
     setToolCall(null);
-    setJob(await api<BuilderJob>(`/api/dsg/app-builder/jobs/${job.id}/plan`, { method: 'POST' }));
+    const plannedJob = await api<BuilderJob>(`/api/dsg/app-builder/jobs/${job.id}/plan`, { method: 'POST' });
+    setJob(plannedJob);
+    await governedTool({
+      tool: 'plan',
+      action: 'dry_run',
+      goal: plannedJob.goal?.normalizedGoal || goal || 'Review App Builder plan before runtime handoff',
+      args: {
+        title: plannedJob.prd?.summary || 'App Builder governed plan',
+        jobId: plannedJob.id,
+        planHash: plannedJob.planHash,
+        steps: plannedJob.proposedPlan?.steps ?? [],
+      },
+      evidence: [plannedJob.planHash ? `plan_hash:${plannedJob.planHash}` : 'plan_hash:pending'],
+      history: ['ui:createPlan'],
+    });
   });
 
   const approvePlan = () => runStep('approval', async () => {
@@ -147,7 +185,22 @@ export function AppBuilderAgentRuntimeView() {
 
   const createHandoff = () => runStep('handoff', async () => {
     if (!job?.approvalHash) throw new Error('APP_BUILDER_APPROVAL_REQUIRED');
-    setHandoff(await api<Handoff>(`/api/dsg/app-builder/jobs/${job.id}/runtime-handoff`, { method: 'POST' }));
+    const handoffDraft = await api<Handoff>(`/api/dsg/app-builder/jobs/${job.id}/runtime-handoff`, { method: 'POST' });
+    setHandoff(handoffDraft);
+    await governedTool({
+      tool: 'workflow',
+      action: 'dry_run',
+      goal: job.goal?.normalizedGoal || goal || 'Review runtime handoff workflow before execution',
+      args: {
+        title: 'App Builder runtime handoff',
+        jobId: job.id,
+        planHash: handoffDraft.planHash,
+        approvalHash: handoffDraft.approvalHash,
+        runtimeStatus: handoffDraft.runtimeStatus,
+      },
+      evidence: [`plan_hash:${handoffDraft.planHash}`, `approval_hash:${handoffDraft.approvalHash}`],
+      history: ['ui:createHandoff'],
+    });
   });
 
   const launchRuntimeTool = () => runStep('tool-call', async () => {
@@ -249,6 +302,7 @@ export function AppBuilderAgentRuntimeView() {
         </section>
 
         <aside className="space-y-3 rounded-xl border border-[#c8c8c8]/15 bg-[#111113] p-3">
+          <GovernedToolPanel prepared={governedPrepared} result={governedResult} busy={busy === 'governed-tool'} />
           <div className="flex items-start gap-2 rounded-xl border border-[#d6a63a]/25 bg-[#d6a63a]/5 p-3 text-xs leading-5 text-[#d9d9d9]">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#d6a63a]" />
             <p>จอนี้ใช้ endpoint จริงของ repo เท่านั้น ไม่มี mock result และจะไม่เคลม production verified จนกว่าจะมี proof ครบ</p>

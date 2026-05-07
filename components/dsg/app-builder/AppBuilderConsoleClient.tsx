@@ -5,11 +5,13 @@ import { PRDViewer } from './PRDViewer';
 import { PlanObserverPanel } from './PlanObserverPanel';
 import { HandoffPanel } from './HandoffPanel';
 import { RuntimeGatePanel } from './RuntimeGatePanel';
+import { GovernedToolPanel, collectPersistedRecords } from '@/components/dsg/governed-tools/GovernedToolPanels';
 import type { DsgAppBuilderPrd } from '@/lib/dsg/app-builder/types/prd';
 import type { DsgAppTemplate } from '@/lib/dsg/app-builder/templates/template-registry';
 import type { DsgPlanDraft, DsgPlanObserverResult } from '@/lib/dsg/app-builder/plan/types';
 import type { DsgAppBuilderApprovalGate, DsgRuntimeHandoffDraft } from '@/lib/dsg/app-builder/approval/types';
 import type { RuntimeExecutionGateResult } from '@/lib/dsg/app-builder/runtime/types';
+import type { DsgGovernedToolAction, DsgGovernedToolExecutionResult, DsgGovernedToolKind, DsgGovernedToolPreparedRequest } from '@/lib/dsg/tools/governed-tools';
 
 type PrdResponse = {
   ok: boolean;
@@ -58,7 +60,7 @@ type AgentLoopResponse = {
   productionReadyClaim?: false;
 };
 
-type PreviewMode = 'concept' | 'live' | 'monitor' | 'brain';
+type PreviewMode = 'concept' | 'live' | 'monitor' | 'brain' | 'tools';
 
 const liveGeneratedAppPath = '/generated-apps/2f3b20b0-824c-4d4a-ae6a-250bd18f3392';
 
@@ -100,8 +102,10 @@ function statusTone(status: string) {
 }
 
 function stateTone(state: string) {
-  if (state.includes('BLOCK') || state.includes('REQUIRED') || state.includes('NOT_CONFIGURED')) return 'border-rose-400/40 bg-rose-500/10 text-rose-100';
-  if (state.includes('ready') || state.includes('APPROVED') || state.includes('created') || state.includes('PASS')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
+  const normalized = state.toLowerCase();
+  if (normalized.includes('block') || normalized.includes('required') || normalized.includes('not_configured')) return 'border-rose-400/40 bg-rose-500/10 text-rose-100';
+  if (normalized.includes('review')) return 'border-amber-400/40 bg-amber-500/10 text-amber-100';
+  if (normalized.includes('ready') || normalized.includes('approved') || normalized.includes('created') || normalized.includes('pass') || normalized.includes('runtime_evidence')) return 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100';
   return 'border-slate-700 bg-slate-950 text-slate-300';
 }
 
@@ -130,6 +134,13 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [loadingHandoff, setLoadingHandoff] = useState(false);
   const [loadingRuntimeGate, setLoadingRuntimeGate] = useState(false);
+  const [toolKind, setToolKind] = useState<DsgGovernedToolKind>('plan');
+  const [toolAction, setToolAction] = useState<DsgGovernedToolAction>('dry_run');
+  const [toolArgsText, setToolArgsText] = useState('{\n  "title": "Console dry-run plan",\n  "payload": { "source": "app-builder-console" }\n}');
+  const [toolAllowedHosts, setToolAllowedHosts] = useState('');
+  const [governedPrepared, setGovernedPrepared] = useState<DsgGovernedToolPreparedRequest | null>(null);
+  const [governedResult, setGovernedResult] = useState<DsgGovernedToolExecutionResult | null>(null);
+  const [loadingGovernedTool, setLoadingGovernedTool] = useState(false);
 
   const criteriaList = useMemo(() => criteria.split('\n').map((line) => line.trim()).filter(Boolean), [criteria]);
   const timeline = useMemo(() => [
@@ -139,7 +150,8 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
     { label: 'Plan', state: plan ? 'ready' : 'waiting', detail: plan ? 'Plan observer available' : 'Run Plan + Observer' },
     { label: 'Handoff', state: handoff ? handoff.status : 'waiting', detail: handoff ? 'Approval handoff created' : 'Approval required' },
     { label: 'Runtime gate', state: runtimeGate ? runtimeGate.status : 'waiting', detail: runtimeGate ? runtimeGate.status : 'Not executed' },
-  ], [goal, prd, plan, handoff, runtimeGate, agentLoop]);
+    { label: 'Governed tool', state: governedResult?.outputVerification || governedPrepared?.status || 'waiting', detail: governedPrepared ? `${governedPrepared.tool}.${governedPrepared.action} · ${governedPrepared.audit.truth}` : 'Prepare or execute from Tools panel' },
+  ], [goal, prd, plan, handoff, runtimeGate, agentLoop, governedPrepared, governedResult]);
 
   function applyStarter(app: (typeof starterApps)[number]) {
     setGoal(app.goal);
@@ -281,6 +293,60 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
     }
   }
 
+
+  function parseToolArgs(approved = false) {
+    const parsed = JSON.parse(toolArgsText || '{}') as Record<string, unknown>;
+    const allowedHosts = toolAllowedHosts.split('\n').map((host) => host.trim()).filter(Boolean);
+    return {
+      ...parsed,
+      ...(allowedHosts.length ? { allowedHosts } : {}),
+      ...(approved ? { approved: true } : {}),
+    };
+  }
+
+  async function runGovernedTool(execute: boolean, approved = false) {
+    const trimmedGoal = goal.trim();
+    if (!trimmedGoal) {
+      setStatus('APP_BUILDER_GOAL_REQUIRED');
+      return;
+    }
+
+    setLoadingGovernedTool(true);
+    setStatus(`${execute ? 'Executing' : 'Preparing'} governed ${toolKind}.${toolAction}…`);
+    try {
+      const response = await fetch('/api/dsg/tools', {
+        method: 'POST',
+        headers: dsgHeaders,
+        body: JSON.stringify({
+          tool: toolKind,
+          action: toolAction,
+          goal: trimmedGoal,
+          args: parseToolArgs(approved),
+          evidence: ['ui:app-builder-console', plan?.jobId ? `plan:${plan.jobId}` : 'plan:not-generated'],
+          history: timeline.map((item) => `${item.label}:${item.state}`),
+          execute,
+        }),
+      });
+      const json = (await response.json()) as DsgGovernedToolPreparedRequest | DsgGovernedToolExecutionResult | { ok: false; error?: { message?: string; code?: string } };
+      if ('prepared' in json) {
+        setGovernedResult(json);
+        setGovernedPrepared(json.prepared);
+        setStatus(`${json.ok ? 'GOVERNED_TOOL_EXECUTED' : 'GOVERNED_TOOL_BLOCKED'} · ${json.outputVerification} · records=${collectPersistedRecords(json).length}`);
+      } else if ('tool' in json) {
+        setGovernedResult(null);
+        setGovernedPrepared(json);
+        setStatus(`${json.ok ? 'GOVERNED_TOOL_READY' : 'GOVERNED_TOOL_REVIEW_OR_BLOCKED'} · ${json.status} · reasons=${json.blockedReasons.length}`);
+      } else {
+        throw new Error(json.error?.message || json.error?.code || 'GOVERNED_TOOL_REQUEST_FAILED');
+      }
+      setPreviewMode('tools');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'GOVERNED_TOOL_REQUEST_FAILED');
+    } finally {
+      setLoadingGovernedTool(false);
+    }
+  }
+
   async function startRuntimeGate() {
     if (!handoff || !plan) {
       setStatus('RUNTIME_HANDOFF_REQUIRED');
@@ -344,6 +410,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
             <button onClick={() => void generatePlan()} disabled={loadingPlan} className="rounded-2xl border border-violet-400/40 bg-violet-500/10 px-5 py-3 text-sm font-black text-violet-100 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingPlan ? 'Observing…' : 'Plan + Observer'}</button>
             <button onClick={() => void createHandoff()} disabled={loadingHandoff || !plan || !observer} className="rounded-2xl border border-cyan-400/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingHandoff ? 'Hashing…' : 'Approval + Handoff'}</button>
             <button onClick={() => void startRuntimeGate()} disabled={loadingRuntimeGate || !handoff} className="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-5 py-3 text-sm font-black text-rose-100 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60">{loadingRuntimeGate ? 'Checking…' : 'Start Runtime Gate'}</button>
+            <button onClick={() => setPreviewMode('tools')} className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-5 py-3 text-sm font-black text-amber-100 hover:bg-amber-500/20">Governed Tools</button>
           </div>
 
           <div className={`mt-4 rounded-2xl border p-3 text-xs font-mono ${statusTone(status)}`}>
@@ -366,7 +433,7 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
               <h2 className="mt-1 text-2xl font-black text-white">พรีวิวแอปข้างๆ</h2>
             </div>
             <div className="flex rounded-2xl border border-slate-800 bg-slate-950 p-1 text-xs font-bold">
-              {(['concept', 'live', 'monitor', 'brain'] as PreviewMode[]).map((mode) => (
+              {(['concept', 'live', 'monitor', 'brain', 'tools'] as PreviewMode[]).map((mode) => (
                 <button key={mode} onClick={() => setPreviewMode(mode)} className={`rounded-xl px-3 py-2 ${previewMode === mode ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>{mode}</button>
               ))}
             </div>
@@ -403,6 +470,35 @@ export function AppBuilderConsoleClient({ initialPrd }: { initialPrd: DsgAppBuil
                   <p className="mt-2 text-xs leading-5 opacity-85">{item.detail}</p>
                 </div>
               ))}
+            </div>
+          ) : null}
+
+          {previewMode === 'tools' ? (
+            <div className="mt-5 space-y-4">
+              <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-200">Governed tool workbench</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className="text-xs font-bold text-slate-300">Tool
+                    <select value={toolKind} onChange={(event) => setToolKind(event.target.value as DsgGovernedToolKind)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-2 text-slate-100">
+                      {(['plan', 'workflow', 'schedule', 'persistent_compute', 'browser', 'search', 'api', 'google_workspace', 'file', 'shell'] as DsgGovernedToolKind[]).map((tool) => <option key={tool} value={tool}>{tool}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-xs font-bold text-slate-300">Action
+                    <input value={toolAction} onChange={(event) => setToolAction(event.target.value as DsgGovernedToolAction)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-2 text-slate-100" />
+                  </label>
+                </div>
+                <label className="mt-3 block text-xs font-bold text-slate-300">Args JSON
+                  <textarea value={toolArgsText} onChange={(event) => setToolArgsText(event.target.value)} rows={8} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100" />
+                </label>
+                <label className="mt-3 block text-xs font-bold text-slate-300">Allowed hosts, one per line
+                  <textarea value={toolAllowedHosts} onChange={(event) => setToolAllowedHosts(event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-100" placeholder="api.example.com" />
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => void runGovernedTool(false)} disabled={loadingGovernedTool} className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-100 disabled:opacity-60">Prepare only</button>
+                  <button onClick={() => void runGovernedTool(true)} disabled={loadingGovernedTool} className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100 disabled:opacity-60">Execute governed</button>
+                </div>
+              </div>
+              <GovernedToolPanel prepared={governedPrepared} result={governedResult} busy={loadingGovernedTool} onApprove={() => void runGovernedTool(true, true)} />
             </div>
           ) : null}
 
