@@ -186,9 +186,12 @@ function LiveMonitor({ lang }: { lang: Lang }) {
   }
 
   useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 30_000);
-    return () => window.clearInterval(timer);
+    const initialTimer = window.setTimeout(() => void refresh(), 0);
+    const intervalTimer = window.setInterval(() => void refresh(), 30_000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(intervalTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
