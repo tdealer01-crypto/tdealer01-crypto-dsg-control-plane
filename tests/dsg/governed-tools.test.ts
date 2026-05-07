@@ -1,13 +1,15 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { executeGovernedToolRequest, prepareGovernedToolRequest } from '../../lib/dsg/tools/governed-tools';
 
 describe('DSG governed tooling layer', () => {
   let tempRoot: string | undefined;
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     if (tempRoot) await rm(tempRoot, { recursive: true, force: true });
     tempRoot = undefined;
   });
@@ -47,10 +49,64 @@ describe('DSG governed tooling layer', () => {
     expect(prepared.blockedReasons).toContain('PATH_OUTSIDE_SANDBOX');
   });
 
-  it('marks browser operations as external data requiring confirmation', () => {
+  it('keeps browser operations blocked until explicit approval is supplied', () => {
     const prepared = prepareGovernedToolRequest({ tool: 'browser', action: 'navigate', goal: 'Read docs', args: { url: 'https://example.com' } });
     expect(prepared.ok).toBe(false);
     expect(prepared.audit.truth).toBe('external_data_pending_verification');
     expect(prepared.blockedReasons).toContain('BROWSER_CONFIRMATION_REQUIRED');
+  });
+
+  it('executes approved browser navigation and returns hashed runtime evidence', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html><head><title>Docs</title></head><body><main>Governed adapter evidence</main></body></html>', { status: 200, headers: { 'content-type': 'text/html' } })),
+    );
+
+    const result = await executeGovernedToolRequest({ tool: 'browser', action: 'navigate', goal: 'Read docs', args: { url: 'https://example.com/docs', approved: true } });
+
+    expect(result.ok).toBe(true);
+    expect(result.outputVerification).toBe('runtime_evidence');
+    expect(result.prepared.status).toBe('ready');
+    expect(result.output).toMatchObject({ status: 200, ok: true, title: 'Docs' });
+    expect((result.output as { text: string }).text).toContain('Governed adapter evidence');
+  });
+
+  it('persists governed plans as append-only evidence records inside the sandbox', async () => {
+    tempRoot = await mkdtemp(path.join(tmpdir(), 'dsg-tool-'));
+    const result = await executeGovernedToolRequest({
+      tool: 'plan',
+      action: 'create',
+      goal: 'Create implementation plan',
+      sandboxRoot: tempRoot,
+      args: { title: 'Adapter rollout', steps: ['verify', 'execute', 'persist'] },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.outputVerification).toBe('runtime_evidence');
+    expect(result.prepared.audit.truth).toBe('internal_state_pending_verification');
+    const persisted = await readFile(path.join(tempRoot, '.dsg-governed-tools', 'plan.jsonl'), 'utf8');
+    expect(persisted).toContain('Adapter rollout');
+    expect(persisted).toContain(result.prepared.audit.requestHash);
+  });
+
+  it('requires configured and approved endpoints for search execution', () => {
+    const prepared = prepareGovernedToolRequest({ tool: 'search', action: 'query', goal: 'Search docs', args: { query: 'governed tools' } });
+    expect(prepared.ok).toBe(false);
+    expect(prepared.blockedReasons).toContain('SEARCH_ENDPOINT_URL_REQUIRED');
+    expect(prepared.blockedReasons).toContain('SEARCH_CONFIRMATION_REQUIRED');
+  });
+
+  it('executes approved API requests only against HTTPS allowlisted hosts', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ saved: true }), { status: 201, headers: { 'content-type': 'application/json' } })));
+
+    const result = await executeGovernedToolRequest({
+      tool: 'api',
+      action: 'create',
+      goal: 'Create external ticket',
+      args: { url: 'https://api.example.com/tickets', method: 'POST', body: { title: 'Need proof' }, allowedHosts: ['api.example.com'], approved: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toMatchObject({ status: 201, ok: true, method: 'POST', body: { saved: true } });
   });
 });
