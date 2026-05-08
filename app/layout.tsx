@@ -1,15 +1,37 @@
 import type {Metadata} from 'next';
+import { AppLanguageCopyBridge } from '@/components/app-language-copy-bridge';
 import './globals.css'; // Global styles
 
+const appName = 'DSG ONE V1';
+const appDescription = 'Governed App Builder Runtime with evidence-based customer workspace.';
+
 export const metadata: Metadata = {
-  title: 'My Google AI Studio App',
-  description: 'My Google AI Studio App',
+  title: {
+    default: appName,
+    template: `%s | ${appName}`,
+  },
+  applicationName: appName,
+  description: appDescription,
+  openGraph: {
+    title: appName,
+    description: appDescription,
+    siteName: appName,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: appName,
+    description: appDescription,
+  },
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en">
-      <body suppressHydrationWarning>{children}</body>
+    <html lang="th">
+      <body suppressHydrationWarning>
+        <AppLanguageCopyBridge />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,3 +1,3 @@
 'use client';
 
-export { GuidedAppBuilderView as AgentPlaygroundView } from './guided-app-builder-view';
+export { EnterpriseBuildWorkspace as AgentPlaygroundView } from './enterprise-build-workspace';
