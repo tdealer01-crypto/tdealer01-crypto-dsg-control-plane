@@ -1,0 +1,47 @@
+{
+  "appBuilderJobId": "9da2e174-1083-4d3a-a337-bc01c37763df",
+  "workspaceId": "00000000-0000-4000-8000-000000000001",
+  "status": "ENVIRONMENT_READY",
+  "environmentType": "github_branch",
+  "repository": "tdealer01-crypto/dsg-one-v1",
+  "baseBranch": "main",
+  "branchName": "dsg-env-9da2e174-1083-4d",
+  "planHash": "1a4457705129202c73cb0c63b52aaef2350a6c98364351c2aa436693a90bedc6",
+  "approvalHash": "aaf7bdef0edcb367a5c90d677d7709afa5b1bbc13e67676d8946ed3613e59ab5",
+  "allowedTools": [
+    "dsg.app_builder.launch_agent_runtime",
+    "dsg.app_builder.generate_fullstack_pr",
+    "dsg.environment.provision",
+    "github.branch.create",
+    "file.read",
+    "file.write",
+    "file.patch",
+    "shell.run",
+    "claim.verify",
+    "audit.write",
+    "notification.emit"
+  ],
+  "allowedPaths": [
+    "app/**",
+    "components/**",
+    "lib/**",
+    "docs/**",
+    "package.json",
+    "lib/dsg/**",
+    "supabase/migrations/**"
+  ],
+  "allowedCommands": [
+    "npm run dsg:typecheck",
+    "npm run lint",
+    "npm run dsg:verify",
+    "npm run build"
+  ],
+  "requiredSecrets": [
+    "GITHUB_TOKEN",
+    "VERCEL_TOKEN",
+    "VERCEL_ORG_ID",
+    "VERCEL_PROJECT_ID"
+  ],
+  "createdAt": "2026-05-08T20:37:30.012Z",
+  "truthBoundary": "Runtime environment is ready for approved tool execution. This is not build, deployment, or production proof."
+}
