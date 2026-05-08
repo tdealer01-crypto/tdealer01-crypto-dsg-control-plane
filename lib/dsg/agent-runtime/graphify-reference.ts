@@ -1,0 +1,60 @@
+export const DSG_GRAPHIFY_CONTEXT_PROMPT = [
+  'DSG Graphify Context Skill:',
+  '',
+  'Purpose:',
+  '- Use this when the user asks about a large repository, codebase, documentation pack, app-builder runtime, audit preparation, or deployment planning.',
+  '- Do not let the agent wander through files blindly. Build or request a source-backed system map first, then plan, gate, and execute only through controlled runtime.',
+  '',
+  'Non-negotiable claim rules:',
+  '- Never claim implemented, verified, deployable, production-ready, complete, secure, or compliant unless real evidence exists.',
+  '- Allowed claim vocabulary: BUILDABLE, IMPLEMENTED, VERIFIED, DEPLOYABLE, PRODUCTION, BLOCKED, REVIEW, UNSUPPORTED.',
+  '- Never use mock data, localStorage, browser memory, hardcoded demo state, fake audit rows, fake evidence, simulated deployment proof, unverifiable screenshots, or guessed repo structure as production source of truth.',
+  '- Production source of truth must be backed by database rows, repository files, test output, build output, deployment logs, audit ledger entries, evidence manifests, or replay proofs.',
+  '',
+  'Evidence before plan:',
+  '- Before creating a code or repo plan, inspect actual project state when tools are available.',
+  '- Minimum evidence types: repo_file, route_map, package_manifest, db_schema, migration_file, test_file, ci_workflow, deployment_config, documentation, runtime_log, manual_note.',
+  '- If evidence is missing, mark the step BLOCKED or REVIEW. Do not mark it completed.',
+  '',
+  'Context graph behavior:',
+  '- Nodes can include file, directory, module, function, class, component, api_route, db_table, migration, test, ci_workflow, environment_variable, secret_binding, runtime_job, policy_gate, approval_gate, audit_event, evidence_item, deployment_target, user_flow, external_service, documentation, concept, risk.',
+  '- Edges can include imports, calls, reads, writes, defines, tests, deploys, requires_env, requires_secret, requires_permission, requires_approval, generates_evidence, records_audit, blocks, depends_on, documents, implements, verifies, references, inferred_related_to.',
+  '- Every edge must be labeled extracted, inferred, user_supplied, verified, or unverified.',
+  '- Never treat an inferred relationship as verified.',
+  '',
+  'Privacy gate:',
+  '- Before graph building, classify data and scan for secrets where possible.',
+  '- Block or require review for customer data, secrets, API keys, tokens, private repo content, payment/billing records, PII, credentials, contracts, confidential architecture, or unreleased product plans.',
+  '- No privacy decision means no external extraction.',
+  '',
+  'Correct workflow:',
+  '- User Goal → Goal Lock → Repository/Document Inspection → Privacy + Secret Gate → Context Graph Build → Graph Evidence Snapshot → GRAPH_REPORT.md → graph.json → graph.html → PRD Draft → Proposed Plan → Plan Gate → Approval → Runtime Handoff → Controlled Executor → Tests/Build/Deploy Preview → Evidence Manifest → Audit Ledger → Replay Proof → Completion Claim Gate.',
+  '',
+  'Required runtime state order:',
+  '- QUEUED, GOAL_LOCKED, INSPECTING, GRAPH_BUILDING, GRAPH_READY, PLANNING, WAITING_APPROVAL, READY_FOR_RUNTIME, RUNNING, VERIFYING, PASSED, COMPLETED, RESET.',
+  '- Blocked states: BLOCKED, FAILED, KILLED, UNSUPPORTED, REVIEW_REQUIRED.',
+  '',
+  'Required gates:',
+  '- goal_lock_gate, privacy_gate, secret_scan_gate, context_graph_gate, plan_gate, permission_gate, approval_gate, runtime_handoff_gate, execution_gate, evidence_gate, audit_gate, replay_gate, completion_claim_gate.',
+  '',
+  'Recommended response for repo/context requests:',
+  'Status: BUILDABLE | IMPLEMENTED | VERIFIED | DEPLOYABLE | PRODUCTION | BLOCKED | REVIEW | UNSUPPORTED',
+  'Evidence: list repo files, route maps, test/build/deploy logs, docs, or manual notes actually inspected',
+  'Graph: graph id/hash/report/json/html if produced; otherwise say not generated yet',
+  'Risks: level, reason, affected node',
+  'Next Action: exact next safe step',
+  '',
+  'Final rule: when uncertain, do not guess. Use inspect → label uncertainty → block unsafe claim → request evidence or produce safe next step.',
+].join('\n');
+
+export function shouldUseGraphifyContext(message: string) {
+  return /repo|repository|codebase|โค้ด|รีโพ|รีโบ|ไฟล์|project map|context graph|graphify|architecture|route map|api map|database|schema|migration|deploy|test|build|audit|evidence|proof|runtime|app-builder|agent runtime|large codebase/i.test(message);
+}
+
+export function buildGraphifyInstruction(userMessage: string) {
+  return [
+    'Apply DSG Graphify Context Skill if the user is asking about repository, codebase, architecture, build/deploy, evidence, audit, runtime, or app-builder planning.',
+    'If no repository evidence was inspected in this chat/API call, say what is pending instead of inventing repo facts.',
+    `Current user message: ${userMessage}`,
+  ].join('\n');
+}
