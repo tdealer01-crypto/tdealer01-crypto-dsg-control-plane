@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { recordGovernanceDecisionEvent } from '@/lib/governance/decision-recorder';
 import { getSupabaseAdmin } from '../supabase-server';
 import { hashGatewayValue } from './audit';
 
@@ -8,6 +9,7 @@ export type GatewayApprovalDecision = {
   ok: boolean;
   approvalToken?: string;
   approvalHash?: string;
+  eventRecorded?: boolean;
   error?: string;
 };
 
@@ -73,6 +75,7 @@ export async function decideGatewayApproval(input: {
     return { ok: false, error: 'event_not_waiting_for_review' };
   }
 
+  const decidedAt = new Date().toISOString();
   const approvalToken = input.decision === 'approved' ? buildApprovalToken() : undefined;
   const approvalHash = buildApprovalHash({
     orgId: input.orgId,
@@ -83,7 +86,29 @@ export async function decideGatewayApproval(input: {
     reviewerRole: input.reviewerRole,
     note: input.note ?? null,
     approvalToken: approvalToken ?? null,
+    decidedAt,
   });
+
+  const eventRecorded = await recordGovernanceDecisionEvent({
+    orgId: input.orgId,
+    decisionId: String(event.id),
+    gateId: String(event.audit_token),
+    decision: input.decision === 'approved' ? 'PASS' : 'BLOCK',
+    action: input.decision === 'approved' ? 'approve' : 'reject',
+    actorId: input.reviewerId,
+    actorRole: input.reviewerRole,
+    actionAt: decidedAt,
+    reason: input.note,
+    metadata: {
+      requestHash: event.request_hash,
+      approvalHash,
+      approvalToken: approvalToken ?? null,
+    },
+  });
+
+  if (!eventRecorded) {
+    return { ok: false, error: 'failed_to_record_governance_decision_event' };
+  }
 
   const nextStatus: GatewayApprovalStatus = input.decision;
   const nextConstraints = {
@@ -95,7 +120,7 @@ export async function decideGatewayApproval(input: {
       note: input.note ?? null,
       approvalHash,
       approvalToken: approvalToken ?? null,
-      decidedAt: new Date().toISOString(),
+      decidedAt,
     },
   };
 
@@ -107,7 +132,8 @@ export async function decideGatewayApproval(input: {
       constraints: nextConstraints,
       decision_hash: approvalHash,
     })
-    .eq('id', event.id);
+    .eq('id', event.id)
+    .eq('org_id', input.orgId);
 
   if (updateError) {
     throw new Error(`failed_to_update_approval_event:${updateError.message}`);
@@ -117,5 +143,6 @@ export async function decideGatewayApproval(input: {
     ok: true,
     approvalToken,
     approvalHash,
+    eventRecorded,
   };
 }
