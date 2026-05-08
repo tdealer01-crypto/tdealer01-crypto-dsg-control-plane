@@ -2,6 +2,7 @@ import {
   APP_BUILDER_AGENT_RUNTIME_TOOL_NAME,
   APP_BUILDER_BUILD_TOOL_NAME,
 } from '@/lib/dsg/app-builder/build-tools';
+import { getOpenAIAdapterStatus } from '@/lib/dsg/ai/openai-adapter';
 
 export type AgentRuntimeServiceStatus =
   | 'available'
@@ -12,6 +13,7 @@ export type AgentRuntimeServiceStatus =
 export type AgentRuntimeServiceImplementation =
   | 'server_tool_call'
   | 'server_runtime_contract'
+  | 'server_ai_adapter'
   | 'client_browser_action'
   | 'not_implemented_in_repo';
 
@@ -33,8 +35,26 @@ function remoteBrowserContractStatus(): AgentRuntimeServiceStatus {
   return process.env.DSG_REMOTE_BROWSER_ENABLED === 'true' ? 'connector_required' : 'connector_required';
 }
 
+function openAIAdapterServiceStatus(): AgentRuntimeServiceStatus {
+  return getOpenAIAdapterStatus().configured ? 'available' : 'connector_required';
+}
+
 export function listAgentRuntimeServices(): AgentRuntimeService[] {
+  const openAIStatus = getOpenAIAdapterStatus();
   return [
+    {
+      id: 'openai.responses.generate',
+      label: 'OpenAI Responses adapter',
+      description: 'Server-side OpenAI adapter for governed agent text generation and planning support.',
+      status: openAIAdapterServiceStatus(),
+      implementation: 'server_ai_adapter',
+      action: 'Call /api/dsg/ai/openai/chat from server-backed UI actions after policy allows it.',
+      endpoint: '/api/dsg/ai/openai/chat',
+      requiredSecrets: ['OPENAI_API_KEY'],
+      evidence: ['responseId', 'model', 'usage', 'outputText'],
+      userBenefit: 'The user can get AI-generated summaries, plans, and copy without exposing API keys in the browser.',
+      truthBoundary: openAIStatus.truthBoundary,
+    },
     {
       id: APP_BUILDER_AGENT_RUNTIME_TOOL_NAME,
       label: 'Launch App Builder agent runtime',
@@ -95,7 +115,7 @@ export function listAgentRuntimeServices(): AgentRuntimeService[] {
       requiredSecrets: ['DSG_REMOTE_BROWSER_ENABLED', 'REMOTE_BROWSER_ENDPOINT_OR_VENDOR_TOKEN'],
       evidence: ['browser-session-id', 'screenshot-url', 'navigation-log', 'task-result'],
       userBenefit: 'Once connected, the agent can inspect web pages and return browser proof without the user manually clicking through.',
-      truthBoundary: 'Search found no Playwright/Puppeteer/remote-browser executor in this repo yet, so the UI must not claim autonomous browser control.',
+      truthBoundary: 'Remote browser contract and APIs exist, but autonomous browser control remains connector-required until a verified provider adapter is wired.',
     },
     {
       id: 'vercel.preview.proof',
