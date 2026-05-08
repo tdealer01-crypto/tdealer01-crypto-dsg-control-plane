@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireOrgPermission } from '../../../../lib/auth/require-org-permission';
-import { recordGovernanceDecisionEvent } from '../../../../lib/governance/decision-recorder';
-import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { requireOrgPermission } from '@/lib/auth/require-org-permission';
+import { recordGovernanceDecisionEvent } from '@/lib/governance/decision-recorder';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,85 +10,64 @@ interface PauseGovernanceDecisionRequest {
   reason?: string;
 }
 
-/**
- * POST /api/dsg/governance/pause/:decisionId
- * 
- * Pause a governance decision during execution.
- * 
- * Requirements:
- * - User must have org.manage_agents permission
- * - decisionId must belong to user's org
- * - Records pause event to append-only ledger
- * 
- * This is a placeholder for future execution pause logic.
- */
 export async function POST(request: NextRequest) {
   try {
-    // Verify org permission
-    const permCtx = await requireOrgPermission('org.manage_agents');
-    if (!permCtx.ok) {
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized' },
-        { status: 403 }
-      );
+    const auth = await requireOrgPermission('org.manage_agents');
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const { orgId, userId } = permCtx;
-
-    // Parse request
     const body = (await request.json()) as PauseGovernanceDecisionRequest;
-    if (!body.decisionId) {
-      return NextResponse.json(
-        { ok: false, error: 'Missing decisionId' },
-        { status: 400 }
-      );
+    const decisionId = body.decisionId?.trim();
+
+    if (!decisionId) {
+      return NextResponse.json({ ok: false, error: 'missing_decision_id' }, { status: 400 });
     }
 
-    // Verify decisionId belongs to orgId
     const supabase = getSupabaseAdmin();
     const { data: event, error } = await supabase
       .from('dsg_governance_decision_events')
-      .select('id, org_id')
-      .eq('decision_id', body.decisionId)
-      .eq('org_id', orgId)
+      .select('id, org_id, decision_id')
+      .eq('decision_id', decisionId)
+      .eq('org_id', auth.orgId)
+      .limit(1)
       .maybeSingle();
 
     if (error || !event) {
-      return NextResponse.json(
-        { ok: false, error: 'Decision not found or unauthorized' },
-        { status: 404 }
-      );
+      return NextResponse.json({ ok: false, error: 'decision_not_found_or_unauthorized' }, { status: 404 });
     }
 
-    // Record pause event
+    const pausedAt = new Date().toISOString();
     const recorded = await recordGovernanceDecisionEvent({
-      orgId,
-      decisionId: body.decisionId,
+      orgId: auth.orgId,
+      decisionId,
       action: 'pause',
-      approvedBy: userId,
-      approvedAt: new Date().toISOString(),
+      actorId: auth.userId,
+      actorRole: auth.role,
+      actionAt: pausedAt,
       reason: body.reason,
     });
 
     if (!recorded) {
-      return NextResponse.json(
-        { ok: false, error: 'Failed to record pause event' },
-        { status: 500 }
-      );
+      return NextResponse.json({ ok: false, error: 'failed_to_record_pause_event' }, { status: 500 });
     }
 
     return NextResponse.json({
       ok: true,
-      decisionId: body.decisionId,
+      decisionId,
       action: 'pause',
-      pausedAt: new Date().toISOString(),
-      pausedBy: userId,
+      pausedAt,
+      actor: {
+        userId: auth.userId,
+        role: auth.role,
+      },
+      boundary: {
+        statement: 'Pause was recorded as internal governance evidence. This is not a certification claim.',
+        certificationClaim: false,
+      },
     });
   } catch (error) {
     console.error('POST /api/dsg/governance/pause failed:', error);
-    return NextResponse.json(
-      { ok: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: 'internal_server_error' }, { status: 500 });
   }
 }
