@@ -40,7 +40,7 @@ export function getOpenAIAdapterStatus(): OpenAIAdapterStatus {
     baseUrl: process.env.OPENAI_API_BASE?.trim() || DEFAULT_BASE_URL,
     model: process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
     requiredEnv: ['OPENAI_API_KEY'],
-    optionalEnv: ['OPENAI_API_BASE', 'OPENAI_MODEL'],
+    optionalEnv: ['OPENAI_API_BASE', 'OPENAI_MODEL', 'OPENAI_COMPAT_MODE'],
     truthBoundary: configured
       ? 'OpenAI-compatible adapter is configured server-side. The API key must never be exposed to client code.'
       : 'OPENAI_API_KEY is missing from the server environment. Adapter calls are blocked until the key exists in Vercel or the runtime environment.',
@@ -59,6 +59,22 @@ function toChatMessages(messages: OpenAIChatMessage[]) {
     role: message.role === 'developer' ? 'system' : message.role,
     content: message.content,
   }));
+}
+
+function supportsTemperature(model: string) {
+  const name = model.toLowerCase();
+  if (name.startsWith('gpt-5')) return false;
+  if (name.startsWith('o1') || name.startsWith('o3') || name.startsWith('o4')) return false;
+  return true;
+}
+
+function withOptionalTemperature<T extends Record<string, unknown>>(body: T, model: string, temperature: number) {
+  if (!supportsTemperature(model)) return body;
+  return { ...body, temperature };
+}
+
+function isUnsupportedTemperatureError(error: unknown) {
+  return error instanceof Error && /temperature/i.test(error.message) && /unsupported|not supported|unknown parameter/i.test(error.message);
 }
 
 function errorMessage(payload: Record<string, unknown> | null, status: number, prefix = 'OPENAI_HTTP') {
@@ -112,19 +128,21 @@ async function runResponsesApi(args: {
   messages: OpenAIChatMessage[];
   maxOutputTokens: number;
   temperature: number;
+  forceNoTemperature?: boolean;
 }) {
+  const baseBody = {
+    model: args.model,
+    input: args.messages.map((message) => ({ role: message.role, content: message.content })),
+    max_output_tokens: args.maxOutputTokens,
+  };
+
   const response = await fetch(`${args.baseUrl}/responses`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      model: args.model,
-      input: args.messages.map((message) => ({ role: message.role, content: message.content })),
-      max_output_tokens: args.maxOutputTokens,
-      temperature: args.temperature,
-    }),
+    body: JSON.stringify(args.forceNoTemperature ? baseBody : withOptionalTemperature(baseBody, args.model, args.temperature)),
   });
 
   const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
@@ -143,20 +161,22 @@ async function runChatCompletionsApi(args: {
   messages: OpenAIChatMessage[];
   maxOutputTokens: number;
   temperature: number;
+  forceNoTemperature?: boolean;
 }) {
+  const baseBody = {
+    model: args.model,
+    messages: toChatMessages(args.messages),
+    max_tokens: args.maxOutputTokens,
+    stream: false,
+  };
+
   const response = await fetch(`${args.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      model: args.model,
-      messages: toChatMessages(args.messages),
-      max_tokens: args.maxOutputTokens,
-      temperature: args.temperature,
-      stream: false,
-    }),
+    body: JSON.stringify(args.forceNoTemperature ? baseBody : withOptionalTemperature(baseBody, args.model, args.temperature)),
   });
 
   const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
@@ -174,6 +194,15 @@ function shouldUseChatCompletionsFirst(baseUrl: string) {
   return value.includes('localhost') || value.includes('127.0.0.1') || value.includes('ollama') || value.includes('lmstudio') || value.includes('chat');
 }
 
+async function runWithTemperatureRetry<T>(fn: (forceNoTemperature?: boolean) => Promise<T>) {
+  try {
+    return await fn(false);
+  } catch (error) {
+    if (!isUnsupportedTemperatureError(error)) throw error;
+    return fn(true);
+  }
+}
+
 export async function runOpenAIAdapter(input: OpenAIAdapterInput): Promise<OpenAIAdapterOutput> {
   const status = getOpenAIAdapterStatus();
   if (!status.configured) throw new Error('OPENAI_API_KEY_MISSING');
@@ -187,14 +216,14 @@ export async function runOpenAIAdapter(input: OpenAIAdapterInput): Promise<OpenA
 
   try {
     const result = shouldUseChatCompletionsFirst(baseUrl)
-      ? await runChatCompletionsApi(args)
-      : await runResponsesApi(args);
+      ? await runWithTemperatureRetry((forceNoTemperature) => runChatCompletionsApi({ ...args, forceNoTemperature }))
+      : await runWithTemperatureRetry((forceNoTemperature) => runResponsesApi({ ...args, forceNoTemperature }));
     return { provider: 'openai', model, ...result };
   } catch (primaryError) {
     try {
       const result = shouldUseChatCompletionsFirst(baseUrl)
-        ? await runResponsesApi(args)
-        : await runChatCompletionsApi(args);
+        ? await runWithTemperatureRetry((forceNoTemperature) => runResponsesApi({ ...args, forceNoTemperature }))
+        : await runWithTemperatureRetry((forceNoTemperature) => runChatCompletionsApi({ ...args, forceNoTemperature }));
       return { provider: 'openai', model, ...result };
     } catch {
       throw primaryError;
