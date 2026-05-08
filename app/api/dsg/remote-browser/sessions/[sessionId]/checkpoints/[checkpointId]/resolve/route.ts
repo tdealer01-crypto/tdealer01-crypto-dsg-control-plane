@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { resolveRemoteBrowserCheckpoint } from '@/lib/dsg/remote-browser/session-store';
 
-export async function POST(req: Request, { params }: { params: { sessionId: string; checkpointId: string } }) {
+type RouteContext = { params: Promise<{ sessionId: string; checkpointId: string }> };
+
+export async function POST(req: Request, context: RouteContext) {
+  const { sessionId, checkpointId } = await context.params;
   const body = await req.json().catch(() => null) as { detail?: string } | null;
 
   try {
     const session = resolveRemoteBrowserCheckpoint({
-      sessionId: params.sessionId,
-      checkpointId: params.checkpointId,
+      sessionId,
+      checkpointId,
       detail: typeof body?.detail === 'string' ? body.detail : undefined,
     });
     return NextResponse.json({ ok: true, data: { session } });
