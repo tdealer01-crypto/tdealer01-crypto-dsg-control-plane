@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import { AppLanguageCopyBridge } from '@/components/app-language-copy-bridge';
 import './globals.css'; // Global styles
 
 const appName = 'DSG ONE V1';
@@ -27,7 +28,10 @@ export const metadata: Metadata = {
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="th">
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <AppLanguageCopyBridge />
+        {children}
+      </body>
     </html>
   );
 }
