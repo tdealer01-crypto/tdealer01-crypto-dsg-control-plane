@@ -1,0 +1,113 @@
+import {
+  APP_BUILDER_AGENT_RUNTIME_TOOL_NAME,
+  APP_BUILDER_BUILD_TOOL_NAME,
+} from '@/lib/dsg/app-builder/build-tools';
+
+export type AgentRuntimeServiceStatus =
+  | 'available'
+  | 'approval_required'
+  | 'connector_required'
+  | 'quota_gated';
+
+export type AgentRuntimeServiceImplementation =
+  | 'server_tool_call'
+  | 'server_runtime_contract'
+  | 'client_browser_action'
+  | 'not_implemented_in_repo';
+
+export type AgentRuntimeService = {
+  id: string;
+  label: string;
+  description: string;
+  status: AgentRuntimeServiceStatus;
+  implementation: AgentRuntimeServiceImplementation;
+  action: string;
+  endpoint?: string;
+  requiredSecrets: string[];
+  evidence: string[];
+  userBenefit: string;
+  truthBoundary: string;
+};
+
+function remoteBrowserContractStatus(): AgentRuntimeServiceStatus {
+  return process.env.DSG_REMOTE_BROWSER_ENABLED === 'true' ? 'connector_required' : 'connector_required';
+}
+
+export function listAgentRuntimeServices(): AgentRuntimeService[] {
+  return [
+    {
+      id: APP_BUILDER_AGENT_RUNTIME_TOOL_NAME,
+      label: 'Launch App Builder agent runtime',
+      description: 'Runs after a visible plan is approved. It prepares runtime environment, action-layer contract, audit event, and notification payload.',
+      status: 'approval_required',
+      implementation: 'server_tool_call',
+      action: 'Use from the App Builder flow after approval.',
+      endpoint: '/api/dsg/app-builder/jobs/:jobId/tool-call',
+      requiredSecrets: ['GITHUB_TOKEN'],
+      evidence: ['runtime-environment-manifest', 'action-layer-contract', 'audit-event', 'notification-payload'],
+      userBenefit: 'The user sees a controlled execution path instead of hidden automation.',
+      truthBoundary: 'This creates runtime/PR evidence only. It is not production deployment proof.',
+    },
+    {
+      id: APP_BUILDER_BUILD_TOOL_NAME,
+      label: 'Generate full-stack GitHub PR',
+      description: 'Writes generated frontend, API route, Supabase migration, and runbook files to a GitHub branch and opens a pull request.',
+      status: 'approval_required',
+      implementation: 'server_tool_call',
+      action: 'Use from the App Builder flow after runtime handoff.',
+      endpoint: '/api/dsg/app-builder/jobs/:jobId/tool-call',
+      requiredSecrets: ['GITHUB_TOKEN'],
+      evidence: ['pullRequestUrl', 'pullRequestNumber', 'branchName', 'generatedFiles'],
+      userBenefit: 'The user receives a real PR they can inspect, review, and merge later.',
+      truthBoundary: 'The PR is implementation evidence. CI, migration apply, preview, and production proof are separate steps.',
+    },
+    {
+      id: 'dsg.environment.provision',
+      label: 'Provision runtime environment manifest',
+      description: 'Creates or reuses a GitHub branch and writes an environment manifest before the build tool runs.',
+      status: 'approval_required',
+      implementation: 'server_runtime_contract',
+      action: 'Executed by the approved App Builder runtime tool.',
+      requiredSecrets: ['GITHUB_TOKEN'],
+      evidence: ['branchCreatedOrReused', 'manifestWritten', 'manifestPath'],
+      userBenefit: 'The user sees what environment and permissions were prepared before code generation.',
+      truthBoundary: 'Environment readiness is not build, deployment, or production proof.',
+    },
+    {
+      id: 'browser.local.open_url',
+      label: 'Open generated app in this browser',
+      description: 'Client-side action that opens a target URL in the user browser for manual visual proof collection.',
+      status: 'available',
+      implementation: 'client_browser_action',
+      action: 'Open URL from the Agent Services screen.',
+      requiredSecrets: [],
+      evidence: ['manual-screenshot', 'user-visible-url', 'customer-observed-result'],
+      userBenefit: 'The user can immediately inspect a generated app route or proof page without spending extra automation quota.',
+      truthBoundary: 'This is not remote browser automation. It is local browser inspection only.',
+    },
+    {
+      id: 'remote.browser.session',
+      label: 'Remote browser session',
+      description: 'Manus-style remote browser automation contract for future executor integration.',
+      status: remoteBrowserContractStatus(),
+      implementation: 'not_implemented_in_repo',
+      action: 'Connect a real remote browser executor before enabling autonomous browsing.',
+      requiredSecrets: ['DSG_REMOTE_BROWSER_ENABLED', 'REMOTE_BROWSER_ENDPOINT_OR_VENDOR_TOKEN'],
+      evidence: ['browser-session-id', 'screenshot-url', 'navigation-log', 'task-result'],
+      userBenefit: 'Once connected, the agent can inspect web pages and return browser proof without the user manually clicking through.',
+      truthBoundary: 'Search found no Playwright/Puppeteer/remote-browser executor in this repo yet, so the UI must not claim autonomous browser control.',
+    },
+    {
+      id: 'vercel.preview.proof',
+      label: 'Vercel preview / production proof',
+      description: 'Quota-gated proof step for preview or production verification after PR and CI are ready.',
+      status: 'quota_gated',
+      implementation: 'not_implemented_in_repo',
+      action: 'Use only when proof is required, not for every UI edit.',
+      requiredSecrets: ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID'],
+      evidence: ['deployment-url', 'deployment-id', 'production-flow-proof'],
+      userBenefit: 'The user preserves Vercel quota and spends it only on proof that matters.',
+      truthBoundary: 'Do not trigger production deploy from customer UI changes.',
+    },
+  ];
+}
