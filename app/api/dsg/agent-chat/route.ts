@@ -5,11 +5,13 @@ import { DSG_STUDIO_REFERENCE_PROMPT, buildPlanPaneInstruction } from '@/lib/dsg
 import { DSG_GRAPHIFY_CONTEXT_PROMPT, buildGraphifyInstruction, shouldUseGraphifyContext } from '@/lib/dsg/agent-runtime/graphify-reference';
 import { DSG_PHASE1_GOVERNANCE_PROMPT, buildPhase1GovernanceInstruction, shouldUsePhase1Governance } from '@/lib/dsg/agent-runtime/phase1-governance-reference';
 import { DSG_GOVERNANCE_DB_PROMPT, buildGovernanceDbInstruction, shouldUseGovernanceDb } from '@/lib/dsg/agent-runtime/governance-db-reference';
+import { buildPersistentMemoryPrompt, loadPersistentAgentMemory, persistAgentChatTurn, type AgentChatHistoryItem, type AgentPersistentMemoryResult } from '@/lib/dsg/agent-runtime/persistent-chat-memory';
 
 export const runtime = 'nodejs';
 
 type ChatBody = {
   message?: string;
+  history?: AgentChatHistoryItem[];
   context?: {
     stage?: string;
     idea?: string;
@@ -23,61 +25,85 @@ function shouldPlan(message: string) {
   return /plan|วางแผน|แผน|workflow|flow|ขั้นตอน|execute|browser|approval|อนุมัติ|proof|evidence|หลักฐาน|สร้าง|build|app/i.test(message);
 }
 
-function buildMessages(body: ChatBody): OpenAIChatMessage[] {
+function normalizedHistory(history: unknown): AgentChatHistoryItem[] {
+  if (!Array.isArray(history)) return [];
+  return history
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const role = record.role === 'assistant' ? 'assistant' : record.role === 'user' ? 'user' : null;
+      const content = typeof record.content === 'string' ? record.content.trim() : '';
+      return role && content ? { role, content: content.slice(0, 3000) } : null;
+    })
+    .filter((item): item is AgentChatHistoryItem => Boolean(item))
+    .slice(-18);
+}
+
+function buildMessages(body: ChatBody, memory: AgentPersistentMemoryResult): OpenAIChatMessage[] {
   const message = body.message?.trim();
   if (!message) throw new Error('AGENT_CHAT_MESSAGE_REQUIRED');
   const useGraphify = shouldUseGraphifyContext(message);
   const usePhase1Governance = shouldUsePhase1Governance(message);
   const useGovernanceDb = shouldUseGovernanceDb(message);
+  const history = normalizedHistory(body.history);
+
+  const developerPrompt = [
+    'You are DSG ONE V1 Agent, an enterprise governed app-builder assistant.',
+    'Answer the user directly and specifically. Do not repeat a fixed script.',
+    'Use concise Thai unless the user asks for English.',
+    'Use the recent chat history and persistent memory to avoid asking the user to repeat what they already said.',
+    'When the user says “above”, “ที่คุยไป”, “ทั้งหมดที่บอก”, or similar, summarize the relevant requirement from history and memory first, then answer.',
+    'When the user wants to build, plan, operate, verify, inspect a repo, connect tools, read governance memory/state, or work with a codebase, use the DSG planning, execution, Graphify, Phase 1 governance, and governance database rules below.',
+    'Respect the DSG truth boundary: do not claim deploy, production verification, audit proof, PR evidence, browser proof, repo implementation, connector execution, database row existence, or build status unless the UI/API/tool/database has produced evidence.',
+    'Persistent memory is context, not proof. If memory conflicts with current user input or evidence, prefer current user input and verified evidence.',
+    'Prefer actionable next steps the user can click or verify in the app.',
+    '',
+    DSG_STUDIO_REFERENCE_PROMPT,
+    '',
+    buildPersistentMemoryPrompt(memory),
+    '',
+    useGraphify ? DSG_GRAPHIFY_CONTEXT_PROMPT : 'Graphify context is available but not required for this ordinary question.',
+    '',
+    usePhase1Governance ? DSG_PHASE1_GOVERNANCE_PROMPT : 'Phase 1 connector/governance reference is available but not required for this ordinary question.',
+    '',
+    useGovernanceDb ? DSG_GOVERNANCE_DB_PROMPT : 'Governance DB schema reference is available but not required for this ordinary question.',
+    '',
+    useGraphify ? buildGraphifyInstruction(message) : '',
+    usePhase1Governance ? buildPhase1GovernanceInstruction(message) : '',
+    useGovernanceDb ? buildGovernanceDbInstruction(message) : '',
+    shouldPlan(message) ? buildPlanPaneInstruction(message) : 'For ordinary questions, answer briefly and only add a plan pane if it is useful.',
+  ].filter(Boolean).join('\n');
 
   return [
-    {
-      role: 'developer',
-      content: [
-        'You are DSG ONE V1 Agent, an enterprise governed app-builder assistant.',
-        'Answer the user directly and specifically. Do not repeat a fixed script.',
-        'Use concise Thai unless the user asks for English.',
-        'When the user wants to build, plan, operate, verify, inspect a repo, connect tools, read governance memory/state, or work with a codebase, use the DSG planning, execution, Graphify, Phase 1 governance, and governance database rules below.',
-        'Respect the DSG truth boundary: do not claim deploy, production verification, audit proof, PR evidence, browser proof, repo implementation, connector execution, database row existence, or build status unless the UI/API/tool/database has produced evidence.',
-        'Prefer actionable next steps the user can click or verify in the app.',
-        '',
-        DSG_STUDIO_REFERENCE_PROMPT,
-        '',
-        useGraphify ? DSG_GRAPHIFY_CONTEXT_PROMPT : 'Graphify context is available but not required for this ordinary question.',
-        '',
-        usePhase1Governance ? DSG_PHASE1_GOVERNANCE_PROMPT : 'Phase 1 connector/governance reference is available but not required for this ordinary question.',
-        '',
-        useGovernanceDb ? DSG_GOVERNANCE_DB_PROMPT : 'Governance DB schema reference is available but not required for this ordinary question.',
-        '',
-        useGraphify ? buildGraphifyInstruction(message) : '',
-        usePhase1Governance ? buildPhase1GovernanceInstruction(message) : '',
-        useGovernanceDb ? buildGovernanceDbInstruction(message) : '',
-        shouldPlan(message) ? buildPlanPaneInstruction(message) : 'For ordinary questions, answer briefly and only add a plan pane if it is useful.',
-      ].filter(Boolean).join('\n'),
-    },
+    { role: 'developer', content: developerPrompt },
+    ...history.map((item): OpenAIChatMessage => ({ role: item.role, content: item.content })),
     {
       role: 'user',
       content: JSON.stringify({
         userMessage: message,
         appBuilderContext: body.context ?? {},
+        persistentMemoryStatus: memory.status,
       }),
     },
   ];
 }
 
-function localFallbackReply(message: string, providerError: string) {
+function localFallbackReply(message: string, providerError: string, memory: AgentPersistentMemoryResult) {
   const graphify = shouldUseGraphifyContext(message);
   const phase1 = shouldUsePhase1Governance(message);
   const governanceDb = shouldUseGovernanceDb(message);
   const route = routeAgentCommand({
     command: message,
     context: graphify || phase1 || governanceDb
-      ? 'Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG Action Layer GED, DSG Graphify Context, Phase 1 Governance Automation, and Governance DB schema rules. Do not invent repo, connector, or database evidence.'
-      : 'Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG Action Layer GED planning rules, deterministic stage order, permission policy, and evidence boundary.',
+      ? `Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG references and persistent memory when available. Memory status: ${memory.status}. Do not invent repo, connector, or database evidence.`
+      : `Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG planning rules and persistent memory when available. Memory status: ${memory.status}.`,
     userBenefit: 'ผู้ใช้ยังได้คำตอบและขั้นตอนต่อไป แม้ AI provider จะใช้งานไม่ได้ชั่วคราว',
   });
 
   const evidence = route.evidence.length ? route.evidence.join(', ') : 'route decision';
+  const memoryNote = memory.status === 'active'
+    ? `Persistent memory loaded: ${memory.memoryIds.length} memory item(s), gate=${memory.gateStatus || 'unknown'}`
+    : `Persistent memory status: ${memory.status}${memory.error ? ` (${memory.error})` : ''}`;
   const graphifyNote = graphify
     ? 'Graphify boundary: ถ้ายังไม่ได้ inspect repo จริง ต้องถือว่าเป็น BLOCKED/REVIEW ไม่ใช่ verified context graph.'
     : undefined;
@@ -92,6 +118,7 @@ function localFallbackReply(message: string, providerError: string) {
     `ตอนนี้ AI model ใช้งานไม่ได้ชั่วคราว: ${providerError}`,
     '',
     'ผมใช้ DSG local fallback วิเคราะห์คำสั่งแทน โดยยึดกฎ planning / permission / evidence ที่ตั้งไว้',
+    memoryNote,
     graphifyNote,
     phase1Note,
     dbNote,
@@ -121,26 +148,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: { message: 'AGENT_CHAT_MESSAGE_REQUIRED' } }, { status: 400 });
   }
 
+  const history = normalizedHistory(body.history);
+  const memory = await loadPersistentAgentMemory(req, body.message);
+
   try {
     const result = await runOpenAIAdapter({
-      messages: buildMessages(body),
+      messages: buildMessages({ ...body, history }, memory),
       maxOutputTokens: 1800,
       temperature: 0.25,
     });
+    const reply = result.outputText || 'ผมยังตอบไม่ได้จากโมเดลในรอบนี้ ลองพิมพ์รายละเอียดเพิ่มอีกครั้งครับ';
+    const persisted = await persistAgentChatTurn(req, { userMessage: body.message, agentReply: reply, history }).catch((error) => ({
+      saved: [],
+      errors: [error instanceof Error ? error.message : 'MEMORY_PERSIST_FAILED'],
+    }));
 
     return NextResponse.json({
       ok: true,
       data: {
-        reply: result.outputText || 'ผมยังตอบไม่ได้จากโมเดลในรอบนี้ ลองพิมพ์รายละเอียดเพิ่มอีกครั้งครับ',
+        reply,
         model: result.model,
         responseId: result.responseId,
         usage: result.usage,
         fallback: false,
+        memory: {
+          status: memory.status,
+          enabled: memory.enabled,
+          memoryIds: memory.memoryIds,
+          gateStatus: memory.gateStatus,
+          savedIds: persisted.saved,
+          persistErrors: persisted.errors,
+        },
       },
     });
   } catch (error) {
     const providerError = error instanceof Error ? error.message : 'AGENT_CHAT_MODEL_UNAVAILABLE';
-    const fallback = localFallbackReply(body.message, providerError);
+    const fallback = localFallbackReply(body.message, providerError, memory);
+    const persisted = await persistAgentChatTurn(req, { userMessage: body.message, agentReply: fallback.reply, history }).catch((persistError) => ({
+      saved: [],
+      errors: [persistError instanceof Error ? persistError.message : 'MEMORY_PERSIST_FAILED'],
+    }));
     return NextResponse.json({
       ok: true,
       data: {
@@ -149,6 +196,14 @@ export async function POST(req: Request) {
         providerError,
         fallback: true,
         route: fallback.route,
+        memory: {
+          status: memory.status,
+          enabled: memory.enabled,
+          memoryIds: memory.memoryIds,
+          gateStatus: memory.gateStatus,
+          savedIds: persisted.saved,
+          persistErrors: persisted.errors,
+        },
       },
     });
   }
