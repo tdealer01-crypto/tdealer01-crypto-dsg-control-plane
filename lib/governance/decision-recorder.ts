@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '../supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export type GovernanceDecisionAction = 'evaluate' | 'approve' | 'reject' | 'pause' | 'resume' | 'rollback';
 export type GovernanceDecision = 'PASS' | 'REVIEW' | 'BLOCK' | 'UNSUPPORTED';
@@ -9,45 +9,39 @@ export interface GovernanceDecisionEvent {
   gateId?: string;
   decision?: GovernanceDecision;
   action: GovernanceDecisionAction;
-  approvedBy?: string; // User ID (from session, NOT from body)
-  approvedAt?: string; // ISO timestamp
+  actorId: string;
+  actorRole?: string;
+  actionAt?: string;
   reason?: string;
+  metadata?: Record<string, unknown>;
 }
 
-/**
- * Record a governance decision event to append-only ledger.
- * 
- * @param event - Governance decision event with org_id, decision_id, action, etc.
- * @returns true if recorded successfully, false otherwise
- * 
- * IMPORTANT:
- * - approvedBy must be derived from session/auth, never from request body
- * - orgId must be from session context, never trusted from parameters
- * - This is a server-only function; verify auth before calling
- */
 export async function recordGovernanceDecisionEvent(event: GovernanceDecisionEvent): Promise<boolean> {
   try {
+    if (!event.orgId || !event.decisionId || !event.action || !event.actorId) {
+      return false;
+    }
+
     const supabase = getSupabaseAdmin();
-    
-    const { error } = await supabase
-      .from('dsg_governance_decision_events')
-      .insert({
-        org_id: event.orgId,
-        decision_id: event.decisionId,
-        gate_id: event.gateId || null,
-        decision: event.decision || null,
-        action: event.action,
-        approved_by: event.approvedBy || null,
-        approved_at: event.approvedAt || null,
-        reason: event.reason || null,
-      });
+    const { error } = await supabase.from('dsg_governance_decision_events').insert({
+      org_id: event.orgId,
+      decision_id: event.decisionId,
+      gate_id: event.gateId || null,
+      decision: event.decision || null,
+      action: event.action,
+      actor_id: event.actorId,
+      actor_role: event.actorRole || null,
+      action_at: event.actionAt || new Date().toISOString(),
+      reason: event.reason || null,
+      metadata: event.metadata || {},
+    });
 
     if (error) {
-      console.error(
-        'recordGovernanceDecisionEvent failed:',
-        error.message,
-        { orgId: event.orgId, decisionId: event.decisionId, action: event.action }
-      );
+      console.error('recordGovernanceDecisionEvent failed:', error.message, {
+        orgId: event.orgId,
+        decisionId: event.decisionId,
+        action: event.action,
+      });
       return false;
     }
 
@@ -58,20 +52,9 @@ export async function recordGovernanceDecisionEvent(event: GovernanceDecisionEve
   }
 }
 
-/**
- * List governance decision events for an organization.
- * 
- * @param orgId - Organization ID (must be from auth context)
- * @param limit - Max results (default 100)
- * @returns Array of decision events, newest first
- */
-export async function listGovernanceDecisionEvents(
-  orgId: string,
-  limit: number = 100
-) {
+export async function listGovernanceDecisionEvents(orgId: string, limit: number = 100) {
   try {
     const supabase = getSupabaseAdmin();
-    
     const { data, error } = await supabase
       .from('dsg_governance_decision_events')
       .select('*')
@@ -91,25 +74,16 @@ export async function listGovernanceDecisionEvents(
   }
 }
 
-/**
- * Get a specific decision event by decisionId (org-scoped).
- * 
- * @param orgId - Organization ID (from auth context)
- * @param decisionId - Decision ID to lookup
- * @returns Decision event or null
- */
-export async function getGovernanceDecisionEvent(
-  orgId: string,
-  decisionId: string
-) {
+export async function getGovernanceDecisionEvent(orgId: string, decisionId: string) {
   try {
     const supabase = getSupabaseAdmin();
-    
     const { data, error } = await supabase
       .from('dsg_governance_decision_events')
       .select('*')
       .eq('org_id', orgId)
       .eq('decision_id', decisionId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) {
