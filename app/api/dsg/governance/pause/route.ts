@@ -5,6 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
+
 interface PauseGovernanceDecisionRequest {
   decisionId: string;
   reason?: string;
@@ -13,8 +15,9 @@ interface PauseGovernanceDecisionRequest {
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireOrgPermission('org.manage_agents');
-    if (!auth.ok) {
-      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    if (auth.ok === false) {
+      const denied = auth as DeniedAuth;
+      return NextResponse.json({ ok: false, error: denied.error }, { status: denied.status });
     }
 
     const body = (await request.json()) as PauseGovernanceDecisionRequest;
@@ -24,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'missing_decision_id' }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
     const { data: event, error } = await supabase
       .from('dsg_governance_decision_events')
       .select('id, org_id, decision_id')
