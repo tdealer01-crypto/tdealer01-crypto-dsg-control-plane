@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type AppLanguage = 'th' | 'en';
 
@@ -22,18 +22,23 @@ export function applyAppLanguage(language: AppLanguage) {
   window.dispatchEvent(new CustomEvent(DSG_LANGUAGE_EVENT, { detail: { language } }));
 }
 
+function subscribeAppLanguage(onStoreChange: () => void) {
+  if (typeof window === 'undefined') return () => undefined;
+
+  const handleChange = () => onStoreChange();
+  window.addEventListener(DSG_LANGUAGE_EVENT, handleChange);
+  window.addEventListener('storage', handleChange);
+
+  return () => {
+    window.removeEventListener(DSG_LANGUAGE_EVENT, handleChange);
+    window.removeEventListener('storage', handleChange);
+  };
+}
+
 export function useAppLanguage(defaultLanguage: AppLanguage = 'th') {
-  const [language, setLanguage] = useState<AppLanguage>(defaultLanguage);
-
-  useEffect(() => {
-    setLanguage(getStoredAppLanguage());
-    const handle = (event: Event) => {
-      const custom = event as CustomEvent<{ language?: AppLanguage }>;
-      setLanguage(normalizeLanguage(custom.detail?.language));
-    };
-    window.addEventListener(DSG_LANGUAGE_EVENT, handle);
-    return () => window.removeEventListener(DSG_LANGUAGE_EVENT, handle);
-  }, []);
-
-  return language;
+  return useSyncExternalStore(
+    subscribeAppLanguage,
+    getStoredAppLanguage,
+    () => defaultLanguage,
+  );
 }
