@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sha256, truthBoundary, userBenefitGate, verify } from '@/lib/dsg/app-builder/agent-runtime/decision-frame';
 import { evaluateCommandGate, evaluatePathGate, evaluateSecretBoundary, makeAgentBranchName } from '@/lib/dsg/app-builder/agent-runtime/sandbox-gates';
-import { getDevAppBuilderContext } from '@/lib/dsg/server/app-builder/context';
+import { getAppBuilderRequestContext } from '@/lib/dsg/server/app-builder/context';
 import { recordAppBuilderToolAudit } from '@/lib/dsg/server/app-builder/repository';
 
 type ExecutorInput = { jobId?: string; goal?: string; appId?: string; dryRun?: boolean };
@@ -10,7 +10,7 @@ type PlannedFile = { path: string; bytes: number };
 
 function fail(error: unknown, status = 400) {
   const message = error instanceof Error ? error.message : 'PR_EXECUTOR_FAILED';
-  return NextResponse.json({ ok: false, error: { code: message, message } }, { status });
+  return NextResponse.json({ ok: false, error: { code: message, message } }, { status: message.startsWith('DSG_') ? 401 : status });
 }
 
 function safeId(value: string, fallback: string) {
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     };
 
     const resultHash = sha256(JSON.stringify(result));
-    const ctx = getDevAppBuilderContext(req);
+    const ctx = await getAppBuilderRequestContext(req, 'job:control');
     await recordAppBuilderToolAudit({
       ctx,
       jobId,
