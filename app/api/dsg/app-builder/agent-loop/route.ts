@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verify, samadhi, kilesa, parami, userBenefitGate, truthBoundary, sha256 } from '@/lib/dsg/app-builder/agent-runtime/decision-frame';
-import { getDevAppBuilderContext } from '@/lib/dsg/server/app-builder/context';
+import { getAppBuilderRequestContext } from '@/lib/dsg/server/app-builder/context';
 import { recordAppBuilderToolAudit } from '@/lib/dsg/server/app-builder/repository';
 import { createContextPack, ingestMemory, searchMemory } from '@/lib/dsg/server/memory/repository';
 import type { DsgMemoryRequestContext } from '@/lib/dsg/server/memory/context';
@@ -8,7 +8,8 @@ import type { DsgMemoryEvent } from '@/lib/dsg/server/memory/types';
 
 function fail(error: unknown) {
   const message = error instanceof Error ? error.message : 'APP_BUILDER_AGENT_LOOP_FAILED';
-  return NextResponse.json({ ok: false, error: { code: message, message } }, { status: 400 });
+  const status = message.startsWith('DSG_') ? 401 : 400;
+  return NextResponse.json({ ok: false, error: { code: message, message } }, { status });
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -20,18 +21,17 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
 }
 
-function memoryCtxFromRequest(req: Request): DsgMemoryRequestContext {
-  const workspaceId = req.headers.get('x-dsg-workspace-id')?.trim();
-  const actorId = req.headers.get('x-dsg-actor-id')?.trim();
-  const actorRole = req.headers.get('x-dsg-actor-role')?.trim() || 'operator';
-  const permissions = (req.headers.get('x-dsg-permissions') || 'memory:read,memory:write')
-    .split(',')
-    .map((permission) => permission.trim())
-    .filter(Boolean);
-
-  if (!workspaceId) throw new Error('WORKSPACE_ID_REQUIRED');
-  if (!actorId) throw new Error('ACTOR_ID_REQUIRED');
-  return { workspaceId, actorId, actorRole, permissions };
+function memoryCtxFromVerifiedActor(input: {
+  workspaceId: string;
+  actorId: string;
+  actorRole: string;
+}): DsgMemoryRequestContext {
+  return {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    permissions: ['memory:read', 'memory:write'],
+  };
 }
 
 function summarizeMemory(memories: DsgMemoryEvent[]) {
@@ -55,11 +55,10 @@ export async function POST(req: Request) {
     const history = stringArray(body.history);
 
     if (!goal) throw new Error('APP_BUILDER_GOAL_REQUIRED');
-    const appCtx = getDevAppBuilderContext(req);
-    const memoryCtx = memoryCtxFromRequest(req);
+    const appCtx = await getAppBuilderRequestContext(req, 'job:plan');
+    const memoryCtx = memoryCtxFromVerifiedActor(appCtx);
 
     const target = samadhi('app-builder-agent', goal);
-    const query = [goal, errorText, phase].filter(Boolean).join(' ');
     const memories = await searchMemory(memoryCtx, { query: goal.slice(0, 80), jobId: body.jobId ? jobId : undefined, limit: 12 }).catch(() => []);
     const contextPack = await createContextPack(memoryCtx, {
       memories,
