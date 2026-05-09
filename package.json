@@ -38,7 +38,8 @@
     "ops:runtime-rpc-fix": "./scripts/apply-runtime-rpc-fix.sh",
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
     "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh",
-    "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh"
+    "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh",
+    "smoke:agent-command-gate:live": "node scripts/smoke-agent-command-gate-live.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
