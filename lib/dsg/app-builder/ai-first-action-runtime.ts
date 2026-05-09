@@ -3,6 +3,7 @@ import { buildAiGenericGeneratedAppFiles } from './ai-generic-generator';
 import { executeApprovedAppBuilderJob, type AppBuilderGeneratedFile, type AppBuilderRuntimeExecutionResult } from './action-runtime';
 import type { AppBuilderJob } from './model';
 import { createAppBuilderRuntimeHandoff, type AppBuilderRuntimeHandoff } from './runtime-handoff';
+import { buildVirtualPcGeneratedAppFiles, isVirtualPcAppBuilderJob } from './virtual-pc-generated-files';
 
 type GithubRuntimeConfig = {
   token: string;
@@ -117,15 +118,18 @@ async function putFile(config: GithubRuntimeConfig, branchName: string, file: Ap
   });
 }
 
-async function createOrGetPullRequest(config: GithubRuntimeConfig, branchName: string, job: AppBuilderJob, handoff: AppBuilderRuntimeHandoff): Promise<GithubPullResponse> {
+async function createOrGetPullRequest(config: GithubRuntimeConfig, branchName: string, job: AppBuilderJob, handoff: AppBuilderRuntimeHandoff, mode: string): Promise<GithubPullResponse> {
   const body = [
     '## DSG AI-First App Builder Runtime Output',
     '',
     `App Builder Job: \`${job.id}\``,
     `Plan Hash: \`${handoff.planHash}\``,
     `Approval Hash: \`${handoff.approvalHash}\``,
+    `Generator Mode: \`${mode}\``,
     '',
-    'The runtime attempted AI blueprint generation before deterministic fallback. This PR contains the AI-generated frontend/API/migration/runbook files when generation succeeded.',
+    mode === 'virtual_pc_renderer'
+      ? 'The runtime selected the Virtual PC renderer before generic fallback. This PR contains a Virtual PC monitor UI, governed remote mouse API, migration, and runbook.'
+      : 'The runtime attempted AI blueprint generation before deterministic fallback. This PR contains the AI-generated frontend/API/migration/runbook files when generation succeeded.',
     '',
     '**Claim boundary:** IMPLEMENTED_UNVERIFIED only. Do not claim DEPLOYABLE or PRODUCTION until CI, migration apply, deployment proof, and production-flow proof pass.',
   ].join('\n');
@@ -150,19 +154,29 @@ async function createOrGetPullRequest(config: GithubRuntimeConfig, branchName: s
   }
 }
 
+function selectGeneratedFiles(job: AppBuilderJob, handoff: AppBuilderRuntimeHandoff) {
+  if (isVirtualPcAppBuilderJob(job)) {
+    return { mode: 'virtual_pc_renderer', files: buildVirtualPcGeneratedAppFiles(job, handoff) as AppBuilderGeneratedFile[] };
+  }
+  return null;
+}
+
 export async function executeApprovedAiFirstAppBuilderJob(job: AppBuilderJob): Promise<AppBuilderRuntimeExecutionResult> {
   const handoff = createAppBuilderRuntimeHandoff(job);
-  const aiFiles = await buildAiGenericGeneratedAppFiles(job, handoff);
-  if (!aiFiles?.length) return executeApprovedAppBuilderJob(job);
+  const selected = selectGeneratedFiles(job, handoff);
+  const aiFiles = selected ? null : await buildAiGenericGeneratedAppFiles(job, handoff);
+  if (!selected && !aiFiles?.length) return executeApprovedAppBuilderJob(job);
 
-  const files = aiFiles as AppBuilderGeneratedFile[];
+  const mode = selected?.mode || 'ai_blueprint_generator';
+  const files = selected?.files || (aiFiles as AppBuilderGeneratedFile[]);
   assertRuntimeAllowed(job, handoff, files);
 
   const config = runtimeConfig();
-  const branchName = `dsg-ai-builder-${safeSegment(job.id).slice(0, 16)}`;
+  const branchPrefix = mode === 'virtual_pc_renderer' ? 'dsg-virtual-pc' : 'dsg-ai-builder';
+  const branchName = `${branchPrefix}-${safeSegment(job.id).slice(0, 16)}`;
   await ensureBranch(config, branchName);
   for (const file of files) await putFile(config, branchName, file, job);
-  const pullRequest = await createOrGetPullRequest(config, branchName, job, handoff);
+  const pullRequest = await createOrGetPullRequest(config, branchName, job, handoff, mode);
 
   return {
     appBuilderJobId: job.id,
@@ -181,7 +195,9 @@ export async function executeApprovedAiFirstAppBuilderJob(job: AppBuilderJob): P
       githubBranch: branchName,
       githubPullRequest: pullRequest.html_url,
       generatedFileCount: files.length,
-      note: 'AI blueprint generation succeeded before deterministic fallback. Files were written through GitHub Contents API after approved runtime handoff. Build/deploy/production claims remain blocked until external evidence passes.',
+      note: mode === 'virtual_pc_renderer'
+        ? 'Virtual PC renderer selected before generic fallback. Files were written through GitHub Contents API after approved runtime handoff. This is not real Windows VM provider proof.'
+        : 'AI blueprint generation succeeded before deterministic fallback. Files were written through GitHub Contents API after approved runtime handoff. Build/deploy/production claims remain blocked until external evidence passes.',
     },
   };
 }
