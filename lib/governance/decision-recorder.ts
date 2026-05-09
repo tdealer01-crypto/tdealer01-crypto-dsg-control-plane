@@ -22,7 +22,7 @@ export async function recordGovernanceDecisionEvent(event: GovernanceDecisionEve
       return false;
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
     const { error } = await supabase.from('dsg_governance_decision_events').insert({
       org_id: event.orgId,
       decision_id: event.decisionId,
@@ -54,7 +54,7 @@ export async function recordGovernanceDecisionEvent(event: GovernanceDecisionEve
 
 export async function listGovernanceDecisionEvents(orgId: string, limit: number = 100) {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
     const { data, error } = await supabase
       .from('dsg_governance_decision_events')
       .select('*')
@@ -76,7 +76,7 @@ export async function listGovernanceDecisionEvents(orgId: string, limit: number 
 
 export async function getGovernanceDecisionEvent(orgId: string, decisionId: string) {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
     const { data, error } = await supabase
       .from('dsg_governance_decision_events')
       .select('*')
