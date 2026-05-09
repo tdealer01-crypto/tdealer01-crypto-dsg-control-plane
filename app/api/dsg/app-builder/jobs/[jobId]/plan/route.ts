@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createDeterministicAppBuilderPrd } from '@/lib/dsg/app-builder/prd-generator';
 import { createAppBuilderProposedPlan } from '@/lib/dsg/app-builder/plan-generator';
 import { gateAppBuilderPlan } from '@/lib/dsg/app-builder/gate';
+import { gateAppBuilderExternalEvidence } from '@/lib/dsg/app-builder/external-evidence-gate';
 import { getDevAppBuilderContext } from '@/lib/dsg/server/app-builder/context';
 import { getAppBuilderJob, updateAppBuilderJob } from '@/lib/dsg/server/app-builder/repository';
 
@@ -17,6 +18,24 @@ export async function POST(req: Request, context: { params: Promise<{ jobId: str
     const job = await getAppBuilderJob(ctx, jobId);
     if (!job.goal) throw new Error('APP_BUILDER_GOAL_NOT_LOCKED');
 
+    const externalEvidenceGate = await gateAppBuilderExternalEvidence(job);
+    if (externalEvidenceGate.status === 'BLOCK') {
+      await updateAppBuilderJob({
+        ctx,
+        id: jobId,
+        patch: {
+          status: 'BLOCKED',
+          claim_status: 'NOT_STARTED',
+          metadata: {
+            ...(job.metadata ?? {}),
+            externalEvidenceGate,
+            externalEvidenceGatedAt: new Date().toISOString(),
+          },
+        },
+      });
+      throw new Error('APP_BUILDER_EXTERNAL_EVIDENCE_REQUIRED');
+    }
+
     const prd = job.prd ?? createDeterministicAppBuilderPrd(job.goal);
     const proposedPlan = createAppBuilderProposedPlan({ goal: job.goal, prd });
     const gateResult = gateAppBuilderPlan(proposedPlan);
@@ -31,6 +50,11 @@ export async function POST(req: Request, context: { params: Promise<{ jobId: str
         prd,
         proposed_plan: proposedPlan,
         gate_result: gateResult,
+        metadata: {
+          ...(job.metadata ?? {}),
+          externalEvidenceGate,
+          externalEvidenceGatedAt: new Date().toISOString(),
+        },
       },
     });
 
