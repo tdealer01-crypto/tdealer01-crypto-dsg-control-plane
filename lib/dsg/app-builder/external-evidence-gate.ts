@@ -28,12 +28,16 @@ function textForJob(job: AppBuilderJob) {
   ].filter(Boolean).join('\n');
 }
 
-function requiresExternalEvidence(text: string) {
-  return /latest|ล่าสุด|news|ข่าว|current|ปัจจุบัน|today|ตอนนี้|market|ราคา|pricing|คู่แข่ง|competitor|api docs|documentation|docs|sdk|library|endpoint|provider|integration|เชื่อมต่อ|regulation|law|กฎหมาย|compliance|security standard|มาตรฐาน|website|https?:\/\//i.test(text);
+function isUserDefinedVirtualPcGoal(text: string) {
+  return /virtual pc|pc เสมือน|คอมเสมือน|คอมพิวเตอร์เสมือน|windows|วินโด้|วินโดว์|remote mouse|รีโมตเมาส์|รีโหมดเม้า|mouse api|monitor|มอนิเตอร์|จอ/.test(text);
 }
 
-function requiresUnknownClarification(text: string) {
-  return /unknown|ไม่รู้จัก|ไม่เคยรู้|คำเฉพาะ|new api|api ใหม่|provider ใหม่|ระบบใหม่|123/i.test(text);
+function requiresHardExternalEvidence(text: string) {
+  return /latest|ล่าสุด|news|ข่าว|current|ปัจจุบัน|today|ตอนนี้|market price|ราคาล่าสุด|pricing ล่าสุด|คู่แข่ง|competitor|api docs|official docs|documentation ของ|sdk docs|library docs|regulation|law|กฎหมาย|compliance standard|security standard|มาตรฐานภายนอก|https?:\/\//i.test(text);
+}
+
+function hasSoftExternalTerms(text: string) {
+  return /endpoint|provider|integration|เชื่อมต่อ|api|web|website|search|ค้นหา|external|ภายนอก/i.test(text);
 }
 
 function summarize(items: ExternalContextItem[]) {
@@ -47,7 +51,8 @@ function summarize(items: ExternalContextItem[]) {
 
 export async function gateAppBuilderExternalEvidence(job: AppBuilderJob): Promise<AppBuilderExternalEvidenceGate> {
   const text = textForJob(job);
-  const needsExternal = requiresExternalEvidence(text) || requiresUnknownClarification(text);
+  const hardExternalRequired = requiresHardExternalEvidence(text);
+  const userDefinedVirtualPc = isUserDefinedVirtualPcGoal(text);
   const context = await loadExternalAgentContext(text);
   const searchItems = context.items.filter((item) => item.tool === 'search_engine' || item.tool === 'katzilla_search');
   const searchAttempted = searchItems.some((item) => item.status !== 'skipped');
@@ -55,23 +60,8 @@ export async function gateAppBuilderExternalEvidence(job: AppBuilderJob): Promis
   const issues: AppBuilderExternalEvidenceGate['issues'] = [];
   const requiredFixes: string[] = [];
 
-  if (!needsExternal) {
-    issues.push({ code: 'EXTERNAL_EVIDENCE_NOT_REQUIRED', severity: 'INFO', message: 'The locked goal can be planned from the user-provided requirement without requiring current external evidence.' });
-    return {
-      status: 'PASS',
-      requiresExternalEvidence: false,
-      searchAttempted,
-      searchPassed,
-      sourceStatus: summarize(context.items),
-      issues,
-      requiredFixes,
-      evidencePrompt: context.promptText,
-      truthBoundary: 'External search was attempted for context, but the plan is not blocked because this goal does not require current external evidence.',
-    };
-  }
-
-  if (!searchPassed) {
-    issues.push({ code: 'EXTERNAL_SEARCH_EVIDENCE_MISSING', severity: 'BLOCK', message: 'This app-builder goal depends on current, unknown, API, provider, or external evidence, but no search provider returned usable evidence.' });
+  if (hardExternalRequired && !searchPassed) {
+    issues.push({ code: 'EXTERNAL_SEARCH_EVIDENCE_MISSING', severity: 'BLOCK', message: 'This app-builder goal asks for current, official docs, URL, law, market, or external factual evidence, but no search provider returned usable evidence.' });
     requiredFixes.push('Configure a working search provider with DSG_SEARCH_ENGINE_URL/SEARCH_ENGINE_URL or Katzilla search with KATZILLA_API_KEY and KATZILLA_SEARCH_PATH.');
     requiredFixes.push('Provide source files/API docs manually if search is unavailable.');
     requiredFixes.push('Regenerate the plan only after external evidence is available.');
@@ -88,16 +78,64 @@ export async function gateAppBuilderExternalEvidence(job: AppBuilderJob): Promis
     };
   }
 
-  issues.push({ code: 'EXTERNAL_SEARCH_EVIDENCE_AVAILABLE', severity: 'INFO', message: 'External search evidence is available for the planner.' });
+  if (hardExternalRequired && searchPassed) {
+    issues.push({ code: 'EXTERNAL_SEARCH_EVIDENCE_AVAILABLE', severity: 'INFO', message: 'External search evidence is available for the planner.' });
+    return {
+      status: 'PASS',
+      requiresExternalEvidence: true,
+      searchAttempted,
+      searchPassed,
+      sourceStatus: summarize(context.items),
+      issues,
+      requiredFixes,
+      evidencePrompt: context.promptText,
+      truthBoundary: 'External evidence is available and may be used to generate the plan. Evidence is still context, not production proof.',
+    };
+  }
+
+  if (userDefinedVirtualPc) {
+    issues.push({ code: 'USER_DEFINED_REQUIREMENT_ACCEPTED', severity: 'INFO', message: 'The Virtual PC / remote mouse requirement is user-defined and can be planned from the locked goal without external search proof.' });
+    if (hasSoftExternalTerms(text) && !searchPassed) {
+      issues.push({ code: 'SOFT_EXTERNAL_CONTEXT_UNAVAILABLE', severity: 'WARN', message: 'Search was unavailable, but this does not block the plan because the build target is a user-defined governed app contract. Real Windows VM/provider verification remains blocked until provider proof exists.' });
+    }
+    return {
+      status: 'PASS',
+      requiresExternalEvidence: false,
+      searchAttempted,
+      searchPassed,
+      sourceStatus: summarize(context.items),
+      issues,
+      requiredFixes,
+      evidencePrompt: context.promptText,
+      truthBoundary: 'User-defined app requirements can proceed without external search. Do not claim a real Windows VM/provider until separate runtime/provider proof exists.',
+    };
+  }
+
+  if (hasSoftExternalTerms(text) && !searchPassed) {
+    issues.push({ code: 'SOFT_EXTERNAL_CONTEXT_UNAVAILABLE', severity: 'WARN', message: 'Search was attempted but unavailable. The planner may continue only from user-provided requirements and must not claim external facts or provider proof.' });
+    return {
+      status: 'PASS',
+      requiresExternalEvidence: false,
+      searchAttempted,
+      searchPassed,
+      sourceStatus: summarize(context.items),
+      issues,
+      requiredFixes,
+      evidencePrompt: context.promptText,
+      truthBoundary: 'Search context is unavailable. The plan may use only the user-provided requirement and must block any claim needing external proof.',
+    };
+  }
+
+  issues.push({ code: 'EXTERNAL_EVIDENCE_NOT_REQUIRED', severity: 'INFO', message: 'The locked goal can be planned from the user-provided requirement without requiring current external evidence.' });
   return {
     status: 'PASS',
-    requiresExternalEvidence: true,
+    requiresExternalEvidence: false,
     searchAttempted,
     searchPassed,
     sourceStatus: summarize(context.items),
     issues,
     requiredFixes,
     evidencePrompt: context.promptText,
-    truthBoundary: 'External evidence is available and may be used to generate the plan. Evidence is still context, not production proof.',
+    truthBoundary: 'External search was attempted for context, but the plan is not blocked because this goal does not require current external evidence.',
   };
 }
