@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { buildAiGenericGeneratedAppFiles } from './ai-generic-generator';
-import { executeApprovedAppBuilderJob, type AppBuilderGeneratedFile, type AppBuilderRuntimeExecutionResult } from './action-runtime';
+import { type AppBuilderGeneratedFile, type AppBuilderRuntimeExecutionResult } from './action-runtime';
 import type { AppBuilderJob } from './model';
 import { createAppBuilderRuntimeHandoff, type AppBuilderRuntimeHandoff } from './runtime-handoff';
 import { buildVirtualPcGeneratedAppFiles, isVirtualPcAppBuilderJob } from './virtual-pc-generated-files';
@@ -15,6 +15,7 @@ type GithubRuntimeConfig = {
 type GithubRefResponse = { object?: { sha?: string } };
 type GithubContentResponse = { sha?: string };
 type GithubPullResponse = { html_url: string; number: number };
+type SelectedGeneratedFiles = { mode: 'virtual_pc_renderer' | 'ai_blueprint_generator'; files: AppBuilderGeneratedFile[] };
 
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -42,9 +43,15 @@ function isAllowedPath(path: string, allowedPatterns: string[]): boolean {
   });
 }
 
+function hasGenericItemAppFiles(files: AppBuilderGeneratedFile[]) {
+  return files.some((file) => /\/items\/route\.ts$/.test(file.path) || /create_generated_app_items/i.test(file.path));
+}
+
 function assertRuntimeAllowed(job: AppBuilderJob, handoff: AppBuilderRuntimeHandoff, files: AppBuilderGeneratedFile[]) {
   if (job.status !== 'READY_FOR_RUNTIME') throw new Error('APP_BUILDER_JOB_NOT_READY_FOR_RUNTIME');
   if (!job.approvedPlan) throw new Error('APP_BUILDER_APPROVED_PLAN_REQUIRED');
+  if (!files.length) throw new Error('APP_BUILDER_GENERATOR_RETURNED_NO_FILES');
+  if (hasGenericItemAppFiles(files)) throw new Error('APP_BUILDER_GENERIC_FALLBACK_BLOCKED');
   if (!handoff.allowedTools.includes('file.write') && !handoff.allowedTools.includes('github.contents.write')) {
     throw new Error('APP_BUILDER_FILE_WRITE_NOT_ALLOWED');
   }
@@ -128,8 +135,8 @@ async function createOrGetPullRequest(config: GithubRuntimeConfig, branchName: s
     `Generator Mode: \`${mode}\``,
     '',
     mode === 'virtual_pc_renderer'
-      ? 'The runtime selected the Virtual PC renderer before generic fallback. This PR contains a Virtual PC monitor UI, governed remote mouse API, migration, and runbook.'
-      : 'The runtime attempted AI blueprint generation before deterministic fallback. This PR contains the AI-generated frontend/API/migration/runbook files when generation succeeded.',
+      ? 'The runtime selected the Virtual PC renderer. This PR contains a Virtual PC monitor UI, governed remote mouse API, migration, and runbook.'
+      : 'The runtime selected the AI blueprint generator. Generic item-app fallback is blocked by policy.',
     '',
     '**Claim boundary:** IMPLEMENTED_UNVERIFIED only. Do not claim DEPLOYABLE or PRODUCTION until CI, migration apply, deployment proof, and production-flow proof pass.',
   ].join('\n');
@@ -154,29 +161,28 @@ async function createOrGetPullRequest(config: GithubRuntimeConfig, branchName: s
   }
 }
 
-function selectGeneratedFiles(job: AppBuilderJob, handoff: AppBuilderRuntimeHandoff) {
+async function selectGeneratedFiles(job: AppBuilderJob, handoff: AppBuilderRuntimeHandoff): Promise<SelectedGeneratedFiles> {
   if (isVirtualPcAppBuilderJob(job)) {
     return { mode: 'virtual_pc_renderer', files: buildVirtualPcGeneratedAppFiles(job, handoff) as AppBuilderGeneratedFile[] };
   }
-  return null;
+
+  const aiFiles = await buildAiGenericGeneratedAppFiles(job, handoff);
+  if (!aiFiles?.length) throw new Error('APP_BUILDER_AI_GENERATOR_FAILED_NO_GENERIC_FALLBACK');
+  return { mode: 'ai_blueprint_generator', files: aiFiles as AppBuilderGeneratedFile[] };
 }
 
 export async function executeApprovedAiFirstAppBuilderJob(job: AppBuilderJob): Promise<AppBuilderRuntimeExecutionResult> {
   const handoff = createAppBuilderRuntimeHandoff(job);
-  const selected = selectGeneratedFiles(job, handoff);
-  const aiFiles = selected ? null : await buildAiGenericGeneratedAppFiles(job, handoff);
-  if (!selected && !aiFiles?.length) return executeApprovedAppBuilderJob(job);
-
-  const mode = selected?.mode || 'ai_blueprint_generator';
-  const files = selected?.files || (aiFiles as AppBuilderGeneratedFile[]);
+  const selected = await selectGeneratedFiles(job, handoff);
+  const files = selected.files;
   assertRuntimeAllowed(job, handoff, files);
 
   const config = runtimeConfig();
-  const branchPrefix = mode === 'virtual_pc_renderer' ? 'dsg-virtual-pc' : 'dsg-ai-builder';
+  const branchPrefix = selected.mode === 'virtual_pc_renderer' ? 'dsg-virtual-pc' : 'dsg-ai-builder';
   const branchName = `${branchPrefix}-${safeSegment(job.id).slice(0, 16)}`;
   await ensureBranch(config, branchName);
   for (const file of files) await putFile(config, branchName, file, job);
-  const pullRequest = await createOrGetPullRequest(config, branchName, job, handoff, mode);
+  const pullRequest = await createOrGetPullRequest(config, branchName, job, handoff, selected.mode);
 
   return {
     appBuilderJobId: job.id,
@@ -195,9 +201,9 @@ export async function executeApprovedAiFirstAppBuilderJob(job: AppBuilderJob): P
       githubBranch: branchName,
       githubPullRequest: pullRequest.html_url,
       generatedFileCount: files.length,
-      note: mode === 'virtual_pc_renderer'
-        ? 'Virtual PC renderer selected before generic fallback. Files were written through GitHub Contents API after approved runtime handoff. This is not real Windows VM provider proof.'
-        : 'AI blueprint generation succeeded before deterministic fallback. Files were written through GitHub Contents API after approved runtime handoff. Build/deploy/production claims remain blocked until external evidence passes.',
+      note: selected.mode === 'virtual_pc_renderer'
+        ? 'Virtual PC renderer selected. Files were written through GitHub Contents API after approved runtime handoff. This is not real Windows VM provider proof.'
+        : 'AI blueprint generation succeeded. Generic item-app fallback is blocked. Build/deploy/production claims remain blocked until external evidence passes.',
     },
   };
 }
