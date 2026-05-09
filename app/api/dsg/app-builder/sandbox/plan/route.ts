@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sha256, truthBoundary, userBenefitGate, verify } from '@/lib/dsg/app-builder/agent-runtime/decision-frame';
 import { evaluateCommandGate, evaluatePathGate, evaluateSecretBoundary, makeAgentBranchName } from '@/lib/dsg/app-builder/agent-runtime/sandbox-gates';
-import { getDevAppBuilderContext } from '@/lib/dsg/server/app-builder/context';
+import { getAppBuilderRequestContext } from '@/lib/dsg/server/app-builder/context';
 import { recordAppBuilderToolAudit } from '@/lib/dsg/server/app-builder/repository';
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -15,7 +15,8 @@ function stringArray(value: unknown): string[] {
 
 function fail(error: unknown) {
   const message = error instanceof Error ? error.message : 'SANDBOX_PLAN_FAILED';
-  return NextResponse.json({ ok: false, error: { code: message, message } }, { status: 400 });
+  const status = message.startsWith('DSG_') ? 401 : 400;
+  return NextResponse.json({ ok: false, error: { code: message, message } }, { status });
 }
 
 function inferWritePaths(goal: string, jobId: string) {
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
 
     if (!goal) throw new Error('APP_BUILDER_GOAL_REQUIRED');
 
-    const ctx = getDevAppBuilderContext(req);
+    const ctx = await getAppBuilderRequestContext(req, 'job:control');
     const serialized = JSON.stringify({ goal, jobId, requestedPaths, commands });
     const input = verify({ goal, jobId, requestedPaths, commands }, ['ui_request', 'sandbox_preview_only']);
     const secretGate = evaluateSecretBoundary(serialized);
