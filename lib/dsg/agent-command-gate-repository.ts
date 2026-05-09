@@ -17,7 +17,7 @@ export async function recordAgentCommandGateDecision(input: {
   request: AgentCommandGateRequest;
   result: AgentCommandGateResult;
 }) {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
   const { actor, request, result } = input;
 
   const { error } = await supabase.from('dsg_agent_command_gate_decisions').insert({
@@ -51,7 +51,7 @@ export async function recordAgentActionResultReceipt(input: {
   request: AgentActionResultRequest;
   receipt: AgentActionResultReceipt;
 }) {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
   const { actor, request, receipt } = input;
 
   const { error } = await supabase.from('dsg_agent_action_result_receipts').insert({
