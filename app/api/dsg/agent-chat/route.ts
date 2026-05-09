@@ -5,6 +5,7 @@ import { DSG_STUDIO_REFERENCE_PROMPT, buildPlanPaneInstruction } from '@/lib/dsg
 import { DSG_GRAPHIFY_CONTEXT_PROMPT, buildGraphifyInstruction, shouldUseGraphifyContext } from '@/lib/dsg/agent-runtime/graphify-reference';
 import { DSG_PHASE1_GOVERNANCE_PROMPT, buildPhase1GovernanceInstruction, shouldUsePhase1Governance } from '@/lib/dsg/agent-runtime/phase1-governance-reference';
 import { DSG_GOVERNANCE_DB_PROMPT, buildGovernanceDbInstruction, shouldUseGovernanceDb } from '@/lib/dsg/agent-runtime/governance-db-reference';
+import { loadExternalAgentContext, type ExternalContextResult } from '@/lib/dsg/agent-runtime/external-context-tools';
 import { buildPersistentMemoryPrompt, loadPersistentAgentMemory, persistAgentChatTurn, type AgentChatHistoryItem, type AgentPersistentMemoryResult } from '@/lib/dsg/agent-runtime/persistent-chat-memory';
 
 export const runtime = 'nodejs';
@@ -39,7 +40,7 @@ function normalizedHistory(history: unknown): AgentChatHistoryItem[] {
     .slice(-18);
 }
 
-function buildMessages(body: ChatBody, memory: AgentPersistentMemoryResult): OpenAIChatMessage[] {
+function buildMessages(body: ChatBody, memory: AgentPersistentMemoryResult, externalContext: ExternalContextResult): OpenAIChatMessage[] {
   const message = body.message?.trim();
   if (!message) throw new Error('AGENT_CHAT_MESSAGE_REQUIRED');
   const useGraphify = shouldUseGraphifyContext(message);
@@ -53,14 +54,17 @@ function buildMessages(body: ChatBody, memory: AgentPersistentMemoryResult): Ope
     'Use concise Thai unless the user asks for English.',
     'Use the recent chat history and persistent memory to avoid asking the user to repeat what they already said.',
     'When the user says “above”, “ที่คุยไป”, “ทั้งหมดที่บอก”, or similar, summarize the relevant requirement from history and memory first, then answer.',
+    'When external API context is present, use it as fresh tool evidence. Do not invent results. If an external API is unavailable or failed, say exactly that.',
     'When the user wants to build, plan, operate, verify, inspect a repo, connect tools, read governance memory/state, or work with a codebase, use the DSG planning, execution, Graphify, Phase 1 governance, and governance database rules below.',
-    'Respect the DSG truth boundary: do not claim deploy, production verification, audit proof, PR evidence, browser proof, repo implementation, connector execution, database row existence, or build status unless the UI/API/tool/database has produced evidence.',
+    'Respect the DSG truth boundary: do not claim deploy, production verification, audit proof, PR evidence, browser proof, repo implementation, connector execution, database row existence, external API result, or build status unless the UI/API/tool/database has produced evidence.',
     'Persistent memory is context, not proof. If memory conflicts with current user input or evidence, prefer current user input and verified evidence.',
     'Prefer actionable next steps the user can click or verify in the app.',
     '',
     DSG_STUDIO_REFERENCE_PROMPT,
     '',
     buildPersistentMemoryPrompt(memory),
+    '',
+    externalContext.promptText,
     '',
     useGraphify ? DSG_GRAPHIFY_CONTEXT_PROMPT : 'Graphify context is available but not required for this ordinary question.',
     '',
@@ -83,20 +87,21 @@ function buildMessages(body: ChatBody, memory: AgentPersistentMemoryResult): Ope
         userMessage: message,
         appBuilderContext: body.context ?? {},
         persistentMemoryStatus: memory.status,
+        externalToolStatus: externalContext.items.map((item) => ({ tool: item.tool, status: item.status, reason: item.reason, sourceUrl: item.sourceUrl })),
       }),
     },
   ];
 }
 
-function localFallbackReply(message: string, providerError: string, memory: AgentPersistentMemoryResult) {
+function localFallbackReply(message: string, providerError: string, memory: AgentPersistentMemoryResult, externalContext: ExternalContextResult) {
   const graphify = shouldUseGraphifyContext(message);
   const phase1 = shouldUsePhase1Governance(message);
   const governanceDb = shouldUseGovernanceDb(message);
   const route = routeAgentCommand({
     command: message,
     context: graphify || phase1 || governanceDb
-      ? `Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG references and persistent memory when available. Memory status: ${memory.status}. Do not invent repo, connector, or database evidence.`
-      : `Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG planning rules and persistent memory when available. Memory status: ${memory.status}.`,
+      ? `Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG references and persistent memory when available. Memory status: ${memory.status}. External tools: ${externalContext.items.map((item) => `${item.tool}:${item.status}`).join(', ')}. Do not invent repo, connector, database, or external API evidence.`
+      : `Fallback from DSG Agent Chat because the AI provider is unavailable. Use DSG planning rules and persistent memory when available. Memory status: ${memory.status}. External tools: ${externalContext.items.map((item) => `${item.tool}:${item.status}`).join(', ')}.`,
     userBenefit: 'ผู้ใช้ยังได้คำตอบและขั้นตอนต่อไป แม้ AI provider จะใช้งานไม่ได้ชั่วคราว',
   });
 
@@ -104,6 +109,7 @@ function localFallbackReply(message: string, providerError: string, memory: Agen
   const memoryNote = memory.status === 'active'
     ? `Persistent memory loaded: ${memory.memoryIds.length} memory item(s), gate=${memory.gateStatus || 'unknown'}`
     : `Persistent memory status: ${memory.status}${memory.error ? ` (${memory.error})` : ''}`;
+  const externalNote = externalContext.items.filter((item) => item.status !== 'skipped').map((item) => `External tool ${item.tool}: ${item.status}${item.reason ? ` (${item.reason})` : ''}`).join('\n');
   const graphifyNote = graphify
     ? 'Graphify boundary: ถ้ายังไม่ได้ inspect repo จริง ต้องถือว่าเป็น BLOCKED/REVIEW ไม่ใช่ verified context graph.'
     : undefined;
@@ -119,6 +125,7 @@ function localFallbackReply(message: string, providerError: string, memory: Agen
     '',
     'ผมใช้ DSG local fallback วิเคราะห์คำสั่งแทน โดยยึดกฎ planning / permission / evidence ที่ตั้งไว้',
     memoryNote,
+    externalNote || undefined,
     graphifyNote,
     phase1Note,
     dbNote,
@@ -150,10 +157,11 @@ export async function POST(req: Request) {
 
   const history = normalizedHistory(body.history);
   const memory = await loadPersistentAgentMemory(req, body.message);
+  const externalContext = await loadExternalAgentContext(body.message);
 
   try {
     const result = await runOpenAIAdapter({
-      messages: buildMessages({ ...body, history }, memory),
+      messages: buildMessages({ ...body, history }, memory, externalContext),
       maxOutputTokens: 1800,
       temperature: 0.25,
     });
@@ -179,11 +187,18 @@ export async function POST(req: Request) {
           savedIds: persisted.saved,
           persistErrors: persisted.errors,
         },
+        externalTools: externalContext.items.map((item) => ({
+          tool: item.tool,
+          status: item.status,
+          sourceUrl: item.sourceUrl,
+          reason: item.reason,
+          evidence: item.evidence,
+        })),
       },
     });
   } catch (error) {
     const providerError = error instanceof Error ? error.message : 'AGENT_CHAT_MODEL_UNAVAILABLE';
-    const fallback = localFallbackReply(body.message, providerError, memory);
+    const fallback = localFallbackReply(body.message, providerError, memory, externalContext);
     const persisted = await persistAgentChatTurn(req, { userMessage: body.message, agentReply: fallback.reply, history }).catch((persistError) => ({
       saved: [],
       errors: [persistError instanceof Error ? persistError.message : 'MEMORY_PERSIST_FAILED'],
@@ -204,6 +219,13 @@ export async function POST(req: Request) {
           savedIds: persisted.saved,
           persistErrors: persisted.errors,
         },
+        externalTools: externalContext.items.map((item) => ({
+          tool: item.tool,
+          status: item.status,
+          sourceUrl: item.sourceUrl,
+          reason: item.reason,
+          evidence: item.evidence,
+        })),
       },
     });
   }
