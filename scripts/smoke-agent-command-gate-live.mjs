@@ -1,5 +1,6 @@
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || process.env.DSG_BASE_URL || 'http://localhost:3000';
 const cookie = process.env.DSG_SESSION_COOKIE || '';
+const bearerToken = process.env.DSG_BEARER_TOKEN || process.env.SUPABASE_ACCESS_TOKEN || '';
 const workspaceId = process.env.DSG_SMOKE_ORG_ID || process.env.DSG_WORKSPACE_ID || '';
 
 if (!workspaceId) {
@@ -7,14 +8,15 @@ if (!workspaceId) {
   process.exit(2);
 }
 
-if (!cookie) {
-  console.error('Missing DSG_SESSION_COOKIE for authenticated smoke test');
+if (!cookie && !bearerToken) {
+  console.error('Missing authentication. Set DSG_SESSION_COOKIE or DSG_BEARER_TOKEN');
   process.exit(2);
 }
 
 const headers = {
   'content-type': 'application/json',
-  cookie,
+  ...(cookie ? { cookie } : {}),
+  ...(bearerToken ? { authorization: `Bearer ${bearerToken}` } : {}),
 };
 
 function baseGate(commandId, overrides = {}) {
@@ -110,6 +112,7 @@ if (receipt.status !== 200 || receipt.json?.receipt?.accepted !== true || receip
 console.log(JSON.stringify({
   ok: true,
   baseUrl,
+  authMode: bearerToken ? 'bearer' : 'cookie',
   checks: {
     passDecisionHash: pass.json.result.decisionHash,
     blockDecisionHash: block.json.result.decisionHash,
