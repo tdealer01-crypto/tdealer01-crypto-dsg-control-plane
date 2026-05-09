@@ -121,7 +121,7 @@ export default function VirtualPcAgentAppPage() {
                   <div>DSG Virtual PC Shell</div><div>Windows runtime profile: provider pending</div><div>Network: governed gateway contract</div><div>Mouse API: /remote-mouse</div><div>Invariant gate: enabled</div>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-[#C8A24D]/30 bg-[#071326]/90 px-3 py-2 text-xs"><span className="font-black text-[#E0B95B]">Start</span><span className="text-[#D7D9DE]">Network · Mouse API · DSG Gate</span><span className="text-[#E0B95B]">Ready</span></div>
-                <div className="absolute h-5 w-5 -translate-x-1 -translate-y-1 rounded-full border-2 border-[#E0B95B] bg-[#D9363E] shadow-[0_0_16px_rgba(224,185,91,0.9)]" style={{ left: \`${(cursor.x / SCREEN_WIDTH) * 100}%\`, top: \`${(cursor.y / SCREEN_HEIGHT) * 100}%\` }} />
+                <div className="absolute h-5 w-5 -translate-x-1 -translate-y-1 rounded-full border-2 border-[#E0B95B] bg-[#D9363E] shadow-[0_0_16px_rgba(224,185,91,0.9)]" style={{ left: String((cursor.x / SCREEN_WIDTH) * 100) + '%', top: String((cursor.y / SCREEN_HEIGHT) * 100) + '%' }} />
               </div>
               <p className="mt-3 text-xs leading-5 text-[#D7D9DE]">Tap/click inside the monitor to send a governed click. Hold Shift while moving the pointer on desktop to send governed move events.</p>
             </div>
