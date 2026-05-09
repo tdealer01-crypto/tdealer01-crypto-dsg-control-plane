@@ -3,18 +3,19 @@ import { createDeterministicAppBuilderPrd } from '@/lib/dsg/app-builder/prd-gene
 import { createAppBuilderProposedPlan } from '@/lib/dsg/app-builder/plan-generator';
 import { gateAppBuilderPlan } from '@/lib/dsg/app-builder/gate';
 import { gateAppBuilderExternalEvidence } from '@/lib/dsg/app-builder/external-evidence-gate';
-import { getDevAppBuilderContext } from '@/lib/dsg/server/app-builder/context';
+import { getAppBuilderRequestContext } from '@/lib/dsg/server/app-builder/context';
 import { getAppBuilderJob, updateAppBuilderJob } from '@/lib/dsg/server/app-builder/repository';
 
 function fail(error: unknown) {
   const code = error instanceof Error ? error.message : 'APP_BUILDER_PLAN_FAILED';
-  return NextResponse.json({ ok: false, error: { code, message: code } }, { status: 400 });
+  const status = code.startsWith('DSG_') ? 401 : 400;
+  return NextResponse.json({ ok: false, error: { code, message: code } }, { status });
 }
 
 export async function POST(req: Request, context: { params: Promise<{ jobId: string }> }) {
   try {
     const { jobId } = await context.params;
-    const ctx = getDevAppBuilderContext(req);
+    const ctx = await getAppBuilderRequestContext(req, 'job:plan');
     const job = await getAppBuilderJob(ctx, jobId);
     if (!job.goal) throw new Error('APP_BUILDER_GOAL_NOT_LOCKED');
 
