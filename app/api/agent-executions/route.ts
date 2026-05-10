@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { handleApiError } from '../../../lib/security/api-error';
 
+type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
+
 export async function GET(req: Request) {
   const auth = await requireRuntimeAccess(req, 'monitor');
   if (auth.ok === false) {
