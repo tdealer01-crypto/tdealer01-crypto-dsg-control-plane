@@ -5,8 +5,9 @@ import { handleApiError } from '../../../lib/security/api-error';
 
 export async function GET(req: Request) {
   const auth = await requireRuntimeAccess(req, 'monitor');
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  if (auth.ok === false) {
+    const denied = auth as DeniedAuth;
+    return NextResponse.json({ ok: false, error: denied.error }, { status: denied.status });
   }
 
   const admin = getSupabaseAdmin() as any;

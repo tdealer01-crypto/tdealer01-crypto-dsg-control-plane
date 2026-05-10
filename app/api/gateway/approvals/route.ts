@@ -4,6 +4,8 @@ import { decideGatewayApproval, listPendingGatewayApprovals } from '@/lib/gatewa
 
 export const dynamic = 'force-dynamic';
 
+type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
+
 async function readBody(request: Request) {
   const contentType = request.headers.get('content-type') || '';
 
@@ -31,8 +33,9 @@ async function readBody(request: Request) {
 export async function GET() {
   const auth = await requireOrgPermission('org.view_evidence');
 
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  if (auth.ok === false) {
+    const denied = auth as DeniedAuth;
+    return NextResponse.json({ ok: false, error: denied.error }, { status: denied.status });
   }
 
   const result = await listPendingGatewayApprovals(auth.orgId);
@@ -61,8 +64,9 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireOrgPermission('org.manage_agents');
 
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  if (auth.ok === false) {
+    const denied = auth as DeniedAuth;
+    return NextResponse.json({ ok: false, error: denied.error }, { status: denied.status });
   }
 
   const body = await readBody(request);

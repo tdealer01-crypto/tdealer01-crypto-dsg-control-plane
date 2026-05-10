@@ -8,11 +8,14 @@ import { recordAgentActionResultReceipt } from "@/lib/dsg/agent-command-gate-rep
 
 export const dynamic = "force-dynamic";
 
+type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
+
 export async function POST(request: NextRequest) {
   const auth = await requireOrgPermission("org.execute");
 
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  if (auth.ok === false) {
+    const denied = auth as DeniedAuth;
+    return NextResponse.json({ ok: false, error: denied.error }, { status: denied.status });
   }
 
   try {
