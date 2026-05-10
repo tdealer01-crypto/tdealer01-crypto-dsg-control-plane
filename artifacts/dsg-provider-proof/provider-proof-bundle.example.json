@@ -1,0 +1,40 @@
+{
+  "status": "PROOF_REQUIRED",
+  "claim": "DSG_PROVIDER_PROOF_REQUIRED",
+  "truthBoundary": "This file is a template. Do not rename it to provider-proof-bundle.json as PASS until every lane contains real provider evidence.",
+  "sandbox": {
+    "providerId": "",
+    "jobId": "",
+    "command": "",
+    "exitCode": null,
+    "durationMs": null,
+    "artifactRefs": [],
+    "logRef": ""
+  },
+  "repair": {
+    "jobId": "",
+    "maxAttempts": null,
+    "attempts": [],
+    "stopReason": ""
+  },
+  "browser": {
+    "providerId": "",
+    "sessionId": "",
+    "jobId": "",
+    "startUrl": "",
+    "navigationLogRef": "",
+    "screenshotRefs": [],
+    "takeoverCheckpoints": []
+  },
+  "timeline": {
+    "timelineId": "",
+    "jobId": "",
+    "events": []
+  },
+  "preview": {
+    "jobId": "",
+    "deploymentUrl": "",
+    "providerStatus": "ERROR",
+    "routes": []
+  }
+}
