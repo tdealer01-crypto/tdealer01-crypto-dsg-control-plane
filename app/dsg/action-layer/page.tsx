@@ -141,18 +141,33 @@ export default function DsgActionLayerPage() {
             </div>
           </div>
 
-          <aside className="rounded-lg border border-[#4d4635] bg-[#1a1c1c] p-5">
-            <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#f2ca50]">Policy Guardrails</div>
-            <div className="mt-5 space-y-4">
-              {guardrails.map((lane) => (
-                <div key={lane.id} className="rounded border border-[#4d4635] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="truncate font-mono text-xs uppercase tracking-[0.14em]">{lane.label}</span>
-                    <span className="rounded border border-[#d4af37] px-2 py-1 font-mono text-[10px] text-[#f2ca50]">{lane.status}</span>
+          <aside className="space-y-4">
+            <div className="rounded-lg border border-[#4d4635] bg-[#1a1c1c] p-5">
+              <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#f2ca50]">Policy Guardrails</div>
+              <div className="mt-5 space-y-4">
+                {guardrails.map((lane) => (
+                  <div key={lane.id} className="rounded border border-[#4d4635] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate font-mono text-xs uppercase tracking-[0.14em]">{lane.label}</span>
+                      <span className="rounded border border-[#d4af37] px-2 py-1 font-mono text-[10px] text-[#f2ca50]">{lane.status}</span>
+                    </div>
+                    <p className="mt-2 text-xs text-[#d0c5af]">{lane.detail}</p>
                   </div>
-                  <p className="mt-2 text-xs text-[#d0c5af]">{lane.detail}</p>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[#4d4635] bg-[#1a1c1c] p-5">
+              <div className="font-mono text-xs uppercase tracking-[0.22em] text-[#f2ca50]">Build Authorization</div>
+              <p className="mt-4 text-sm leading-6 text-[#d0c5af]">
+                Review deterministic multi-flow proof, route status, and generated action timeline before promotion.
+              </p>
+              <button className="mt-5 w-full rounded bg-[#a40213] px-5 py-3 font-mono text-xs uppercase tracking-[0.16em] text-white transition-all hover:brightness-110">
+                Final Approval
+              </button>
+              <button className="mt-3 w-full rounded border border-[#4d4635] px-5 py-3 font-mono text-xs uppercase tracking-[0.16em] text-[#d0c5af] transition-all hover:border-[#d4af37] hover:text-[#f2ca50]">
+                Reject & Log Notes
+              </button>
             </div>
           </aside>
         </div>
