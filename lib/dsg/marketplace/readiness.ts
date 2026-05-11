@@ -88,17 +88,23 @@ const gates: MarketplaceReadinessGate[] = [
   {
     id: 'legal-support-package',
     title: 'Marketplace legal and support package',
-    status: 'BLOCKED',
+    status: 'REVIEW',
     userBenefit: 'ผู้ซื้อ enterprise มี Terms, Privacy, Security, Support และ data handling clarity ก่อนติดตั้ง',
-    verifiedEvidence: [],
+    verifiedEvidence: [
+      'Customer-facing route: /enterprise/terms',
+      'Customer-facing route: /enterprise/privacy',
+      'Customer-facing route: /enterprise/security',
+      'Customer-facing route: /enterprise/support',
+    ],
     requiredEvidence: [
       'Terms page',
       'Privacy page',
       'Security page',
       'Support/SLA page',
       'Data retention and subprocessors statement when applicable',
+      'Responsible owner approval before marketplace submission',
     ],
-    nextAction: 'Create customer-facing legal/support pages and link them from the readiness page.',
+    nextAction: 'Review the customer-facing legal/support draft pages and attach owner approval before moving this gate to PASS.',
   },
   {
     id: 'accessibility-qa',
@@ -134,7 +140,7 @@ export function getEnterpriseMarketplaceReadinessReport(): MarketplaceReadinessR
     summary:
       verdict === 'PASS'
         ? 'All marketplace readiness gates have attached evidence.'
-        : 'Marketplace readiness is not a full pass yet. Existing deployment and app-builder proof can be attached, but security, entitlement, legal/support, accessibility, and QA evidence are still required.',
+        : 'Marketplace readiness is not a full pass yet. Existing deployment and app-builder proof can be attached, but security, entitlement, accessibility, QA evidence, and owner approvals are still required.',
     gates,
     noMockPolicy: {
       enforced: true,
