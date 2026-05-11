@@ -114,3 +114,55 @@ This branch proves database schema application and code-path persistence changes
 - `npm run smoke:agent-command-gate:live` passes against the intended deployment.
 - Supabase row-count verification confirms one PASS decision, one BLOCK decision, and one result receipt from the smoke run.
 - Operator confirms no claim of third-party certification, WORM compliance, or enterprise-ready status beyond evidence shown here.
+
+## Live production smoke evidence
+
+Date: 2026-05-11
+Production URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+Auth mode: bearer
+Evidence source: operator-provided live smoke output and Supabase verification summary.
+Result: PASS
+
+### Smoke output
+
+```json
+{
+  "ok": true,
+  "baseUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "authMode": "bearer",
+  "checks": {
+    "passDecisionHash": "79b08f3e09d288dcb202195477c36fb8e95fc9ccb1207ce6772b628690f13eff",
+    "blockDecisionHash": "eecbcbc8609419d7e77e26d8bc87d5af2245875569e8237afa7c59e66af87296",
+    "receiptHash": "a839d239fc609ceb9fc9caa5af917a8e19f1c12f5875ac25080b210b628f70e5"
+  }
+}
+```
+
+### Supabase verification
+
+Supabase evidence confirmed from the live smoke run:
+
+- `dsg_agent_command_gate_decisions` count >= 2
+- `dsg_agent_action_result_receipts` count >= 1
+- PASS/BLOCK decision hashes found
+- receipt hash found
+- accepted = true
+- receipt status = SUCCESS
+
+### Updated go-live boundary
+
+Current status: agent command gate production smoke evidence is PASS.
+
+This evidence proves the specific DSG Agent Command Gate path for PASS/BLOCK decision persistence and result receipt persistence in the production deployment.
+
+This is still not a claim of:
+
+- enterprise certification
+- third-party certification
+- WORM certification
+- regulatory compliance certification
+- complete external formal verification
+
+Allowed claim:
+
+DSG Agent Command Gate production smoke passed with persisted runtime evidence and Supabase verification for PASS/BLOCK/result receipt persistence.
