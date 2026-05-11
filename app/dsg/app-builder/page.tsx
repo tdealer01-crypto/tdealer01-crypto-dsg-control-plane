@@ -1,5 +1,7 @@
 import { AppBuilderConsoleClient } from '@/components/dsg/app-builder/AppBuilderConsoleClient';
-import { DSG_APP_TEMPLATES } from '@/lib/dsg/app-builder/templates/template-registry';
+import { AppBuilderProofPanel, type ProofPanelItem } from '@/components/dsg/app-builder/AppBuilderProofPanel';
+import { OutcomeIntakePanel } from '@/components/dsg/app-builder/OutcomeIntakePanel';
+import { DSG_APP_TEMPLATES, DSG_MARKET_TEMPLATES } from '@/lib/dsg/app-builder/templates/template-registry';
 import type { DsgAppBuilderPrd } from '@/lib/dsg/app-builder/types/prd';
 
 const demoPrd: DsgAppBuilderPrd = {
@@ -61,6 +63,90 @@ const outcomeCards = [
   { value: '3', label: 'Proof', detail: 'อนุมัติ/บล็อกด้วยหลักฐานก่อนอ้าง production' },
 ];
 
+
+const proofPanelItems: ProofPanelItem[] = [
+  {
+    id: 'prd',
+    title: 'PRD',
+    status: 'REVIEW',
+    evidence: ['PRD viewer exists in the App Builder console'],
+    missingEvidence: ['Human-reviewed PRD approval for a specific generated app'],
+    nextAction: 'Generate and review the PRD for the selected outcome before execution.',
+  },
+  {
+    id: 'plan',
+    title: 'Plan',
+    status: 'REVIEW',
+    evidence: ['Plan observer panel exists in the App Builder console'],
+    missingEvidence: ['Executed plan proof and owner approval'],
+    nextAction: 'Run plan generation and attach observer output to the audit packet.',
+  },
+  {
+    id: 'observer',
+    title: 'Observer',
+    status: 'REVIEW',
+    evidence: ['Z3/observer boundary is represented in app-builder planning flow'],
+    missingEvidence: ['Runtime proof that observer findings were enforced'],
+    nextAction: 'Keep observer status REVIEW until enforcement output is attached.',
+  },
+  {
+    id: 'runtime-gate',
+    title: 'Runtime Gate',
+    status: 'BLOCKED',
+    evidence: ['Runtime gate UI component exists'],
+    missingEvidence: ['Live executor proof', 'Deployment proof', 'Database/auth proof'],
+    nextAction: 'Run the runtime gate only after generated code, build, deploy, and data/auth evidence exist.',
+  },
+  {
+    id: 'marketplace-readiness',
+    title: 'Marketplace Readiness',
+    status: 'REVIEW',
+    evidence: ['Endpoint: /api/dsg/marketplace/readiness'],
+    missingEvidence: ['Smoke output', 'Owner approvals', 'Production deployment evidence'],
+    nextAction: 'Run smoke:marketplace-readiness and attach production proof before PASS.',
+  },
+  {
+    id: 'security-rbac',
+    title: 'Security/RBAC',
+    status: 'BLOCKED',
+    evidence: ['Endpoint: /api/dsg/marketplace/security-rbac'],
+    missingEvidence: ['Server-side RBAC enforcement test', 'Cross-org denial test'],
+    nextAction: 'Implement and test authorization enforcement; keep fail-closed until proof exists.',
+  },
+  {
+    id: 'entitlement',
+    title: 'Entitlement',
+    status: 'BLOCKED',
+    evidence: ['Endpoint: /api/dsg/marketplace/entitlement'],
+    missingEvidence: ['Plan source of truth', 'Quota denial test', 'Upgrade path proof'],
+    nextAction: 'Attach billing or marketplace entitlement enforcement evidence before PASS.',
+  },
+  {
+    id: 'accessibility-qa',
+    title: 'Accessibility/QA',
+    status: 'BLOCKED',
+    evidence: ['Endpoint: /api/dsg/marketplace/accessibility-qa'],
+    missingEvidence: ['Keyboard review notes', 'Semantic review notes', 'Contrast review notes'],
+    nextAction: 'Complete accessibility review notes and smoke output before PASS.',
+  },
+  {
+    id: 'legal-support',
+    title: 'Legal/Support',
+    status: 'REVIEW',
+    evidence: ['/enterprise/terms', '/enterprise/privacy', '/enterprise/security', '/enterprise/support'],
+    missingEvidence: ['Owner approval', 'Data handling/support SLA review'],
+    nextAction: 'Review legal/support pages with owners before marketplace submission.',
+  },
+  {
+    id: 'deployment-proof',
+    title: 'Deployment Proof',
+    status: 'REVIEW',
+    evidence: ['APP_URL target documented for smoke tests'],
+    missingEvidence: ['Latest deployment READY proof', 'Smoke output against production URL'],
+    nextAction: 'Run production smoke scripts against APP_URL and attach outputs.',
+  },
+];
+
 const builderStages = [
   { stage: 'Capture', text: 'รับเป้าหมายผู้ใช้และ success criteria' },
   { stage: 'Design', text: 'สร้าง PRD และเลือก template ที่เหมาะกับงาน' },
@@ -87,6 +173,10 @@ export default function DsgAppBuilderPage() {
             Action Layer
           </a>
         </header>
+
+        <div className="mt-6">
+          <OutcomeIntakePanel />
+        </div>
 
         <section className="grid gap-6 py-8 lg:grid-cols-[minmax(0,1.05fr)_420px]">
           <div className="rounded-[2.6rem] border border-white/10 bg-[#0f151f]/82 p-6 shadow-[0_0_52px_rgba(0,0,0,0.25)] backdrop-blur-2xl sm:p-8">
@@ -145,6 +235,34 @@ export default function DsgAppBuilderPage() {
               <p className="mt-3 text-sm leading-7 text-slate-300">{pillar.body}</p>
             </article>
           ))}
+        </section>
+
+        <section className="mt-8">
+          <AppBuilderProofPanel items={proofPanelItems} productionReadyClaim={false} />
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-white/10 bg-[#0f151f]/85 p-5">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#f2ca50]">Template marketplace registry</p>
+          <h2 className="mt-2 text-2xl font-black text-white">Choose a business template and see missing proof</h2>
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {DSG_MARKET_TEMPLATES.map((template) => (
+              <article key={template.id} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">{template.category}</p>
+                    <h3 className="mt-1 font-bold text-white">{template.name}</h3>
+                  </div>
+                  <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-mono text-[11px] font-black text-amber-100">risk: {template.riskLevel}</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{template.businessOutcome}</p>
+                <p className="mt-3 text-xs leading-5 text-slate-400">Readiness gates: {template.readinessGates.join(', ')}</p>
+                <div className="mt-3 rounded-xl border border-rose-400/20 bg-rose-500/5 p-3">
+                  <h4 className="text-sm font-bold text-rose-100">Missing proof / blocked until</h4>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">{template.blockedUntil.map((item) => <li key={item}>• {item}</li>)}</ul>
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
 
         <AppBuilderConsoleClient initialPrd={demoPrd} />

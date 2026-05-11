@@ -1,4 +1,5 @@
 import { getAccessibilityQaReport } from '@/lib/dsg/marketplace/accessibility-qa';
+import { ACCESSIBILITY_REVIEW_CHECKLIST } from '@/lib/dsg/marketplace/accessibility-checklist';
 
 const tone = {
   PASS: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200',
@@ -25,6 +26,22 @@ export default function EnterpriseAccessibilityPage() {
           </div>
           <p className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4 font-mono text-xs leading-6 text-slate-400">{report.noMockPolicy.rule}</p>
         </header>
+
+
+        <section className="mt-6 rounded-[2rem] border border-white/10 bg-[#111827] p-5">
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-cyan-200">Manual review checklist</p>
+          <h2 className="mt-2 text-2xl font-black text-white">Accessibility Review Notes must be filled by a reviewer</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-300">This checklist stays REVIEW until real notes are attached. It does not mark WCAG PASS automatically.</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {ACCESSIBILITY_REVIEW_CHECKLIST.map((item) => (
+              <article key={`${item.section}-${item.label}`} className="rounded-2xl border border-amber-400/20 bg-amber-500/5 p-4">
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-amber-200">{item.section} · {item.status}</p>
+                <h3 className="mt-2 font-bold text-white">{item.label}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Next: {item.nextAction}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-2">
           {report.checks.map((check) => (

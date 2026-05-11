@@ -22,7 +22,9 @@
     "smoke:marketplace-readiness": "node scripts/dsg-marketplace-readiness-check.mjs",
     "smoke:accessibility-qa": "node scripts/dsg-accessibility-qa-check.mjs",
     "smoke:security-rbac": "node scripts/dsg-security-rbac-check.mjs",
-    "smoke:entitlement": "node scripts/dsg-entitlement-check.mjs"
+    "smoke:entitlement": "node scripts/dsg-entitlement-check.mjs",
+    "smoke:audit-packet": "node scripts/dsg-audit-packet-check.mjs",
+    "smoke:first-value-flow": "node scripts/dsg-first-value-flow-smoke.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
