@@ -109,16 +109,21 @@ const gates: MarketplaceReadinessGate[] = [
   {
     id: 'accessibility-qa',
     title: 'Accessibility and QA proof',
-    status: 'BLOCKED',
+    status: 'REVIEW',
     userBenefit: 'ผู้ใช้ทำงานได้ด้วย keyboard/screen reader และทีมขายมีหลักฐานคุณภาพก่อนส่ง marketplace',
-    verifiedEvidence: [],
+    verifiedEvidence: [
+      'Customer-facing route: /enterprise/accessibility',
+      'Endpoint: /api/dsg/marketplace/accessibility-qa',
+      'Smoke script: smoke:accessibility-qa',
+    ],
     requiredEvidence: [
       'Lint result or explicit lint waiver',
-      'WCAG 2.2 AA checklist for core pages',
+      'WCAG 2.2 checklist evidence for core pages',
       'Keyboard navigation proof',
+      'Smoke output from deployed APP_URL',
       'E2E smoke for first-time user get-started flow',
     ],
-    nextAction: 'Add automated smoke coverage and a manual accessibility checklist for /dsg/app-builder.',
+    nextAction: 'Run accessibility and marketplace smoke checks against deployed APP_URL, attach review notes, then request owner review before moving this gate to PASS.',
   },
 ];
 
@@ -140,7 +145,7 @@ export function getEnterpriseMarketplaceReadinessReport(): MarketplaceReadinessR
     summary:
       verdict === 'PASS'
         ? 'All marketplace readiness gates have attached evidence.'
-        : 'Marketplace readiness is not a full pass yet. Existing deployment and app-builder proof can be attached, but security, entitlement, accessibility, QA evidence, and owner approvals are still required.',
+        : 'Marketplace readiness is not a full pass yet. Existing deployment, app-builder, legal/support, and accessibility/QA proof scaffolds can be attached, but security, entitlement, smoke output, and owner approvals are still required.',
     gates,
     noMockPolicy: {
       enforced: true,
