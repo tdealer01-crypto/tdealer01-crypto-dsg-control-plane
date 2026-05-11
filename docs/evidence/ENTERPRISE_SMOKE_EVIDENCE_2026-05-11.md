@@ -107,10 +107,50 @@ Observed result:
 
 Interpretation: the app-builder proof is behaving safely. It proves the system fails closed instead of making false production-ready claims.
 
+### Entitlement evidence
+
+Command shown after setting `APP_URL`:
+
+```bash
+export APP_URL="https://dsg-one-v1.vercel.app"
+npm run smoke:entitlement
+```
+
+Observed result:
+
+- `PASS: entitlement endpoint responded with a valid evidence report`
+- endpoint: `https://dsg-one-v1.vercel.app/api/dsg/marketplace/entitlement`
+- verdict: `BLOCKED`
+- checks: `4`
+- pass: `0`
+- review: `1`
+- blocked: `3`
+
+Interpretation: entitlement endpoint/schema smoke passed. The entitlement evidence kit remains internally BLOCKED for real plan, seat, quota, upgrade, and denial enforcement proof. This is the correct fail-closed state.
+
+### Security RBAC evidence
+
+Command shown after setting `APP_URL`:
+
+```bash
+export APP_URL="https://dsg-one-v1.vercel.app"
+npm run smoke:security-rbac
+```
+
+Observed result:
+
+- `PASS: security RBAC endpoint responded with a valid evidence report`
+- endpoint: `https://dsg-one-v1.vercel.app/api/dsg/marketplace/security-rbac`
+- verdict: `BLOCKED`
+- checks: `4`
+- pass: `0`
+- review: `1`
+- blocked: `3`
+
+Interpretation: security RBAC endpoint/schema smoke passed. The security evidence kit remains internally BLOCKED for real server-side RBAC, organization isolation, and audit-event enforcement proof. This is the correct fail-closed state.
+
 ## Evidence still missing before full PASS
 
-- `npm run smoke:entitlement` output with `APP_URL` set.
-- `npm run smoke:security-rbac` output with `APP_URL` set.
 - Production deployment READY proof from Vercel after the latest merged commit.
 - RBAC/server-side enforcement tests.
 - Entitlement denial and quota enforcement tests.
