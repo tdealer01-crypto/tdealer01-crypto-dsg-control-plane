@@ -60,16 +60,21 @@ const gates: MarketplaceReadinessGate[] = [
   {
     id: 'security-rbac-org-isolation',
     title: 'Security, RBAC, and organization isolation',
-    status: 'BLOCKED',
+    status: 'REVIEW',
     userBenefit: 'ผู้ใช้ enterprise ต้องมั่นใจว่าสิทธิ์และข้อมูลข้ามองค์กรไม่รั่ว',
-    verifiedEvidence: [],
+    verifiedEvidence: [
+      'Customer-facing route: /enterprise/security-rbac',
+      'Endpoint: /api/dsg/marketplace/security-rbac',
+      'Smoke script: smoke:security-rbac',
+    ],
     requiredEvidence: [
       'Server-side RBAC proof for critical read/write routes',
       'Cross-org access denial test',
       'Audit event for privileged actions',
       'Deny-by-default error contract',
+      'Runtime enforcement proof before PASS',
     ],
-    nextAction: 'Add or attach tests proving unauthorized role and cross-org access are denied server-side.',
+    nextAction: 'Run security RBAC smoke check, attach enforcement tests, and keep PASS blocked until server-side authorization proof exists.',
   },
   {
     id: 'commercial-entitlement',
@@ -145,7 +150,7 @@ export function getEnterpriseMarketplaceReadinessReport(): MarketplaceReadinessR
     summary:
       verdict === 'PASS'
         ? 'All marketplace readiness gates have attached evidence.'
-        : 'Marketplace readiness is not a full pass yet. Existing deployment, app-builder, legal/support, and accessibility/QA proof scaffolds can be attached, but security, entitlement, smoke output, and owner approvals are still required.',
+        : 'Marketplace readiness is not a full pass yet. Existing deployment, app-builder, legal/support, accessibility/QA, and security/RBAC proof scaffolds can be attached, but entitlement, smoke output, enforcement tests, and owner approvals are still required.',
     gates,
     noMockPolicy: {
       enforced: true,

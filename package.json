@@ -20,7 +20,8 @@
     "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh",
     "smoke:app-builder-flow-proof": "node scripts/dsg-app-builder-flow-proof-smoke.mjs",
     "smoke:marketplace-readiness": "node scripts/dsg-marketplace-readiness-check.mjs",
-    "smoke:accessibility-qa": "node scripts/dsg-accessibility-qa-check.mjs"
+    "smoke:accessibility-qa": "node scripts/dsg-accessibility-qa-check.mjs",
+    "smoke:security-rbac": "node scripts/dsg-security-rbac-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
