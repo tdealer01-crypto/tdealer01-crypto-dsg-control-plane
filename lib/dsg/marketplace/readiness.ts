@@ -79,16 +79,21 @@ const gates: MarketplaceReadinessGate[] = [
   {
     id: 'commercial-entitlement',
     title: 'Billing, entitlement, seat, and quota gates',
-    status: 'BLOCKED',
+    status: 'REVIEW',
     userBenefit: 'ผู้ใช้รู้ขอบเขตแพ็กเกจชัดเจน และระบบไม่เปิด bypass ฟรีในเส้นทางสำคัญ',
-    verifiedEvidence: [],
+    verifiedEvidence: [
+      'Customer-facing route: /enterprise/entitlement',
+      'Endpoint: /api/dsg/marketplace/entitlement',
+      'Smoke script: smoke:entitlement',
+    ],
     requiredEvidence: [
       'Plan/seat/quota source-of-truth',
       'Quota exceeded behavior with clear message',
       'Upgrade path proof',
       'Entitlement denial test for restricted action',
+      'Runtime enforcement proof before PASS',
     ],
-    nextAction: 'Wire entitlement checks to production source-of-truth and add a negative test for quota/seat denial.',
+    nextAction: 'Run entitlement smoke check, attach real billing/quota enforcement evidence, and keep PASS blocked until denial tests exist.',
   },
   {
     id: 'legal-support-package',
@@ -150,7 +155,7 @@ export function getEnterpriseMarketplaceReadinessReport(): MarketplaceReadinessR
     summary:
       verdict === 'PASS'
         ? 'All marketplace readiness gates have attached evidence.'
-        : 'Marketplace readiness is not a full pass yet. Existing deployment, app-builder, legal/support, accessibility/QA, and security/RBAC proof scaffolds can be attached, but entitlement, smoke output, enforcement tests, and owner approvals are still required.',
+        : 'Marketplace readiness is not a full pass yet. Evidence scaffolds exist for all major gates, but smoke output, runtime enforcement tests, production deployment proof, and owner approvals are still required before PASS.',
     gates,
     noMockPolicy: {
       enforced: true,
