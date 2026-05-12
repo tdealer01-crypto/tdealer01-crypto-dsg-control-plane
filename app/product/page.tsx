@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ProductGateModeSwitch from '../../components/ProductGateModeSwitch';
 
 const monitorRows = [
   ['Agent', 'existing customer-agent', 'connected'],
@@ -33,21 +34,6 @@ const connectSteps = [
   ['3', 'Preflight', 'ส่ง action envelope + memory packet ไปที่ DSG ก่อน action ออกสู่ระบบจริง'],
   ['4', 'Mode switch', 'ลูกค้าเลือก Audit only หรือ Enforce gate: Audit เก็บหลักฐานไม่บล็อก, Enforce ตรวจและหยุด action ได้'],
   ['5', 'Receipt', 'หลัง execute ส่ง result receipt hash กลับมาเก็บ audit trail ใน Control Plane'],
-];
-
-const gateModes = [
-  {
-    name: 'Audit only',
-    label: 'เปิดออดิทอย่างเดียว',
-    body: 'เหมาะกับ pilot แรก ระบบยังไม่บล็อก action จริง แต่บันทึก decision, reason, memory hash และ result receipt ให้ reviewer เห็น',
-    tone: 'border-amber-300/25 bg-amber-300/10 text-amber-50',
-  },
-  {
-    name: 'Enforce gate',
-    label: 'เปิดตรวจด้วย',
-    body: 'เหมาะเมื่อพร้อมคุม action จริง ถ้า gate คืน STABILIZE หรือ BLOCK ระบบต้องหยุดก่อน execute และส่ง reason กลับ operator',
-    tone: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-50',
-  },
 ];
 
 const benefits = [
@@ -152,35 +138,8 @@ export default function ProductPage() {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="border border-white/10 bg-[#0d0f12] p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Step 4 mode switch</p>
-                  <h3 className="mt-2 text-lg font-semibold text-white">ลูกค้าเลือก: ออดิท หรือ ตรวจด้วย</h3>
-                </div>
-                <div className="flex items-center gap-3 rounded-full border border-amber-300/25 bg-black/30 p-2">
-                  <span className="rounded-full bg-amber-300 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-950">Audit</span>
-                  <span className="h-5 w-10 rounded-full border border-emerald-300/30 bg-emerald-300/10 p-0.5">
-                    <span className="block h-4 w-4 translate-x-4 rounded-full bg-emerald-300" />
-                  </span>
-                  <span className="rounded-full border border-emerald-300/25 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100">Enforce</span>
-                </div>
-              </div>
-              <p className="mt-4 text-sm leading-7 text-slate-300">
-                สวิตช์นี้คือ policy choice ของลูกค้า: ช่วงแรกใช้ Audit only เพื่อดูผลและเก็บหลักฐานก่อน เมื่อพร้อมค่อยเปิด Enforce gate เพื่อให้ STABILIZE/BLOCK หยุด action ได้จริง.
-              </p>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              {gateModes.map((mode) => (
-                <div key={mode.name} className={`border p-4 ${mode.tone}`}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] opacity-80">{mode.name}</p>
-                  <h3 className="mt-3 text-lg font-semibold text-white">{mode.label}</h3>
-                  <p className="mt-3 text-sm leading-7">{mode.body}</p>
-                </div>
-              ))}
-            </div>
+          <div className="mt-5">
+            <ProductGateModeSwitch />
           </div>
 
           <div className="mt-5 border border-white/10 bg-[#0d0f12] p-4 text-sm leading-7 text-slate-300">
@@ -235,7 +194,7 @@ export default function ProductPage() {
         <section className="mt-6 border border-amber-300/25 bg-amber-300/10 p-5 text-sm leading-7 text-amber-50">
           <p className="font-semibold">Claim boundary</p>
           <p className="mt-2">
-            หน้านี้เป็น product/mini-monitor surface ใหม่ ไม่ใช่หลักฐาน production-ready. สวิตช์ Audit/Enforce บนหน้านี้เป็น product UX description; การเปิดใช้ backend จริงต้องมี API/settings, test, typecheck, build, auth, database และ smoke evidence จริงก่อน.
+            หน้านี้ต่อสวิตช์ Audit/Enforce กับ backend API/settings แล้ว แต่การใช้งาน production จริงยังต้องผ่าน test, typecheck, build, auth, database migration และ smoke evidence จริงก่อน.
           </p>
         </section>
       </div>
