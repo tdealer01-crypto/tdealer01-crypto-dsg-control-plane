@@ -52,6 +52,7 @@ async function getClient() {
   }
 }
 
+// Local table adapter keeps this route buildable while generated Supabase types catch up with the new migration.
 function gateSettingsTable(client: unknown): GateSettingsTable {
   return (client as { from: (relation: string) => GateSettingsTable }).from('agent_gate_settings');
 }
