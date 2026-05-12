@@ -98,7 +98,7 @@ export default function PoliciesPage() {
 
   useEffect(() => {
     if (selectedPolicy) setManifest(prettyJson(selectedPolicy.thresholds || QUICK_THRESHOLD));
-  }, [selectedPolicy?.id]);
+  }, [selectedPolicy]);
 
   const thresholdEntries = Object.entries(selectedPolicy?.thresholds || QUICK_THRESHOLD);
 
