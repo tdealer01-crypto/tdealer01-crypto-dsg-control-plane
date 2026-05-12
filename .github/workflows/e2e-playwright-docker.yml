@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           npm ci
           npm run build
-          ENABLE_DEMO_BOOTSTRAP=true npm run dev >/tmp/next.log 2>&1 &
+          ENABLE_DEMO_BOOTSTRAP=true DEMO_BOOTSTRAP_TOKEN=e2e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=e2e npm run dev >/tmp/next.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:3000 >/dev/null; then
               break
@@ -56,6 +56,8 @@ jobs:
 
           docker run --rm \
             -e ENABLE_DEMO_BOOTSTRAP=true \
+            -e DEMO_BOOTSTRAP_TOKEN=e2e \
+            -e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=e2e \
             -v "${{ github.workspace }}":/work -v /tmp/run-playwright-e2e.sh:/tmp/run-playwright-e2e.sh:ro -w /work \
             "${{ steps.image.outputs.image }}" \
             bash /tmp/run-playwright-e2e.sh
