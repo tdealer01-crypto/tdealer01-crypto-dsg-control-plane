@@ -32,14 +32,16 @@ export type CospinActionEnvelope = {
   memory?: CospinMemoryPacket;
 };
 
+export type CospinGateMetrics = {
+  velocity: number;
+  drift: number;
+  oscillation: number;
+};
+
 export type CospinGateResult = {
   decision: CospinDecision;
   reason: string;
-  metrics: {
-    velocity: number;
-    drift: number;
-    oscillation: number;
-  };
+  metrics: CospinGateMetrics;
   failedInvariant?: string;
 };
 
@@ -56,7 +58,7 @@ export const DEFAULT_COSPIN_GATE_POLICY: CospinGatePolicy = {
   maxDrift: 0.35,
   maxOscillation: 3,
   allowedInvariantTags: ['transfer', 'ledger_safe', 'monotonic_time'],
-  deniedNetworkIdentities: ['quarantined-network', 'denied-network'],
+  deniedNetworkIdentities: ['blackholed-asn', 'denied-ip-range'],
 };
 
 function locationDistance(a: string, b: string): number {

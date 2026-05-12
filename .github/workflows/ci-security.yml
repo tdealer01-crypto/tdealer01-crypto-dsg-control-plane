@@ -38,9 +38,8 @@ jobs:
           find . -path './node_modules' -prune -o -name '*.sh' -print0 | xargs -0 -r shellcheck || true
 
       - name: Gitleaks (detect secrets)
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: detect --source=. --report-path=gitleaks-report.json
+        run: |
+          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect --source=/repo --redact --report-format=json --report-path=/repo/gitleaks-report.json
 
       - name: npm audit (fail on high severity)
         run: |

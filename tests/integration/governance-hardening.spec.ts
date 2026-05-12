@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { evaluateAgentCommandGate, type AgentCommandGateRequest } from '../../lib/dsg/agent-command-gate';
 import { recordGovernanceDecisionEvent, listGovernanceDecisionEvents } from '../../lib/governance/decision-recorder';
 
@@ -63,7 +63,7 @@ describe('Governance Runtime Hardening', () => {
       expect(result.invariantChecks.every((c) => c.status === 'PASS')).toBe(true);
     });
 
-    it('should evaluate REVIEW for high-risk action without approval', () => {
+    it('should evaluate BLOCK for high-risk action without approval', () => {
       const input: AgentCommandGateRequest = {
         workspaceId: testOrgId,
         customerName: 'test-customer',
@@ -80,7 +80,7 @@ describe('Governance Runtime Hardening', () => {
           targetSystemId: 'sys-001',
           operationName: 'process_payment',
           riskLevel: 'high',
-          dataClasses: ['financial'],
+          dataClasses: ['payment'],
           idempotencyKey: 'idem-001',
           rollbackPlanId: 'plan-001',
         },
@@ -102,9 +102,9 @@ describe('Governance Runtime Hardening', () => {
       };
 
       const result = evaluateAgentCommandGate(input);
-      expect(result.decision).toBe('REVIEW');
+      expect(result.decision).toBe('BLOCK');
       expect(result.canAgentExecute).toBe(false);
-      expect(result.status).toBe('AGENT_ACTION_REVIEW_REQUIRED');
+      expect(result.status).toBe('AGENT_ACTION_BLOCKED');
       expect(result.invariantChecks.some((c) => c.name === 'approval_for_high_risk_or_sensitive_action')).toBe(true);
     });
 
@@ -211,7 +211,7 @@ describe('Governance Runtime Hardening', () => {
           targetSystemId: 'sys-001',
           operationName: 'process_payment',
           riskLevel: 'critical',
-          dataClasses: ['financial'],
+          dataClasses: ['payment'],
           idempotencyKey: 'idem-001',
           rollbackPlanId: 'plan-001',
         },
@@ -330,8 +330,8 @@ describe('Governance Runtime Hardening', () => {
         gateId: 'gate-001',
         decision: 'REVIEW',
         action: 'approve',
-        approvedBy: testUserId, // Real user ID from session
-        approvedAt: new Date().toISOString(),
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
         reason: 'Approved after manual review',
       });
 
@@ -341,7 +341,7 @@ describe('Governance Runtime Hardening', () => {
       const events = await listGovernanceDecisionEvents(testOrgId, 10);
       const found = events.find((e: any) => e.decision_id === decisionId);
       expect(found).toBeDefined();
-      expect(found?.approved_by).toBe(testUserId);
+      expect(found?.actor_id).toBe(testUserId);
       expect(found?.action).toBe('approve');
     });
 
@@ -353,8 +353,8 @@ describe('Governance Runtime Hardening', () => {
         gateId: 'gate-002',
         decision: 'BLOCK',
         action: 'reject',
-        approvedBy: testUserId,
-        approvedAt: new Date().toISOString(),
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
         reason: 'Rejected: insufficient evidence',
       });
 
@@ -372,8 +372,8 @@ describe('Governance Runtime Hardening', () => {
         decisionId,
         gateId: 'gate-003',
         action: 'pause',
-        approvedBy: testUserId,
-        approvedAt: new Date().toISOString(),
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
         reason: 'Paused: awaiting additional context from operator',
       });
 
@@ -391,8 +391,8 @@ describe('Governance Runtime Hardening', () => {
         decisionId,
         gateId: 'gate-004',
         action: 'rollback',
-        approvedBy: testUserId,
-        approvedAt: new Date().toISOString(),
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
         reason: 'Rollback: action failed verification. Compensation: restore_from_backup_20250508_100000. Pre-state: abc123def456...',
       });
 
@@ -416,8 +416,8 @@ describe('Governance Runtime Hardening', () => {
         decisionId,
         gateId: 'gate-005',
         action: 'approve',
-        approvedBy: testUserId,
-        approvedAt: new Date().toISOString(),
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
       });
 
       // Try to access from otherOrgId

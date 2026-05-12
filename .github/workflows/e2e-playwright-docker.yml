@@ -38,15 +38,24 @@ jobs:
           exit 1
 
       - name: Run Playwright tests inside Docker (prebuilt browsers)
-        env:
-          NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN: ${{ secrets.NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN }}
-          DEMO_BOOTSTRAP_TOKEN: ${{ secrets.DEMO_BOOTSTRAP_TOKEN }}
-          ENABLE_DEMO_BOOTSTRAP: "true"
         run: |
+          cat > /tmp/run-playwright-e2e.sh <<'SCRIPT'
+          set -euo pipefail
+          npm ci
+          npm run build
+          ENABLE_DEMO_BOOTSTRAP=true npm run dev >/tmp/next.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000 >/dev/null
+          npx playwright test --reporter=github
+          SCRIPT
+
           docker run --rm \
-            -e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN="${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN}" \
-            -e DEMO_BOOTSTRAP_TOKEN="${DEMO_BOOTSTRAP_TOKEN}" \
-            -e ENABLE_DEMO_BOOTSTRAP="${ENABLE_DEMO_BOOTSTRAP}" \
-            -v "${{ github.workspace }}":/work -w /work \
+            -e ENABLE_DEMO_BOOTSTRAP=true \
+            -v "${{ github.workspace }}":/work -v /tmp/run-playwright-e2e.sh:/tmp/run-playwright-e2e.sh:ro -w /work \
             "${{ steps.image.outputs.image }}" \
-            bash -lc "npm ci && npm run build && ENABLE_DEMO_BOOTSTRAP=true DEMO_BOOTSTRAP_TOKEN=${DEMO_BOOTSTRAP_TOKEN} NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=${NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN} npm run dev >/tmp/next.log 2>&1 & for i in $(seq 1 60); do curl -fsS http://127.0.0.1:3000 >/dev/null && break; sleep 1; done; curl -fsS http://127.0.0.1:3000 >/dev/null && npx playwright test --reporter=github"
+            bash /tmp/run-playwright-e2e.sh
