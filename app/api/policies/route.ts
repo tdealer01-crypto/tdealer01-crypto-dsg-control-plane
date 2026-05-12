@@ -9,7 +9,6 @@ type PolicyRecord = {
   name?: string | null;
   version?: string | null;
   status?: string | null;
-  is_active?: boolean | null;
   thresholds?: Record<string, unknown> | null;
   config?: Record<string, unknown> | null;
   governance_state?: string | null;
@@ -29,7 +28,7 @@ function normalizePolicy(policy: PolicyRecord, source: string) {
     id: String(policy.id || ''),
     name: String(policy.name || 'Unnamed policy'),
     version: String(policy.version || 'v1'),
-    status: String(policy.status || (policy.is_active === false ? 'inactive' : 'active')),
+    status: String(policy.status || 'active'),
     thresholds,
     governance_state: String(policy.governance_state || (source === 'runtime_policies' ? 'active_in_runtime' : 'legacy_ready')),
     updated_at: String(policy.updated_at || policy.created_at || new Date().toISOString()),
@@ -39,7 +38,7 @@ function normalizePolicy(policy: PolicyRecord, source: string) {
 async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>, orgId: string) {
   const scoped = await supabase
     .from('policies')
-    .select('id, org_id, name, version, status, config, is_active, updated_at, created_at')
+    .select('id, org_id, name, version, status, config, updated_at, created_at')
     .eq('org_id', orgId)
     .order('updated_at', { ascending: false });
 
@@ -53,7 +52,7 @@ async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>,
 
   const global = await supabase
     .from('policies')
-    .select('id, name, version, status, config, is_active, updated_at, created_at')
+    .select('id, name, version, status, config, updated_at, created_at')
     .order('updated_at', { ascending: false });
 
   if (global.error) {
@@ -61,7 +60,7 @@ async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>,
 
     const minimal = await supabase
       .from('policies')
-      .select('id, name, version, is_active, updated_at, created_at')
+      .select('id, name, version, updated_at, created_at')
       .order('updated_at', { ascending: false });
 
     if (minimal.error) throw minimal.error;
