@@ -9,62 +9,88 @@ function isMissingColumnError(error: unknown) {
   return message.includes('column') && message.includes('does not exist');
 }
 
+function normalizePolicy(policy: Record<string, unknown>, source: string) {
+  const thresholds =
+    (policy.thresholds as Record<string, unknown> | undefined) ||
+    (policy.config as Record<string, unknown> | undefined) ||
+    (policy.rules ? { rules: policy.rules } : {});
+
+  return {
+    id: String(policy.id || ''),
+    name: String(policy.name || 'Unnamed policy'),
+    version: String(policy.version || 'v1'),
+    status: String(policy.status || (policy.is_active === false ? 'inactive' : 'active')),
+    thresholds,
+    governance_state: String(policy.governance_state || (source === 'runtime_policies' ? 'active_in_runtime' : 'legacy_ready')),
+    updated_at: String(policy.updated_at || policy.created_at || new Date().toISOString()),
+  };
+}
+
+async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>, orgId: string) {
+  const scoped = await supabase
+    .from('policies')
+    .select('id, org_id, name, version, status, config, rules, is_active, updated_at, created_at')
+    .eq('org_id', orgId)
+    .order('updated_at', { ascending: false });
+
+  if (!scoped.error && scoped.data && scoped.data.length > 0) {
+    return { items: scoped.data.map((item) => normalizePolicy(item, 'policies_legacy')), source: 'policies_legacy_scoped' };
+  }
+
+  if (scoped.error && !isMissingColumnError(scoped.error)) {
+    throw scoped.error;
+  }
+
+  const global = await supabase
+    .from('policies')
+    .select('id, org_id, name, version, status, config, rules, is_active, updated_at, created_at')
+    .order('updated_at', { ascending: false });
+
+  if (global.error) {
+    if (!isMissingColumnError(global.error)) throw global.error;
+
+    const minimal = await supabase
+      .from('policies')
+      .select('id, name, version, rules, is_active, updated_at, created_at')
+      .order('updated_at', { ascending: false });
+
+    if (minimal.error) throw minimal.error;
+    return { items: (minimal.data || []).map((item) => normalizePolicy(item, 'policies_legacy_minimal')), source: 'policies_legacy_minimal' };
+  }
+
+  return { items: (global.data || []).map((item) => normalizePolicy(item, 'policies_legacy_global')), source: 'policies_legacy_global' };
+}
+
 export async function GET(request: Request) {
   const access = await requireRuntimeAccess(request, 'policies_read');
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const supabase = getSupabaseAdmin();
-  const runtimeRes = await supabase
-    .from('runtime_policies')
-    .select('id, name, version, status, thresholds, governance_state, updated_at')
-    .eq('org_id', access.orgId)
-    .order('updated_at', { ascending: false });
 
-  if (!runtimeRes.error) {
-    return NextResponse.json({ items: runtimeRes.data || [], source: 'runtime_policies' });
-  }
-
-  if (!isMissingRelationError(runtimeRes.error)) {
-    logServerError(runtimeRes.error, 'policies-get-runtime');
-    return serverErrorResponse();
-  }
-
-  const scopedLegacyRes = await supabase
-    .from('policies')
-    .select('id, name, version, status, config, updated_at')
-    .eq('org_id', access.orgId)
-    .order('updated_at', { ascending: false });
-
-  let legacyData = scopedLegacyRes.data;
-  if (scopedLegacyRes.error) {
-    if (!isMissingColumnError(scopedLegacyRes.error)) {
-      logServerError(scopedLegacyRes.error, 'policies-get-legacy');
-      return serverErrorResponse();
-    }
-
-    const legacyRes = await supabase
-      .from('policies')
-      .select('id, name, version, status, config, updated_at')
+  try {
+    const runtimeRes = await supabase
+      .from('runtime_policies')
+      .select('id, name, version, status, thresholds, governance_state, updated_at, created_at')
+      .eq('org_id', access.orgId)
       .order('updated_at', { ascending: false });
 
-    if (legacyRes.error) {
-      logServerError(legacyRes.error, 'policies-get-legacy-global');
-      return serverErrorResponse();
+    if (!runtimeRes.error && runtimeRes.data && runtimeRes.data.length > 0) {
+      return NextResponse.json({
+        items: runtimeRes.data.map((item) => normalizePolicy(item, 'runtime_policies')),
+        source: 'runtime_policies',
+      });
     }
-    legacyData = legacyRes.data;
+
+    if (runtimeRes.error && !isMissingRelationError(runtimeRes.error) && !isMissingColumnError(runtimeRes.error)) {
+      logServerError(runtimeRes.error, 'policies-get-runtime-fallback');
+    }
+
+    const legacy = await loadLegacyPolicies(supabase, access.orgId);
+    return NextResponse.json(legacy);
+  } catch (error) {
+    logServerError(error, 'policies-get');
+    return serverErrorResponse();
   }
-
-  const items = (legacyData || []).map((policy) => ({
-    id: policy.id,
-    name: policy.name,
-    version: policy.version,
-    status: policy.status,
-    thresholds: policy.config || {},
-    governance_state: 'legacy',
-    updated_at: policy.updated_at,
-  }));
-
-  return NextResponse.json({ items, source: 'policies_legacy' });
 }
 
 export async function POST(request: Request) {
@@ -73,26 +99,29 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const supabase = getSupabaseAdmin();
+
+  const payload = {
+    org_id: access.orgId,
+    name: String(body?.name || 'Unnamed policy'),
+    version: String(body?.version || 'v1'),
+    status: String(body?.status || 'draft'),
+    thresholds: body?.thresholds || {},
+    governance_state: String(body?.governance_state || 'proposed'),
+    created_by: access.userId,
+    updated_by: access.userId,
+  };
+
   const { data, error } = await supabase
     .from('runtime_policies')
-    .insert({
-      org_id: access.orgId,
-      name: String(body?.name || 'Unnamed policy'),
-      version: String(body?.version || 'v1'),
-      status: String(body?.status || 'draft'),
-      thresholds: body?.thresholds || {},
-      governance_state: String(body?.governance_state || 'proposed'),
-      created_by: access.userId,
-      updated_by: access.userId,
-    })
-    .select('id, name, version, status, thresholds, governance_state')
+    .insert(payload)
+    .select('id, name, version, status, thresholds, governance_state, updated_at')
     .single();
 
   if (error || !data) {
     if (isMissingRelationError(error)) {
       return NextResponse.json(
-        { error: 'runtime_policies table is unavailable. Run runtime RBAC migrations before creating policies.' },
-        { status: 503 }
+        { error: 'runtime_policies table is unavailable. Run runtime policy migrations before creating policies.' },
+        { status: 503 },
       );
     }
 
@@ -100,13 +129,17 @@ export async function POST(request: Request) {
     return serverErrorResponse();
   }
 
-  await supabase.from('runtime_policy_governance_events').insert({
+  const event = await supabase.from('runtime_policy_governance_events').insert({
     org_id: access.orgId,
     policy_id: data.id,
     actor_user_id: access.userId,
     event_type: 'policy_created',
-    metadata: { governance_state: data.governance_state },
+    metadata: { governance_state: data.governance_state, source: 'dashboard_policies' },
   });
 
-  return NextResponse.json(data, { status: 201 });
+  if (event.error && !isMissingRelationError(event.error)) {
+    logServerError(event.error, 'policies-post-event');
+  }
+
+  return NextResponse.json(normalizePolicy(data, 'runtime_policies'), { status: 201 });
 }
