@@ -4,16 +4,26 @@ import { logServerError, serverErrorResponse } from '../../../lib/security/error
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { isMissingRelationError } from '../../../lib/supabase/resolve-policy';
 
+type PolicyRecord = {
+  id?: string | null;
+  name?: string | null;
+  version?: string | null;
+  status?: string | null;
+  is_active?: boolean | null;
+  thresholds?: Record<string, unknown> | null;
+  config?: Record<string, unknown> | null;
+  governance_state?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+};
+
 function isMissingColumnError(error: unknown) {
   const message = String((error as { message?: unknown })?.message || '').toLowerCase();
   return message.includes('column') && message.includes('does not exist');
 }
 
-function normalizePolicy(policy: Record<string, unknown>, source: string) {
-  const thresholds =
-    (policy.thresholds as Record<string, unknown> | undefined) ||
-    (policy.config as Record<string, unknown> | undefined) ||
-    (policy.rules ? { rules: policy.rules } : {});
+function normalizePolicy(policy: PolicyRecord, source: string) {
+  const thresholds = policy.thresholds || policy.config || {};
 
   return {
     id: String(policy.id || ''),
@@ -29,7 +39,7 @@ function normalizePolicy(policy: Record<string, unknown>, source: string) {
 async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>, orgId: string) {
   const scoped = await supabase
     .from('policies')
-    .select('id, org_id, name, version, status, config, rules, is_active, updated_at, created_at')
+    .select('id, org_id, name, version, status, config, is_active, updated_at, created_at')
     .eq('org_id', orgId)
     .order('updated_at', { ascending: false });
 
@@ -43,7 +53,7 @@ async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>,
 
   const global = await supabase
     .from('policies')
-    .select('id, org_id, name, version, status, config, rules, is_active, updated_at, created_at')
+    .select('id, name, version, status, config, is_active, updated_at, created_at')
     .order('updated_at', { ascending: false });
 
   if (global.error) {
@@ -51,7 +61,7 @@ async function loadLegacyPolicies(supabase: ReturnType<typeof getSupabaseAdmin>,
 
     const minimal = await supabase
       .from('policies')
-      .select('id, name, version, rules, is_active, updated_at, created_at')
+      .select('id, name, version, is_active, updated_at, created_at')
       .order('updated_at', { ascending: false });
 
     if (minimal.error) throw minimal.error;
