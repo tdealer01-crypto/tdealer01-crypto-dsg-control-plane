@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.github
+.vercel
+coverage
+playwright-report
+test-results
+qa-logs
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+README_PATCH.md
