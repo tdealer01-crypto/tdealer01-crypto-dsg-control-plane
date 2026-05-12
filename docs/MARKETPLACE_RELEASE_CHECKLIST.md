@@ -48,6 +48,10 @@ CospinDSG places a governance gate in front of existing AI agents so teams can a
 - Supabase migrations are applied and schema cache reloaded.
 - Smoke evidence is stored in docs or qa-logs.
 
+## PR release trigger evidence
+
+This checklist is intentionally touched by the policy workflow release PR so Vercel can build a fresh PR/merge deployment containing the runtime policy API, redesigned `/dashboard/policies`, and Cloud Run readiness files.
+
 ## Required Marketplace assets
 
 - Product overview
