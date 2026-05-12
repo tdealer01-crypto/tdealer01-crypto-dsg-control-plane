@@ -9,6 +9,33 @@ export const dynamic = 'force-dynamic';
 
 type GateMode = 'audit_only' | 'enforce_gate';
 
+type GateModeRow = {
+  gate_mode?: unknown;
+  updated_at?: string | null;
+};
+
+type GateModeUpsert = {
+  org_id: string;
+  gate_mode: GateMode;
+  updated_at: string;
+};
+
+type GateSettingsTable = {
+  select: (columns: string) => {
+    eq: (column: string, value: string) => {
+      maybeSingle: () => Promise<{ data: GateModeRow | null; error: unknown }>;
+    };
+  };
+  upsert: (
+    values: GateModeUpsert,
+    options: { onConflict: string },
+  ) => {
+    select: (columns: string) => {
+      single: () => Promise<{ data: GateModeRow | null; error: unknown }>;
+    };
+  };
+};
+
 const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60 * 1000;
 const DEFAULT_GATE_MODE: GateMode = 'audit_only';
@@ -23,6 +50,10 @@ async function getClient() {
   } catch {
     return createSupabaseServerClient();
   }
+}
+
+function gateSettingsTable(client: unknown): GateSettingsTable {
+  return (client as { from: (relation: string) => GateSettingsTable }).from('agent_gate_settings');
 }
 
 function dbSetupError(error: unknown) {
@@ -48,9 +79,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = await getClient();
-    const { data, error } = await supabase
-      .from('agent_gate_settings')
+    const table = gateSettingsTable(await getClient());
+    const { data, error } = await table
       .select('gate_mode, updated_at')
       .eq('org_id', profileAccess.orgId)
       .maybeSingle();
@@ -103,10 +133,9 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const supabase = await getClient();
+    const table = gateSettingsTable(await getClient());
     const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from('agent_gate_settings')
+    const { data, error } = await table
       .upsert({
         org_id: profileAccess.orgId,
         gate_mode: gateMode,
