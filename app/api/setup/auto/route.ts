@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 export const dynamic = 'force-dynamic';
 type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL' | 'WARN';
 
+const DEFAULT_POLICY_ID = '00000000-0000-4000-8000-000000000001';
 const RUNTIME_INFRA_FIX_STEPS = [
   'supabase migration up',
   "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -c \"NOTIFY pgrst, 'reload schema';\"",
@@ -116,11 +117,13 @@ export async function POST(_request: Request) {
 
     let { error: policyError } = await admin.from('policies').upsert(
       {
-        id: 'policy_default',
+        id: DEFAULT_POLICY_ID,
         name: 'Default DSG Policy',
         version: 'v1',
         status: 'active',
         description: 'Baseline deterministic safety policy.',
+        rules: [],
+        is_active: true,
         config: { block_risk_score: 0.8, stabilize_risk_score: 0.4, oscillation_window: 4 },
       },
       { onConflict: 'id', ignoreDuplicates: true },
@@ -129,11 +132,13 @@ export async function POST(_request: Request) {
     if (policyError && isMissingInfraError(policyError.message, 'config')) {
       const retry = await admin.from('policies').upsert(
         {
-          id: 'policy_default',
+          id: DEFAULT_POLICY_ID,
           name: 'Default DSG Policy',
           version: 'v1',
           status: 'active',
           description: 'Baseline deterministic safety policy.',
+          rules: [],
+          is_active: true,
         },
         { onConflict: 'id', ignoreDuplicates: true },
       );
@@ -169,13 +174,13 @@ export async function POST(_request: Request) {
       agentStatus = 'EXISTS';
       (results.steps as string[]).push(`agent: EXISTS (${agentId})`);
     } else {
-      agentId = `agent-${suffix}`;
+      agentId = randomUUID();
       apiKey = `dsg_${randomUUID().replace(/-/g, '')}`;
       const { error: agentError } = await admin.from('agents').insert({
         id: agentId,
         org_id: orgId,
         name: 'Auto-Setup Agent',
-        policy_id: 'policy_default',
+        policy_id: DEFAULT_POLICY_ID,
         status: 'active',
         api_key_hash: createHash('sha256').update(apiKey).digest('hex'),
         monthly_limit: 10000,
