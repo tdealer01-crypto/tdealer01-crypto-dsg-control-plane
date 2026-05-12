@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+
+export const dynamic = 'force-dynamic';
 
 const DEMO_URL = '/enterprise-proof/demo';
 const REQUEST_ACCESS_URL = '/request-access';
@@ -12,7 +16,77 @@ const SUGGESTIONS = [
   'เข้าสู่ระบบเพื่อใช้ dashboard และ agent execution',
 ];
 
-function publicReply(message: string) {
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60 * 1000;
+const MAX_MESSAGES = 8;
+const MAX_MESSAGE_LENGTH = 1600;
+const DEFAULT_MODEL = 'gpt-4.1-mini';
+
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+type OpenAITextContent = {
+  text?: string;
+};
+
+type OpenAIOutputItem = {
+  content?: OpenAITextContent[];
+};
+
+type OpenAIResponse = {
+  output_text?: string;
+  output?: OpenAIOutputItem[];
+  error?: {
+    message?: string;
+    type?: string;
+    code?: string;
+  };
+};
+
+function normalizeMessages(body: unknown): ChatMessage[] {
+  const candidate = body && typeof body === 'object' ? (body as { messages?: unknown; message?: unknown }) : {};
+
+  if (Array.isArray(candidate.messages)) {
+    return candidate.messages
+      .filter((message): message is ChatMessage => {
+        if (!message || typeof message !== 'object') return false;
+        const item = message as Partial<ChatMessage>;
+        return (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string';
+      })
+      .slice(-MAX_MESSAGES)
+      .map((message) => ({
+        role: message.role,
+        content: message.content.slice(0, MAX_MESSAGE_LENGTH),
+      }));
+  }
+
+  const message = typeof candidate.message === 'string' ? candidate.message.trim() : '';
+  return message ? [{ role: 'user', content: message.slice(0, MAX_MESSAGE_LENGTH) }] : [];
+}
+
+function formatConversation(messages: ChatMessage[]) {
+  return messages
+    .map((message) => `${message.role === 'assistant' ? 'Assistant' : 'User'}: ${message.content}`)
+    .join('\n\n');
+}
+
+function extractOutputText(payload: OpenAIResponse): string {
+  if (typeof payload.output_text === 'string' && payload.output_text.trim()) {
+    return payload.output_text.trim();
+  }
+
+  const text = payload.output
+    ?.flatMap((item) => item.content || [])
+    .map((content) => content.text || '')
+    .join('\n')
+    .trim();
+
+  return text || 'DSG Assistant did not return text. Please try again.';
+}
+
+function fallbackReply(message: string) {
   const lower = message.toLowerCase();
 
   if (/demo|เดโม|เดโม่|proof|พิสูจน์|ตัวอย่าง/.test(lower)) {
@@ -38,29 +112,104 @@ function publicReply(message: string) {
   return `สวัสดีครับ ผมคือ DSG public assistant ถามเรื่อง DSG Agent, pricing, demo, request access หรือวิธีเข้า dashboard ได้เลยครับ ถ้าอยากดูเดโม่ตอนนี้ เปิด ${DEMO_URL}`;
 }
 
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  const message = String(body?.message || '').trim();
-
-  if (!message) {
-    return NextResponse.json({ error: 'message is required' }, { status: 400 });
+async function callOpenAI(messages: ChatMessage[]) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {
+      ok: false,
+      status: 200,
+      error: 'OPENAI_API_KEY is not configured',
+      answer: fallbackReply(messages[messages.length - 1]?.content || ''),
+      mode: 'fallback_public_chat',
+      model: null,
+    };
   }
 
-  return NextResponse.json({
-    ok: true,
-    mode: 'public_chat',
-    reply: publicReply(message),
-    links: {
-      demo: DEMO_URL,
-      requestAccess: REQUEST_ACCESS_URL,
-      pricing: PRICING_URL,
-      login: '/login',
+  const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      'content-type': 'application/json',
     },
-    safety: {
-      authenticated_actions: false,
-      execution_allowed: false,
-      login_required_for_runtime: true,
-    },
-    suggestions: SUGGESTIONS,
+    body: JSON.stringify({
+      model,
+      instructions:
+        'You are DSG Public Assistant for DSG ONE / CospinDSG. Answer in the user language. Be concise, factual, and useful. Explain DSG product value, product usage, audit/enforce modes, pricing/demo/request-access paths, and safe next steps. Public mode must not execute actions, request secrets, or claim production readiness without evidence.',
+      input: formatConversation(messages),
+      max_output_tokens: 700,
+    }),
   });
+
+  const payload = (await response.json().catch(() => ({}))) as OpenAIResponse;
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      error: payload.error?.message || 'OpenAI API request failed',
+      answer: fallbackReply(messages[messages.length - 1]?.content || ''),
+      mode: 'fallback_public_chat',
+      model,
+    };
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    answer: extractOutputText(payload),
+    mode: 'openai_responses_api',
+    model,
+  };
+}
+
+export async function POST(request: Request) {
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'public-chat'),
+    limit: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+  });
+  const headers = buildRateLimitHeaders(rateLimit, RATE_LIMIT);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers });
+  }
+
+  const body = await request.json().catch(() => null);
+  const messages = normalizeMessages(body);
+
+  if (!messages.length || messages[messages.length - 1]?.role !== 'user') {
+    return NextResponse.json({ error: 'message or messages ending with a user message is required' }, { status: 400, headers });
+  }
+
+  try {
+    const result = await callOpenAI(messages);
+
+    return NextResponse.json(
+      {
+        ok: result.ok,
+        mode: result.mode,
+        model: result.model,
+        reply: result.answer,
+        answer: result.answer,
+        error: result.error || null,
+        links: {
+          demo: DEMO_URL,
+          requestAccess: REQUEST_ACCESS_URL,
+          pricing: PRICING_URL,
+          login: '/login',
+        },
+        safety: {
+          authenticated_actions: false,
+          execution_allowed: false,
+          login_required_for_runtime: true,
+        },
+        suggestions: SUGGESTIONS,
+      },
+      { status: result.status, headers },
+    );
+  } catch (error) {
+    logServerError(error, 'public-chat-openai');
+    return serverErrorResponse({ headers });
+  }
 }
