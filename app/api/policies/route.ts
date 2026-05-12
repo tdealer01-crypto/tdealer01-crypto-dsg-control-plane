@@ -9,8 +9,8 @@ type PolicyRecord = {
   name?: string | null;
   version?: string | null;
   status?: string | null;
-  thresholds?: Record<string, unknown> | null;
-  config?: Record<string, unknown> | null;
+  thresholds?: unknown;
+  config?: unknown;
   governance_state?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
@@ -21,15 +21,21 @@ function isMissingColumnError(error: unknown) {
   return message.includes('column') && message.includes('does not exist');
 }
 
+function jsonObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
 function normalizePolicy(policy: PolicyRecord, source: string) {
-  const thresholds = policy.thresholds || policy.config || {};
+  const thresholds = jsonObject(policy.thresholds);
+  const config = jsonObject(policy.config);
 
   return {
     id: String(policy.id || ''),
     name: String(policy.name || 'Unnamed policy'),
     version: String(policy.version || 'v1'),
     status: String(policy.status || 'active'),
-    thresholds,
+    thresholds: Object.keys(thresholds).length > 0 ? thresholds : config,
     governance_state: String(policy.governance_state || (source === 'runtime_policies' ? 'active_in_runtime' : 'legacy_ready')),
     updated_at: String(policy.updated_at || policy.created_at || new Date().toISOString()),
   };
