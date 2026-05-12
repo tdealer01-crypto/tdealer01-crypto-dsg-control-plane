@@ -26,6 +26,14 @@ const usageSteps = [
   ['ค่อยขยาย rollout', 'เมื่อหนึ่ง action ใช้ได้จริง ค่อยเพิ่ม workflow อื่น ไม่ claim เกินหลักฐาน'],
 ];
 
+const connectSteps = [
+  ['1', 'Register', 'สร้าง agent record ใน Control Plane แล้วออก API key / agent id ให้ลูกค้า'],
+  ['2', 'Wrap', 'ครอบ function execute เดิมของลูกค้าด้วย guardedAction ไม่แก้ logic หลักของ agent'],
+  ['3', 'Preflight', 'ส่ง action envelope + memory packet ไปที่ DSG ก่อน action ออกสู่ระบบจริง'],
+  ['4', 'Decide', 'ถ้า ALLOW ให้ execute ต่อ ถ้า STABILIZE/BLOCK ให้หยุดและคืน reason ให้ operator'],
+  ['5', 'Receipt', 'หลัง execute ส่ง result receipt hash กลับมาเก็บ audit trail ใน Control Plane'],
+];
+
 const benefits = [
   'ไม่ต้องย้าย agent runtime เดิม',
   'เห็นผลทันทีว่า action ไหนผ่าน หยุด หรือถูกบล็อก',
@@ -107,6 +115,31 @@ export default function ProductPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="mt-6 border border-blue-300/20 bg-blue-300/10 p-6">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-blue-200">ต่อเข้า agent ระบบเดิมของลูกค้า</p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">ต่อแบบ wrapper ไม่ต้องรื้อ agent เดิม</h2>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-300">
+            วิธีต่อที่ถูกต้องคือไม่ให้ลูกค้าย้าย agent เข้ามาอยู่ใน DSG แต่ให้วาง CospinDSG เป็น pre-action gate หน้า function ที่กำลังจะทำงานจริง เช่น transfer, deploy, approve หรือ write external system.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-5">
+            {connectSteps.map(([step, title, body]) => (
+              <div key={step} className="border border-blue-200/15 bg-black/20 p-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-200/30 bg-blue-200/10 text-sm font-semibold text-blue-100">
+                  {step}
+                </div>
+                <h3 className="mt-4 text-sm font-semibold text-white">{title}</h3>
+                <p className="mt-2 text-xs leading-6 text-blue-50/85">{body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 border border-white/10 bg-[#0d0f12] p-4 text-sm leading-7 text-slate-300">
+            <p className="font-semibold text-white">Integration rule</p>
+            <p className="mt-2">
+              Customer agent เดิมยังเรียก tool เดิมเหมือนเดิม แต่ก่อนเรียก tool จริงต้องส่ง action envelope เข้า DSG ก่อน. ถ้า gate ไม่คืน ALLOW ห้าม execute action และต้องแสดง reason ให้ operator หรือ reviewer เห็น.
+            </p>
           </div>
         </section>
 
