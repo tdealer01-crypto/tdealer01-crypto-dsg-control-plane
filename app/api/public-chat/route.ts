@@ -20,12 +20,17 @@ const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60 * 1000;
 const MAX_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 1600;
-const DEFAULT_MODEL = 'gpt-4.1-mini';
+const DEFAULT_OPENAI_MODEL = 'gpt-4.1-mini';
+const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-4.1-mini';
+const SYSTEM_PROMPT =
+  'You are DSG Public Assistant for DSG ONE / CospinDSG. Answer in the user language. Be concise, factual, and useful. Explain DSG product value, product usage, audit/enforce modes, pricing/demo/request-access paths, and safe next steps. Public mode must not execute actions, request secrets, or claim production readiness without evidence.';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
 };
+
+type Provider = 'openai' | 'openrouter';
 
 type OpenAITextContent = {
   text?: string;
@@ -43,6 +48,29 @@ type OpenAIResponse = {
     type?: string;
     code?: string;
   };
+};
+
+type OpenRouterResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+    };
+  }>;
+  error?: {
+    message?: string;
+    code?: string | number;
+    type?: string;
+  };
+};
+
+type ChatResult = {
+  ok: boolean;
+  status: number;
+  error?: string;
+  answer: string;
+  mode: 'openai_responses_api' | 'openrouter_chat_completions_api' | 'fallback_public_chat';
+  model: string | null;
+  provider: Provider | 'fallback';
 };
 
 function normalizeMessages(body: unknown): ChatMessage[] {
@@ -72,7 +100,27 @@ function formatConversation(messages: ChatMessage[]) {
     .join('\n\n');
 }
 
-function extractOutputText(payload: OpenAIResponse): string {
+function isSecretLike(value: string | undefined) {
+  if (!value) return false;
+  return value.startsWith('sk-') || value.startsWith('sk_') || value.startsWith('sk-or-');
+}
+
+function safeModel(value: string | undefined, fallback: string) {
+  if (!value || isSecretLike(value)) return fallback;
+  return value;
+}
+
+function resolveProvider(): Provider | null {
+  const requested = (process.env.PUBLIC_CHAT_PROVIDER || process.env.AI_PROVIDER || '').toLowerCase();
+
+  if (requested === 'openrouter') return 'openrouter';
+  if (requested === 'openai') return 'openai';
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  if (process.env.OPENROUTER_API_KEY) return 'openrouter';
+  return null;
+}
+
+function extractOpenAIText(payload: OpenAIResponse): string {
   if (typeof payload.output_text === 'string' && payload.output_text.trim()) {
     return payload.output_text.trim();
   }
@@ -83,6 +131,11 @@ function extractOutputText(payload: OpenAIResponse): string {
     .join('\n')
     .trim();
 
+  return text || 'DSG Assistant did not return text. Please try again.';
+}
+
+function extractOpenRouterText(payload: OpenRouterResponse): string {
+  const text = payload.choices?.[0]?.message?.content?.trim();
   return text || 'DSG Assistant did not return text. Please try again.';
 }
 
@@ -112,20 +165,25 @@ function fallbackReply(message: string) {
   return `สวัสดีครับ ผมคือ DSG public assistant ถามเรื่อง DSG Agent, pricing, demo, request access หรือวิธีเข้า dashboard ได้เลยครับ ถ้าอยากดูเดโม่ตอนนี้ เปิด ${DEMO_URL}`;
 }
 
-async function callOpenAI(messages: ChatMessage[]) {
+function fallbackResult(messages: ChatMessage[], error: string): ChatResult {
+  return {
+    ok: false,
+    status: 200,
+    error,
+    answer: fallbackReply(messages[messages.length - 1]?.content || ''),
+    mode: 'fallback_public_chat',
+    model: null,
+    provider: 'fallback',
+  };
+}
+
+async function callOpenAI(messages: ChatMessage[]): Promise<ChatResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return {
-      ok: false,
-      status: 200,
-      error: 'OPENAI_API_KEY is not configured',
-      answer: fallbackReply(messages[messages.length - 1]?.content || ''),
-      mode: 'fallback_public_chat',
-      model: null,
-    };
+    return fallbackResult(messages, 'OPENAI_API_KEY is not configured');
   }
 
-  const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+  const model = safeModel(process.env.OPENAI_MODEL, DEFAULT_OPENAI_MODEL);
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -134,8 +192,7 @@ async function callOpenAI(messages: ChatMessage[]) {
     },
     body: JSON.stringify({
       model,
-      instructions:
-        'You are DSG Public Assistant for DSG ONE / CospinDSG. Answer in the user language. Be concise, factual, and useful. Explain DSG product value, product usage, audit/enforce modes, pricing/demo/request-access paths, and safe next steps. Public mode must not execute actions, request secrets, or claim production readiness without evidence.',
+      instructions: SYSTEM_PROMPT,
       input: formatConversation(messages),
       max_output_tokens: 700,
     }),
@@ -145,22 +202,75 @@ async function callOpenAI(messages: ChatMessage[]) {
 
   if (!response.ok) {
     return {
-      ok: false,
+      ...fallbackResult(messages, payload.error?.message || 'OpenAI API request failed'),
       status: response.status,
-      error: payload.error?.message || 'OpenAI API request failed',
-      answer: fallbackReply(messages[messages.length - 1]?.content || ''),
-      mode: 'fallback_public_chat',
       model,
+      provider: 'openai',
     };
   }
 
   return {
     ok: true,
     status: 200,
-    answer: extractOutputText(payload),
+    answer: extractOpenAIText(payload),
     mode: 'openai_responses_api',
     model,
+    provider: 'openai',
   };
+}
+
+async function callOpenRouter(messages: ChatMessage[]): Promise<ChatResult> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return fallbackResult(messages, 'OPENROUTER_API_KEY is not configured');
+  }
+
+  const model = safeModel(process.env.OPENROUTER_MODEL, DEFAULT_OPENROUTER_MODEL);
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      'content-type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+      'X-Title': 'DSG ONE Public Assistant',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages.map((message) => ({ role: message.role, content: message.content })),
+      ],
+      max_tokens: 700,
+      temperature: 0.2,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as OpenRouterResponse;
+
+  if (!response.ok) {
+    return {
+      ...fallbackResult(messages, payload.error?.message || 'OpenRouter API request failed'),
+      status: response.status,
+      model,
+      provider: 'openrouter',
+    };
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    answer: extractOpenRouterText(payload),
+    mode: 'openrouter_chat_completions_api',
+    model,
+    provider: 'openrouter',
+  };
+}
+
+async function callModel(messages: ChatMessage[]): Promise<ChatResult> {
+  const provider = resolveProvider();
+  if (provider === 'openrouter') return callOpenRouter(messages);
+  if (provider === 'openai') return callOpenAI(messages);
+  return fallbackResult(messages, 'No AI provider key is configured');
 }
 
 export async function POST(request: Request) {
@@ -183,12 +293,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await callOpenAI(messages);
+    const result = await callModel(messages);
 
     return NextResponse.json(
       {
         ok: result.ok,
         mode: result.mode,
+        provider: result.provider,
         model: result.model,
         reply: result.answer,
         answer: result.answer,
@@ -209,7 +320,7 @@ export async function POST(request: Request) {
       { status: result.status, headers },
     );
   } catch (error) {
-    logServerError(error, 'public-chat-openai');
+    logServerError(error, 'public-chat-ai-provider');
     return serverErrorResponse({ headers });
   }
 }
