@@ -68,3 +68,38 @@ Scope: this file applies to the entire repository unless a deeper `AGENTS.md` ov
 - Commit changes on the current branch when asked to modify the repository.
 - Use clear commit messages that describe the actual repository change.
 - PR bodies must summarize changed files, verification, and any known limitations without exaggerating readiness.
+
+## Agent Skills Directory memory
+
+The full 285-entry Agent Skills Directory from `agent_skills_directory.md.docx` is stored in repo under `docs/agent-skills-memory/` as chunked Markdown files.
+
+Use it as a candidate registry only. Do not claim a skill is installed, active, maintained, safe, or compatible until the specific GitHub repo/path is verified directly. Preserve duplicates from the source because the uploaded directory contained duplicates.
+
+Coverage currently expected:
+
+- `docs/agent-skills-memory/skills-001-050.md`
+- `docs/agent-skills-memory/skills-051-060.md`
+- `docs/agent-skills-memory/skills-061-070.md`
+- `docs/agent-skills-memory/skills-071-080.md`
+- `docs/agent-skills-memory/skills-081-090.md`
+- `docs/agent-skills-memory/skills-091-100.md`
+- `docs/agent-skills-memory/skills-101-110.md`
+- `docs/agent-skills-memory/skills-111-120.md`
+- `docs/agent-skills-memory/skills-121-130.md`
+- `docs/agent-skills-memory/skills-131-140.md`
+- `docs/agent-skills-memory/skills-141-150.md`
+- `docs/agent-skills-memory/skills-151.md`
+- `docs/agent-skills-memory/skills-152-160.md`
+- `docs/agent-skills-memory/skills-161-170.md`
+- `docs/agent-skills-memory/skills-171-180.md`
+- `docs/agent-skills-memory/skills-181-190.md`
+- `docs/agent-skills-memory/skills-191-200.md`
+- `docs/agent-skills-memory/skills-201-210.md`
+- `docs/agent-skills-memory/skills-211-220.md`
+- `docs/agent-skills-memory/skills-221-230.md`
+- `docs/agent-skills-memory/skills-231-240.md`
+- `docs/agent-skills-memory/skills-241-250.md`
+- `docs/agent-skills-memory/skills-251-260.md`
+- `docs/agent-skills-memory/skills-261-270.md`
+- `docs/agent-skills-memory/skills-271-280.md`
+- `docs/agent-skills-memory/skills-281-285.md`
