@@ -40,6 +40,8 @@ CospinDSG places a governance gate in front of existing AI agents so teams can a
 
 - Cloud Run service reaches Ready state.
 - `/product` loads from Cloud Run URL.
+- `/dashboard/policies` loads the redesigned policy workflow.
+- `/api/policies` returns at least one runtime or legacy policy.
 - `/api/public-chat/runtime` returns configured AI provider.
 - `/api/public-chat` returns real provider mode, not fallback.
 - Auto-Setup completes without runtime spine warnings.
@@ -90,5 +92,6 @@ Do not submit if any of these are true:
 - AI provider env is missing or model env contains an API key.
 - Public chat only returns fallback mode.
 - Runtime setup requires manual DB repair during buyer flow.
+- Policy workflow shows no policies after Auto-Setup/runtime seed.
 - Secrets are committed to GitHub.
 - Pricing/support/legal pages are missing.
