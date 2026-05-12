@@ -8,6 +8,24 @@ const monitorRows = [
   ['Control Plane', 'dashboard + integrations + docs', 'linked'],
 ];
 
+const workflowSteps = [
+  ['1', 'เลือก agent เดิม', 'ลูกค้าใช้ agent/runtime เดิม ไม่ต้องย้ายระบบหรือเขียน agent ใหม่'],
+  ['2', 'เลือก action ที่เสี่ยง', 'เริ่มจาก payment, deploy, privilege change หรือ external write ที่เห็นความเสี่ยงชัด'],
+  ['3', 'แนบ memory packet', 'ส่ง snapshot hash, classification, ttl และ context ที่จำเป็นมากับ action'],
+  ['4', 'เข้า CospinDSG gate', 'ตรวจ temporal, network, invariant, drift และ oscillation ก่อนปล่อย action'],
+  ['5', 'ตัดสินผล', 'ระบบคืน ALLOW, STABILIZE หรือ BLOCK พร้อม reason ที่อ่านได้'],
+  ['6', 'ส่งกลับ Control Plane', 'decision, evidence และ result receipt เชื่อมกลับ dashboard/audit flow เดิม'],
+];
+
+const usageSteps = [
+  ['เปิดหน้า Product', 'เข้า /product เพื่อดูภาพรวมว่า CospinDSG วางอยู่ตรงไหนของ agent flow'],
+  ['กด Connect agent', 'ไปที่ /dashboard/integrations เพื่อเริ่มต่อ agent เดิมเข้าระบบ'],
+  ['เลือก protected action', 'กำหนด action แรกที่ควรถูก gate เช่น payment หรือ deploy'],
+  ['ทดสอบ safe/risky action', 'ดูผล ALLOW, STABILIZE, BLOCK ใน mini monitor และ dashboard'],
+  ['เปิด evidence', 'ใช้ docs/audit/dashboard ดู memory, action, decision และ result hash'],
+  ['ค่อยขยาย rollout', 'เมื่อหนึ่ง action ใช้ได้จริง ค่อยเพิ่ม workflow อื่น ไม่ claim เกินหลักฐาน'],
+];
+
 const benefits = [
   'ไม่ต้องย้าย agent runtime เดิม',
   'เห็นผลทันทีว่า action ไหนผ่าน หยุด หรือถูกบล็อก',
@@ -56,6 +74,38 @@ export default function ProductPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="border border-white/10 bg-[#0d0f12] p-6">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">ลำดับการทำงาน</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">จาก agent เดิม ไปถึง evidence ใน Control Plane</h2>
+            <div className="mt-5 space-y-3">
+              {workflowSteps.map(([step, title, body]) => (
+                <div key={step} className="grid gap-4 border border-white/10 bg-white/[0.03] p-4 md:grid-cols-[52px_180px_1fr] md:items-start">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/10 text-sm font-semibold text-amber-100">
+                    {step}
+                  </div>
+                  <p className="text-sm font-semibold text-white">{title}</p>
+                  <p className="text-sm leading-7 text-slate-300">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-amber-300/20 bg-amber-300/10 p-6">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200">ขั้นตอนวิธีใช้</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">ใช้จริงแบบง่ายที่สุด</h2>
+            <div className="mt-5 space-y-3">
+              {usageSteps.map(([title, body], index) => (
+                <div key={title} className="border border-amber-300/15 bg-black/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Step {index + 1}</p>
+                  <h3 className="mt-2 text-sm font-semibold text-white">{title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-amber-50/90">{body}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
