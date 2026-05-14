@@ -1,6 +1,43 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { evaluateAgentCommandGate, type AgentCommandGateRequest } from '../../lib/dsg/agent-command-gate';
 import { recordGovernanceDecisionEvent, listGovernanceDecisionEvents } from '../../lib/governance/decision-recorder';
+
+
+const governanceDecisionRows: Array<Record<string, any>> = [];
+
+vi.mock('../../lib/supabase-server', () => ({
+  getSupabaseAdmin: () => ({
+    from: (table: string) => {
+      if (table !== 'dsg_governance_decision_events') {
+        throw new Error(`unexpected_table:${table}`);
+      }
+
+      return {
+        insert: async (row: Record<string, any>) => {
+          governanceDecisionRows.push({
+            ...row,
+            created_at: row.created_at ?? new Date(0).toISOString(),
+          });
+          return { error: null };
+        },
+        select: () => ({
+          eq: (_column: string, orgId: string) => ({
+            order: () => ({
+              limit: (limit: number) => ({
+                data: governanceDecisionRows
+                  .filter((row) => row.org_id === orgId)
+                  .slice(-limit)
+                  .reverse(),
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    },
+  }),
+}));
+
 
 /**
  * Test suite for hardened governance runtime.

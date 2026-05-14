@@ -101,6 +101,9 @@ export default function PricingPage() {
             <Link href="/readiness-report" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-amber-200">
               View $9 report
             </Link>
+            <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/40">
+              Start Trial
+            </Link>
             <Link href="https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action" className="rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/40">
               Install free Action
             </Link>

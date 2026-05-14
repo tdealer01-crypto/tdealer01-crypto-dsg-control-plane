@@ -24,7 +24,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-org-id': 'org-test' },
+      headers: { 'Content-Type': 'application/json', 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
       body: JSON.stringify({ caseId: 'case-001' }),
     });
 
@@ -42,7 +42,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', {
       method: 'POST',
-      headers: { 'x-org-id': 'org-test' },
+      headers: { 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'APR-1001' }) });
@@ -59,7 +59,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', {
       method: 'POST',
-      headers: { 'x-org-id': 'org-test' },
+      headers: { 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'APR-1002' }) });
@@ -76,7 +76,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', {
       method: 'POST',
-      headers: { 'x-org-id': 'org-test' },
+      headers: { 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'APR-1003' }) });

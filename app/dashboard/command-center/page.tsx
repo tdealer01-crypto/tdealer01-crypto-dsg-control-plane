@@ -550,11 +550,11 @@ export default function CommandCenterPage() {
               <p className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm leading-6 text-slate-300">Boundary: this is a deterministic TypeScript static_check scaffold. This page does not claim external Z3 production invocation.</p>
             </Panel>
 
-            <Panel eyebrow="Live action monitor" title="Agent console and audit stream">
+            <Panel eyebrow="Live action monitor" title="Monitor / Control Panel">
               <div className="grid gap-6 lg:grid-cols-2">
                 <div>
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-white">Run diagnostics</h3>
+                    <h3 className="font-semibold text-white">Chat / Agent Console</h3>
                     <button type="button" onClick={submitCommand} disabled={chatBusy} className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300">{chatBusy ? 'Running…' : 'Run'}</button>
                   </div>
                   <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="Ask readiness, audit, graph, capacity, or recovery questions..." className="mt-4 h-32 w-full border border-white/10 bg-black/30 p-4 text-sm text-slate-100 outline-none transition focus:border-amber-300/40" />
