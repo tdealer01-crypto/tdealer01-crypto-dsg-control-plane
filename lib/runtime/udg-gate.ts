@@ -149,7 +149,7 @@ export function evaluateCospinUDGGate(
   }
 
   const oscillation = oscillationScore(current, envelope.nextState);
-  if (oscillation > policy.maxOscillation) {
+  if (oscillation >= policy.maxOscillation) {
     return { decision: 'STABILIZE', reason: 'OSCILLATION_FREQUENCY_EXCEEDED', metrics: { velocity, drift, oscillation } };
   }
 
