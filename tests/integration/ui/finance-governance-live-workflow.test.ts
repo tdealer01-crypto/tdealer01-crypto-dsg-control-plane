@@ -9,7 +9,7 @@ describe('finance governance live workflow dashboard surface', () => {
   it('shows submit/approve/reject/escalate actions connected to API endpoints', () => {
     const source = read('app/finance-governance/live/workflow/page.tsx');
 
-    expect(source).toContain('Submit sample workflow item');
+    expect(source).toContain('Submit selected workflow item');
     expect(source).toContain("void runApprovalAction(item.id, 'approve')");
     expect(source).toContain("void runApprovalAction(item.id, 'reject')");
     expect(source).toContain("void runApprovalAction(item.id, 'escalate')");
