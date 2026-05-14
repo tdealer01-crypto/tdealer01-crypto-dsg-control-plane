@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '../supabase-server';
 
 export type GovernanceDecisionAction = 'evaluate' | 'approve' | 'reject' | 'pause' | 'resume' | 'rollback';
 export type GovernanceDecision = 'PASS' | 'REVIEW' | 'BLOCK' | 'UNSUPPORTED';

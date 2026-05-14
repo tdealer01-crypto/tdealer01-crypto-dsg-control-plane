@@ -85,7 +85,7 @@ function toAuditEvent(row: FinanceGovernanceAuditLedgerRow): FinanceGovernanceAu
   };
 }
 
-function toRecord(row: FinanceGovernanceAuditLedgerRow) {
+function toRecord(row: FinanceGovernanceAuditLedgerRow, requestHash: string) {
   return {
     org_id: row.org_id,
     case_id: row.case_id,
@@ -96,7 +96,7 @@ function toRecord(row: FinanceGovernanceAuditLedgerRow) {
     target: row.target,
     message: row.message,
     next_status: row.next_status,
-    request_hash: row.request_hash,
+    request_hash: requestHash,
     payload: row.payload,
   };
 }
@@ -105,7 +105,7 @@ export function verifyFinanceGovernanceAuditLedgerRow(
   row: FinanceGovernanceAuditLedgerRow
 ): FinanceGovernanceAuditVerification {
   const expectedRequestHash = sha256(toAuditEvent(row));
-  const expectedRecordHash = sha256(toRecord(row));
+  const expectedRecordHash = sha256(toRecord(row, expectedRequestHash));
   const mismatches: string[] = [];
 
   if (row.request_hash !== expectedRequestHash) {

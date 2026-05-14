@@ -1,4 +1,4 @@
-export type FinanceGovernanceAccessAction = 'approve' | 'reject' | 'escalate' | 'read';
+export type FinanceGovernanceAccessAction = 'submit' | 'approve' | 'reject' | 'escalate' | 'read';
 
 export type FinanceGovernanceAccessDecision = {
   ok: boolean;

@@ -264,7 +264,7 @@ export default function AppShellPage() {
             <p className="text-[11px] uppercase tracking-[0.34em] text-[#D4AF37]">DSG One · Authenticated Cockpit</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Unified Command Workspace</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Split-pane agent chat, mission telemetry, and protected runtime evidence in one operator-first surface.
+              Split-pane chat and live monitor for agent chat, mission telemetry, and protected runtime evidence in one operator-first surface.
             </p>
           </div>
 
