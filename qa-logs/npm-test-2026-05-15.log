@@ -1,0 +1,10 @@
+
+> test
+> vitest run
+
+ RUN  v2.1.9 /workspace/tdealer01-crypto-dsg-control-plane
+
+ Test Files  77 passed | 2 skipped (79)
+      Tests  252 passed | 4 skipped (256)
+   Start at  16:38:06
+   Duration  10.38s (transform 1.80s, setup 0ms, collect 2.18s, tests 6.95s, environment 15ms, prepare 5.29s)

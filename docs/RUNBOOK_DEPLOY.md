@@ -214,6 +214,43 @@ Run migrations for the target environment before traffic cutover.
 
 - Validate schema changes via application smoke checks.
 
+**Complete migration order (all 34 files as of 2026-05-15):**
+
+1. `20260323053000_product_loop_scaffold.sql`
+2. `20260323054500_product_loop_rls.sql`
+3. `20260323110000_billing_checkout_flow.sql`
+4. `20260323140000_schema_constraints_hardening.sql`
+5. `20260323141000_rls_policy_hardening.sql`
+6. `20260329120000_trial_signup_flow.sql`
+7. `20260330_monitor_stats.sql`
+8. `20260331_runtime_spine.sql`
+9. `20260331_runtime_spine_rpc.sql`
+10. `20260401093000_batch3_enterprise_identity_rollout.sql`
+11. `20260401120000_enterprise_access_batch2.sql`
+12. `20260401123000_access_requests_org_scope.sql`
+13. `20260401_runtime_rbac.sql`
+14. `20260401_schema_policies_table.sql`
+15. `20260402100000_usage_counters_unique.sql`
+16. `20260402_billing_quota_in_rpc.sql`
+17. `20260404_runtime_spine_rpc_hardening.sql`
+18. `202604110015_create_dsg_app_builder_jobs.sql`
+19. `20260411101500_finance_governance_workflow.sql`
+20. `20260413090000_integration_profiles.sql`
+21. `20260417000000_full_schema_sync.sql`
+22. `20260424010000_finance_governance_control_layer.sql`
+23. `20260426090000_finance_workflow_action_audit_evidence.sql`
+24. `202604261825_agent_model_provider_keys.sql`
+25. `20260426193300_release_gate_entitlements.sql`
+26. `20260429060000_finance_governance_audit_ledger.sql`
+27. `20260430_gateway_managed_connectors.sql`
+28. `20260430_gateway_monitor_events.sql`
+29. `202605040016_create_dsg_governed_memory_layer.sql`
+30. `202605060001_create_dsg_midmarket_governance_autopilot.sql`
+31. `202605060002_create_dsg_agent_command_gate.sql`
+32. `20260507_prepare_governance_event_trigger.sql`
+33. `20260508_governance_decision_events.sql`
+34. `20260512090000_create_agent_gate_settings.sql`
+
 ### One-command runtime RPC + PostgREST cache recovery
 When `rpc_commit` fails because PostgREST cannot find `public.runtime_commit_execution(...)` in schema cache:
 
