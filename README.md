@@ -368,22 +368,6 @@ ProofGate product surface
 customer-readable monitor
 ```
 
-Do not claim unless newer independent evidence proves it:
-
-```text
-certified
-guaranteed compliant
-third-party audited
-NIST certified
-ISO certified
-external Z3 solver invoked in production
-WORM evidence storage complete
-real Ed25519/ECDSA signing complete
-JWT/JWKS auth complete
-full production go-live complete
-better than every listed vendor
-```
-
 ---
 
 ## Deployment truth boundary
