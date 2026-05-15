@@ -23,3 +23,10 @@ pnpm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# temp files from scripts
+.tmp/
+
+# playwright output
+test-results/
+playwright-report/
