@@ -30,3 +30,4 @@ pnpm-debug.log*
 # playwright output
 test-results/
 playwright-report/
+.vercel
