@@ -69,38 +69,28 @@ function ApprovalRow({ item }: { item: ApprovalItem }) {
         {state.kind === 'error' && (
           <p className="mb-2 text-xs text-rose-300">{state.message}</p>
         )}
-        <div className="flex flex-wrap gap-2">
-          {isActionable && state.kind !== 'done' ? (
-            <>
-              <button
-                disabled={state.kind === 'busy'}
-                onClick={() => void handleAction('approve')}
-                className="rounded-lg bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/20 transition hover:bg-emerald-400/20 disabled:opacity-50"
-              >
-                {state.kind === 'busy' && state.action === 'approve' ? 'Approving…' : 'Approve'}
-              </button>
-              <button
-                disabled={state.kind === 'busy'}
-                onClick={() => void handleAction('reject')}
-                className="rounded-lg bg-rose-400/10 px-3 py-1.5 text-xs font-bold text-rose-300 ring-1 ring-rose-400/20 transition hover:bg-rose-400/20 disabled:opacity-50"
-              >
-                {state.kind === 'busy' && state.action === 'reject' ? 'Rejecting…' : 'Reject'}
-              </button>
-            </>
-          ) : state.kind === 'done' ? (
-            <span className="text-xs text-slate-500">Recorded ✓</span>
-          ) : (
-            <span className="text-xs text-slate-600">Closed</span>
-          )}
-          <a
-            href={`/api/finance-governance/approvals/${item.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
-          >
-            Export PDF
-          </a>
-        </div>
+        {isActionable && state.kind !== 'done' ? (
+          <div className="flex gap-2">
+            <button
+              disabled={state.kind === 'busy'}
+              onClick={() => void handleAction('approve')}
+              className="rounded-lg bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/20 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            >
+              {state.kind === 'busy' && state.action === 'approve' ? 'Approving…' : 'Approve'}
+            </button>
+            <button
+              disabled={state.kind === 'busy'}
+              onClick={() => void handleAction('reject')}
+              className="rounded-lg bg-rose-400/10 px-3 py-1.5 text-xs font-bold text-rose-300 ring-1 ring-rose-400/20 transition hover:bg-rose-400/20 disabled:opacity-50"
+            >
+              {state.kind === 'busy' && state.action === 'reject' ? 'Rejecting…' : 'Reject'}
+            </button>
+          </div>
+        ) : state.kind === 'done' ? (
+          <span className="text-xs text-slate-500">Recorded ✓</span>
+        ) : (
+          <span className="text-xs text-slate-600">No action needed</span>
+        )}
       </td>
     </tr>
   );
@@ -126,7 +116,7 @@ export default function ApprovalsTable({ approvals }: { approvals: ApprovalItem[
             <th className="px-5 py-4 font-medium">Amount</th>
             <th className="px-5 py-4 font-medium">Status</th>
             <th className="px-5 py-4 font-medium">Risk</th>
-            <th className="px-5 py-4 font-medium">Action / Export</th>
+            <th className="px-5 py-4 font-medium">Action</th>
           </tr>
         </thead>
         <tbody>

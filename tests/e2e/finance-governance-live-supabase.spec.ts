@@ -21,7 +21,7 @@ describeLive('finance governance live e2e against supabase', () => {
     const admin = getAdmin();
     const email = process.env.E2E_TEST_EMAIL!;
     const { data: authUsers } = await admin.auth.admin.listUsers();
-    const authUser = authUsers?.users?.find((u) => u.email === email);
+    const authUser = authUsers?.users?.find((u: { email?: string }) => u.email === email);
     if (!authUser) throw new Error(`E2E test user not found: ${email}`);
 
     const { data: profile } = await admin
