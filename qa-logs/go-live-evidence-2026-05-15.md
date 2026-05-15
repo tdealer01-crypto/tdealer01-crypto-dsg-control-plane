@@ -2,75 +2,49 @@
 
 ## Target
 - URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
-- Branch: claude/analyze-files-tbmNa → merged to main
-- Environment: production (Vercel)
+- Branch: main (merged PR #516)
+- Commit: dd7f499
+- Verified at: 2026-05-15T16:49 UTC
 
-## Repository-level checks
+## Gate Results
 
 | Requirement | Status | Evidence |
 |---|---|---|
 | Vitest baseline (252 tests) | ✅ PASS | qa-logs/npm-test-2026-05-15.log |
-| TypeScript typecheck | ✅ PASS | zero errors, verified 2026-05-15 |
-| No legacy server-store callers | ✅ PASS | rg found zero callers in app/lib/components/scripts |
-| Migration inventory complete | ✅ PASS | 34 migrations in supabase/migrations/, all listed in RUNBOOK_DEPLOY.md |
-| RUNBOOK_DEPLOY.md migration list | ✅ UPDATED | includes all 34 migrations through 20260512090000_create_agent_gate_settings.sql |
+| TypeScript typecheck | ✅ PASS | zero errors |
+| /terms | ✅ HTTP 200 | go-no-go-gate.sh |
+| /privacy | ✅ HTTP 200 | go-no-go-gate.sh |
+| /security | ✅ HTTP 200 | go-no-go-gate.sh |
+| /support | ✅ HTTP 200 | go-no-go-gate.sh |
+| /api/health | ✅ HTTP 200, ok:true | go-no-go-gate.sh |
+| /api/readiness | ✅ HTTP 200, status=ready | go-no-go-gate.sh |
+| /api/finance-governance/readiness | ✅ HTTP 200, ok:true | direct curl |
+| Finance governance backend | ✅ ok:true | /api/readiness checks |
+| Supabase service role | ✅ ok:true | /api/readiness checks |
+| DSG Core config | ✅ ok:true | /api/readiness checks |
+| DSG Core health | ✅ ok:true | /api/readiness checks |
+| Env vars complete | ✅ ok:true | /api/readiness checks |
+| No legacy server-store callers | ✅ PASS | go-no-go-gate.sh |
+| User-flow audit gate (Playwright) | ✅ PASS (E2E skipped — no live Supabase creds in env) | go-no-go-gate.sh |
+| GO/NO-GO gate | ✅ PASS | qa-logs/go-no-go-2026-05-15.log |
 
-## Live deployment smoke checks (2026-05-15T18:00Z)
-
-| Endpoint | HTTP | Result |
-|---|---|---|
-| /api/health | ✅ 200 | `ok:true, db_ok:true, core_ok:true` |
-| /api/readiness | ✅ 200 | all 7 checks ok |
-| /api/finance-governance/readiness | ✅ 200 | all 7 checks ok (2 env + 5 tables) |
-
-### /api/readiness full response (2026-05-15T18:00:36Z)
+## /api/health response (2026-05-15T16:49:04Z)
 ```json
 {
   "ok": true,
-  "checks": {
-    "env": { "ok": true },
-    "nextAuthSecret": { "ok": true },
-    "supabaseServiceRole": { "ok": true },
-    "dsgCoreConfig": { "ok": true },
-    "dsgCoreHealth": { "ok": true },
-    "financeGovernanceSurface": { "ok": true },
-    "financeGovernanceBackend": { "ok": true }
-  },
-  "timestamp": "2026-05-15T18:00:36.854Z"
+  "service": "dsg-control-plane",
+  "core_ok": true,
+  "db_ok": true,
+  "error": null,
+  "core": { "ok": true, "status": "ok", "version": "internal-runtime-gate" },
+  "readiness": { "ok": true, "checks": { "env": {"ok":true}, "nextAuthSecret": {"ok":true}, "supabaseServiceRole": {"ok":true}, "dsgCoreConfig": {"ok":true}, "dsgCoreHealth": {"ok":true}, "financeGovernanceSurface": {"ok":true}, "financeGovernanceBackend": {"ok":true} } }
 }
 ```
-
-### /api/finance-governance/readiness full response (2026-05-15T18:00:37Z)
-```json
-{
-  "ok": true,
-  "service": "finance-governance",
-  "checks": [
-    { "name": "env:NEXT_PUBLIC_SUPABASE_URL",         "ok": true, "message": "configured" },
-    { "name": "env:SUPABASE_SERVICE_ROLE_KEY",         "ok": true, "message": "configured" },
-    { "name": "table:finance_transactions",            "ok": true, "message": "reachable" },
-    { "name": "table:finance_approval_requests",       "ok": true, "message": "reachable" },
-    { "name": "table:finance_approval_decisions",      "ok": true, "message": "reachable" },
-    { "name": "table:finance_governance_audit_ledger", "ok": true, "message": "reachable" },
-    { "name": "table:finance_workflow_action_events",  "ok": true, "message": "reachable" }
-  ],
-  "timestamp": "2026-05-15T18:00:37.916Z"
-}
-```
-
-## E2E test status
-
-| Test | Status | Notes |
-|---|---|---|
-| finance-governance-live-supabase.spec.ts | ✅ DESIGNED | gate: hasLiveSupabaseEnv && hasE2ECredentials |
-| global-setup.ts (form-fill auth) | ✅ IMPLEMENTED | fills /password-login, saves storageState |
-| Seed/cleanup via service_role | ✅ IMPLEMENTED | getTestOrgId() + seedApproval() + cleanupTestData() |
-| Live E2E run | PENDING | requires E2E_TEST_EMAIL + E2E_TEST_PASSWORD in CI secrets |
 
 ## Final Decision
 
-Production-readiness gate: **✅ CLOSED — PASS**
+Production-readiness gate: **PASS** ✅
+All scripted checks green. Live deployment is serving requests correctly.
 
-- Repository: tests pass, typecheck clean, no legacy callers, 34 migrations complete
-- Live deployment: /api/health ✅ · /api/readiness ✅ (7/7) · /api/finance-governance/readiness ✅ (7/7)
-- Verified: 2026-05-15T18:00Z
+Remaining open item (non-blocking for current go-live):
+- Live E2E against real Supabase (skipped in gate — requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY injected into shell running the E2E command)
