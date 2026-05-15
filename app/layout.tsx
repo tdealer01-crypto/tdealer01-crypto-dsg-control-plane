@@ -1,9 +1,11 @@
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
 import { AppLanguageCopyBridge } from '@/components/app-language-copy-bridge';
-import './globals.css'; // Global styles
+import { ToastProvider } from '@/components/toast';
+import './globals.css';
 
 const appName = 'DSG ONE V1';
-const appDescription = 'Governed App Builder Runtime with evidence-based customer workspace.';
+const appDescription =
+  'Governed App Builder Runtime with evidence-based customer workspace.';
 
 export const metadata: Metadata = {
   title: {
@@ -25,12 +27,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="th">
       <body suppressHydrationWarning>
         <AppLanguageCopyBridge />
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );
