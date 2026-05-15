@@ -16,3 +16,27 @@ export async function GET(_request: Request) {
     return handleFinanceGovernanceApiError('api/finance-governance', error);
   }
 }
+
+const ALLOWED_ACTIONS = new Set(['approve', 'reject', 'escalate'] as const);
+type AllowedAction = 'approve' | 'reject' | 'escalate';
+
+export async function POST(request: Request) {
+  try {
+    const orgId = await getOrg();
+    const body = await request.json().catch(() => null);
+    const approvalId = typeof body?.approvalId === 'string' ? body.approvalId.trim() : '';
+    const action = typeof body?.action === 'string' ? body.action.trim() : '';
+
+    if (!approvalId) {
+      return NextResponse.json({ error: 'approvalId is required' }, { status: 400 });
+    }
+    if (!ALLOWED_ACTIONS.has(action as AllowedAction)) {
+      return NextResponse.json({ error: 'action must be approve, reject, or escalate' }, { status: 400 });
+    }
+
+    const result = await repository.applyAction(orgId, approvalId, action as AllowedAction);
+    return NextResponse.json(result);
+  } catch (error) {
+    return handleFinanceGovernanceApiError('api/finance-governance', error);
+  }
+}
