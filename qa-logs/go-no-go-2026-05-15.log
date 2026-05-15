@@ -1,0 +1,18 @@
+== Trust surface checks for https://tdealer01-crypto-dsg-control-plane.vercel.app ==
+✅ /terms -> HTTP 200
+✅ /privacy -> HTTP 200
+✅ /security -> HTTP 200
+✅ /support -> HTTP 200
+== Runtime baseline checks ==
+✅ /api/health -> HTTP 200
+✅ /api/readiness -> HTTP 200 status=ready
+== User-flow audit gate (Playwright) ==
+
+Running 1 test using 1 worker
+
+  -  1 [chromium] › tests/e2e/finance-governance-live-supabase.spec.ts:24:7 › finance governance live e2e against supabase › submit -> approve persists to Supabase, updates UI, and writes audit evidence
+
+  1 skipped
+✅ user-flow audit passed
+✅ No legacy /api/finance-governance/server-store callers found
+GO/NO-GO RESULT: PASS (all scripted checks green)
