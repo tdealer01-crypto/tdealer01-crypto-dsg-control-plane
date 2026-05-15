@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import ApprovalsTable from '../../../../components/finance/ApprovalsTable';
 import ErrorBoundary from '../../../../components/ErrorBoundary';
 import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/repository';
@@ -8,12 +7,7 @@ const repository = new FinanceGovernanceRepository();
 export const dynamic = 'force-dynamic';
 
 export default async function FinanceGovernanceApprovalsPage() {
-  let orgId: string;
-  try {
-    orgId = await getOrg();
-  } catch {
-    redirect('/login?next=/finance-governance/app/approvals');
-  }
+  const orgId = await getOrg();
   const approvals = await repository.getApprovals(orgId);
 
   const pending = approvals.filter((a) => !['approved', 'rejected'].includes(a.status.toLowerCase()));
