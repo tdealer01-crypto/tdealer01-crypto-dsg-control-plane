@@ -6,7 +6,11 @@ function isProtectedPath(pathname: string) {
   return (
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
-    pathname === '/app-shell'
+    pathname === '/app-shell' ||
+    pathname === '/approvals' ||
+    pathname.startsWith('/approvals/') ||
+    pathname === '/gateway/monitor' ||
+    pathname.startsWith('/gateway/monitor/')
   );
 }
 
