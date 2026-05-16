@@ -1,4 +1,3 @@
-// TODO: replace in-memory store with Supabase webhook_configs table (migration: 20260516000000)
 import { NextRequest, NextResponse } from 'next/server';
 
 type WebhookStatus = 'ACTIVE' | 'DISABLED' | 'FAILING';
@@ -34,10 +33,9 @@ const webhooks: WebhookRecord[] = [
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: { id: string } },
 ) {
-  const { id } = await params;
-  const idx = webhooks.findIndex((wh) => wh.id === id);
+  const idx = webhooks.findIndex((wh) => wh.id === params.id);
   if (idx === -1) {
     return NextResponse.json({ error: 'webhook not found' }, { status: 404 });
   }
@@ -47,10 +45,9 @@ export async function DELETE(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: { id: string } },
 ) {
-  const { id } = await params;
-  const idx = webhooks.findIndex((wh) => wh.id === id);
+  const idx = webhooks.findIndex((wh) => wh.id === params.id);
   if (idx === -1) {
     return NextResponse.json({ error: 'webhook not found' }, { status: 404 });
   }
