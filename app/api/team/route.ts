@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 type Role = 'OWNER' | 'ADMIN' | 'OPERATOR' | 'VIEWER';
-type MemberStatus = 'ACTIVE' | 'PENDING';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  status: MemberStatus;
-  lastActive: string;
-  createdAt: string;
-}
 
 interface InviteRequest {
   email: string;
@@ -27,74 +17,58 @@ interface ErrorResponse {
 
 const VALID_ROLES: Role[] = ['OWNER', 'ADMIN', 'OPERATOR', 'VIEWER'];
 
-// In-memory store for demo; replace with DB in production
-const MEMBERS: TeamMember[] = [
-  {
-    id: 'mem_001',
-    name: 'Alex Rivera',
-    email: 'alex.rivera@acmecorp.com',
-    role: 'OWNER',
-    status: 'ACTIVE',
-    lastActive: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-    createdAt: new Date('2024-01-10').toISOString(),
-  },
-  {
-    id: 'mem_002',
-    name: 'Jordan Chen',
-    email: 'jordan.chen@acmecorp.com',
-    role: 'ADMIN',
-    status: 'ACTIVE',
-    lastActive: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    createdAt: new Date('2024-01-12').toISOString(),
-  },
-  {
-    id: 'mem_003',
-    name: 'Morgan Davies',
-    email: 'morgan.davies@acmecorp.com',
-    role: 'OPERATOR',
-    status: 'ACTIVE',
-    lastActive: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date('2024-02-01').toISOString(),
-  },
-  {
-    id: 'mem_004',
-    name: 'Sam Okafor',
-    email: 'sam.okafor@acmecorp.com',
-    role: 'OPERATOR',
-    status: 'ACTIVE',
-    lastActive: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date('2024-02-15').toISOString(),
-  },
-  {
-    id: 'mem_005',
-    name: 'Taylor Kim',
-    email: 'taylor.kim@acmecorp.com',
-    role: 'VIEWER',
-    status: 'ACTIVE',
-    lastActive: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date('2024-03-01').toISOString(),
-  },
-  {
-    id: 'mem_006',
-    name: 'Casey Patel',
-    email: 'casey.patel@acmecorp.com',
-    role: 'VIEWER',
-    status: 'ACTIVE',
-    lastActive: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date('2024-03-20').toISOString(),
-  },
-];
+async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>, authUserId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('users')
+    .select('org_id')
+    .eq('auth_user_id', authUserId)
+    .single();
+  return data?.org_id ?? null;
+}
 
 export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({
-    members: MEMBERS,
-    total: MEMBERS.length,
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+
+  const { data: members, error } = await supabase
+    .from('users')
+    .select('id, email, role, is_active, created_at, updated_at, user_org_roles(role)')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: true });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const shaped = (members ?? []).map((m) => {
+    const orgRole = Array.isArray(m.user_org_roles) && m.user_org_roles.length > 0
+      ? (m.user_org_roles[0] as { role: string }).role
+      : (m.role ?? 'VIEWER');
+    return {
+      id: m.id,
+      name: m.email.split('@')[0].replace(/[._]/g, ' '),
+      email: m.email,
+      role: orgRole,
+      status: m.is_active ? 'ACTIVE' : 'PENDING',
+      lastActive: m.updated_at ?? '',
+      createdAt: m.created_at ?? new Date().toISOString(),
+    };
   });
+
+  return NextResponse.json({ members: shaped, total: shaped.length });
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: unknown;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
@@ -135,23 +109,48 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Check for duplicate
-  const existing = MEMBERS.find((m) => m.email.toLowerCase() === email.toLowerCase());
+  const { data: existing } = await supabase
+    .from('users')
+    .select('id')
+    .eq('org_id', orgId)
+    .ilike('email', email)
+    .maybeSingle();
+
   if (existing) {
     const err: ErrorResponse = { error: 'A member with this email already exists', field: 'email' };
     return NextResponse.json(err, { status: 409 });
   }
 
-  const invite: TeamMember = {
-    id: `mem_${Date.now()}`,
+  // Insert new user with PENDING status
+  const { data: newUser, error: insertError } = await supabase
+    .from('users')
+    .insert({
+      email,
+      org_id: orgId,
+      role,
+      is_active: false,
+    })
+    .select()
+    .single();
+
+  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+
+  // Insert org role
+  await supabase.from('user_org_roles').insert({
+    org_id: orgId,
+    user_id: newUser.id,
+    role,
+  });
+
+  const invite = {
+    id: newUser.id,
     name: email.split('@')[0].replace(/[._]/g, ' '),
     email,
     role,
-    status: 'PENDING',
+    status: 'PENDING' as const,
     lastActive: '',
-    createdAt: new Date().toISOString(),
+    createdAt: newUser.created_at ?? new Date().toISOString(),
   };
-
-  MEMBERS.push(invite);
 
   return NextResponse.json(invite, { status: 201 });
 }

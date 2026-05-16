@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createHash, randomBytes } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
 type Scope = 'read' | 'write' | 'admin' | 'gates:evaluate' | 'proofs:prove';
-type KeyStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 type ExpiryOption = 'never' | '30d' | '90d' | '1y';
-
-interface ApiKeyRecord {
-  id: string;
-  name: string;
-  prefix: string;
-  scopes: Scope[];
-  createdAt: string;
-  lastUsed: string | null;
-  expiry: string | null;
-  status: KeyStatus;
-  requestsThisMonth: number;
-}
 
 interface CreateKeyRequest {
   name: string;
@@ -32,50 +21,6 @@ interface ErrorResponse {
 const VALID_SCOPES: Scope[] = ['read', 'write', 'admin', 'gates:evaluate', 'proofs:prove'];
 const VALID_EXPIRY: ExpiryOption[] = ['never', '30d', '90d', '1y'];
 
-// In-memory store for demo; replace with DB + hash storage in production
-const API_KEYS: ApiKeyRecord[] = [
-  {
-    id: 'key_001',
-    name: 'Production Gateway',
-    prefix: 'dsg_live_a3f9...',
-    scopes: ['read', 'write', 'gates:evaluate', 'proofs:prove'],
-    createdAt: new Date('2025-01-12').toISOString(),
-    lastUsed: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-    expiry: null,
-    status: 'ACTIVE',
-    requestsThisMonth: 14820,
-  },
-  {
-    id: 'key_002',
-    name: 'CI Pipeline — Read Only',
-    prefix: 'dsg_live_c7b2...',
-    scopes: ['read'],
-    createdAt: new Date('2025-02-04').toISOString(),
-    lastUsed: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    expiry: new Date('2026-05-04').toISOString(),
-    status: 'ACTIVE',
-    requestsThisMonth: 3412,
-  },
-  {
-    id: 'key_003',
-    name: 'Legacy Audit Export',
-    prefix: 'dsg_live_e1d4...',
-    scopes: ['read', 'write'],
-    createdAt: new Date('2024-11-19').toISOString(),
-    lastUsed: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-    expiry: new Date('2025-02-19').toISOString(),
-    status: 'EXPIRED',
-    requestsThisMonth: 0,
-  },
-];
-
-function randomHex(len: number): string {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < len; i++) result += chars[Math.floor(Math.random() * 16)];
-  return result;
-}
-
 function expiryDate(option: ExpiryOption): string | null {
   const now = Date.now();
   const dayMs = 86400000;
@@ -87,16 +32,55 @@ function expiryDate(option: ExpiryOption): string | null {
   }
 }
 
+async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>, authUserId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('users')
+    .select('org_id')
+    .eq('auth_user_id', authUserId)
+    .single();
+  return data?.org_id ?? null;
+}
+
 export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({
-    keys: API_KEYS.map(({ ...key }) => key),
-    total: API_KEYS.length,
-  });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+
+  const { data: keys, error } = await supabase
+    .from('api_keys')
+    .select('id, name, prefix, scopes, created_at, last_used, expiry, status, requests_this_month')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const shaped = (keys ?? []).map((k) => ({
+    id: k.id,
+    name: k.name,
+    prefix: k.prefix,
+    scopes: k.scopes,
+    createdAt: k.created_at,
+    lastUsed: k.last_used,
+    expiry: k.expiry,
+    status: k.status,
+    requestsThisMonth: k.requests_this_month,
+  }));
+
+  return NextResponse.json({ keys: shaped, total: shaped.length });
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: unknown;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
@@ -131,30 +115,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json(err, { status: 422 });
   }
 
-  // Validate expiry
   const resolvedExpiry: ExpiryOption = (expiry && VALID_EXPIRY.includes(expiry)) ? expiry : 'never';
 
-  // Generate key — in production, store only the hash
-  const rawKey = `dsg_live_${randomHex(8)}_${randomHex(24)}`;
+  // Generate key — store only the hash
+  const rawKey = `dsg_live_${randomBytes(4).toString('hex')}_${randomBytes(12).toString('hex')}`;
+  const keyHash = createHash('sha256').update(rawKey).digest('hex');
   const prefix = rawKey.slice(0, 18) + '...';
 
-  const newKey: ApiKeyRecord = {
-    id: `key_${Date.now()}`,
-    name: name.trim(),
-    prefix,
-    scopes: scopes as Scope[],
-    createdAt: new Date().toISOString(),
-    lastUsed: null,
-    expiry: expiryDate(resolvedExpiry),
-    status: 'ACTIVE',
-    requestsThisMonth: 0,
-  };
+  const { data: newKey, error: insertError } = await supabase
+    .from('api_keys')
+    .insert({
+      org_id: orgId,
+      name: name.trim(),
+      prefix,
+      key_hash: keyHash,
+      scopes: scopes as string[],
+      expiry: expiryDate(resolvedExpiry),
+      status: 'ACTIVE',
+    })
+    .select()
+    .single();
 
-  API_KEYS.unshift(newKey);
+  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
 
   // Return the raw key ONCE — it will not be retrievable again
   return NextResponse.json(
-    { ...newKey, key: rawKey },
+    {
+      id: newKey.id,
+      name: newKey.name,
+      prefix: newKey.prefix,
+      scopes: newKey.scopes,
+      createdAt: newKey.created_at,
+      lastUsed: newKey.last_used,
+      expiry: newKey.expiry,
+      status: newKey.status,
+      requestsThisMonth: newKey.requests_this_month,
+      key: rawKey,
+    },
     { status: 201 }
   );
 }

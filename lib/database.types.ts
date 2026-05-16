@@ -1698,6 +1698,177 @@ export interface Database {
         };
         Relationships: [];
       };
+      api_keys: {
+        Row: {
+          id: string;
+          org_id: string;
+          name: string;
+          prefix: string;
+          key_hash: string;
+          scopes: string[];
+          status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+          expiry: string | null;
+          created_at: string;
+          last_used: string | null;
+          requests_this_month: number;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          name: string;
+          prefix: string;
+          key_hash: string;
+          scopes?: string[];
+          status?: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+          expiry?: string | null;
+          created_at?: string;
+          last_used?: string | null;
+          requests_this_month?: number;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          name?: string;
+          prefix?: string;
+          key_hash?: string;
+          scopes?: string[];
+          status?: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+          expiry?: string | null;
+          created_at?: string;
+          last_used?: string | null;
+          requests_this_month?: number;
+        };
+        Relationships: [];
+      };
+      webhook_configs: {
+        Row: {
+          id: string;
+          org_id: string;
+          url: string;
+          secret_hash: string;
+          events: string[];
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          url: string;
+          secret_hash: string;
+          events?: string[];
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          url?: string;
+          secret_hash?: string;
+          events?: string[];
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      webhook_deliveries: {
+        Row: {
+          id: string;
+          webhook_id: string;
+          event: string;
+          status: 'success' | 'failed' | 'pending';
+          response_code: number | null;
+          duration_ms: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          webhook_id: string;
+          event: string;
+          status?: 'success' | 'failed' | 'pending';
+          response_code?: number | null;
+          duration_ms?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          webhook_id?: string;
+          event?: string;
+          status?: 'success' | 'failed' | 'pending';
+          response_code?: number | null;
+          duration_ms?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          org_id: string;
+          user_id: string | null;
+          type: string;
+          title: string;
+          message: string;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          user_id?: string | null;
+          type: string;
+          title: string;
+          message: string;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          user_id?: string | null;
+          type?: string;
+          title?: string;
+          message?: string;
+          read?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_settings: {
+        Row: {
+          id: string;
+          org_id: string;
+          user_id: string;
+          email: boolean;
+          slack: boolean;
+          pagerduty: boolean;
+          slack_webhook_url: string | null;
+          pagerduty_key: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          user_id: string;
+          email?: boolean;
+          slack?: boolean;
+          pagerduty?: boolean;
+          slack_webhook_url?: string | null;
+          pagerduty_key?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          user_id?: string;
+          email?: boolean;
+          slack?: boolean;
+          pagerduty?: boolean;
+          slack_webhook_url?: string | null;
+          pagerduty_key?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       alert_summary_open: {

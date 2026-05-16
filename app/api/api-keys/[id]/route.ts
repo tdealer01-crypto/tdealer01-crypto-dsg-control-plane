@@ -1,41 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
-
-type KeyStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
-type Scope = 'read' | 'write' | 'admin' | 'gates:evaluate' | 'proofs:prove';
-
-interface ApiKeyRecord {
-  id: string;
-  name: string;
-  prefix: string;
-  scopes: Scope[];
-  createdAt: string;
-  lastUsed: string | null;
-  expiry: string | null;
-  status: KeyStatus;
-  requestsThisMonth: number;
-}
 
 interface ErrorResponse {
   error: string;
 }
 
-// Shared in-memory store (same reference as parent route in module scope)
-// In production this would be a DB query
-const API_KEYS: ApiKeyRecord[] = [
-  {
-    id: 'key_001',
-    name: 'Production Gateway',
-    prefix: 'dsg_live_a3f9...',
-    scopes: ['read', 'write', 'gates:evaluate', 'proofs:prove'],
-    createdAt: new Date('2025-01-12').toISOString(),
-    lastUsed: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-    expiry: null,
-    status: 'ACTIVE',
-    requestsThisMonth: 14820,
-  },
-];
+async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>, authUserId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('users')
+    .select('org_id')
+    .eq('auth_user_id', authUserId)
+    .single();
+  return data?.org_id ?? null;
+}
 
 export async function DELETE(
   _req: NextRequest,
@@ -48,19 +27,36 @@ export async function DELETE(
     return NextResponse.json(err, { status: 400 });
   }
 
-  const idx = API_KEYS.findIndex((k) => k.id === id);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (idx === -1) {
+  const orgId = await getOrgId(supabase, user.id);
+  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+
+  // Find the key scoped to this org
+  const { data: existing, error: fetchError } = await supabase
+    .from('api_keys')
+    .select('id, status')
+    .eq('id', id)
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 });
+
+  if (!existing) {
     const err: ErrorResponse = { error: `API key '${id}' not found` };
     return NextResponse.json(err, { status: 404 });
   }
 
-  if (API_KEYS[idx].status === 'REVOKED') {
-    const err: ErrorResponse = { error: 'API key is already revoked' };
-    return NextResponse.json(err, { status: 409 });
-  }
+  // Update status to REVOKED
+  const { error: updateError } = await supabase
+    .from('api_keys')
+    .update({ status: 'REVOKED' })
+    .eq('id', id)
+    .eq('org_id', orgId);
 
-  API_KEYS[idx] = { ...API_KEYS[idx], status: 'REVOKED' };
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
   return NextResponse.json({
     id,
