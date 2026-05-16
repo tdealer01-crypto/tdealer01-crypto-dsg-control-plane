@@ -9,6 +9,10 @@ export default function RefTracker() {
   useEffect(() => {
     const code = searchParams.get('ref');
     if (!code) return;
+
+    // Persist the referral code in a cookie so signup/lead flows can attribute it
+    document.cookie = `ref_code=${encodeURIComponent(code)};path=/;max-age=${60 * 60 * 24 * 30};SameSite=Lax`;
+
     fetch('/api/referrals', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

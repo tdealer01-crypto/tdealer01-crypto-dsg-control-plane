@@ -30,17 +30,22 @@ export async function GET() {
     const admin = getSupabaseAdmin();
     const code = generateCode(String(profile.org_id), profile.email ?? '');
 
-    // Atomic upsert — unique constraint on org_id ensures only one code per org
-    const { data: referral, error: upsertError } = await (admin as any)
+    // Insert-only upsert — on conflict (org_id unique), keep the existing row unchanged
+    // so previously shared links stay valid; then fetch the canonical row
+    await (admin as any)
       .from('referral_codes')
       .upsert(
         { code, org_id: profile.org_id, referrer_email: profile.email },
-        { onConflict: 'org_id', ignoreDuplicates: false },
-      )
-      .select()
+        { onConflict: 'org_id', ignoreDuplicates: true },
+      );
+
+    const { data: referral, error: fetchError } = await (admin as any)
+      .from('referral_codes')
+      .select('*')
+      .eq('org_id', profile.org_id)
       .single();
 
-    if (upsertError) throw upsertError;
+    if (fetchError) throw fetchError;
     return NextResponse.json({ ok: true, referral });
   } catch (err) {
     logApiError('api/referrals', err, {});
