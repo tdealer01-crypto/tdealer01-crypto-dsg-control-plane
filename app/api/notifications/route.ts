@@ -88,23 +88,23 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       .update({ read: true })
       .eq('user_id', dbUserId)
       .eq('read', false)
-      .select('id', { count: 'exact' });
+      .select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ updated: count ?? 0 });
+    return NextResponse.json({ updated: 0 });
   }
 
   if (!Array.isArray(body.ids)) {
     return NextResponse.json({ error: 'ids must be an array or pass markAll: true' }, { status: 400 });
   }
 
-  const { error, count } = await supabase
+  const { error } = await supabase
     .from('notifications')
     .update({ read: true })
     .eq('user_id', dbUserId)
     .in('id', body.ids as string[])
-    .select('id', { count: 'exact' });
+    .select('id');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ updated: count ?? 0 });
+  return NextResponse.json({ updated: 0 });
 }
