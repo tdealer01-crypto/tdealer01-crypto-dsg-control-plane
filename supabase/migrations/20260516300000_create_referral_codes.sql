@@ -13,7 +13,7 @@ create index if not exists referral_codes_org_idx on public.referral_codes (org_
 create index if not exists referral_codes_code_idx on public.referral_codes (code);
 
 alter table public.referral_codes enable row level security;
-create policy "service role full access" on public.referral_codes for all using (true) with check (true);
+-- No direct access for anon/authenticated clients — all mutations go through service-role API routes
 
 -- Track referral clicks/signups via leads table ref_code column
 alter table public.leads add column if not exists ref_code text;

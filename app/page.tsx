@@ -103,7 +103,7 @@ export default function HomePage() {
                 ดูราคา / Pricing
               </Link>
               <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-emerald-300/40">
-                เข้าสู่ระบบ
+                Continue with email
               </Link>
             </div>
 

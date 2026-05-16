@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 type Interval = 'monthly' | 'yearly';
 
@@ -92,6 +93,24 @@ const addons = [
 
 export default function PricingPage() {
   const [interval, setInterval] = useState<Interval>('monthly');
+  const [loading, setLoading] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function handleCheckout(planKey: string) {
+    setLoading(planKey);
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ plan: planKey, interval }),
+      });
+      if (res.status === 401) { router.push('/login?next=/pricing'); return; }
+      const data = await res.json().catch(() => ({}));
+      if (data?.url) window.location.href = data.url;
+    } finally {
+      setLoading(null);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#07080a] text-white">
@@ -107,6 +126,14 @@ export default function PricingPage() {
           <p className="mt-4 text-lg text-slate-400">
             Every plan includes policy gates, audit ledger, and approval workflow. Pay for executions, not seats.
           </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link href="/login" className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-black hover:bg-emerald-400">
+              Start Trial
+            </Link>
+            <Link href="/demo" className="rounded-xl border border-slate-700 px-6 py-3 text-sm font-semibold text-slate-300 hover:border-emerald-400">
+              See demo
+            </Link>
+          </div>
 
           {/* Interval toggle */}
           <div className="mt-8 inline-flex rounded-xl border border-slate-700 bg-slate-900 p-1">
@@ -132,9 +159,6 @@ export default function PricingPage() {
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
             const price = interval === 'yearly' ? plan.yearly : plan.monthly;
-            const checkoutHref = plan.key === 'trial'
-              ? plan.ctaHref!
-              : `/api/billing/checkout?plan=${plan.key}&interval=${interval}`;
 
             return (
               <article
@@ -183,19 +207,27 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                <Link
-                  href={checkoutHref}
-                  className={[
-                    'mt-6 rounded-xl py-3 text-center text-sm font-bold transition',
-                    plan.featured
-                      ? 'bg-emerald-500 text-black hover:bg-emerald-400'
-                      : plan.key === 'trial'
-                        ? 'border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/10'
+                {plan.key === 'trial' ? (
+                  <Link
+                    href={plan.ctaHref!}
+                    className="mt-6 rounded-xl border border-emerald-400/40 py-3 text-center text-sm font-bold text-emerald-300 transition hover:bg-emerald-400/10"
+                  >
+                    {plan.cta}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => handleCheckout(plan.key)}
+                    disabled={loading === plan.key}
+                    className={[
+                      'mt-6 rounded-xl py-3 text-center text-sm font-bold transition disabled:opacity-60',
+                      plan.featured
+                        ? 'bg-emerald-500 text-black hover:bg-emerald-400'
                         : 'border border-white/15 text-slate-100 hover:border-emerald-400/40',
-                  ].join(' ')}
-                >
-                  {plan.cta}
-                </Link>
+                    ].join(' ')}
+                  >
+                    {loading === plan.key ? 'Loading…' : plan.cta}
+                  </button>
+                )}
               </article>
             );
           })}

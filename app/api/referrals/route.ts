@@ -29,7 +29,6 @@ export async function GET() {
     const admin = getSupabaseAdmin();
 
     // Check existing
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing } = await (admin as any)
       .from('referral_codes')
       .select('*')
@@ -40,7 +39,6 @@ export async function GET() {
 
     // Create new
     const code = generateCode(String(profile.org_id), profile.email ?? '');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: created, error: insertError } = await (admin as any)
       .from('referral_codes')
       .insert({ code, org_id: profile.org_id, referrer_email: profile.email })
@@ -63,10 +61,8 @@ export async function POST(request: Request) {
     if (!code) return NextResponse.json({ ok: false });
 
     const admin = getSupabaseAdmin();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: row } = await (admin as any).from('referral_codes').select('clicks').eq('code', code).maybeSingle();
     if (row) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (admin as any).from('referral_codes').update({ clicks: (row.clicks ?? 0) + 1 }).eq('code', code);
     }
 
