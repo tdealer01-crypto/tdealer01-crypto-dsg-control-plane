@@ -33,9 +33,10 @@ const webhooks: WebhookRecord[] = [
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const idx = webhooks.findIndex((wh) => wh.id === params.id);
+  const { id } = await params;
+  const idx = webhooks.findIndex((wh) => wh.id === id);
   if (idx === -1) {
     return NextResponse.json({ error: 'webhook not found' }, { status: 404 });
   }
@@ -45,9 +46,10 @@ export async function DELETE(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const idx = webhooks.findIndex((wh) => wh.id === params.id);
+  const { id } = await params;
+  const idx = webhooks.findIndex((wh) => wh.id === id);
   if (idx === -1) {
     return NextResponse.json({ error: 'webhook not found' }, { status: 404 });
   }
