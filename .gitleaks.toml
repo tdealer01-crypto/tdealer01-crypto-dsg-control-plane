@@ -16,11 +16,13 @@ useDefault = true
     "f54f496fb4c330973de326c3909acccd2103964c",
   ]
 
-  # Exclude this config file from scanning — it contains regex patterns that
-  # reference secret-looking prefixes as strings, which would cause gitleaks
-  # to flag its own allowlist entries as secrets.
+  # Files excluded from scanning:
+  # - .gitleaks.toml: contains regex pattern strings that look like secrets
+  # - app/dashboard/integrations/page.tsx: developer quickstart with example
+  #   curl commands using Authorization: Bearer placeholders (not real tokens)
   paths = [
     ".gitleaks.toml",
+    "app/dashboard/integrations/page.tsx",
   ]
 
   # isSecretLike helper function in public-chat route checks for secret-looking
