@@ -34,3 +34,4 @@ playwright-report/
 
 # playwright auth/session state
 playwright/.auth/
+supabase/.temp/
