@@ -1,118 +1,40 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getDsgSupabaseRpcConfig, readDsgRest } from '@/lib/dsg/server/supabase-rpc';
 
-// Templates are curated content — not user data — so they remain static.
-// If personalization is needed in future, query a `dsg_templates` table seeded by migrations.
-const templates = [
-  {
-    slug: 'saas-starter',
-    name: 'SaaS Starter',
-    description: 'Full-stack SaaS boilerplate with billing, auth, and a ready-made dashboard.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Supabase', 'Stripe'],
-    stars: 2840,
-    popular: true,
-  },
-  {
-    slug: 'ai-chatbot',
-    name: 'AI Chatbot',
-    description: 'Streaming AI chat with persistent memory, conversation history, and multi-model support.',
-    category: 'AI/Chat',
-    stack: ['Next.js', 'Vercel AI SDK', 'Redis'],
-    stars: 1930,
-    popular: false,
-  },
-  {
-    slug: 'analytics-dashboard',
-    name: 'Analytics Dashboard',
-    description: 'Interactive analytics UI with charts, dimension filters, and CSV export.',
-    category: 'Dashboard',
-    stack: ['Next.js', 'Recharts', 'Postgres'],
-    stars: 1420,
-    popular: false,
-  },
-  {
-    slug: 'crm-lite',
-    name: 'CRM Lite',
-    description: 'Lightweight CRM with contact management, deal pipeline, and activity notes.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'Supabase', 'Tailwind'],
-    stars: 980,
-    popular: false,
-  },
-  {
-    slug: 'ecommerce-store',
-    name: 'E-commerce Store',
-    description: 'Full storefront with product catalog, cart, checkout, and Stripe payments.',
-    category: 'E-commerce',
-    stack: ['Next.js', 'Stripe', 'Sanity'],
-    stars: 2110,
-    popular: true,
-  },
-  {
-    slug: 'internal-admin',
-    name: 'Internal Admin',
-    description: 'CRUD admin panel with server-side search, pagination, and role-based access.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'Prisma', 'Postgres'],
-    stars: 760,
-    popular: false,
-  },
-  {
-    slug: 'document-ai',
-    name: 'Document AI',
-    description: 'Upload documents, extract structured data, and generate AI-powered summaries.',
-    category: 'AI/Chat',
-    stack: ['Next.js', 'LangChain', 'Pinecone'],
-    stars: 1650,
-    popular: false,
-  },
-  {
-    slug: 'workflow-automator',
-    name: 'Workflow Automator',
-    description: 'Visual workflow builder with triggers, conditions, and multi-step action chains.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'Temporal', 'Redis'],
-    stars: 870,
-    popular: false,
-  },
-  {
-    slug: 'feedback-collector',
-    name: 'Feedback Collector',
-    description: 'Custom feedback forms, response inbox, tagging, and built-in analytics.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Supabase', 'Resend'],
-    stars: 610,
-    popular: false,
-  },
-  {
-    slug: 'team-wiki',
-    name: 'Team Wiki',
-    description: 'Collaborative documentation with full-text search and page versioning.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'MDX', 'Postgres'],
-    stars: 730,
-    popular: false,
-  },
-  {
-    slug: 'job-board',
-    name: 'Job Board',
-    description: 'Post job listings, collect applications, and manage candidate status.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Supabase', 'Resend'],
-    stars: 540,
-    popular: false,
-  },
-  {
-    slug: 'invoice-generator',
-    name: 'Invoice Generator',
-    description: 'Create PDF invoices, send by email, and collect payments via Stripe.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Stripe', 'Resend'],
-    stars: 890,
-    popular: false,
-  },
-];
+type Template = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  stack: string[];
+  stars: number;
+  popular: boolean;
+};
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { searchParams } = req.nextUrl;
+  const category = searchParams.get('category');
+  const q = searchParams.get('q')?.toLowerCase();
+
+  const config = getDsgSupabaseRpcConfig();
+
+  const filters: Record<string, string> = {
+    select: '*',
+    order: 'stars.desc',
+  };
+  if (category) filters['category'] = `eq.${category}`;
+
+  let templates = await readDsgRest<Template[]>(config, 'dsg_templates', filters);
+
+  if (q) {
+    templates = templates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.stack.some((s) => s.toLowerCase().includes(q)),
+    );
+  }
+
   return NextResponse.json({ ok: true, data: templates });
 }
