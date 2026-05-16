@@ -128,17 +128,15 @@ test.describe('finance governance workflow e2e', () => {
     const orgStore = new Map<string, OrgState>();
     const handler = createFinanceRouteHandler(orgStore);
 
-    const orgA = await browser.newContext();
+    const orgA = await browser.newContext({ extraHTTPHeaders: { 'x-org-id': 'org-a' } });
     const orgAPage = await orgA.newPage();
-    await orgAPage.addInitScript(() => window.localStorage.setItem('finance-governance-demo-org-id', 'org-a'));
     await orgAPage.route('**/api/**', handler);
     await orgAPage.goto('/finance-governance/live/workflow');
     await orgAPage.getByRole('button', { name: 'Submit selected workflow item' }).click();
     await expect(orgAPage.getByText('Ready exports').locator('..').getByText('1')).toBeVisible();
 
-    const orgB = await browser.newContext();
+    const orgB = await browser.newContext({ extraHTTPHeaders: { 'x-org-id': 'org-b' } });
     const orgBPage = await orgB.newPage();
-    await orgBPage.addInitScript(() => window.localStorage.setItem('finance-governance-demo-org-id', 'org-b'));
     await orgBPage.route('**/api/**', handler);
     await orgBPage.goto('/finance-governance/live/workflow');
 
@@ -155,7 +153,7 @@ test.describe('finance governance workflow e2e', () => {
 
     await page.goto('/finance-governance/live/workflow-persistent');
 
-    await page.getByRole('button', { name: 'Submit selected workflow item' }).click();
+    await page.getByRole('button', { name: 'Submit sample workflow item' }).click();
     const row = page.locator('tr', { hasText: 'APR-1001' });
     await row.getByRole('button', { name: 'Approve' }).click();
 
