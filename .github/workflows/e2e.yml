@@ -42,7 +42,22 @@ jobs:
       - name: E2E tests
         run: npm run test:e2e
 
+      - name: Check live E2E secrets
+        id: secrets_check
+        run: |
+          if [ -n "$SUPABASE_URL_VAL" ] && [ -n "$SUPABASE_KEY_VAL" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✓ Supabase secrets present — live E2E will run"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "⚠ Supabase secrets missing — live E2E skipped (set SUPABASE_URL + SUPABASE_KEY in repo secrets to enable)"
+          fi
+        env:
+          SUPABASE_URL_VAL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY_VAL: ${{ secrets.SUPABASE_KEY }}
+
       - name: Live E2E tests
+        if: steps.secrets_check.outputs.available == 'true'
         run: npm run test:e2e:live
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
