@@ -297,11 +297,6 @@ export async function POST(request: Request) {
             });
           }
 
-          // Referral conversion: look up ref_code by email, increment conversions atomically
-          const refCode = await lookupRefCode(supabase, customerEmail);
-          if (refCode) {
-            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
-          }
         }
 
         break;
@@ -326,19 +321,26 @@ export async function POST(request: Request) {
 
         await upsertBillingSubscription(supabase, record);
 
-        // Upgrade success: trialing → active transition
+        // Paid conversion: trialing → active is when money actually exchanges hands.
+        // checkout.session.completed fires at trial start (before payment), so we
+        // track the referral conversion here instead.
         const prevStatus = prevSubscription?.status;
-        if (
+        const isPaidConversion =
           event.type === 'customer.subscription.updated' &&
           prevStatus === 'trialing' &&
-          subscription.status === 'active' &&
-          billingCustomer?.email
-        ) {
+          subscription.status === 'active';
+
+        if (isPaidConversion && billingCustomer?.email) {
           void sendUpgradeSuccess({
             email: billingCustomer.email,
             planKey: record.plan_key || 'pro',
             billingInterval: record.billing_interval || 'monthly',
           });
+
+          const refCode = await lookupRefCode(supabase, billingCustomer.email);
+          if (refCode) {
+            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+          }
         }
 
         break;
