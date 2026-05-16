@@ -11,14 +11,38 @@ export type DsgRpcError = {
   hint?: string;
 };
 
+type EnvResolution = {
+  value?: string;
+  names: string[];
+};
+
+function firstEnv(names: string[]): EnvResolution {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return { value, names };
+  }
+  return { names };
+}
+
 export function getDsgSupabaseRpcConfig(userAccessToken?: string): DsgSupabaseRpcConfig {
-  const url = process.env.DSG_ONE_V1_SUPABASE_URL;
-  const key = process.env.DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY;
+  const url = firstEnv([
+    'DSG_ONE_V1_SUPABASE_URL',
+    'NEXT_PUBLIC_DSG_ONE_V1_SUPABASE_URL',
+    'SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_URL',
+  ]);
+  const key = firstEnv([
+    'DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  ]);
 
-  if (!url) throw new Error('DSG_ONE_V1_SUPABASE_URL_REQUIRED');
-  if (!key) throw new Error('DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY_REQUIRED');
+  if (!url.value) throw new Error(`DSG_SUPABASE_URL_REQUIRED:${url.names.join('|')}`);
+  if (!key.value) throw new Error(`DSG_SUPABASE_KEY_REQUIRED:${key.names.join('|')}`);
 
-  return { url: url.replace(/\/$/, ''), key, userAccessToken };
+  return { url: url.value.replace(/\/$/, ''), key: key.value, userAccessToken };
 }
 
 function parseJsonBody<T>(text: string): T | DsgRpcError | null {
