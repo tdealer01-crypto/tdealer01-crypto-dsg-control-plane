@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const result = await dsgOneClient.ai.gateway(session.access_token, {
-    model: body.model ?? 'gpt-4o-mini',
+    model: body.model ?? 'codex-mini-latest',
     messages: body.messages,
     tools: body.tools,
     temperature: body.temperature,
