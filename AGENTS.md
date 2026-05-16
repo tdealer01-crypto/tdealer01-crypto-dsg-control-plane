@@ -53,7 +53,7 @@ Scope: this file applies to the entire repository unless a deeper `AGENTS.md` ov
 
 - Always make the result easy for a real user to see, verify, and use.
 - Explain decisions in plain language, but keep implementation evidence precise.
-- If the best answer is “not ready,” say “not ready” and provide the shortest safe path to readiness.
+- If the best answer is "not ready," say "not ready" and provide the shortest safe path to readiness.
 - Preserve Thai/English context where useful, but avoid mojibake. Store Thai text as valid UTF-8.
 
 ## Termux / Codex / Multica memory
@@ -103,3 +103,39 @@ Coverage currently expected:
 - `docs/agent-skills-memory/skills-261-270.md`
 - `docs/agent-skills-memory/skills-271-280.md`
 - `docs/agent-skills-memory/skills-281-285.md`
+
+---
+
+## งานที่ทำไปแล้ว (2026-05-16) — branch `claude/analyze-files-RHRKg` → merged to `main`
+
+### Security fixes
+- **`lib/auth/safe-next.ts`** — แก้ open redirect ผ่าน `/\evil.com` backslash bypass โดยเพิ่มเช็ค `value[1] === '\\'` ใน `sanitizeRedirect()`
+- **`middleware.ts`** — เพิ่ม `/approvals` และ `/gateway/monitor` เข้า `isProtectedPath()` ที่เคยไม่ถูก protect
+
+### ไฟล์ใหม่: Market parity features
+- `app/dashboard/team/page.tsx` + `app/api/team/route.ts` — Team management (invite/revoke, roles: OWNER/ADMIN/OPERATOR/VIEWER)
+- `app/dashboard/api-keys/page.tsx` + `app/api/api-keys/route.ts` + `app/api/api-keys/[id]/route.ts` — API key management (scopes, expiry, show-once reveal, `dsg_live_` prefix)
+- `app/dashboard/webhooks/page.tsx` + `app/api/webhooks-config/route.ts` + `app/api/webhooks-config/[id]/route.ts` — Webhook management (ใช้ `webhooks-config` ไม่ใช่ `webhooks` เพื่อไม่ชนกับ Stripe webhook route เดิม)
+- `app/dashboard/notifications/page.tsx` + `app/api/notifications/route.ts` + `app/api/notification-settings/route.ts` — Notifications feed + email/Slack/PagerDuty preferences
+
+### ไฟล์ใหม่: UI/UX components
+- `app/dashboard/_components/DashboardShell.tsx` — Left sidebar 240px แทน horizontal scroll nav 19 items แบ่ง 4 section: Monitor / Governance / Connect / Settings
+- `app/dashboard/layout.tsx` (updated) — เปลี่ยนเป็น Server Component บาง renders `<DashboardShell>`
+- `components/GlobalNav.tsx` (updated) — ลดจาก 9 flat items เหลือ 4 items + Product hover dropdown
+- `components/ToastProvider.tsx` — Global toast (success/error/info/warning, auto-dismiss, slide-in CSS animation, ไม่ใช้ framer-motion)
+- `components/Skeleton.tsx` — 5 skeleton variants: `Skeleton`, `SkeletonCard`, `SkeletonTable`, `SkeletonText`, `SkeletonStat`
+- `components/OnboardingChecklist.tsx` — 6-step operator onboarding, localStorage-persisted (`dsg_cp_*` keys), dismissible
+- `components/QuickActions.tsx` — Quick actions widget บน dashboard
+- `app/layout.tsx` (updated) — เพิ่ม `<ToastProvider>` ครอบ body
+
+### กฎที่ต้องรู้สำหรับ agent ที่จะทำต่อ
+- **`installCommand` ใน `vercel.json` เปลี่ยนเป็น `npm install` แล้ว** (ไม่ใช่ `npm ci`) เพราะ `package-lock.json` ไม่ sync กับ `lucide-react` ที่เพิ่มเข้ามา
+- **`lucide-react: ^0.460.0`** เพิ่มใน `package.json` dependencies แล้ว — ถ้าใครเพิ่มไฟล์ใหม่ที่ import lucide ไม่ต้องเพิ่มซ้ำ
+- **`components/Skeleton.tsx` ใช้ inline `cx()` helper** ไม่ใช้ `cn` จาก `@/lib/utils` เพราะไฟล์นั้นไม่มีใน repo นี้
+- **API route pattern (Next.js 15):** async params ต้องใช้ `params: Promise<{id: string}>` และ `await params` ก่อนใช้
+- **vitest ผ่านไม่ได้หมายความว่า `next build` ผ่าน** — test suite เทส API logic เท่านั้น ไม่ compile Next.js pages
+
+### งานที่ยังต้องทำ (ยังเป็น UI mock / ไม่มี DB จริง)
+- Pages ใหม่ทั้งหมด (team, api-keys, webhooks, notifications) ยังใช้ mock data ใน API routes — ต้องต่อ Supabase tables จริงก่อน production
+- `components/OnboardingChecklist.tsx` ใช้ localStorage เท่านั้น ยังไม่ persist ใน DB
+- `components/QuickActions.tsx` เรียก `/api/dsg/v1/gates/evaluate` — ต้องตรวจสอบว่า route นั้นมีอยู่จริงและ auth ถูกต้อง
