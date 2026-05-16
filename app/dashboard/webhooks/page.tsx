@@ -332,7 +332,7 @@ export default function WebhooksPage() {
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Registered endpoints</p>
           {webhooks.length === 0 && (
             <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.02] p-10 text-center">
-              <p className="text-sm text-slate-400">No webhooks registered yet. Click "Register webhook" to add one.</p>
+              <p className="text-sm text-slate-400">No webhooks registered yet. Click &ldquo;Register webhook&rdquo; to add one.</p>
             </div>
           )}
           <div className="mt-4 grid gap-4">

@@ -24,10 +24,13 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 
-# temp files from scripts
-.tmp/
+# vercel
+.vercel/
 
-# playwright output
+# temp/build artifacts
+.tmp/
 test-results/
 playwright-report/
-.vercel
+
+# playwright auth/session state
+playwright/.auth/
