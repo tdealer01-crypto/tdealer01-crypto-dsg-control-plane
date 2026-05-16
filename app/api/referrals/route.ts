@@ -72,10 +72,8 @@ export async function POST(request: Request) {
     if (!code) return NextResponse.json({ ok: false }, { headers });
 
     const admin = getSupabaseAdmin();
-    const { data: row } = await (admin as any).from('referral_codes').select('clicks').eq('code', code).maybeSingle();
-    if (row) {
-      await (admin as any).from('referral_codes').update({ clicks: (row.clicks ?? 0) + 1 }).eq('code', code);
-    }
+    // Atomic DB-side increment — avoids lost-update race condition
+    await (admin as any).rpc('increment_referral_clicks', { p_code: code }).maybeSingle();
 
     return NextResponse.json({ ok: true }, { headers });
   } catch {

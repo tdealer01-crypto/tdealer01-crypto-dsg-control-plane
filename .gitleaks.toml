@@ -1,0 +1,27 @@
+title = "DSG Control Plane — Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+  description = "Known false positives in commit history and source code"
+
+  # Commits that introduced fake/demo webhook secret values in mock UI data.
+  # These are not real Stripe secrets — they are hardcoded placeholder strings
+  # in an in-memory demo array (app/dashboard/webhooks/page.tsx) that have
+  # since been replaced with redacted '••••' placeholders.
+  commits = [
+    "6d21ae46fcb1424ca23ad84ebdd54106dd8812c9",
+    "5b7fbbfb6fcbba34fb05f59242abcefd1778ccf4",
+  ]
+
+  # isSecretLike helper function in public-chat route checks for secret-looking
+  # prefixes — these are code patterns, not actual secret values.
+  regexTarget = "line"
+  regexes = [
+    '''startsWith\(['"]sk-''',
+    '''startsWith\(['"]sk_''',
+    '''startsWith\(['"]sk-or-''',
+    '''whsec_'\s*\+\s*Math\.random''',
+    '''whsec_'\s*\+\s*randomBytes''',
+  ]

@@ -18,3 +18,9 @@ alter table public.referral_codes enable row level security;
 -- Track referral clicks/signups via leads table ref_code column
 alter table public.leads add column if not exists ref_code text;
 create index if not exists leads_ref_code_idx on public.leads (ref_code) where ref_code is not null;
+
+-- Atomic increment RPC — avoids read-modify-write race condition in click tracking
+create or replace function public.increment_referral_clicks(p_code text)
+returns void language sql security definer as $$
+  update public.referral_codes set clicks = clicks + 1 where code = p_code;
+$$;
