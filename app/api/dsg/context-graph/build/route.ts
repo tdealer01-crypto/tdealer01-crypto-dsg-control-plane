@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : 'context_graph_build_failed',
+        error: error instanceof Error ? 'Internal server error' : 'context_graph_build_failed',
         boundary: {
           productionProof: false,
           externalZ3Invoked: false,

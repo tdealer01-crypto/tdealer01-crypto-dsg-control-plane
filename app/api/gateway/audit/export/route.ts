@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 
   return NextResponse.json(

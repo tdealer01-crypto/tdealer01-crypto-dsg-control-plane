@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { ActionPathGraph } from '../components/ActionPathGraph';
 import { ConstraintChecklist } from '../components/ConstraintChecklist';
 import { EvidenceDrawer } from '../components/EvidenceDrawer';
 import { GateResultCard } from '../components/GateResultCard';
+import RefTracker from '../components/RefTracker';
 
 const trustBar = [
   'Policy-routed action control',
@@ -58,6 +60,7 @@ const DEMO_LABEL = 'Sample action context (homepage proof rail demo)';
 export default function HomePage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#07080a] text-white">
+      <Suspense fallback={null}><RefTracker /></Suspense>
       <section className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.3),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.17),transparent_30%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#0a0c0f_100%)]" />
         <div className="absolute inset-y-0 right-0 hidden w-[44%] border-l border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] lg:block" />
@@ -81,10 +84,10 @@ export default function HomePage() {
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
-                  href="/enterprise-proof/demo"
+                  href="/demo"
                   className="rounded-2xl bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200"
                 >
-                  ดูเดโม่ / View demo
+                  ลองเดโม่ตอนนี้ →
                 </Link>
                 <Link
                   href="#public-chat"
@@ -96,14 +99,14 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/enterprise-proof/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
-                View live gate evidence
+              <Link href="/demo" className="rounded-2xl bg-emerald-400 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-emerald-300">
+                ลองเดโม่ / Try demo
               </Link>
-              <Link href="/login" className="rounded-2xl border border-red-300/35 bg-red-500/10 px-6 py-4 font-semibold text-red-100 transition hover:border-red-200/50 hover:bg-red-500/15">
+              <Link href="/pricing" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
+                ดูราคา / Pricing
+              </Link>
+              <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-emerald-300/40">
                 Continue with email
-              </Link>
-              <Link href="/docs" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/30">
-                Review launch docs
               </Link>
             </div>
 
@@ -168,7 +171,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3 lg:justify-end">
-            <Link href="/enterprise-proof/demo" className="rounded-2xl bg-emerald-300 px-6 py-4 font-bold text-slate-950 hover:bg-emerald-200">
+            <Link href="/demo" className="rounded-2xl bg-emerald-300 px-6 py-4 font-bold text-slate-950 hover:bg-emerald-200">
               ดูเดโม่ตอนนี้
             </Link>
             <Link href="/request-access" className="rounded-2xl border border-emerald-300/40 px-6 py-4 font-bold text-emerald-100 hover:bg-emerald-300/10">

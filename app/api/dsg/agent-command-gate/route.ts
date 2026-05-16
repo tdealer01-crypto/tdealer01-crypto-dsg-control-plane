@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         error: "DSG_AGENT_COMMAND_GATE_FAILED",
-        message: error instanceof Error ? error.message : "Unknown agent command gate error",
+        message: error instanceof Error ? 'Internal server error' : "Unknown agent command gate error",
       },
       { status: 400 },
     );

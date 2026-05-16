@@ -55,7 +55,7 @@ export async function GET(): Promise<NextResponse> {
     .eq('org_id', orgId)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 
   const shaped = (keys ?? []).map((k) => ({
     id: k.id,

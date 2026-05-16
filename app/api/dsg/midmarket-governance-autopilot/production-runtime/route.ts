@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         error: "MIDMARKET_PRODUCTION_RUNTIME_BINDING_FAILED",
-        message: error instanceof Error ? error.message : "Unknown production runtime binding error",
+        message: error instanceof Error ? 'Internal server error' : "Unknown production runtime binding error",
       },
       { status: 400 },
     );

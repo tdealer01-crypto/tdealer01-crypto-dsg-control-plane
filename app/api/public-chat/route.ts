@@ -99,7 +99,6 @@ function intentScore(messages: ChatMessage[]): number {
 async function captureLead(email: string, messages: ChatMessage[], score: number): Promise<void> {
   try {
     const supabase = getSupabaseAdmin();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('leads').upsert(
       { email, source: 'public-chat', intent: score >= 40 ? 'high' : 'browse', intent_score: score, messages, last_seen_at: new Date().toISOString() },
       { onConflict: 'email,source' }

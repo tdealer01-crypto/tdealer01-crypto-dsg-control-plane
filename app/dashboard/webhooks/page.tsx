@@ -44,7 +44,7 @@ const INITIAL_WEBHOOKS: Webhook[] = [
     events: ['gate.evaluated', 'action.approved', 'action.blocked', 'agent.completed'],
     status: 'ACTIVE',
     createdAt: '2025-04-12',
-    secret: 'whsec_acme_7f3a9b12cd',
+    secret: '••••••••••••••••••••',
     deliveryLogs: [
       { id: 'dl_001', timestamp: '2025-05-14 18:42:11', eventType: 'gate.evaluated', httpStatus: 200, durationMs: 143, requestPayload: '{"event":"gate.evaluated","gate_id":"gt_88x","result":"PASS","agent_id":"agt_001"}', responsePayload: '{"ok":true}' },
       { id: 'dl_002', timestamp: '2025-05-14 17:30:05', eventType: 'action.blocked', httpStatus: 200, durationMs: 98, requestPayload: '{"event":"action.blocked","action":"wire_transfer","amount":125000,"agent_id":"agt_001"}', responsePayload: '{"received":true}' },
@@ -60,7 +60,7 @@ const INITIAL_WEBHOOKS: Webhook[] = [
     events: ['proof.created', 'action.reviewed', 'agent.started', 'agent.completed'],
     status: 'FAILING',
     createdAt: '2025-03-28',
-    secret: 'whsec_sentinel_c4d2e1a8fb',
+    secret: '••••••••••••••••••••',
     deliveryLogs: [
       { id: 'dl_006', timestamp: '2025-05-15 09:10:33', eventType: 'proof.created', httpStatus: 503, durationMs: 5000, requestPayload: '{"event":"proof.created","proof_id":"prf_112","agent_id":"agt_002"}', responsePayload: '{"error":"Service Unavailable"}' },
       { id: 'dl_007', timestamp: '2025-05-15 08:55:17', eventType: 'agent.started', httpStatus: 503, durationMs: 5000, requestPayload: '{"event":"agent.started","agent_id":"agt_002","task":"compliance_scan"}', responsePayload: '{"error":"Service Unavailable"}' },

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: { code: error instanceof Error ? error.message : 'APP_BUILDER_LIST_FAILED' } },
+      { ok: false, error: { code: error instanceof Error ? 'Internal server error' : 'APP_BUILDER_LIST_FAILED' } },
       { status: 400 },
     );
   }
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: { code: error instanceof Error ? error.message : 'APP_BUILDER_CREATE_FAILED' } },
+      { ok: false, error: { code: error instanceof Error ? 'Internal server error' : 'APP_BUILDER_CREATE_FAILED' } },
       { status: 400 },
     );
   }

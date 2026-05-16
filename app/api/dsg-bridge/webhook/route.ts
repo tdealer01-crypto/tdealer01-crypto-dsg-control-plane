@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Set DSG_ONE_WEBHOOK_SECRET in both Vercel projects (same value)
 function verifySignature(body: string, signature: string | null): boolean {
   const secret = process.env.DSG_ONE_WEBHOOK_SECRET;
-  if (!secret) return true; // skip verification if secret not configured
+  if (!secret) return false; // fail closed — reject all requests if secret is not configured
   if (!signature) return false;
   // Simple HMAC-SHA256 check — dsg-one-v1 must send x-dsg-signature: sha256=<hmac>
   const expected = `sha256=${require('crypto').createHmac('sha256', secret).update(body).digest('hex')}`;

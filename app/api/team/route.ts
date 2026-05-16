@@ -40,7 +40,7 @@ export async function GET(): Promise<NextResponse> {
     .eq('org_id', orgId)
     .order('created_at', { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 
   const shaped = (members ?? []).map((m) => {
     const orgRole = Array.isArray(m.user_org_roles) && m.user_org_roles.length > 0

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : 'gateway_audit_commit_error',
+        error: error instanceof Error ? 'Internal server error' : 'gateway_audit_commit_error',
       },
       { status: 500 }
     );
