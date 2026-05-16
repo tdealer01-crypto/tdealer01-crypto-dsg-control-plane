@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { FinanceGovernanceRepository } from '../../../../../lib/finance-governance/repository';
 import { getOrg } from '../../../../../lib/server/getOrg';
 
@@ -12,7 +13,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function FinanceGovernanceCaseDetailPage({ params }: CaseDetailPageProps) {
   const { id } = await params;
-  const orgId = await getOrg();
+  let orgId: string;
+  try {
+    orgId = await getOrg();
+  } catch {
+    redirect('/login?next=/finance-governance/app');
+  }
   const detail = await repository.getCaseDetail(orgId, id);
   const timeline = Array.isArray(detail.timeline) ? detail.timeline : [];
 

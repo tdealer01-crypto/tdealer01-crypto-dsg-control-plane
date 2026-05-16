@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { FinanceGovernanceRepository } from '../../../lib/finance-governance/repository';
 import { getOrg } from '../../../lib/server/getOrg';
 
@@ -6,7 +7,12 @@ const repository = new FinanceGovernanceRepository();
 export const dynamic = 'force-dynamic';
 
 export default async function FinanceGovernanceAppHomePage() {
-  const orgId = await getOrg();
+  let orgId: string;
+  try {
+    orgId = await getOrg();
+  } catch {
+    redirect('/login?next=/finance-governance/app');
+  }
   const workspace = await repository.getWorkspaceSummary(orgId);
   const cards = [
     {
