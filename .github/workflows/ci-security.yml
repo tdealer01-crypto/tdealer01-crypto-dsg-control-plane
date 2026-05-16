@@ -39,7 +39,7 @@ jobs:
 
       - name: Gitleaks (detect secrets)
         run: |
-          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect --source=/repo --redact --report-format=json --report-path=/repo/gitleaks-report.json
+          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect --source=/repo --no-git --redact --report-format=json --report-path=/repo/gitleaks-report.json
 
       - name: npm audit (fail on high severity)
         run: |

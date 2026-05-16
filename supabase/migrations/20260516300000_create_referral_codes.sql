@@ -9,7 +9,7 @@ create table if not exists public.referral_codes (
   created_at timestamptz not null default now()
 );
 
-create index if not exists referral_codes_org_idx on public.referral_codes (org_id);
+create unique index if not exists referral_codes_org_idx on public.referral_codes (org_id);
 create index if not exists referral_codes_code_idx on public.referral_codes (code);
 
 alter table public.referral_codes enable row level security;

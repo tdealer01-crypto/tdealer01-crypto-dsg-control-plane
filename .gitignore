@@ -35,3 +35,6 @@ playwright-report/
 # playwright auth/session state
 playwright/.auth/
 supabase/.temp/
+
+# security scan reports
+gitleaks-report.json

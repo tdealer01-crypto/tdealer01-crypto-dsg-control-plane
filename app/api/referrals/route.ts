@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ function generateCode(orgId: string, email: string): string {
   return `${seed.slice(0, 6)}${suffix}`;
 }
 
-// GET /api/referrals — get or create referral code for current user
+// GET /api/referrals — get or create referral code for current user (atomic via upsert)
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -27,38 +28,43 @@ export async function GET() {
     if (!profile?.org_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const admin = getSupabaseAdmin();
-
-    // Check existing
-    const { data: existing } = await (admin as any)
-      .from('referral_codes')
-      .select('*')
-      .eq('org_id', profile.org_id)
-      .maybeSingle();
-
-    if (existing) return NextResponse.json({ ok: true, referral: existing });
-
-    // Create new
     const code = generateCode(String(profile.org_id), profile.email ?? '');
-    const { data: created, error: insertError } = await (admin as any)
+
+    // Atomic upsert — unique constraint on org_id ensures only one code per org
+    const { data: referral, error: upsertError } = await (admin as any)
       .from('referral_codes')
-      .insert({ code, org_id: profile.org_id, referrer_email: profile.email })
+      .upsert(
+        { code, org_id: profile.org_id, referrer_email: profile.email },
+        { onConflict: 'org_id', ignoreDuplicates: false },
+      )
       .select()
       .single();
 
-    if (insertError) throw insertError;
-    return NextResponse.json({ ok: true, referral: created });
+    if (upsertError) throw upsertError;
+    return NextResponse.json({ ok: true, referral });
   } catch (err) {
     logApiError('api/referrals', err, {});
     return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }
 
-// POST /api/referrals/click — track a referral link click (public, called on landing page load with ?ref=)
+// POST /api/referrals — track a referral link click (public, called on landing page load with ?ref=)
 export async function POST(request: Request) {
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(request, 'referral-click'),
+    limit: 5,
+    windowMs: 60_000,
+  });
+  const headers = buildRateLimitHeaders(rateLimit, 5);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ ok: false }, { status: 429, headers });
+  }
+
   try {
     const body = await request.json().catch(() => null);
     const code = String(body?.code ?? '').trim().toUpperCase();
-    if (!code) return NextResponse.json({ ok: false });
+    if (!code) return NextResponse.json({ ok: false }, { headers });
 
     const admin = getSupabaseAdmin();
     const { data: row } = await (admin as any).from('referral_codes').select('clicks').eq('code', code).maybeSingle();
@@ -66,8 +72,8 @@ export async function POST(request: Request) {
       await (admin as any).from('referral_codes').update({ clicks: (row.clicks ?? 0) + 1 }).eq('code', code);
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers });
   } catch {
-    return NextResponse.json({ ok: false });
+    return NextResponse.json({ ok: false }, { headers });
   }
 }
