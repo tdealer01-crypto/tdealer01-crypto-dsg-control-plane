@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireVerifiedDsgActor } from '@/lib/dsg/server/context';
-import { getDsgSupabaseRpcConfig } from '@/lib/dsg/server/supabase-rpc';
+import { getDsgSupabaseRpcConfig, readDsgRest } from '@/lib/dsg/server/supabase-rpc';
 
 export type NotificationType = 'BUILD_COMPLETE' | 'BUILD_FAILED' | 'GOVERNANCE' | 'APPROVAL' | 'SYSTEM';
 
@@ -65,13 +65,12 @@ export async function GET(req: Request) {
     const rows = await readDsgRest<NotificationRow[]>(config, 'dsg_notifications', params);
     const allMapped = rows.map(mapNotification);
 
-    // Unread count is always across all notifications for this user (not just the filter)
-    const unreadCountParams: Record<string, string> = {
+    // Unread count is always across all notifications for this user (not just the current filter)
+    const unreadRows = await readDsgRest<{ id: string }[]>(config, 'dsg_notifications', {
       user_id: `eq.${actor.actorId}`,
       read: 'eq.false',
       select: 'id',
-    };
-    const unreadRows = await readDsgRest<{ id: string }[]>(config, 'dsg_notifications', unreadCountParams);
+    });
     const unreadCount = unreadRows.length;
 
     const total = allMapped.length;
@@ -80,8 +79,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, data: { items, total, unreadCount } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'NOTIFICATIONS_FETCH_FAILED';
-    const status = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
-    return NextResponse.json({ ok: false, error: { code: message } }, { status });
+    const httpStatus = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
+    return NextResponse.json({ ok: false, error: { code: message } }, { status: httpStatus });
   }
 }
 
@@ -93,7 +92,7 @@ export async function PATCH(req: Request) {
     const baseUrl = `${config.url}/rest/v1/dsg_notifications`;
 
     if (body?.markAll) {
-      // PATCH all unread for this user
+      // PATCH all unread notifications for this user
       const url = new URL(baseUrl);
       url.searchParams.set('user_id', `eq.${actor.actorId}`);
       url.searchParams.set('read', 'eq.false');
@@ -158,7 +157,7 @@ export async function PATCH(req: Request) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'NOTIFICATIONS_PATCH_FAILED';
-    const status = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
-    return NextResponse.json({ ok: false, error: { code: message } }, { status });
+    const httpStatus = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
+    return NextResponse.json({ ok: false, error: { code: message } }, { status: httpStatus });
   }
 }
