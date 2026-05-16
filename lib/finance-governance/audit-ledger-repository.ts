@@ -5,6 +5,23 @@ import {
 } from './audit-ledger';
 
 export class FinanceGovernanceAuditLedgerRepository {
+  async listByApproval(orgId: string, approvalId: string) {
+    const supabase = getSupabaseAdmin() as any;
+
+    const { data, error } = await supabase
+      .from('finance_governance_audit_ledger')
+      .select('id,org_id,case_id,approval_id,action,actor,result,target,message,next_status,request_hash,record_hash,created_at')
+      .eq('org_id', orgId)
+      .eq('approval_id', approvalId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error(`failed_to_read_audit_ledger:${error.message}`);
+    }
+
+    return (data ?? []) as FinanceGovernanceAuditLedgerRow[];
+  }
+
   async list(orgId: string, limit = 50) {
     const supabase = getSupabaseAdmin() as any;
     const safeLimit = Math.min(Math.max(limit, 1), 200);
