@@ -11,13 +11,13 @@ const quickstart = [
   {
     title: '2. Attach a webhook callback',
     description: 'Connect your app back to DSG so governance decisions can be delivered as events. Set the webhook URL and allowed browser origins.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer dsg_live_YOUR_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer YOUR_DSG_API_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
     response: 'Returns: integration profile with normalized allowed_origins',
   },
   {
     title: '3. Run your first governed action',
     description: 'Send one action through DSG. Verify the ALLOW/REVIEW/BLOCK response and check the decision hash before rolling out to production.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer dsg_live_YOUR_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer YOUR_DSG_API_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
     response: 'Returns: decision (ALLOW/REVIEW/BLOCK), latency_ms, policy context, audit evidence',
   },
 ];

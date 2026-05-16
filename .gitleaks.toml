@@ -6,14 +6,14 @@ useDefault = true
 [allowlist]
   description = "Known false positives in commit history and source code"
 
-  # Commits that introduced fake/demo webhook secret values in mock UI data.
-  # These are not real Stripe secrets — they are hardcoded placeholder strings
-  # in an in-memory demo array (app/dashboard/webhooks/page.tsx) that have
-  # since been replaced with redacted '••••' placeholders.
+  # Commits containing fake/demo values or example code patterns that are not
+  # real credentials: placeholder curl examples, mock UI data, and commits that
+  # introduced this allowlist file itself.
   commits = [
     "6d21ae46fcb1424ca23ad84ebdd54106dd8812c9",
     "5b7fbbfb6fcbba34fb05f59242abcefd1778ccf4",
     "c57dc666c5cf88e5be36c54d86f19d39ac6e58b8",
+    "f54f496fb4c330973de326c3909acccd2103964c",
   ]
 
   # Exclude this config file from scanning — it contains regex patterns that
