@@ -36,9 +36,17 @@ returns void language sql security definer as $$
   update public.referral_codes set signups = signups + 1 where code = p_code;
 $$;
 
+create or replace function public.increment_referral_conversions(p_code text)
+returns void language sql security definer as $$
+  update public.referral_codes set conversions = conversions + 1 where code = p_code;
+$$;
+
 -- Restrict RPC execution to service_role only — anon/authenticated clients must go through API
 revoke execute on function public.increment_referral_clicks(text) from public;
 grant execute on function public.increment_referral_clicks(text) to service_role;
 
 revoke execute on function public.increment_referral_signups(text) from public;
 grant execute on function public.increment_referral_signups(text) to service_role;
+
+revoke execute on function public.increment_referral_conversions(text) from public;
+grant execute on function public.increment_referral_conversions(text) to service_role;

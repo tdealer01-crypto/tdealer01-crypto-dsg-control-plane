@@ -52,6 +52,32 @@ function toIso(value: number | null | undefined) {
   return new Date(value * 1000).toISOString();
 }
 
+async function lookupRefCode(supabase: SupabaseAdmin, email: string | null): Promise<string | null> {
+  if (!email) return null;
+
+  const { data: signup } = await (supabase as any)
+    .from('trial_signups')
+    .select('ref_code')
+    .eq('email', email)
+    .not('ref_code', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (signup?.ref_code) return String(signup.ref_code);
+
+  const { data: accessReq } = await (supabase as any)
+    .from('access_requests')
+    .select('ref_code')
+    .eq('email', email)
+    .not('ref_code', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return accessReq?.ref_code ? String(accessReq.ref_code) : null;
+}
+
 async function resolveOrgIdByEmail(supabase: SupabaseAdmin, email: string | null) {
   if (!email) return null;
 
@@ -269,6 +295,12 @@ export async function POST(request: Request) {
               planKey: record.plan_key || 'pro',
               trialEnd: record.trial_end,
             });
+          }
+
+          // Referral conversion: look up ref_code by email, increment conversions atomically
+          const refCode = await lookupRefCode(supabase, customerEmail);
+          if (refCode) {
+            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
           }
         }
 
