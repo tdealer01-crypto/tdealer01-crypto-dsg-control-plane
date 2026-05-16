@@ -1,191 +1,239 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
+
+type Interval = 'monthly' | 'yearly';
 
 const plans = [
   {
-    name: 'Readiness Report',
-    price: '$9',
-    cadence: 'one-time',
-    description: 'A compact GO / NO-GO production readiness report for one release or deployment review.',
-    href: 'https://buy.stripe.com/4gMbJ20qQ0n1cUz5U43gk03',
-    cta: 'Buy report',
+    key: 'trial',
+    name: 'Trial',
+    monthly: 0,
+    yearly: 0,
+    executions: '1,000 / mo',
+    trialDays: null,
     featured: false,
+    cta: 'Start free',
+    ctaHref: '/request-access',
     features: [
-      'Production readiness verdict',
-      'Endpoint status summary',
-      'Protected-route validation',
-      'SHA256 evidence hash',
-      'Remediation checklist',
+      '1,000 executions / month',
+      'Agent chat (DSG Agent v2)',
+      'Policy gate (PASS / BLOCK)',
+      'Audit trail & ledger',
+      'Finance governance dashboard',
+      '14-day full access',
     ],
   },
   {
-    name: 'Solo',
-    price: '$19',
-    cadence: 'per month',
-    description: 'Hosted release evidence for one project with basic readiness history and proof reporting.',
-    href: 'https://buy.stripe.com/fZu5kEc9yd9N3jZeqA3gk04',
-    cta: 'Start Solo',
+    key: 'pro',
+    name: 'Pro',
+    monthly: 99,
+    yearly: 79,
+    executions: '10,000 / mo',
+    trialDays: 14,
     featured: false,
+    cta: 'Start Pro trial',
     features: [
-      '1 project',
-      'Daily readiness check',
-      'GO / NO-GO evidence history',
-      'Basic release proof reporting',
-      'Email-based onboarding',
-    ],
-  },
-  {
-    name: 'Team',
-    price: '$49',
-    cadence: 'per month',
-    description: 'Release-governance package for small teams that need evidence dashboard and alerts.',
-    href: 'https://buy.stripe.com/28E9AUb5uc5J7Af0zK3gk05',
-    cta: 'Start Team',
-    featured: true,
-    features: [
-      'Up to 5 projects',
-      'Evidence dashboard',
-      'Slack or email alerts',
-      'Vercel readiness checks',
-      'Supabase readiness checks',
-    ],
-  },
-  {
-    name: 'Production',
-    price: '$99',
-    cadence: 'per month',
-    description: 'Production governance with audit exports, policy rules, release approval history, and support.',
-    href: 'https://buy.stripe.com/eVq6oIb5uedRg6L0zK3gk06',
-    cta: 'Start Production',
-    featured: false,
-    features: [
-      'Up to 20 projects',
-      'Audit export',
-      'Policy rules',
-      'Release approval history',
+      '10,000 executions / month',
+      'Everything in Trial',
+      'Approval workflow (multi-step)',
+      'Email notifications (Resend)',
+      'Evidence pack export',
       'Priority support',
     ],
   },
+  {
+    key: 'business',
+    name: 'Business',
+    monthly: 299,
+    yearly: 249,
+    executions: '100,000 / mo',
+    trialDays: 14,
+    featured: true,
+    cta: 'Start Business trial',
+    features: [
+      '100,000 executions / month',
+      'Everything in Pro',
+      'Finance Governance Pack included',
+      'Advanced policy rules',
+      'Audit export (PDF + JSON)',
+      'SSO / SAML ready',
+      'Dedicated onboarding',
+    ],
+  },
+  {
+    key: 'enterprise',
+    name: 'Enterprise',
+    monthly: 999,
+    yearly: 849,
+    executions: 'Custom',
+    trialDays: 30,
+    featured: false,
+    cta: 'Start Enterprise pilot',
+    features: [
+      'Custom execution quota',
+      'Everything in Business',
+      'All skill packs included',
+      'Custom skill builder',
+      'SLA: 4h response',
+      'Dedicated CSM',
+      'On-prem / private cloud option',
+    ],
+  },
 ];
 
-const layers = [
-  {
-    title: 'Action Layer',
-    body: 'Free GitHub Action that blocks unsafe release workflows and emits deterministic GO / NO-GO output.',
-  },
-  {
-    title: 'Governance Layer',
-    body: 'Policy-ready release evidence for teams that need to explain why a release passed or stopped.',
-  },
-  {
-    title: 'Audit Layer',
-    body: 'Evidence hashes, history, reports, and exportable release records for production review.',
-  },
+const addons = [
+  { name: 'Finance Governance Pack', price: '$199/mo', href: '/api/billing/checkout?plan=finance_skills&interval=monthly' },
+  { name: 'Dev Automation Pack',     price: '$99/mo',  href: '/api/billing/checkout?plan=dev_skills&interval=monthly' },
+  { name: 'Compliance & Legal Pack', price: '$249/mo', href: '/api/billing/checkout?plan=compliance_skills&interval=monthly' },
+  { name: 'Operations Pack',         price: '$149/mo', href: '/api/billing/checkout?plan=ops_skills&interval=monthly' },
 ];
 
 export default function PricingPage() {
+  const [interval, setInterval] = useState<Interval>('monthly');
+
   return (
     <main className="min-h-screen bg-[#07080a] text-white">
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.26),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.16),transparent_30%),radial-gradient(circle_at_50%_70%,rgba(16,185,129,0.10),transparent_34%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#07080a_100%)]" />
-        <div className="relative mx-auto max-w-7xl px-6 py-16 lg:py-24">
-          <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
-            DSG ONE Secure Deploy Gate Pricing
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.15),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(99,102,241,0.12),transparent_35%)]" />
+        <div className="relative mx-auto max-w-5xl px-6 py-16 text-center">
+          <p className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-300">
+            DSG ONE Pricing
           </p>
-          <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
-            Sell release confidence with GO / NO-GO evidence.
+          <h1 className="mt-5 text-4xl font-black leading-tight md:text-6xl">
+            Governed AI — priced by usage
           </h1>
-          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-            Start with the free GitHub Action, buy a one-time readiness report, or subscribe to hosted DSG ONE release-governance workflows for teams that need evidence-ready production proof.
+          <p className="mt-4 text-lg text-slate-400">
+            Every plan includes policy gates, audit ledger, and approval workflow. Pay for executions, not seats.
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link href="/readiness-report" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-amber-200">
-              View $9 report
-            </Link>
-            <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/40">
-              Start Trial
-            </Link>
-            <Link href="https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action" className="rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/40">
-              Install free Action
-            </Link>
-          </div>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid gap-5 lg:grid-cols-4">
-          {plans.map((plan) => (
-            <article
-              key={plan.name}
-              className={`relative flex flex-col border p-6 ${
-                plan.featured
-                  ? 'border-amber-300/40 bg-amber-300/10 shadow-2xl shadow-amber-950/20'
-                  : 'border-white/10 bg-white/[0.03]'
-              }`}
-            >
-              {plan.featured ? (
-                <span className="absolute right-4 top-4 rounded-full border border-amber-300/30 bg-amber-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">
-                  Best start
-                </span>
-              ) : null}
-              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Plan</p>
-              <h2 className="mt-4 text-2xl font-semibold text-white">{plan.name}</h2>
-              <div className="mt-5 flex items-end gap-2">
-                <span className="text-5xl font-bold text-white">{plan.price}</span>
-                <span className="pb-2 text-sm text-slate-400">{plan.cadence}</span>
-              </div>
-              <p className="mt-5 min-h-[96px] text-sm leading-7 text-slate-300">{plan.description}</p>
-              <ul className="mt-5 flex-1 space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex gap-3 text-sm leading-6 text-slate-200">
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-300" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href={plan.href}
-                className={`mt-7 rounded-2xl px-5 py-4 text-center text-sm font-bold transition ${
-                  plan.featured
-                    ? 'bg-amber-300 text-slate-950 hover:bg-amber-200'
-                    : 'border border-white/15 bg-black/20 text-slate-100 hover:border-amber-300/40'
-                }`}
+          {/* Interval toggle */}
+          <div className="mt-8 inline-flex rounded-xl border border-slate-700 bg-slate-900 p-1">
+            {(['monthly', 'yearly'] as Interval[]).map((iv) => (
+              <button
+                key={iv}
+                onClick={() => setInterval(iv)}
+                className={[
+                  'rounded-lg px-5 py-2 text-sm font-semibold transition',
+                  interval === iv ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white',
+                ].join(' ')}
               >
-                {plan.cta}
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-white/10 bg-[#0b0d10]">
-        <div className="mx-auto grid max-w-7xl gap-6 px-6 py-16 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Product stack</p>
-            <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">
-              SaaS, action-layer governance, and audit evidence in one path.
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-slate-300">
-              The free Action proves the gate. The paid products package the evidence, reporting, and operating workflow teams need after the check runs.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {layers.map((layer) => (
-              <article key={layer.title} className="border border-white/10 bg-white/[0.03] p-6">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Layer</p>
-                <h3 className="mt-4 text-2xl font-semibold text-amber-50">{layer.title}</h3>
-                <p className="mt-4 text-sm leading-7 text-slate-300">{layer.body}</p>
-              </article>
+                {iv === 'monthly' ? 'Monthly' : 'Yearly'}
+                {iv === 'yearly' && <span className="ml-2 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-300">–20%</span>}
+              </button>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-12">
-        <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-slate-200">
-          <p className="font-semibold text-amber-100">Boundary</p>
-          <p>This pricing page describes DSG ONE products and support alignment. It does not claim certification, external audit completion, or guaranteed compliance outcomes.</p>
-          <p className="mt-2">If an item is demo/scaffold in related evidence pages, treat it as non-production proof until verified.</p>
+      {/* Plan cards */}
+      <section className="mx-auto max-w-6xl px-6 py-14">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {plans.map((plan) => {
+            const price = interval === 'yearly' ? plan.yearly : plan.monthly;
+            const checkoutHref = plan.key === 'trial'
+              ? plan.ctaHref!
+              : `/api/billing/checkout?plan=${plan.key}&interval=${interval}`;
+
+            return (
+              <article
+                key={plan.key}
+                className={[
+                  'relative flex flex-col rounded-2xl border p-6',
+                  plan.featured
+                    ? 'border-emerald-500/40 bg-emerald-500/10 shadow-2xl shadow-emerald-950/30'
+                    : 'border-white/10 bg-white/[0.03]',
+                ].join(' ')}
+              >
+                {plan.featured && (
+                  <span className="absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
+                    Most popular
+                  </span>
+                )}
+
+                <p className="text-[10px] uppercase tracking-widest text-slate-500">Plan</p>
+                <h2 className="mt-3 text-2xl font-black">{plan.name}</h2>
+
+                <div className="mt-4 flex items-end gap-1">
+                  {price === 0 ? (
+                    <span className="text-4xl font-black text-white">Free</span>
+                  ) : (
+                    <>
+                      <span className="text-4xl font-black text-white">${price}</span>
+                      <span className="pb-1 text-sm text-slate-400">/mo</span>
+                    </>
+                  )}
+                </div>
+                {interval === 'yearly' && price > 0 && (
+                  <p className="text-xs text-emerald-400">billed ${price * 12}/yr</p>
+                )}
+
+                <p className="mt-2 text-xs text-slate-500">{plan.executions} executions</p>
+                {plan.trialDays && (
+                  <p className="text-xs text-emerald-400">{plan.trialDays}-day free trial</p>
+                )}
+
+                <ul className="mt-5 flex-1 space-y-2.5">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex gap-2 text-sm text-slate-300">
+                      <span className="mt-0.5 text-emerald-400">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href={checkoutHref}
+                  className={[
+                    'mt-6 rounded-xl py-3 text-center text-sm font-bold transition',
+                    plan.featured
+                      ? 'bg-emerald-500 text-black hover:bg-emerald-400'
+                      : plan.key === 'trial'
+                        ? 'border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/10'
+                        : 'border border-white/15 text-slate-100 hover:border-emerald-400/40',
+                  ].join(' ')}
+                >
+                  {plan.cta}
+                </Link>
+              </article>
+            );
+          })}
         </div>
+      </section>
+
+      {/* Add-ons */}
+      <section className="mx-auto max-w-6xl px-6 pb-14">
+        <h2 className="text-xl font-bold">Skill Pack Add-ons</h2>
+        <p className="mt-1 text-sm text-slate-400">Layer governed AI capabilities on any plan. <Link href="/marketplace/skills" className="text-emerald-400 hover:underline">Browse all skill packs →</Link></p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {addons.map((a) => (
+            <div key={a.name} className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div>
+                <p className="font-semibold text-slate-100">{a.name}</p>
+                <p className="mt-1 text-lg font-black text-emerald-400">{a.price}</p>
+              </div>
+              <Link href={a.href} className="mt-4 rounded-xl border border-slate-700 py-2 text-center text-xs font-bold text-slate-300 hover:border-emerald-400 hover:text-emerald-300">
+                Add to plan →
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Demo CTA */}
+      <section className="border-t border-white/10 py-14 text-center">
+        <p className="text-2xl font-black">Not sure yet?</p>
+        <p className="mt-2 text-slate-400">Try the interactive demo — no signup required.</p>
+        <div className="mt-6 flex justify-center gap-4 flex-wrap">
+          <Link href="/demo" className="rounded-2xl bg-emerald-500 px-8 py-4 font-bold text-black hover:bg-emerald-400">
+            Try interactive demo →
+          </Link>
+          <Link href="/request-access" className="rounded-2xl border border-slate-700 px-8 py-4 font-bold text-slate-300 hover:border-emerald-400">
+            Request access
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-slate-600">No credit card required · Cancel anytime · Overage $0.001/execution</p>
       </section>
     </main>
   );

@@ -81,10 +81,10 @@ export default function HomePage() {
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
-                  href="/enterprise-proof/demo"
+                  href="/demo"
                   className="rounded-2xl bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200"
                 >
-                  ดูเดโม่ / View demo
+                  ลองเดโม่ตอนนี้ →
                 </Link>
                 <Link
                   href="#public-chat"
@@ -96,14 +96,14 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/enterprise-proof/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
-                View live gate evidence
+              <Link href="/demo" className="rounded-2xl bg-emerald-400 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-emerald-300">
+                ลองเดโม่ / Try demo
               </Link>
-              <Link href="/login" className="rounded-2xl border border-red-300/35 bg-red-500/10 px-6 py-4 font-semibold text-red-100 transition hover:border-red-200/50 hover:bg-red-500/15">
-                Continue with email
+              <Link href="/pricing" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
+                ดูราคา / Pricing
               </Link>
-              <Link href="/docs" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/30">
-                Review launch docs
+              <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-emerald-300/40">
+                เข้าสู่ระบบ
               </Link>
             </div>
 

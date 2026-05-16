@@ -12,6 +12,7 @@ const PRIMARY = [
   { href: '/finance-governance/app', label: 'Finance' },
   { href: '/dashboard/audit', label: 'Audit' },
   { href: '/dashboard/billing', label: 'Billing' },
+  { href: '/demo', label: 'Demo' },
 ];
 
 const MORE = [
@@ -28,6 +29,8 @@ const MORE = [
   { href: '/dashboard/integration', label: 'Integrations' },
   { href: '/dashboard/missions', label: 'Mission' },
   { href: '/dashboard/skills', label: 'Skills' },
+  { href: '/marketplace/skills', label: 'Skills Marketplace' },
+  { href: '/dashboard/referrals', label: 'Referrals' },
   { href: '/app-shell', label: 'App Shell' },
 ];
 
