@@ -34,31 +34,23 @@ export async function POST(req: NextRequest) {
 
   const { event, payload } = JSON.parse(rawBody) as DsgWebhookPayload;
 
-  if (payload.workspaceId && payload.actorId) {
+  // actorId = Supabase user UUID (auth_user_id in control-plane users table)
+  if (payload.actorId) {
     const supabase = await createClient();
-
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('dsg_workspace_id', payload.workspaceId)
-      .single();
 
     const { data: user } = await supabase
       .from('users')
-      .select('id')
+      .select('id, org_id')
       .eq('auth_user_id', payload.actorId)
-      .eq('org_id', org?.id ?? '')
       .single();
 
-    if (org && user) {
+    if (user) {
       await supabase.from('notifications').insert({
-        org_id: org.id,
+        org_id: user.org_id,
         user_id: user.id,
         type: 'agent_job',
-        title: `Agent job ${event === 'job.completed' ? 'completed' : event}`,
-        message: payload.jobId
-          ? `Job ${payload.jobId} finished successfully`
-          : `DSG agent event: ${event}`,
+        title: event === 'job.completed' ? 'Agent job completed' : `DSG event: ${event}`,
+        message: payload.jobId ? `Job ${payload.jobId} finished successfully` : `Event: ${event}`,
         read: false,
       });
     }
