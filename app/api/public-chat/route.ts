@@ -6,16 +6,16 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_URL = '/enterprise-proof/demo';
+const DEMO_URL = '/demo';
 const REQUEST_ACCESS_URL = '/request-access';
 const PRICING_URL = '/pricing';
 
 const SUGGESTIONS = [
-  'ดูเดโม่ระบบ',
+  'ดูเดโม่แบบ interactive',
   'ดู pricing และเลือกแพ็กเกจ',
+  'ดู Skills Marketplace',
   'ขอ demo หรือ request access',
   'อธิบาย DSG Agent และ runtime approval',
-  'เข้าสู่ระบบเพื่อใช้ dashboard และ agent execution',
 ];
 
 const RATE_LIMIT = 20;
@@ -351,6 +351,7 @@ export async function POST(request: Request) {
           demo: DEMO_URL,
           requestAccess: REQUEST_ACCESS_URL,
           pricing: PRICING_URL,
+          skills: '/marketplace/skills',
           login: '/login',
         },
         safety: {
