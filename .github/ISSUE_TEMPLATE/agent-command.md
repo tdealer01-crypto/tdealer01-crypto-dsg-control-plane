@@ -1,41 +1,69 @@
 ---
-name: Agent Command
-about: Issue a task to Claude Code, Codex, or Grok Build
-title: "[AGENT] "
-labels: agent-command
-assignees: ""
+name: Agent command
+about: Request Claude/Codex/DSG agent work with evidence and safety boundaries
+title: "[agent] "
+labels: ["agent-command", "needs-verification"]
+assignees: []
 ---
 
-## Agent Command
+## Agent trigger
 
-**Agent:** <!-- claude | codex | grok -->
+Use one:
 
-**Priority:** <!-- critical | high | normal | low -->
+```text
+@claude
+@codex
+@agent
+@dsg-agent
+```
 
-**Scope:** <!-- control-plane | dsg-one-v1 | both -->
+## Goal
 
-**Task:**
-<!-- One clear sentence: what should the agent do? -->
+What should the agent accomplish?
 
+## Scope
 
-**Context (optional):**
-<!-- Background the agent needs to know. Reference AGENTS.md sections if relevant. -->
+Repo/path/files/routes involved:
 
+## Evidence required
 
-**Files to inspect (optional):**
-<!-- Comma-separated paths, e.g. app/api/team/route.ts, lib/supabase/server.ts -->
+What must be inspected before any claim is made?
 
+- [ ] repository files
+- [ ] tests/build/typecheck output
+- [ ] Supabase schema/query/logs
+- [ ] Vercel deployment/build/live endpoint
+- [ ] GitHub PR/commit/workflow metadata
+- [ ] other:
 
-**Blocked from doing (optional):**
-<!-- Things the agent must NOT do, e.g. "Do not modify middleware.ts" -->
+## Verification required
 
+Commands or checks expected:
 
----
+```bash
+# examples
+npm run typecheck
+npm test
+npm run build
+curl https://example.vercel.app/api/health
+```
 
-**Rules for the agent:**
-- Read `AGENTS.md` and `CLAUDE.md` before starting
-- Create a `claude/task-<short-slug>` branch
-- Open a PR with full evidence (goal / files / commands / pass-fail / next step)
-- Comment on this issue with the PR link when done
-- Do not merge the PR — the human merges
-- Close this issue only after the PR is merged or explicitly cancelled
+## Do not
+
+List forbidden actions for this task:
+
+- Do not commit secrets or tokens.
+- Do not auto-merge.
+- Do not claim production-ready without live evidence.
+
+## Expected output
+
+- [ ] PR with changed files
+- [ ] issue comment only
+- [ ] diagnosis report
+- [ ] migration proposal
+- [ ] deployment/readiness report
+
+## User-visible benefit
+
+What gets easier, safer, or more verifiable for the user?

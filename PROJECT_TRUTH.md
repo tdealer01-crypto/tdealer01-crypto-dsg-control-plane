@@ -83,7 +83,7 @@ Repository test truth and production go-live truth are intentionally separate:
 - Test truth (current): May 15, 2026 committed Vitest baseline = `252 passed, 4 skipped, 0 failed`.
 - Go-live truth (current): **not yet complete** until runbook evidence is closed for deployment readiness, env validation, migration apply state, deployed smoke checks, authenticated operator checks, and live staging/E2E validation.
 
-Do not claim full production readiness from Vitest evidence alone. Latest runbook evidence: `qa-logs/go-live-evidence-2026-05-15.md` (**PASS** — go-no-go gate green, all smoke checks pass on live deployment).
+Do not claim full production readiness from Vitest evidence alone. Latest runbook evidence: `qa-logs/go-live-evidence-2026-05-15.md` (NOT CLOSED — external deployment checks pending).
 
 Remaining go-live blockers (require external environment — Vercel access, production Supabase credentials, direct outbound network):
 - Vercel production deployment status = `Ready`

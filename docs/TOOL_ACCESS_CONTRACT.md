@@ -1,86 +1,133 @@
-# Tool Access Contract — DSG Control Plane
+# Tool Access Contract — DSG Agent Work
 
-This file defines which tools agents may use, how to use them, and what is forbidden.
-It is a contract between the repo owner and all automated agents.
+This repository can share tool usage rules, command templates, and agent workflow contracts. It must not share real credentials.
 
----
+## What can be shared through the repository
 
-## What CAN be shared via this repo
+- Agent operating rules such as `AGENTS.md` and `CLAUDE.md`.
+- GitHub issue templates for agent tasks.
+- Tool capability descriptions.
+- Verification checklists.
+- PR evidence requirements.
+- Safe runbooks for GitHub, Supabase, Vercel, Codex, Claude Code, and other approved development tools.
 
-| Item | How |
-|---|---|
-| Agent rules and conventions | `AGENTS.md`, `CLAUDE.md` |
-| Tool usage instructions | This file |
-| Agent command formats | `docs/AGENT_COMMAND_INBOX.md` |
-| GitHub issue templates | `.github/ISSUE_TEMPLATE/` |
-| Build and deployment config | `vercel.json`, `next.config.ts` |
-| Migration files | `supabase/migrations/*.sql` |
+## What must not be shared through the repository
 
-## What MUST NOT be shared via this repo
+Never commit or paste:
 
-| Item | Reason |
-|---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Full DB bypass — never commit |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client key — set in Vercel env, not repo |
-| `OPENAI_API_KEY` | Billing and quota risk |
-| Vercel deploy tokens | Can deploy arbitrary code |
-| GitHub PATs / OAuth tokens | Account-level access |
-| Claude API keys | Billing and impersonation risk |
+- Supabase service role keys;
+- Supabase database passwords;
+- Vercel tokens or bypass tokens;
+- Claude, OpenAI, Anthropic, or other model provider API keys;
+- GitHub personal access tokens;
+- cookies, sessions, local storage dumps, or auth state files;
+- `.env`, `.env.local`, `.vercel/.env*`, or any file containing live secrets;
+- screenshots or logs that reveal secret values.
 
-All secrets are managed in **Vercel Environment Variables** and **GitHub Secrets**.
-Never `.env.local` committed to git.
+If a secret is accidentally exposed, stop work and rotate the secret before continuing.
 
----
+## Approved agent command path
 
-## Tool access by agent type
+Use GitHub issues or PR comments as the command inbox.
 
-### Claude Code (this agent)
+Recommended trigger prefixes:
 
-| Tool | Status | Notes |
-|---|---|---|
-| Read files | Allowed | Any file in repo |
-| Edit files | Allowed | Via branch + PR |
-| `npm test` | Allowed | Vitest unit tests |
-| `npm run build` | Allowed | Next.js build check |
-| `npx tsc --noEmit` | Allowed | TypeScript check |
-| Push to `claude/*` | Allowed | Feature branches only |
-| Push to `main` | Requires approval | Only when user says so |
-| Merge PR | Blocked | User merges manually |
-| Read Supabase (via service role) | Allowed in code | Not at CLI level |
-| Vercel deploy trigger | Blocked directly | Happens on push to main |
-
-### GitHub Actions / Codex CLI
-
-See `.github/workflows/` for configured automations.
-Secrets required: set in GitHub repo → Settings → Secrets → Actions.
-
-Required secrets for agent workflows:
-```
-SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY
-OPENAI_API_KEY   (if using Codex)
+```text
+@claude
+@codex
+@agent
+@dsg-agent
 ```
 
-### External agents (Grok Build, Codex, Multica)
+A valid command should include:
 
-- Must read `AGENTS.md` before acting
-- Must create a branch — never push directly to `main`
-- Must open a PR with full evidence (see CLAUDE.md for PR template)
-- Must not introduce `.env` files with real values
+```text
+Goal:
+Repo:
+Scope:
+Evidence required:
+Verification required:
+Do not:
+Expected output:
+```
 
----
+## Required workflow
 
-## Supabase migration protocol
+1. Read repository rules first.
+2. Inspect the real files relevant to the request.
+3. Classify status as `verified`, `pending`, `blocked`, or `failed`.
+4. Make the smallest branchable change.
+5. Run the most relevant checks available.
+6. Open a PR with exact evidence.
+7. Do not auto-merge.
 
-1. Agent creates migration file in `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
-2. Migration is reviewed in PR
-3. After merge, human runs `supabase db push` in Supabase dashboard **or** CI runs it
-4. Never run migrations directly against production without review
+## Tool-specific boundaries
 
-## Escalation
+### GitHub
 
-If an agent encounters a situation not covered by this contract, it must:
-1. Stop
-2. Open a GitHub issue using the agent-command template
-3. Describe the situation and ask for instruction
-4. Not proceed until a human responds
+Allowed:
+
+- inspect files, commits, issues, PRs, branches, and workflow metadata;
+- create branches, focused commits, issues, and PRs;
+- add comments with evidence.
+
+Blocked:
+
+- force-push shared branches without explicit instruction;
+- merge without review;
+- create fake evidence or fake test results.
+
+### Supabase
+
+Allowed:
+
+- list project metadata;
+- list tables and migrations;
+- run read-only diagnostic SQL;
+- apply migrations only when explicitly requested and reviewed.
+
+Blocked:
+
+- expose service role keys;
+- run destructive SQL without explicit approval;
+- disable RLS without a written security reason and follow-up remediation.
+
+### Vercel
+
+Allowed:
+
+- inspect projects, deployments, domains, and build logs;
+- fetch protected deployments through authorized Vercel tooling;
+- report deployment state accurately.
+
+Blocked:
+
+- expose Vercel tokens or bypass tokens;
+- claim production is healthy when the latest production deployment is canceled, errored, protected, or not verified;
+- change production environment variables without explicit approval.
+
+### Claude Code / Codex
+
+Allowed:
+
+- use repository rules to perform code review and branch-based fixes;
+- produce PRs with evidence;
+- assist with deterministic verification.
+
+Blocked:
+
+- treat issue comments as permission to merge;
+- skip verification silently;
+- invent unavailable tool access.
+
+## Production readiness rule
+
+The default launch decision is `NO-GO` until live evidence proves otherwise.
+
+Minimum evidence for `GO` must include:
+
+- current production deployment is `READY`;
+- `/api/health` or equivalent returns healthy status;
+- Supabase connectivity is verified;
+- required tests/build/typecheck pass or are explicitly waived with reason;
+- known limitations are documented.

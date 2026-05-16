@@ -117,21 +117,6 @@ Also confirmed in this session:
 Status: accepted
 Type: go-live blocker classification
 
-The 2026-05-03 go-live evidence failures (`CONNECT tunnel failed, response 403`) are confirmed as outbound proxy restrictions of the sandbox execution environment, not application-layer or code defects.
+The 2026-05-03 go-live evidence failures (`CONNECT tunnel failed, response 403`) are confirmed as outbound proxy restrictions of the sandbox execution environment, not application-layer or code defects. They must be re-run from GitHub Actions or a direct-network shell with valid Vercel deployment credentials to produce closeable evidence.
 
-Resolution (2026-05-15): Network access became available. Go-no-go gate re-run produced **PASS** with all checks green. Evidence committed to `qa-logs/go-live-evidence-2026-05-15.md` and `qa-logs/go-no-go-2026-05-15.log`.
-
-### Decision 010
-Status: accepted
-Type: go-live gate closure
-
-The 2026-05-15 go-no-go gate run **PASSED** against the live Vercel deployment. All scripted checks green:
-- Trust surfaces (terms, privacy, security, support): HTTP 200
-- `/api/health`: ok:true, db_ok:true, core_ok:true
-- `/api/readiness`: ok:true, all 7 sub-checks pass
-- `/api/finance-governance/readiness`: HTTP 200, ok:true
-- No legacy server-store callers
-- Vitest: 252 passed, 4 skipped, 0 failed
-- TypeScript typecheck: zero errors
-
-Go-live truth is now: **PASS** for current scripted gate. Live E2E against Supabase (requires injected credentials) remains an open follow-up, non-blocking for current deployment.
+This classification prevents future sessions from treating these network-constrained failures as code bugs to patch.

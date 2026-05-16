@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import ApprovalsTable from '../../../../components/finance/ApprovalsTable';
+import ErrorBoundary from '../../../../components/ErrorBoundary';
 import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/repository';
 import { getOrg } from '../../../../lib/server/getOrg';
 
@@ -30,7 +31,9 @@ export default async function FinanceGovernanceApprovalsPage() {
       </div>
 
       <div className="mt-8">
-        <ApprovalsTable approvals={approvals} />
+        <ErrorBoundary>
+          <ApprovalsTable approvals={approvals} />
+        </ErrorBoundary>
       </div>
     </main>
   );

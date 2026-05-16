@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { handleFinanceGovernanceApiError } from '../../../../lib/finance-governance/api-error';
+import { notifyApprovalStatusChange } from '../../../../lib/finance-governance/notify';
 import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/repository';
 import { getOrg } from '../../../../lib/server/getOrg';
 
@@ -35,6 +36,12 @@ export async function POST(request: Request) {
     }
 
     const result = await repository.applyAction(orgId, approvalId, action as AllowedAction);
+    void notifyApprovalStatusChange({
+      approvalId,
+      vendor: approvalId,
+      action: action as AllowedAction,
+      orgId,
+    });
     return NextResponse.json(result);
   } catch (error) {
     return handleFinanceGovernanceApiError('api/finance-governance', error);
