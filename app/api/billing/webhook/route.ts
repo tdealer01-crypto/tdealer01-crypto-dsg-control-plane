@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
+import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
 
 export const dynamic = 'force-dynamic';
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
@@ -258,13 +259,17 @@ export async function POST(request: Request) {
             session.subscription
           );
 
-          await upsertBillingSubscription(
-            supabase,
-            subscriptionToRecord(subscription, {
-              orgId,
-              customerEmail,
-            })
-          );
+          const record = subscriptionToRecord(subscription, { orgId, customerEmail });
+          await upsertBillingSubscription(supabase, record);
+
+          // D0: send trial welcome email
+          if (customerEmail && subscription.trial_end) {
+            void sendTrialWelcome({
+              email: customerEmail,
+              planKey: record.plan_key || 'pro',
+              trialEnd: record.trial_end,
+            });
+          }
         }
 
         break;
@@ -274,24 +279,35 @@ export async function POST(request: Request) {
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
+        const prevSubscription = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined;
 
         const stripeCustomerId =
           typeof subscription.customer === 'string'
             ? subscription.customer
             : null;
 
-        const billingCustomer = await getBillingCustomer(
-          supabase,
-          stripeCustomerId
-        );
+        const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
+        const record = subscriptionToRecord(subscription, {
+          orgId: billingCustomer?.org_id || null,
+          customerEmail: billingCustomer?.email || null,
+        });
 
-        await upsertBillingSubscription(
-          supabase,
-          subscriptionToRecord(subscription, {
-            orgId: billingCustomer?.org_id || null,
-            customerEmail: billingCustomer?.email || null,
-          })
-        );
+        await upsertBillingSubscription(supabase, record);
+
+        // Upgrade success: trialing → active transition
+        const prevStatus = prevSubscription?.status;
+        if (
+          event.type === 'customer.subscription.updated' &&
+          prevStatus === 'trialing' &&
+          subscription.status === 'active' &&
+          billingCustomer?.email
+        ) {
+          void sendUpgradeSuccess({
+            email: billingCustomer.email,
+            planKey: record.plan_key || 'pro',
+            billingInterval: record.billing_interval || 'monthly',
+          });
+        }
 
         break;
       }

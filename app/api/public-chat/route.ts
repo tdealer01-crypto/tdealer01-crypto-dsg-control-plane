@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { logServerError, serverErrorResponse } from '../../../lib/security/error-response';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { sendLeadWelcome } from '../../../lib/email/sales';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +74,41 @@ type ChatResult = {
   model: string | null;
   provider: Provider | 'fallback';
 };
+
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
+const HIGH_INTENT_RE = /price|pricing|ราคา|แพ็ก|plan|trial|สมัคร|access|upgrade|buy|purchase|ซื้อ|จ่าย/i;
+
+function extractEmail(messages: ChatMessage[]): string | null {
+  for (const m of messages) {
+    const match = EMAIL_RE.exec(m.content);
+    if (match) return match[0].toLowerCase();
+  }
+  return null;
+}
+
+function intentScore(messages: ChatMessage[]): number {
+  const text = messages.map((m) => m.content).join(' ');
+  let score = 0;
+  if (HIGH_INTENT_RE.test(text)) score += 40;
+  if (/demo|เดโม/.test(text)) score += 20;
+  if (/agent|runtime|governance/.test(text)) score += 20;
+  if (messages.length >= 3) score += 20;
+  return Math.min(score, 100);
+}
+
+async function captureLead(email: string, messages: ChatMessage[], score: number): Promise<void> {
+  try {
+    const supabase = getSupabaseAdmin();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('leads').upsert(
+      { email, source: 'public-chat', intent: score >= 40 ? 'high' : 'browse', intent_score: score, messages, last_seen_at: new Date().toISOString() },
+      { onConflict: 'email,source' }
+    );
+    await sendLeadWelcome(email);
+  } catch {
+    // fire-and-forget
+  }
+}
 
 function normalizeMessages(body: unknown): ChatMessage[] {
   const candidate = body && typeof body === 'object' ? (body as { messages?: unknown; message?: unknown }) : {};
@@ -294,6 +331,12 @@ export async function POST(request: Request) {
 
   try {
     const result = await callModel(messages);
+
+    // Lead capture: detect email or high-intent in conversation (fire-and-forget)
+    const email = extractEmail(messages);
+    if (email) {
+      void captureLead(email, messages, intentScore(messages));
+    }
 
     return NextResponse.json(
       {
