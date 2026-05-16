@@ -57,8 +57,7 @@ export async function PATCH(
 
   for (const key of allowed) {
     if (key in body) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (webhooks[idx] as any)[key] = body[key];
+      (webhooks[idx] as Record<string, unknown>)[key] = body[key];
     }
   }
 
