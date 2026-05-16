@@ -60,6 +60,7 @@ export async function callDsgRpc<T>(
       apikey: config.key,
       Authorization: `Bearer ${config.userAccessToken ?? config.key}`,
       'Content-Type': 'application/json',
+      'Content-Profile': 'public',
       Prefer: 'return=representation',
     },
     body: JSON.stringify(body),
@@ -91,6 +92,7 @@ export async function readDsgRest<T>(
       apikey: config.key,
       Authorization: `Bearer ${config.key}`,
       Accept: 'application/json',
+      'Accept-Profile': 'public',
     },
     cache: 'no-store',
   });
