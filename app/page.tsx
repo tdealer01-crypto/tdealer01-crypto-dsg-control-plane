@@ -168,7 +168,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3 lg:justify-end">
-            <Link href="/enterprise-proof/demo" className="rounded-2xl bg-emerald-300 px-6 py-4 font-bold text-slate-950 hover:bg-emerald-200">
+            <Link href="/demo" className="rounded-2xl bg-emerald-300 px-6 py-4 font-bold text-slate-950 hover:bg-emerald-200">
               ดูเดโม่ตอนนี้
             </Link>
             <Link href="/request-access" className="rounded-2xl border border-emerald-300/40 px-6 py-4 font-bold text-emerald-100 hover:bg-emerald-300/10">
