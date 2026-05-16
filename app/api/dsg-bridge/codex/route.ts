@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       } catch (err) {
         controller.enqueue(encoder.encode(sse({
           type: 'error',
-          error: err instanceof Error ? err.message : 'stream_error',
+          error: err instanceof Error ? 'Internal server error' : 'stream_error',
         })));
       } finally {
         controller.close();

@@ -28,7 +28,7 @@ export async function GET(): Promise<NextResponse> {
     .eq('org_id', orgId)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 
   // Fetch recent deliveries for each webhook
   const webhookIds = (configs ?? []).map((c) => c.id);

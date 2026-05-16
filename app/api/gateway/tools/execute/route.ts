@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         decision: 'block',
-        reason: error instanceof Error ? error.message : 'gateway_execution_error',
+        reason: error instanceof Error ? 'Internal server error' : 'gateway_execution_error',
       },
       { status: 500 }
     );

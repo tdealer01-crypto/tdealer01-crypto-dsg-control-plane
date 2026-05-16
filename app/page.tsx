@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { ActionPathGraph } from '../components/ActionPathGraph';
 import { ConstraintChecklist } from '../components/ConstraintChecklist';
 import { EvidenceDrawer } from '../components/EvidenceDrawer';
 import { GateResultCard } from '../components/GateResultCard';
+import RefTracker from '../components/RefTracker';
 
 const trustBar = [
   'Policy-routed action control',
@@ -58,6 +60,7 @@ const DEMO_LABEL = 'Sample action context (homepage proof rail demo)';
 export default function HomePage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#07080a] text-white">
+      <Suspense fallback={null}><RefTracker /></Suspense>
       <section className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.3),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.17),transparent_30%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#0a0c0f_100%)]" />
         <div className="absolute inset-y-0 right-0 hidden w-[44%] border-l border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] lg:block" />

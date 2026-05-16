@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         error: "DSG_AGENT_ACTION_RESULT_RECORD_FAILED",
-        message: error instanceof Error ? error.message : "Unknown agent action result recording error",
+        message: error instanceof Error ? 'Internal server error' : "Unknown agent action result recording error",
       },
       { status: 400 },
     );

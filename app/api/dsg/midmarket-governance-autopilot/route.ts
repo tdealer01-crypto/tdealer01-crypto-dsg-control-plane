@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       {
         ok: false,
         error: "MIDMARKET_AUTOPILOT_EVALUATION_FAILED",
-        message: error instanceof Error ? error.message : "Unknown evaluation error",
+        message: error instanceof Error ? 'Internal server error' : "Unknown evaluation error",
       },
       { status: 400 },
     );

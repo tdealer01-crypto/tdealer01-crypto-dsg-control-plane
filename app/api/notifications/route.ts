@@ -46,7 +46,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const { data: rows, count, error } = await query
     .range((page - 1) * limit, page * limit - 1);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 
   const notifications = (rows ?? []).map((n) => ({
     id: n.id,
@@ -89,7 +89,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       .eq('user_id', dbUserId)
       .eq('read', false)
       .select('id');
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     return NextResponse.json({ updated: 0 });
   }
 
@@ -104,7 +104,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     .in('id', body.ids as string[])
     .select('id');
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 
   return NextResponse.json({ updated: 0 });
 }

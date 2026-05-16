@@ -16,7 +16,7 @@ export async function POST(
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: { code: error instanceof Error ? error.message : 'APP_BUILDER_RUNTIME_HANDOFF_FAILED' } },
+      { ok: false, error: { code: error instanceof Error ? 'Internal server error' : 'APP_BUILDER_RUNTIME_HANDOFF_FAILED' } },
       { status: 400 },
     );
   }

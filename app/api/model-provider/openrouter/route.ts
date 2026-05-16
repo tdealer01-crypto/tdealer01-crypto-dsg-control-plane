@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const result = await saveOpenRouterProviderKey(access.orgId, access.userId, apiKey);
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'model_provider_save_failed';
+    const message = error instanceof Error ? 'Internal server error' : 'model_provider_save_failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

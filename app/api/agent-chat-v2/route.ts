@@ -106,7 +106,7 @@ export async function POST(request: Request) {
                 sseData({
                   type: 'step_error',
                   step: step.id,
-                  error: error instanceof Error ? error.message : 'Internal server error',
+                  error: error instanceof Error ? 'Internal server error' : 'Internal server error',
                 }),
               ),
             );
