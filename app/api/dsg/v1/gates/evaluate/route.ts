@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { evaluateDeterministicGate } from '../../../../../../lib/dsg/deterministic/gate-engine';
 import type { DeterministicProofRequest } from '../../../../../../lib/dsg/deterministic/types';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../../../lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,19 @@ function text(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const rateLimitResult = await applyRateLimit({
+    key: getRateLimitKey(request, 'dsg-gate'),
+    limit: 60,
+    windowMs: 60_000,
+  });
+  const rateLimitHeaders = buildRateLimitHeaders(rateLimitResult, 60);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'rate_limit_exceeded' },
+      { status: 429, headers: rateLimitHeaders },
+    );
+  }
+
   const body = await request.json().catch(() => null) as Partial<DeterministicProofRequest> | null;
 
   if (!body || !body.context || typeof body.context !== 'object') {
@@ -37,18 +51,21 @@ export async function POST(request: Request) {
     context: body.context,
   });
 
-  return NextResponse.json({
-    ok: result.ok,
-    type: 'dsg-deterministic-gate-decision',
-    gateStatus: result.gateStatus,
-    proofStatus: result.proofStatus,
-    riskLevel: result.riskLevel,
-    reason: result.reason ?? null,
-    proof: result.proof,
-    boundary: {
-      statement: 'DSG-native deterministic gate adapter. UNSUPPORTED is never PASS. External Z3 solver is not invoked by this route.',
-      externalSolverInvoked: false,
-      productionReadyClaim: false,
+  return NextResponse.json(
+    {
+      ok: result.ok,
+      type: 'dsg-deterministic-gate-decision',
+      gateStatus: result.gateStatus,
+      proofStatus: result.proofStatus,
+      riskLevel: result.riskLevel,
+      reason: result.reason ?? null,
+      proof: result.proof,
+      boundary: {
+        statement: 'DSG-native deterministic gate adapter. UNSUPPORTED is never PASS. External Z3 solver is not invoked by this route.',
+        externalSolverInvoked: false,
+        productionReadyClaim: false,
+      },
     },
-  });
+    { headers: rateLimitHeaders },
+  );
 }

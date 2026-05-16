@@ -1,3 +1,4 @@
+// TODO: replace in-memory store with Supabase webhook_configs table (migration: 20260516000000)
 import { NextRequest, NextResponse } from 'next/server';
 
 type WebhookStatus = 'ACTIVE' | 'DISABLED' | 'FAILING';
