@@ -112,10 +112,6 @@ export async function POST(request: NextRequest) {
       if (insertIntentError) {
         throw insertIntentError;
       }
-
-      if (refCode) {
-        await (admin as any).rpc('increment_referral_signups', { p_code: refCode }).maybeSingle();
-      }
     }
 
     const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin());
@@ -133,6 +129,11 @@ export async function POST(request: NextRequest) {
     if (error) {
       redirectToSignup.searchParams.set('error', 'signup-failed');
       return NextResponse.redirect(redirectToSignup, { status: 302 });
+    }
+
+    // OTP sent successfully — only credit the referral after a real signup email goes out
+    if (!existingPending?.id && refCode) {
+      void (admin as any).rpc('increment_referral_signups', { p_code: refCode }).maybeSingle();
     }
 
     redirectToSignup.searchParams.set('message', 'check-email');

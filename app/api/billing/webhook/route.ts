@@ -107,7 +107,7 @@ async function getBillingCustomer(supabase: SupabaseAdmin, stripeCustomerId: str
   return data;
 }
 
-async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
+async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event): Promise<boolean> {
   const object = event.data.object as Record<string, unknown>;
 
   const stripeCustomerId =
@@ -119,6 +119,12 @@ async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
       : object?.object === 'subscription' && typeof object?.id === 'string'
         ? object.id
         : null;
+
+  const { data: existing } = await supabase
+    .from('billing_events')
+    .select('stripe_event_id')
+    .eq('stripe_event_id', event.id)
+    .maybeSingle();
 
   await supabase.from('billing_events').upsert(
     {
@@ -133,6 +139,8 @@ async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
       onConflict: 'stripe_event_id',
     }
   );
+
+  return !existing;
 }
 
 async function upsertBillingCustomer(
@@ -235,7 +243,7 @@ export async function POST(request: Request) {
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     const supabase = getSupabaseAdmin();
 
-    await recordEvent(supabase, event);
+    const isNewEvent = await recordEvent(supabase, event);
 
     // Cleanup placeholder records when real Stripe data arrives
     if (event.type === 'checkout.session.completed') {
@@ -337,9 +345,11 @@ export async function POST(request: Request) {
             billingInterval: record.billing_interval || 'monthly',
           });
 
-          const refCode = await lookupRefCode(supabase, billingCustomer.email);
-          if (refCode) {
-            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+          if (isNewEvent) {
+            const refCode = await lookupRefCode(supabase, billingCustomer.email);
+            if (refCode) {
+              void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+            }
           }
         }
 
