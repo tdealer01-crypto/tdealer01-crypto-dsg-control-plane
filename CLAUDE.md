@@ -1,80 +1,64 @@
-# CLAUDE.md — DSG Control Plane Agent Rules
+# CLAUDE.md — DSG Agent Rules
 
-Read `AGENTS.md` first — it contains the full rule set and history.
+Read `AGENTS.md` first. This file adds Claude Code specific rules for this repository.
 
-## Tech stack
+## Truth boundary
 
-- Next.js 15 App Router, React 18, TypeScript
-- Supabase auth via `@supabase/ssr` — always import client from `lib/supabase/server.ts`
-- DB types in `lib/database.types.ts` — must update when adding new tables
-- Vitest unit tests: `npm test`
-- Deployed on Vercel — `vercel.json` uses `npm install` (not `npm ci`)
-- No `@/lib/utils` in this repo — use inline `cx()` helper or `clsx` instead
-- `lucide-react` is installed and available
+Do not claim that a route, deployment, database, migration, job, table, test, integration, or production flow works unless it has been verified from real evidence.
+
+Acceptable evidence includes inspected repository files, command output from a real run, GitHub metadata, Supabase schema/query/log/advisor output, Vercel project/deployment/build-log metadata, or live endpoint response.
+
+If evidence is missing, label the status as `pending`, `blocked`, or `not verified`.
 
 ## Tool policy
 
-**Allowed:**
-- Inspect any repository file
-- Create `claude/*` branches and open pull requests
-- Run `npm test`, `npm run build`, `npx tsc --noEmit`
-- Push to `claude/*` branches
-- Create Supabase migration files under `supabase/migrations/`
+Allowed:
 
-**Blocked:**
-- Do not commit secrets, tokens, API keys, Supabase keys, Vercel tokens, or Claude credentials
-- Do not push directly to `main` without explicit user approval or instruction
-- Do not claim production-ready without live HTTP evidence
-- Do not auto-merge pull requests
-- Do not skip pre-commit hooks (`--no-verify`)
-- Do not amend published commits
+- inspect files and diffs before editing;
+- create focused branches;
+- make small, reviewable commits;
+- open pull requests with verification evidence;
+- run typecheck, tests, build, smoke checks, and targeted scripts when available;
+- query GitHub, Supabase, and Vercel only through authorized local or connected tools.
 
-## Required PR evidence
+Blocked:
 
-Every pull request description must include:
+- do not commit secrets, tokens, API keys, Supabase service role keys, Vercel tokens, Claude credentials, OpenAI keys, private cookies, or local `.env` values;
+- do not print secret values in logs, PRs, issues, docs, or comments;
+- do not auto-merge production code;
+- do not change production environment variables without explicit approval and visible audit trail;
+- do not claim production-ready, marketplace-ready, or enterprise-ready without live health/readiness evidence.
 
-| Field | Content |
-|---|---|
-| **Goal** | What problem this PR solves |
-| **Files changed** | List with one-line reason per file |
-| **Commands run** | Exact commands + summary of output |
-| **Pass/fail** | Test + typecheck status |
-| **Known limits** | What is NOT covered by this PR |
-| **User-visible benefit** | What users gain after merge |
-| **Next step** | What must happen after merge |
+## Required PR body
 
-## Common patterns
+Every agent PR must include:
 
-### Auth in API routes
-```ts
-const supabase = await createClient();
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+```text
+Goal:
+
+Files changed:
+
+Verification:
+- [ ] command/result
+- [ ] command/result
+
+Known limits:
+
+User-visible benefit:
+
+Next step:
 ```
 
-### Get org_id from the users table
-```ts
-const { data: dbUser } = await supabase
-  .from('users')
-  .select('org_id')
-  .eq('auth_user_id', user.id)
-  .single();
-if (!dbUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-const { org_id } = dbUser;
-```
+If no command was run, write `Not run` and explain why.
 
-### Next.js 15 async params (required — will type-error otherwise)
-```ts
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-}
-```
+## GitHub command handling
 
-### No mock fallbacks
-All API routes must return HTTP 500 on Supabase error. No in-memory stores.
-```ts
-if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-```
+When a GitHub issue or PR comment starts with `@claude`, `@codex`, `@agent`, or `@dsg-agent`, treat it as a proposed task, not as permission to merge.
+
+Before changing code, restate the goal, inspect `AGENTS.md` and relevant files, identify risk, choose the smallest branchable change, and define verification commands.
+
+After changing code, run the narrowest relevant checks, report exact pass/fail results, open or update a PR, and leave production release status as `NO-GO` unless all live gates pass.
+
+## Safe default
+
+If an instruction conflicts with `AGENTS.md`, secrets policy, production safety, or verified evidence, stop and report the conflict instead of guessing.
