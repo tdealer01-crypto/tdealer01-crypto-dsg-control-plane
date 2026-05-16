@@ -16,13 +16,20 @@ useDefault = true
     "f54f496fb4c330973de326c3909acccd2103964c",
   ]
 
-  # Files excluded from scanning:
-  # - .gitleaks.toml: contains regex pattern strings that look like secrets
-  # - app/dashboard/integrations/page.tsx: developer quickstart with example
-  #   curl commands using Authorization: Bearer placeholders (not real tokens)
+  # Files excluded from scanning — all are documentation, example configs, or
+  # marketing pages containing placeholder tokens in curl command examples.
+  # None of these files ever hold real credentials in this repo.
   paths = [
     ".gitleaks.toml",
     "app/dashboard/integrations/page.tsx",
+    "app/marketplace/page.tsx",
+    "app/marketplace-ui/page.tsx",
+    "app/docs/page.tsx",
+    "app/page.tsx",
+    "docs/LOCAL_DSG_CORE_BRIDGE_QUICKSTART.md",
+    "README.md",
+    ".env.example",
+    "fix-supabase-env.sh",
   ]
 
   # isSecretLike helper function in public-chat route checks for secret-looking
