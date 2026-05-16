@@ -100,6 +100,24 @@ export const dsgOneClient = {
       }),
   },
 
+  codex: {
+    // Routes to /api/dsg-bridge/codex — uses codex-mini-latest (free tier eligible)
+    run: async (input: string, opts?: { instructions?: string; model?: string; tools?: unknown[]; previousResponseId?: string }) => {
+      const res = await fetch('/api/dsg-bridge/codex', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input,
+          instructions: opts?.instructions,
+          model: opts?.model ?? 'codex-mini-latest',
+          tools: opts?.tools ?? [{ type: 'code_interpreter' }],
+          previous_response_id: opts?.previousResponseId,
+        }),
+      });
+      return res.json() as Promise<{ ok: boolean; response?: unknown; error?: string }>;
+    },
+  },
+
   templates: {
     list: (accessToken: string) =>
       dsgFetch<unknown>('/api/dsg/templates', accessToken),
