@@ -22,19 +22,18 @@ export default async function GitHubAppPage() {
   const appUrl = `${proto}://${host}`;
 
   const manifest = JSON.stringify({
-    name: 'DSG Gate v2',
+    name: 'DSG Gate v3',
     url: appUrl,
     hook_attributes: { url: `${appUrl}/api/github-app/webhook` },
     redirect_url: `${appUrl}/api/github-app/callback`,
-    description: 'AI governance gate for pull requests — policy check, audit trail, ALLOW/BLOCK on every PR.',
-    public: true,
+    description: 'AI governance gate for pull requests. Policy check, audit trail, ALLOW/BLOCK on every PR.',
+    public: false,
     default_permissions: {
       checks: 'write',
       pull_requests: 'write',
       contents: 'read',
-      metadata: 'read',
     },
-    default_events: ['pull_request', 'check_run', 'installation', 'installation_repositories'],
+    default_events: ['pull_request', 'installation', 'installation_repositories'],
   });
 
   return (
