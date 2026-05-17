@@ -18,7 +18,7 @@ export default function GitHubAppPage() {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://localhost:3000').replace(/\/$/, '');
 
   const manifest = JSON.stringify({
-    name: 'DSG ONE Gate',
+    name: 'DSG Gate v2',
     url: appUrl,
     hook_attributes: { url: `${appUrl}/api/github-app/webhook` },
     redirect_url: `${appUrl}/api/github-app/callback`,
@@ -40,7 +40,7 @@ export default function GitHubAppPage() {
         {/* Hero */}
         <div className="text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-emerald-400">GitHub App</p>
-          <h1 className="mt-4 text-4xl font-bold leading-tight md:text-5xl">DSG ONE Gate</h1>
+          <h1 className="mt-4 text-4xl font-bold leading-tight md:text-5xl">DSG Gate v2</h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-400">
             Install on your GitHub org to add AI governance checks to every pull request — automatic, no workflow files needed.
           </p>
@@ -62,7 +62,7 @@ export default function GitHubAppPage() {
           <h2 className="text-xl font-bold">How it works</h2>
           <ol className="mt-5 space-y-3">
             {[
-              'Click “Install on GitHub” — GitHub creates the DSG Gate app in your account.',
+              'Click "Install on GitHub" — GitHub creates the DSG Gate app in your account.',
               'Choose which repos (or the whole org) to install on.',
               'Every new PR triggers a DSG policy check automatically.',
               'ALLOW → green check. BLOCK → red check + merge blocked.',
