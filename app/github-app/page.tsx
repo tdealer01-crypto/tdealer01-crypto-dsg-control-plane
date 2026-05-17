@@ -19,7 +19,8 @@ export default async function GitHubAppPage() {
   const headersList = await headers();
   const host = headersList.get('host') ?? 'tdealer01-crypto-dsg-control-plane.vercel.app';
   const proto = headersList.get('x-forwarded-proto') ?? 'https';
-  const appUrl = `${proto}://${host}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+    ?? `${proto}://${host}`;
 
   const manifest = JSON.stringify({
     name: 'DSG Gate v3',
