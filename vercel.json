@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/social-listen",
       "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/cron/lead-outreach",
+      "schedule": "0 9 * * *"
     }
   ]
 }
