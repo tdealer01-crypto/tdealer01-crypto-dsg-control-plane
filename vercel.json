@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
-  "ignoreCommand": "exit 0",
   "crons": [
     {
       "path": "/api/health",
