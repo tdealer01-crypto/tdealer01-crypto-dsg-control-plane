@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
 type Scope = 'read' | 'write' | 'admin' | 'gates:evaluate' | 'proofs:prove';
@@ -180,9 +181,9 @@ export default function ApiKeysPage() {
               >
                 {showCreateForm ? 'Cancel' : '+ Create new key'}
               </button>
-              <a href="/dashboard" className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-bold text-slate-200">
+              <Link href="/dashboard" className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-bold text-slate-200">
                 Back to dashboard
-              </a>
+              </Link>
             </div>
           </div>
         </section>
