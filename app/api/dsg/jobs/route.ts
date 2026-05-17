@@ -23,15 +23,26 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const actor = await requireVerifiedDsgActor(request.headers, 'job:create');
-  const body = (await request.json().catch(() => null)) as { goal?: string; successCriteria?: unknown[] } | null;
+  const body = (await request.json().catch(() => null)) as {
+    goal?: string;
+    successCriteria?: unknown[];
+    figmaUrl?: string;
+  } | null;
+
   if (!body?.goal?.trim()) {
     return NextResponse.json({ ok: false, error: { code: 'DSG_GOAL_REQUIRED' } }, { status: 400 });
+  }
+
+  let goal = body.goal.trim();
+
+  if (body.figmaUrl?.trim()) {
+    goal += `\n\nDesign reference (Figma): ${body.figmaUrl.trim()} — match the layout, colors, and components shown.`;
   }
 
   try {
     const data = await createRuntimeJob(
       { workspaceId: actor.workspaceId, actorId: actor.actorId, userAccessToken: getBearerToken(request.headers) },
-      { goal: body.goal, successCriteria: body.successCriteria },
+      { goal, successCriteria: body.successCriteria },
     );
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {
