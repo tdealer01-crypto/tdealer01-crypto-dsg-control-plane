@@ -299,16 +299,16 @@ export async function sendGitHubLeadOutreach(opts: {
   const fw = frameworkLabel[opts.framework] ?? opts.framework;
   await sendEmail(
     opts.email,
-    `Saw your ${fw} repo — question about agent safety`,
+    `Your ${fw} agent — does it block before acting, or just log after?`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto;line-height:1.6">
       <p>Hey,</p>
-      <p>Came across <strong>${opts.githubRepo}</strong>${opts.githubStars > 0 ? ` (${opts.githubStars}★)` : ''} while looking at ${fw} projects.</p>
-      <p>Quick question: when your agent calls tools or executes actions, do you have a way to block specific actions, audit what ran, or add governance rules? Or is it currently just fire-and-hope?</p>
-      <p>I'm building <strong>DSG ONE</strong> — a governance layer that sits in front of your agent and lets you gate tool calls, log every action, and set rules like "never delete production data". One-line setup for ${fw}.</p>
-      <p>Would it be useful for what you're building?</p>
-      <p>Happy to give you free access if you want to try it on your project.</p>
+      <p>Came across <strong>${opts.githubRepo}</strong>${opts.githubStars > 0 ? ` (${opts.githubStars}★)` : ''} — looks like you're running a real ${fw} agent in production.</p>
+      <p>Quick question: if your agent tried to delete production data, call an external API without authorization, or leak sensitive information right now — would your system <strong>stop it before it happens</strong>, or would you find out after?</p>
+      <p>Most tools (LangSmith, Langfuse, DataDog) tell you what happened <em>after</em>. Too late.</p>
+      <p><strong>DSG ONE blocks before the action executes</strong> — plus gives you a cryptographic audit trail that satisfies EU AI Act Articles 9, 12, and 14. One-line setup, no changes to your existing ${fw} code.</p>
+      <p>If you're dealing with compliance, audit requirements, or just want to stop trusting your agent blindly — happy to give you free access.</p>
       <p>— DSG ONE founder<br>
-      <a href="${BASE_URL}">${BASE_URL}</a></p>
+      <a href="${BASE_URL}/eu-ai-act">${BASE_URL}/eu-ai-act</a></p>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
       <p style="font-size:12px;color:#94a3b8">
         You're receiving this because your GitHub project uses ${fw}.
