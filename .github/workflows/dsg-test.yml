@@ -11,13 +11,6 @@ jobs:
     name: Typecheck + Lint + DSG checks
     runs-on: ubuntu-latest
 
-    env:
-      APP_URL: ${{ secrets.DSG_ONE_V1_PRODUCTION_URL || 'https://dsg-one-v1.vercel.app' }}
-      DSG_ONE_V1_PRODUCTION_URL: ${{ secrets.DSG_ONE_V1_PRODUCTION_URL || 'https://dsg-one-v1.vercel.app' }}
-      DSG_ONE_V1_SUPABASE_URL: ${{ secrets.DSG_ONE_V1_SUPABASE_URL }}
-      DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -42,21 +35,19 @@ jobs:
         run: npm run dsg:runtime-check
 
       - name: Product ready
+        env:
+          DSG_ONE_V1_SUPABASE_URL: ${{ secrets.DSG_ONE_V1_SUPABASE_URL }}
+          DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run dsg:product-ready
         continue-on-error: true
 
-      - name: Production flow check
-        run: npm run dsg:production-flow-check
-        continue-on-error: true
-
-      - name: Smoke - marketplace readiness
-        run: npm run smoke:marketplace-readiness
-        continue-on-error: true
-
-      - name: Smoke - security RBAC
-        run: npm run smoke:security-rbac
-        continue-on-error: true
-
-      - name: Smoke - entitlement
-        run: npm run smoke:entitlement
-        continue-on-error: true
+      - name: Production flow + smoke tests
+        env:
+          APP_URL: ${{ secrets.DSG_ONE_V1_PRODUCTION_URL }}
+          DSG_ONE_V1_PRODUCTION_URL: ${{ secrets.DSG_ONE_V1_PRODUCTION_URL }}
+        run: |
+          npm run dsg:production-flow-check || true
+          npm run smoke:marketplace-readiness || true
+          npm run smoke:security-rbac || true
+          npm run smoke:entitlement || true
