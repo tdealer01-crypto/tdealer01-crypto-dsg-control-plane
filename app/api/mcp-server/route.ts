@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// ERROR_HANDLER_EXEMPT: MCP JSON-RPC protocol requires structured error responses
 export const dynamic = 'force-dynamic';
 
 const TOOLS = [
@@ -45,10 +46,7 @@ const TOOLS = [
   {
     name: 'list_jobs',
     description: 'List all DSG jobs for the current workspace.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
+    inputSchema: { type: 'object', properties: {} },
   },
 ];
 
@@ -63,10 +61,8 @@ function getBaseUrl(): string {
 async function getAuthHeader(incomingRequest: Request): Promise<string | null> {
   const incoming = incomingRequest.headers.get('authorization');
   if (incoming) return incoming;
-
   const serviceToken = process.env.INTERNAL_SERVICE_TOKEN;
   if (serviceToken) return `Bearer ${serviceToken}`;
-
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
@@ -74,7 +70,6 @@ async function getAuthHeader(incomingRequest: Request): Promise<string | null> {
   } catch {
     // no session available
   }
-
   return null;
 }
 
@@ -92,10 +87,7 @@ async function callTool(
       const res = await fetch(`${base}/api/dsg-bridge/jobs`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          goal: toolInput.goal,
-          successCriteria: toolInput.successCriteria ?? [],
-        }),
+        body: JSON.stringify({ goal: toolInput.goal, successCriteria: toolInput.successCriteria ?? [] }),
       });
       return res.json();
     }
@@ -134,8 +126,7 @@ export async function POST(request: Request) {
 
     if (method === 'initialize') {
       return Response.json({
-        jsonrpc: '2.0',
-        id,
+        jsonrpc: '2.0', id,
         result: {
           protocolVersion: '2024-11-05',
           capabilities: { tools: {} },
@@ -145,43 +136,23 @@ export async function POST(request: Request) {
     }
 
     if (method === 'tools/list') {
-      return Response.json({
-        jsonrpc: '2.0',
-        id,
-        result: { tools: TOOLS },
-      });
+      return Response.json({ jsonrpc: '2.0', id, result: { tools: TOOLS } });
     }
 
     if (method === 'tools/call') {
       const toolName = params?.name as string;
       const toolInput = (params?.arguments ?? {}) as Record<string, unknown>;
       if (!toolName) {
-        return Response.json({
-          jsonrpc: '2.0',
-          id,
-          error: { code: -32602, message: 'Invalid params: name is required' },
-        });
+        return Response.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'Invalid params: name is required' } });
       }
       const authHeader = await getAuthHeader(request);
       const result = await callTool(toolName, toolInput, authHeader);
-      return Response.json({
-        jsonrpc: '2.0',
-        id,
-        result: { content: [{ type: 'text', text: JSON.stringify(result) }] },
-      });
+      return Response.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } });
     }
 
-    return Response.json({
-      jsonrpc: '2.0',
-      id,
-      error: { code: -32601, message: `Method not found: ${method}` },
-    });
-  } catch (err) {
-    return Response.json({
-      jsonrpc: '2.0',
-      id,
-      error: { code: -32700, message: err instanceof Error ? err.message : 'Parse error' },
-    });
+    return Response.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } });
+  } catch {
+    return Response.json({ jsonrpc: '2.0', id, error: { code: -32700, message: 'Internal error' } });
   }
 }
 

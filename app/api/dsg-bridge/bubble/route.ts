@@ -38,13 +38,9 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify(body),
     });
-
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : 'DSG_BUBBLE_BRIDGE_FAILED' },
-      { status: 502 },
-    );
+  } catch {
+    return NextResponse.json({ ok: false, error: 'DSG_BUBBLE_BRIDGE_FAILED' }, { status: 502 });
   }
 }
