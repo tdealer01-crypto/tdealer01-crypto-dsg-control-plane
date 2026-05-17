@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/lead-outreach",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/lead-followup",
+      "schedule": "0 10 * * *"
     }
   ]
 }
