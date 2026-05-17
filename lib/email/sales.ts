@@ -282,3 +282,38 @@ export async function sendFounderAlertFirstBlock(opts: {
       </a>
     </div>`);
 }
+
+// ─── GitHub Lead Cold Outreach ────────────────────────────────────────────────
+export async function sendGitHubLeadOutreach(opts: {
+  email: string;
+  framework: string;
+  githubRepo: string;
+  githubStars: number;
+}): Promise<void> {
+  const frameworkLabel: Record<string, string> = {
+    langchain: 'LangChain', 'langchain-js': 'LangChain.js',
+    autogen: 'AutoGen', crewai: 'CrewAI',
+    'openai-agents': 'OpenAI Agents SDK', 'openai-agents-js': 'OpenAI Agents SDK (JS)',
+    'pydantic-ai': 'PydanticAI',
+  };
+  const fw = frameworkLabel[opts.framework] ?? opts.framework;
+  await sendEmail(
+    opts.email,
+    `Saw your ${fw} repo — question about agent safety`,
+    `<div style="font-family:sans-serif;max-width:560px;margin:auto;line-height:1.6">
+      <p>Hey,</p>
+      <p>Came across <strong>${opts.githubRepo}</strong>${opts.githubStars > 0 ? ` (${opts.githubStars}★)` : ''} while looking at ${fw} projects.</p>
+      <p>Quick question: when your agent calls tools or executes actions, do you have a way to block specific actions, audit what ran, or add governance rules? Or is it currently just fire-and-hope?</p>
+      <p>I'm building <strong>DSG ONE</strong> — a governance layer that sits in front of your agent and lets you gate tool calls, log every action, and set rules like "never delete production data". One-line setup for ${fw}.</p>
+      <p>Would it be useful for what you're building?</p>
+      <p>Happy to give you free access if you want to try it on your project.</p>
+      <p>— DSG ONE founder<br>
+      <a href="${BASE_URL}">${BASE_URL}</a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#94a3b8">
+        You're receiving this because your GitHub project uses ${fw}.
+        <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(opts.email)}" style="color:#94a3b8">Unsubscribe</a>
+      </p>
+    </div>`,
+  );
+}
