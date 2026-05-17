@@ -48,6 +48,34 @@ const TOOLS = [
     description: 'List all DSG jobs for the current workspace.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'export_to_github',
+    description: 'Export a completed DSG job as a Next.js scaffold to a new GitHub repository.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        jobId: { type: 'string', description: 'The DSG job ID to export.' },
+        repoName: { type: 'string', description: 'GitHub repository name (auto-generated if omitted).' },
+        githubToken: { type: 'string', description: 'GitHub personal access token with repo scope.' },
+        private: { type: 'boolean', description: 'Create a private repo (default: false).' },
+      },
+      required: ['jobId', 'githubToken'],
+    },
+  },
+  {
+    name: 'deploy_app',
+    description: 'Export a DSG job to GitHub and return a one-click Vercel deploy URL.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        jobId: { type: 'string', description: 'The DSG job ID to deploy.' },
+        repoName: { type: 'string', description: 'GitHub repository name (auto-generated if omitted).' },
+        githubToken: { type: 'string', description: 'GitHub personal access token with repo scope.' },
+        private: { type: 'boolean', description: 'Create a private repo (default: false).' },
+      },
+      required: ['jobId', 'githubToken'],
+    },
+  },
 ];
 
 function getBaseUrl(): string {
@@ -106,6 +134,32 @@ async function callTool(
     }
     case 'list_jobs': {
       const res = await fetch(`${base}/api/dsg-bridge/jobs`, { headers });
+      return res.json();
+    }
+    case 'export_to_github': {
+      const res = await fetch(`${base}/api/dsg-bridge/github-export`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          jobId: toolInput.jobId,
+          repoName: toolInput.repoName,
+          githubToken: toolInput.githubToken,
+          private: toolInput.private ?? false,
+        }),
+      });
+      return res.json();
+    }
+    case 'deploy_app': {
+      const res = await fetch(`${base}/api/dsg-bridge/deploy`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          jobId: toolInput.jobId,
+          repoName: toolInput.repoName,
+          githubToken: toolInput.githubToken,
+          private: toolInput.private ?? false,
+        }),
+      });
       return res.json();
     }
     default:
