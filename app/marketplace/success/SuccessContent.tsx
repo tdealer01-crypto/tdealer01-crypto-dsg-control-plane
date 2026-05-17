@@ -1,17 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function SuccessContent() {
-  const params = useSearchParams();
+interface Props {
+  sessionId?: string;
+  templateId?: string;
+}
+
+export default function SuccessContent({ sessionId, templateId }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<'verifying' | 'generating' | 'done' | 'error'>('verifying');
   const [message, setMessage] = useState('Verifying your payment…');
 
   useEffect(() => {
-    const sessionId = params.get('session_id');
-    const templateId = params.get('templateId');
     if (!sessionId || !templateId) {
       setStatus('error');
       return;
