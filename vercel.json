@@ -10,6 +10,10 @@
     {
       "path": "/api/cron/drip-emails",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/smart-drip",
+      "schedule": "0 10 * * *"
     }
   ]
 }
