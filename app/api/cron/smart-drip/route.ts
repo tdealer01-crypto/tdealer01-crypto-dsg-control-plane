@@ -1,19 +1,8 @@
-// Behavior-based drip engine — runs daily, sends emails based on what users
-// actually did (or didn't do) rather than fixed calendar days.
-//
-// Trigger matrix:
-//   D1+, no agent_connected          → how-to-connect email
-//   D3+, no first_execution          → gate-is-empty nudge
-//   execution>0 AND no first_block   → enable block mode
-//   D10+, executions<5               → stuck → offer founder call
-//   executions>50 AND daysLeft<5     → upgrade nudge (high intent)
-//
-// All sends are idempotent via marketing_sends table.
-
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { getMilestones, hasSent, recordSend } from '../../../../lib/marketing/milestones';
 import { personalizeEmail } from '../../../../lib/marketing/ai-email';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import {
   sendBehavioralNoAgent,
   sendBehavioralEnableBlock,
@@ -28,8 +17,8 @@ function daysBetween(a: Date, b: Date) {
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -43,7 +32,10 @@ export async function GET(request: Request) {
     .not('trial_start', 'is', null)
     .not('customer_email', 'is', null);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    logApiError('api/cron/smart-drip', error, { stage: 'load-trials' });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+  }
 
   const results: string[] = [];
 
@@ -57,7 +49,6 @@ export async function GET(request: Request) {
     const daysIn = daysBetween(trialStart, now);
     const daysLeft = Math.max(0, daysBetween(now, trialEnd));
 
-    // Fetch execution count from ledger
     const { count: execCount } = await (admin as any)
       .from('dsg_agent_ledger')
       .select('seq', { count: 'exact', head: true })
@@ -65,18 +56,21 @@ export async function GET(request: Request) {
     const executions = Number(execCount ?? 0);
 
     const milestones = await getMilestones(orgId);
-
-    // Fetch workspace name for personalization
     const { data: org } = await (admin as any)
       .from('organizations')
       .select('name')
       .eq('id', orgId)
       .maybeSingle();
-    const workspaceName = org?.name ?? null;
 
-    const ctx = { email, workspaceName, daysInTrial: daysIn, daysLeft, milestones, executions };
+    const ctx = {
+      email,
+      workspaceName: org?.name ?? null,
+      daysInTrial: daysIn,
+      daysLeft,
+      milestones,
+      executions,
+    };
 
-    // ── Rule 1: D1+, no agent connected ──────────────────────────────────────
     if (daysIn >= 1 && !milestones.has('agent_connected') && !(await hasSent(orgId, 'no_agent_d1'))) {
       const { subject, openingLine } = await personalizeEmail('no_agent_connected', ctx);
       void sendBehavioralNoAgent({ email, subject, openingLine });
@@ -85,7 +79,6 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // ── Rule 2: D3+, execution=0 ─────────────────────────────────────────────
     if (daysIn >= 3 && executions === 0 && !(await hasSent(orgId, 'no_execution_d3'))) {
       const { subject, openingLine } = await personalizeEmail('no_first_execution', ctx);
       void sendBehavioralNoAgent({ email, subject, openingLine });
@@ -94,7 +87,6 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // ── Rule 3: has executions but no first_block → enable block mode ────────
     if (executions > 0 && !milestones.has('first_block') && !(await hasSent(orgId, 'enable_block'))) {
       const { subject, openingLine } = await personalizeEmail('enable_block_mode', ctx);
       void sendBehavioralEnableBlock({ email, subject, openingLine, executions });
@@ -103,7 +95,6 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // ── Rule 4: D10+, low usage → stuck → offer founder call ─────────────────
     if (daysIn >= 10 && executions < 5 && !(await hasSent(orgId, 'stuck_offer_d10'))) {
       const { subject, openingLine } = await personalizeEmail('stuck_offer_call', ctx);
       void sendBehavioralStuckOffer({ email, subject, openingLine, daysLeft });
@@ -112,7 +103,6 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // ── Rule 5: high usage AND daysLeft < 5 → upgrade nudge ──────────────────
     if (executions > 50 && daysLeft < 5 && !(await hasSent(orgId, 'high_usage_upgrade'))) {
       const { subject, openingLine } = await personalizeEmail('high_usage_upgrade', ctx);
       void sendBehavioralHighUsage({ email, subject, openingLine, executions, daysLeft });
