@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-// Called by GitHub after user installs the app from the manifest flow.
-// Exchanges the one-time code for app credentials (app_id, pem, webhook_secret).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
 
   if (!code) {
     return NextResponse.redirect(`${appUrl}/github-app?error=missing_code`);
@@ -35,20 +34,15 @@ export async function GET(request: Request) {
     client_secret: string;
   };
 
-  // Surface the credentials so the operator can add them to Vercel env vars.
-  // In production you could store these in Supabase instead.
-  const params = new URLSearchParams({
+  const qs = new URLSearchParams({
     app_id: String(app.id),
-    slug: app.slug,
-    html_url: app.html_url,
-    // pem and webhook_secret shown on the installed page — never in URL
+    slug: app.slug ?? '',
+    html_url: app.html_url ?? '',
   });
 
-  // Store pem + webhook_secret temporarily in a short-lived cookie so the
-  // installed page can display them once (they are never logged or stored).
-  const response = NextResponse.redirect(`${appUrl}/github-app/installed?${params}`);
-  response.cookies.set('gh_app_pem', app.pem, { httpOnly: true, maxAge: 300, path: '/' });
-  response.cookies.set('gh_app_webhook_secret', app.webhook_secret, { httpOnly: true, maxAge: 300, path: '/' });
-  response.cookies.set('gh_app_client_secret', app.client_secret, { httpOnly: true, maxAge: 300, path: '/' });
+  const response = NextResponse.redirect(`${appUrl}/github-app/installed?${qs}`);
+  response.cookies.set('gh_app_pem', app.pem ?? '', { httpOnly: true, maxAge: 300, path: '/', sameSite: 'lax' });
+  response.cookies.set('gh_app_webhook_secret', app.webhook_secret ?? '', { httpOnly: true, maxAge: 300, path: '/', sameSite: 'lax' });
+  response.cookies.set('gh_app_client_secret', app.client_secret ?? '', { httpOnly: true, maxAge: 300, path: '/', sameSite: 'lax' });
   return response;
 }
