@@ -94,26 +94,23 @@ export async function GET(request: Request) {
           95,
         );
 
-        const { error: upsertErr } = await (supabase as any).from('leads').upsert(
-          {
-            email,
-            source: 'github-signal',
-            intent: 'high',
-            intent_score: intentScore,
-            framework: fw.name,
-            github_repo: repo.full_name,
-            github_stars: repo.stargazers_count,
-            company: user?.company ?? null,
-            messages: [{
-              role: 'system',
-              content: `Found via GitHub: ${repo.html_url} (${repo.stargazers_count}★) — uses ${fw.name}`,
-            }],
-            last_seen_at: new Date().toISOString(),
-          },
-          { ignoreDuplicates: true },
-        );
-        if (!upsertErr) saved++;
-        else errors.push(upsertErr.message);
+        const { error: insertErr } = await (supabase as any).from('leads').insert({
+          email,
+          source: 'github-signal',
+          intent: 'high',
+          intent_score: intentScore,
+          framework: fw.name,
+          github_repo: repo.full_name,
+          github_stars: repo.stargazers_count,
+          company: user?.company ?? null,
+          messages: [{
+            role: 'system',
+            content: `Found via GitHub: ${repo.html_url} (${repo.stargazers_count}★) — uses ${fw.name}`,
+          }],
+          last_seen_at: new Date().toISOString(),
+        });
+        if (!insertErr) saved++;
+        else if ((insertErr as any).code !== '23505') errors.push(insertErr.message);
       }
 
       // Respect GitHub rate limit

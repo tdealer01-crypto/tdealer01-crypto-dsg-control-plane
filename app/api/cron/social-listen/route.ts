@@ -103,23 +103,20 @@ export async function GET(request: Request) {
 
         const fakeEmail = `reddit_${post.author}@social-lead.dsg.internal`;
 
-        await (supabase as any).from('leads').upsert(
-          {
-            email: fakeEmail,
-            source: 'reddit-signal',
-            intent: score >= 60 ? 'high' : 'browse',
-            intent_score: score,
-            framework: 'reddit',
-            company: `r/${sub}`,
-            messages: [{
-              role: 'system',
-              content: `Reddit r/${sub}: "${post.title}" — score ${score} — matched: ${matched.join(', ')} — ${post.url}`,
-            }],
-            last_seen_at: new Date().toISOString(),
-          },
-          { ignoreDuplicates: true },
-        );
-        saved++;
+        const { error: redditErr } = await (supabase as any).from('leads').insert({
+          email: fakeEmail,
+          source: 'reddit-signal',
+          intent: score >= 60 ? 'high' : 'browse',
+          intent_score: score,
+          framework: 'reddit',
+          company: `r/${sub}`,
+          messages: [{
+            role: 'system',
+            content: `Reddit r/${sub}: "${post.title}" — score ${score} — matched: ${matched.join(', ')} — ${post.url}`,
+          }],
+          last_seen_at: new Date().toISOString(),
+        });
+        if (!redditErr || (redditErr as any).code === '23505') saved++;
 
         if (score >= 60) {
           alerts.push(`[Reddit r/${sub}] "${post.title}" score=${score}`);
@@ -137,22 +134,19 @@ export async function GET(request: Request) {
       if (score < 30) continue;
 
       const fakeEmail = `hn_${item.author}@social-lead.dsg.internal`;
-      await (supabase as any).from('leads').upsert(
-        {
-          email: fakeEmail,
-          source: 'hn-signal',
-          intent: score >= 60 ? 'high' : 'browse',
-          intent_score: score,
-          framework: 'hackernews',
-          messages: [{
-            role: 'system',
-            content: `HN: "${item.title}" — score ${score} — matched: ${matched.join(', ')} — https://news.ycombinator.com/item?id=${item.objectID}`,
-          }],
-          last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: 'email,source,github_repo' },
-      );
-      saved++;
+      const { error: hnErr } = await (supabase as any).from('leads').insert({
+        email: fakeEmail,
+        source: 'hn-signal',
+        intent: score >= 60 ? 'high' : 'browse',
+        intent_score: score,
+        framework: 'hackernews',
+        messages: [{
+          role: 'system',
+          content: `HN: "${item.title}" — score ${score} — matched: ${matched.join(', ')} — https://news.ycombinator.com/item?id=${item.objectID}`,
+        }],
+        last_seen_at: new Date().toISOString(),
+      });
+      if (!hnErr || (hnErr as any).code === '23505') saved++;
 
       if (score >= 60) {
         alerts.push(`[HN] "${item.title}" score=${score}`);
