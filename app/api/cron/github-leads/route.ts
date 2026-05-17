@@ -110,7 +110,7 @@ export async function GET(request: Request) {
             }],
             last_seen_at: new Date().toISOString(),
           },
-          { onConflict: 'email,source,github_repo' },
+          { ignoreDuplicates: true },
         );
         if (!upsertErr) saved++;
         else errors.push(upsertErr.message);
