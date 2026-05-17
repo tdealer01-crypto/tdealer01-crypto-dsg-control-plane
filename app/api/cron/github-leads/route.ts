@@ -68,6 +68,7 @@ export async function GET(request: Request) {
 
   let found = 0;
   let saved = 0;
+  const errors: string[] = [];
 
   for (const fw of FRAMEWORKS) {
     try {
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
           95,
         );
 
-        await (supabase as any).from('leads').upsert(
+        const { error: upsertErr } = await (supabase as any).from('leads').upsert(
           {
             email,
             source: 'github-signal',
@@ -111,7 +112,8 @@ export async function GET(request: Request) {
           },
           { onConflict: 'email,source,github_repo' },
         );
-        saved++;
+        if (!upsertErr) saved++;
+        else errors.push(upsertErr.message);
       }
 
       // Respect GitHub rate limit
@@ -121,5 +123,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, frameworks_searched: FRAMEWORKS.length, repos_found: found, leads_saved: saved });
+  return NextResponse.json({ ok: true, frameworks_searched: FRAMEWORKS.length, repos_found: found, leads_saved: saved, errors: errors.slice(0, 3) });
 }
