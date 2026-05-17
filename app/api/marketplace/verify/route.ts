@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const result = await dsgOneClient.jobs.create(session.access_token, {
     goal: template.goal,
-    successCriteria: template.successCriteria,
+    successCriteria: template.successCriteria.map((description) => ({ description })),
   });
 
   if (!result.ok) {
