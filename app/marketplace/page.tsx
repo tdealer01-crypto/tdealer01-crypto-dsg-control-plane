@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TEMPLATES, formatPrice } from '@/lib/marketplace/templates';
 import GenerateButton from './GenerateButton';
 
 export const metadata = {
@@ -14,75 +15,6 @@ const CATEGORY_STYLE: Record<string, string> = {
   Finance: 'bg-yellow-500/20 text-yellow-200 ring-yellow-500/30',
   Productivity: 'bg-pink-500/20 text-pink-300 ring-pink-500/30',
 };
-
-const templates = [
-  {
-    id: 'ecommerce-store',
-    name: 'E-Commerce Store',
-    description: 'Product catalog, shopping cart, and Stripe checkout — production-ready in minutes.',
-    category: 'Commerce',
-    stack: ['Next.js 15', 'Supabase', 'Stripe'],
-    stars: 128,
-    popular: true,
-    goal: 'Build a full-stack Next.js e-commerce store with product listing page, shopping cart, and Stripe checkout flow.',
-    successCriteria: ['product_list', 'cart_add_remove', 'stripe_checkout', 'order_confirmation'],
-  },
-  {
-    id: 'crm-system',
-    name: 'CRM System',
-    description: 'Contact management, deal pipeline, and activity timeline for your sales team.',
-    category: 'Business',
-    stack: ['Next.js 15', 'Supabase'],
-    stars: 94,
-    popular: false,
-    goal: 'Build a CRM system with contact management, deal pipeline with stages, and activity history timeline.',
-    successCriteria: ['contact_crud', 'deal_pipeline', 'activity_log'],
-  },
-  {
-    id: 'booking-app',
-    name: 'Booking App',
-    description: 'Calendar-based appointment scheduling with email notifications and admin controls.',
-    category: 'SaaS',
-    stack: ['Next.js 15', 'Supabase', 'Resend'],
-    stars: 76,
-    popular: false,
-    goal: 'Build an appointment booking app with calendar slot selection, booking management, and email confirmation.',
-    successCriteria: ['slot_listing', 'booking_create', 'booking_cancel', 'email_confirm'],
-  },
-  {
-    id: 'hr-portal',
-    name: 'HR Portal',
-    description: 'Employee directory, leave requests, and approval workflow — all in one internal tool.',
-    category: 'Internal Tools',
-    stack: ['Next.js 15', 'Supabase'],
-    stars: 61,
-    popular: false,
-    goal: 'Build an HR portal with employee directory, leave request submission, and manager approval workflow.',
-    successCriteria: ['employee_list', 'leave_request', 'leave_approve_reject'],
-  },
-  {
-    id: 'invoice-manager',
-    name: 'Invoice Manager',
-    description: 'Create invoices, track payments, and export PDF reports for your business.',
-    category: 'Finance',
-    stack: ['Next.js 15', 'Supabase', 'Stripe'],
-    stars: 53,
-    popular: false,
-    goal: 'Build an invoice manager that creates client invoices, tracks payment status, and exports PDF reports.',
-    successCriteria: ['invoice_create', 'invoice_send', 'payment_track', 'pdf_export'],
-  },
-  {
-    id: 'project-tracker',
-    name: 'Project Tracker',
-    description: 'Kanban board, milestones, and team collaboration for agile development teams.',
-    category: 'Productivity',
-    stack: ['Next.js 15', 'Supabase'],
-    stars: 41,
-    popular: true,
-    goal: 'Build a project tracker with kanban task board, milestone management, and team member assignment.',
-    successCriteria: ['task_crud', 'kanban_move', 'milestone_track', 'team_assign'],
-  },
-];
 
 export default function MarketplacePage() {
   return (
@@ -121,9 +53,9 @@ export default function MarketplacePage() {
         </div>
 
         {/* Stats */}
-        <div className="mt-12 grid grid-cols-3 gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:grid-cols-3">
+        <div className="mt-12 grid grid-cols-3 gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="text-center">
-            <p className="text-3xl font-bold text-emerald-400">{templates.length}</p>
+            <p className="text-3xl font-bold text-emerald-400">{TEMPLATES.length}</p>
             <p className="mt-1 text-sm text-slate-400">Templates</p>
           </div>
           <div className="text-center">
@@ -138,23 +70,36 @@ export default function MarketplacePage() {
 
         {/* Template grid */}
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {templates.map((t) => {
+          {TEMPLATES.map((t) => {
             const catStyle = CATEGORY_STYLE[t.category] ?? 'bg-slate-700/40 text-slate-300 ring-slate-600/30';
+            const isFree = t.price === 0;
             return (
               <div
                 key={t.id}
                 className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-slate-700"
               >
-                {/* Category + popular badge */}
-                <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${catStyle}`}>
-                    {t.category}
-                  </span>
-                  {t.popular && (
-                    <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-300 ring-1 ring-amber-500/30">
-                      Popular
+                {/* Badges */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${catStyle}`}>
+                      {t.category}
                     </span>
-                  )}
+                    {t.popular && (
+                      <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-300 ring-1 ring-amber-500/30">
+                        Popular
+                      </span>
+                    )}
+                  </div>
+                  {/* Price badge */}
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm font-bold ${
+                      isFree
+                        ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30'
+                        : 'bg-slate-800 text-slate-100'
+                    }`}
+                  >
+                    {formatPrice(t.price)}
+                  </span>
                 </div>
 
                 {/* Name + desc */}
@@ -181,9 +126,11 @@ export default function MarketplacePage() {
                 {/* CTA */}
                 <div className="mt-6">
                   <GenerateButton
+                    templateId={t.id}
                     goal={t.goal}
                     successCriteria={t.successCriteria}
-                    label={`Generate ${t.name}`}
+                    price={t.price}
+                    label={isFree ? `Generate ${t.name}` : `Buy & Generate — ${formatPrice(t.price)}`}
                   />
                 </div>
               </div>
@@ -211,7 +158,7 @@ export default function MarketplacePage() {
           </div>
         </section>
 
-        {/* CTA bottom */}
+        {/* Bottom CTA */}
         <div className="mt-16 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
           <h2 className="text-2xl font-bold">Ready to build?</h2>
           <p className="mt-3 text-slate-300">Log in to start generating apps from any template above.</p>
