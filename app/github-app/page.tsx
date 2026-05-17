@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -14,8 +15,11 @@ const FEATURES = [
   { icon: '🔒', title: 'Policy Rules', body: 'Define governance rules in the DSG dashboard. Rules apply to all repos in the installation.' },
 ];
 
-export default function GitHubAppPage() {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://localhost:3000').replace(/\/$/, '');
+export default async function GitHubAppPage() {
+  const headersList = await headers();
+  const host = headersList.get('host') ?? 'tdealer01-crypto-dsg-control-plane.vercel.app';
+  const proto = headersList.get('x-forwarded-proto') ?? 'https';
+  const appUrl = `${proto}://${host}`;
 
   const manifest = JSON.stringify({
     name: 'DSG Gate v2',
