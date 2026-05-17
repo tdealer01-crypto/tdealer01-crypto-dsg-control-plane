@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getSupabaseAdmin } from '../../lib/supabase-server';
 import type { Metadata } from 'next';
 
@@ -51,12 +52,12 @@ export default async function UnsubscribePage({
           </p>
         </>
       )}
-      <a
+      <Link
         href="/"
         className="mt-10 text-sm text-emerald-400 underline"
       >
         ← Back to DSG ONE
-      </a>
+      </Link>
     </main>
   );
 }
