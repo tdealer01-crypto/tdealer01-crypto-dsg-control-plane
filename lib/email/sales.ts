@@ -317,3 +317,34 @@ export async function sendGitHubLeadOutreach(opts: {
     </div>`,
   );
 }
+
+// ─── GitHub Lead Follow-up ────────────────────────────────────────────────────
+export async function sendGitHubLeadFollowup(opts: {
+  email: string;
+  framework: string;
+  githubRepo: string;
+}): Promise<void> {
+  const frameworkLabel: Record<string, string> = {
+    langchain: 'LangChain', 'langchain-js': 'LangChain.js',
+    autogen: 'AutoGen', crewai: 'CrewAI',
+    'openai-agents': 'OpenAI Agents SDK', 'openai-agents-js': 'OpenAI Agents SDK (JS)',
+    'pydantic-ai': 'PydanticAI',
+  };
+  const fw = frameworkLabel[opts.framework] ?? opts.framework;
+  await sendEmail(
+    opts.email,
+    `Quick follow-up — ${opts.githubRepo}`,
+    `<div style="font-family:sans-serif;max-width:560px;margin:auto;line-height:1.6">
+      <p>Hey,</p>
+      <p>Sent a note a few days ago about adding governance to your ${fw} project — just bumping it up in case it got buried.</p>
+      <p>One yes/no question: does your agent currently have any way to prevent it from taking destructive actions (deleting data, calling paid APIs without limits, etc.)?</p>
+      <p>If no — that's exactly what DSG ONE fixes, in one line of code. Happy to walk you through it on a 15-min call or just give you access to try it yourself.</p>
+      <p>Either way, let me know.</p>
+      <p>— DSG ONE founder</p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#94a3b8">
+        <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(opts.email)}" style="color:#94a3b8">Unsubscribe</a>
+      </p>
+    </div>`,
+  );
+}
