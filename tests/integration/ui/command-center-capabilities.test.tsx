@@ -19,18 +19,24 @@ describe('command center capabilities surface', () => {
   });
 
   it('shows live monitor + chat workflow in app shell', () => {
-    const source = read('app/app-shell/page.tsx');
+    const pageSource = read('app/app-shell/page.tsx');
+    const clientSource = read('components/AppShellClient.tsx');
 
-    expect(source).toContain('Split-pane chat and live monitor');
-    expect(source).toContain('Run in Agent Chat');
-    expect(source).toContain("fetch('/api/core/monitor'");
-    expect(source).toContain("fetch('/api/agent-chat'");
+    expect(pageSource).toContain('AppShellClient');
+    expect(pageSource).toContain("redirect('/login?next=/app-shell')");
+    expect(clientSource).toContain('Split-pane chat and live monitor');
+    expect(clientSource).toContain('Run in Agent Chat');
+    expect(clientSource).toContain("fetch('/api/core/monitor'");
+    expect(clientSource).toContain("fetch('/api/agent-chat'");
   });
 
   it('documents skill controller tools and confirms no voice control surface', () => {
     const skillsSource = read('app/dashboard/skills/page.tsx');
     const commandCenterSource = read('app/dashboard/command-center/page.tsx').toLowerCase();
-    const appShellSource = read('app/app-shell/page.tsx').toLowerCase();
+    const appShellSource = [
+      read('app/app-shell/page.tsx'),
+      read('components/AppShellClient.tsx'),
+    ].join('\n').toLowerCase();
 
     expect(skillsSource).toContain('GET /api/core/monitor');
     expect(skillsSource).toContain('POST /api/mcp/call');

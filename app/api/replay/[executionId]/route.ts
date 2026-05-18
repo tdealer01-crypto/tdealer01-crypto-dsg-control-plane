@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { getDSGCoreLedger } from "../../../../lib/dsg-core";
+import { getLocalRuntimeLedger } from "../../../../lib/dsg-core/local-runtime";
+import { isInternalDSGCoreMode } from "../../../../lib/dsg-core/mode";
 import { requireOrgRole } from "../../../../lib/authz";
 import { RuntimeRouteRoles } from "../../../../lib/runtime/permissions";
 import { getSupabaseAdmin } from "../../../../lib/supabase-server";
 import { internalErrorMessage, logApiError } from "../../../../lib/security/api-error";
 
 export const dynamic = "force-dynamic";
+
+type CoreLedgerItem = {
+  id?: string;
+  metadata?: {
+    execution_id?: string;
+    audit_id?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
 
 export async function GET(
   _request: Request,
@@ -16,11 +28,12 @@ export async function GET(
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
+
     const supabase = getSupabaseAdmin();
-
     const { executionId } = await params;
+    const internalMode = isInternalDSGCoreMode();
 
-    const [{ data: execution, error: executionError }, { data: audit, error: auditError }, coreLedger] = await Promise.all([
+    const [{ data: execution, error: executionError }, { data: audit, error: auditError }] = await Promise.all([
       supabase
         .from("executions")
         .select(`
@@ -53,7 +66,6 @@ export async function GET(
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
-      getDSGCoreLedger(50),
     ]);
 
     if (executionError) {
@@ -70,19 +82,28 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const coreMatch = (coreLedger.items || []).find((item: { metadata?: { execution_id?: string; audit_id?: string } }) => {
-      const metadata = item?.metadata || {};
-      return metadata?.execution_id === executionId || metadata?.audit_id === audit?.id;
-    }) || null;
+    const coreLedger = internalMode
+      ? await getLocalRuntimeLedger(supabase as never, access.orgId, 50)
+      : await getDSGCoreLedger(50, { orgId: access.orgId });
+
+    const coreItems = Array.isArray(coreLedger.items) ? (coreLedger.items as CoreLedgerItem[]) : [];
+
+    const coreMatch =
+      coreItems.find((item) => {
+        const metadata = item?.metadata || {};
+        return metadata?.execution_id === executionId || metadata?.audit_id === audit?.id;
+      }) || null;
 
     return NextResponse.json({
       ok: true,
+      mode: internalMode ? "internal" : "remote",
+      source: internalMode ? "local_runtime_tables" : "external_dsg_core",
       execution,
       audit,
       core: {
         ledger_ok: coreLedger.ok,
         matched_item: coreMatch,
-        error: coreLedger.ok ? null : coreLedger.error,
+        error: coreLedger.ok ? null : ("error" in coreLedger ? coreLedger.error : null),
       },
     });
   } catch (error) {

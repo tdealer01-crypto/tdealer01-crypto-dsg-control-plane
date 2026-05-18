@@ -1,0 +1,16 @@
+name: DSG Secure Deploy Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  dsg-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1
+        with:
+          readiness_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/finance-governance/readiness"
+          expected_status: "200"
+          require_json_ok: "true"

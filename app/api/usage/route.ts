@@ -6,21 +6,30 @@ import { internalErrorMessage, logApiError } from '../../../lib/security/api-err
 
 export const dynamic = 'force-dynamic';
 
+type WarningItem = { level: 'warning' | 'error'; code: string; stage: string; message: string };
+
+function isSupabaseSchemaDriftError(error: unknown) {
+  const message = String((error as { message?: unknown })?.message || '').toLowerCase();
+  return (
+    message.includes('pgrst') ||
+    message.includes('schema cache') ||
+    message.includes('undefined table') ||
+    message.includes('does not exist') ||
+    message.includes('relation') ||
+    message.includes('could not find') ||
+    message.includes('function')
+  );
+}
 
 function formatPlanLabel(planKey?: string | null, interval?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
-  const pretty =
-    normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+  const pretty = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
 
   if (!interval) return pretty;
   return `${pretty} (${interval})`;
 }
 
-function formatBillingPeriod(
-  start?: string | null,
-  end?: string | null,
-  fallback?: string
-) {
+function formatBillingPeriod(start?: string | null, end?: string | null, fallback?: string) {
   if (start && end) {
     return `${String(start).slice(0, 10)} → ${String(end).slice(0, 10)}`;
   }
@@ -36,6 +45,7 @@ export async function GET(request: Request) {
     }
 
     const supabase = getSupabaseAdmin();
+    const warnings: WarningItem[] = [];
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from('billing_subscriptions')
@@ -48,12 +58,18 @@ export async function GET(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    if (
-      subscriptionError &&
-      !/relation .* does not exist/i.test(subscriptionError.message)
-    ) {
+    if (subscriptionError) {
       logApiError('api/usage', subscriptionError, { stage: 'subscription-query' });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      if (isSupabaseSchemaDriftError(subscriptionError)) {
+        warnings.push({
+          level: 'warning',
+          code: 'SUBSCRIPTION_UNAVAILABLE',
+          stage: 'subscription-query',
+          message: 'Billing subscription unavailable (schema drift or missing relation).',
+        });
+      } else {
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
     }
 
     const billingPeriodKey = subscription?.current_period_start
@@ -68,17 +84,24 @@ export async function GET(request: Request) {
 
     if (usageError) {
       logApiError('api/usage', usageError, { stage: 'usage-counter-query' });
-      return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      if (isSupabaseSchemaDriftError(usageError)) {
+        warnings.push({
+          level: 'warning',
+          code: 'USAGE_COUNTERS_UNAVAILABLE',
+          stage: 'usage-counter-query',
+          message: 'Usage counters unavailable (schema drift or missing relation).',
+        });
+      } else {
+        return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+      }
     }
 
-    const executions = (usageCounters || []).reduce(
-      (sum, row) => sum + Number(row.executions || 0),
-      0
-    );
+    const executions = usageError
+      ? 0
+      : (usageCounters || []).reduce((sum, row) => sum + Number(row.executions || 0), 0);
 
     const planKey = String(subscription?.plan_key || 'trial').toLowerCase();
-    const includedExecutions =
-      INCLUDED_EXECUTIONS[planKey] || INCLUDED_EXECUTIONS.trial;
+    const includedExecutions = INCLUDED_EXECUTIONS[planKey] || INCLUDED_EXECUTIONS.trial;
 
     const overageExecutions = Math.max(0, executions - includedExecutions);
     const projectedAmountUsd = Number((overageExecutions * getOverageRateUsd()).toFixed(3));
@@ -98,12 +121,10 @@ export async function GET(request: Request) {
       included_executions: includedExecutions,
       overage_executions: overageExecutions,
       projected_amount_usd: projectedAmountUsd,
+      warnings,
     });
   } catch (error) {
     logApiError('api/usage', error, { stage: 'unhandled' });
-    return NextResponse.json(
-      { error: internalErrorMessage() },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }

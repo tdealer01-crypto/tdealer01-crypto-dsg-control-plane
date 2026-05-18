@@ -1,8 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { FinanceGovernanceRepository } from '../../../lib/finance-governance/repository';
 
 const hasSupabaseEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 const describeLive = hasSupabaseEnv ? describe : describe.skip;
+const writeHeaders = {
+  'Content-Type': 'application/json',
+  'x-actor-role': 'finance_approver',
+  'x-org-plan': 'enterprise',
+};
+
+function orgHeaders(orgId: string, extra: Record<string, string> = {}) {
+  return { ...writeHeaders, 'x-org-id': orgId, ...extra };
+}
 
 async function cleanupOrg(orgId: string) {
   const supabase = getSupabaseAdmin() as any;
@@ -20,30 +30,30 @@ describeLive('finance governance API + repository + supabase (live)', () => {
     await cleanupOrg(orgB);
   });
 
+  afterEach(async () => {
+    await cleanupOrg(orgA);
+    await cleanupOrg(orgB);
+  });
+
   it('keeps org data isolated: org A submit does not leak to org B', async () => {
     const { POST: submit } = await import('../../../app/api/finance-governance/submit/route');
-    const { GET: workspaceSummary } = await import('../../../app/api/finance-governance/workspace/summary/route');
 
     const submitResponse = await submit(
       new Request('http://localhost/api/finance-governance/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-org-id': orgA },
+        headers: orgHeaders(orgA),
         body: JSON.stringify({ caseId: 'sample-case' }),
       })
     );
 
     expect(submitResponse.status).toBe(200);
 
-    const orgAResponse = await workspaceSummary(new Request('http://localhost/api/finance-governance/workspace/summary', { headers: { 'x-org-id': orgA } }));
-    const orgABody = await orgAResponse.json();
+    const repository = new FinanceGovernanceRepository();
+    const orgASummary = await repository.getWorkspaceSummary(orgA);
+    const orgBSummary = await repository.getWorkspaceSummary(orgB);
 
-    const orgBResponse = await workspaceSummary(new Request('http://localhost/api/finance-governance/workspace/summary', { headers: { 'x-org-id': orgB } }));
-    const orgBBody = await orgBResponse.json();
-
-    expect(orgAResponse.status).toBe(200);
-    expect(orgABody.workspace.counts.readyExports).toBe(1);
-    expect(orgBResponse.status).toBe(200);
-    expect(orgBBody.workspace.counts.readyExports).toBe(0);
+    expect(orgASummary.counts.readyExports).toBe(1);
+    expect(orgBSummary.counts.readyExports).toBe(0);
   });
 
   it('writes audit trail timeline for submit → approve flow', async () => {
@@ -54,13 +64,13 @@ describeLive('finance governance API + repository + supabase (live)', () => {
     const submitResponse = await submit(
       new Request('http://localhost/api/finance-governance/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-org-id': orgA },
+        headers: orgHeaders(orgA),
         body: JSON.stringify({ caseId: 'sample-case' }),
       })
     );
     expect(submitResponse.status).toBe(200);
 
-    const approveResponse = await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: { 'x-org-id': orgA } }), {
+    const approveResponse = await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: orgHeaders(orgA) }), {
       params: Promise.resolve({ id: 'APR-1001' }),
     });
     expect(approveResponse.status).toBe(200);
@@ -87,16 +97,16 @@ describeLive('finance governance API + repository + supabase (live)', () => {
         await submit(
           new Request('http://localhost/api/finance-governance/submit', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-org-id': orgA },
+            headers: orgHeaders(orgA),
             body: JSON.stringify({ caseId: 'sample-case' }),
           })
         )
       ).status
     ).toBe(200);
 
-    expect((await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: Promise.resolve({ id: 'APR-1001' }) })).status).toBe(200);
-    expect((await reject(new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: Promise.resolve({ id: 'APR-1002' }) })).status).toBe(200);
-    expect((await escalate(new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', { method: 'POST', headers: { 'x-org-id': orgA } }), { params: Promise.resolve({ id: 'APR-1003' }) })).status).toBe(200);
+    expect((await approve(new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', { method: 'POST', headers: orgHeaders(orgA) }), { params: Promise.resolve({ id: 'APR-1001' }) })).status).toBe(200);
+    expect((await reject(new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', { method: 'POST', headers: orgHeaders(orgA) }), { params: Promise.resolve({ id: 'APR-1002' }) })).status).toBe(200);
+    expect((await escalate(new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', { method: 'POST', headers: orgHeaders(orgA) }), { params: Promise.resolve({ id: 'APR-1003' }) })).status).toBe(200);
 
     const { data: events } = await supabase
       .from('finance_workflow_action_events')

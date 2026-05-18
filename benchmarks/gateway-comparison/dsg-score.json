@@ -1,0 +1,69 @@
+{
+  "suiteId": "dsg-gateway-market-comparison-v1",
+  "vendorId": "dsg",
+  "vendorName": "DSG Gateway",
+  "scoredAt": "2026-04-30T21:30:00Z",
+  "evidence": {
+    "productionBenchmark": {
+      "pass": true,
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "passRate": "100%",
+      "avgLatencyMs": 1812,
+      "minLatencyMs": 905,
+      "maxLatencyMs": 3303
+    },
+    "routes": [
+      "/api/gateway/connectors",
+      "/api/gateway/tools/execute",
+      "/api/gateway/plan-check",
+      "/api/gateway/audit/commit",
+      "/api/gateway/audit/events",
+      "/api/gateway/audit/export",
+      "/gateway/monitor"
+    ]
+  },
+  "scores": {
+    "pre_execution_policy_gate": {
+      "score": 2,
+      "evidence": "Monitor Mode /api/gateway/plan-check returned decision allow with requestHash and auditToken."
+    },
+    "risk_classification": {
+      "score": 2,
+      "evidence": "gateway_tools risk field controls execution mode and approval requirements."
+    },
+    "human_approval_gate": {
+      "score": 1,
+      "evidence": "Approval-token pattern exists; full reviewer UI workflow is available in finance governance but not yet generalized across all gateway tools."
+    },
+    "customer_api_key_custody_avoidance": {
+      "score": 2,
+      "evidence": "Monitor Mode lets customer runtime execute after DSG decision without DSG holding customer API keys."
+    },
+    "connector_execution": {
+      "score": 2,
+      "evidence": "custom_http provider executed /api/gateway/webhook/inbox and returned HTTP 200."
+    },
+    "audit_hash_proof": {
+      "score": 2,
+      "evidence": "requestHash and recordHash returned in Gateway Mode and Monitor Mode commit."
+    },
+    "audit_export": {
+      "score": 2,
+      "evidence": "/api/gateway/audit/export returns audit JSON evidence."
+    },
+    "replay_or_history": {
+      "score": 2,
+      "evidence": "/gateway/monitor and /api/gateway/audit/events expose event history."
+    },
+    "failure_closed_behavior": {
+      "score": 2,
+      "evidence": "Monitor plan-check hotfix fails closed if monitor event is not persisted. Provider failures return block."
+    },
+    "public_reproducible_benchmark": {
+      "score": 2,
+      "evidence": "npm run benchmark:gateway produces JSON and markdown benchmark artifacts."
+    }
+  }
+}

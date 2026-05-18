@@ -10,10 +10,19 @@ if [ -n "${VERCEL_TOKEN:-}" ]; then
   AUTH_ARGS+=(--token "$VERCEL_TOKEN")
 fi
 
-if ! command -v vercel >/dev/null 2>&1; then
-  echo "Vercel CLI not found. Install with: npm i -g vercel"
+VERCEL_CMD=()
+if command -v vercel >/dev/null 2>&1; then
+  VERCEL_CMD=(vercel)
+elif command -v npx >/dev/null 2>&1; then
+  VERCEL_CMD=(npx --yes vercel)
+else
+  echo "Vercel CLI not found and npx is unavailable."
   exit 1
 fi
+
+run_vercel() {
+  "${VERCEL_CMD[@]}" "$@"
+}
 
 TMP_ENV_FILE=".env.tmp"
 cleanup() {
@@ -24,7 +33,7 @@ trap cleanup EXIT
 set_env() {
   local key="$1"
   local value="$2"
-  printf '%s' "$value" | vercel env add "$key" production --force "${AUTH_ARGS[@]}"
+  printf '%s' "$value" | run_vercel env add "$key" production --force "${AUTH_ARGS[@]}"
   echo "✓ $key"
 }
 
@@ -40,7 +49,7 @@ set_env_if_present() {
 
 rm_env() {
   local key="$1"
-  if vercel env rm "$key" production -y "${AUTH_ARGS[@]}" >/dev/null 2>&1; then
+  if run_vercel env rm "$key" production -y "${AUTH_ARGS[@]}" >/dev/null 2>&1; then
     echo "✗ removed $key"
   else
     echo "- skip $key"
@@ -64,10 +73,17 @@ get_val() {
 }
 
 echo "==> pulling current env values..."
-vercel env pull "$TMP_ENV_FILE" --environment production "${AUTH_ARGS[@]}"
+run_vercel env pull "$TMP_ENV_FILE" --environment production "${AUTH_ARGS[@]}"
 
 ANON_KEY="$(get_val "dsgone_SUPABASE_ANON_KEY")"
 SERVICE_KEY="$(get_val "dsgone_SUPABASE_SECRET_KEY")"
+SUPABASE_URL_VALUE_FROM_PULL="$(get_val "NEXT_PUBLIC_SUPABASE_URL")"
+if [ -z "$SUPABASE_URL_VALUE_FROM_PULL" ]; then
+  SUPABASE_URL_VALUE_FROM_PULL="$(get_val "SUPABASE_URL")"
+fi
+if [ -z "$SUPABASE_URL_VALUE_FROM_PULL" ]; then
+  SUPABASE_URL_VALUE_FROM_PULL="$(get_val "dsgone_SUPABASE_URL")"
+fi
 PUBLISHABLE_KEY="$(get_val "NEXT_PUBLIC_dsgone_SUPABASE_PUBLISHABLE_KEY")"
 AUTONOMA_CLIENT="$(get_val "AUTONOMA_CLIENT_ID")"
 AUTONOMA_SECRET="$(get_val "AUTONOMA_SECRET_ID")"
@@ -83,10 +99,13 @@ ALLOWED_ORIGINS_VALUE="${DSG_ALLOWED_ORIGINS:-${CURRENT_ALLOWED_ORIGINS:-$APP_UR
 INTERNAL_SERVICE_TOKEN_VALUE="${INTERNAL_SERVICE_TOKEN:-${CURRENT_INTERNAL_SERVICE_TOKEN:-}}"
 UPSTASH_URL_VALUE="${UPSTASH_REDIS_REST_URL:-${CURRENT_UPSTASH_URL:-}}"
 UPSTASH_TOKEN_VALUE="${UPSTASH_REDIS_REST_TOKEN:-${CURRENT_UPSTASH_TOKEN:-}}"
+SUPABASE_URL_VALUE="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL_VALUE_FROM_PULL:-}}"
+SUPABASE_SERVICE_ROLE_VALUE="${SUPABASE_SERVICE_ROLE_KEY:-${SERVICE_KEY:-}}"
 
 echo "==> setting corrected env var names..."
 [ -n "$ANON_KEY" ] && set_env "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$ANON_KEY"
-[ -n "$SERVICE_KEY" ] && set_env "SUPABASE_SERVICE_ROLE_KEY" "$SERVICE_KEY"
+[ -n "$SUPABASE_SERVICE_ROLE_VALUE" ] && set_env "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_VALUE"
+[ -n "$SUPABASE_URL_VALUE" ] && set_env "NEXT_PUBLIC_SUPABASE_URL" "$SUPABASE_URL_VALUE"
 [ -n "$PUBLISHABLE_KEY" ] && set_env "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" "$PUBLISHABLE_KEY"
 [ -n "$AUTONOMA_CLIENT" ] && set_env "WORKOS_CLIENT_ID" "$AUTONOMA_CLIENT"
 [ -n "$AUTONOMA_SECRET" ] && set_env "WORKOS_API_KEY" "$AUTONOMA_SECRET"
@@ -116,11 +135,16 @@ rm_env "STRIPE_PRICE_ID"
 
 echo
 echo "==> current production env vars:"
-vercel env ls production "${AUTH_ARGS[@]}"
+run_vercel env ls production "${AUTH_ARGS[@]}"
 
 echo
 echo "DONE! Remaining vars to set manually (if still missing):"
-echo "  - NEXT_PUBLIC_SUPABASE_URL"
+if [ -z "$SUPABASE_URL_VALUE" ]; then
+  echo "  - NEXT_PUBLIC_SUPABASE_URL"
+fi
+if [ -z "$SUPABASE_SERVICE_ROLE_VALUE" ]; then
+  echo "  - SUPABASE_SERVICE_ROLE_KEY"
+fi
 echo "  - DSG_CORE_URL (only when DSG_CORE_MODE=remote)"
 echo "  - DSG_CORE_API_KEY (only when DSG_CORE_MODE=remote)"
 echo "  - STRIPE_SECRET_KEY"

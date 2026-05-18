@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     const [auditExport, coreLedger] = await Promise.all([
       fetchAuditLogsForExport(access.orgId, limit),
-      getDSGCoreLedger(limit),
+      getDSGCoreLedger(limit, { orgId: access.orgId }),
     ]);
 
     if (!auditExport.ok) {

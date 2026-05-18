@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { requireRuntimeAccess } from '../../../lib/authz-runtime';
+import { handleApiError } from '../../../lib/security/api-error';
+
+type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
 
 export async function GET(req: Request) {
   const auth = await requireRuntimeAccess(req, 'monitor');
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  if (auth.ok === false) {
+    const denied = auth as DeniedAuth;
+    return NextResponse.json({ ok: false, error: denied.error }, { status: denied.status });
   }
 
   const admin = getSupabaseAdmin() as any;
@@ -20,7 +24,7 @@ export async function GET(req: Request) {
     .limit(limit);
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return handleApiError('api/agent-executions', error);
   }
 
   return NextResponse.json({ ok: true, items: data ?? [] });

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { parseSseData, formatAgentEventMessage } from '../lib/agent/chat-event';
 
 type ChatLine = {
   id: string;
@@ -11,12 +12,15 @@ type ChatLine = {
 
 const STORAGE_KEY = 'dsg_chat_history';
 const MAX_HISTORY = 100;
+const AGENT_CHAT_ENDPOINT = '/api/agent-chat-v2';
+const CODEX_ENDPOINT = '/api/dsg-bridge/codex';
 
 const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
   '/dashboard': [{ label: 'Check readiness', prompt: 'check readiness' }],
   '/dashboard/agents': [
     { label: 'Create agent', prompt: 'create agent' },
     { label: 'List agents', prompt: 'list agents' },
+    { label: 'Create chatbot', prompt: 'create chatbot "Support Bot"' },
   ],
   '/dashboard/policies': [{ label: 'List policies', prompt: 'list policies' }],
   '/dashboard/executions': [{ label: 'Check audit', prompt: 'audit lineage' }],
@@ -39,8 +43,10 @@ export default function AgentChatWidget() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [useCodex, setUseCodex] = useState(false);
+  const [codexResponseId, setCodexResponseId] = useState<string | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'DSG Agent พร้อมช่วย — พิมพ์คำสั่งหรือกดปุ่มลัดตามหน้าที่ใช้งาน'),
+    makeLine('system', 'DSG Agent v2 พร้อมช่วย — ใช้ skills bundle ใหม่สำหรับ chatbot/agent runtime'),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -80,15 +86,20 @@ export default function AgentChatWidget() {
     setDraft('');
 
     try {
-      const res = await fetch('/api/agent-chat', {
+      const endpoint = useCodex ? CODEX_ENDPOINT : AGENT_CHAT_ENDPOINT;
+      const body = useCodex
+        ? JSON.stringify({ input: message, ...(codexResponseId ? { previous_response_id: codexResponseId } : {}) })
+        : JSON.stringify({ message, pageContext: pathname });
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message, pageContext: pathname }),
+        body,
       });
 
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || 'Agent chat failed');
+        throw new Error((json as any).error || 'Agent chat failed');
       }
 
       const reader = res.body?.getReader();
@@ -96,6 +107,8 @@ export default function AgentChatWidget() {
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let codexBuffer = '';
+      let newResponseId: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -107,12 +120,44 @@ export default function AgentChatWidget() {
 
         for (const raw of events) {
           if (!raw.startsWith('data: ')) continue;
-          const event = JSON.parse(raw.slice(6));
-          if (event.type === 'step_result' || event.type === 'step_error') {
-            setLines((prev) => [...prev, makeLine('assistant', JSON.stringify(event, null, 2))]);
+
+          if (useCodex) {
+            // Codex SSE format: { type, content/delta, responseId }
+            try {
+              const event = JSON.parse(raw.slice(6)) as Record<string, unknown>;
+              if (event.type === 'token') {
+                codexBuffer += (event.content as string) ?? '';
+              }
+              if (event.type === 'done') {
+                newResponseId = (event.responseId as string | null) ?? null;
+                if (codexBuffer.trim()) {
+                  setLines((prev) => [...prev, makeLine('assistant', `🤖 Codex: ${codexBuffer}`)]);
+                  codexBuffer = '';
+                }
+              }
+              if (event.type === 'error') {
+                throw new Error((event.error as string) ?? 'Codex error');
+              }
+            } catch {
+              // skip malformed events
+            }
+          } else {
+            // Existing agent SSE format
+            const event = parseSseData(raw);
+            if (!event) continue;
+            const msg = formatAgentEventMessage(event);
+            if (!msg) continue;
+            setLines((prev) => [...prev, makeLine('assistant', msg)]);
           }
         }
       }
+
+      // Flush remaining Codex buffer
+      if (useCodex && codexBuffer.trim()) {
+        setLines((prev) => [...prev, makeLine('assistant', `🤖 Codex: ${codexBuffer}`)]);
+      }
+      if (newResponseId) setCodexResponseId(newResponseId);
+
     } catch (err) {
       setLines((prev) => [...prev, makeLine('assistant', err instanceof Error ? err.message : 'Agent chat failed')]);
     } finally {
@@ -142,14 +187,25 @@ export default function AgentChatWidget() {
     <div className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-slate-100">DSG Agent</p>
+          <p className="text-sm font-semibold text-slate-100">
+            {useCodex ? '⚡ Codex' : 'DSG Agent v2'}
+          </p>
           <p className="text-[10px] text-slate-400">{pathname}</p>
         </div>
-        <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close agent chat">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setUseCodex((v) => !v); setCodexResponseId(null); }}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${useCodex ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+            title={useCodex ? 'Switch to DSG Agent' : 'Switch to Codex (free)'}
+          >
+            {useCodex ? 'Codex ON' : 'Codex'}
+          </button>
+          <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close agent chat">
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">

@@ -8,6 +8,9 @@ out/
 # local env files
 .env
 .env.local
+
+# Claude Code local settings (contains secrets — never commit)
+.claude/settings.local.json
 .env.*.local
 
 # logs
@@ -23,3 +26,18 @@ pnpm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# vercel
+.vercel/
+
+# temp/build artifacts
+.tmp/
+test-results/
+playwright-report/
+
+# playwright auth/session state
+playwright/.auth/
+supabase/.temp/
+
+# security scan reports
+gitleaks-report.json

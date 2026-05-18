@@ -10,8 +10,14 @@ import { handleApiError } from '../../../../lib/security/api-error';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
-type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL';
+type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL' | 'WARN';
 
+const DEFAULT_POLICY_ID = '00000000-0000-4000-8000-000000000001';
+const RUNTIME_INFRA_FIX_STEPS = [
+  'supabase migration up',
+  "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -c \"NOTIFY pgrst, 'reload schema';\"",
+  "./scripts/apply-runtime-rpc-fix.sh \"$SUPABASE_DB_URL\"",
+] as const;
 
 function logAutoSetupEvent(
   event:
@@ -29,6 +35,14 @@ function logAutoSetupEvent(
       ...payload,
     }),
   );
+}
+
+function errorMessageOf(value: unknown) {
+  if (value && typeof value === 'object' && 'message' in value) {
+    const message = (value as { message?: unknown }).message;
+    return typeof message === 'string' && message.length > 0 ? message : 'unknown';
+  }
+  return 'unknown';
 }
 
 function isMissingSchemaError(message: string, identifier: string) {
@@ -88,6 +102,8 @@ export async function POST(_request: Request) {
     let billingStatus: SetupStatus = 'FAIL';
     let onboardingStatus: SetupStatus = 'FAIL';
     let runtimeRolesStatus: SetupStatus = 'FAIL';
+    let usedLegacyExecutionFallback = false;
+    let runtimeInfraNeedsRepair = false;
 
     const fail = (payload: Record<string, unknown>, status = 500) =>
       NextResponse.json(
@@ -101,11 +117,13 @@ export async function POST(_request: Request) {
 
     let { error: policyError } = await admin.from('policies').upsert(
       {
-        id: 'policy_default',
+        id: DEFAULT_POLICY_ID,
         name: 'Default DSG Policy',
         version: 'v1',
         status: 'active',
         description: 'Baseline deterministic safety policy.',
+        rules: [],
+        is_active: true,
         config: { block_risk_score: 0.8, stabilize_risk_score: 0.4, oscillation_window: 4 },
       },
       { onConflict: 'id', ignoreDuplicates: true },
@@ -114,11 +132,13 @@ export async function POST(_request: Request) {
     if (policyError && isMissingInfraError(policyError.message, 'config')) {
       const retry = await admin.from('policies').upsert(
         {
-          id: 'policy_default',
+          id: DEFAULT_POLICY_ID,
           name: 'Default DSG Policy',
           version: 'v1',
           status: 'active',
           description: 'Baseline deterministic safety policy.',
+          rules: [],
+          is_active: true,
         },
         { onConflict: 'id', ignoreDuplicates: true },
       );
@@ -154,13 +174,13 @@ export async function POST(_request: Request) {
       agentStatus = 'EXISTS';
       (results.steps as string[]).push(`agent: EXISTS (${agentId})`);
     } else {
-      agentId = `agent-${suffix}`;
+      agentId = randomUUID();
       apiKey = `dsg_${randomUUID().replace(/-/g, '')}`;
       const { error: agentError } = await admin.from('agents').insert({
         id: agentId,
         org_id: orgId,
         name: 'Auto-Setup Agent',
-        policy_id: 'policy_default',
+        policy_id: DEFAULT_POLICY_ID,
         status: 'active',
         api_key_hash: createHash('sha256').update(apiKey).digest('hex'),
         monthly_limit: 10000,
@@ -168,6 +188,11 @@ export async function POST(_request: Request) {
       results.agent_id = agentId;
       agentStatus = agentError ? 'FAIL' : 'CREATED';
       (results.steps as string[]).push(agentError ? `agent: FAIL (${agentError.message})` : `agent: CREATED (${agentId})`);
+      if (!agentError) {
+        void import('../../../../lib/marketing/milestones').then(({ recordMilestone }) =>
+          recordMilestone(orgId, 'agent_connected', { metadata: { source: 'auto_setup' } })
+        ).catch(() => null);
+      }
     }
 
     const approvalId = randomUUID();
@@ -178,6 +203,40 @@ export async function POST(_request: Request) {
       decision: 'ALLOW',
       policyVersion: 'v1',
       reason: 'Auto-setup verification execution',
+    };
+
+    const runLegacyExecutionFallback = async () => {
+      const { data: execution, error: legacyExecError } = await admin
+        .from('executions')
+        .insert({
+          org_id: orgId,
+          agent_id: agentId,
+          decision: 'ALLOW',
+          latency_ms: 1,
+          request_payload: canonical.input,
+          context_payload: canonical.context,
+          policy_version: 'v1',
+          reason: 'Auto-setup verification execution (legacy fallback)',
+        })
+        .select('id')
+        .single();
+
+      if (legacyExecError || !execution) {
+        return { ok: false as const, error: legacyExecError?.message || 'legacy execution failed' };
+      }
+
+      results.execution_id = execution.id;
+      usedLegacyExecutionFallback = true;
+      await admin.from('audit_logs').insert({
+        org_id: orgId,
+        agent_id: agentId,
+        execution_id: execution.id,
+        policy_version: 'v1',
+        decision: 'ALLOW',
+        reason: 'Auto-setup verification execution (legacy fallback)',
+        evidence: { source: 'auto_setup_legacy_fallback', canonical },
+      });
+      return { ok: true as const, executionId: execution.id };
     };
 
     const { error: approvalError } = await admin.from('runtime_approval_requests').insert({
@@ -192,41 +251,19 @@ export async function POST(_request: Request) {
 
     if (approvalError) {
       if (isMissingInfraError(approvalError.message, 'runtime_approval_requests')) {
-        const { data: execution, error: legacyExecError } = await admin
-          .from('executions')
-          .insert({
-            org_id: orgId,
-            agent_id: agentId,
-            decision: 'ALLOW',
-            latency_ms: 1,
-            request_payload: canonical.input,
-            context_payload: canonical.context,
-            policy_version: 'v1',
-            reason: 'Auto-setup verification execution (legacy fallback)',
-          })
-          .select('id')
-          .single();
-
-        if (legacyExecError || !execution) {
+        const fallback = await runLegacyExecutionFallback();
+        if (!fallback.ok) {
           (results.steps as string[]).push(`approval: FAIL (${approvalError.message})`);
-          (results.steps as string[]).push(`rpc_commit: FAIL (${legacyExecError?.message || 'legacy execution failed'})`);
+          (results.steps as string[]).push(`rpc_commit: FAIL (${fallback.error})`);
           rpcCommitStatus = 'FAIL';
           checkpointStatus = 'FAIL';
         } else {
-          results.execution_id = execution.id;
-          await admin.from('audit_logs').insert({
-            org_id: orgId,
-            agent_id: agentId,
-            execution_id: execution.id,
-            policy_version: 'v1',
-            decision: 'ALLOW',
-            reason: 'Auto-setup verification execution (legacy fallback)',
-            evidence: { source: 'auto_setup_legacy_fallback', canonical },
-          });
-          (results.steps as string[]).push('approval: OK (legacy fallback)');
-          (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${execution.id})`);
-          (results.steps as string[]).push('checkpoint: FAIL (legacy fallback did not create runtime checkpoint)');
+          runtimeInfraNeedsRepair = true;
+          (results.steps as string[]).push('approval: WARN (runtime approval table missing; using legacy path)');
+          (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${fallback.executionId})`);
+          (results.steps as string[]).push('checkpoint: WARN (legacy fallback did not create runtime checkpoint)');
           rpcCommitStatus = 'OK';
+          checkpointStatus = 'WARN';
         }
       } else {
         (results.steps as string[]).push(toStepStatus('approval', approvalError));
@@ -254,8 +291,25 @@ export async function POST(_request: Request) {
       });
 
       if (commitError) {
-        (results.steps as string[]).push(`rpc_commit: FAIL (${commitError.message})`);
-        rpcCommitStatus = 'FAIL';
+        if (isMissingInfraError(commitError.message, 'runtime_commit_execution')) {
+          const fallback = await runLegacyExecutionFallback();
+          if (!fallback.ok) {
+            (results.steps as string[]).push(`rpc_commit: FAIL (${fallback.error})`);
+            rpcCommitStatus = 'FAIL';
+            checkpointStatus = 'FAIL';
+          } else {
+            runtimeInfraNeedsRepair = true;
+            (results.steps as string[]).push('approval: OK');
+            (results.steps as string[]).push('rpc_commit: WARN (runtime RPC missing in schema cache; migrated legacy execution instead)');
+            (results.steps as string[]).push(`rpc_commit: OK (legacy execution=${fallback.executionId})`);
+            (results.steps as string[]).push('checkpoint: WARN (legacy fallback did not create runtime checkpoint)');
+            rpcCommitStatus = 'OK';
+            checkpointStatus = 'WARN';
+          }
+        } else {
+          (results.steps as string[]).push(`rpc_commit: FAIL (${commitError.message})`);
+          rpcCommitStatus = 'FAIL';
+        }
       } else {
         const row = Array.isArray(commit) ? commit[0] : commit;
         results.execution_id = row?.execution_id;
@@ -287,8 +341,14 @@ export async function POST(_request: Request) {
           );
 
           if (checkpointError) {
-            (results.steps as string[]).push(`checkpoint: FAIL (${checkpointError.message})`);
-            checkpointStatus = 'FAIL';
+            if (isMissingInfraError(checkpointError.message, 'runtime_checkpoints')) {
+              runtimeInfraNeedsRepair = true;
+              (results.steps as string[]).push('checkpoint: WARN (table missing in API cache: run runtime spine migrations)');
+              checkpointStatus = 'WARN';
+            } else {
+              (results.steps as string[]).push(`checkpoint: FAIL (${checkpointError.message})`);
+              checkpointStatus = 'FAIL';
+            }
           } else {
             (results.steps as string[]).push('checkpoint: OK');
             checkpointStatus = 'OK';
@@ -340,7 +400,7 @@ export async function POST(_request: Request) {
       onboardingStatus = 'OK';
     } catch (error) {
       (results.steps as string[]).push(
-        `onboarding: FAIL (${error instanceof Error ? error.message : 'unknown'})`,
+        `onboarding: FAIL (${errorMessageOf(error)})`,
       );
       onboardingStatus = 'FAIL';
     }
@@ -356,8 +416,14 @@ export async function POST(_request: Request) {
     );
 
     if (runtimeRolesError) {
-      (results.steps as string[]).push(`runtime_roles: FAIL (${runtimeRolesError.message})`);
-      runtimeRolesStatus = 'FAIL';
+      if (isMissingInfraError(runtimeRolesError.message, 'runtime_roles')) {
+        runtimeInfraNeedsRepair = true;
+        (results.steps as string[]).push('runtime_roles: WARN (table missing in API cache: run runtime RBAC migrations)');
+        runtimeRolesStatus = 'WARN';
+      } else {
+        (results.steps as string[]).push(`runtime_roles: FAIL (${runtimeRolesError.message})`);
+        runtimeRolesStatus = 'FAIL';
+      }
     } else {
       (results.steps as string[]).push('runtime_roles: OK');
       runtimeRolesStatus = 'OK';
@@ -394,7 +460,8 @@ export async function POST(_request: Request) {
       checkpointStatus === 'OK' &&
       (billingStatus === 'OK' || billingStatus === 'CREATED' || billingStatus === 'EXISTS') &&
       onboardingStatus === 'OK' &&
-      runtimeRolesStatus === 'OK';
+      runtimeRolesStatus === 'OK' &&
+      !runtimeInfraNeedsRepair;
 
     results.first_run_complete = firstRunComplete;
     results.ok = firstRunComplete;
@@ -404,6 +471,13 @@ export async function POST(_request: Request) {
     }
     if (!process.env.STRIPE_SECRET_KEY) {
       (results.next_steps as string[]).push('ตั้ง STRIPE_SECRET_KEY บน Vercel (ถ้าจะใช้ billing)');
+    }
+    if (usedLegacyExecutionFallback || runtimeInfraNeedsRepair) {
+      (results.next_steps as string[]).push('รัน Supabase migrations ล่าสุดและ reload PostgREST schema cache เพื่อเปิดใช้งาน runtime RPC/checkpoint เต็มรูปแบบ');
+      results.runtime_infra_fix = {
+        required: true,
+        commands: [...RUNTIME_INFRA_FIX_STEPS],
+      };
     }
 
     if (!firstRunComplete) {
@@ -441,7 +515,7 @@ export async function POST(_request: Request) {
     return NextResponse.json(results, { status: 200 });
   } catch (error) {
     logAutoSetupEvent('auto_setup_failed', {
-      error: error instanceof Error ? error.message : 'unknown',
+      error: errorMessageOf(error),
     });
     return handleApiError('api/setup/auto', error);
   }

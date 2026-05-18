@@ -1,0 +1,2020 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test
+> vitest run
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tdealer01-crypto-dsg-control-plane
+
+ ✓ tests/integration/api/spine-execute.test.ts (6 tests) 399ms
+stderr | tests/integration/api/auth-continue.test.ts > /auth/continue > provisioned operator email → operator magic-link path
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/auth-continue.test.ts > /auth/continue > non-provisioned email + workspace_name → trial path
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/auth-continue.test.ts > /auth/continue > non-provisioned email without workspace_name → missing-workspace
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/auth-continue.test.ts > /auth/continue > approval-required domain → request-access redirect
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/auth-continue.test.ts > /auth/continue > missing email → missing-email
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/auth-continue.test.ts > /auth/continue > OTP send failure for operator → send-failed
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+{
+  event: 'auth_continue_operator_send_failed',
+  name: 'Error',
+  code: null
+}
+
+ ✓ tests/integration/api/auth-continue.test.ts (6 tests) 1060ms
+   ✓ /auth/continue > provisioned operator email → operator magic-link path 799ms
+stderr | tests/integration/api/intent.test.ts > /api/intent > returns 401 when Bearer token is missing
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/intent.test.ts > /api/intent > returns 400 when agent_id is missing
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/intent.test.ts > /api/intent > returns 401 when agent_id and api key do not resolve
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+stderr | tests/integration/api/intent.test.ts > /api/intent > issues runtime intent with resolved org_id
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+ ✓ tests/integration/api/intent.test.ts (5 tests) 405ms
+ ✓ tests/unit/spine/pipeline-block.test.ts (9 tests) 415ms
+   ✓ runPipeline — gate BLOCK short-circuits arbiters > returns BLOCK from gate and skips arbiters 356ms
+ ↓ tests/integration/api/finance-governance-live-db.test.ts (3 tests | 3 skipped)
+stderr | tests/integration/api/auth-login.test.ts > /auth/login > does not block when APP_URL is missing and falls back to request origin
+{
+  event: 'auth_login_preflight_warnings',
+  warnings: [
+    {
+      code: 'missing-app-url',
+      message: 'APP_URL or NEXT_PUBLIC_APP_URL is not set — falling back to request origin'
+    }
+  ]
+}
+
+ ✓ tests/integration/api/auth-login.test.ts (3 tests) 126ms
+ ✓ tests/unit/enterprise/proof-runtime.test.ts (3 tests) 234ms
+ ✓ tests/integration/ui/enterprise-proof-pages.test.tsx (4 tests) 243ms
+ ✓ tests/unit/finance-governance-repository.test.ts (5 tests) 42ms
+ ✓ tests/integration/api/finance-governance-api.test.ts (5 tests) 1105ms
+   ✓ finance governance api routes > returns workspace summary data 994ms
+ ✓ tests/integration/api/enterprise-proof-runtime-report.test.ts (5 tests) 1054ms
+   ✓ /api/enterprise-proof/runtime-report > returns 400 when org_id/agent_id are missing 953ms
+ ✓ tests/unit/spine/planner-execute.test.ts (15 tests) 32ms
+ ✓ tests/unit/spine/proof-checkpoint.test.ts (10 tests) 24ms
+ ✓ tests/unit/spine/pipeline-approval.test.ts (2 tests) 204ms
+ ✓ tests/unit/dsg/automation-controller.test.ts (3 tests) 43ms
+ ✓ tests/integration/api/access-review.test.ts (2 tests) 820ms
+   ✓ /api/access/review > returns 403 when reviewer lacks org.manage_access 793ms
+stderr | tests/integration/api/finance-governance-actions.test.ts > finance governance action routes > submits a finance workflow item
+[api/finance-governance] {
+  error: {
+    name: 'Error',
+    message: 'Missing Supabase public environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+    stack: 'Error: Missing Supabase public environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY\n' +
+      '    at Module.createClient (/workspace/tdealer01-crypto-dsg-control-plane/lib/supabase/server.ts:12:11)\n' +
+      '    at Module.getOrg (/workspace/tdealer01-crypto-dsg-control-plane/lib/server/getOrg.ts:15:26)\n' +
+      '    at POST (/workspace/tdealer01-crypto-dsg-control-plane/app/api/finance-governance/submit/route.ts:12:25)\n' +
+      '    at /workspace/tdealer01-crypto-dsg-control-plane/tests/integration/api/finance-governance-actions.test.ts:31:28\n' +
+      '    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n' +
+      '    at file:///workspace/tdealer01-crypto-dsg-control-plane/node_modules/@vitest/runner/dist/index.js:533:5\n' +
+      '    at runTest (file:///workspace/tdealer01-crypto-dsg-control-plane/node_modules/@vitest/runner/dist/index.js:1056:11)\n' +
+      '    at runSuite (file:///workspace/tdealer01-crypto-dsg-control-plane/node_modules/@vitest/runner/dist/index.js:1205:15)\n' +
+      '    at runSuite (file:///workspace/tdealer01-crypto-dsg-control-plane/node_modules/@vitest/runner/dist/index.js:1205:15)\n' +
+      '    at runFiles (file:///workspace/tdealer01-crypto-dsg-control-plane/node_modules/@vitest/runner/dist/index.js:1262:5)'
+  }
+}
+
+ ❯ tests/integration/api/finance-governance-actions.test.ts (4 tests | 4 failed) 1144ms
+   × finance governance action routes > submits a finance workflow item 991ms
+     → expected 500 to be 200 // Object.is equality
+   × finance governance action routes > approves an approval item 65ms
+     → expected 403 to be 200 // Object.is equality
+   × finance governance action routes > rejects an approval item 46ms
+     → expected 403 to be 200 // Object.is equality
+   × finance governance action routes > escalates an approval item 41ms
+     → expected 403 to be 200 // Object.is equality
+ ✓ tests/unit/security/cors.test.ts (5 tests) 155ms
+ ✓ tests/unit/auth-preflight.test.ts (6 tests) 14ms
+ ✓ tests/unit/authz.test.ts (2 tests) 61ms
+stderr | tests/integration/api/sign-in-events.test.ts > sign in event instrumentation > logs event for successful magic link request
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+ ✓ tests/integration/api/sign-in-events.test.ts (1 test) 212ms
+ ✓ tests/unit/gate/registry.test.ts (5 tests) 125ms
+ ✓ tests/unit/agent/planner.test.ts (6 tests) 31ms
+ ❯ tests/integration/ui/command-center-capabilities.test.tsx (3 tests | 2 failed) 74ms
+   × command center capabilities surface > exposes clickable chat submit action and monitor panel in dashboard command center 39ms
+     → expected '\'use client\';\n\nimport { useEffect…' to contain 'Chat / Agent Console'
+   × command center capabilities surface > shows live monitor + chat workflow in app shell 28ms
+     → expected '\'use client\';\n\nimport Link from \…' to contain 'Split-pane chat and live monitor'
+ ✓ tests/unit/dsg-core.test.ts (5 tests) 34ms
+stderr | tests/integration/api/request-access.test.ts > /api/access/request > creates pending access request row
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+ ✓ tests/integration/api/request-access.test.ts (1 test) 891ms
+   ✓ /api/access/request > creates pending access request row 888ms
+ ✓ tests/unit/runtime/makk8-arbiter.test.ts (3 tests) 12ms
+ ✓ tests/unit/playground/evaluate.test.ts (9 tests) 15ms
+ ❯ tests/unit/finance-governance-audit-ledger.test.ts (2 tests | 1 failed) 49ms
+   × finance governance audit ledger verification > detects matching request and record hashes 42ms
+     → expected false to be true // Object.is equality
+ ✓ tests/unit/runtime/recovery.test.ts (1 test) 29ms
+ ✓ tests/unit/auth/rbac.test.ts (2 tests) 11ms
+ ✓ tests/unit/agent/chat-event.test.ts (6 tests) 13ms
+stderr | tests/integration/api/auth-continue-org-sso.test.ts > /auth/continue org-scoped sso > blocks email flow when break-glass is disabled
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+ ✓ tests/integration/api/auth-continue-org-sso.test.ts (1 test) 213ms
+ ❯ tests/integration/ui/finance-governance-live-workflow.test.ts (2 tests | 1 failed) 62ms
+   × finance governance live workflow dashboard surface > shows submit/approve/reject/escalate actions connected to API endpoints 53ms
+     → expected '\'use client\';\n\nimport { useCallba…' to contain 'Submit sample workflow item'
+ ✓ tests/migrations/finance-workflow.test.ts (2 tests) 9ms
+ ❯ tests/integration/ui/access-entry-pages.test.tsx (3 tests | 2 failed) 61ms
+   × public access entry pages > homepage primary CTA points to /login 43ms
+     → expected 'import Link from \'next/link\';\nimpo…' to contain 'href="/login"'
+   × public access entry pages > pricing trial CTA points to /login 13ms
+     → expected 'import Link from \'next/link\';\n\nco…' to contain 'href="/login"'
+ ✓ tests/integration/api/auth-session.test.ts (2 tests) 44ms
+ ✓ tests/unit/api/execute-makk8-integration.test.ts (2 tests) 10ms
+ ✓ tests/unit/seat-activation.test.ts (2 tests) 39ms
+ ✓ tests/unit/internal-service.test.ts (2 tests) 16ms
+ ✓ tests/integration/api/finance-governance-callers.test.ts (1 test) 8ms
+ ✓ tests/unit/dsg-core-remote-execution.test.ts (1 test) 14ms
+ ✓ tests/unit/dsg/planner-generate.test.ts (2 tests) 14ms
+ ✓ tests/unit/login-context.test.ts (1 test) 29ms
+ ✓ tests/unit/auth/guest-access.test.ts (2 tests) 9ms
+ ✓ tests/unit/billing/overage-config.test.ts (3 tests) 16ms
+ ✓ tests/unit/safe-next.test.ts (4 tests) 9ms
+ ✓ tests/migrations/finance-governance-control-layer.test.ts (1 test) 6ms
+ ✓ tests/migrations/runtime-spine.test.ts (2 tests) 7ms
+ ✓ tests/integration/api/sso-start.test.ts (1 test) 130ms
+ ↓ tests/integration/api/audit-evidence.test.ts (1 test | 1 skipped)
+ ✓ tests/unit/resend.test.ts (2 tests) 8ms
+ ✓ tests/migrations/batch3-enterprise-identity.test.ts (1 test) 8ms
+ ✓ tests/unit/agent/llm-router.test.ts (1 test) 8ms
+ ✓ tests/migrations/runtime-spine-hardening.test.ts (2 tests) 7ms
+ ✓ tests/unit/jit-provisioning.test.ts (1 test) 58ms
+ ✓ tests/unit/auth-sso-config.test.ts (1 test) 18ms
+ ✓ tests/unit/runtime/gate.test.ts (3 tests) 7ms
+ ✓ tests/unit/onboarding-bootstrap.test.ts (1 test) 42ms
+ ✓ tests/integration/api/execute-compat.test.ts (1 test) 25ms
+ ✓ tests/failure/replay-matrix.test.ts (4 tests) 7ms
+ ✓ tests/unit/runtime/approval.test.ts (2 tests) 7ms
+ ✓ tests/integration/api/runtime-recovery.test.ts (1 test) 927ms
+   ✓ /api/runtime-recovery > enforces org role when demo bypass is disabled 923ms
+ ✓ tests/integration/api/settings/security-permission.test.ts (1 test) 857ms
+   ✓ /api/settings/security/sign-ins > requires org.manage_security 854ms
+ ✓ tests/integration/api/effect-callback.test.ts (1 test) 1009ms
+   ✓ /api/effect-callback > returns 403 when role is missing 1005ms
+ ✓ tests/integration/api/settings/access-permission.test.ts (1 test) 847ms
+   ✓ /api/settings/access/* > requires org.manage_access 845ms
+ ✓ tests/integration/api/checkpoint.test.ts (1 test) 908ms
+   ✓ /api/checkpoint > returns 403 when role is missing 905ms
+stderr | tests/integration/api/execute.test.ts > /api/execute > returns 401 when bearer token is missing
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+ ✓ tests/integration/api/execute.test.ts (1 test) 960ms
+   ✓ /api/execute > returns 401 when bearer token is missing 956ms
+stderr | tests/integration/api/mcp-call.test.ts > /api/mcp/call > returns 403 when role is missing
+[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)
+
+ ✓ tests/integration/api/mcp-call.test.ts (1 test) 1117ms
+   ✓ /api/mcp/call > returns 403 when role is missing 1115ms
+ ✓ tests/integration/api/enterprise-proof-report.test.ts (1 test) 826ms
+   ✓ /api/enterprise-proof/report > returns legacy public AI-first narrative payload 823ms
+ ✓ tests/unit/runtime/canonical.test.ts (2 tests) 18ms
+ ✓ tests/integration/api/demo-bootstrap.test.ts (1 test) 13ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/finance-governance-audit-ledger.test.ts > finance governance audit ledger verification > detects matching request and record hashes
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/finance-governance-audit-ledger.test.ts:39:29
+     37|     const verification = verifyFinanceGovernanceAuditLedgerRow(complet…
+     38| 
+     39|     expect(verification.ok).toBe(true);
+       |                             ^
+     40|     expect(verification.mismatches).toEqual([]);
+     41|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  tests/integration/api/finance-governance-actions.test.ts > finance governance action routes > submits a finance workflow item
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ tests/integration/api/finance-governance-actions.test.ts:34:29
+     32|     const body = await response.json();
+     33| 
+     34|     expect(response.status).toBe(200);
+       |                             ^
+     35|     expect(body.action).toBe('submit');
+     36|     expect(body.caseId).toBe('case-001');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  tests/integration/api/finance-governance-actions.test.ts > finance governance action routes > approves an approval item
+AssertionError: expected 403 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 403
+
+ ❯ tests/integration/api/finance-governance-actions.test.ts:51:29
+     49|     const body = await response.json();
+     50| 
+     51|     expect(response.status).toBe(200);
+       |                             ^
+     52|     expect(body.action).toBe('approve');
+     53|     expect(body.approvalId).toBe('APR-1001');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  tests/integration/api/finance-governance-actions.test.ts > finance governance action routes > rejects an approval item
+AssertionError: expected 403 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 403
+
+ ❯ tests/integration/api/finance-governance-actions.test.ts:68:29
+     66|     const body = await response.json();
+     67| 
+     68|     expect(response.status).toBe(200);
+       |                             ^
+     69|     expect(body.action).toBe('reject');
+     70|     expect(body.approvalId).toBe('APR-1002');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  tests/integration/api/finance-governance-actions.test.ts > finance governance action routes > escalates an approval item
+AssertionError: expected 403 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 403
+
+ ❯ tests/integration/api/finance-governance-actions.test.ts:85:29
+     83|     const body = await response.json();
+     84| 
+     85|     expect(response.status).toBe(200);
+       |                             ^
+     86|     expect(body.action).toBe('escalate');
+     87|     expect(body.approvalId).toBe('APR-1003');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  tests/integration/ui/access-entry-pages.test.tsx > public access entry pages > homepage primary CTA points to /login
+AssertionError: expected 'import Link from \'next/link\';\nimpo…' to contain 'href="/login"'
+
+- Expected
++ Received
+
+- href="/login"
++ import Link from 'next/link';
++ import { ActionPathGraph } from '../components/ActionPathGraph';
++ import { ConstraintChecklist } from '../components/ConstraintChecklist';
++ import { EvidenceDrawer } from '../components/EvidenceDrawer';
++ import { GateResultCard } from '../components/GateResultCard';
++
++ const trustBar = [
++   'Policy-routed action control',
++   'Deterministic PASS/BLOCK/REVIEW/UNSUPPORTED gates',
++   'Audit-ready proof and replay evidence',
++ ];
++
++ const painCards = [
++   {
++     title: 'Approvals are scattered',
++     body: 'Finance decisions still happen across email, chat, spreadsheets, ERP notes, and shared folders. That makes policy enforcement inconsistent and hard to prove.',
++   },
++   {
++     title: 'Audit evidence is rebuilt by hand',
++     body: 'When audit asks who approved a payment, why it was approved, and what evidence was reviewed, teams often reconstruct the story after the fact.',
++   },
++   {
++     title: 'Exceptions are risky and invisible',
++     body: 'Urgent payments, missing documents, high-risk vendors, and threshold overrides need controlled escalation before money moves.',
++   },
++ ];
++
++ const howSteps = [
++   'Submit a high-risk AI, workflow, finance, or deployment action.',
++   'DSG ONE resolves policy, entitlement, risk, and approval context.',
++   'The deterministic gate returns PASS, BLOCK, REVIEW, or UNSUPPORTED.',
++   'The system records proof/gate evidence for audit review.',
++ ];
++
++ const launchLinks = [
++   {
++     title: 'Finance Governance Workspace',
++     body: 'See the approval queue, case detail, exception posture, and evidence bundle path.',
++     cta: 'Open finance workspace',
++     href: '/finance-governance/app',
++   },
++   {
++     title: 'Enterprise Pilot',
++     body: 'Start with one invoice or payment approval workflow and prove audit readiness before broad rollout.',
++     cta: 'Request access',
++     href: '/request-access',
++   },
++   {
++     title: 'Readiness Gate',
++     body: 'Use health and readiness contracts to prove the deployment is safe before production launch.',
++     cta: 'View docs',
++     href: '/docs',
++   },
++ ];
++
++ const DEMO_LABEL = 'Sample action context (homepage proof rail demo)';
++
++ export default function HomePage() {
++   return (
++     <main className="min-h-screen overflow-hidden bg-[#07080a] text-white">
++       <section className="relative overflow-hidden border-b border-white/10">
++         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.3),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.17),transparent_30%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#0a0c0f_100%)]" />
++         <div className="absolute inset-y-0 right-0 hidden w-[44%] border-l border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] lg:block" />
++
++         <div className="relative mx-auto grid min-h-[calc(100svh-73px)] max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
++           <div>
++             <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
++               Live Deterministic Gate Scaffold
++             </p>
++             <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
++               Govern AI actions before they reach production.
++             </h1>
++             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
++               DSG ONE is a runtime governance gateway for AI actions — not another GRC record system. It routes high-risk AI, workflow, finance, and deployment actions through policy, approval, deterministic gate checks, and audit evidence before execution.
++             </p>
++
++             <div className="mt-8 rounded-3xl border border-emerald-300/25 bg-emerald-400/10 p-5 shadow-2xl shadow-emerald-950/30">
++               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Try before login</p>
++               <p className="mt-2 text-sm leading-7 text-emerald-50">
++                 เคยใช้ AI แล้วพังใช่ไหม? ดู proof/demo และถาม DSG ได้ก่อน โดย public mode ไม่ execute action และยังไม่ต้องย้ายข้อมูล.
++               </p>
++               <div className="mt-4 flex flex-wrap gap-3">
++                 <Link
++                   href="/enterprise-proof/demo"
++                   className="rounded-2xl bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-200"
++                 >
++                   ดูเดโม่ / View demo
++                 </Link>
++                 <Link
++                   href="#public-chat"
++                   className="rounded-2xl border border-emerald-200/40 bg-black/20 px-5 py-3 text-sm font-bold text-emerald-100 transition hover:border-emerald-100"
++                 >
++                   ถาม DSG
++                 </Link>
++               </div>
++             </div>
++
++             <div className="mt-8 flex flex-wrap gap-4">
++               <Link href="/enterprise-proof/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
++                 View live gate evidence
++               </Link>
++               <Link href="/dashboard" className="rounded-2xl border border-red-300/35 bg-red-500/10 px-6 py-4 font-semibold text-red-100 transition hover:border-red-200/50 hover:bg-red-500/15">
++                 Open control plane
++               </Link>
++               <Link href="/docs" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/30">
++                 Review launch docs
++               </Link>
++             </div>
++
++             <div className="mt-12 grid gap-3 md:grid-cols-3">
++               {trustBar.map((item) => (
++                 <div key={item} className="border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-slate-200">
++                   {item}
++                 </div>
++               ))}
++             </div>
++           </div>
++
++           <div className="relative">
++             <div className="border border-amber-300/20 bg-black/30 p-6 backdrop-blur-sm">
++               <div className="flex items-center justify-between border-b border-white/10 pb-5">
++                 <div>
++                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Runtime Control Room</p>
++                   <h2 className="mt-2 text-2xl font-semibold text-white">Governed Action Stack</h2>
++                 </div>
++                 <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-200">
++                   Ready
++                 </span>
++               </div>
++
++               <div className="mt-6 space-y-4">
++                 {howSteps.map((step, index) => (
++                   <div key={step} className="grid grid-cols-[42px_1fr] gap-4 border-l border-amber-300/25 bg-white/[0.02] p-4">
++                     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/25 bg-amber-300/10 text-sm font-semibold text-amber-100">
++                       {index + 1}
++                     </div>
++                     <p className="text-sm leading-7 text-slate-200">{step}</p>
++                   </div>
++                 ))}
++               </div>
++
++               <div className="mt-6 grid gap-3 md:grid-cols-3">
++                 <div className="border border-white/10 bg-[#111317] p-4">
++                   <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Policy</p>
++                   <p className="mt-2 text-lg font-semibold text-slate-100">Route by policy</p>
++                 </div>
++                 <div className="border border-white/10 bg-[#111317] p-4">
++                   <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Evidence</p>
++                   <p className="mt-2 text-lg font-semibold text-slate-100">Evidence at decision time</p>
++                 </div>
++                 <div className="border border-white/10 bg-[#111317] p-4">
++                   <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Exceptions</p>
++                   <p className="mt-2 text-lg font-semibold text-slate-100">Review with controls</p>
++                 </div>
++               </div>
++             </div>
++           </div>
++         </div>
++       </section>
++
++       <section id="public-chat" className="border-b border-emerald-300/15 bg-[#07110f]">
++         <div className="mx-auto grid max-w-7xl gap-6 px-6 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
++           <div>
++             <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Public DSG Assistant</p>
++             <h2 className="mt-3 text-3xl font-semibold text-white">ถามก่อนล็อกอินได้ ไม่ execute action</h2>
++             <p className="mt-3 text-sm leading-7 text-slate-300">
++               ใช้ปุ่มแชทมุมขวาล่างหรือเริ่มจากหน้าเดโม่ เพื่อเช็กว่า DSG เหมาะกับ workflow ของคุณไหม ก่อน request access หรือย้ายข้อมูลจริง.
++             </p>
++           </div>
++           <div className="flex flex-wrap gap-3 lg:justify-end">
++             <Link href="/enterprise-proof/demo" className="rounded-2xl bg-emerald-300 px-6 py-4 font-bold text-slate-950 hover:bg-emerald-200">
++               ดูเดโม่ตอนนี้
++             </Link>
++             <Link href="/request-access" className="rounded-2xl border border-emerald-300/40 px-6 py-4 font-bold text-emerald-100 hover:bg-emerald-300/10">
++               ขอสิทธิ์ทดลอง
++             </Link>
++           </div>
++         </div>
++       </section>
++
++       <section className="mx-auto max-w-7xl px-6 py-16">
++         <div className="grid gap-5 lg:grid-cols-3">
++           {painCards.map((card) => (
++             <article key={card.title} className="border-t border-red-400/30 bg-white/[0.02] px-0 py-0">
++               <div className="p-6">
++                 <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Risk Signal</p>
++                 <h2 className="mt-4 text-2xl font-semibold text-amber-50">{card.title}</h2>
++                 <p className="mt-4 text-sm leading-7 text-slate-300">{card.body}</p>
++               </div>
++             </article>
++           ))}
++         </div>
++       </section>
++
++       <section className="border-y border-white/10 bg-[#0b0d10]">
++         <div className="mx-auto grid max-w-7xl gap-6 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr]">
++           <div>
++             <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Launch Paths</p>
++             <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">Move from one governed workflow to a real operating surface.</h2>
++             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
++               Finance Governance is one governed workflow under DSG ONE. Start with a single invoice or payment path, prove control quality in a bounded pilot, then expand into the daily approval workspace with shared evidence and runtime checks.
++             </p>
++           </div>
++           <div className="grid gap-4 md:grid-cols-3">
++             {launchLinks.map((item) => (
++               <article key={item.title} className="border border-white/10 bg-white/[0.03] p-6">
++                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Path</p>
++                 <h3 className="mt-4 text-2xl font-semibold text-white">{item.title}</h3>
++                 <p className="mt-3 min-h-[110px] text-sm leading-7 text-slate-300">{item.body}</p>
++                 <Link href={item.href} className="mt-5 inline-flex border-b border-amber-300 pb-1 text-sm font-semibold text-amber-100">
++                   {item.cta}
++                 </Link>
++               </article>
++             ))}
++           </div>
++         </div>
++       </section>
++
++       <section className="mx-auto max-w-7xl px-6 py-16">
++         <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Homepage proof rail</p>
++         <h2 className="mt-3 text-3xl font-semibold text-white">Live deterministic gate evidence (scaffold)</h2>
++         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
++           Demo/sample action context only. This rail shows verified live scaffold fields and deterministic TypeScript static_check outputs from the current boundary.
++         </p>
++         <div className="mt-6 grid gap-4 lg:grid-cols-2">
++           <GateResultCard
++             status="PASS"
++             summary="policyVersion 1.0 loaded and all 8 configured deterministic constraints evaluated as pass for this sample request."
++             reason="No threshold, actor-role, or replay-protection violations were detected in the sample action context."
++             ruleRefs={['policyVersion:1.0', 'solver:static_check@dsg-deterministic-ts-0.0.0', 'constraintsChecked:8']}
++             demoLabel={DEMO_LABEL}
++           />
++           <ActionPathGraph
++             actor={{ id: 'actor-1', title: 'AP Maker (sample)', subtitle: 'role: finance_maker' }}
++             action={{ id: 'action-1', title: 'Submit invoice approval request', subtitle: 'sample amount within configured threshold' }}
++             policies={[
++               { id: 'p-1', title: 'Policy version', subtitle: '1.0 observed' },
++               { id: 'p-2', title: 'Replay protection', subtitle: 'nonce/idempotency/request hash present' },
++               { id: 'p-3', title: 'Constraint engine', subtitle: 'static_check deterministic evaluation' },
++             ]}
++             gateResult="PASS"
++             finalDecision="ALLOW in sample action context"
++             demoLabel={DEMO_LABEL}
++           />
++           <ConstraintChecklist
++             demoLabel={DEMO_LABEL}
++             items={[
++               { id: 'c1', label: 'Policy version resolved', detail: 'policyVersion observed as 1.0.', state: 'pass' },
++               { id: 'c2', label: 'Input hash recorded', detail: 'inputHash present in scaffold output.', state: 'pass' },
++               { id: 'c3', label: 'Constraint set hash recorded', detail: 'constraintSetHash present in scaffold output.', state: 'pass' },
++               { id: 'c4', label: 'Proof hash recorded', detail: 'proofHash present in scaffold output.', state: 'pass' },
++               { id: 'c5', label: 'Structured constraint results', detail: 'Per-constraint deterministic pass/fail structure present.', state: 'pass' },
++               { id: 'c6', label: 'Replay nonce present', detail: 'replayProtection.nonce present.', state: 'pass' },
++               { id: 'c7', label: 'Idempotency key present', detail: 'replayProtection.idempotencyKey present.', state: 'pass' },
++               { id: 'c8', label: 'Request hash present', detail: 'replayProtection.requestHash present.', state: 'pass' },
++             ]}
++           />
++           <EvidenceDrawer
++             title="Evidence availability"
++             demoLabel={DEMO_LABEL}
++             fields={[
++               { key: 'policyVersion', label: 'policyVersion', availability: 'present', detail: 'Observed value: 1.0.' },
++               { key: 'inputHash', label: 'inputHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
++               { key: 'constraintSetHash', label: 'constraintSetHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
++               { key: 'proofHash', label: 'proofHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
++               { key: 'constraintResults', label: 'structured constraint results', availability: 'present', detail: 'Per-constraint structured outcomes are present.' },
++               { key: 'nonce', label: 'replayProtection.nonce', availability: 'present', detail: 'Replay nonce present.' },
++               { key: 'idempotency', label: 'replayProtection.idempotencyKey', availability: 'present', detail: 'Idempotency key present.' },
++               { key: 'requestHash', label: 'replayProtection.requestHash', availability: 'present', detail: 'Request hash present.' },
++               { key: 'solverName', label: 'solver.name', availability: 'present', detail: 'Observed solver.name: static_check.' },
++               { key: 'solverVersion', label: 'solver.version', availability: 'present', detail: 'Observed solver.version: dsg-deterministic-ts-0.0.0.' },
++               { key: 'constraintsChecked', label: 'constraintsChecked', availability: 'present', detail: 'Observed constraintsChecked: 8.' },
++               { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Not claimed in this scaffold boundary.' },
++               { key: 'jwtJwks', label: 'JWT/JWKS auth completion', availability: 'planned', detail: 'Not claimed as complete in this homepage proof rail.' },
++               { key: 'worm', label: 'WORM storage completion', availability: 'planned', detail: 'Not claimed as complete in this homepage proof rail.' },
++             ]}
++           />
++         </div>
++       </section>
++
++       <section className="mx-auto max-w-7xl px-6 pb-20">
++         <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
++           <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
++           <p className="mt-3">Current boundary: this is a deterministic TypeScript static_check scaffold. It does not claim external Z3 production invocation, JWT/JWKS auth completion, WORM storage completion, third-party certification, ISO/NIST certification, or a complete enterprise-ready proof system.</p>
++         </div>
++       </section>
++
++     </main>
++   );
++ }
++
+
+ ❯ tests/integration/ui/access-entry-pages.test.tsx:11:20
+      9|   it('homepage primary CTA points to /login', () => {
+     10|     const source = read('app/page.tsx');
+     11|     expect(source).toContain('href="/login"');
+       |                    ^
+     12|     expect(source).toContain('Continue with email');
+     13|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  tests/integration/ui/access-entry-pages.test.tsx > public access entry pages > pricing trial CTA points to /login
+AssertionError: expected 'import Link from \'next/link\';\n\nco…' to contain 'href="/login"'
+
+- Expected
++ Received
+
+- href="/login"
++ import Link from 'next/link';
++
++ const plans = [
++   {
++     name: 'Readiness Report',
++     price: '$9',
++     cadence: 'one-time',
++     description: 'A compact GO / NO-GO production readiness report for one release or deployment review.',
++     href: 'https://buy.stripe.com/4gMbJ20qQ0n1cUz5U43gk03',
++     cta: 'Buy report',
++     featured: false,
++     features: [
++       'Production readiness verdict',
++       'Endpoint status summary',
++       'Protected-route validation',
++       'SHA256 evidence hash',
++       'Remediation checklist',
++     ],
++   },
++   {
++     name: 'Solo',
++     price: '$19',
++     cadence: 'per month',
++     description: 'Hosted release evidence for one project with basic readiness history and proof reporting.',
++     href: 'https://buy.stripe.com/fZu5kEc9yd9N3jZeqA3gk04',
++     cta: 'Start Solo',
++     featured: false,
++     features: [
++       '1 project',
++       'Daily readiness check',
++       'GO / NO-GO evidence history',
++       'Basic release proof reporting',
++       'Email-based onboarding',
++     ],
++   },
++   {
++     name: 'Team',
++     price: '$49',
++     cadence: 'per month',
++     description: 'Release-governance package for small teams that need evidence dashboard and alerts.',
++     href: 'https://buy.stripe.com/28E9AUb5uc5J7Af0zK3gk05',
++     cta: 'Start Team',
++     featured: true,
++     features: [
++       'Up to 5 projects',
++       'Evidence dashboard',
++       'Slack or email alerts',
++       'Vercel readiness checks',
++       'Supabase readiness checks',
++     ],
++   },
++   {
++     name: 'Production',
++     price: '$99',
++     cadence: 'per month',
++     description: 'Production governance with audit exports, policy rules, release approval history, and support.',
++     href: 'https://buy.stripe.com/eVq6oIb5uedRg6L0zK3gk06',
++     cta: 'Start Production',
++     featured: false,
++     features: [
++       'Up to 20 projects',
++       'Audit export',
++       'Policy rules',
++       'Release approval history',
++       'Priority support',
++     ],
++   },
++ ];
++
++ const layers = [
++   {
++     title: 'Action Layer',
++     body: 'Free GitHub Action that blocks unsafe release workflows and emits deterministic GO / NO-GO output.',
++   },
++   {
++     title: 'Governance Layer',
++     body: 'Policy-ready release evidence for teams that need to explain why a release passed or stopped.',
++   },
++   {
++     title: 'Audit Layer',
++     body: 'Evidence hashes, history, reports, and exportable release records for production review.',
++   },
++ ];
++
++ export default function PricingPage() {
++   return (
++     <main className="min-h-screen bg-[#07080a] text-white">
++       <section className="relative overflow-hidden border-b border-white/10">
++         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(181,18,27,0.26),transparent_26%),radial-gradient(circle_at_82%_10%,rgba(245,197,92,0.16),transparent_30%),radial-gradient(circle_at_50%_70%,rgba(16,185,129,0.10),transparent_34%),linear-gradient(180deg,#090a0d_0%,#0b0d10_55%,#07080a_100%)]" />
++         <div className="relative mx-auto max-w-7xl px-6 py-16 lg:py-24">
++           <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
++             DSG ONE Secure Deploy Gate Pricing
++           </p>
++           <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
++             Sell release confidence with GO / NO-GO evidence.
++           </h1>
++           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
++             Start with the free GitHub Action, buy a one-time readiness report, or subscribe to hosted DSG ONE release-governance workflows for teams that need evidence-ready production proof.
++           </p>
++           <div className="mt-8 flex flex-wrap gap-4">
++             <Link href="/readiness-report" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-amber-200">
++               View $9 report
++             </Link>
++             <Link href="https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action" className="rounded-2xl border border-white/15 bg-white/[0.04] px-6 py-4 font-semibold text-slate-100 transition hover:border-amber-300/40">
++               Install free Action
++             </Link>
++           </div>
++         </div>
++       </section>
++
++       <section className="mx-auto max-w-7xl px-6 py-16">
++         <div className="grid gap-5 lg:grid-cols-4">
++           {plans.map((plan) => (
++             <article
++               key={plan.name}
++               className={`relative flex flex-col border p-6 ${
++                 plan.featured
++                   ? 'border-amber-300/40 bg-amber-300/10 shadow-2xl shadow-amber-950/20'
++                   : 'border-white/10 bg-white/[0.03]'
++               }`}
++             >
++               {plan.featured ? (
++                 <span className="absolute right-4 top-4 rounded-full border border-amber-300/30 bg-amber-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">
++                   Best start
++                 </span>
++               ) : null}
++               <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Plan</p>
++               <h2 className="mt-4 text-2xl font-semibold text-white">{plan.name}</h2>
++               <div className="mt-5 flex items-end gap-2">
++                 <span className="text-5xl font-bold text-white">{plan.price}</span>
++                 <span className="pb-2 text-sm text-slate-400">{plan.cadence}</span>
++               </div>
++               <p className="mt-5 min-h-[96px] text-sm leading-7 text-slate-300">{plan.description}</p>
++               <ul className="mt-5 flex-1 space-y-3">
++                 {plan.features.map((feature) => (
++                   <li key={feature} className="flex gap-3 text-sm leading-6 text-slate-200">
++                     <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-amber-300" />
++                     <span>{feature}</span>
++                   </li>
++                 ))}
++               </ul>
++               <a
++                 href={plan.href}
++                 className={`mt-7 rounded-2xl px-5 py-4 text-center text-sm font-bold transition ${
++                   plan.featured
++                     ? 'bg-amber-300 text-slate-950 hover:bg-amber-200'
++                     : 'border border-white/15 bg-black/20 text-slate-100 hover:border-amber-300/40'
++                 }`}
++               >
++                 {plan.cta}
++               </a>
++             </article>
++           ))}
++         </div>
++       </section>
++
++       <section className="border-y border-white/10 bg-[#0b0d10]">
++         <div className="mx-auto grid max-w-7xl gap-6 px-6 py-16 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
++           <div>
++             <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Product stack</p>
++             <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">
++               SaaS, action-layer governance, and audit evidence in one path.
++             </h2>
++             <p className="mt-4 text-sm leading-7 text-slate-300">
++               The free Action proves the gate. The paid products package the evidence, reporting, and operating workflow teams need after the check runs.
++             </p>
++           </div>
++           <div className="grid gap-4 md:grid-cols-3">
++             {layers.map((layer) => (
++               <article key={layer.title} className="border border-white/10 bg-white/[0.03] p-6">
++                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Layer</p>
++                 <h3 className="mt-4 text-2xl font-semibold text-amber-50">{layer.title}</h3>
++                 <p className="mt-4 text-sm leading-7 text-slate-300">{layer.body}</p>
++               </article>
++             ))}
++           </div>
++         </div>
++       </section>
++
++       <section className="mx-auto max-w-7xl px-6 py-12">
++         <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-slate-200">
++           <p className="font-semibold text-amber-100">Boundary</p>
++           <p>This pricing page describes DSG ONE products and support alignment. It does not claim certification, external audit completion, or guaranteed compliance outcomes.</p>
++           <p className="mt-2">If an item is demo/scaffold in related evidence pages, treat it as non-production proof until verified.</p>
++         </div>
++       </section>
++     </main>
++   );
++ }
++
+
+ ❯ tests/integration/ui/access-entry-pages.test.tsx:17:20
+     15|   it('pricing trial CTA points to /login', () => {
+     16|     const source = read('app/pricing/page.tsx');
+     17|     expect(source).toContain('href="/login"');
+       |                    ^
+     18|     expect(source).toContain('Start Trial');
+     19|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+ FAIL  tests/integration/ui/command-center-capabilities.test.tsx > command center capabilities surface > exposes clickable chat submit action and monitor panel in dashboard command center
+AssertionError: expected '\'use client\';\n\nimport { useEffect…' to contain 'Chat / Agent Console'
+
+- Expected
++ Received
+
+- Chat / Agent Console
++ 'use client';
++
++ import { useEffect, useMemo, useState } from 'react';
++ import { parseSseData, formatAgentEventMessage } from '../../../lib/agent/chat-event';
++
++ type HealthPayload = {
++   service?: string;
++   timestamp?: string;
++   core_ok?: boolean;
++   core?: {
++     status?: string;
++     version?: string;
++     error?: string;
++   };
++ };
++
++ type CapacityPayload = {
++   ok?: boolean;
++   plan_key?: string;
++   billing_interval?: string;
++   subscription_status?: string;
++   billing_period?: string;
++   executions: number;
++   included_executions?: number;
++   remaining_executions: number;
++   utilization: number;
++   overage_executions?: number;
++   projected_amount_usd: number;
++ };
++
++ type UsagePayload = {
++   plan?: string;
++   subscription_status?: string;
++   billing_period?: string;
++   executions?: number;
++   included_executions?: number;
++   overage_executions?: number;
++   projected_amount_usd?: number;
++ };
++
++ type AuditPayload = {
++   ok?: boolean;
++   error?: string | null;
++   items?: Array<{
++     id?: number;
++     gate_result?: string;
++     entropy?: number;
++     created_at?: string;
++     state_hash?: string;
++   }>;
++ };
++
++ function formatDate(value?: string) {
++   if (!value) return '-';
++   try {
++     return new Date(value).toLocaleString();
++   } catch {
++     return value;
++   }
++ }
++
++ function resultTone(result?: string) {
++   const normalized = (result || '').toUpperCase();
++   if (normalized.includes('BLOCK') || normalized.includes('FREEZE')) return 'border-red-400/25 bg-red-500/10 text-red-100';
++   if (normalized.includes('WARN') || normalized.includes('STABILIZE')) return 'border-amber-300/25 bg-amber-300/10 text-amber-100';
++   return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100';
++ }
++
++ export default function CommandCenterPage() {
++   const [health, setHealth] = useState<HealthPayload | null>(null);
++   const [capacity, setCapacity] = useState<CapacityPayload | null>(null);
++   const [usage, setUsage] = useState<UsagePayload | null>(null);
++   const [audit, setAudit] = useState<AuditPayload | null>(null);
++   const [command, setCommand] = useState('');
++   const [chatBusy, setChatBusy] = useState(false);
++   const [chatOutput, setChatOutput] = useState<string[]>([]);
++   const [error, setError] = useState('');
++
++   useEffect(() => {
++     let alive = true;
++
++     Promise.allSettled([
++       fetch('/api/health', { cache: 'no-store' }).then(async (response) => {
++         const json = await response.json().catch(() => ({}));
++         if (!response.ok) throw new Error(json.error || 'Failed to load health');
++         return json;
++       }),
++       fetch('/api/capacity', { cache: 'no-store' }).then(async (response) => {
++         const json = await response.json().catch(() => ({}));
++         if (!response.ok) throw new Error(json.error || 'Failed to load capacity');
++         return json;
++       }),
++       fetch('/api/usage', { cache: 'no-store' }).then(async (response) => {
++         const json = await response.json().catch(() => ({}));
++         if (!response.ok) throw new Error(json.error || 'Failed to load usage');
++         return json;
++       }),
++       fetch('/api/audit?limit=8', { cache: 'no-store' }).then(async (response) => {
++         const json = await response.json().catch(() => ({}));
++         if (!response.ok) throw new Error(json.error || 'Failed to load audit');
++         return json;
++       }),
++     ])
++       .then(([healthRes, capacityRes, usageRes, auditRes]) => {
++         if (!alive) return;
++
++         const errors: string[] = [];
++
++         if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
++         else errors.push(healthRes.reason?.message || 'Failed to load health');
++
++         if (capacityRes.status === 'fulfilled') setCapacity(capacityRes.value);
++         else errors.push(capacityRes.reason?.message || 'Failed to load capacity');
++
++         if (usageRes.status === 'fulfilled') setUsage(usageRes.value);
++         else errors.push(usageRes.reason?.message || 'Failed to load usage');
++
++         if (auditRes.status === 'fulfilled') setAudit(auditRes.value);
++         else errors.push(auditRes.reason?.message || 'Failed to load audit');
++
++         if (errors.length > 0) setError(errors.join(' • '));
++       })
++       .catch((err) => {
++         if (!alive) return;
++         setError(err instanceof Error ? err.message : 'Failed to load command center');
++       });
++
++     return () => {
++       alive = false;
++     };
++   }, []);
++
++   const overallStatus = useMemo(() => {
++     if (!health) return 'CHECKING';
++     return health.core_ok ? 'READY' : 'DEGRADED';
++   }, [health]);
++
++   const alerts = useMemo(() => {
++     const events = audit?.items || [];
++     return events.filter((item) => ['BLOCK', 'FREEZE'].includes((item.gate_result || '').toUpperCase()));
++   }, [audit]);
++
++   const auditUnavailableInInternalMode = useMemo(() => {
++     const message = (audit?.error || '').toLowerCase();
++     return message.includes('internal dsg core mode');
++   }, [audit?.error]);
++
++   const suggestedActions = useMemo(() => {
++     const actions: string[] = [];
++     if (!health?.core_ok) actions.push('Verify DSG core connectivity and runtime credentials.');
++     if ((capacity?.utilization ?? 0) > 0.8) actions.push('Reduce execution load or expand plan capacity before quota pressure becomes operational risk.');
++     if (alerts.length > 0) actions.push('Review the latest BLOCK or FREEZE events before releasing more approvals.');
++     if (actions.length === 0) actions.push('System posture is stable. Continue monitoring audit entropy and queue pressure.');
++     return actions;
++   }, [alerts.length, capacity?.utilization, health?.core_ok]);
++
++   const metrics = useMemo(
++     () => [
++       { label: 'Core status', value: health?.core_ok ? 'Online' : 'Offline', helper: health?.core?.version || 'No version reported' },
++       { label: 'Executions', value: String(capacity?.executions ?? 0), helper: usage?.billing_period || 'Current period' },
++       { label: 'Quota remaining', value: String(capacity?.remaining_executions ?? 0), helper: `${Math.round((capacity?.utilization ?? 0) * 100)}% utilized` },
++       { label: 'Projected billing', value: `$${(capacity?.projected_amount_usd ?? 0).toFixed(2)}`, helper: usage?.plan || '-' },
++     ],
++     [capacity?.executions, capacity?.projected_amount_usd, capacity?.remaining_executions, capacity?.utilization, health?.core?.version, health?.core_ok, usage?.billing_period, usage?.plan],
++   );
++
++   async function submitCommand() {
++     const value = command.trim();
++     if (!value || chatBusy) return;
++     setChatBusy(true);
++     setChatOutput((prev) => [...prev, `> ${value}`]);
++
++     try {
++       const res = await fetch('/api/agent-chat', {
++         method: 'POST',
++         headers: { 'content-type': 'application/json' },
++         body: JSON.stringify({ message: value }),
++       });
++       if (!res.ok) {
++         const json = await res.json().catch(() => ({}));
++         throw new Error(json.error || 'Agent chat failed');
++       }
++
++       const reader = res.body?.getReader();
++       if (!reader) throw new Error('No stream body returned');
++
++       const decoder = new TextDecoder();
++       let buffer = '';
++       while (true) {
++         const { done, value: chunk } = await reader.read();
++         if (done) break;
++         buffer += decoder.decode(chunk, { stream: true });
++         const events = buffer.split('\n\n');
++         buffer = events.pop() || '';
++
++         for (const raw of events) {
++           if (!raw.startsWith('data: ')) continue;
++           const event = parseSseData(raw);
++           if (!event) continue;
++           const message = formatAgentEventMessage(event);
++           if (!message) continue;
++           setChatOutput((prev) => [...prev, message]);
++         }
++       }
++
++       setCommand('');
++     } catch (err) {
++       setChatOutput((prev) => [...prev, err instanceof Error ? err.message : 'Agent chat failed']);
++     } finally {
++       setChatBusy(false);
++     }
++   }
++
++   return (
++     <main className="min-h-screen bg-[#090a0d] px-6 pb-12 pt-8 text-slate-100">
++       <div className="mx-auto max-w-7xl space-y-6">
++         <section className="border border-white/10 bg-[linear-gradient(135deg,rgba(120,14,21,0.2),rgba(10,11,14,0.92)_35%,rgba(245,197,92,0.08)_120%)] p-8">
++           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
++             <div className="max-w-3xl">
++               <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">DSG Command Center</p>
++               <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">Live operator surface for readiness, evidence, and intervention.</h1>
++               <p className="mt-4 text-sm leading-7 text-slate-300">
++                 Use this room to scan control posture, review active audit signals, and run guided diagnostics before approving more runtime activity.
++               </p>
++             </div>
++             <span className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.24em] ${overallStatus === 'READY' ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100' : 'border-red-400/25 bg-red-500/10 text-red-100'}`}>
++               {overallStatus}
++             </span>
++           </div>
++         </section>
++
++         <section className="grid gap-4 md:grid-cols-4">
++           {metrics.map((item) => (
++             <div key={item.label} className="border border-white/10 bg-white/[0.03] p-5">
++               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
++               <p className="mt-4 text-3xl font-semibold text-white">{item.value}</p>
++               <p className="mt-2 text-sm text-slate-400">{item.helper}</p>
++             </div>
++           ))}
++         </section>
++
++         <section className="grid gap-6 lg:grid-cols-[0.78fr_1.22fr]">
++           <div className="space-y-6">
++             <div className="border border-white/10 bg-white/[0.03] p-6">
++               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Control scorecard</p>
++               <div className="mt-5 space-y-3">
++                 <div className="flex items-center justify-between border-l border-emerald-400/35 bg-black/20 p-4">
++                   <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Plan</span>
++                   <span className="font-semibold text-white">{usage?.plan || '-'}</span>
++                 </div>
++                 <div className="flex items-center justify-between border-l border-red-400/35 bg-black/20 p-4">
++                   <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Active alerts</span>
++                   <span className="font-semibold text-red-100">{alerts.length}</span>
++                 </div>
++                 <div className="flex items-center justify-between border-l border-amber-300/35 bg-black/20 p-4">
++                   <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Utilization</span>
++                   <span className="font-semibold text-white">{Math.round((capacity?.utilization ?? 0) * 100)}%</span>
++                 </div>
++               </div>
++             </div>
++
++             <div className="border border-white/10 bg-white/[0.03] p-6">
++               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Suggested actions</p>
++               <div className="mt-4 space-y-3">
++                 {suggestedActions.map((action) => (
++                   <div key={action} className="border-l border-amber-300/35 bg-black/20 p-4 text-sm leading-7 text-slate-200">
++                     {action}
++                   </div>
++                 ))}
++               </div>
++             </div>
++
++             <div className="border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
++               Core version: {health?.core?.version || '-'} · Status: {health?.core?.status || '-'} · Error: {health?.core?.error || '-'}
++             </div>
++           </div>
++
++           <div className="grid gap-6">
++             <div className="border border-white/10 bg-[#0d0f12] p-6">
++               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
++                 <div>
++                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Agent console</p>
++                   <h2 className="mt-2 text-2xl font-semibold text-white">Run diagnostics and operator prompts</h2>
++                 </div>
++                 <button
++                   type="button"
++                   onClick={submitCommand}
++                   disabled={chatBusy}
++                   className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
++                 >
++                   {chatBusy ? 'Running…' : 'Run diagnostics'}
++                 </button>
++               </div>
++
++               <textarea
++                 value={command}
++                 onChange={(e) => setCommand(e.target.value)}
++                 placeholder="Ask readiness, audit, capacity, or recovery questions..."
++                 className="mt-5 h-32 w-full border border-white/10 bg-black/30 p-4 text-sm text-slate-100 outline-none transition focus:border-amber-300/40"
++               />
++               {error ? <p className="mt-3 text-sm text-red-200">{error}</p> : null}
++
++               <div className="mt-5 max-h-72 space-y-3 overflow-y-auto pr-1">
++                 {chatOutput.length === 0 ? <p className="text-sm text-slate-500">No output yet.</p> : null}
++                 {chatOutput.map((line, index) => (
++                   <pre key={`${index}-${line.slice(0, 8)}`} className="overflow-x-auto border border-white/10 bg-black/20 p-4 text-xs leading-6 text-slate-200">
++                     {line}
++                   </pre>
++                 ))}
++               </div>
++             </div>
++
++             <div className="border border-white/10 bg-[#0d0f12] p-6">
++               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
++                 <div>
++                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Audit stream</p>
++                   <h2 className="mt-2 text-2xl font-semibold text-white">Latest gate results and state evidence</h2>
++                 </div>
++                 <p className="text-sm text-slate-500">Last check: {formatDate(health?.timestamp)}</p>
++               </div>
++
++               <div className="mt-5 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
++                 {(audit?.items || []).map((item) => (
++                   <div key={`${item.id}-${item.created_at}`} className={`border p-4 ${resultTone(item.gate_result)}`}>
++                     <div className="flex items-center justify-between gap-3">
++                       <p className="text-sm font-semibold uppercase tracking-[0.18em]">{item.gate_result || '-'}</p>
++                       <p className="text-xs text-slate-400">{formatDate(item.created_at)}</p>
++                     </div>
++                     <p className="mt-3 text-xs text-slate-300">Entropy: {typeof item.entropy === 'number' ? item.entropy.toFixed(4) : '-'}</p>
++                     <p className="mt-2 break-all text-xs text-slate-500">State hash: {item.state_hash || '-'}</p>
++                   </div>
++                 ))}
++                 {auditUnavailableInInternalMode ? <p className="text-sm text-slate-500">Audit unavailable in internal mode.</p> : null}
++                 {!auditUnavailableInInternalMode && audit?.items?.length === 0 ? <p className="text-sm text-slate-500">No audit events found.</p> : null}
++               </div>
++             </div>
++           </div>
++         </section>
++       </div>
++     </main>
++   );
++ }
++
+
+ ❯ tests/integration/ui/command-center-capabilities.test.tsx:12:20
+     10|     const source = read('app/dashboard/command-center/page.tsx');
+     11| 
+     12|     expect(source).toContain('Chat / Agent Console');
+       |                    ^
+     13|     expect(source).toContain('Monitor / Control Panel');
+     14|     expect(source).toContain('onClick={submitCommand}');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+
+ FAIL  tests/integration/ui/command-center-capabilities.test.tsx > command center capabilities surface > shows live monitor + chat workflow in app shell
+AssertionError: expected '\'use client\';\n\nimport Link from \…' to contain 'Split-pane chat and live monitor'
+
+- Expected
++ Received
+
+- Split-pane chat and live monitor
++ 'use client';
++
++ import Link from 'next/link';
++ import { useEffect, useMemo, useState } from 'react';
++ import EntropyField from './canvas/EntropyField';
++ import { parseSseData, formatAgentEventMessage } from '../lib/agent/chat-event';
++
++ type MonitorPayload = {
++   ok: boolean;
++   generated_at?: string;
++   readiness?: {
++     ready?: boolean;
++     status?: 'ready' | 'degraded' | 'down' | 'blocked' | 'unknown';
++     score?: number;
++     reasons?: string[];
++   };
++   core?: {
++     health?: {
++       ok?: boolean;
++       error?: string | null;
++       url?: string;
++     };
++     determinism?: {
++       ok?: boolean;
++       data?: {
++         max_entropy?: number;
++         deterministic?: boolean;
++         gate_action?: string;
++         sequence?: number;
++         region_count?: number;
++         unique_state_hashes?: number;
++       } | null;
++       error?: string | null;
++     };
++   };
++   control_plane?: {
++     requests_today?: number;
++     allow_rate?: number;
++     block_rate?: number;
++     stabilize_rate?: number;
++     avg_latency_ms?: number;
++     active_agents?: number;
++   };
++   billing?: {
++     subscription?: {
++       plan_key?: string;
++       billing_interval?: string;
++       status?: string;
++     } | null;
++     executions_this_month?: number;
++   };
++   alerts?: Array<{
++     level: 'info' | 'warning' | 'error' | 'critical';
++     code: string;
++     message: string;
++   }>;
++ };
++
++ type ChatMessage = {
++   id: string;
++   role: 'system' | 'user' | 'assistant';
++   content: string;
++ };
++
++ const navLinks = [
++   { href: '/dashboard', label: 'Dashboard' },
++   { href: '/dashboard/command-center', label: 'Command Center' },
++   { href: '/dashboard/integration', label: 'Integration' },
++   { href: '/dashboard/mission', label: 'Mission' },
++   { href: '/dashboard/operations', label: 'Operations' },
++   { href: '/dashboard/executions', label: 'Executions' },
++   { href: '/dashboard/proofs', label: 'Proofs' },
++   { href: '/dashboard/ledger', label: 'Ledger' },
++   { href: '/dashboard/capacity', label: 'Capacity' },
++   { href: '/dashboard/billing', label: 'Billing' },
++   { href: '/dashboard/audit', label: 'Audit' },
++ ];
++
++ function badgeTone(status?: string) {
++   switch (status) {
++     case 'ready':
++       return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100 shadow-[0_0_24px_rgba(51,209,122,0.12)]';
++     case 'degraded':
++       return 'border-amber-300/35 bg-amber-300/10 text-amber-100 shadow-[0_0_24px_rgba(245,197,66,0.12)]';
++     case 'blocked':
++       return 'border-orange-300/35 bg-orange-400/10 text-orange-100';
++     case 'down':
++       return 'border-red-400/35 bg-red-500/10 text-red-100 shadow-[0_0_24px_rgba(225,6,0,0.12)]';
++     default:
++       return 'border-white/10 bg-white/[0.04] text-slate-300';
++   }
++ }
++
++ function alertTone(level: string) {
++   switch (level) {
++     case 'critical':
++     case 'error':
++       return 'border-red-400/35 bg-red-500/10 text-red-100';
++     case 'warning':
++       return 'border-amber-300/35 bg-amber-300/10 text-amber-100';
++     default:
++       return 'border-white/10 bg-white/[0.04] text-slate-300';
++   }
++ }
++
++ function pct(v?: number) {
++   return `${Math.round((v || 0) * 100)}%`;
++ }
++
++ export default function AppShellPage() {
++   const [monitor, setMonitor] = useState<MonitorPayload | null>(null);
++   const [loading, setLoading] = useState(true);
++   const [error, setError] = useState('');
++   const [draft, setDraft] = useState('');
++   const [chatBusy, setChatBusy] = useState(false);
++   const [messages, setMessages] = useState<ChatMessage[]>([
++     {
++       id: 'm0',
++       role: 'system',
++       content:
++         'Authenticated command workspace ready. Review readiness, entropy, alerts, and operator context before taking action.',
++     },
++   ]);
++
++   useEffect(() => {
++     let alive = true;
++
++     async function loadMonitor() {
++       try {
++         setLoading(true);
++         setError('');
++         const res = await fetch('/api/core/monitor', { cache: 'no-store' });
++         const json = await res.json();
++         if (!res.ok) throw new Error(json.error || 'Failed to load monitor');
++         if (!alive) return;
++         setMonitor(json);
++       } catch (err) {
++         if (!alive) return;
++         setError(err instanceof Error ? err.message : 'Failed to load monitor');
++       } finally {
++         if (alive) setLoading(false);
++       }
++     }
++
++     loadMonitor();
++     const timer = setInterval(loadMonitor, 5000);
++     return () => {
++       alive = false;
++       clearInterval(timer);
++     };
++   }, []);
++
++   const readinessStatus = monitor?.readiness?.status || 'unknown';
++   const entropy = monitor?.core?.determinism?.data?.max_entropy ?? null;
++   const deterministic = monitor?.core?.determinism?.data?.deterministic ?? null;
++   const coreOk = monitor?.core?.health?.ok;
++   const control = monitor?.control_plane;
++   const alerts = monitor?.alerts || [];
++
++   const quickStats = useMemo(
++     () => [
++       { label: 'Requests Today', value: String(control?.requests_today ?? 0) },
++       { label: 'Latency', value: `${control?.avg_latency_ms ?? 0} ms` },
++       { label: 'Agents', value: String(control?.active_agents ?? 0) },
++       { label: 'Allow Rate', value: pct(control?.allow_rate) },
++       { label: 'Block Rate', value: pct(control?.block_rate) },
++       { label: 'Stabilize Rate', value: pct(control?.stabilize_rate) },
++     ],
++     [control],
++   );
++
++   const missionCards = useMemo(
++     () => [
++       {
++         label: 'Runtime authority',
++         value: readinessStatus.toUpperCase(),
++         helper: 'Authenticated monitor truth, refreshed every 5 seconds.',
++       },
++       {
++         label: 'Human action gate',
++         value: alerts.length > 0 ? `${alerts.length} alert(s)` : 'Clear',
++         helper: 'Review warnings before approving execution pressure.',
++       },
++       {
++         label: 'Determinism',
++         value: deterministic === null ? 'Unknown' : deterministic ? 'Stable' : 'Drift',
++         helper: typeof entropy === 'number' ? `Max entropy ${entropy.toFixed(3)}` : 'Waiting for entropy signal.',
++       },
++     ],
++     [alerts.length, deterministic, entropy, readinessStatus],
++   );
++
++   async function submitPrompt() {
++     const value = draft.trim();
++     if (!value || chatBusy) return;
++
++     setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', content: value }]);
++     setDraft('');
++     setChatBusy(true);
++
++     try {
++       const res = await fetch('/api/agent-chat', {
++         method: 'POST',
++         headers: { 'content-type': 'application/json' },
++         body: JSON.stringify({ message: value }),
++       });
++
++       if (!res.ok) {
++         const json = await res.json().catch(() => ({}));
++         throw new Error(json.error || 'Failed to run agent chat');
++       }
++
++       const reader = res.body?.getReader();
++       if (!reader) throw new Error('No stream body returned');
++
++       const decoder = new TextDecoder();
++       let buffer = '';
++
++       while (true) {
++         const { done, value: chunk } = await reader.read();
++         if (done) break;
++         buffer += decoder.decode(chunk, { stream: true });
++
++         const events = buffer.split('\n\n');
++         buffer = events.pop() || '';
++
++         for (const raw of events) {
++           if (!raw.startsWith('data: ')) continue;
++           const event = parseSseData(raw);
++           if (!event) continue;
++           const message = formatAgentEventMessage(event);
++           if (!message) continue;
++           setMessages((prev) => [
++             ...prev,
++             {
++               id: `a-${Date.now()}-${Math.random().toString(16).slice(2)}`,
++               role: 'assistant',
++               content: message,
++             },
++           ]);
++         }
++       }
++     } catch (err) {
++       setMessages((prev) => [
++         ...prev,
++         {
++           id: `a-${Date.now()}`,
++           role: 'assistant',
++           content: err instanceof Error ? err.message : 'Agent chat failed',
++         },
++       ]);
++     } finally {
++       setChatBusy(false);
++     }
++   }
++
++   return (
++     <main className="min-h-screen overflow-hidden bg-[#050505] text-[#F7F7F2]">
++       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(225,6,0,0.18),transparent_28%),radial-gradient(circle_at_85%_10%,rgba(212,175,55,0.14),transparent_30%),linear-gradient(180deg,#050505_0%,#0b0b0f_48%,#050505_100%)]" />
++
++       <div className="relative border-b border-white/10 bg-black/65 backdrop-blur-xl">
++         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
++           <div>
++             <p className="text-[11px] uppercase tracking-[0.34em] text-[#D4AF37]">DSG One · Authenticated Cockpit</p>
++             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Unified Command Workspace</h1>
++             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
++               Split-pane agent chat, mission telemetry, and protected runtime evidence in one operator-first surface.
++             </p>
++           </div>
++
++           <div className="flex flex-wrap items-center gap-2">
++             <span className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${badgeTone(readinessStatus)}`}>
++               {loading ? 'loading' : readinessStatus}
++             </span>
++             <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#F5D76E]">
++               Operator session
++             </span>
++           </div>
++         </div>
++
++         <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-6 pb-5">
++           {navLinks.map((item) => (
++             <Link
++               key={item.href}
++               href={item.href}
++               className="shrink-0 rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/10 hover:text-[#F5D76E]"
++             >
++               {item.label}
++             </Link>
++           ))}
++         </div>
++       </div>
++
++       <div className="relative mx-auto max-w-7xl space-y-6 px-6 py-6">
++         <section className="grid gap-4 lg:grid-cols-3">
++           {missionCards.map((card) => (
++             <div key={card.label} className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.22)]">
++               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{card.label}</p>
++               <p className="mt-3 text-2xl font-semibold text-white">{card.value}</p>
++               <p className="mt-2 text-sm leading-6 text-slate-400">{card.helper}</p>
++             </div>
++           ))}
++         </section>
++
++         <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
++           <section className="flex min-h-[780px] flex-col rounded-[2rem] border border-white/10 bg-[#0B0B0F]/90 shadow-[0_24px_120px_rgba(0,0,0,0.34)]">
++             <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
++               <div>
++                 <p className="text-sm font-semibold text-white">Agent Console</p>
++                 <p className="text-xs leading-5 text-slate-400">
++                   Ask for readiness, active alerts, audit status, policies, capacity, or execution context.
++                 </p>
++               </div>
++               <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#F5D76E]">
++                 Human-reviewed actions
++               </span>
++             </div>
++
++             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
++               {messages.map((message) => (
++                 <div
++                   key={message.id}
++                   className={
++                     message.role === 'user'
++                       ? 'ml-auto max-w-[88%] rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-4 py-3 text-sm leading-6 text-[#F7F7F2]'
++                       : message.role === 'assistant'
++                         ? 'max-w-[88%] rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm leading-6 text-slate-100'
++                         : 'max-w-[92%] rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-50'
++                   }
++                 >
++                   {message.content}
++                 </div>
++               ))}
++             </div>
++
++             <div className="border-t border-white/10 p-4">
++               <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
++                 <textarea
++                   value={draft}
++                   onChange={(e) => setDraft(e.target.value)}
++                   placeholder="Ask for readiness, active alerts, audit status, policies, capacity, or execution context..."
++                   className="min-h-[112px] rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-600 transition focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
++                 />
++                 <div className="flex flex-col gap-3">
++                   <button
++                     onClick={submitPrompt}
++                     disabled={chatBusy}
++                     className="rounded-2xl bg-[#D4AF37] px-5 py-3 text-sm font-semibold text-black shadow-[0_18px_60px_rgba(212,175,55,0.18)] transition hover:bg-[#F5D76E] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
++                   >
++                     {chatBusy ? 'Running…' : 'Run in Agent Chat'}
++                   </button>
++                   <button
++                     onClick={() =>
++                       setDraft(
++                         'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend the next operator action.',
++                       )
++                     }
++                     className="rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-50"
++                   >
++                     Use Readiness Prompt
++                   </button>
++                 </div>
++               </div>
++             </div>
++           </section>
++
++           <section className="space-y-6 rounded-[2rem] border border-white/10 bg-[#0B0B0F]/90 p-5 shadow-[0_24px_120px_rgba(0,0,0,0.34)]">
++             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
++               <div>
++                 <p className="text-sm font-semibold text-white">Live Monitor</p>
++                 <p className="text-xs leading-5 text-slate-400">Protected core truth, readiness, entropy pattern, and active alerts.</p>
++               </div>
++               <div className="flex flex-wrap items-center gap-2">
++                 <span
++                   className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeTone(readinessStatus)}`}
++                 >
++                   {loading ? 'loading' : readinessStatus}
++                 </span>
++                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
++                   {monitor?.generated_at ? new Date(monitor.generated_at).toLocaleTimeString() : 'waiting'}
++                 </span>
++               </div>
++             </div>
++
++             {error ? (
++               <div className="rounded-2xl border border-red-400/35 bg-red-500/10 p-4 text-sm text-red-100">
++                 {error}
++               </div>
++             ) : null}
++
++             <EntropyField
++               width={720}
++               height={340}
++               cols={56}
++               rows={26}
++               status={readinessStatus}
++               entropy={entropy ?? 0}
++               latencyMs={control?.avg_latency_ms ?? 0}
++               activeAgents={control?.active_agents ?? 0}
++               allowRate={control?.allow_rate ?? 0}
++               blockRate={control?.block_rate ?? 0}
++               stabilizeRate={control?.stabilize_rate ?? 0}
++               deterministic={deterministic ?? false}
++               animated={true}
++               className="w-full rounded-[1.5rem] border border-white/10 bg-black/35"
++             />
++
++             <div className="grid gap-4 md:grid-cols-3">
++               {quickStats.map((stat) => (
++                 <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/35 p-4">
++                   <p className="text-xs uppercase tracking-wide text-slate-500">{stat.label}</p>
++                   <p className="mt-2 text-2xl font-semibold text-white">{stat.value}</p>
++                 </div>
++               ))}
++             </div>
++
++             <div className="grid gap-4 lg:grid-cols-2">
++               <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
++                 <p className="text-sm font-semibold text-white">Core Readiness</p>
++                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
++                   <p>Core OK: {typeof coreOk === 'boolean' ? (coreOk ? 'yes' : 'no') : 'unknown'}</p>
++                   <p>Deterministic: {deterministic === null ? 'unknown' : deterministic ? 'yes' : 'no'}</p>
++                   <p>Entropy: {typeof entropy === 'number' ? entropy.toFixed(3) : '-'}</p>
++                   <p>Gate Action: {monitor?.core?.determinism?.data?.gate_action || '-'}</p>
++                   <p>Sequence: {monitor?.core?.determinism?.data?.sequence || '-'}</p>
++                 </div>
++                 <p className="mt-3 text-xs leading-5 text-slate-500">
++                   Public smoke check is available at <code>/api/health</code>. This panel reflects authenticated monitor payloads.
++                 </p>
++               </div>
++
++               <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
++                 <p className="text-sm font-semibold text-white">Billing / Capacity</p>
++                 <div className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
++                   <p>Plan: {monitor?.billing?.subscription?.plan_key || '-'}</p>
++                   <p>Interval: {monitor?.billing?.subscription?.billing_interval || '-'}</p>
++                   <p>Status: {monitor?.billing?.subscription?.status || '-'}</p>
++                   <p>Executions this month: {monitor?.billing?.executions_this_month ?? 0}</p>
++                 </div>
++               </div>
++             </div>
++
++             <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
++               <div className="flex items-center justify-between gap-3">
++                 <p className="text-sm font-semibold text-white">Active Alerts</p>
++                 <span className="text-xs text-slate-500">{alerts.length} item(s)</span>
++               </div>
++               <div className="mt-3 space-y-3">
++                 {alerts.length === 0 ? (
++                   <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-400">
++                     No active alerts.
++                   </div>
++                 ) : (
++                   alerts.map((alert, index) => (
++                     <div
++                       key={`${alert.code}-${index}`}
++                       className={`rounded-xl border p-3 text-sm ${alertTone(alert.level)}`}
++                     >
++                       <div className="flex items-center justify-between gap-3">
++                         <span className="font-semibold">{alert.code}</span>
++                         <span className="text-xs uppercase tracking-wide">{alert.level}</span>
++                       </div>
++                       <p className="mt-2 leading-6">{alert.message}</p>
++                     </div>
++                   ))
++                 )}
++               </div>
++             </div>
++           </section>
++         </div>
++       </div>
++     </main>
++   );
++ }
++
+
+ ❯ tests/integration/ui/command-center-capabilities.test.tsx:27:26
+     25|     expect(pageSource).toContain('AppShellClient');
+     26|     expect(pageSource).toContain("redirect('/login?next=/app-shell')");
+     27|     expect(clientSource).toContain('Split-pane chat and live monitor');
+       |                          ^
+     28|     expect(clientSource).toContain('Run in Agent Chat');
+     29|     expect(clientSource).toContain("fetch('/api/core/monitor'");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/10]⎯
+
+ FAIL  tests/integration/ui/finance-governance-live-workflow.test.ts > finance governance live workflow dashboard surface > shows submit/approve/reject/escalate actions connected to API endpoints
+AssertionError: expected '\'use client\';\n\nimport { useCallba…' to contain 'Submit sample workflow item'
+
+- Expected
++ Received
+
+- Submit sample workflow item
++ 'use client';
++
++ import { useCallback, useEffect, useState } from 'react';
++ import { financeGovernanceFetch } from '../request';
++
++ type WorkspaceSummaryResponse = {
++   workspace: {
++     workspace: string;
++     counts: {
++       pendingApprovals: number;
++       openExceptions: number;
++       readyExports: number;
++     };
++   };
++ };
++
++ type ApprovalsResponse = {
++   approvals: Array<{
++     id: string;
++     vendor: string;
++     amount: string;
++     status: string;
++     risk: string;
++   }>;
++ };
++
++ type CaseItem = {
++   id: string;
++   vendor?: string;
++   amount?: string | number;
++   currency?: string;
++   status?: string;
++   workflow?: string;
++ };
++
++ type CasesResponse = {
++   cases: CaseItem[];
++ };
++
++ type ActionResponse = {
++   ok: true;
++   action: 'submit' | 'approve' | 'reject' | 'escalate';
++   message: string;
++   nextStatus: string;
++   caseId?: string;
++   approvalId?: string;
++ };
++
++ type ActionBanner = {
++   kind: 'success' | 'error';
++   text: string;
++ };
++
++ export default function FinanceGovernanceLiveWorkflowPage() {
++   const [workspace, setWorkspace] = useState<WorkspaceSummaryResponse['workspace'] | null>(null);
++   const [approvals, setApprovals] = useState<ApprovalsResponse['approvals']>([]);
++   const [cases, setCases] = useState<CaseItem[]>([]);
++   const [selectedCaseId, setSelectedCaseId] = useState('');
++   const [loading, setLoading] = useState(true);
++   const [refreshing, setRefreshing] = useState(false);
++   const [error, setError] = useState('');
++   const [banner, setBanner] = useState<ActionBanner | null>(null);
++   const [busyKey, setBusyKey] = useState<string | null>(null);
++
++   const refreshData = useCallback(async (showRefreshing = false) => {
++     try {
++       if (showRefreshing) {
++         setRefreshing(true);
++       } else {
++         setLoading(true);
++       }
++       setError('');
++
++       const [workspaceResponse, approvalsResponse, casesResponse] = await Promise.all([
++         financeGovernanceFetch('/api/finance-governance/workspace/summary', { cache: 'no-store' }),
++         financeGovernanceFetch('/api/finance-governance/approvals', { cache: 'no-store' }),
++         financeGovernanceFetch('/api/cases', { cache: 'no-store' }),
++       ]);
++
++       const workspaceJson = (await workspaceResponse.json()) as WorkspaceSummaryResponse;
++       const approvalsJson = (await approvalsResponse.json()) as ApprovalsResponse;
++       const casesJson = (await casesResponse.json()) as CasesResponse;
++
++       if (!workspaceResponse.ok || !approvalsResponse.ok || !casesResponse.ok) {
++         throw new Error('Failed to refresh workflow data');
++       }
++
++       const nextCases = casesJson.cases ?? [];
++       setWorkspace(workspaceJson.workspace);
++       setApprovals(approvalsJson.approvals);
++       setCases(nextCases);
++       setSelectedCaseId((current) => current || nextCases[0]?.id || '');
++     } catch (err) {
++       setError(err instanceof Error ? err.message : 'Failed to refresh workflow data');
++     } finally {
++       setLoading(false);
++       setRefreshing(false);
++     }
++   }, []);
++
++   useEffect(() => {
++     void refreshData(false);
++   }, [refreshData]);
++
++   async function runSubmit() {
++     try {
++       setBusyKey('submit');
++       setBanner(null);
++
++       if (!selectedCaseId) {
++         throw new Error('No workflow case is available to submit. Create or import a case first.');
++       }
++
++       const response = await financeGovernanceFetch('/api/finance-governance/submit', {
++         method: 'POST',
++         headers: {
++           'Content-Type': 'application/json',
++         },
++         body: JSON.stringify({ caseId: selectedCaseId }),
++       });
++       const json = (await response.json()) as ActionResponse;
++
++       if (!response.ok) {
++         throw new Error('Failed to submit workflow item');
++       }
++
++       setBanner({
++         kind: 'success',
++         text: `${json.message}. Next status: ${json.nextStatus}.`,
++       });
++       await refreshData(true);
++     } catch (err) {
++       setBanner({
++         kind: 'error',
++         text: err instanceof Error ? err.message : 'Failed to submit workflow item',
++       });
++     } finally {
++       setBusyKey(null);
++     }
++   }
++
++   async function runApprovalAction(approvalId: string, action: 'approve' | 'reject' | 'escalate') {
++     try {
++       setBusyKey(`${approvalId}:${action}`);
++       setBanner(null);
++
++       const response = await financeGovernanceFetch(`/api/finance-governance/approvals/${approvalId}/${action}`, {
++         method: 'POST',
++       });
++       const json = (await response.json()) as ActionResponse;
++
++       if (!response.ok) {
++         throw new Error(`Failed to ${action} approval`);
++       }
++
++       setBanner({
++         kind: 'success',
++         text: `${json.message}. Next status: ${json.nextStatus}.`,
++       });
++       await refreshData(true);
++     } catch (err) {
++       setBanner({
++         kind: 'error',
++         text: err instanceof Error ? err.message : `Failed to ${action} approval`,
++       });
++     } finally {
++       setBusyKey(null);
++     }
++   }
++
++   return (
++     <main className="mx-auto min-h-screen max-w-7xl px-6 py-16 text-white">
++       <div className="max-w-3xl">
++         <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live workflow</p>
++         <h1 className="mt-4 text-4xl font-bold md:text-5xl">Read, act, and refresh in one workflow surface</h1>
++         <p className="mt-6 text-lg leading-8 text-slate-300">
++           This page combines live reads from the finance-governance API with workflow actions and then refreshes the summary and queue so the state transition loop is visible in one place.
++         </p>
++       </div>
++
++       <div className="mt-8 grid gap-4 rounded-[1.75rem] border border-white/10 bg-white/5 p-5 md:grid-cols-[1fr_auto_auto] md:items-end">
++         <label className="block">
++           <span className="text-sm font-semibold text-slate-200">Workflow case</span>
++           <select
++             value={selectedCaseId}
++             onChange={(event) => setSelectedCaseId(event.target.value)}
++             disabled={busyKey !== null || cases.length === 0}
++             className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white disabled:opacity-70"
++           >
++             {cases.length === 0 ? (
++               <option value="">No workflow cases available</option>
++             ) : (
++               cases.map((item) => (
++                 <option key={item.id} value={item.id}>
++                   {item.vendor ? `${item.vendor} - ` : ''}{item.id} {item.status ? `(${item.status})` : ''}
++                 </option>
++               ))
++             )}
++           </select>
++         </label>
++         <button
++           type="button"
++           onClick={() => {
++             void runSubmit();
++           }}
++           disabled={busyKey !== null || !selectedCaseId}
++           className="rounded-2xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-70"
++         >
++           {busyKey === 'submit' ? 'Submitting...' : 'Submit selected workflow item'}
++         </button>
++         <button
++           type="button"
++           onClick={() => {
++             void refreshData(true);
++           }}
++           disabled={busyKey !== null || refreshing}
++           className="rounded-2xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white disabled:opacity-70"
++         >
++           {refreshing ? 'Refreshing...' : 'Refresh workflow data'}
++         </button>
++       </div>
++
++       {banner ? (
++         <div
++           className={[
++             'mt-6 rounded-2xl p-4',
++             banner.kind === 'success'
++               ? 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-100'
++               : 'border border-red-500/30 bg-red-500/10 text-red-200',
++           ].join(' ')}
++         >
++           {banner.text}
++         </div>
++       ) : null}
++
++       {loading ? (
++         <div className="mt-10 rounded-[1.75rem] border border-white/10 bg-white/5 p-7 text-slate-200">Loading workflow data...</div>
++       ) : null}
++
++       {error ? (
++         <div className="mt-10 rounded-[1.75rem] border border-red-500/30 bg-red-500/10 p-7 text-red-200">{error}</div>
++       ) : null}
++
++       {!loading && !error && workspace ? (
++         <div className="mt-10 grid gap-6 md:grid-cols-3">
++           <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
++             <p className="text-sm text-slate-400">Pending approvals</p>
++             <p className="mt-3 text-4xl font-bold text-white">{workspace.counts.pendingApprovals}</p>
++           </section>
++           <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
++             <p className="text-sm text-slate-400">Open exceptions</p>
++             <p className="mt-3 text-4xl font-bold text-white">{workspace.counts.openExceptions}</p>
++           </section>
++           <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
++             <p className="text-sm text-slate-400">Ready exports</p>
++             <p className="mt-3 text-4xl font-bold text-white">{workspace.counts.readyExports}</p>
++           </section>
++         </div>
++       ) : null}
++
++       {!loading && !error ? (
++         <div className="mt-10 overflow-x-auto rounded-[1.75rem] border border-white/10 bg-white/5">
++           <table className="min-w-full text-left text-sm">
++             <thead className="bg-white/5 text-slate-300">
++               <tr>
++                 <th className="px-5 py-4 font-semibold">Approval ID</th>
++                 <th className="px-5 py-4 font-semibold">Vendor</th>
++                 <th className="px-5 py-4 font-semibold">Amount</th>
++                 <th className="px-5 py-4 font-semibold">Status</th>
++                 <th className="px-5 py-4 font-semibold">Risk / note</th>
++                 <th className="px-5 py-4 font-semibold">Actions</th>
++               </tr>
++             </thead>
++             <tbody>
++               {approvals.length === 0 ? (
++                 <tr>
++                   <td colSpan={6} className="px-5 py-8 text-slate-200">
++                     No approvals waiting right now.
++                   </td>
++                 </tr>
++               ) : (
++                 approvals.map((item) => (
++                   <tr key={item.id} className="border-t border-white/10 align-top">
++                     <td className="px-5 py-4 font-semibold text-white">{item.id}</td>
++                     <td className="px-5 py-4 text-slate-200">{item.vendor}</td>
++                     <td className="px-5 py-4 text-slate-200">{item.amount}</td>
++                     <td className="px-5 py-4 text-emerald-100">{item.status}</td>
++                     <td className="px-5 py-4 text-slate-300">{item.risk}</td>
++                     <td className="px-5 py-4">
++                       <div className="flex flex-wrap gap-2">
++                         <button
++                           type="button"
++                           onClick={() => {
++                             void runApprovalAction(item.id, 'approve');
++                           }}
++                           disabled={busyKey !== null}
++                           className="rounded-xl bg-emerald-400 px-3 py-2 font-semibold text-slate-950 disabled:opacity-70"
++                         >
++                           {busyKey === `${item.id}:approve` ? 'Approving...' : 'Approve'}
++                         </button>
++                         <button
++                           type="button"
++                           onClick={() => {
++                             void runApprovalAction(item.id, 'reject');
++                           }}
++                           disabled={busyKey !== null}
++                           className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 font-semibold text-red-100 disabled:opacity-70"
++                         >
++                           {busyKey === `${item.id}:reject` ? 'Rejecting...' : 'Reject'}
++                         </button>
++                         <button
++                           type="button"
++                           onClick={() => {
++                             void runApprovalAction(item.id, 'escalate');
++                           }}
++                           disabled={busyKey !== null}
++                           className="rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 font-semibold text-cyan-100 disabled:opacity-70"
++                         >
++                           {busyKey === `${item.id}:escalate` ? 'Escalating...' : 'Escalate'}
++                         </button>
++                       </div>
++                     </td>
++                   </tr>
++                 ))
++               )}
++             </tbody>
++           </table>
++         </div>
++       ) : null}
++     </main>
++   );
++ }
++
+
+ ❯ tests/integration/ui/finance-governance-live-workflow.test.ts:12:20
+     10|     const source = read('app/finance-governance/live/workflow/page.tsx…
+     11| 
+     12|     expect(source).toContain('Submit sample workflow item');
+       |                    ^
+     13|     expect(source).toContain("void runApprovalAction(item.id, 'approve…
+     14|     expect(source).toContain("void runApprovalAction(item.id, 'reject'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/10]⎯
+
+ Test Files  5 failed | 65 passed | 2 skipped (72)
+      Tests  10 failed | 198 passed | 4 skipped (212)
+   Start at  14:56:51
+   Duration  77.34s (transform 4.07s, setup 0ms, collect 4.90s, tests 17.45s, environment 34ms, prepare 14.24s)
+

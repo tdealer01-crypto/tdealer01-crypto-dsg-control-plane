@@ -174,7 +174,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'monthly_limit must be between 1 and 1000000' }, { status: 400, headers });
     }
 
-    const supabase = getSupabaseAdmin();
+    let supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> | ReturnType<typeof getSupabaseAdmin>;
+    try {
+      supabase = getSupabaseAdmin();
+    } catch {
+      // Fallback for environments that only expose public Supabase keys.
+      supabase = await createSupabaseServerClient();
+    }
     const { count: existingCount, error: countError } = await supabase
       .from('agents')
       .select('id', { count: 'exact', head: true })

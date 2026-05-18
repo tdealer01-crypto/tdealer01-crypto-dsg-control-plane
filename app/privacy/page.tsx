@@ -1,41 +1,48 @@
-const sections = [
-  {
-    title: 'What this page covers',
-    text: 'This page summarizes how DSG handles product data, workspace scope, approval records, and exportable evidence within the finance-governance product surface.',
-  },
-  {
-    title: 'Product data scope',
-    text: 'Organizations use DSG to manage approval workflows, policy context, exceptions, audit records, and evidence exports. The customer ERP or accounting system remains the financial system of record.',
-  },
-  {
-    title: 'Workspace scoping',
-    text: 'Product actions, approvals, exports, and billing-backed entitlements should remain scoped to the authenticated organization workspace.',
-  },
-  {
-    title: 'Operational note',
-    text: 'This page is an implementation placeholder for marketplace and trust-surface readiness. It should be replaced or expanded with final legal language before broad commercial rollout.',
-  },
+const covers = [
+  'Workspace account information',
+  'Runtime request and execution metadata',
+  'Usage and audit visibility',
+  'Organizational access boundaries',
 ];
 
 export default function PrivacyPage() {
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-16 text-white">
-      <div className="max-w-3xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">Privacy</p>
-        <h1 className="mt-4 text-4xl font-bold md:text-5xl">Privacy overview</h1>
-        <p className="mt-6 text-lg leading-8 text-slate-300">
-          This page establishes a buyer-facing privacy surface so the product reads like a real enterprise application rather than a prototype. Final legal review is still required before production rollout.
-        </p>
-      </div>
+      <h1 className="text-4xl font-bold md:text-5xl">Privacy overview</h1>
+      <p className="mt-4 text-lg text-slate-300">
+        This page describes how DSG handles workspace data, access boundaries, runtime records, and operational
+        metadata.
+      </p>
 
-      <div className="mt-12 grid gap-6">
-        {sections.map((section) => (
-          <section key={section.title} className="rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
-            <h2 className="text-2xl font-semibold">{section.title}</h2>
-            <p className="mt-4 leading-7 text-slate-200">{section.text}</p>
-          </section>
-        ))}
-      </div>
+      <section className="mt-10 rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
+        <h2 className="text-2xl font-semibold">What this page covers</h2>
+        <ul className="mt-4 space-y-2 text-slate-200">
+          {covers.map((item) => (
+            <li key={item}>• {item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
+        <h2 className="text-2xl font-semibold">Public and workspace routes</h2>
+        <p className="mt-4 text-slate-200">
+          Public routes are available for product evaluation and service checks. Workspace routes are used for
+          authenticated execution and operational review.
+        </p>
+      </section>
+
+      <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
+        <h2 className="text-2xl font-semibold">Operational use of data</h2>
+        <p className="mt-4 text-slate-200">
+          Runtime and workspace information may be used to support service operation, usage visibility, governance
+          review, and account administration.
+        </p>
+      </section>
+
+      <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
+        <h2 className="text-2xl font-semibold">Contact</h2>
+        <p className="mt-4 text-slate-200">For privacy questions, contact the DSG team through the support channel listed below.</p>
+      </section>
     </main>
   );
 }

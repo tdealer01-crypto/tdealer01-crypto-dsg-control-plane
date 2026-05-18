@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
+    const refCode = request.cookies?.get('ref_code')?.value?.trim() || null;
     const orgId = explicitOrgId || (await resolveRequesterOrgId()) || (await resolveOrgIdByDomain(domain));
     const { data: existingPending } = await admin
       .from('access_requests')
@@ -122,7 +123,12 @@ export async function POST(request: NextRequest) {
         requested_org_hint: workspaceName,
         status: 'pending',
         review_note: reason,
+        ref_code: refCode,
       });
+
+      if (refCode) {
+        await (admin as any).rpc('increment_referral_signups', { p_code: refCode }).maybeSingle();
+      }
     }
 
     await logSignInEvent({

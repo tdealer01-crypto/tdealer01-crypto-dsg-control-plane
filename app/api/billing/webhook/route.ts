@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
+import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
 
 export const dynamic = 'force-dynamic';
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
@@ -49,6 +50,32 @@ function getPriceMap(): Map<string, PriceMapping> {
 function toIso(value: number | null | undefined) {
   if (typeof value !== 'number') return null;
   return new Date(value * 1000).toISOString();
+}
+
+async function lookupRefCode(supabase: SupabaseAdmin, email: string | null): Promise<string | null> {
+  if (!email) return null;
+
+  const { data: signup } = await (supabase as any)
+    .from('trial_signups')
+    .select('ref_code')
+    .eq('email', email)
+    .not('ref_code', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (signup?.ref_code) return String(signup.ref_code);
+
+  const { data: accessReq } = await (supabase as any)
+    .from('access_requests')
+    .select('ref_code')
+    .eq('email', email)
+    .not('ref_code', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return accessReq?.ref_code ? String(accessReq.ref_code) : null;
 }
 
 async function resolveOrgIdByEmail(supabase: SupabaseAdmin, email: string | null) {
@@ -258,13 +285,18 @@ export async function POST(request: Request) {
             session.subscription
           );
 
-          await upsertBillingSubscription(
-            supabase,
-            subscriptionToRecord(subscription, {
-              orgId,
-              customerEmail,
-            })
-          );
+          const record = subscriptionToRecord(subscription, { orgId, customerEmail });
+          await upsertBillingSubscription(supabase, record);
+
+          // D0: send trial welcome email
+          if (customerEmail && subscription.trial_end) {
+            void sendTrialWelcome({
+              email: customerEmail,
+              planKey: record.plan_key || 'pro',
+              trialEnd: record.trial_end,
+            });
+          }
+
         }
 
         break;
@@ -274,24 +306,42 @@ export async function POST(request: Request) {
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
+        const prevSubscription = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined;
 
         const stripeCustomerId =
           typeof subscription.customer === 'string'
             ? subscription.customer
             : null;
 
-        const billingCustomer = await getBillingCustomer(
-          supabase,
-          stripeCustomerId
-        );
+        const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
+        const record = subscriptionToRecord(subscription, {
+          orgId: billingCustomer?.org_id || null,
+          customerEmail: billingCustomer?.email || null,
+        });
 
-        await upsertBillingSubscription(
-          supabase,
-          subscriptionToRecord(subscription, {
-            orgId: billingCustomer?.org_id || null,
-            customerEmail: billingCustomer?.email || null,
-          })
-        );
+        await upsertBillingSubscription(supabase, record);
+
+        // Paid conversion: trialing → active is when money actually exchanges hands.
+        // checkout.session.completed fires at trial start (before payment), so we
+        // track the referral conversion here instead.
+        const prevStatus = prevSubscription?.status;
+        const isPaidConversion =
+          event.type === 'customer.subscription.updated' &&
+          prevStatus === 'trialing' &&
+          subscription.status === 'active';
+
+        if (isPaidConversion && billingCustomer?.email) {
+          void sendUpgradeSuccess({
+            email: billingCustomer.email,
+            planKey: record.plan_key || 'pro',
+            billingInterval: record.billing_interval || 'monthly',
+          });
+
+          const refCode = await lookupRefCode(supabase, billingCustomer.email);
+          if (refCode) {
+            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+          }
+        }
 
         break;
       }

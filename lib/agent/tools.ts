@@ -28,21 +28,44 @@ async function callJson(
 
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (path === '/api/readiness' && response.status >= 500) {
+      return {
+        ready: false,
+        status: 'deployment_error',
+        warning: 'Readiness returned 500. Please inspect the deployment and Vercel logs before executing agents.',
+        error: String(json.error || 'readiness failed'),
+      };
+    }
     throw new Error(String(json.error || `Tool call failed (${path})`));
   }
 
   return json;
 }
 
+function requiredAgentId(params: Record<string, unknown>) {
+  const agentId = String(params.agent_id || '').trim();
+  if (!agentId) {
+    throw new Error('agent_id is required and cannot be empty');
+  }
+  return agentId;
+}
+
+function omitEmptyPolicy<T extends Record<string, unknown>>(payload: T) {
+  if (payload.policy_id === '' || payload.policy_id === 'default' || payload.policy_id === undefined) {
+    delete payload.policy_id;
+  }
+  return payload;
+}
+
 export const DSG_TOOLS: AgentTool[] = [
   {
     id: 'readiness',
     name: 'Check System Readiness',
-    description: 'Fetch readiness, health, entropy, alerts, and billing state.',
+    description: 'Fetch deployment readiness from /api/readiness with a safe warning fallback on server errors.',
     parameters: {},
     riskLevel: 'read',
     requiredRole: 'monitor',
-    execute: async (_params, context) => callJson(context, '/api/core/monitor', { method: 'GET' }),
+    execute: async (_params, context) => callJson(context, '/api/readiness', { method: 'GET' }),
   },
   {
     id: 'execute_action',
@@ -59,7 +82,7 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/mcp/call', {
         method: 'POST',
         body: JSON.stringify({
-          agent_id: params.agent_id,
+          agent_id: requiredAgentId(params),
           action: params.action,
           payload: params.payload || {},
           tool_name: 'agent-chat',
@@ -81,7 +104,7 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/mcp/call', {
         method: 'POST',
         body: JSON.stringify({
-          agent_id: params.agent_id,
+          agent_id: requiredAgentId(params),
           action: 'browser.navigate',
           payload: {
             url: params.url,
@@ -106,7 +129,7 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/mcp/call', {
         method: 'POST',
         body: JSON.stringify({
-          agent_id: params.agent_id,
+          agent_id: requiredAgentId(params),
           action: 'social.telegram.send',
           payload: {
             chat_id: params.chat_id,
@@ -126,7 +149,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'read',
     requiredRole: 'runtime_summary',
     execute: async (params, context) =>
-      callJson(context, `/api/runtime-summary?org_id=${encodeURIComponent(context.orgId)}&agent_id=${encodeURIComponent(String(params.agent_id || ''))}`, {
+      callJson(context, `/api/runtime-summary?org_id=${encodeURIComponent(context.orgId)}&agent_id=${encodeURIComponent(requiredAgentId(params))}`, {
         method: 'GET',
       }),
   },
@@ -142,7 +165,7 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/checkpoint', {
         method: 'POST',
-        body: JSON.stringify({ org_id: context.orgId, agent_id: params.agent_id }),
+        body: JSON.stringify({ org_id: context.orgId, agent_id: requiredAgentId(params) }),
       }),
   },
   {
@@ -157,7 +180,7 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/runtime-recovery', {
         method: 'POST',
-        body: JSON.stringify({ org_id: context.orgId, agent_id: params.agent_id }),
+        body: JSON.stringify({ org_id: context.orgId, agent_id: requiredAgentId(params) }),
       }),
   },
   {
@@ -200,7 +223,7 @@ export const DSG_TOOLS: AgentTool[] = [
     description: 'Create a new agent with one-time API key return.',
     parameters: {
       name: { type: 'string', required: true, description: 'Agent name' },
-      policy_id: { type: 'string', required: true, description: 'Policy ID' },
+      policy_id: { type: 'string', required: false, description: 'Policy ID; omit/null for backend default' },
       monthly_limit: { type: 'number', required: false, description: 'Monthly execution limit' },
     },
     riskLevel: 'write',
@@ -208,7 +231,7 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/agents', {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(omitEmptyPolicy({ ...params })),
       }),
   },
   {
@@ -217,7 +240,7 @@ export const DSG_TOOLS: AgentTool[] = [
     description: 'Create a chatbot-ready agent with safe defaults for interactive usage.',
     parameters: {
       name: { type: 'string', required: false, description: 'Agent name (default: Chatbot Agent)' },
-      policy_id: { type: 'string', required: false, description: 'Policy ID (default policy if omitted)' },
+      policy_id: { type: 'string', required: false, description: 'Policy ID; omit/null for backend default' },
       monthly_limit: { type: 'number', required: false, description: 'Monthly execution limit (default: 50000)' },
     },
     riskLevel: 'write',
@@ -225,11 +248,11 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/agents', {
         method: 'POST',
-        body: JSON.stringify({
+        body: JSON.stringify(omitEmptyPolicy({
           name: String(params.name || 'Chatbot Agent'),
-          policy_id: params.policy_id ? String(params.policy_id) : undefined,
+          policy_id: params.policy_id ? String(params.policy_id) : null,
           monthly_limit: Number(params.monthly_limit || 50000),
-        }),
+        })),
       }),
   },
   {
@@ -355,7 +378,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'read',
     requiredRole: 'execute',
     execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, { method: 'GET' }),
+      callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}`, { method: 'GET' }),
   },
   {
     id: 'update_agent',
@@ -365,21 +388,18 @@ export const DSG_TOOLS: AgentTool[] = [
       agent_id: { type: 'string', required: true, description: 'Agent ID' },
       name: { type: 'string', required: false, description: 'New name' },
       status: { type: 'string', required: false, description: 'active or disabled' },
-      policy_id: { type: 'string', required: false, description: 'New policy ID' },
+      policy_id: { type: 'string', required: false, description: 'New policy ID; omit/null for backend default' },
       monthly_limit: { type: 'number', required: false, description: 'New monthly limit' },
     },
     riskLevel: 'write',
     requiredRole: 'execute',
-    execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, {
+    execute: async (params, context) => {
+      const { agent_id: _agentId, ...patch } = params;
+      return callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          name: params.name,
-          status: params.status,
-          policy_id: params.policy_id,
-          monthly_limit: params.monthly_limit,
-        }),
-      }),
+        body: JSON.stringify(omitEmptyPolicy(patch)),
+      });
+    },
   },
   {
     id: 'rotate_agent_key',
@@ -391,7 +411,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'critical',
     requiredRole: 'execute',
     execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}/rotate-key`, {
+      callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}/rotate-key`, {
         method: 'POST',
       }),
   },
@@ -405,7 +425,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'critical',
     requiredRole: 'execute',
     execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, {
+      callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}`, {
         method: 'DELETE',
       }),
   },

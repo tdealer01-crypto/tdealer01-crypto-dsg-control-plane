@@ -3,6 +3,9 @@ import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../../../lib/billing/ove
 import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { getSupabaseAdmin } from "../../../lib/supabase-server";
 import { internalErrorMessage, logApiError } from "../../../lib/security/api-error";
+import { sendQuotaAlert } from "../../../lib/email/sales";
+
+const QUOTA_ALERT_THRESHOLDS = [0.8, 1.0] as const;
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +57,39 @@ export async function GET(request: Request) {
     const utilization = included > 0 ? Number((executions / included).toFixed(4)) : 0;
     const overage = Math.max(0, executions - included);
     const projectedAmountUsd = Number((overage * getOverageRateUsd()).toFixed(3));
+
+    // Fire quota alert email (once per threshold per billing period, cooldown via billing_events)
+    for (const threshold of QUOTA_ALERT_THRESHOLDS) {
+      if (utilization >= threshold) {
+        const alertEventId = `quota-alert-${access.orgId}-${periodKey}-${threshold}`;
+        const { data: existing } = await supabase
+          .from('billing_events')
+          .select('stripe_event_id')
+          .eq('stripe_event_id', alertEventId)
+          .maybeSingle();
+        if (!existing) {
+          // Look up org admin email
+          const { data: user } = await supabase
+            .from('users')
+            .select('email')
+            .eq('org_id', access.orgId)
+            .limit(1)
+            .maybeSingle();
+          if (user?.email) {
+            void sendQuotaAlert({ email: user.email, planKey, executions, included, utilization });
+          }
+          void supabase.from('billing_events').insert({
+            stripe_event_id: alertEventId,
+            event_type: `quota_alert_${Math.round(threshold * 100)}`,
+            stripe_customer_id: null,
+            stripe_subscription_id: null,
+            payload: { org_id: access.orgId, period: periodKey, threshold } as unknown as import('../../../lib/database.types').Json,
+            processed_at: new Date().toISOString(),
+          }).then(() => null, () => null);
+        }
+        break; // alert only the highest crossed threshold
+      }
+    }
 
     return NextResponse.json({
       ok: true,

@@ -2,6 +2,10 @@ import { resolveGate } from '../gate';
 import type { AgentContext } from './context';
 import type { AgentTool } from './tools';
 
+function hasExplicitApproval(context: AgentContext) {
+  return typeof context.approvalToken === 'string' && context.approvalToken.trim().length >= 8;
+}
+
 export async function executeToolSafely(
   tool: AgentTool,
   params: Record<string, unknown>,
@@ -11,9 +15,28 @@ export async function executeToolSafely(
     return tool.execute(params, context);
   }
 
+  if (!hasExplicitApproval(context)) {
+    return {
+      requiresApproval: true,
+      blocked: true,
+      reason: 'Plan generated. User approval is required before write or critical agent execution.',
+      tool: tool.id,
+      params,
+    };
+  }
+
+  const agentId = String(params.agent_id || '').trim();
+  if (!agentId) {
+    return {
+      blocked: true,
+      reason: 'agent_id is required for write or critical runtime tools; empty agent_id is not sent to runtime APIs.',
+      tool: tool.id,
+    };
+  }
+
   const gate = resolveGate();
   const gateResult = await gate.evaluate({
-    agent_id: String(params.agent_id || 'operator-console'),
+    agent_id: agentId,
     action: `tool:${tool.id}`,
     payload: {
       params,

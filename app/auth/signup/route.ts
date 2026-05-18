@@ -85,12 +85,15 @@ export async function POST(request: NextRequest) {
       throw existingPendingError;
     }
 
+    const refCode = request.cookies.get('ref_code')?.value?.trim() || null;
+
     if (existingPending?.id) {
       const { error: updateIntentError } = await admin
         .from('trial_signups')
         .update({
           workspace_name: workspaceName,
           full_name: fullName || null,
+          ...(refCode ? { ref_code: refCode } : {}),
         })
         .eq('id', existingPending.id);
 
@@ -103,10 +106,15 @@ export async function POST(request: NextRequest) {
         workspace_name: workspaceName,
         full_name: fullName || null,
         status: 'pending',
+        ref_code: refCode,
       });
 
       if (insertIntentError) {
         throw insertIntentError;
+      }
+
+      if (refCode) {
+        await (admin as any).rpc('increment_referral_signups', { p_code: refCode }).maybeSingle();
       }
     }
 

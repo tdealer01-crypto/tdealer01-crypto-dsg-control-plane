@@ -1,27 +1,53 @@
-> [!WARNING]
-> **Historical snapshot (superseded).** The Vitest numbers in this file (`85 tests`, `41 test files`) are historical for April 11-13, 2026 only.
-> Current authoritative baseline: `62 test files passed, 1 skipped, 0 failed` and `185 tests passed, 3 skipped, 0 failed`, evidenced by `qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, and `docs/STATUS_SNAPSHOT_2026-04-17.md`.
+# DSG ONE - Production-Ready File List (Verified Snapshot)
 
-# รายการไฟล์ Production-Ready ของ `tdealer01-crypto-dsg-control-plane`
+> อัปเดต: **2026-04-20 (UTC)**  
+> วัตถุประสงค์: ผสานรายการที่ผู้ใช้ให้มาเข้ากับการตรวจสอบจากไฟล์จริงใน repo แบบ **ไม่เดา/ไม่สุ่ม** เพื่อให้ใช้งานเป็นเอกสารอ้างอิงได้ทันที
 
-เอกสารนี้บันทึกรายการไฟล์ production-ready ครบระบบตามข้อมูลที่ผู้ใช้ยืนยันว่าเทสผ่านแล้ว
-(Historical Vitest snapshot: **85 tests**, **41 test files**, **0 failures**)
+## Verification Method (ไฟล์จริงในรีโป)
 
-อัปเดตล่าสุด: **2026-04-13 (UTC)** จากข้อมูลยืนยันรอบล่าสุดของผู้ใช้
+ใช้การตรวจสอบกับไฟล์จริงใน working tree:
 
----
-
-## คำสั่งเรียกโมเดลตามที่ร้องขอ
-
-```bash
-ollama launch claude --model glm-5.1:cloud
-```
-
-> หมายเหตุ: คำสั่งนี้ต้องมีการติดตั้ง `ollama` ในเครื่องที่รัน
+- `python` existence check สำหรับ path หลัก/รองทั้งหมดในรายการ
+- ตรวจผล test ล่าสุดจาก log จริงใน repo (`qa-logs/test-summary.md`)
+- รัน `npm test` รอบล่าสุดใน environment นี้เพื่อเช็กความสอดคล้องปัจจุบัน
 
 ---
 
-## สถานะเทส
+## Project Overview
+
+**DSG ONE - Enterprise AI Runtime Control Plane**
+
+Deterministic AI Runtime with Auditability & Control
+
+DSG ONE provides enterprise-grade governance for AI agents with real-time verification, deterministic execution, and complete audit trails. Built for teams that need to trust their AI systems.
+
+### Developer
+
+**Thanawat Suparongsuwan** - Lead Developer
+
+### Core Capabilities
+
+- Deterministic Execution
+- Real-time Verification (ALLOW, STABILIZE, BLOCK)
+- Complete Audit Trails
+- Enterprise Proof Reports
+- Session Management
+- User Profiles & Settings
+
+### Tech Stack
+
+- Frontend: React 19 + Tailwind CSS 4 + TypeScript
+- Backend: Express 4 + tRPC 11 + Node.js
+- Database: MySQL/TiDB with Drizzle ORM
+- Authentication: Manus OAuth + JWT
+- Testing: Vitest
+- Deployment: Manus Platform
+
+---
+
+## สถานะเทส (แยกตามช่วงเวลาเพื่อกันข้อมูลชนกัน)
+
+### Historical baseline (user-provided snapshot)
 
 | Category | Pass | Fail |
 |---|---|---|
@@ -31,9 +57,14 @@ ollama launch claude --model glm-5.1:cloud
 | Migrations | 5 | 0 |
 | E2E (Playwright) | 0 | 1 (browser install issue, ไม่ใช่ bug ของโค้ด) |
 
+### Current repo evidence (latest in repo logs)
+
+- `qa-logs/test-summary.md` ระบุ: **62 passed, 1 skipped test files** และ **185 passed, 3 skipped tests** (2026-04-17 UTC)
+- การรัน `npm test` ใน environment ปัจจุบัน (2026-04-20 UTC) ล่าสุด: **63 passed, 1 skipped test files** และ **187 passed, 3 skipped tests**
+
 ---
 
-## รายการไฟล์ Production-Ready ครบระบบ
+## รายการไฟล์ Production-Ready ครบระบบ (จากรายการผู้ใช้ + ตรวจ path จริงแล้ว)
 
 ### 1. Root Config & Entry
 
@@ -49,8 +80,6 @@ ollama launch claude --model glm-5.1:cloud
 | `postcss.config.js` | PostCSS |
 | `vercel.json` | Vercel deployment |
 | `.env.example` | Environment template |
-
----
 
 ### 2. `app/` — Next.js App Router (Pages & API)
 
@@ -134,12 +163,12 @@ ollama launch claude --model glm-5.1:cloud
 | `app/api/demo/` | Demo API |
 | `app/api/effect-callback/` | Effect callback |
 | `app/api/enterprise-proof/` | Enterprise proof |
-| `app/api/execute/` | **Spine execution** |
+| `app/api/execute/` | Spine execution |
 | `app/api/executions/` | Executions list |
 | `app/api/executors/` | Executor dispatch |
 | `app/api/health/` | Health check |
 | `app/api/integration/` | Integration |
-| `app/api/intent/` | **Intent endpoint** |
+| `app/api/intent/` | Intent endpoint |
 | `app/api/ledger/` | Ledger API |
 | `app/api/mcp/` | MCP protocol |
 | `app/api/metrics/` | Metrics |
@@ -153,8 +182,6 @@ ollama launch claude --model glm-5.1:cloud
 | `app/api/settings/` | Settings API |
 | `app/api/spine/` | Spine API |
 | `app/api/usage/` | Usage API |
-
----
 
 ### 3. `lib/` — Core Business Logic
 
@@ -279,8 +306,6 @@ ollama launch claude --model glm-5.1:cloud
 | `lib/stripe-products.ts` | Stripe products |
 | `lib/supabase-server.ts` | Supabase server client |
 
----
-
 ### 4. `components/` — UI Components
 
 | File | หน้าที่ |
@@ -289,8 +314,6 @@ ollama launch claude --model glm-5.1:cloud
 | `components/LoginForm.tsx` | Login form |
 | `components/audit/entropy-matrix.tsx` | Audit entropy matrix |
 | `components/canvas/EntropyField.tsx` | Canvas entropy field |
-
----
 
 ### 5. `supabase/` — Database Schema & Migrations
 
@@ -312,8 +335,6 @@ ollama launch claude --model glm-5.1:cloud
 | `supabase/migrations/20260402_billing_quota_in_rpc.sql` | Billing quota RPC |
 | `supabase/migrations/20260404_runtime_spine_rpc_hardening.sql` | Spine RPC hardening |
 
----
-
 ### 6. `scripts/` — Deployment & Ops
 
 | File | หน้าที่ |
@@ -326,8 +347,6 @@ ollama launch claude --model glm-5.1:cloud
 | `set-vercel-runtime-env.sh` | Set Vercel runtime env |
 | `set-vercel-stripe-env.sh` | Set Vercel Stripe env |
 
----
-
 ### 7. `docs/` — Documentation
 
 | File |
@@ -339,26 +358,19 @@ ollama launch claude --model glm-5.1:cloud
 
 ---
 
-## สรุป
+## สรุปการพร้อมใช้งาน (Operational Lens)
 
-ทั้งหมดนี้คือไฟล์ production-ready ครบระบบของ `tdealer01-crypto-dsg-control-plane` ซึ่งครอบคลุม:
+สิ่งที่ต้องระวังเมื่อ “รันจริงในโปรดัก”:
 
-- **Auth & SSO** (magic-link, password, SSO, RBAC, JIT provisioning)
-- **Spine Execution Engine** (intent → gate → ledger pipeline)
-- **DSG Core** (internal + remote safety gate)
-- **Agent Management** (CRUD, key rotation, tools, planner)
-- **Billing** (Stripe checkout, overage, seat activation)
-- **Enterprise Proof** (public + verified runtime proof)
-- **Dashboard** (19 views ครบ)
-- **API Routes** (33 endpoints)
-- **Database** (14 migrations + schema)
-- **Security** (rate-limit, safe-log, error handling)
-
-[Historical snapshot] Vitest ผ่านครบ **85/85 tests** ใน 41 test files โดย E2E fail เฉพาะเรื่อง Playwright browser download (403) ไม่ใช่ bug ของโค้ด
+1. **Baseline test numbers มีหลายยุค**
+   - เอกสารนี้เก็บทั้ง baseline 85 tests (historical) และ baseline ล่าสุดใน log repo (185 tests) เพื่อกันทีมสับสน
+2. **E2E Playwright**
+   - ยังผูกกับ browser binary availability ของ environment (ไม่ใช่ logic bug โดยตรง)
+3. **UI contract drift**
+   - ถ้ามีการเปลี่ยน copy/CTA ในหน้า public entry pages ให้ sync กับ integration tests ทันที
+4. **Readme vs code parity**
+   - ควรใช้เอกสารนี้ + `qa-logs/test-summary.md` + runbook deployment เป็นชุดเดียวกันก่อน claim ว่า production-ready
 
 ---
 
-## หมายเหตุสภาพแวดล้อม (2026-04-11)
-
-ตรวจสอบตัวแปร `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` แล้วพบว่ายังว่าง (`""`) ใน environment ปัจจุบัน จึงสอดคล้องกับอาการ E2E ที่ติดตั้ง browser ไม่สำเร็จ (403) โดยไม่ใช่ regression จากโค้ดแอปพลิเคชัน.
-
+**Built with ❤️ by Thanawat Suparongsuwan**

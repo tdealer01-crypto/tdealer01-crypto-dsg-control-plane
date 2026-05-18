@@ -70,8 +70,12 @@ describe('issueSpineIntent + executeSpineIntent approval flow', () => {
     if (!('reused' in second.body) || !('request_id' in second.body) || !('request_id' in first.body)) {
       throw new Error('Expected pending intent payload in response body');
     }
-    expect(second.body.reused).toBe(true);
-    expect(second.body.request_id).toBe(first.body.request_id);
+
+    const firstBody = first.body as { request_id: string };
+    const secondBody = second.body as { request_id: string; reused: boolean };
+
+    expect(secondBody.reused).toBe(true);
+    expect(secondBody.request_id).toBe(firstBody.request_id);
   });
 
   it('returns 409 when intent already consumed', async () => {

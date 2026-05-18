@@ -1,0 +1,113 @@
+name: Vercel Production CLI Bypass
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy (branch, tag, or SHA)'
+        required: true
+        default: 'main'
+      reason:
+        description: 'Why this bypass deploy is needed'
+        required: true
+        default: 'Unverified-commit gate blocked Git integration deploys'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-prod-cli-bypass
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Production via Vercel CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Guardrail (main only)
+        if: ${{ github.event.inputs.ref != 'main' }}
+        run: |
+          echo "Only ref=main is permitted for this production bypass workflow."
+          exit 1
+
+      - name: Validate required secrets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          missing=0
+          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!key}" ]; then
+              echo "Missing secret: $key"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull Vercel project settings
+        run: npx vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build prebuilt artifacts
+        run: npx vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          url=$(npx vercel deploy --prebuilt --prod --yes --token="${{ secrets.VERCEL_TOKEN }}")
+          echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Health check (/api/health)
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
+        run: |
+          endpoint="${DEPLOYMENT_URL%/}/api/health"
+          echo "Checking $endpoint"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS "$endpoint" | tee /tmp/health.json | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+              echo "Health check passed on attempt $attempt"
+              exit 0
+            fi
+            echo "Health check failed on attempt $attempt, retrying..."
+            sleep 5
+          done
+          echo "Health check did not return ok:true"
+          exit 1
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "### Vercel production deploy (CLI bypass)"
+            echo ""
+            echo "- Ref: ${{ github.event.inputs.ref }}"
+            echo "- Reason: ${{ github.event.inputs.reason }}"
+            echo "- Deployment URL: ${{ steps.deploy.outputs.deployment_url }}"
+            echo "- Health endpoint: ${{ steps.deploy.outputs.deployment_url }}/api/health"
+          } >> "$GITHUB_STEP_SUMMARY"

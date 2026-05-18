@@ -17,10 +17,15 @@ function unique(values) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function resolveRemoteApiOrigin() {
+  return parseOrigin(process.env.DSG_REMOTE_API_URL || process.env.NEXT_PUBLIC_DSG_REMOTE_API_URL);
+}
+
 function buildConnectSrc() {
   const coreOrigin = parseOrigin(process.env.DSG_CORE_URL);
+  const remoteApiOrigin = resolveRemoteApiOrigin();
 
-  return unique(["'self'", 'https://*.supabase.co', 'https://api.stripe.com', coreOrigin]).join(' ');
+  return unique(["'self'", 'https://*.supabase.co', 'https://api.stripe.com', coreOrigin, remoteApiOrigin]).join(' ');
 }
 
 function buildScriptSrc() {
@@ -32,6 +37,19 @@ function buildScriptSrc() {
 }
 
 const nextConfig = {
+
+  async rewrites() {
+    const remoteApiOrigin = resolveRemoteApiOrigin();
+    if (!remoteApiOrigin) return [];
+
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${remoteApiOrigin}/api/:path*`,
+      },
+    ];
+  },
+
   async headers() {
     // API CORS is intentionally handled at route level via lib/security/cors.ts.
     return [

@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { createClient } from '../supabase/server';
 import { getSupabaseAdmin } from '../supabase-server';
 import { hasOrgPermission, normalizeOrgRole, type OrgPermission, type OrgRole } from './rbac';
@@ -17,11 +18,28 @@ export type OrgPermissionDenied = {
   error: string;
 };
 
-export async function requireOrgPermission(permission: OrgPermission): Promise<OrgPermissionContext | OrgPermissionDenied> {
+async function resolveUserFromRequest() {
+  const requestHeaders = await headers();
+  const authorization = requestHeaders.get('authorization') || '';
+  const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
+
+  if (bearerMatch?.[1]) {
+    const admin = getSupabaseAdmin();
+    const {
+      data: { user },
+    } = await admin.auth.getUser(bearerMatch[1]);
+    return user;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function requireOrgPermission(permission: OrgPermission): Promise<OrgPermissionContext | OrgPermissionDenied> {
+  const user = await resolveUserFromRequest();
 
   if (!user?.id || !user.email) {
     return { ok: false, status: 401, error: 'Unauthorized' };

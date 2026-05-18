@@ -1,0 +1,11 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+curl: (56) CONNECT tunnel failed, response 403
+HTTP/1.1 403 Forbidden
+content-length: 9
+content-type: text/plain
+date: Sun, 03 May 2026 14:58:45 GMT
+server: envoy
+connection: close
+

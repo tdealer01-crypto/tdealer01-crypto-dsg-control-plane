@@ -1,0 +1,53 @@
+name: sync-package-lock
+
+on:
+  push:
+    branches:
+      - codex/sync-package-lock-from-linux
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-package-lock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Regenerate package lock on Linux
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Verify npm ci can read regenerated lockfile
+        run: npm ci --ignore-scripts
+
+      - name: Commit package-lock.json if changed
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already in sync"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: sync package-lock on linux"
+          git push

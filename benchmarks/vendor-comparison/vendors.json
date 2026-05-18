@@ -1,0 +1,48 @@
+{
+  "suiteId": "dsg-vendor-comparison-harness-v1",
+  "evidenceBoundary": "Vendor results are valid only when status is tested and evidence artifacts are present. not_configured/skipped vendors must not receive a comparative score.",
+  "vendors": [
+    {
+      "id": "dsg",
+      "name": "DSG Gateway",
+      "type": "native",
+      "enabledByDefault": true,
+      "requiredEnv": []
+    },
+    {
+      "id": "zapier",
+      "name": "Zapier",
+      "type": "webhook_or_platform",
+      "enabledByDefault": false,
+      "requiredEnv": ["ZAPIER_BENCHMARK_WEBHOOK_URL"]
+    },
+    {
+      "id": "make",
+      "name": "Make",
+      "type": "webhook_or_platform",
+      "enabledByDefault": false,
+      "requiredEnv": ["MAKE_BENCHMARK_WEBHOOK_URL"]
+    },
+    {
+      "id": "n8n",
+      "name": "n8n",
+      "type": "self_host_or_cloud_webhook",
+      "enabledByDefault": false,
+      "requiredEnv": ["N8N_BENCHMARK_WEBHOOK_URL"]
+    },
+    {
+      "id": "workato",
+      "name": "Workato",
+      "type": "enterprise_webhook_or_api_recipe",
+      "enabledByDefault": false,
+      "requiredEnv": ["WORKATO_BENCHMARK_WEBHOOK_URL"]
+    },
+    {
+      "id": "temporal",
+      "name": "Temporal",
+      "type": "durable_execution_endpoint",
+      "enabledByDefault": false,
+      "requiredEnv": ["TEMPORAL_BENCHMARK_ENDPOINT"]
+    }
+  ]
+}

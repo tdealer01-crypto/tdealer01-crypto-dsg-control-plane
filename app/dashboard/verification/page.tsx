@@ -1,106 +1,96 @@
-const EDGE_CASES = Array.from({ length: 20 }, (_, index) => {
-  const id = (index + 1).toString().padStart(2, '0');
-  const isFailure = id === '07';
+import Link from 'next/link';
+import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
 
-  return { id, isFailure };
-});
+const verificationSteps = [
+  {
+    label: '1',
+    title: 'Collect evidence',
+    body: 'รวม execution, checkpoint, policy และ audit event จาก runtime จริงก่อนสรุปสถานะ',
+  },
+  {
+    label: '2',
+    title: 'Verify chain',
+    body: 'ตรวจ ledger sequence, truth state และ checkpoint hash ว่าต่อกันครบหรือไม่',
+  },
+  {
+    label: '3',
+    title: 'Review exceptions',
+    body: 'แยก warning/fail ให้ผู้ใช้รู้ว่าต้องแก้ policy, runtime หรือ environment',
+  },
+  {
+    label: '4',
+    title: 'Package proof',
+    body: 'เตรียมหลักฐานสำหรับลูกค้า, audit, Marketplace หรือ Cloud Run smoke evidence',
+  },
+];
+
+const proofItems = [
+  ['Runtime spine', 'truth_states + ledger_entries + checkpoints', 'green'],
+  ['Policy source', 'runtime_policies with legacy fallback', 'blue'],
+  ['Agent gate', 'Audit Only / Enforce Gate decision path', 'gold'],
+  ['Evidence export', 'Ready after live smoke test passes', 'slate'],
+] as const;
 
 export default function VerificationPage() {
   return (
-    <main className="min-h-screen bg-[#0d0e11] text-[#f7f6f9]">
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-cyan-400/20 bg-[#0d0e11] px-6 shadow-[0_0_8px_rgba(0,229,255,0.15)]">
-        <div className="flex items-center gap-8">
-          <span className="font-mono text-xl font-bold tracking-tight text-[#00E5FF]">DSG ONE</span>
-          <nav className="hidden items-center gap-6 md:flex">
-            <span className="cursor-pointer px-3 py-1 font-mono text-sm uppercase tracking-widest text-slate-400 hover:bg-[#1e2023] hover:text-[#00E5FF]">
-              Overview
-            </span>
-            <span className="cursor-pointer px-3 py-1 font-mono text-sm uppercase tracking-widest text-slate-400 hover:bg-[#1e2023] hover:text-[#00E5FF]">
-              Analysis
-            </span>
-            <span className="px-3 py-1 font-mono text-sm font-bold uppercase tracking-widest text-[#00fe66]">Verification</span>
-          </nav>
+    <RuntimeWorkflowPage
+      active="/dashboard/verification"
+      eyebrow="DSG Evidence Verification"
+      title="Verification Flow"
+      description="หน้าเช็กหลักฐานก่อนบอกลูกค้าหรือ Marketplace ว่าระบบพร้อมจริง: เห็นว่า runtime มีอะไรครบ, จุดไหนยัง pending, และขั้นต่อไปต้องทำอะไร"
+      status="Evidence review"
+      statusTone="blue"
+      actions={[
+        { href: '/dashboard/live-control', label: 'Open live control', tone: 'gold' },
+        { href: '/dashboard/audit', label: 'Audit trail', tone: 'slate' },
+      ]}
+      steps={verificationSteps}
+    >
+      <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MetricTile label="Proof readiness" value="Review" helper="รอ smoke evidence จาก production deployment ล่าสุด" tone="blue" />
+            <MetricTile label="Runtime spine" value="Ready" helper="RPC/checkpoint path ถูกเติมใน Supabase แล้ว" tone="green" />
+            <MetricTile label="Policy flow" value="Ready" helper="หน้า policy workflow + runtime_policies ถูกเตรียมแล้ว" tone="gold" />
+            <MetricTile label="Claim boundary" value="Pending" helper="ยังไม่ claim production-ready จนกว่า Vercel build ผ่าน" tone="red" />
+          </div>
+
+          <WorkflowPanel
+            eyebrow="What user gets"
+            title="เห็นผลทันทีตรงไหน"
+            body="ผู้ใช้ไม่ต้องอ่าน log ยาว ๆ ก่อนตัดสินใจ หน้านี้แยกให้เห็นว่าอะไรผ่านแล้ว อะไรต้องตรวจซ้ำ และควรกดหน้าไหนต่อเพื่อปิดหลักฐาน"
+            tone="green"
+          />
         </div>
-        <span className="font-mono text-sm uppercase tracking-widest text-slate-400">ENV: STAGING</span>
-      </header>
 
-      <section className="grid grid-cols-1 gap-4 border-b border-slate-800/80 p-6 md:grid-cols-4">
-        <Tile label="Test Sequence" value="RUN_ID: 99x-A7" tone="text-[#81ecff]" />
-        <Tile label="Success Rate" value="98.2%" tone="text-[#00fe66]" />
-        <Tile label="Critical Fails" value="01" tone="text-[#ff6e85] animate-pulse" />
-        <Tile label="Uptime" value="342:12:09" tone="text-[#f7f6f9]" />
-      </section>
+        <div className="space-y-6">
+          <WorkflowPanel eyebrow="Verification checklist" title="Proof chain status">
+            <div className="space-y-3">
+              {proofItems.map(([label, value, tone]) => (
+                <EvidenceRow key={label} label={label} value={value} tone={tone} />
+              ))}
+            </div>
+          </WorkflowPanel>
 
-      <section className="grid grid-cols-12 gap-6 p-6">
-        <aside className="col-span-12 space-y-6 lg:col-span-3">
-          <div className="border-t-2 border-[#81ecff]/40 bg-[#1e2023] p-6">
-            <h2 className="mb-6 font-mono text-lg uppercase tracking-tight text-[#81ecff]">Simulation Config</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block font-mono text-[0.6875rem] uppercase tracking-widest text-slate-400">Stress Level</label>
-                <input type="range" className="h-1 w-full cursor-pointer accent-[#81ecff]" />
-              </div>
-              <div>
-                <label className="mb-1 block font-mono text-[0.6875rem] uppercase tracking-widest text-slate-400">Agent Cluster</label>
-                <select className="w-full border-b border-slate-700 bg-black/40 py-2 font-mono text-sm">
-                  <option>CLUSTER_ALPHA_01</option>
-                  <option>CLUSTER_BRAVO_02</option>
-                  <option>CLUSTER_GHOST_09</option>
-                </select>
-              </div>
-              <button className="mt-4 w-full bg-[#81ecff] py-3 font-mono font-bold uppercase tracking-tight text-[#005762]">
-                Run Simulator
-              </button>
-            </div>
-          </div>
-        </aside>
+          <WorkflowPanel eyebrow="Next action" title="ทำอะไรต่อ">
+            <EmptyState
+              title="ต้องมี deploy evidence ก่อนปิดงาน"
+              body="หลัง Vercel production build ผ่าน ให้เปิด Live Control และ Audit เพื่อตรวจ runtime status, executions, audit events แล้วค่อยบันทึก smoke evidence สำหรับ Cloud Run/Marketplace"
+              href="/dashboard/live-control"
+              action="Go to live control"
+            />
+          </WorkflowPanel>
 
-        <div className="col-span-12 space-y-6 lg:col-span-9">
-          <div className="grid grid-cols-2 gap-1 md:grid-cols-10">
-            {EDGE_CASES.map((edgeCase) => (
-              <div
-                key={edgeCase.id}
-                className={`flex h-8 items-center justify-center border font-mono text-[8px] ${
-                  edgeCase.isFailure
-                    ? 'border-[#ff6e85]/40 bg-[#ff6e85]/20 text-[#ff6e85] animate-pulse'
-                    : 'border-[#00fe66]/40 bg-[#00fe66]/20 text-[#00fe66]'
-                }`}
-              >
-                {edgeCase.id}
-              </div>
-            ))}
-            <div className="col-span-2 bg-[#242629] p-2 text-center font-mono text-[0.6rem] uppercase tracking-[0.3em] text-slate-400 md:col-span-10">
-              ... EDGE_CASE_MATRIX_021_TO_050 ...
-            </div>
-          </div>
-
-          <div className="relative border border-slate-700/50 bg-black/40">
-            <div className="h-10 border-b border-slate-700/40 bg-[#1e2023] px-4 py-3 font-mono text-[10px] uppercase text-slate-400">
-              Operator Terminal v4.2.1
-            </div>
-            <div className="space-y-2 p-6 font-mono text-xs leading-relaxed text-[#00fe66]/90">
-              <p className="text-[#81ecff]">[SYSTEM] AUTHENTICATION SECURE. LOADING DSG_ONE_CORE...</p>
-              <p>[INFO] INITIALIZING SIMULATION ENGINE ALPHA-09</p>
-              <p>[INFO] MAPPING POLICY GRAPH TO EXECUTION LOOPS</p>
-              <p>[SCAN] DETECTING POTENTIAL RACE CONDITIONS IN MODULE_A</p>
-              <p>[WARN] LATENCY SPIKE DETECTED IN NODE_SYDNEY: 45ms</p>
-              <p>[OK] NODE_SYDNEY STABILIZED</p>
-              <p className="font-bold text-[#ff6e85]">[CRITICAL] EDGE_CASE_07: PROTOCOL_BREACH_BYPASS_V4... FAIL</p>
-              <p className="text-slate-400">&gt;&gt; Exception: IllegalAccessError at runtime</p>
-              <p className="animate-pulse">_</p>
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link href="/dashboard/executions" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-100">
+              Review executions
+            </Link>
+            <Link href="/dashboard/policies" className="rounded-xl bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-slate-950">
+              Review policy flow
+            </Link>
           </div>
         </div>
       </section>
-    </main>
-  );
-}
-
-function Tile({ label, value, tone }: { label: string; value: string; tone: string }) {
-  return (
-    <div className="border-l-2 border-slate-600 bg-[#121316] p-4">
-      <p className="font-mono text-[0.6875rem] uppercase tracking-widest text-slate-400">{label}</p>
-      <p className={`font-mono text-2xl ${tone}`}>{value}</p>
-    </div>
+    </RuntimeWorkflowPage>
   );
 }

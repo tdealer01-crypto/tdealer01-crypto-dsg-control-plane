@@ -1,46 +1,26 @@
-<div align="center">
+# DSG ONE — ProofGate Control Plane
 
-# DSG ONE
+> **Block before the AI agent acts — not after the damage is done.**
 
-### Enterprise AI Runtime Control Plane for Auditability, Control, and Verified Operations
+DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gate every action before execution, and get a cryptographic audit trail that satisfies EU AI Act Articles 9, 12, and 14.
 
-<p>
-  DSG ONE is a runtime control plane for organizations that need AI execution to be
-  <strong>governable, reviewable, replay-resistant, and operationally visible</strong>.
-</p>
-
-<p>
-  <img alt="Enterprise AI Runtime" src="https://img.shields.io/badge/Enterprise-AI%20Runtime-0f172a?style=for-the-badge">
-  <img alt="Auditability" src="https://img.shields.io/badge/Auditability-Evidence%20Backed-0f766e?style=for-the-badge">
-  <img alt="Verified Runtime" src="https://img.shields.io/badge/Verified-Runtime%20Evidence-1d4ed8?style=for-the-badge">
-  <img alt="Governance" src="https://img.shields.io/badge/Governance-In%20the%20Control%20Flow-7c3aed?style=for-the-badge">
-</p>
-
-<p>
-  <strong>Built for teams that cannot afford opaque AI execution in production.</strong>
-</p>
-
-</div>
+**Production URL:** `https://tdealer01-crypto-dsg-control-plane.vercel.app`
 
 ---
 
-## Latest Update (April 17, 2026)
+## What it does
 
-- Synced README repo-truth to the committed April 17, 2026 evidence refresh.
-- Re-validated the full automated test suite and aligned this README with the authoritative artifact set (`qa-logs/npm-test-2026-04-17.log`, `qa-logs/npm-test.log`, `qa-logs/test-summary.md`, `docs/STATUS_SNAPSHOT_2026-04-17.md`).
-- Clarified production-readiness status: test baseline is green, but runbook go-live evidence remains open until deployment, environment, migration, smoke, operator, and live E2E checks are closed.
+Other tools tell you what your agent did *after* the fact.  
+DSG ONE intercepts the action *before* it executes — issues an ALLOW stamp or a BLOCK with agent guidance.
 
-### Test Results (latest run)
-
-```bash
-npm run test  # PASS (62 files passed, 1 skipped; 185 tests passed, 3 skipped)
-# Evidence: qa-logs/npm-test-2026-04-17.log (UTC)
+```
+Agent wants to act
+  → POST /api/try/gate  { session_id, action }
+  → ALLOW + cryptographic stamp   (agent proceeds)
+  → BLOCK + suggested_llm_prompt  (agent self-corrects)
 ```
 
-Notes:
-- The skipped file is `tests/integration/api/finance-governance-live-db.test.ts` (live DB integration guard).
-- E2E Playwright depends on browser availability in environment setup.
-- `npm run test` PASS alone is not equivalent to production cutover completion; follow `docs/RUNBOOK_DEPLOY.md` for go-live validation gates.
+Every decision is hashed and tamper-proof. No rebuild of your existing stack required.
 
 ## Deployment Status Note
 
@@ -53,383 +33,217 @@ Passing repository tests alone does not mean the deployed environment is product
 
 ---
 
-## What DSG ONE Is
+## Customer journey
 
-DSG ONE is an enterprise runtime control plane for AI operations.
-
-It is designed for environments where AI execution must not be treated as a black box. Instead of relying on informal trust, DSG ONE gives organizations a structured runtime layer for:
-
-- authenticated operator access
-- organization-scoped workspaces
-- agent creation and API-key-based execution
-- execution visibility and decision traces
-- audit-oriented runtime evidence
-- live mission and readiness surfaces
-- usage, quota, and billing awareness
-- public product proof and authenticated verified proof
-
-The goal is simple:
-
-> **If AI is going to operate in production, it must be controllable, inspectable, and reviewable in real time.**
-
----
-
-## Why This Exists
-
-As AI systems move from demos into real workflows, the problem changes.
-
-The hard problem is no longer only model quality. The real problem is whether an organization can answer:
-
-- What happened?
-- Why did it happen?
-- Was it allowed?
-- Was it replayed or duplicated?
-- What evidence exists for review?
-- Can operators inspect the runtime state safely and quickly?
-
-DSG ONE is built to address that operational problem.
-
----
-
-## Product Thesis
-
-DSG ONE is based on five practical principles:
-
-### 1. Control must exist at runtime
-Governance that only exists in documents is not enough.
-
-### 2. Evidence must be visible
-Operational claims should be backed by observable runtime state, not only by narrative.
-
-### 3. Auditability must be practical
-It should be possible to inspect actions, state transitions, and proof surfaces without reverse-engineering the system.
-
-### 4. Operators need live visibility
-Monitoring, readiness, mission state, and execution history should support intervention while the system is running.
-
-### 5. Public proof and verified proof are different
-A product can have a public AI-readable narrative for positioning, while still keeping authenticated, org-scoped, runtime-backed evidence for real verification.
-
----
-
-## What the Product Includes
-
-### Operator access and provisioning
-- magic-link authentication
-- protected operator surfaces
-- organization-scoped user state
-- trial signup and provisioning flow
-
-### Agent and execution layer
-- Auto-Setup creates policy + agent + execution + billing subscription + onboarding + runtime roles
-- one-time API key generation
-- stable real-run execution path via `POST /api/execute`
-- execution decisions, latency, and audit references
-
-### Monitoring and control-plane surfaces
-- dashboard and mission views
-- readiness and app-shell entry points
-- operator-facing workflow surfaces
-
-### Enterprise proof surfaces
-- **Public proof narrative** for external evaluation
-- **Verified runtime evidence** for authenticated, org-scoped review
-
-### Current repository snapshot (April 17, 2026)
-- App Router pages are available across 19 top-level product surfaces (for example: `app/`, `dashboard/`, `finance-governance/`, `playground/`, `security/`, `support/`).
-- API layer currently exposes 40 route groups under `app/api/*` (including control-plane flows such as `execute`, `spine`, `intent`, `runtime-recovery`, `finance-governance`, `agent-execute`, and `integrations`).
-- The automated Vitest suite is green on this branch; Playwright E2E still depends on external browser download availability in the execution environment.
-
----
-
-## Public Proof vs Verified Runtime Proof
-
-DSG ONE intentionally separates two proof surfaces:
-
-### Public proof narrative
-For customers, partners, AI systems, and public evaluation.
-
-Use:
-- `/enterprise-proof/start`
-- `/enterprise-proof/report`
-- `/api/enterprise-proof/report`
-
-This surface is:
-- public
-- AI-readable
-- safe to share externally
-- not tied to org-scoped runtime secrets
-
-### Verified runtime evidence
-For authenticated users inside a real organization scope.
-
-Use:
-- `/enterprise-proof/verified`
-- `/enterprise-proof/verified/report?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
-- `/api/enterprise-proof/runtime-report?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
-- `/api/enterprise-proof/runtime-report/summary?org_id=<ORG_ID>&agent_id=<AGENT_ID>`
-
-This surface is:
-- auth-gated
-- org-scoped
-- agent-scoped
-- runtime-backed
-- explicit about gaps when evidence is incomplete
-
----
-
-## First-Run Experience (Auto-Setup)
-
-A new workspace should follow the main first-run flow:
-
-1. Sign up for a trial workspace
-2. Confirm the magic link
-3. Open `/dashboard/skills`
-4. Run **Auto-Setup** (creates policy + agent + execution + billing subscription + onboarding + runtime roles)
-5. Copy the one-time API key after setup completes
-6. Run real execution through `/api/execute` (stable entry point)
-7. Continue from `/dashboard/executions` for post-setup operations
-
-First-run Auto-Setup currently includes:
-- 14-day trial
-- 1,000 included executions
-- first agent creation + first execution in one flow
-- post-setup landing at `/dashboard/executions`
-- links into live monitoring surfaces
-
----
-
-## Current API Route Notes (Repo Truth)
-
-These route notes are intended to keep evaluation, onboarding, and smoke checks aligned with the current repository truth.
-
-### Public baseline probe
-- `GET /api/health`
-
-Use this as the anonymous/public baseline availability probe for deployment and uptime checks.
-
-### Stable execution compatibility entry
-- `POST /api/execute`
-
-This is the stable execution entry used for real-run traffic after first-run setup.
-
-Important:
-- this route is **not** an anonymous public execution endpoint
-- it forwards to the spine execution implementation
-- it is intended for controlled runtime execution within a valid org/workspace context
-
-### Underlying execution implementation
-- `POST /api/spine/execute`
-
-`/api/execute` currently forwards to `/api/spine/execute`, which enforces runtime access and request validation.
-
-Current execution requirements include:
-- `Authorization: Bearer <API_KEY>`
-- a valid `agent_id` in the request payload
-- API key + `agent_id` must resolve to an existing agent
-- resolved agent must be in `active` status
-- normal execution rate limiting
-
-### Authenticated operator routes
-- `GET /api/usage`
-- `GET /api/executions`
-- `GET /api/audit`
-- `GET, POST /api/policies`
-- `GET /api/capacity`
-- `POST /api/agent-chat`
-
-These are operator-facing routes and should be evaluated with authenticated, org-scoped access.
-They should not be treated as anonymous/public health probes.
-
-### Common execution failure modes
-For `POST /api/execute` / `POST /api/spine/execute`, evaluators and integrators should expect:
-
-- `401 Unauthorized` when the Bearer token is missing or empty
-- `400 Bad Request` when required fields such as `agent_id` are missing
-- `401 Unauthorized` when `agent_id` + API key do not resolve to a valid agent
-- `403 Forbidden` when the resolved agent is not in `active` status
-- `429 Too Many Requests` when execution rate limits are exceeded
-
-### Evaluation guidance
-- Use `/api/health` first for baseline availability.
-- Use `/api/execute` as the stable compatibility entry for authenticated execution testing.
-- Do not evaluate `/api/execute` as if it were a public anonymous endpoint.
-- Use authenticated operator flows when validating usage, policy, capacity, audit, and execution surfaces.
-
----
-
-## Online Integration Smoke Test (with external apps)
-
-Use this checklist when you want to test DSG ONE online with another application (for example: internal portal, automation worker, webhook processor, or partner integration).
-
-### 1) Prepare deployment target
-
-Set your deployed base URL:
-
-```bash
-export DSG_BASE_URL="https://<your-deployment-domain>"
+```
+/eu-ai-act          ← compliance landing page (EU AI Act Art. 9 / 12 / 14)
+  ↓
+/signup             ← email + workspace name → magic link
+  ↓
+/auth/confirm       ← creates org + 14-day trial + billing subscription
+  ↓
+/dashboard/welcome  ← shows workspace name, trial days, 3 onboarding steps
+  ↓
+/dashboard/api-keys ← create scoped API key (shown once, hashed server-side)
+  ↓
+/quickstart         ← REST API integration guide (curl / Python / JS)
+  ↓
+/api/try/gate       ← live gate endpoint, no auth required for trial
 ```
 
-### 2) Prepare execution credentials
+---
 
-Set the runtime API key and target agent ID:
+## REST API — no SDK required
 
-```bash
-export DSG_API_KEY="<your-runtime-api-key>"
-export DSG_AGENT_ID="<your-agent-id>"
-```
-
-### 3) Baseline availability check
+### Step 1 — Declare your session
 
 ```bash
-curl -sS "$DSG_BASE_URL/api/health"
-```
-
-Expected result: a healthy JSON response.
-
-### 4) Cross-app execution test (server-to-server)
-
-Call the stable execution endpoint from the external app backend:
-
-```bash
-curl -sS -X POST "$DSG_BASE_URL/api/execute" \
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $DSG_API_KEY" \
   -d '{
-    "agent_id": "'"$DSG_AGENT_ID"'",
-    "prompt": "Cross-app smoke test",
-    "input": {
-      "source": "external-app",
-      "timestamp": "2026-04-10T00:00:00Z"
-    }
+    "session_id": "my-agent-run-001",
+    "declared_actions": ["read database", "send email", "update user record"],
+    "ttl_minutes": 30
   }'
 ```
 
-Expected result: an execution response with a request/execution identifier and runtime decision metadata.
+### Step 2 — Gate every action
 
-### 5) Verify operator surfaces after the external trigger
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "my-agent-run-001", "action": "send email to user@example.com"}'
+```
 
-After step 4, verify these authenticated routes in an operator session:
+Response:
+```json
+{
+  "decision": "ALLOW",
+  "stamp": "DSG-X9K3M7P2",
+  "action": "send email to user@example.com",
+  "session_state": { "stamps_issued": 1, "blocked_count": 0, "ttl_remaining_min": 29 }
+}
+```
 
-- `/api/executions` (new item appears)
-- `/api/audit` (trace/evidence recorded)
-- `/api/usage` (usage delta recorded)
+### Step 3 — Handle BLOCK
 
-### 6) Recommended production checks
+```json
+{
+  "decision": "BLOCK",
+  "reason": "Pattern \"delete\\s+all\" is permanently blocked",
+  "agent_guidance": {
+    "can_proceed_with": ["read database", "send email", "update user record"],
+    "suggested_llm_prompt": "Your action was blocked. You can still perform: ..."
+  }
+}
+```
 
-For real online integrations, verify:
+**Trial limits:** 60 req/min · sessions TTL 60 min · no API key needed for trial
 
-- retry behavior for 429 and 5xx responses
-- idempotency strategy in the caller
-- request timeout budget alignment between systems
-- org-scoped auth policy and minimum privileges
-- API key handling and rotation practices
-
-### Quick pass criteria
-
-- `GET /api/health` is reachable
-- `POST /api/execute` succeeds with a valid Bearer API key and valid agent_id
-- corresponding execution and audit records are visible to operators
-
----
-
-## Authentication and Provisioning Model
-
-DSG ONE uses two distinct entry paths:
-
-### `/signup`
-For first-time users.
-
-This path:
-- collects work email and workspace name
-- creates a pending trial-signup record
-- sends a magic link
-- provisions organization, user, and trial subscription during confirmation
-- redirects the user into `/dashboard/skills`
-
-### `/login`
-For already provisioned operator accounts only.
-
-Login is not a public self-service signup path.
-The email must already map to:
-- an active row in `users`
-- a valid `org_id`
-- an allowed operator account
-
-This distinction is intentional. Login is for existing operator access. Signup is for first-time provisioning.
+**Permanently blocked patterns:** `delete all`, `drop table`, `truncate`, `bypass policy`, `rm -rf`, `exfiltrate`, `steal`
 
 ---
 
-## Who This Is For
+## Pages
 
-DSG ONE is relevant for teams building or operating:
-
-- enterprise AI systems
-- internal AI platforms
-- agent-based workflows with approval and oversight requirements
-- audit-heavy or review-sensitive AI operations
-- regulated or compliance-aware runtime environments
-- production AI systems where traceability matters
-
-It is especially relevant where **“just trust the model”** is not an acceptable operating standard.
-
----
-
-## What Buyers Actually Get
-
-Organizations using DSG ONE get:
-
-- a clearer runtime control layer for AI execution
-- better operational evidence for review
-- separation between public positioning and real runtime proof
-- visible first-run Auto-Setup path from signup to first execution
-- operator-facing surfaces for mission, execution, and readiness workflows
-- an architecture designed for review, not only for demos
+| Path | Purpose |
+|---|---|
+| `/` | Homepage |
+| `/eu-ai-act` | EU AI Act compliance landing — comparison table, Art. 9/12/14 |
+| `/proofgate` | ProofGate product story |
+| `/enterprise-ready` | No-migration enterprise setup |
+| `/finance-governance` | Payment & finance controls |
+| `/automation` | Webhook & workflow automation |
+| `/ai-compliance` | ISO 42001, NIST AI RMF |
+| `/pricing` | Four tiers: Trial / Pro / Business / Enterprise |
+| `/quickstart` | REST API integration guide (curl / Python / JS) |
+| `/docs` | API endpoint reference |
+| `/signup` | 14-day trial signup |
+| `/login` | Magic link + password login |
+| `/dashboard/welcome` | Post-signup onboarding (org name, trial days, 3 steps) |
+| `/dashboard/api-keys` | Create / revoke scoped API keys |
+| `/dashboard/integrations` | Integration setup guide |
+| `/dashboard` | Command center |
+| `/admin/leads` | Founder-only lead pipeline view |
+| `/unsubscribe` | CAN-SPAM unsubscribe (updates lead intent in DB) |
 
 ---
 
-## Research References
+## API routes
 
-This product direction is supported by research and technical artifacts related to control, auditability, and verification-oriented runtime design.
+### Gate (public trial)
 
-### Supporting DOIs
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/try/gate` | Declare session or gate an action — no auth required |
 
-- DOI: `10.5281/zenodo.18244246`  
-  https://doi.org/10.5281/zenodo.18244246
+### API keys
 
-- DOI: `10.5281/zenodo.18225586`  
-  https://doi.org/10.5281/zenodo.18225586
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/api-keys` | List org API keys |
+| `POST` | `/api/api-keys` | Create API key (raw key returned once) |
+| `DELETE` | `/api/api-keys/:id` | Revoke key (sets status to REVOKED) |
 
-- DOI: `10.5281/zenodo.18212854`  
-  https://doi.org/10.5281/zenodo.18212854
+### Agents & execution
 
-These references support the research direction behind DSG ONE.
+| Method | Path | Description |
+|---|---|---|
+| `GET/POST` | `/api/agents` | List or create agents |
+| `POST` | `/api/execute` | Protected execution entry |
+| `POST` | `/api/dsg/v1/gates/evaluate` | Deterministic gate evaluation |
+| `POST` | `/api/dsg/v1/proofs/prove` | Generate deterministic proof scaffold |
+| `GET` | `/api/dsg/v1/policies/manifest` | Fetch policy manifest |
 
-They are **supporting artifacts**, not a substitute for inspecting the product itself.
+### Crons (Vercel, daily)
+
+| Schedule (UTC) | Path | Purpose |
+|---|---|---|
+| `0 8 * * *` | `/api/cron/github-leads` | Find AI agent repos on GitHub, save as leads |
+| `30 8 * * *` | `/api/cron/social-listen` | Monitor Reddit + HN for AI agent mentions |
+| `0 9 * * *` | `/api/cron/lead-outreach` | Send cold email to 20 highest-intent leads/day |
+| `0 10 * * *` | `/api/cron/lead-followup` | Day-3 follow-up for non-responders |
+| `0 9 * * *` | `/api/cron/drip-emails` | Trial user drip sequence |
+| `0 10 * * *` | `/api/cron/smart-drip` | Smart drip variant |
+| `0 3 * * *` | `/api/health` | Health probe |
 
 ---
 
-## How To Evaluate DSG ONE
+## Lead pipeline
 
-The right way to evaluate DSG ONE is not through slogans.
+Automated customer acquisition for enterprise/compliance buyers:
 
-It is through inspection.
+```
+GitHub search → repos using LangChain / AutoGen / CrewAI / OpenAI Agents SDK / PydanticAI
+  → filter: updated < 30 days, stars ≥ 20
+  → fetch owner email from GitHub public profile
+  → save to leads table (insert + catch 23505)
+  → lead-outreach cron: cold email (EU AI Act angle)
+  → lead-followup cron: day-3 follow-up
+  → /unsubscribe: opt-out updates intent in DB
+  → /admin/leads: founder views pipeline
+```
 
-Review:
-- signup and login behavior
-- provisioning rules
-- first-run Auto-Setup flow
-- Auto-Setup creates policy + agent + execution + billing subscription + onboarding + runtime roles
-- execution path and returned decision data
-- public enterprise-proof surfaces
-- verified runtime proof surfaces
-- monitoring and mission entry points
-- runtime evidence and gaps behavior
-- research references alongside implementation
+Target ICP: Fintech/banks, SOC 2 / ISO 42001 audit companies, GDPR/PDPA-regulated orgs.
 
-The standard is not whether the README sounds impressive.
+---
 
-The standard is whether the runtime is reviewable under actual use.
+## Tech stack
+
+```
+Next.js 15 (App Router)
+React 18
+TypeScript
+Supabase (auth + postgres + service role)
+Resend (transactional email)
+Stripe (billing webhooks)
+Vercel (deployment + crons)
+```
+
+---
+
+## Local development
+
+```bash
+npm install --ignore-scripts
+cp .env.example .env.local   # fill in values
+npm run dev
+```
+
+Open: `http://localhost:3000`
+
+### Required env vars
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# App URL (used in auth email redirect)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Email
+RESEND_API_KEY=
+
+# Cron protection
+CRON_SECRET=
+
+# Lead pipeline
+GITHUB_TOKEN=          # optional — raises rate limit for github-leads cron
+
+# Admin
+FOUNDER_EMAIL=         # email that can access /admin/leads
+
+# Stripe (optional for local)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+```
+
+Pull from Vercel (if connected):
+```bash
+vercel env pull .env.local
+```
 
 Evaluation should use all three layers together:
 - repository evidence (tests, docs, artifacts)
@@ -440,113 +254,77 @@ Do not treat green repository tests alone as final proof of deployment readiness
 
 ---
 
-## Suggested Evaluation Path
+## Verification
 
-A practical evaluation path is:
+```bash
+npm run typecheck      # TypeScript — currently 1 pre-existing error in tests/
+npm run build          # Next.js production build
+npm test               # Jest unit tests
+```
 
-1. Open the public proof narrative
-2. Start a trial workspace
-3. Complete magic-link confirmation
-4. Run Auto-Setup in `/dashboard/skills`
-5. Continue in `/dashboard/executions`
-6. Open mission and dashboard surfaces
-7. Inspect the verified runtime proof path
-8. Compare runtime behavior against the product claims and research direction
+Live gate check:
+```bash
+curl -s -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"readme-test","declared_actions":["read data"],"ttl_minutes":5}'
+```
 
----
-
-## Security Checklist Reality (Updated: 2026-04-03)
-
-จากผลตรวจล่าสุด มีบางจุดที่รายงานเดิม “ไม่ตรงกับความจริงปัจจุบัน” และได้อัปเดตให้ตรงกับสถานะจริงของโค้ดแล้ว:
-
-### Corrected facts
-- `app/auth/continue/route.ts` **มี rate limit แล้ว** (ไม่ได้เป็นช่องโหว่ที่ยังค้าง).
-- `app/api/execute/route.ts` **มี route-level rate limit แล้ว** (นอกเหนือจาก quota logic).
-- ที่ root **มี lock file แล้ว** (`package-lock.json`) จึงไม่ใช่สถานะ “ไม่พบ lock file”.
-
-### Items still needing additional verification / hardening
-- ยังไม่ได้ audit รายละเอียดของ shell scripts บางไฟล์แบบเต็ม:
-  - `set-vercel-runtime-env.sh`
-  - `set-vercel-stripe-env.sh`
-- CORS ยังเป็นแนวทาง same-origin เป็นหลัก หากมีแผน external client ควรกำหนด explicit allowlist policy.
-- ควรทบทวนการส่ง error detail กลับ client ให้เป็น generic มากขึ้นใน production paths ที่ยังส่งข้อความเชิงเทคนิค.
-- ควรกำหนดรอบ dependency security review/update อย่างสม่ำเสมอ.
+Expected: `{"ok":true,"decision":"ALLOW","declaration_stamp":"DSG-..."}`
 
 ---
 
-## Package Manager & Lockfile Policy
+## EU AI Act compliance coverage
 
-โครงการนี้ใช้ **npm** เป็น package manager หลัก (อ้างอิงจาก `package-lock.json` และ workflow CI ที่รันด้วย `npm ci`).
-
-นโยบายที่ต้องปฏิบัติ:
-- ห้ามแก้ `package.json` โดยไม่อัปเดต `package-lock.json` ใน commit เดียวกัน
-- CI จะตรวจ lock file sync โดยรัน `npm install --package-lock-only --ignore-scripts` แล้วตรวจ `git diff --exit-code -- package-lock.json`
-- CI/CD และ Vercel ต้องติดตั้ง dependencies ด้วย `npm ci` เพื่อให้ได้ dependency graph ที่ reproducible
-
-## Positioning
-
-DSG ONE should be understood as:
-
-> **A control plane for enterprise AI operations that need auditability, runtime evidence, and operational governance.**
-
-It is not a claim that all AI risk disappears.
-It is not a claim that policy text alone is enough.
-It is not a claim that one repository solves governance universally.
-
-It is a serious product effort to make AI operations:
-
-- more inspectable
-- more auditable
-- more controllable
-- more operationally truthful
-- more governable in real time
+| Article | Requirement | DSG ONE |
+|---|---|---|
+| Art. 9 | Risk management — prevent before act | Gates every action before execution |
+| Art. 12 | Record keeping — tamper-proof log | Cryptographic stamp on every ALLOW |
+| Art. 14 | Human oversight — ability to intervene | BLOCK + approval workflow |
 
 ---
 
-## Bottom Line
+## Formal verification artifact
 
-If your organization needs AI systems to operate with:
+```
+DOI: https://doi.org/10.5281/zenodo.18225586
+Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
+```
 
-- explicit runtime control
-- visible execution evidence
-- authenticated operator workflows
-- structured first-run-to-production paths
-- public proof for external evaluation
-- verified proof for real runtime review
-
-then DSG ONE is built in that direction.
-
-**Read the flows. Run the product. Inspect the runtime. Make your own judgment.**
+> The DOI artifact is the formal verification reference. Repository runtime routes provide scaffold behavior — they are not equivalent to an end-to-end formally verified SaaS deployment.
 
 ---
 
-## Keywords
+## GitHub Marketplace action
 
-`#EnterpriseAI` `#AIRuntime` `#Auditability` `#VerifiedRuntime` `#Governance` `#ZeroTrust` `#Operators` `#ControlPlane` `#MissionVisibility` `#ExecutionEvidence`
+```yaml
+- name: DSG Secure Deploy Gate
+  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
+```
 
-## DSG Public Benchmark
+```
+https://github.com/marketplace/actions/dsg-secure-deploy-gate
+```
 
-[![DSG Benchmark](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark.yml/badge.svg)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark.yml)
-[![DSG Benchmark Pages](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark-pages.yml/badge.svg)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions/workflows/benchmark-pages.yml)
+---
 
-This repository includes a governed runtime benchmark for DSG execution flow.
+## Claim boundary
 
-It validates:
-- gate decision accuracy
-- replay completeness
-- ledger match rate
-- proof presence
-- false allow rate
-- latency
+Supported claims based on current repository evidence:
 
-Live report:
-- Public benchmark report: `https://tdealer01-crypto.github.io/tdealer01-crypto-dsg-control-plane/benchmark/`
-- Latest benchmark JSON: `https://tdealer01-crypto.github.io/tdealer01-crypto-dsg-control-plane/benchmark/result.json`
+```
+✓ REST API gate endpoint — live, no SDK required
+✓ Cryptographic audit trail on every gated action
+✓ EU AI Act Art. 9 / 12 / 14 coverage scaffold
+✓ 14-day trial with automated org provisioning
+✓ Automated lead pipeline (GitHub signal → cold email → follow-up)
+✓ API key management (scoped, SHA-256 hashed, revocable)
+✓ Deterministic proof/gate scaffold
+```
 
-GitHub configuration requirements:
-- Pages source: `GitHub Actions`
-- Required secrets: `BENCHMARK_API_KEY`, `BENCHMARK_AGENT_ID`
+Not yet verified without additional live evidence:
 
-Usage:
-- Run benchmark only: use workflow **DSG Benchmark**
-- Run benchmark + publish Pages: use workflow **DSG Benchmark Pages** with `base_url` and optional `execute_path` / `replay_path_prefix`
+```
+✗ Independent third-party audit or certification
+✗ External Z3 solver in production (scaffold only)
+✗ SDK published to npm / PyPI (@dsg-one/sdk is private — use REST API)
+```

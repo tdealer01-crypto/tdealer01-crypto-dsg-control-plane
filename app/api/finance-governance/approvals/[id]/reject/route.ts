@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { handleFinanceGovernanceApiError } from '../../../../../../lib/finance-governance/api-error';
+import { requireFinanceGovernanceAccess } from '../../../../../../lib/finance-governance/access-gate';
 import { FinanceGovernanceRepository } from '../../../../../../lib/finance-governance/repository';
 import { resolveOrgId } from '../../../../../../lib/finance-governance/org-scope';
 
@@ -11,12 +13,11 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: RouteContext) {
   try {
     const orgId = resolveOrgId(request);
+    requireFinanceGovernanceAccess(request, orgId, 'reject');
     const { id } = await context.params;
     const result = await repository.applyAction(orgId, id, 'reject');
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown_error';
-    const status = message === 'missing_org_id' ? 400 : 500;
-    return NextResponse.json({ ok: false, error: message }, { status });
+    return handleFinanceGovernanceApiError('api/finance-governance', error);
   }
 }

@@ -8,6 +8,13 @@ import { resolvePolicyId } from '../../../../lib/supabase/resolve-policy';
 const AGENT_DETAIL_RATE_LIMIT = 60;
 const AGENT_DETAIL_RATE_WINDOW_MS = 60 * 1000;
 type RouteContext = { params: Promise<{ id: string }> };
+type AgentUpdatePayload = {
+  updated_at: string;
+  name?: string;
+  status?: 'active' | 'disabled';
+  monthly_limit?: number;
+  policy_id?: string;
+};
 
 export async function GET(request: Request, { params }: RouteContext) {
   const rateLimit = await applyRateLimit({ key: getRateLimitKey(request, 'agents-detail'), limit: AGENT_DETAIL_RATE_LIMIT, windowMs: AGENT_DETAIL_RATE_WINDOW_MS });
@@ -72,7 +79,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const { id } = await params;
     const body = await request.json().catch(() => null);
-    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const update: AgentUpdatePayload = { updated_at: new Date().toISOString() };
 
     if (typeof body?.name !== 'undefined') {
       const name = String(body.name || '').trim();
@@ -87,7 +94,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       if (!['active', 'disabled'].includes(status)) {
         return NextResponse.json({ error: 'status must be active or disabled' }, { status: 400, headers });
       }
-      update.status = status;
+      update.status = status as AgentUpdatePayload['status'];
     }
 
     if (typeof body?.monthly_limit !== 'undefined') {

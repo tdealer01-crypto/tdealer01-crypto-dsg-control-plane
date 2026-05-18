@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Agent = {
   agent_id: string;
@@ -53,52 +53,6 @@ type OnboardingStatePayload = {
   next_action?: string;
 };
 
-function normalizeAgent(input: unknown): Agent | null {
-  if (!input || typeof input !== "object") return null;
-  const row = input as Record<string, unknown>;
-  if (typeof row.agent_id !== "string" || typeof row.name !== "string") return null;
-  if (typeof row.status !== "string" || typeof row.monthly_limit !== "number") return null;
-
-  return {
-    agent_id: row.agent_id,
-    name: row.name,
-    policy_id: typeof row.policy_id === "string" ? row.policy_id : undefined,
-    status: row.status,
-    monthly_limit: row.monthly_limit,
-    usage_this_month: typeof row.usage_this_month === "number" ? row.usage_this_month : 0,
-    api_key_preview: typeof row.api_key_preview === "string" ? row.api_key_preview : "n/a",
-  };
-}
-
-function normalizeUsageSummary(input: unknown): UsageSummary | null {
-  if (!input || typeof input !== "object") return null;
-  const row = input as Record<string, unknown>;
-
-  if (
-    typeof row.plan !== "string" ||
-    typeof row.billing_period !== "string" ||
-    typeof row.executions !== "number" ||
-    typeof row.included_executions !== "number" ||
-    typeof row.overage_executions !== "number" ||
-    typeof row.projected_amount_usd !== "number"
-  ) {
-    return null;
-  }
-
-  return {
-    plan: row.plan,
-    subscription_status: typeof row.subscription_status === "string" ? row.subscription_status : undefined,
-    billing_period: row.billing_period,
-    current_period_start: typeof row.current_period_start === "string" ? row.current_period_start : null,
-    current_period_end: typeof row.current_period_end === "string" ? row.current_period_end : null,
-    trial_end: typeof row.trial_end === "string" ? row.trial_end : null,
-    executions: row.executions,
-    included_executions: row.included_executions,
-    overage_executions: row.overage_executions,
-    projected_amount_usd: row.projected_amount_usd,
-  };
-}
-
 type HealthPayload = {
   ok: boolean;
   service: string;
@@ -140,14 +94,120 @@ type DeterminismResult = {
   error: string | null;
 };
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-white/10 ${className}`} />;
 }
+
+function formatSubscriptionStatus(status: string | undefined): string {
+  if (!status) return "Not set";
+  const normalized = status.trim().toLowerCase();
+  const known: Record<string, string> = {
+    active: "Active", trialing: "Trialing", past_due: "Past due",
+    unpaid: "Unpaid", canceled: "Canceled", cancelled: "Canceled",
+    pastdue: "Past due", in_trial: "Trialing", incomplete: "Incomplete",
+    incomplete_expired: "Incomplete expired",
+  };
+  return known[normalized] ?? normalized.split(/[\s_-]+/).filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(" ");
+}
+
+function normalizeAgent(input: unknown): Agent | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  if (typeof row.agent_id !== "string" || typeof row.name !== "string") return null;
+  if (typeof row.status !== "string" || typeof row.monthly_limit !== "number") return null;
+  return {
+    agent_id: row.agent_id, name: row.name,
+    policy_id: typeof row.policy_id === "string" ? row.policy_id : undefined,
+    status: row.status, monthly_limit: row.monthly_limit,
+    usage_this_month: typeof row.usage_this_month === "number" ? row.usage_this_month : 0,
+    api_key_preview: typeof row.api_key_preview === "string" ? row.api_key_preview : "n/a",
+  };
+}
+
+function normalizeUsageSummary(input: unknown): UsageSummary | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  if (
+    typeof row.plan !== "string" || typeof row.billing_period !== "string" ||
+    typeof row.executions !== "number" || typeof row.included_executions !== "number" ||
+    typeof row.overage_executions !== "number" || typeof row.projected_amount_usd !== "number"
+  ) return null;
+  return {
+    plan: row.plan, subscription_status: typeof row.subscription_status === "string" ? row.subscription_status : undefined,
+    billing_period: row.billing_period,
+    current_period_start: typeof row.current_period_start === "string" ? row.current_period_start : null,
+    current_period_end: typeof row.current_period_end === "string" ? row.current_period_end : null,
+    trial_end: typeof row.trial_end === "string" ? row.trial_end : null,
+    executions: row.executions, included_executions: row.included_executions,
+    overage_executions: row.overage_executions, projected_amount_usd: row.projected_amount_usd,
+  };
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  try { return new Date(value).toLocaleString(); } catch { return value; }
+}
+
+function decisionColor(value?: string | null) {
+  const v = (value || "").toUpperCase();
+  if (v === "BLOCK" || v === "FREEZE") return "border-red-400/25 bg-red-500/10 text-red-100";
+  if (v === "STABILIZE" || v === "WARN") return "border-amber-300/25 bg-amber-300/10 text-amber-100";
+  return "border-emerald-400/25 bg-emerald-400/10 text-emerald-100";
+}
+
+// ── skeleton rows ─────────────────────────────────────────────────────────────
+
+function AgentSkeletonRows() {
+  return (
+    <>
+      {[1, 2, 3].map((n) => (
+        <div key={n} className="border border-white/10 bg-black/20 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-52" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function ExecutionSkeletonRows() {
+  return (
+    <>
+      {[1, 2, 3].map((n) => (
+        <div key={n} className="border border-white/10 bg-black/20 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-3 w-44" />
+            <Skeleton className="h-3 w-36" />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -160,159 +220,89 @@ export default function DashboardPage() {
   const [error, setError] = useState<string>("");
   const [auditError, setAuditError] = useState<string>("");
   const [onboardingState, setOnboardingState] = useState<OnboardingStatePayload | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    setAuditError("");
 
-    async function load() {
-      setLoading(true);
-      setError("");
-      setAuditError("");
+    try {
+      const results = await Promise.allSettled([
+        fetch("/api/agents", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+        fetch("/api/executions?limit=10", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+        fetch("/api/usage", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+        fetch("/api/health", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+        fetch("/api/audit?limit=20", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+        fetch("/api/onboarding/state", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+      ]);
 
-      try {
-        const results = await Promise.allSettled([
-          fetch("/api/agents", { cache: "no-store" }).then(async (r) => ({
-            ok: r.ok,
-            json: await r.json(),
-          })),
-          fetch("/api/executions?limit=10", { cache: "no-store" }).then(async (r) => ({
-            ok: r.ok,
-            json: await r.json(),
-          })),
-          fetch("/api/usage", { cache: "no-store" }).then(async (r) => ({
-            ok: r.ok,
-            json: await r.json(),
-          })),
-          fetch("/api/health", { cache: "no-store" }).then(async (r) => ({
-            ok: r.ok,
-            json: await r.json(),
-          })),
-          fetch("/api/audit?limit=20", { cache: "no-store" }).then(async (r) => ({
-            ok: r.ok,
-            json: await r.json(),
-          })),
-          fetch("/api/onboarding/state", { cache: "no-store" }).then(async (r) => ({
-            ok: r.ok,
-            json: await r.json(),
-          })),
-        ]);
+      const warnings: string[] = [];
+      const [agentsResult, executionsResult, usageResult, healthResult, auditResult, onboardingResult] = results;
 
-        if (!alive) return;
-
-        const warnings: string[] = [];
-        const [agentsResult, executionsResult, usageResult, healthResult, auditResult, onboardingResult] = results;
-
-        if (agentsResult.status === "fulfilled" && agentsResult.value.ok) {
-          const normalizedAgents = Array.isArray(agentsResult.value.json?.items)
-            ? agentsResult.value.json.items
-                .map(normalizeAgent)
-                .filter((item: Agent | null): item is Agent => item !== null)
-            : [];
-          setAgents(normalizedAgents);
-        } else {
-          warnings.push(
-            agentsResult.status === "fulfilled"
-              ? agentsResult.value.json?.error || "Failed to load agents"
-              : "Failed to load agents"
-          );
-        }
-
-        if (executionsResult.status === "fulfilled" && executionsResult.value.ok) {
-          setExecutions(executionsResult.value.json.executions || []);
-        } else {
-          warnings.push(
-            executionsResult.status === "fulfilled"
-              ? executionsResult.value.json?.error || "Failed to load executions"
-              : "Failed to load executions"
-          );
-        }
-
-        if (usageResult.status === "fulfilled" && usageResult.value.ok) {
-          const summaryPayload = usageResult.value.json?.summary ?? usageResult.value.json;
-          const normalizedSummary = normalizeUsageSummary(summaryPayload);
-          setSummary(normalizedSummary);
-        } else {
-          warnings.push(
-            usageResult.status === "fulfilled"
-              ? usageResult.value.json?.error || "Failed to load usage"
-              : "Failed to load usage"
-          );
-        }
-
-        if (healthResult.status === "fulfilled" && healthResult.value.ok) {
-          setHealth(healthResult.value.json || null);
-        } else {
-          warnings.push(
-            healthResult.status === "fulfilled"
-              ? healthResult.value.json?.error || "Failed to load health"
-              : "Failed to load health"
-          );
-        }
-
-        if (auditResult.status === "fulfilled" && auditResult.value.ok) {
-          setAuditItems(auditResult.value.json.items || []);
-          setDeterminism(auditResult.value.json.determinism || []);
-          if (auditResult.value.json.error) setAuditError(auditResult.value.json.error);
-        } else {
-          setAuditItems([]);
-          setDeterminism([]);
-          setAuditError(
-            auditResult.status === "fulfilled"
-              ? auditResult.value.json?.error || "Failed to load audit data"
-              : "Failed to load audit data"
-          );
-        }
-
-        if (onboardingResult.status === "fulfilled" && onboardingResult.value.ok) {
-          setOnboardingState(onboardingResult.value.json as OnboardingStatePayload);
-        } else if (onboardingResult.status === "fulfilled") {
-          warnings.push(onboardingResult.value.json?.error || "Failed to load onboarding state");
-        } else {
-          warnings.push("Failed to load onboarding state");
-        }
-
-        if (warnings.length > 0) {
-          setError(warnings.join(" | "));
-        }
-      } catch (err) {
-        if (!alive) return;
-        setError(err instanceof Error ? err.message : "Failed to load dashboard");
-      } finally {
-        if (alive) setLoading(false);
+      if (agentsResult.status === "fulfilled" && agentsResult.value.ok) {
+        const normalized = Array.isArray(agentsResult.value.json?.items)
+          ? agentsResult.value.json.items.map(normalizeAgent).filter((a: Agent | null): a is Agent => a !== null)
+          : [];
+        setAgents(normalized);
+      } else {
+        warnings.push("Agents failed to load");
       }
-    }
 
-    load();
-    return () => {
-      alive = false;
-    };
+      if (executionsResult.status === "fulfilled" && executionsResult.value.ok) {
+        setExecutions(executionsResult.value.json.executions || []);
+      } else {
+        warnings.push("Executions failed to load");
+      }
+
+      if (usageResult.status === "fulfilled" && usageResult.value.ok) {
+        const payload = usageResult.value.json?.summary ?? usageResult.value.json;
+        setSummary(normalizeUsageSummary(payload));
+      } else {
+        warnings.push("Usage data failed to load");
+      }
+
+      if (healthResult.status === "fulfilled" && healthResult.value.ok) {
+        setHealth(healthResult.value.json || null);
+      } else {
+        warnings.push("Health check failed to load");
+      }
+
+      if (auditResult.status === "fulfilled" && auditResult.value.ok) {
+        setAuditItems(auditResult.value.json.items || []);
+        setDeterminism(auditResult.value.json.determinism || []);
+        if (auditResult.value.json.error) setAuditError(auditResult.value.json.error);
+      } else {
+        setAuditItems([]);
+        setDeterminism([]);
+        setAuditError("Audit data unavailable — some metrics may be stale");
+      }
+
+      if (onboardingResult.status === "fulfilled" && onboardingResult.value.ok) {
+        setOnboardingState(onboardingResult.value.json as OnboardingStatePayload);
+      } else {
+        warnings.push("Setup progress unavailable");
+      }
+
+      if (warnings.length > 0) setError(warnings.join(" · "));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const cards = useMemo(() => {
-    return [
-      { label: "Agents", value: agents.length },
-      { label: "Executions", value: summary?.executions ?? executions.length },
-      { label: "Current Usage", value: summary?.executions ?? 0 },
-      { label: "Plan", value: summary?.plan ?? "-" },
-      { label: "DSG Core", value: health?.core_ok ? "Online" : "Offline" },
-    ];
-  }, [agents.length, executions.length, summary, health]);
+  useEffect(() => { void load(); }, [load, retryCount]);
 
-  const deterministicCount = useMemo(() => {
-    return determinism.filter((item) => item.ok && item.data?.deterministic).length;
-  }, [determinism]);
+  const overview = useMemo(() => [
+    { label: "Active agents", value: String(agents.length), helper: "Governed operator endpoints", href: "/dashboard/agents" },
+    { label: "Executions this period", value: String(summary?.executions ?? executions.length), helper: summary?.billing_period || "Current billing period", href: "/dashboard/executions" },
+    { label: "Projected spend", value: `$${(summary?.projected_amount_usd ?? 0).toFixed(2)}`, helper: summary?.plan || "No plan", href: "/dashboard/billing" },
+    { label: "Runtime health", value: loading ? "" : (health?.core_ok ? "Online" : "Degraded"), helper: health?.core?.version || "—", href: undefined },
+  ], [agents.length, executions.length, health?.core?.version, health?.core_ok, loading, summary?.billing_period, summary?.executions, summary?.plan, summary?.projected_amount_usd]);
 
-  const freezeCount = useMemo(() => {
-    return determinism.filter(
-      (item) => item.ok && (item.data?.gate_action || "").toUpperCase() === "FREEZE"
-    ).length;
-  }, [determinism]);
-
-  const auditStatus = auditError
-    ? "warning"
-    : loading
-      ? "checking"
-      : "ok";
+  const deterministicCount = useMemo(() => determinism.filter((d) => d.ok && d.data?.deterministic).length, [determinism]);
+  const freezeCount = useMemo(() => determinism.filter((d) => d.ok && (d.data?.gate_action || "").toUpperCase() === "FREEZE").length, [determinism]);
 
   const onboardingProgress = useMemo(() => {
     const completed = [
@@ -320,207 +310,301 @@ export default function DashboardPage() {
       Boolean(onboardingState?.has_agent),
       Boolean(onboardingState?.first_run_complete),
     ].filter(Boolean).length;
-
-    const total = 3;
-    return {
-      percent: Math.round((completed / total) * 100),
-      completed,
-      total,
-    };
-  }, [onboardingState?.first_run_complete, onboardingState?.has_agent, onboardingState?.org_id]);
+    return { completed, total: 3, percent: Math.round((completed / 3) * 100) };
+  }, [onboardingState]);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main className="min-h-screen bg-[#090a0d] text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">DSG</p>
-            <h1 className="mt-2 text-3xl font-semibold">Control Plane Dashboard</h1>
-            <p className="mt-2 text-slate-400">
-              Authenticated overview of agents, executions, billing, audit state, and current DSG core status.
-            </p>
-          </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard/agents" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Agents</Link>
-            <Link href="/dashboard/executions" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Executions</Link>
-            <Link href="/dashboard/billing" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Billing</Link>
-            <Link href="/dashboard/policies" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Policies</Link>
-            <Link href="/dashboard/integration" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Integration</Link>
-            <Link href="/dashboard/audit" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">Audit</Link>
-          </div>
-        </div>
-
-        {error ? <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
-
-        <section className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-emerald-200">Onboarding progress</p>
-              <p className="text-sm text-emerald-100/90">
-                {onboardingProgress.completed}/{onboardingProgress.total} completed
+        {/* Hero */}
+        <section className="relative overflow-hidden border border-white/10 bg-[linear-gradient(135deg,rgba(126,16,24,0.22),rgba(9,10,13,0.88)_32%,rgba(245,197,92,0.08)_120%)] p-8">
+          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400">DSG Control Plane</p>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">
+                Operational clarity for governed approvals, runtime health, and audit evidence.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+                Current system posture, queues, evidence, and actions your operators need to move safely.
               </p>
             </div>
-            <Link href={onboardingState?.first_run_complete ? "/dashboard/executions" : "/dashboard/skills"} className="rounded-xl border border-emerald-200/40 px-4 py-2 text-sm font-semibold text-emerald-100">
-              {onboardingState?.first_run_complete ? "Open Executions" : "Run Auto-Setup"}
-            </Link>
-          </div>
-          <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
-            <div
-              className="h-2 rounded-full bg-emerald-300 transition-all"
-              style={{ width: `${onboardingProgress.percent}%` }}
-            />
+            <div className="flex flex-wrap gap-3">
+              <Link href="/dashboard/command-center" className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950">
+                Open command center
+              </Link>
+              <Link href="/dashboard/agents" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
+                Agents
+              </Link>
+              <Link href="/dashboard/audit" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
+                Audit
+              </Link>
+            </div>
           </div>
         </section>
 
-        {!loading && !error && agents.length === 0 && executions.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6">
-            <p className="text-lg font-semibold text-emerald-100">Welcome to DSG Control Plane</p>
-            <p className="mt-2 text-sm leading-7 text-emerald-200/80">
-              Your authenticated dashboard is still empty. Head to{" "}
-              <Link href="/dashboard/skills" className="underline font-semibold text-emerald-200">Skills Auto-Setup</Link>{" "}
-              to provision your first agent and first execution through the production runtime path, or visit{" "}
-              <Link href="/pricing" className="underline font-semibold text-emerald-200">Pricing</Link>{" "}
-              to review plan changes.
-            </p>
-            {onboardingState?.next_action ? <p className="mt-3 text-xs text-emerald-100/80">Next: {onboardingState.next_action}</p> : null}
+        {/* Error banner with retry */}
+        {error ? (
+          <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-amber-400/25 bg-amber-400/10 px-5 py-4">
+            <p className="text-sm text-amber-100">{error}</p>
+            <button
+              onClick={() => setRetryCount((c) => c + 1)}
+              className="shrink-0 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-300/10"
+            >
+              Retry
+            </button>
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-6 md:grid-cols-5">
-          {cards.map((card) => (
-            <div key={card.label} className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-sm text-slate-400">{card.label}</p>
-              <p className="mt-3 text-3xl font-semibold">{String(card.value)}</p>
+        {/* KPI cards */}
+        <section className="mt-6 grid gap-4 md:grid-cols-4">
+          {overview.map((item) => (
+            <div key={item.label} className="border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
+              <div className="mt-4">
+                {loading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : item.href ? (
+                  <Link href={item.href} className="text-3xl font-semibold text-white hover:text-amber-200 transition-colors">
+                    {item.value}
+                  </Link>
+                ) : (
+                  <p className={`text-3xl font-semibold ${item.value === "Degraded" ? "text-red-300" : "text-white"}`}>
+                    {item.value}
+                  </p>
+                )}
+              </div>
+              <p className="mt-2 text-sm text-slate-500">{item.helper}</p>
             </div>
           ))}
-        </div>
+        </section>
 
-        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">DSG Core Health</h2>
-            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">
-              {health?.core_ok ? "online" : "offline"}
-            </span>
+        {/* Onboarding + audit counts */}
+        <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="border border-emerald-400/20 bg-emerald-400/10 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/80">Setup progress</p>
+                <h2 className="mt-2 text-xl font-semibold text-emerald-50">
+                  {loading ? <Skeleton className="h-6 w-44" /> : `${onboardingProgress.completed}/${onboardingProgress.total} steps complete`}
+                </h2>
+              </div>
+              {!loading && (
+                <Link
+                  href={onboardingState?.first_run_complete ? "/dashboard/executions" : "/dashboard/skills"}
+                  className="rounded-xl border border-emerald-200/30 px-4 py-2 text-sm font-semibold text-emerald-100"
+                >
+                  {onboardingState?.first_run_complete ? "View executions" : "Continue setup"}
+                </Link>
+              )}
+            </div>
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-black/30">
+              {loading ? (
+                <div className="h-2 w-1/3 animate-pulse rounded-full bg-emerald-400/40" />
+              ) : (
+                <div className="h-2 rounded-full bg-emerald-300 transition-all" style={{ width: `${onboardingProgress.percent}%` }} />
+              )}
+            </div>
+            {!loading && onboardingState?.next_action ? (
+              <p className="mt-4 text-sm text-emerald-100/80">Next: {onboardingState.next_action}</p>
+            ) : null}
           </div>
-          <div className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
-            <p>Control plane: {health?.service || "-"}</p>
-            <p>Checked: {formatDate(health?.timestamp || null)}</p>
-            <p>Core URL: {health?.core?.url || "-"}</p>
-            <p>Core version: {health?.core?.version || "-"}</p>
-            <p>Core status: {health?.core?.status || (health?.core_ok ? "ok" : "unreachable")}</p>
-            <p>Error: {health?.core?.error || "-"}</p>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Audit events</p>
+              <p className="mt-1 text-xs text-slate-600">Last 20 recorded</p>
+              <div className="mt-3">
+                {loading ? <Skeleton className="h-8 w-12" /> : <p className="text-3xl font-semibold text-white">{auditItems.length}</p>}
+              </div>
+            </div>
+            <div className="border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Gate checks</p>
+              <p className="mt-1 text-xs text-slate-600">Deterministic decisions</p>
+              <div className="mt-3">
+                {loading ? <Skeleton className="h-8 w-12" /> : <p className="text-3xl font-semibold text-white">{deterministicCount}</p>}
+              </div>
+            </div>
+            <div className="border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Freeze alerts</p>
+              <p className="mt-1 text-xs text-slate-600">Actions flagged to freeze</p>
+              <div className="mt-3">
+                {loading ? <Skeleton className="h-8 w-12" /> : (
+                  <p className={`text-3xl font-semibold ${freezeCount > 0 ? "text-amber-300" : "text-white"}`}>
+                    {freezeCount}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Core status */}
+        <section className="mt-6 border border-white/10 bg-[#0d0f12] p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Audit Summary</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Operator-facing audit events, determinism checks, and current freeze recommendations from DSG core.
-              </p>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Runtime status</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">DSG core connection</h2>
+            </div>
+            {loading ? (
+              <Skeleton className="h-7 w-20 rounded-full" />
+            ) : (
+              <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.22em] ${health?.core_ok ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "border-red-400/25 bg-red-500/10 text-red-100"}`}>
+                {health?.core_ok ? "online" : "offline"}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {[
+              { label: "Service", value: health?.service },
+              { label: "Last checked", value: formatDate(health?.timestamp) },
+              { label: "Core version", value: health?.core?.version },
+              { label: "Core URL", value: health?.core?.url, wide: true },
+              { label: "Status note", value: health?.core?.error || health?.core?.status },
+            ].map(({ label, value, wide }) => (
+              <div key={label} className={`border-l border-amber-300/35 bg-white/[0.03] p-4 ${wide ? "md:col-span-2" : ""}`}>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+                <div className="mt-3">
+                  {loading ? <Skeleton className="h-4 w-32" /> : <p className="break-all text-sm text-slate-200">{value || "—"}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Agents + Executions */}
+        <section className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="border border-white/10 bg-white/[0.03] p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Your agents</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Active agents</h2>
+              </div>
+              {!loading && (
+                <span className="text-sm text-slate-500">{agents.length} {agents.length === 1 ? "agent" : "agents"}</span>
+              )}
             </div>
 
+            <div className="mt-5 space-y-3">
+              {loading ? <AgentSkeletonRows /> : agents.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-black/20 px-5 py-8 text-center">
+                  <p className="font-semibold text-slate-200">No agents yet</p>
+                  <p className="mt-1 text-sm text-slate-500">Create your first agent to start governing actions.</p>
+                  <Link href="/dashboard/agents" className="mt-4 inline-block rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950">
+                    Create agent
+                  </Link>
+                </div>
+              ) : (
+                agents.map((agent) => (
+                  <div key={agent.agent_id} className="border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">{agent.name}</p>
+                        <p className="mt-1 font-mono text-xs text-slate-500">{agent.agent_id}</p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${agent.status === "active" ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "border-slate-600 bg-slate-800/60 text-slate-300"}`}>
+                        {agent.status}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-2 text-sm text-slate-400 md:grid-cols-2">
+                      <p>Limit: {agent.monthly_limit.toLocaleString()} / mo</p>
+                      <p>Used: {agent.usage_this_month.toLocaleString()}</p>
+                      <p>Policy: {agent.policy_id || "auto"}</p>
+                      <p className="font-mono">Key: {agent.api_key_preview || "—"}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="border border-white/10 bg-white/[0.03] p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Recent decisions</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Last 10 executions</h2>
+              </div>
+              {!loading && (
+                <Link href="/dashboard/executions" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
+                  View all →
+                </Link>
+              )}
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {loading ? <ExecutionSkeletonRows /> : executions.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-black/20 px-5 py-8 text-center">
+                  <p className="font-semibold text-slate-200">No executions yet</p>
+                  <p className="mt-1 text-sm text-slate-500">Run your first governed action to see decisions here.</p>
+                  <Link href="/dashboard/integrations" className="mt-4 inline-block rounded-lg bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-300 ring-1 ring-emerald-400/20">
+                    Set up integration
+                  </Link>
+                </div>
+              ) : (
+                executions.map((execution) => (
+                  <div key={execution.id} className="border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">{execution.decision}</p>
+                        <p className="mt-1 font-mono text-xs text-slate-500">{execution.id}</p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1 text-xs ${decisionColor(execution.decision)}`}>
+                        {execution.latency_ms} ms
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-1 text-sm text-slate-400">
+                      <p>Policy: {execution.policy_version || "—"}</p>
+                      {execution.reason ? <p>Reason: {execution.reason}</p> : null}
+                      <p>{formatDate(execution.created_at)}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Billing */}
+        <section className="mt-6 border border-white/10 bg-[#0d0f12] p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Current plan</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Billing & usage</h2>
+            </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard/audit" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">
-                Open Audit
+              <Link href="/dashboard/billing" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
+                Manage billing
               </Link>
-              <Link href="/dashboard/audit/matrix" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200">
-                Open Matrix
+              <Link href="/dashboard/audit/matrix" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
+                Audit matrix
               </Link>
             </div>
           </div>
 
           {auditError ? (
-            <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">
+            <div className="mt-5 rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
               {auditError}
             </div>
           ) : null}
 
-          <div className="mt-6 grid gap-6 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
-              <p className="text-sm text-slate-400">Audit events</p>
-              <p className="mt-3 text-3xl font-semibold">{loading ? "..." : auditItems.length}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
-              <p className="text-sm text-slate-400">Deterministic</p>
-              <p className="mt-3 text-3xl font-semibold">{loading ? "..." : deterministicCount}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
-              <p className="text-sm text-slate-400">Freeze recommended</p>
-              <p className="mt-3 text-3xl font-semibold">{loading ? "..." : freezeCount}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6">
-              <p className="text-sm text-slate-400">Audit status</p>
-              <p className="mt-3 text-3xl font-semibold">{auditStatus}</p>
-            </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Billing period", value: summary?.billing_period },
+              { label: "Plan", value: summary?.plan },
+              { label: "Subscription", value: formatSubscriptionStatus(summary?.subscription_status) },
+              { label: "Period ends", value: formatDate(summary?.current_period_end) },
+            ].map(({ label, value }) => (
+              <div key={label} className="border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+                <div className="mt-3">
+                  {loading ? <Skeleton className="h-4 w-24" /> : <p className="text-sm font-medium text-slate-200">{value || "—"}</p>}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Latest Agents</h2>
-              <span className="text-sm text-slate-400">{loading ? "Loading..." : `${agents.length} rows`}</span>
-            </div>
-            <div className="mt-4 space-y-3">
-              {agents.length === 0 && !loading ? <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No agents found.</div> : null}
-              {agents.map((agent) => (
-                <div key={agent.agent_id} className="rounded-xl border border-slate-800 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{agent.name}</p>
-                      <p className="mt-1 text-sm text-slate-400">{agent.agent_id}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">{agent.status}</span>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-300">
-                    <p>Monthly limit: {agent.monthly_limit}</p>
-                    <p>Usage this month: {agent.usage_this_month}</p>
-                    <p>API key preview: {agent.api_key_preview || "-"}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Latest Executions</h2>
-              <span className="text-sm text-slate-400">{loading ? "Loading..." : `${executions.length} rows`}</span>
-            </div>
-            <div className="mt-4 space-y-3">
-              {executions.length === 0 && !loading ? <div className="rounded-xl border border-slate-800 p-4 text-slate-400">No executions found.</div> : null}
-              {executions.map((execution) => (
-                <div key={execution.id} className="rounded-xl border border-slate-800 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{execution.decision}</p>
-                      <p className="mt-1 text-sm text-slate-400">{execution.id}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">{execution.latency_ms} ms</span>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm text-slate-300">
-                    <p>Policy: {execution.policy_version || "-"}</p>
-                    <p>Reason: {execution.reason || "-"}</p>
-                    <p>Created: {formatDate(execution.created_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-semibold">Billing Snapshot</h2>
-          <div className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
-            <p>Billing period: {summary?.billing_period || "-"}</p>
-            <p>Subscription plan: {summary?.plan || "-"}</p>
-            <p>Subscription status: {summary?.subscription_status || "-"}</p>
-            <p>Period end: {formatDate(summary?.current_period_end || null)}</p>
-          </div>
-        </section>
       </div>
     </main>
   );

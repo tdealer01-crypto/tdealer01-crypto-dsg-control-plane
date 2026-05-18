@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = clampLimit(url.searchParams.get("limit"), 100, 100);
 
-    const auditEvents = await getDSGCoreAuditEvents(limit);
+    const auditEvents = await getDSGCoreAuditEvents(limit, { orgId: access.orgId });
 
     const rawItems = Array.isArray(auditEvents?.items) ? auditEvents.items : [];
     const normalizedItems = rawItems
@@ -162,7 +162,7 @@ export async function GET(request: Request) {
 
     const determinism = await Promise.all(
       sequences.map(async (sequence) => {
-        const result = await getDSGCoreDeterminism(sequence);
+        const result = await getDSGCoreDeterminism(sequence, { orgId: access.orgId });
         const data = result.ok && "data" in result ? (result.data ?? null) : null;
         const error = result.ok
           ? null
