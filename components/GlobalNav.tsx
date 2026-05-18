@@ -43,6 +43,12 @@ const PRODUCT_ITEMS = [
     title: 'AI Compliance',
     description: 'ISO 42001, NIST AI RMF',
   },
+  {
+    href: '/eu-ai-act',
+    icon: Shield,
+    title: 'EU AI Act',
+    description: 'Block before damage, not after',
+  },
 ];
 
 export default function GlobalNav() {
