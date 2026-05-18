@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { ensureSeatActivatedForUser } from '../../../lib/billing/seat-activation';
 import { bootstrapOrgStarterState } from '../../../lib/onboarding/bootstrap';
 import { getSafeNext } from '../../../lib/auth/safe-next';
+import { sendTelegram } from '../../../lib/marketing/mcp-tools';
 
 const TRIAL_DAYS = 14;
 
@@ -291,6 +292,10 @@ export async function GET(request: NextRequest) {
     }, { onConflict: 'org_id' });
   }
 
-  const redirectTo = new URL(next || '/dashboard/skills', request.url);
+  sendTelegram(
+    `🚀 Trial signup!\nWorkspace: ${pendingSignup.workspace_name}\nEmail: ${normalizedEmail}\nOrg: ${orgId}`
+  ).catch(() => null);
+
+  const redirectTo = new URL(next || '/dashboard/welcome', request.url);
   return NextResponse.redirect(redirectTo, { status: 302 });
 }

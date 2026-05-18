@@ -43,6 +43,12 @@ const PRODUCT_ITEMS = [
     title: 'AI Compliance',
     description: 'ISO 42001, NIST AI RMF',
   },
+  {
+    href: '/eu-ai-act',
+    icon: Shield,
+    title: 'EU AI Act',
+    description: 'Block before damage, not after',
+  },
 ];
 
 export default function GlobalNav() {
@@ -115,6 +121,19 @@ export default function GlobalNav() {
             )}
           </div>
 
+          {/* Blog */}
+          <Link
+            href="/blog"
+            className={[
+              'rounded-xl border px-3 py-2 text-sm font-semibold transition',
+              pathname === '/blog' || pathname.startsWith('/blog/')
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-amber-300/30 hover:text-amber-50',
+            ].join(' ')}
+          >
+            Blog
+          </Link>
+
           {/* Pricing */}
           <Link
             href="/pricing"
@@ -139,6 +158,19 @@ export default function GlobalNav() {
             ].join(' ')}
           >
             Docs
+          </Link>
+
+          {/* Quickstart */}
+          <Link
+            href="/quickstart"
+            className={[
+              'rounded-xl border px-3 py-2 text-sm font-semibold transition',
+              pathname === '/quickstart'
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-amber-300/30 hover:text-amber-50',
+            ].join(' ')}
+          >
+            Quickstart
           </Link>
 
           {/* CTAs */}
@@ -204,6 +236,19 @@ export default function GlobalNav() {
           )}
 
           <Link
+            href="/blog"
+            onClick={() => setMobileOpen(false)}
+            className={[
+              'block rounded-xl border px-4 py-3 text-sm font-semibold',
+              pathname === '/blog' || pathname.startsWith('/blog/')
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-100',
+            ].join(' ')}
+          >
+            Blog
+          </Link>
+
+          <Link
             href="/pricing"
             onClick={() => setMobileOpen(false)}
             className={[
@@ -227,6 +272,19 @@ export default function GlobalNav() {
             ].join(' ')}
           >
             Docs
+          </Link>
+
+          <Link
+            href="/quickstart"
+            onClick={() => setMobileOpen(false)}
+            className={[
+              'block rounded-xl border px-4 py-3 text-sm font-semibold',
+              pathname === '/quickstart'
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-100',
+            ].join(' ')}
+          >
+            Quickstart
           </Link>
 
           <Link

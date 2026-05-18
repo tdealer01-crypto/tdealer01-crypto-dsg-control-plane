@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
-  "ignoreCommand": "exit 1",
   "crons": [
     {
       "path": "/api/health",
@@ -10,6 +9,38 @@
     {
       "path": "/api/cron/drip-emails",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/smart-drip",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/github-leads",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/social-listen",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/cron/lead-outreach",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/lead-followup",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-agent",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/content-gen",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 8 * * 1"
     }
   ]
 }

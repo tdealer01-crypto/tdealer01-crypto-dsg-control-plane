@@ -37,9 +37,20 @@ jobs:
         run: |
           find . -path './node_modules' -prune -o -name '*.sh' -print0 | xargs -0 -r shellcheck || true
 
-      - name: Gitleaks (detect secrets)
+      - name: Gitleaks (scan final commit)
         run: |
-          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect --source=/repo --config=/repo/.gitleaks.toml --log-opts="HEAD" --redact --report-format=json --report-path=/repo/gitleaks-report.json
+          set -euo pipefail
+          GITLEAKS_LOG_OPTS="-1 HEAD"
+          echo "Running gitleaks with log opts: ${GITLEAKS_LOG_OPTS}"
+          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect --source=/repo --config=/repo/.gitleaks.toml --log-opts="${GITLEAKS_LOG_OPTS}" --redact --report-format=json --report-path=/repo/gitleaks-report.json
+
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          if-no-files-found: ignore
 
       - name: npm audit (fail on high severity)
         run: |

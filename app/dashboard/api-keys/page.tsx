@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 type Scope = 'read' | 'write' | 'admin' | 'gates:evaluate' | 'proofs:prove';
 type KeyStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
@@ -39,61 +40,52 @@ const STATUS_STYLES: Record<KeyStatus, string> = {
   REVOKED: 'border border-red-500/40 bg-red-500/10 text-red-400',
 };
 
-const INITIAL_KEYS: ApiKey[] = [
-  {
-    id: 'key_001',
-    name: 'Production Gateway',
-    prefix: 'dsg_live_a3f9',
-    scopes: ['read', 'write', 'gates:evaluate', 'proofs:prove'],
-    createdAt: 'Jan 12, 2025',
-    lastUsed: '2 minutes ago',
-    expiry: null,
-    status: 'ACTIVE',
-    requestsThisMonth: 14820,
-  },
-  {
-    id: 'key_002',
-    name: 'CI Pipeline — Read Only',
-    prefix: 'dsg_live_c7b2',
-    scopes: ['read'],
-    createdAt: 'Feb 4, 2025',
-    lastUsed: '1 hour ago',
-    expiry: 'May 4, 2026',
-    status: 'ACTIVE',
-    requestsThisMonth: 3412,
-  },
-  {
-    id: 'key_003',
-    name: 'Legacy Audit Export',
-    prefix: 'dsg_live_e1d4',
-    scopes: ['read', 'write'],
-    createdAt: 'Nov 19, 2024',
-    lastUsed: '3 months ago',
-    expiry: 'Feb 19, 2025',
-    status: 'EXPIRED',
-    requestsThisMonth: 0,
-  },
-];
-
-function randomHex(len: number): string {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < len; i++) result += chars[Math.floor(Math.random() * chars.length)];
-  return result;
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function ApiKeysPage() {
-  const [keys, setKeys] = useState<ApiKey[]>(INITIAL_KEYS);
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyScopes, setNewKeyScopes] = useState<Scope[]>(['read']);
   const [newKeyExpiry, setNewKeyExpiry] = useState<ExpiryOption>('never');
   const [nameError, setNameError] = useState('');
   const [scopeError, setScopeError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [revealedKeyName, setRevealedKeyName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadKeys() {
+      setLoading(true);
+      setFetchError(null);
+      try {
+        const res = await fetch('/api/api-keys');
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setFetchError((data as { error?: string }).error ?? `HTTP ${res.status}`);
+          return;
+        }
+        const data = await res.json() as { keys: ApiKey[] };
+        setKeys(data.keys ?? []);
+      } catch {
+        setFetchError('Network error — could not load keys');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadKeys();
+  }, []);
 
   function toggleScope(scope: Scope) {
     setNewKeyScopes((prev) =>
@@ -101,55 +93,53 @@ export default function ApiKeysPage() {
     );
   }
 
-  function expiryLabel(key: ApiKey): string {
-    if (!key.expiry) return 'Never';
-    return key.expiry;
-  }
-
-  function handleCreate() {
+  async function handleCreate() {
     setNameError('');
     setScopeError('');
-    if (!newKeyName.trim()) {
-      setNameError('Key name is required.');
-      return;
+    setCreateError(null);
+    if (!newKeyName.trim()) { setNameError('Key name is required.'); return; }
+    if (newKeyScopes.length === 0) { setScopeError('Select at least one scope.'); return; }
+
+    setCreating(true);
+    try {
+      const res = await fetch('/api/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newKeyName.trim(), scopes: newKeyScopes, expiry: newKeyExpiry }),
+      });
+      const data = await res.json() as ApiKey & { key?: string; error?: string; field?: string };
+      if (!res.ok) {
+        if (data.field === 'name') setNameError(data.error ?? 'Invalid name');
+        else if (data.field === 'scopes') setScopeError(data.error ?? 'Invalid scopes');
+        else setCreateError(data.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      // data.key is the raw secret — shown once, never retrievable again
+      setRevealedKey(data.key ?? null);
+      setRevealedKeyName(data.name);
+      setKeys((prev) => [data, ...prev]);
+      setNewKeyName('');
+      setNewKeyScopes(['read']);
+      setNewKeyExpiry('never');
+      setShowCreateForm(false);
+    } catch {
+      setCreateError('Network error — key was not created');
+    } finally {
+      setCreating(false);
     }
-    if (newKeyScopes.length === 0) {
-      setScopeError('Select at least one scope.');
-      return;
-    }
-    const fullKey = `dsg_live_${randomHex(8)}_${randomHex(24)}`;
-    const prefix = fullKey.slice(0, 18) + '...';
-    const expiryMap: Record<ExpiryOption, string | null> = {
-      never: null,
-      '30d': new Date(Date.now() + 30 * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      '90d': new Date(Date.now() + 90 * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      '1y': new Date(Date.now() + 365 * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    };
-    const newKey: ApiKey = {
-      id: `key_${Date.now()}`,
-      name: newKeyName.trim(),
-      prefix,
-      scopes: [...newKeyScopes],
-      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      lastUsed: null,
-      expiry: expiryMap[newKeyExpiry],
-      status: 'ACTIVE',
-      requestsThisMonth: 0,
-    };
-    setKeys((prev) => [newKey, ...prev]);
-    setRevealedKey(fullKey);
-    setRevealedKeyName(newKeyName.trim());
-    setNewKeyName('');
-    setNewKeyScopes(['read']);
-    setNewKeyExpiry('never');
-    setShowCreateForm(false);
   }
 
-  function handleRevoke(keyId: string) {
-    setKeys((prev) =>
-      prev.map((k) => (k.id === keyId ? { ...k, status: 'REVOKED' as KeyStatus } : k))
-    );
-    setRevokeConfirmId(null);
+  async function handleRevoke(keyId: string) {
+    setRevoking(keyId);
+    try {
+      const res = await fetch(`/api/api-keys/${keyId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setKeys((prev) => prev.map((k) => k.id === keyId ? { ...k, status: 'REVOKED' as KeyStatus } : k));
+      }
+    } finally {
+      setRevoking(null);
+      setRevokeConfirmId(null);
+    }
   }
 
   function handleCopy() {
@@ -163,6 +153,7 @@ export default function ApiKeysPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
+
         {/* Header */}
         <section className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.92)_45%,rgba(245,197,92,0.06))] p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -175,19 +166,19 @@ export default function ApiKeysPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => { setShowCreateForm((v) => !v); setRevealedKey(null); }}
+                onClick={() => { setShowCreateForm((v) => !v); setRevealedKey(null); setCreateError(null); }}
                 className="rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950"
               >
                 {showCreateForm ? 'Cancel' : '+ Create new key'}
               </button>
-              <a href="/dashboard" className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-bold text-slate-200">
+              <Link href="/dashboard" className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-bold text-slate-200">
                 Back to dashboard
-              </a>
+              </Link>
             </div>
           </div>
         </section>
 
-        {/* Revealed key banner */}
+        {/* One-time key reveal */}
         {revealedKey && (
           <section className="mt-6 rounded-3xl border border-amber-400/50 bg-amber-400/10 p-6">
             <div className="flex items-start justify-between gap-4">
@@ -223,6 +214,11 @@ export default function ApiKeysPage() {
         {showCreateForm && (
           <section className="mt-6 rounded-3xl border border-blue-400/20 bg-blue-400/5 p-6">
             <h2 className="text-lg font-black text-white">Create new API key</h2>
+            {createError && (
+              <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {createError}
+              </div>
+            )}
             <div className="mt-5 grid gap-6">
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-slate-400">
@@ -289,9 +285,10 @@ export default function ApiKeysPage() {
               <div>
                 <button
                   onClick={handleCreate}
-                  className="rounded-xl bg-amber-300 px-6 py-3 text-sm font-black text-slate-950"
+                  disabled={creating}
+                  className="rounded-xl bg-amber-300 px-6 py-3 text-sm font-black text-slate-950 disabled:opacity-60"
                 >
-                  Generate key
+                  {creating ? 'Generating…' : 'Generate key'}
                 </button>
               </div>
             </div>
@@ -302,7 +299,7 @@ export default function ApiKeysPage() {
         <div className="mt-6 rounded-2xl border border-slate-700 bg-slate-900/50 px-5 py-4">
           <p className="text-xs font-semibold text-slate-400">
             <span className="mr-1 font-black text-amber-300">Security:</span>
-            Keys are hashed using bcrypt and cannot be retrieved after creation. Treat them like passwords. Rotate every 90 days for production workloads.
+            Keys are hashed server-side (SHA-256) and cannot be retrieved after creation. Treat them like passwords. Rotate every 90 days for production workloads.
           </p>
         </div>
 
@@ -310,10 +307,17 @@ export default function ApiKeysPage() {
         <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-6">
           <div className="mb-5">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">API keys</p>
-            <h2 className="mt-1 text-2xl font-black text-white">{keys.length} key{keys.length !== 1 ? 's' : ''}</h2>
+            {!loading && <h2 className="mt-1 text-2xl font-black text-white">{keys.length} key{keys.length !== 1 ? 's' : ''}</h2>}
           </div>
 
-          {keys.length === 0 ? (
+          {loading ? (
+            <div className="py-12 text-center text-sm text-slate-500">Loading keys…</div>
+          ) : fetchError ? (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 py-10 text-center">
+              <p className="text-sm font-semibold text-red-400">{fetchError}</p>
+              <p className="mt-1 text-xs text-slate-500">Make sure you are signed in and have an organisation set up.</p>
+            </div>
+          ) : keys.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-700 py-16 text-center">
               <p className="text-lg font-bold text-slate-400">No API keys yet</p>
               <p className="mt-2 text-sm text-slate-500">Create your first key to start integrating.</p>
@@ -355,16 +359,16 @@ export default function ApiKeysPage() {
                           ))}
                         </div>
                       </td>
-                      <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">{key.createdAt}</td>
-                      <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">{key.lastUsed ?? '—'}</td>
-                      <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">{expiryLabel(key)}</td>
+                      <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">{fmtDate(key.createdAt)}</td>
+                      <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">{key.lastUsed ? fmtDate(key.lastUsed) : '—'}</td>
+                      <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">{key.expiry ? fmtDate(key.expiry) : 'Never'}</td>
                       <td className="py-4 pr-4">
                         <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLES[key.status]}`}>
                           {key.status}
                         </span>
                       </td>
                       <td className="py-4 pr-4 text-xs text-slate-400 whitespace-nowrap">
-                        {key.requestsThisMonth.toLocaleString()} this month
+                        {(key.requestsThisMonth ?? 0).toLocaleString()} this month
                       </td>
                       <td className="py-4 text-right">
                         {key.status === 'ACTIVE' && (
@@ -372,9 +376,10 @@ export default function ApiKeysPage() {
                             <span className="inline-flex gap-2">
                               <button
                                 onClick={() => handleRevoke(key.id)}
-                                className="rounded-lg border border-red-500/40 bg-red-500/15 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/25"
+                                disabled={revoking === key.id}
+                                className="rounded-lg border border-red-500/40 bg-red-500/15 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/25 disabled:opacity-60"
                               >
-                                Confirm revoke
+                                {revoking === key.id ? 'Revoking…' : 'Confirm revoke'}
                               </button>
                               <button
                                 onClick={() => setRevokeConfirmId(null)}
@@ -414,6 +419,7 @@ export default function ApiKeysPage() {
             ))}
           </div>
         </section>
+
       </div>
     </main>
   );

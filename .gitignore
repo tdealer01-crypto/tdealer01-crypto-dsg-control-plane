@@ -9,7 +9,7 @@ out/
 .env
 .env.local
 
-# Claude Code local settings
+# Claude Code local settings (contains secrets — never commit)
 .claude/
 .env.*.local
 
