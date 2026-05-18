@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 function createAppJWT(): string {
   const appId = process.env.GITHUB_APP_ID ?? '';
   const rawPem = process.env.GITHUB_APP_PRIVATE_KEY ?? '';
-  console.log('[DSG] createAppJWT: appId=', appId || 'MISSING', 'pem=', rawPem ? rawPem.slice(0, 27) + '...' : 'MISSING');
+  console.log('[DSG] createAppJWT: appId=', appId || 'MISSING', 'pemPresent=', Boolean(rawPem));
   if (!appId || !rawPem) throw new Error('github_app_not_configured');
   const privateKey = rawPem.replace(/\\n/g, '\n');
   const now = Math.floor(Date.now() / 1000);
