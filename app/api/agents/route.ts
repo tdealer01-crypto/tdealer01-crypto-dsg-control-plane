@@ -196,9 +196,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Maximum ${MAX_AGENTS_PER_ORG} agents per organization` }, { status: 400, headers });
     }
 
-    const resolvedPolicyId = await resolvePolicyId(orgId, requestedPolicyId);
+    let resolvedPolicyId = await resolvePolicyId(orgId, requestedPolicyId);
+    if (!resolvedPolicyId && !requestedPolicyId) {
+      // Auto-create a default policy so the agent can be created without manual setup
+      const { data: seeded, error: seedError } = await supabase
+        .from('runtime_policies')
+        .insert({
+          org_id: orgId,
+          name: 'Default Policy',
+          version: 'v1',
+          status: 'active',
+          thresholds: {},
+          governance_state: 'active_in_runtime',
+        })
+        .select('id')
+        .single();
+      if (seedError || !seeded) {
+        logServerError(seedError, 'agents-post-seed-policy');
+        return serverErrorResponse({ headers });
+      }
+      resolvedPolicyId = String(seeded.id);
+    }
     if (!resolvedPolicyId) {
-      return NextResponse.json({ error: 'policy_id is invalid or no policy is available' }, { status: 400, headers });
+      return NextResponse.json({ error: 'policy_id is invalid or not found' }, { status: 400, headers });
     }
 
     const apiKey = buildApiKey();
