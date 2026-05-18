@@ -121,6 +121,19 @@ export default function GlobalNav() {
             )}
           </div>
 
+          {/* Blog */}
+          <Link
+            href="/blog"
+            className={[
+              'rounded-xl border px-3 py-2 text-sm font-semibold transition',
+              pathname === '/blog' || pathname.startsWith('/blog/')
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-amber-300/30 hover:text-amber-50',
+            ].join(' ')}
+          >
+            Blog
+          </Link>
+
           {/* Pricing */}
           <Link
             href="/pricing"
@@ -221,6 +234,19 @@ export default function GlobalNav() {
               ))}
             </div>
           )}
+
+          <Link
+            href="/blog"
+            onClick={() => setMobileOpen(false)}
+            className={[
+              'block rounded-xl border px-4 py-3 text-sm font-semibold',
+              pathname === '/blog' || pathname.startsWith('/blog/')
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-100',
+            ].join(' ')}
+          >
+            Blog
+          </Link>
 
           <Link
             href="/pricing"

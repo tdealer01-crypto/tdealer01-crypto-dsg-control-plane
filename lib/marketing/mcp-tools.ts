@@ -237,13 +237,23 @@ Return as markdown. Start with: # [title]`,
       );
       const titleMatch = content.match(/^# (.+)/m);
       const metaMatch = content.match(/Meta description[:\s]+(.{20,160})/i);
-      return {
-        title: titleMatch?.[1] ?? keyword,
-        meta_description: metaMatch?.[1]?.slice(0, 160) ?? '',
-        body: content,
-        keyword,
-        generated_at: new Date().toISOString(),
-      };
+      const title = titleMatch?.[1] ?? keyword;
+      const meta = metaMatch?.[1]?.slice(0, 160) ?? '';
+      const slug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .slice(0, 80);
+
+      // Save to DB — fire-and-forget, never blocks response
+      void (admin as any)
+        .from('marketing_content')
+        .upsert({ type: 'seo_article', title, slug, keyword, meta_description: meta, body: content, status: 'published', updated_at: new Date().toISOString() }, { onConflict: 'slug' })
+        .then(() => null)
+        .catch(() => null);
+
+      return { title, meta_description: meta, body: content, keyword, slug, generated_at: new Date().toISOString() };
     }
 
     case 'notify_founder': {
