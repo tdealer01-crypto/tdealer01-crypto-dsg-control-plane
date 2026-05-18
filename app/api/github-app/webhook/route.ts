@@ -70,7 +70,7 @@ async function runDsgGate(context: { owner: string; repo: string; prTitle: strin
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        agent_id: 'github-app-gate',
+        agent_id: process.env.GITHUB_APP_AGENT_ID ?? 'github-app-gate',
         input: { prompt: `Review PR "${context.prTitle}" by ${context.author} in ${context.owner}/${context.repo}` },
         context: { source: 'github-app', risk_score: 0.1 },
       }),
