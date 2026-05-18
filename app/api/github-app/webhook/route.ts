@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSign } from 'crypto';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -61,10 +62,24 @@ async function ghApi(token: string, method: string, path: string, body?: unknown
   return res.json();
 }
 
-async function runDsgGate(context: { owner: string; repo: string; prTitle: string; author: string }): Promise<'ALLOW' | 'BLOCK'> {
+async function runDsgGate(context: { owner: string; repo: string; prTitle: string; author: string; installationId: number }): Promise<'ALLOW' | 'BLOCK'> {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
-  const apiKey = process.env.DSG_INTERNAL_API_KEY ?? '';
   if (!appUrl) return 'ALLOW';
+
+  // Look up per-installation API key; fall back to internal key
+  let apiKey = process.env.DSG_INTERNAL_API_KEY ?? '';
+  try {
+    const admin = getSupabaseAdmin();
+    const { data } = await (admin as any)
+      .from('github_app_installations')
+      .select('agent_api_key')
+      .eq('installation_id', context.installationId)
+      .maybeSingle();
+    if (data?.agent_api_key) apiKey = data.agent_api_key;
+  } catch { /* use fallback */ }
+
+  if (!apiKey) return 'ALLOW';
+
   try {
     const res = await fetch(`${appUrl}/api/execute`, {
       method: 'POST',
@@ -110,7 +125,7 @@ async function handlePullRequest(payload: Record<string, unknown>): Promise<void
     output: { title: 'DSG Policy Check', summary: 'Checking PR against DSG governance policy…' },
   }) as { id: number };
 
-  const decision = await runDsgGate({ owner, repo: repoName, prTitle, author });
+  const decision = await runDsgGate({ owner, repo: repoName, prTitle, author, installationId });
   const passed = decision === 'ALLOW';
 
   await ghApi(token, 'PATCH', `/repos/${owner}/${repoName}/check-runs/${checkRun.id}`, {
