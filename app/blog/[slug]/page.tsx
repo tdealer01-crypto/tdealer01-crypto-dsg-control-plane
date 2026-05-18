@@ -22,8 +22,9 @@ async function getArticle(slug: string): Promise<Article | null> {
   }
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const article = await getArticle(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await getArticle(slug);
   if (!article) return { title: 'Article not found — DSG ONE' };
   return {
     title: `${article.title} | DSG ONE`,
@@ -45,8 +46,9 @@ function renderMarkdown(md: string): string {
     .replace(/^(?!<[h|l|p])(.+)$/gm, '<p class="text-slate-300 leading-relaxed mb-4">$1</p>');
 }
 
-export default async function BlogArticlePage({ params }: { params: { slug: string } }) {
-  const article = await getArticle(params.slug);
+export default async function BlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = await getArticle(slug);
 
   if (!article) {
     return (
