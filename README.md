@@ -22,6 +22,15 @@ Agent wants to act
 
 Every decision is hashed and tamper-proof. No rebuild of your existing stack required.
 
+## Deployment Status Note
+
+Repository test status and deployment readiness are intentionally tracked separately.
+
+- Repository baseline: the automated test suite is green on the current branch.
+- Deployment baseline: production-readiness is only claimed when deployed health, core connectivity, environment configuration, migrations, smoke checks, authenticated first-run flow, and operator/runtime verification are all confirmed in the target environment.
+
+Passing repository tests alone does not mean the deployed environment is production-ready.
+
 ---
 
 ## Customer journey
@@ -235,6 +244,13 @@ Pull from Vercel (if connected):
 ```bash
 vercel env pull .env.local
 ```
+
+Evaluation should use all three layers together:
+- repository evidence (tests, docs, artifacts)
+- deployment evidence (`/api/health`, readiness, smoke checks)
+- authenticated operator/runtime evidence in the target environment
+
+Do not treat green repository tests alone as final proof of deployment readiness.
 
 ---
 
