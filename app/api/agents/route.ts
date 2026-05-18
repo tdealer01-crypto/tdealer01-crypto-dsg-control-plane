@@ -207,13 +207,11 @@ export async function POST(request: Request) {
 
     const apiKey = buildApiKey();
     const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
-    const agentId = `agt_${randomUUID().replace(/-/g, '')}`;
     const now = new Date().toISOString();
 
     const { data: inserted, error } = await supabase
       .from('agents')
       .insert({
-        id: agentId,
         org_id: orgId,
         name,
         policy_id: resolvedPolicyId,
