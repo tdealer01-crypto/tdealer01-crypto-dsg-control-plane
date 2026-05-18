@@ -46,12 +46,16 @@ Key differentiators: pre-execution blocking, cryptographic audit trail, EU AI Ac
 Instructions (call ONE tool at a time, wait for result before calling the next):
 1. Call get_pipeline_metrics to understand current state
 2. Call get_outreach_performance to understand email performance
-3. Identify the single most impactful action (prioritize: uncontacted high-intent leads > content creation > performance review)
-4. Execute that action with ONE appropriate tool
-5. If you sent an outreach email, call notify_founder with a 1-line summary (lead email, framework, repo)
+3. Identify the single most impactful action using this priority:
+   a. Uncontacted high-intent leads → get_top_uncontacted_leads → send_outreach_to_lead
+   b. Replied leads need follow-up → get_lead_replies → notify_founder with list
+   c. Hot social signals → get_social_signals → generate_linkedin_post addressing that topic
+   d. Content only if outreach queue < 5 → generate_linkedin_post or generate_seo_article
+4. Execute ONE action
+5. Call notify_founder with a 1-line result summary
 6. End with a 2-sentence summary of what you did and why
 
-Be efficient. Do not generate content unless outreach is caught up. Always email uncontacted leads first. Never call more than one tool in a single step.`,
+Never call more than one tool in a single step.`,
       tools: MARKETING_TOOL_DEFINITIONS,
       messages,
     }),

@@ -6,6 +6,8 @@ import { canonicalHash, canonicalJson, type CanonicalInput } from '../runtime/ca
 import { invokeRuntimeCommitRpc } from '../runtime/commit-rpc';
 import { runPipeline, SpineInfraError } from './pipeline';
 import type { SpineIntentPayload, TruthState } from './types';
+import { recordMilestone } from '../marketing/milestones';
+import { sendTelegram } from '../marketing/mcp-tools';
 
 function getIncludedExecutions(planKey?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
@@ -381,6 +383,28 @@ export async function executeSpineIntent(params: {
   }
 
   await supabase.from('agents').update({ last_used_at: nowIso, updated_at: nowIso }).eq('id', agent.id);
+
+  // Fire-and-forget milestone tracking — must never affect gate response
+  void (async () => {
+    try {
+      const { isNew: isFirstExec } = await recordMilestone(agent.org_id, 'first_execution', {
+        metadata: { action: params.payload.action, decision: pipeline.final_decision },
+      });
+      if (isFirstExec) {
+        void sendTelegram(`🎯 First execution!\nOrg: ${agent.org_id}\nAction: ${params.payload.action}\nDecision: ${pipeline.final_decision}`);
+      }
+      if (pipeline.final_decision === 'BLOCK') {
+        const { isNew: isFirstBlock } = await recordMilestone(agent.org_id, 'first_block', {
+          metadata: { action: params.payload.action, reason: pipeline.final_reason ?? '' },
+        });
+        if (isFirstBlock) {
+          void sendTelegram(`🛂 First BLOCK!\nOrg: ${agent.org_id}\nAction: ${params.payload.action}\nReason: ${pipeline.final_reason ?? 'policy'}`);
+        }
+      }
+    } catch {
+      // milestone errors must never affect gate decisions
+    }
+  })();
 
   return {
     ok: true as const,

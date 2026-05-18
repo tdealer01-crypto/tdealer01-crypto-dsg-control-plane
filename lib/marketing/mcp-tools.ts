@@ -89,6 +89,24 @@ export const MARKETING_TOOL_DEFINITIONS = [
       required: ['message'],
     },
   },
+  {
+    name: 'get_social_signals',
+    description:
+      'Get recent high-intent Reddit and HackerNews posts about AI agent governance problems. Use to find content angles or hot topics to write about.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        min_score: { type: 'number', description: 'Minimum intent score (0-100), default 40' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_lead_replies',
+    description:
+      'Get leads who replied to your outreach emails. Use to prioritise personal follow-up on warm leads.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
 ];
 
 // ─── Tool implementations ─────────────────────────────────────────────────────
@@ -232,6 +250,46 @@ Return as markdown. Start with: # [title]`,
       const { message } = params as { message: string };
       const sent = await sendTelegram(String(message ?? '').slice(0, 300));
       return sent ? { ok: true, sent_at: new Date().toISOString() } : { ok: false, reason: 'TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured' };
+    }
+
+    case 'get_social_signals': {
+      const minScore = Math.max(0, Number(params.min_score) || 40);
+      const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const { data } = await (admin as any)
+        .from('leads')
+        .select('email, intent_score, messages, created_at')
+        .in('source', ['reddit-signal', 'hackernews-signal'])
+        .gte('intent_score', minScore)
+        .gte('created_at', weekAgo)
+        .order('intent_score', { ascending: false })
+        .limit(8);
+      const signals = (data ?? []).map((r: { email: string; intent_score: number; messages: Array<{ content: string }> | null; created_at: string }) => ({
+        content: r.messages?.[0]?.content ?? '',
+        score: r.intent_score,
+        date: r.created_at.slice(0, 10),
+      })).filter((s: { content: string }) => s.content);
+      return { signals, count: signals.length };
+    }
+
+    case 'get_lead_replies': {
+      const { data } = await (admin as any)
+        .from('leads')
+        .select('email, framework, github_repo, messages, outreach_sent_at, intent_score')
+        .eq('outreach_sent', true)
+        .neq('intent', 'unsubscribed')
+        .not('messages', 'is', null)
+        .order('outreach_sent_at', { ascending: false })
+        .limit(20);
+      const replied = (data ?? []).filter((r: { messages: Array<{ role: string }> | null }) =>
+        (r.messages ?? []).some((m: { role: string }) => m.role === 'reply' || m.role === 'inbound')
+      ).map((r: { email: string; framework: string; github_repo: string; outreach_sent_at: string; intent_score: number }) => ({
+        email: r.email,
+        framework: r.framework,
+        repo: r.github_repo,
+        sent_at: r.outreach_sent_at?.slice(0, 10),
+        score: r.intent_score,
+      }));
+      return { replied, count: replied.length };
     }
 
     default:
