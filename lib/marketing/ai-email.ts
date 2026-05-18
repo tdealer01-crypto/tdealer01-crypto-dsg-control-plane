@@ -50,25 +50,28 @@ function applyTemplate(text: string, ctx: UserContext): string {
     .replace(/{{days_left}}/g, String(ctx.daysLeft));
 }
 
-async function callOpenAI(prompt: string): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
+async function callAnthropic(prompt: string): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
-  const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
   try {
-    const res = await fetch('https://api.openai.com/v1/responses', {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
       body: JSON.stringify({
-        model,
-        instructions: 'You are a B2B SaaS growth expert writing marketing emails for DSG ONE, an AI agent governance platform. Write in Thai unless specified. Be concise, friendly, founder-tone. Max 1 sentence.',
-        input: prompt,
-        max_output_tokens: 120,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 120,
+        system: 'You are a B2B SaaS growth expert writing marketing emails for DSG ONE, an AI agent governance platform. Write in Thai unless specified. Be concise, friendly, founder-tone. Reply with ONLY the requested content, no preamble.',
+        messages: [{ role: 'user', content: prompt }],
       }),
     });
     if (!res.ok) return null;
-    const data = await res.json() as { output_text?: string };
-    return data.output_text?.trim() ?? null;
+    const data = await res.json() as { content?: Array<{ type: string; text: string }> };
+    return data.content?.find(c => c.type === 'text')?.text?.trim() ?? null;
   } catch {
     return null;
   }
@@ -82,7 +85,7 @@ export async function personalizeEmail(
   const subject = applyTemplate(fallback.subject, ctx);
   const openingLine = applyTemplate(fallback.openingLine, ctx);
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return { subject, openingLine, ai: false };
   }
@@ -97,7 +100,7 @@ Base subject: "${subject}"
 
 Reply with ONLY the new subject line, in Thai, max 60 chars.`;
 
-  const aiSubject = await callOpenAI(prompt);
+  const aiSubject = await callAnthropic(prompt);
   return {
     subject: aiSubject ?? subject,
     openingLine,

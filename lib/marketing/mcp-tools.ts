@@ -77,6 +77,18 @@ export const MARKETING_TOOL_DEFINITIONS = [
       required: ['keyword'],
     },
   },
+  {
+    name: 'notify_founder',
+    description:
+      'Send a real-time Telegram notification to the founder. Use after completing an outreach, hitting a milestone, or when the pipeline needs urgent attention.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        message: { type: 'string', description: 'Short message to send (max 300 chars)' },
+      },
+      required: ['message'],
+    },
+  },
 ];
 
 // ─── Tool implementations ─────────────────────────────────────────────────────
@@ -216,8 +228,32 @@ Return as markdown. Start with: # [title]`,
       };
     }
 
+    case 'notify_founder': {
+      const { message } = params as { message: string };
+      const sent = await sendTelegram(String(message ?? '').slice(0, 300));
+      return sent ? { ok: true, sent_at: new Date().toISOString() } : { ok: false, reason: 'TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured' };
+    }
+
     default:
       return { error: `Unknown tool: ${name}` };
+  }
+}
+
+// ─── Internal: send Telegram notification to founder ─────────────────────────
+
+export async function sendTelegram(text: string): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: `[DSG Marketing Agent]\n\n${text}` }),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 

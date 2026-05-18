@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
-const MAX_STEPS = 4;
+const MAX_STEPS = 6;
 
 type ClaudeMessage = { role: 'user' | 'assistant'; content: string | ClaudeContent[] };
 type ClaudeContent =
@@ -48,7 +48,8 @@ Instructions (call ONE tool at a time, wait for result before calling the next):
 2. Call get_outreach_performance to understand email performance
 3. Identify the single most impactful action (prioritize: uncontacted high-intent leads > content creation > performance review)
 4. Execute that action with ONE appropriate tool
-5. End with a 2-sentence summary of what you did and why
+5. If you sent an outreach email, call notify_founder with a 1-line summary (lead email, framework, repo)
+6. End with a 2-sentence summary of what you did and why
 
 Be efficient. Do not generate content unless outreach is caught up. Always email uncontacted leads first. Never call more than one tool in a single step.`,
       tools: MARKETING_TOOL_DEFINITIONS,
