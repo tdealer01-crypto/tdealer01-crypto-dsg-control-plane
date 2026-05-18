@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 function createAppJWT(): string {
   const appId = process.env.GITHUB_APP_ID ?? '';
   const rawPem = process.env.GITHUB_APP_PRIVATE_KEY ?? '';
+  console.log('[DSG] createAppJWT: appId=', appId || 'MISSING', 'pemPresent=', Boolean(rawPem));
   if (!appId || !rawPem) throw new Error('github_app_not_configured');
   const privateKey = rawPem.replace(/\\n/g, '\n');
   const now = Math.floor(Date.now() / 1000);
@@ -85,8 +86,12 @@ async function runDsgGate(context: { owner: string; repo: string; prTitle: strin
 async function handlePullRequest(payload: Record<string, unknown>): Promise<void> {
   const pr = payload.pull_request as Record<string, unknown>;
   const repo = payload.repository as Record<string, unknown>;
-  const installationId = (payload.installation as Record<string, unknown>)?.id as number;
-  if (!installationId) return;
+  const installationId = (payload.installation as Record<string, unknown>)?.id as number | undefined;
+  console.log('[DSG] handlePR: installationId=', installationId);
+  if (!installationId) {
+    console.error('[DSG] no installationId in payload — app not installed on this repo?');
+    return;
+  }
 
   const owner = ((repo.owner as Record<string, unknown>).login) as string;
   const repoName = repo.name as string;
@@ -149,7 +154,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const action = (payload.action as string | undefined) ?? null;
 
   if (event === 'pull_request' && action && ['opened', 'synchronize', 'reopened'].includes(action)) {
-    await handlePullRequest(payload).catch(console.error);
+    await handlePullRequest(payload).catch((err) => console.error('[DSG] handlePR error:', String(err)));
   }
 
   return NextResponse.json({ ok: true, event, action });
