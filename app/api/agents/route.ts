@@ -196,10 +196,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Maximum ${MAX_AGENTS_PER_ORG} agents per organization` }, { status: 400, headers });
     }
 
-    // policy_id is nullable — resolve if possible, otherwise create agent without one
-    const resolvedPolicyId = requestedPolicyId
-      ? await resolvePolicyId(orgId, requestedPolicyId)
-      : (await resolvePolicyId(orgId, null)) ?? null;
+    const resolvedPolicyId = requestedPolicyId ? await resolvePolicyId(orgId, requestedPolicyId) : null;
 
     if (requestedPolicyId && !resolvedPolicyId) {
       return NextResponse.json({ error: 'policy_id is invalid or not found' }, { status: 400, headers });
