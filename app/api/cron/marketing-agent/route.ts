@@ -117,26 +117,25 @@ export async function GET(request: Request) {
       }
 
       if (response.stop_reason === 'tool_use') {
-        const toolBlock = response.content.find(c => c.type === 'tool_use') as
-          | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
-          | undefined;
+        const toolBlocks = response.content.filter(c => c.type === 'tool_use') as Array<
+          { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+        >;
 
-        if (!toolBlock) break;
+        if (!toolBlocks.length) break;
 
-        const toolResult = await executeTool(toolBlock.name, toolBlock.input);
-        actionsLog.push(`${toolBlock.name}(${JSON.stringify(toolBlock.input)}) → ${JSON.stringify(toolResult).slice(0, 200)}`);
+        const toolResults: ClaudeContent[] = [];
+        for (const toolBlock of toolBlocks) {
+          const toolResult = await executeTool(toolBlock.name, toolBlock.input);
+          actionsLog.push(`${toolBlock.name}(${JSON.stringify(toolBlock.input)}) → ${JSON.stringify(toolResult).slice(0, 200)}`);
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolBlock.id,
+            content: JSON.stringify(toolResult),
+          });
+        }
 
         messages.push({ role: 'assistant', content: response.content });
-        messages.push({
-          role: 'user',
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: toolBlock.id,
-              content: JSON.stringify(toolResult),
-            },
-          ],
-        });
+        messages.push({ role: 'user', content: toolResults });
         continue;
       }
 
