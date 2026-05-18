@@ -78,8 +78,8 @@ export async function GET(request: Request) {
         found++;
         // Only recently active repos
         if (repo.updated_at < cutoffDate) continue;
-        // Skip low-signal repos
-        if (repo.stargazers_count < 2) continue;
+        // Skip low-signal repos — enterprise leads only
+        if (repo.stargazers_count < 20) continue;
 
         const ownerLogin = repo.owner?.login;
         if (!ownerLogin) continue;
