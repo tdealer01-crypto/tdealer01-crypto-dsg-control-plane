@@ -2,43 +2,93 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'EU AI Act Compliance for AI Agents — DSG ONE',
+  title: 'EU AI Act Controls for AI Agents — DSG ONE',
   description:
-    'EU AI Act is now in force. AI agents need audit trails, human oversight, and real-time intervention. Connect DSG ONE in one line — compliant without rebuilding your stack.',
+    'EU AI Act obligations are phasing in. AI agents need pre-execution controls, audit records, and human oversight mapped to Articles 9, 12 & 14. Connect DSG ONE in one line — no stack rebuild required.',
 };
 
 const COMPARISON = [
-  { tool: 'LangSmith', audit: true, block: false, art14: false, math: false },
-  { tool: 'Langfuse', audit: true, block: false, art14: false, math: false },
-  { tool: 'DataDog / Log tools', audit: true, block: false, art14: false, math: false },
-  { tool: 'DSG ONE', audit: true, block: true, art14: true, math: true, highlight: true },
+  { tool: 'LangSmith', audit: true, block: false, art14: false, tamper: false },
+  { tool: 'Langfuse', audit: true, block: false, art14: false, tamper: false },
+  { tool: 'DataDog / Log tools', audit: true, block: false, art14: false, tamper: false },
+  { tool: 'DSG ONE', audit: true, block: true, art14: true, tamper: true, highlight: true },
 ];
 
 const ARTICLES = [
   {
     id: 'Art. 9',
     title: 'Risk Management',
-    requirement: 'Must prevent risks before they occur — logging after the fact is not sufficient.',
-    dsg: 'Gates every action before execution — blocks immediately when risk threshold is exceeded.',
+    requirement:
+      'Requires a continuous risk management process — identification, evaluation, mitigation, and monitoring throughout the AI lifecycle. Logging after the fact does not satisfy prevention requirements.',
+    dsg: 'Gates every action before execution — blocks immediately when a risk threshold is exceeded, providing a pre-execution control layer as part of a broader risk management process.',
   },
   {
     id: 'Art. 12',
     title: 'Record Keeping',
-    requirement: 'Log every AI action with timestamp, context, and decision rationale.',
-    dsg: 'Cryptographic audit trail — every action is hashed, tamper-proof, and verifiable.',
+    requirement:
+      'Requires logging capabilities to enable tracing of the AI system functioning throughout its lifecycle, including events relevant to risk and post-market monitoring.',
+    dsg: 'Tamper-evident audit records — every action is hashed (SHA-256), cryptographically verifiable, and includes timestamp, session context, and decision rationale.',
   },
   {
     id: 'Art. 14',
     title: 'Human Oversight',
-    requirement: 'Humans must be able to intervene and stop the AI system at any time.',
-    dsg: 'BLOCK response + approval workflow — stops the agent before damage occurs.',
+    requirement:
+      'Humans must be able to understand capabilities and limitations, monitor operation, detect automation bias, interpret output, override or reverse decisions, and interrupt or stop the system.',
+    dsg: 'BLOCK + approval workflow stops the agent before execution. Audit dashboard provides monitoring. Decision rationale supports interpretation. Human override is always available.',
   },
 ];
 
+const ART14_CONTROLS = [
+  { need: 'Human can stop action before execution', evidence: 'BLOCK response halts agent before execution' },
+  { need: 'Human can override or reverse decisions', evidence: 'Approval workflow — require human sign-off before allow' },
+  { need: 'Human can interpret AI output', evidence: 'Decision rationale included in every gate response' },
+  { need: 'Human can monitor operation', evidence: 'Audit dashboard — full session and action history' },
+  { need: 'Human can detect automation bias', evidence: 'Risk threshold alerts — flag patterns before harm' },
+];
+
 const FRAMEWORKS = [
-  { name: 'LangChain', code: `from dsg_one import DSGGate\nchain = DSGGate(chain)` },
-  { name: 'OpenAI Agents SDK', code: `import { DSGGate } from "@dsg-one/sdk"\nconst agent = DSGGate(agent)` },
-  { name: 'CrewAI', code: `from dsg_one import DSGGate\ncrew = DSGGate(crew)` },
+  {
+    name: 'REST API (any framework)',
+    code: `# Works with LangChain, CrewAI, AutoGen, or any agent
+import requests
+
+result = requests.post("https://your-domain/api/try/gate", json={
+    "session_id": "run-001",
+    "action": "send_payment"
+}).json()
+
+if result["decision"] == "ALLOW":
+    execute_action()  # proceed with stamp`,
+  },
+  {
+    name: 'OpenAI Agents SDK',
+    code: `import requests
+
+def gate(session_id: str, action: str) -> bool:
+    r = requests.post("/api/try/gate", json={
+        "session_id": session_id,
+        "action": action,
+    }).json()
+    return r["decision"] == "ALLOW"
+
+# Before every tool call:
+if gate(run_id, tool_call.name):
+    tool_call.execute()`,
+  },
+  {
+    name: 'JavaScript / TypeScript',
+    code: `async function gate(sessionId: string, action: string) {
+  const r = await fetch("/api/try/gate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, action }),
+  });
+  return (await r.json()).decision === "ALLOW";
+}
+
+// Before every agent action:
+if (await gate(runId, action)) execute();`,
+  },
 ];
 
 export default function EUAIActPage() {
@@ -49,7 +99,7 @@ export default function EUAIActPage() {
       <section className="border-b border-red-500/20 bg-gradient-to-b from-red-950/40 to-slate-950 px-6 py-20">
         <div className="mx-auto max-w-5xl text-center">
           <div className="mb-4 inline-block rounded-full border border-red-500/40 bg-red-500/10 px-4 py-1.5 text-sm font-semibold text-red-300">
-            EU AI Act is now in force — is your organization ready?
+            EU AI Act obligations are phasing in — prepare before high-risk enforcement dates
           </div>
           <h1 className="mt-6 text-4xl font-black leading-tight md:text-6xl">
             Do you know what your<br />
@@ -57,9 +107,11 @@ export default function EUAIActPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
             Other tools tell you what happened <em>after</em> the damage is done.<br />
-            <strong className="text-white">DSG ONE blocks before the action executes</strong> — with a cryptographic audit trail that is mathematically provable.
+            <strong className="text-white">DSG ONE blocks before the action executes</strong> — with tamper-evident audit records that can be cryptographically verified.
           </p>
-          <p className="mt-3 text-slate-400">One-line setup. Passes EU AI Act Articles 9, 12 &amp; 14. No changes to your existing stack.</p>
+          <p className="mt-3 text-slate-400">
+            One-line setup. Adds pre-execution controls, audit logs, and human oversight evidence mapped to EU AI Act Articles 9, 12 &amp; 14. No changes to your existing stack.
+          </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link
               href="/request-access"
@@ -91,8 +143,8 @@ export default function EUAIActPage() {
                   <th className="px-5 py-4">Tool</th>
                   <th className="px-5 py-4 text-center">Audit Trail</th>
                   <th className="px-5 py-4 text-center">Blocks Before Acting</th>
-                  <th className="px-5 py-4 text-center">Passes Art. 14</th>
-                  <th className="px-5 py-4 text-center">Mathematically Provable</th>
+                  <th className="px-5 py-4 text-center">Supports Art. 14 Controls</th>
+                  <th className="px-5 py-4 text-center">Tamper-Evident Records</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
@@ -105,7 +157,7 @@ export default function EUAIActPage() {
                       {row.highlight && <span className="mr-2 text-emerald-400">★</span>}
                       {row.tool}
                     </td>
-                    {(['audit', 'block', 'art14', 'math'] as const).map((key) => (
+                    {(['audit', 'block', 'art14', 'tamper'] as const).map((key) => (
                       <td key={key} className="px-5 py-4 text-center text-lg">
                         {row[key] ? (
                           <span className="text-emerald-400">✓</span>
@@ -125,8 +177,10 @@ export default function EUAIActPage() {
       {/* EU AI Act Articles */}
       <section className="bg-slate-900/50 px-6 py-20">
         <div className="mx-auto max-w-5xl">
-          <h2 className="mb-3 text-center text-3xl font-black">Covers all three critical Articles</h2>
-          <p className="mb-12 text-center text-slate-400">One DSG ONE connection — satisfies the core EU AI Act requirements for high-risk AI systems</p>
+          <h2 className="mb-3 text-center text-3xl font-black">Mapped to three critical Articles</h2>
+          <p className="mb-12 text-center text-slate-400">
+            One DSG ONE connection — supports key technical controls required for high-risk AI systems under EU AI Act Articles 9, 12 &amp; 14
+          </p>
           <div className="grid gap-6 md:grid-cols-3">
             {ARTICLES.map((a) => (
               <div key={a.id} className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6">
@@ -141,11 +195,42 @@ export default function EUAIActPage() {
               </div>
             ))}
           </div>
+          <p className="mt-8 text-center text-xs text-slate-600">
+            DSG ONE provides technical controls that support compliance. Full EU AI Act compliance requires a broader organizational risk management program, legal assessment, and deployment-specific review.
+          </p>
+        </div>
+      </section>
+
+      {/* Art. 14 Human Oversight Controls */}
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-3 text-3xl font-black">Art. 14 — Human Oversight Controls</h2>
+          <p className="mb-8 text-slate-400">
+            Article 14 requires more than just a stop button. Humans must be able to understand, monitor, interpret, override, and stop the AI system throughout its operation. DSG ONE maps directly to each requirement.
+          </p>
+          <div className="overflow-x-auto rounded-2xl border border-slate-700">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-700 bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-400">
+                <tr>
+                  <th className="px-5 py-4">Art. 14 Requirement</th>
+                  <th className="px-5 py-4">DSG ONE Evidence</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {ART14_CONTROLS.map((row) => (
+                  <tr key={row.need} className="hover:bg-slate-800/40">
+                    <td className="px-5 py-4 text-slate-300">{row.need}</td>
+                    <td className="px-5 py-4 text-emerald-300">{row.evidence}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
       {/* Prevention vs Detection */}
-      <section className="px-6 py-20">
+      <section className="bg-slate-900/50 px-6 py-20">
         <div className="mx-auto max-w-5xl">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div>
@@ -162,26 +247,28 @@ export default function EUAIActPage() {
               </div>
             </div>
             <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6">
-              <div className="mb-4 text-sm font-bold text-slate-400">CRYPTOGRAPHIC PROOF</div>
+              <div className="mb-4 text-sm font-bold text-slate-400">TAMPER-EVIDENT AUDIT RECORD</div>
               <div className="space-y-2 font-mono text-xs text-emerald-300">
                 <div>action: &quot;delete_table&quot;</div>
                 <div>decision: <span className="text-red-400">BLOCK</span></div>
                 <div>timestamp: 2026-05-18T04:32:00Z</div>
                 <div>requestHash: <span className="text-slate-400">sha256:8f3a2b...</span></div>
                 <div>recordHash: <span className="text-slate-400">sha256:1c9d4e...</span></div>
-                <div className="pt-2 text-slate-400"># tamper-proof — immutable record</div>
-                <div className="text-slate-400"># mathematically verifiable</div>
+                <div className="pt-2 text-slate-400"># tamper-evident — hash verifiable</div>
+                <div className="text-slate-400"># cryptographically verifiable record</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Code — 1 line setup */}
-      <section className="bg-slate-900/50 px-6 py-20">
+      {/* Code — REST API setup */}
+      <section className="px-6 py-20">
         <div className="mx-auto max-w-5xl">
-          <h2 className="mb-3 text-center text-3xl font-black">One line. No changes to your existing stack.</h2>
-          <p className="mb-10 text-center text-slate-400">Your existing agent keeps running exactly as before — DSG ONE adds a governance layer in front of it.</p>
+          <h2 className="mb-3 text-center text-3xl font-black">One REST call. No changes to your existing stack.</h2>
+          <p className="mb-10 text-center text-slate-400">
+            Your existing agent keeps running exactly as before — DSG ONE adds a governance layer via REST API. No SDK required.
+          </p>
           <div className="grid gap-6 md:grid-cols-3">
             {FRAMEWORKS.map((fw) => (
               <div key={fw.name} className="rounded-2xl border border-slate-700 bg-slate-800/60 p-5">
@@ -194,7 +281,7 @@ export default function EUAIActPage() {
       </section>
 
       {/* ICP */}
-      <section className="px-6 py-20">
+      <section className="bg-slate-900/50 px-6 py-20">
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-10 text-center text-3xl font-black">Who needs DSG ONE</h2>
           <div className="grid gap-4 md:grid-cols-3">
@@ -228,10 +315,10 @@ export default function EUAIActPage() {
       {/* CTA */}
       <section className="border-t border-emerald-500/20 bg-emerald-950/20 px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="mb-4 text-3xl font-black">Compliant in 5 minutes</h2>
+          <h2 className="mb-4 text-3xl font-black">Add controls in 5 minutes</h2>
           <p className="mb-8 text-slate-300">
-            Our team will help you set up and verify that your system passes<br />
-            EU AI Act Articles 9, 12, and 14. Free. No credit card required.
+            Our team will help you set up pre-execution blocking, audit records,<br />
+            and human oversight controls mapped to EU AI Act Articles 9, 12, and 14.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
