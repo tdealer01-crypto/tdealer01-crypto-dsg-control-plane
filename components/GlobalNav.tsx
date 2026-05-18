@@ -147,6 +147,19 @@ export default function GlobalNav() {
             Docs
           </Link>
 
+          {/* Quickstart */}
+          <Link
+            href="/quickstart"
+            className={[
+              'rounded-xl border px-3 py-2 text-sm font-semibold transition',
+              pathname === '/quickstart'
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-amber-300/30 hover:text-amber-50',
+            ].join(' ')}
+          >
+            Quickstart
+          </Link>
+
           {/* CTAs */}
           <Link href="/dashboard/integrations" className="dsg-btn-gold text-sm">
             Start free →
@@ -233,6 +246,19 @@ export default function GlobalNav() {
             ].join(' ')}
           >
             Docs
+          </Link>
+
+          <Link
+            href="/quickstart"
+            onClick={() => setMobileOpen(false)}
+            className={[
+              'block rounded-xl border px-4 py-3 text-sm font-semibold',
+              pathname === '/quickstart'
+                ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                : 'border-white/10 bg-white/[0.03] text-slate-100',
+            ].join(' ')}
+          >
+            Quickstart
           </Link>
 
           <Link
