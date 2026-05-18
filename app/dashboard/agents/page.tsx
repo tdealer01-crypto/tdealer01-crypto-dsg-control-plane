@@ -215,8 +215,9 @@ export default function AgentsPage() {
                     <div className="text-sm text-slate-300">
                       <p>Monthly limit: {agent.monthly_limit}</p>
                       <p>Usage this month: {agent.usage_this_month || 0}</p>
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex gap-2 flex-wrap">
                         <button onClick={() => startEdit(agent)} className="rounded-lg border border-slate-600 px-3 py-1">Edit</button>
+                        <a href={`/enterprise-proof/print/${encodeURIComponent(agent.agent_id)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-amber-500/60 px-3 py-1 text-amber-300 text-sm hover:bg-amber-500/10">Compliance PDF</a>
                         <button onClick={() => void disableAgent(agent.agent_id)} className="rounded-lg border border-red-500/60 px-3 py-1 text-red-300">Disable</button>
                       </div>
                     </div>

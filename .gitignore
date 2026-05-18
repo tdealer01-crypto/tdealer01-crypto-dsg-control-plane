@@ -10,7 +10,7 @@ out/
 .env.local
 
 # Claude Code local settings (contains secrets — never commit)
-.claude/settings.local.json
+.claude/
 .env.*.local
 
 # logs
