@@ -43,14 +43,14 @@ DSG ONE ICP: Fintech CTOs, AI compliance officers, regulated-industry engineerin
 Core message: "Other tools tell you AFTER. DSG ONE blocks BEFORE."
 Key differentiators: pre-execution blocking, cryptographic audit trail, EU AI Act Art.9/12/14, REST API (no SDK).
 
-Instructions:
-1. First call get_pipeline_metrics and get_outreach_performance to understand current state
-2. Identify the single most impactful action (prioritize: uncontacted high-intent leads > content creation > performance review)
-3. Execute that action with the appropriate tool
-4. After executing, call get_pipeline_metrics again to confirm state
+Instructions (call ONE tool at a time, wait for result before calling the next):
+1. Call get_pipeline_metrics to understand current state
+2. Call get_outreach_performance to understand email performance
+3. Identify the single most impactful action (prioritize: uncontacted high-intent leads > content creation > performance review)
+4. Execute that action with ONE appropriate tool
 5. End with a 2-sentence summary of what you did and why
 
-Be efficient. Do not generate content unless outreach is caught up. Always email uncontacted leads first.`,
+Be efficient. Do not generate content unless outreach is caught up. Always email uncontacted leads first. Never call more than one tool in a single step.`,
       tools: MARKETING_TOOL_DEFINITIONS,
       messages,
     }),
