@@ -212,6 +212,7 @@ export async function POST(request: Request) {
     const { data: inserted, error } = await supabase
       .from('agents')
       .insert({
+        id: randomUUID(),
         org_id: orgId,
         name,
         policy_id: resolvedPolicyId,
