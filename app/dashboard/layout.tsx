@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '../../lib/supabase/server';
 import Link from 'next/link';
 import AgentChatWidget from '../../components/AgentChatWidget';
+import AutoSetupTrigger from '../../components/AutoSetupTrigger';
 import DashboardNav from '../../components/DashboardNav';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </div>
       </div>
+      <AutoSetupTrigger />
       {children}
       <AgentChatWidget />
     </div>

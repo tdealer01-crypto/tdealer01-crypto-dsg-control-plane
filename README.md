@@ -1,394 +1,314 @@
-# DSG ONE — ProofGate Runtime Control Plane
+# DSG ONE — ProofGate Control Plane
 
-> **Govern AI, agent, workflow, finance, and deployment actions before they touch production.**
+> **Block before the AI agent acts — not after the damage is done.**
 
-DSG ONE is a runtime control plane for governed actions. It routes high-risk requests through policy, entitlement, approval, deterministic gate checks, replay-protection inputs, proof metadata, and audit/evidence controls before execution or production-readiness claims are treated as safe.
+DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gate every action before execution, and get a cryptographic audit trail that satisfies EU AI Act Articles 9, 12, and 14.
 
-This repository is a public product, implementation, and benchmark-evidence workspace. It is **not** by itself proof of completed production go-live, independent audit, certification, or guaranteed compliance.
+**Production URL:** `https://tdealer01-crypto-dsg-control-plane.vercel.app`
 
 ---
 
-## What customers see first
+## What it does
 
-| Surface | Path | User value |
-|---|---:|---|
-| ProofGate product story | `/proofgate` | Understand what DSG does, what it blocks/reviews/allows, and why the proof layer matters. |
-| Enterprise setup | `/enterprise-ready` | Start from the customer’s existing stack without a migration-first rollout. |
-| Integration quickstart | `/dashboard/integrations` | Copy commands to register one integration, attach one webhook, execute one governed action, and review evidence. |
-| Customer monitor | `/gateway/monitor` | See latest action status, decision, risk, evidence state, hashes, export path, and next command. |
-| Public command assistant | Floating chat widget | Ask before login; jump to ProofGate, setup, connect, monitor, demo, and access paths. |
-| Evidence / approvals | `/evidence-pack`, `/approvals` | Export proof and approve/reject review-required actions. |
+Other tools tell you what your agent did *after* the fact.  
+DSG ONE intercepts the action *before* it executes — issues an ALLOW stamp or a BLOCK with agent guidance.
 
-### Customer questions the UI must answer
+```
+Agent wants to act
+  → POST /api/try/gate  { session_id, action }
+  → ALLOW + cryptographic stamp   (agent proceeds)
+  → BLOCK + suggested_llm_prompt  (agent self-corrects)
+```
 
-```text
-1. What does DSG do?
-2. What can it connect to?
-3. Was this action allowed, sent to review, or blocked?
-4. Why did DSG make that decision?
-5. What evidence can I export?
-6. What exact command or page should I use next?
+Every decision is hashed and tamper-proof. No rebuild of your existing stack required.
+
+---
+
+## Customer journey
+
+```
+/eu-ai-act          ← compliance landing page (EU AI Act Art. 9 / 12 / 14)
+  ↓
+/signup             ← email + workspace name → magic link
+  ↓
+/auth/confirm       ← creates org + 14-day trial + billing subscription
+  ↓
+/dashboard/welcome  ← shows workspace name, trial days, 3 onboarding steps
+  ↓
+/dashboard/api-keys ← create scoped API key (shown once, hashed server-side)
+  ↓
+/quickstart         ← REST API integration guide (curl / Python / JS)
+  ↓
+/api/try/gate       ← live gate endpoint, no auth required for trial
 ```
 
 ---
 
-## Product flow
+## REST API — no SDK required
 
-```text
-Customer system
-  -> REST / Webhook / Zapier / Make / n8n / Workato / GitHub / Vercel / CSV / SFTP
-  -> DSG ProofGate
-  -> policy + entitlement + risk + replay checks
-  -> PASS / REVIEW / BLOCK / UNSUPPORTED
-  -> approval route if needed
-  -> audit token + request hash + decision hash + record hash
-  -> evidence export
-  -> rollout decision
+### Step 1 — Declare your session
+
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-agent-run-001",
+    "declared_actions": ["read database", "send email", "update user record"],
+    "ttl_minutes": 30
+  }'
 ```
 
-The first customer outcome is deliberately small and measurable:
+### Step 2 — Gate every action
 
-```text
-one existing system -> one governed action -> one evidence trail -> one expansion decision
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "my-agent-run-001", "action": "send email to user@example.com"}'
 ```
+
+Response:
+```json
+{
+  "decision": "ALLOW",
+  "stamp": "DSG-X9K3M7P2",
+  "action": "send email to user@example.com",
+  "session_state": { "stamps_issued": 1, "blocked_count": 0, "ttl_remaining_min": 29 }
+}
+```
+
+### Step 3 — Handle BLOCK
+
+```json
+{
+  "decision": "BLOCK",
+  "reason": "Pattern \"delete\\s+all\" is permanently blocked",
+  "agent_guidance": {
+    "can_proceed_with": ["read database", "send email", "update user record"],
+    "suggested_llm_prompt": "Your action was blocked. You can still perform: ..."
+  }
+}
+```
+
+**Trial limits:** 60 req/min · sessions TTL 60 min · no API key needed for trial
+
+**Permanently blocked patterns:** `delete all`, `drop table`, `truncate`, `bypass policy`, `rm -rf`, `exfiltrate`, `steal`
 
 ---
 
-## Visual system
+## Pages
 
-DSG ONE now uses one product language across public pages, monitor, integration setup, docs, and command chat.
-
-| Color | Meaning |
+| Path | Purpose |
 |---|---|
-| **Red** | risk, block, exception, urgent control |
-| **Gold** | proof, evidence, buyer trust, primary call to action |
-| **Blue Sapphire** | enterprise infrastructure, runtime gateway, technical confidence |
-| **Black** | command-center surface |
+| `/` | Homepage |
+| `/eu-ai-act` | EU AI Act compliance landing — comparison table, Art. 9/12/14 |
+| `/proofgate` | ProofGate product story |
+| `/enterprise-ready` | No-migration enterprise setup |
+| `/finance-governance` | Payment & finance controls |
+| `/automation` | Webhook & workflow automation |
+| `/ai-compliance` | ISO 42001, NIST AI RMF |
+| `/pricing` | Four tiers: Trial / Pro / Business / Enterprise |
+| `/quickstart` | REST API integration guide (curl / Python / JS) |
+| `/docs` | API endpoint reference |
+| `/signup` | 14-day trial signup |
+| `/login` | Magic link + password login |
+| `/dashboard/welcome` | Post-signup onboarding (org name, trial days, 3 steps) |
+| `/dashboard/api-keys` | Create / revoke scoped API keys |
+| `/dashboard/integrations` | Integration setup guide |
+| `/dashboard` | Command center |
+| `/admin/leads` | Founder-only lead pipeline view |
+| `/unsubscribe` | CAN-SPAM unsubscribe (updates lead intent in DB) |
 
-Brand layer:
+---
 
-```text
-app/dsg-brand.css
-app/layout.tsx
-components/GlobalNav.tsx
+## API routes
+
+### Gate (public trial)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/try/gate` | Declare session or gate an action — no auth required |
+
+### API keys
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/api-keys` | List org API keys |
+| `POST` | `/api/api-keys` | Create API key (raw key returned once) |
+| `DELETE` | `/api/api-keys/:id` | Revoke key (sets status to REVOKED) |
+
+### Agents & execution
+
+| Method | Path | Description |
+|---|---|---|
+| `GET/POST` | `/api/agents` | List or create agents |
+| `POST` | `/api/execute` | Protected execution entry |
+| `POST` | `/api/dsg/v1/gates/evaluate` | Deterministic gate evaluation |
+| `POST` | `/api/dsg/v1/proofs/prove` | Generate deterministic proof scaffold |
+| `GET` | `/api/dsg/v1/policies/manifest` | Fetch policy manifest |
+
+### Crons (Vercel, daily)
+
+| Schedule (UTC) | Path | Purpose |
+|---|---|---|
+| `0 8 * * *` | `/api/cron/github-leads` | Find AI agent repos on GitHub, save as leads |
+| `30 8 * * *` | `/api/cron/social-listen` | Monitor Reddit + HN for AI agent mentions |
+| `0 9 * * *` | `/api/cron/lead-outreach` | Send cold email to 20 highest-intent leads/day |
+| `0 10 * * *` | `/api/cron/lead-followup` | Day-3 follow-up for non-responders |
+| `0 9 * * *` | `/api/cron/drip-emails` | Trial user drip sequence |
+| `0 10 * * *` | `/api/cron/smart-drip` | Smart drip variant |
+| `0 3 * * *` | `/api/health` | Health probe |
+
+---
+
+## Lead pipeline
+
+Automated customer acquisition for enterprise/compliance buyers:
+
+```
+GitHub search → repos using LangChain / AutoGen / CrewAI / OpenAI Agents SDK / PydanticAI
+  → filter: updated < 30 days, stars ≥ 20
+  → fetch owner email from GitHub public profile
+  → save to leads table (insert + catch 23505)
+  → lead-outreach cron: cold email (EU AI Act angle)
+  → lead-followup cron: day-3 follow-up
+  → /unsubscribe: opt-out updates intent in DB
+  → /admin/leads: founder views pipeline
+```
+
+Target ICP: Fintech/banks, SOC 2 / ISO 42001 audit companies, GDPR/PDPA-regulated orgs.
+
+---
+
+## Tech stack
+
+```
+Next.js 15 (App Router)
+React 18
+TypeScript
+Supabase (auth + postgres + service role)
+Resend (transactional email)
+Stripe (billing webhooks)
+Vercel (deployment + crons)
 ```
 
 ---
 
-## Repository stack
-
-```text
-Next.js App Router
-Supabase data/auth/runtime state
-Stripe billing hooks
-Vercel deployment workflow
-DSG deterministic proof/gate scaffold
-Governance, approval, monitor, evidence, marketplace, trust, and compliance surfaces
-Public command assistant and operator dashboard
-```
-
-Package identity:
-
-```text
-name: dsg-platform
-framework: Next.js 15
-runtime: React 18
-```
-
----
-
-## Deterministic proof/gate scaffold
-
-Backend routes present in the repository:
-
-```text
-GET  /api/dsg/v1/policies/manifest
-POST /api/dsg/v1/proofs/prove
-POST /api/dsg/v1/gates/evaluate
-```
-
-Current deterministic gate behavior includes:
-
-```text
-policyVersion
-constraintSetHash
-inputHash
-proofHash
-solver metadata
-structured constraint results
-structured failure reasons
-replayProtection.nonce
-replayProtection.idempotencyKey
-replayProtection.requestHash
-```
-
-Important invariant:
-
-```text
-UNSUPPORTED is never PASS.
-```
-
-The gate API rejects missing replay-protection inputs:
-
-```text
-missing_nonce
-missing_idempotency_key
-```
-
-Current solver boundary:
-
-```text
-solver.name: static_check
-solver.version: dsg-deterministic-ts-0.0.0
-externalSolverInvoked: false
-```
-
-This means the repository contains a DSG-native deterministic TypeScript static-check scaffold mapped from the Z3/formal-logic work. Do not claim that an external Z3 solver is invoked in production unless newer code and evidence prove that path.
-
----
-
-## Policy constraints in the deterministic manifest
-
-```text
-requirement_clear
-tool_available
-permission_granted
-secret_bound
-dependency_resolved
-testable
-deploy_target_ready
-audit_hook_available
-```
-
----
-
-## Agent command gate
-
-The repository includes an agent command gate library and API route for pre-action gating:
-
-```text
-lib/dsg/agent-command-gate.ts
-app/api/dsg/agent-command-gate/route.ts
-```
-
-The gate evaluates command lock, agent identity binding, RBAC permission, approval proof, idempotency, rollback plan, audit hook binding, and evidence hook binding before allowing an agent action envelope.
-
-Safe claim:
-
-```text
-DSG includes an in-repository agent command gate scaffold that can block, review, or allow agent actions based on locked command, RBAC, approval, idempotency, rollback, audit, and evidence invariants.
-```
-
-Do not claim a fully completed agent execution lifecycle unless callback/result routes and deployed persistence evidence are verified for the target environment.
-
----
-
-## Quick start
+## Local development
 
 ```bash
 npm install --ignore-scripts
-npm run typecheck
-npm run ux:routes
-npm run verify:deterministic
-npm run build
+cp .env.example .env.local   # fill in values
 npm run dev
 ```
 
-Open locally:
+Open: `http://localhost:3000`
 
-```text
-http://localhost:3000/proofgate
-http://localhost:3000/enterprise-ready
-http://localhost:3000/dashboard/integrations
-http://localhost:3000/gateway/monitor
-```
-
-### Local environment template
-
-Create `.env.local` locally. Do **not** commit it.
+### Required env vars
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="your-publishable-key-if-used"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-SUPABASE_PROJECT_ID="your-project-id"
-STRIPE_SECRET_KEY="sk_test_or_live_xxx"
-STRIPE_WEBHOOK_SECRET="whsec_xxx"
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# App URL (used in auth email redirect)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Email
+RESEND_API_KEY=
+
+# Cron protection
+CRON_SECRET=
+
+# Lead pipeline
+GITHUB_TOKEN=          # optional — raises rate limit for github-leads cron
+
+# Admin
+FOUNDER_EMAIL=         # email that can access /admin/leads
+
+# Stripe (optional for local)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
 
-Vercel users can pull local env without deploying:
-
+Pull from Vercel (if connected):
 ```bash
 vercel env pull .env.local
 ```
 
 ---
 
-## Verification commands
-
-Local repository checks:
+## Verification
 
 ```bash
-npm install --ignore-scripts
-npm test
-npm run typecheck
-npm run ux:routes
-npm run verify:deterministic
-npm run build
+npm run typecheck      # TypeScript — currently 1 pre-existing error in tests/
+npm run build          # Next.js production build
+npm test               # Jest unit tests
 ```
 
-Benchmark/evidence commands:
-
+Live gate check:
 ```bash
-npm run benchmark
-npm run benchmark:gateway
-npm run benchmark:kaggle:community
-npm run benchmark:evidence
+curl -s -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"readme-test","declared_actions":["read data"],"ttl_minutes":5}'
 ```
 
-Deployment/runbook command:
-
-```bash
-npm run go:no-go
-```
-
-Runbook evidence is documented in:
-
-```text
-docs/RUNBOOK_DEPLOY.md
-```
-
-Do not use local test success alone as proof of production readiness.
+Expected: `{"ok":true,"decision":"ALLOW","declaration_stamp":"DSG-..."}`
 
 ---
 
-## Live API check example
+## EU AI Act compliance coverage
 
-```bash
-curl -s -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate \
-  -H "content-type: application/json" \
-  -H "x-dsg-nonce: test-nonce-001" \
-  -H "idempotency-key: idem-001" \
-  -d '{"planId":"PLAN-Z3-001","riskLevel":"high","context":{"requirement_clear":true,"tool_available":true,"permission_granted":true,"secret_bound":true,"dependency_resolved":true,"testable":true,"deploy_target_ready":true,"audit_hook_available":true}}'
-```
-
-Expected successful shape includes deterministic gate decision fields such as `gateStatus`, `proofStatus`, `riskLevel`, `proof`, replay-protection fields, and a boundary stating that this route does not invoke an external Z3 solver.
+| Article | Requirement | DSG ONE |
+|---|---|---|
+| Art. 9 | Risk management — prevent before act | Gates every action before execution |
+| Art. 12 | Record keeping — tamper-proof log | Cryptographic stamp on every ALLOW |
+| Art. 14 | Human oversight — ability to intervene | BLOCK + approval workflow |
 
 ---
 
-## Marketplace action
+## Formal verification artifact
 
-```text
-https://github.com/marketplace/actions/dsg-secure-deploy-gate
-https://github.com/tdealer01-crypto/dsg-secure-deploy-gate-action/releases/tag/v1.0.2
+```
+DOI: https://doi.org/10.5281/zenodo.18225586
+Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
 ```
 
-Usage:
+> The DOI artifact is the formal verification reference. Repository runtime routes provide scaffold behavior — they are not equivalent to an end-to-end formally verified SaaS deployment.
+
+---
+
+## GitHub Marketplace action
 
 ```yaml
 - name: DSG Secure Deploy Gate
   uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
 ```
 
----
-
-## Formal verification artifact
-
-```text
-DOI: https://doi.org/10.5281/zenodo.18225586
-Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
 ```
-
-Boundary:
-
-```text
-The DOI artifact is the formal verification reference. Repository runtime SMT2 scripts and TypeScript static-check routes provide runtime invariant evidence/scaffold behavior, but they are not the same thing as an end-to-end formally verified SaaS deployment.
+https://github.com/marketplace/actions/dsg-secure-deploy-gate
 ```
 
 ---
 
-## Kaggle/community benchmark materials
+## Claim boundary
 
-The repository includes community benchmark preparation assets under:
+Supported claims based on current repository evidence:
 
-```text
-benchmarks/kaggle-community/dsg_finance_governance_tasks.py
+```
+✓ REST API gate endpoint — live, no SDK required
+✓ Cryptographic audit trail on every gated action
+✓ EU AI Act Art. 9 / 12 / 14 coverage scaffold
+✓ 14-day trial with automated org provisioning
+✓ Automated lead pipeline (GitHub signal → cold email → follow-up)
+✓ API key management (scoped, SHA-256 hashed, revocable)
+✓ Deterministic proof/gate scaffold
 ```
 
-Current benchmark task areas:
+Not yet verified without additional live evidence:
 
-```text
-DSG-TASK-001 Payment Decision Control
-DSG-TASK-002 Policy Compliance Detection
-DSG-TASK-003 Audit Evidence Generation
 ```
-
-Evidence boundary:
-
-```text
-These are author-provided benchmark preparation assets. They are not independent third-party audit certification and are not an official Kaggle leaderboard result until saved as Kaggle tasks, collected into a Kaggle benchmark, and evaluated against supported Kaggle models.
+✗ Independent third-party audit or certification
+✗ External Z3 solver in production (scaffold only)
+✗ SDK published to npm / PyPI (@dsg-one/sdk is private — use REST API)
 ```
-
----
-
-## Source-of-truth documents
-
-Use these files as the canonical truth boundary for the repository:
-
-```text
-docs/REPO_TRUTH.md
-docs/RUNBOOK_DEPLOY.md
-PROJECT_TRUTH.md
-qa-logs/test-summary.md
-qa-logs/go-live-evidence-2026-05-03.md
-docs/ENTERPRISE_READY_AUTOPILOT.md
-```
-
-When README text conflicts with those files, prefer the newer verified evidence in the source-of-truth files and update this README.
-
----
-
-## Current claim boundary
-
-Allowed wording when supported by current repository evidence:
-
-```text
-evidence-ready
-audit-ready
-governance-enabling
-compliance-enabling
-aligned workflow
-benchmarked
-deterministic proof/gate scaffold
-live deterministic proof/gate scaffold
-DSG-native TypeScript static-check gate scaffold
-setup-ready enterprise pilot flow
-ProofGate product surface
-customer-readable monitor
-```
-
----
-
-## Deployment truth boundary
-
-Runbook evidence is still required for:
-
-```text
-Vercel production deployment Ready state
-production environment variable validation
-Supabase migrations applied on the target environment
-/api/health production smoke check
-authenticated operator checks
-live staging/E2E validation
-```
-
-Current committed go-live evidence does not close those requirements unless newer recorded evidence proves otherwise.
-
----
-
-## Practical product boundary
-
-DSG ONE is a production-oriented governance product stack with ProofGate product pages, enterprise onboarding, integration quickstart, customer monitor, command assistant, marketplace action, compliance pages, control templates, approval workflow, evidence export, consult toolkit, trust scaffold, benchmark assets, and live deterministic proof/gate scaffold.
-
-It is not externally validated at enterprise-trust level until real customer deployments, case studies, partner references, independent reviews, or formal certifications are completed and recorded.

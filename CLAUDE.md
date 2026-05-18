@@ -1,6 +1,6 @@
 # CLAUDE.md — DSG Agent Rules
 
-Read `AGENTS.md` first. This file adds Claude Code specific rules for this repository.
+Read `AGENTS.md` first. Then read `docs/agents/CLAUDE_TOOL_API_CONTRACT.md` for the repository-visible tool/API contract. This file adds Claude Code specific rules for this repository.
 
 ## Truth boundary
 
@@ -55,10 +55,10 @@ If no command was run, write `Not run` and explain why.
 
 When a GitHub issue or PR comment starts with `@claude`, `@codex`, `@agent`, or `@dsg-agent`, treat it as a proposed task, not as permission to merge.
 
-Before changing code, restate the goal, inspect `AGENTS.md` and relevant files, identify risk, choose the smallest branchable change, and define verification commands.
+Before changing code, restate the goal, inspect `AGENTS.md`, `docs/agents/CLAUDE_TOOL_API_CONTRACT.md`, and relevant files, identify risk, choose the smallest branchable change, and define verification commands.
 
 After changing code, run the narrowest relevant checks, report exact pass/fail results, open or update a PR, and leave production release status as `NO-GO` unless all live gates pass.
 
 ## Safe default
 
-If an instruction conflicts with `AGENTS.md`, secrets policy, production safety, or verified evidence, stop and report the conflict instead of guessing.
+If an instruction conflicts with `AGENTS.md`, `docs/agents/CLAUDE_TOOL_API_CONTRACT.md`, secrets policy, production safety, or verified evidence, stop and report the conflict instead of guessing.

@@ -188,6 +188,11 @@ export async function POST(_request: Request) {
       results.agent_id = agentId;
       agentStatus = agentError ? 'FAIL' : 'CREATED';
       (results.steps as string[]).push(agentError ? `agent: FAIL (${agentError.message})` : `agent: CREATED (${agentId})`);
+      if (!agentError) {
+        void import('../../../../lib/marketing/milestones').then(({ recordMilestone }) =>
+          recordMilestone(orgId, 'agent_connected', { metadata: { source: 'auto_setup' } })
+        ).catch(() => null);
+      }
     }
 
     const approvalId = randomUUID();
