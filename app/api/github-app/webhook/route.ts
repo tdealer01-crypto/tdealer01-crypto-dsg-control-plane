@@ -87,7 +87,7 @@ async function handlePullRequest(payload: Record<string, unknown>): Promise<void
   const pr = payload.pull_request as Record<string, unknown>;
   const repo = payload.repository as Record<string, unknown>;
   const installationId = (payload.installation as Record<string, unknown>)?.id as number | undefined;
-  console.log('[DSG] handlePR: installationId=', installationId, 'owner=', owner, 'repo=', repoName);
+  console.log('[DSG] handlePR: installationId=', installationId);
   if (!installationId) {
     console.error('[DSG] no installationId in payload — app not installed on this repo?');
     return;
