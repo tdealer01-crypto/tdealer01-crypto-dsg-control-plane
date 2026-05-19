@@ -34,6 +34,7 @@ pnpm-debug.log*
 .tmp/
 test-results/
 playwright-report/
+artifacts/
 
 # playwright auth/session state
 playwright/.auth/
