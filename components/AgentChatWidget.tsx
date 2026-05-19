@@ -46,7 +46,7 @@ export default function AgentChatWidget() {
   const [useCodex, setUseCodex] = useState(false);
   const [codexResponseId, setCodexResponseId] = useState<string | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'DSG Agent v2 พร้อมช่วย — ใช้ skills bundle ใหม่สำหรับ chatbot/agent runtime'),
+    makeLine('system', 'DSG Agent v2 ready — uses the new skills bundle for chatbot/agent runtime'),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -249,7 +249,7 @@ export default function AgentChatWidget() {
                 void submit(draft);
               }
             }}
-            placeholder="พิมพ์คำสั่ง..."
+            placeholder="Type a command..."
             className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
           />
           <button

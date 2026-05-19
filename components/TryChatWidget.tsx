@@ -13,11 +13,11 @@ const STORAGE_KEY = 'dsg_try_chat_v1';
 const MAX_HISTORY = 40;
 
 const SUGGESTIONS = [
-  'วิธีต่อ agent กับ DSG',
+  'How do I connect my agent to DSG?',
   'What is the DSG Gate?',
-  'ราคาหลังทดลองฟรี',
+  'Pricing after the free trial',
   'How does audit trail work?',
-  'DSG กับ LangChain ใช้ยังไง',
+  'How to use DSG with LangChain',
 ];
 
 function makeLine(role: ChatLine['role'], content: string): ChatLine {
@@ -29,7 +29,7 @@ export default function TryChatWidget() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'DSG Expert พร้อมตอบ — ถามเรื่อง gate, audit trail, การต่อ agent, หรือ pricing ได้เลย 🛂'),
+    makeLine('system', 'DSG Expert ready — ask about the gate, audit trail, connecting your agent, or pricing 🛂'),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -69,9 +69,9 @@ export default function TryChatWidget() {
         body: JSON.stringify({ messages: [...history, { role: 'user', content: message }] }),
       });
       const data = await res.json().catch(() => ({})) as { reply?: string; error?: string };
-      setLines((prev) => [...prev, makeLine('assistant', data.reply ?? data.error ?? 'ขอโทษครับ ลองใหม่อีกครั้ง')]);
+      setLines((prev) => [...prev, makeLine('assistant', data.reply ?? data.error ?? 'Sorry, please try again.')]);
     } catch {
-      setLines((prev) => [...prev, makeLine('assistant', 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้งครับ')]);
+      setLines((prev) => [...prev, makeLine('assistant', 'Connection failed. Please try again.')]);
     } finally {
       setBusy(false);
     }
@@ -85,7 +85,7 @@ export default function TryChatWidget() {
         aria-label="Ask DSG Expert"
       >
         <span className="text-lg">🛂</span>
-        <span>ถาม DSG Expert</span>
+        <span>Ask DSG Expert</span>
       </button>
     );
   }
@@ -96,7 +96,7 @@ export default function TryChatWidget() {
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div>
           <p className="text-sm font-black text-slate-100">🛂 DSG Expert</p>
-          <p className="text-[10px] text-slate-400">ถาม-ตอบ ทั้งไทยและอังกฤษ · ทดลองฟรี 15 วัน</p>
+          <p className="text-[10px] text-slate-400">Q&amp;A in English · 15-day free trial</p>
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -127,7 +127,7 @@ export default function TryChatWidget() {
         ))}
         {busy && (
           <div className="max-w-[92%] rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-400">
-            กำลังคิด...
+            Thinking...
           </div>
         )}
       </div>
@@ -158,7 +158,7 @@ export default function TryChatWidget() {
                 void submit(draft);
               }
             }}
-            placeholder="ถามเรื่อง DSG..."
+            placeholder="Ask about DSG..."
             className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
           />
           <button
@@ -166,7 +166,7 @@ export default function TryChatWidget() {
             disabled={busy || !draft.trim()}
             className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-black disabled:bg-slate-700 disabled:text-slate-400"
           >
-            {busy ? '...' : 'ส่ง'}
+            {busy ? '...' : 'Send'}
           </button>
         </div>
       </div>

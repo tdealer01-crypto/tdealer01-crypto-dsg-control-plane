@@ -55,7 +55,7 @@ export async function POST(request: Request) {
           encoder.encode(
             sseData({
               type: 'assistant_reply',
-              reply: modelReply?.reply || 'DSG Agent v2 สร้างแผนแล้ว โปรดตรวจและอนุมัติก่อน execution',
+              reply: modelReply?.reply || 'DSG Agent v2 has created a plan. Please review and approve before execution.',
               model: modelReply?.modelUsed || 'skills-v2',
               provider: modelReply?.provider || 'internal-skills',
               providerSource: modelReply?.providerSource || 'runtime',

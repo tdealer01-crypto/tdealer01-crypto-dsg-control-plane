@@ -16,7 +16,7 @@ function makeLine(role: ChatLine['role'], content: string): ChatLine {
   };
 }
 
-const quickPrompts = ['เริ่มใช้งาน', 'ต่อระบบเดิม', 'ดู monitor', 'export evidence', 'ราคา', 'ขอ demo'];
+const quickPrompts = ['Get started', 'Connect existing system', 'View monitor', 'export evidence', 'Pricing', 'Request demo'];
 
 const commandLinks = [
   { href: '/proofgate', label: 'ProofGate' },
@@ -30,7 +30,7 @@ export default function PublicChatWidget() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'ถาม DSG ได้ก่อนล็อกอิน: ต่อระบบเดิม, monitor, command, pricing, demo — public mode ไม่ execute action'),
+    makeLine('system', 'Ask DSG before logging in: connect existing systems, monitor, commands, pricing, demo — public mode does not execute actions'),
   ]);
 
   async function submit(message: string) {
@@ -49,7 +49,7 @@ export default function PublicChatWidget() {
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(String(json.error || 'Public chat failed'));
-      setLines((prev) => [...prev, makeLine('assistant', String(json.reply || 'พร้อมช่วยครับ'))]);
+      setLines((prev) => [...prev, makeLine('assistant', String(json.reply || 'Ready to help.'))]);
     } catch (error) {
       setLines((prev) => [
         ...prev,
@@ -67,7 +67,7 @@ export default function PublicChatWidget() {
         className="fixed bottom-5 right-5 z-50 rounded-full border border-amber-300/50 bg-amber-300 px-5 py-4 text-sm font-extrabold text-black shadow-2xl shadow-amber-500/30 ring-2 ring-black/50 transition hover:scale-105 focus:outline-none focus:ring-4 focus:ring-amber-200"
         aria-label="Open public DSG command chat"
       >
-        ถาม / สั่ง DSG
+        Ask / Command DSG
       </button>
     );
   }
@@ -77,7 +77,7 @@ export default function PublicChatWidget() {
       <div className="flex items-center justify-between border-b border-amber-300/15 px-4 py-3">
         <div>
           <p className="text-sm font-black text-slate-100">DSG Command Assistant</p>
-          <p className="text-[11px] text-slate-400">ถามง่าย · เห็น next action · ไม่มี runtime execution</p>
+          <p className="text-[11px] text-slate-400">Ask easily · See next action · No runtime execution</p>
         </div>
         <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close public chat">✕</button>
       </div>
@@ -91,7 +91,7 @@ export default function PublicChatWidget() {
       </div>
 
       <div className="border-b border-amber-300/15 bg-amber-300/10 px-4 py-3 text-xs leading-6 text-amber-50">
-        ลูกค้ามักต้องการเห็น: ระบบต่อกับอะไรได้, action ถูก allow/review/block เพราะอะไร, evidence export ได้ไหม, และต้องทำขั้นตอนถัดไปอะไร.
+        Customers typically want to see: what systems can connect, why an action was allowed/reviewed/blocked, whether evidence can be exported, and what the next step is.
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -135,7 +135,7 @@ export default function PublicChatWidget() {
                 void submit(draft);
               }
             }}
-            placeholder="ถาม/สั่งงาน เช่น ต่อ ERP ยังไง..."
+            placeholder="Ask or command, e.g. how to connect ERP..."
             className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-300"
           />
           <button
@@ -143,7 +143,7 @@ export default function PublicChatWidget() {
             disabled={busy}
             className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-black text-black disabled:bg-slate-700 disabled:text-slate-400"
           >
-            {busy ? '...' : 'ส่ง'}
+            {busy ? '...' : 'Send'}
           </button>
         </div>
       </div>

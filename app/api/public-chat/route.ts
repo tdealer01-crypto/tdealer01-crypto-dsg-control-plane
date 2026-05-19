@@ -11,11 +11,11 @@ const REQUEST_ACCESS_URL = '/request-access';
 const PRICING_URL = '/pricing';
 
 const SUGGESTIONS = [
-  'ดูเดโม่แบบ interactive',
-  'ดู pricing และเลือกแพ็กเกจ',
-  'ดู Skills Marketplace',
-  'ขอ demo หรือ request access',
-  'อธิบาย DSG Agent และ runtime approval',
+  'View interactive demo',
+  'See pricing and choose a plan',
+  'View Skills Marketplace',
+  'Request a demo or access',
+  'Explain DSG Agent and runtime approval',
 ];
 
 const RATE_LIMIT = 20;
@@ -76,7 +76,7 @@ type ChatResult = {
 };
 
 const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
-const HIGH_INTENT_RE = /price|pricing|ราคา|แพ็ก|plan|trial|สมัคร|access|upgrade|buy|purchase|ซื้อ|จ่าย/i;
+const HIGH_INTENT_RE = /price|pricing|plan|trial|access|upgrade|buy|purchase/i;
 
 function extractEmail(messages: ChatMessage[]): string | null {
   for (const m of messages) {
@@ -90,7 +90,7 @@ function intentScore(messages: ChatMessage[]): number {
   const text = messages.map((m) => m.content).join(' ');
   let score = 0;
   if (HIGH_INTENT_RE.test(text)) score += 40;
-  if (/demo|เดโม/.test(text)) score += 20;
+  if (/demo/.test(text)) score += 20;
   if (/agent|runtime|governance/.test(text)) score += 20;
   if (messages.length >= 3) score += 20;
   return Math.min(score, 100);
@@ -178,27 +178,27 @@ function extractOpenRouterText(payload: OpenRouterResponse): string {
 function fallbackReply(message: string) {
   const lower = message.toLowerCase();
 
-  if (/demo|เดโม|เดโม่|proof|พิสูจน์|ตัวอย่าง/.test(lower)) {
-    return `ดูหน้าเดโม่และ proof สำหรับ buyer ได้ที่ ${DEMO_URL} ครับ ถ้าต้องการทดลองแบบมีสิทธิ์ใช้งานจริง ให้ไปที่ ${REQUEST_ACCESS_URL}`;
+  if (/demo|proof/.test(lower)) {
+    return `View the demo and buyer proof at ${DEMO_URL}. To try DSG with real access, go to ${REQUEST_ACCESS_URL}.`;
   }
 
-  if (/price|pricing|ราคา|แพ็ก|แพค|plan/.test(lower)) {
-    return `ดูราคาและแพ็กเกจได้ที่ ${PRICING_URL} ครับ ถ้าต้องการใช้งานจริง แนะนำเริ่มจาก ${REQUEST_ACCESS_URL} แล้วค่อยเปิด dashboard หลังล็อกอิน`;
+  if (/price|pricing|plan/.test(lower)) {
+    return `See pricing and plans at ${PRICING_URL}. To get started, we recommend beginning at ${REQUEST_ACCESS_URL} and opening the dashboard after login.`;
   }
 
-  if (/access|สมัคร|เริ่ม|start|signup|sign up/.test(lower)) {
-    return `เริ่มได้ที่ ${REQUEST_ACCESS_URL} หรือ /signup ครับ ถ้าคุณมีบัญชีแล้วให้เข้า /login เพื่อเปิด dashboard และใช้ DSG Agent แบบมี audit/approval`;
+  if (/access|start|signup|sign up/.test(lower)) {
+    return `Get started at ${REQUEST_ACCESS_URL} or /signup. If you already have an account, go to /login to open the dashboard and use DSG Agent with full audit/approval.`;
   }
 
-  if (/agent|chatbot|bot|แชท|บอท|เอเจนต์/.test(lower)) {
-    return `DSG Agent ช่วยวางแผน ตรวจ readiness และจัดการ agent workflow ได้ ดูเดโม่ที่ ${DEMO_URL} ได้เลย แต่ action จริง เช่น สร้าง agent หรือ execute runtime ต้องล็อกอินและผ่าน approval gate ก่อน เพื่อมี audit/ledger ครบ`;
+  if (/agent|chatbot|bot/.test(lower)) {
+    return `DSG Agent helps you plan, check readiness, and manage agent workflows. View the demo at ${DEMO_URL}. Real actions such as creating an agent or executing a runtime require login and approval gate clearance to maintain a complete audit/ledger.`;
   }
 
-  if (/readiness|health|status|สถานะ/.test(lower)) {
-    return 'หน้า public ตรวจ health/readiness พื้นฐานได้ แต่ข้อมูล runtime ลึก ๆ ต้องล็อกอิน dashboard ก่อน เพื่อป้องกันข้อมูลภายในและรักษา audit trail';
+  if (/readiness|health|status/.test(lower)) {
+    return 'The public page supports basic health/readiness checks. Deep runtime data requires logging into the dashboard first to protect internal information and maintain the audit trail.';
   }
 
-  return `สวัสดีครับ ผมคือ DSG public assistant ถามเรื่อง DSG Agent, pricing, demo, request access หรือวิธีเข้า dashboard ได้เลยครับ ถ้าอยากดูเดโม่ตอนนี้ เปิด ${DEMO_URL}`;
+  return `Hello — I am the DSG public assistant. Ask about DSG Agent, pricing, demo, request access, or how to reach the dashboard. To view the demo now, open ${DEMO_URL}.`;
 }
 
 function fallbackResult(messages: ChatMessage[], error: string): ChatResult {

@@ -1,19 +1,19 @@
 import Link from 'next/link';
 
 const setupSteps = [
-  ['1. เลือกระบบเดิม', 'เริ่มจาก REST, Webhook, Zapier, Make, n8n, ERP, GitHub หรือ Vercel โดยไม่ต้องย้ายระบบก่อน'],
-  ['2. วาง endpoint เดียว', 'ใช้ URL หรือ API route เดียวก่อน แล้วให้ DSG ครอบด้วย policy, approval, replay check และ evidence'],
-  ['3. รัน proof แรก', 'ระบบแสดง PASS, REVIEW, BLOCK หรือ UNSUPPORTED พร้อม next action ที่ต้องแก้'],
-  ['4. ส่ง evidence ให้ทีมงาน', 'แชร์ proof trail ให้ IT, risk, finance หรือ audit ก่อนขยาย rollout'],
+  ['1. Choose an existing system', 'Start from REST, Webhook, Zapier, Make, n8n, ERP, GitHub, or Vercel without migrating anything first'],
+  ['2. Place a single endpoint', 'Use a single URL or API route first, then let DSG wrap it with policy, approval, replay check, and evidence'],
+  ['3. Run the first proof', 'The system shows PASS, REVIEW, BLOCK, or UNSUPPORTED with the next action required to resolve it'],
+  ['4. Share evidence with your team', 'Share the proof trail with IT, risk, finance, or audit before expanding the rollout'],
 ];
 
 const connectors = [
-  ['REST API', 'เหมาะกับ internal apps, ERP wrappers, CRM, finance ops และ custom services'],
-  ['Webhook', 'ทางเร็วสุดสำหรับ pilot ด้วย inbound event และ callback'],
-  ['Zapier / Make', 'สะพาน no-code สำหรับ workflow ที่ลูกค้าใช้อยู่แล้ว'],
-  ['n8n / Workato', 'ใช้ DSG เป็น governance layer หน้า workflow engine เดิม'],
-  ['GitHub / Vercel', 'คุม release และ deployment ด้วย proof checks'],
-  ['CSV / SFTP', 'รองรับลูกค้าที่ legacy หรือยังไม่ API-first'],
+  ['REST API', 'Ideal for internal apps, ERP wrappers, CRM, finance ops, and custom services'],
+  ['Webhook', 'The fastest path for pilots using inbound events and callbacks'],
+  ['Zapier / Make', 'No-code bridge for workflows customers already use'],
+  ['n8n / Workato', 'Place DSG as a governance layer in front of the existing workflow engine'],
+  ['GitHub / Vercel', 'Control releases and deployments with proof checks'],
+  ['CSV / SFTP', 'Support for legacy customers or those not yet API-first'],
 ];
 
 const controls = [

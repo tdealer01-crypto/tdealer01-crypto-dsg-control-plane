@@ -56,9 +56,9 @@ COMMON QUESTIONS:
 - "Is the audit trail tamper-proof?" → Yes — SHA256 hash chain, any modification breaks the chain, retroactively detectable
 - "Can I use it with LangChain/AutoGen/CrewAI?" → Yes — wrap each tool call with the gate inspect call
 - "What is MAKK-8?" → 8 deterministic invariants (rightView, rightResolve, rightSpeech, rightConduct, rightLivelihood, rightEffort, rightMindfulness, rightSamadhi) — ensures agent actions are coherent, bounded, and reversible
-- "ต่อยังไง?" → เพิ่ม 2 บรรทัดในโค้ด agent: declare ตอนเริ่ม session, inspect ก่อนทุก action
-- "ฟรีทดลองได้นานแค่ไหน?" → 15 วัน เต็มรูปแบบ ไม่ต้องใส่บัตรเครดิต
-- "บล็อกยังไง?" → DSG เช็คทุก action ก่อนผ่าน ถ้าไม่ได้แจ้งไว้ล่วงหน้า หรือเกินเวลา TTL — บล็อกทันที
+- "How do I connect?" → Add 2 lines to your agent code: declare at session start, inspect before every action
+- "How long is the free trial?" → 15 days, full features, no credit card required
+- "How does blocking work?" → DSG checks every action before it passes. If it was not declared upfront or exceeds the TTL — it is blocked immediately
 
 TONE: Expert, concise, helpful. Answer in the language the user writes in (Thai or English). Be specific — give code examples when asked. Never claim false capabilities.`;
 
@@ -126,19 +126,19 @@ function extractOpenAIText(payload: OpenAIResponse): string {
 
 function fallbackAnswer(message: string): string {
   const lower = message.toLowerCase();
-  if (/ต่อ|connect|integrate|ใช้ยังไง|how to use/.test(lower)) {
-    return 'เพิ่ม 2 บรรทัดในโค้ด agent ของคุณ: (1) POST /api/try/gate ด้วย declared_actions ตอนเริ่ม session (2) POST /api/try/gate ด้วย action ก่อนทุกครั้งที่จะทำ — DSG จะ stamp ถ้า ALLOW หรือ return reason ถ้า BLOCK';
+  if (/connect|integrate|how to use/.test(lower)) {
+    return 'Add 2 lines to your agent code: (1) POST /api/try/gate with declared_actions at session start (2) POST /api/try/gate with the action before each call — DSG will stamp if ALLOW or return a reason if BLOCK';
   }
-  if (/ราคา|price|pricing|แพ็ก/.test(lower)) {
-    return 'ทดลองฟรี 15 วัน (ไม่ต้องใส่บัตร) → Pro $99/เดือน → Business $299/เดือน → Enterprise $999/เดือน ดูรายละเอียดที่ /pricing';
+  if (/price|pricing/.test(lower)) {
+    return 'Free trial for 15 days (no card required) → Pro $99/month → Business $299/month → Enterprise $999/month. See details at /pricing';
   }
-  if (/block|บล็อก/.test(lower)) {
-    return 'DSG บล็อก action ที่: (1) ไม่ได้แจ้งไว้ใน declared_actions (2) เกินเวลา TTL ที่กำหนด (3) มี pattern ที่เป็นอันตราย เช่น "delete all", "drop table", "bypass policy" — return { decision: "BLOCK", reason: "..." }';
+  if (/block/.test(lower)) {
+    return 'DSG blocks actions that: (1) were not listed in declared_actions (2) exceed the configured TTL (3) match a dangerous pattern such as "delete all", "drop table", "bypass policy" — returns { decision: "BLOCK", reason: "..." }';
   }
-  if (/สมัคร|signup|start|เริ่ม/.test(lower)) {
-    return 'สมัครได้ที่ /signup ใช้เวลา 30 วินาที ไม่ต้องใส่บัตรเครดิต ได้ API key ทันทีหลัง verify email';
+  if (/signup|start/.test(lower)) {
+    return 'Sign up at /signup — takes 30 seconds, no credit card required. You receive your API key immediately after email verification.';
   }
-  return 'ถามเรื่อง DSG Gate, วิธีต่อ agent, audit trail, หรือ pricing ได้เลยครับ — พร้อมตอบทั้งไทยและอังกฤษ';
+  return 'Ask about DSG Gate, how to connect your agent, audit trail, or pricing — happy to help.';
 }
 
 async function callOpenAI(messages: ChatMessage[]): Promise<ChatResult> {
@@ -199,11 +199,11 @@ async function callModel(messages: ChatMessage[]): Promise<ChatResult> {
 }
 
 const TRY_SUGGESTIONS = [
-  'วิธีต่อ agent กับ DSG',
+  'How do I connect my agent to DSG?',
   'What happens when gate blocks?',
-  'อธิบาย audit trail',
-  'ราคาหลังทดลองฟรี',
-  'DSG กับ LangChain ใช้ยังไง',
+  'Explain the audit trail',
+  'Pricing after the free trial',
+  'How to use DSG with LangChain',
 ];
 
 export async function POST(request: Request) {

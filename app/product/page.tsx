@@ -11,36 +11,36 @@ const monitorRows = [
 ];
 
 const workflowSteps = [
-  ['1', 'เลือก agent เดิม', 'ลูกค้าใช้ agent/runtime เดิม ไม่ต้องย้ายระบบหรือเขียน agent ใหม่'],
-  ['2', 'เลือก action ที่เสี่ยง', 'เริ่มจาก payment, deploy, privilege change หรือ external write ที่เห็นความเสี่ยงชัด'],
-  ['3', 'แนบ memory packet', 'ส่ง snapshot hash, classification, ttl และ context ที่จำเป็นมากับ action'],
-  ['4', 'เลือกโหมด gate', 'ลูกค้าเลือก Audit only เพื่อบันทึก/ตรวจย้อนหลัง หรือ Enforce gate เพื่อตรวจและหยุด action ก่อน execute'],
-  ['5', 'ตัดสินผล', 'ระบบคืน ALLOW, STABILIZE หรือ BLOCK พร้อม reason ที่อ่านได้'],
-  ['6', 'ส่งกลับ Control Plane', 'decision, evidence และ result receipt เชื่อมกลับ dashboard/audit flow เดิม'],
+  ['1', 'Keep your existing agent', 'Customers continue using their existing agent/runtime — no system migration or rewrite required'],
+  ['2', 'Identify high-risk actions', 'Start with payments, deploys, privilege changes, or external writes where risk is most visible'],
+  ['3', 'Attach a memory packet', 'Send a snapshot hash, classification, TTL, and necessary context along with each action'],
+  ['4', 'Choose gate mode', 'Customers choose Audit only for logging/retrospective review, or Enforce gate to inspect and halt actions before execution'],
+  ['5', 'Receive a decision', 'The system returns ALLOW, STABILIZE, or BLOCK with a human-readable reason'],
+  ['6', 'Report back to Control Plane', 'The decision, evidence, and result receipt link back to the existing dashboard/audit flow'],
 ];
 
 const usageSteps = [
-  ['เปิดหน้า Product', 'เข้า /product เพื่อดูภาพรวมว่า CospinDSG วางอยู่ตรงไหนของ agent flow'],
-  ['กด Connect agent', 'ไปที่ /dashboard/integrations เพื่อเริ่มต่อ agent เดิมเข้าระบบ'],
-  ['เลือก protected action', 'กำหนด action แรกที่ควรถูก gate เช่น payment หรือ deploy'],
-  ['เลือก Audit หรือ ตรวจด้วย', 'Audit only ใช้เก็บหลักฐานก่อน ส่วนตรวจด้วย/Enforce ใช้หยุด action เมื่อ gate ไม่ผ่าน'],
-  ['เปิด evidence', 'ใช้ docs/audit/dashboard ดู memory, action, decision และ result hash'],
-  ['ค่อยขยาย rollout', 'เมื่อหนึ่ง action ใช้ได้จริง ค่อยเพิ่ม workflow อื่น ไม่ claim เกินหลักฐาน'],
+  ['Open Product page', 'Go to /product to get an overview of where CospinDSG sits in the agent flow'],
+  ['Click Connect agent', 'Go to /dashboard/integrations to start connecting your existing agent'],
+  ['Choose a protected action', 'Define the first action that should be gated — such as payment or deploy'],
+  ['Choose Audit or Enforce', 'Audit only is for collecting evidence first; Enforce gate halts actions when the gate does not pass'],
+  ['Open evidence', 'Use docs/audit/dashboard to view memory, action, decision, and result hash'],
+  ['Expand rollout gradually', 'Once one action works correctly, add more workflows — never claim beyond verified evidence'],
 ];
 
 const connectSteps = [
-  ['1', 'Register', 'สร้าง agent record ใน Control Plane แล้วออก API key / agent id ให้ลูกค้า'],
-  ['2', 'Wrap', 'ครอบ function execute เดิมของลูกค้าด้วย guardedAction ไม่แก้ logic หลักของ agent'],
-  ['3', 'Preflight', 'ส่ง action envelope + memory packet ไปที่ DSG ก่อน action ออกสู่ระบบจริง'],
-  ['4', 'Mode switch', 'ลูกค้าเลือก Audit only หรือ Enforce gate: Audit เก็บหลักฐานไม่บล็อก, Enforce ตรวจและหยุด action ได้'],
-  ['5', 'Receipt', 'หลัง execute ส่ง result receipt hash กลับมาเก็บ audit trail ใน Control Plane'],
+  ['1', 'Register', 'Create an agent record in the Control Plane and issue an API key / agent ID to the customer'],
+  ['2', 'Wrap', 'Wrap the customer\'s existing execute function with guardedAction — without changing the agent\'s core logic'],
+  ['3', 'Preflight', 'Send the action envelope and memory packet to DSG before the action reaches the real system'],
+  ['4', 'Mode switch', 'Customer chooses Audit only or Enforce gate: Audit logs evidence without blocking; Enforce inspects and can halt actions'],
+  ['5', 'Receipt', 'After execution, send the result receipt hash back to store the audit trail in the Control Plane'],
 ];
 
 const benefits = [
-  'ไม่ต้องย้าย agent runtime เดิม',
-  'เห็นผลทันทีว่า action ไหนผ่าน หยุด หรือถูกบล็อก',
-  'มี evidence chain สำหรับ reviewer และ audit',
-  'ต่อกลับ DSG Control Plane เดิมได้ทันที',
+  'No need to migrate your existing agent runtime',
+  'See instantly which actions passed, were halted, or were blocked',
+  'Evidence chain available for reviewers and audit',
+  'Connects back to the existing DSG Control Plane immediately',
 ];
 
 export default function ProductPage() {
@@ -55,7 +55,7 @@ export default function ProductPage() {
                 CospinDSG Agent Shield
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-                หน้า product ใหม่ที่ใช้ธีมเดียวกับ Control Plane: วาง CospinDSG หน้า agent เดิม เพื่อ gate action สำคัญก่อน execute จริง แล้วส่งผลกลับเข้า dashboard, integrations, docs และ audit flow เดิม.
+                A new product page using the same theme as the Control Plane: place CospinDSG in front of your existing agent to gate critical actions before real execution, then feed results back into the existing dashboard, integrations, docs, and audit flow.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link href="/dashboard" className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950">
@@ -90,8 +90,8 @@ export default function ProductPage() {
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="border border-white/10 bg-[#0d0f12] p-6">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">ลำดับการทำงาน</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">จาก agent เดิม ไปถึง evidence ใน Control Plane</h2>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Workflow sequence</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">From existing agent to evidence in the Control Plane</h2>
             <div className="mt-5 space-y-3">
               {workflowSteps.map(([step, title, body]) => (
                 <div key={step} className="grid gap-4 border border-white/10 bg-white/[0.03] p-4 md:grid-cols-[52px_180px_1fr] md:items-start">
@@ -106,8 +106,8 @@ export default function ProductPage() {
           </div>
 
           <div className="border border-amber-300/20 bg-amber-300/10 p-6">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200">ขั้นตอนวิธีใช้</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">ใช้จริงแบบง่ายที่สุด</h2>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200">How to use</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">The simplest path to real usage</h2>
             <div className="mt-5 space-y-3">
               {usageSteps.map(([title, body], index) => (
                 <div key={title} className="border border-amber-300/15 bg-black/20 p-4">
@@ -121,10 +121,10 @@ export default function ProductPage() {
         </section>
 
         <section className="mt-6 border border-blue-300/20 bg-blue-300/10 p-6">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-blue-200">ต่อเข้า agent ระบบเดิมของลูกค้า</p>
-          <h2 className="mt-2 text-2xl font-semibold text-white">ต่อแบบ wrapper ไม่ต้องรื้อ agent เดิม</h2>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-blue-200">Connect to the customer&apos;s existing agent system</p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Wrapper integration — no need to replace the existing agent</h2>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-300">
-            วิธีต่อที่ถูกต้องคือไม่ให้ลูกค้าย้าย agent เข้ามาอยู่ใน DSG แต่ให้วาง CospinDSG เป็น pre-action gate หน้า function ที่กำลังจะทำงานจริง เช่น transfer, deploy, approve หรือ write external system.
+            The correct integration method is not to migrate the customer's agent into DSG, but to place CospinDSG as a pre-action gate in front of the function that is about to run — such as transfer, deploy, approve, or write to an external system.
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-5">
             {connectSteps.map(([step, title, body]) => (
@@ -145,16 +145,16 @@ export default function ProductPage() {
           <div className="mt-5 border border-white/10 bg-[#0d0f12] p-4 text-sm leading-7 text-slate-300">
             <p className="font-semibold text-white">Integration rule</p>
             <p className="mt-2">
-              Customer agent เดิมยังเรียก tool เดิมเหมือนเดิม แต่ก่อนเรียก tool จริงต้องส่ง action envelope เข้า DSG ก่อน. ถ้าอยู่โหมด Audit only ให้บันทึกผลและปล่อยระบบเดิมทำงานต่อ; ถ้าอยู่โหมด Enforce gate และ gate ไม่คืน ALLOW ห้าม execute action และต้องแสดง reason ให้ operator หรือ reviewer เห็น.
+              The customer's existing agent continues calling its existing tools as before, but before calling any real tool it must send an action envelope to DSG first. In Audit only mode: log the result and let the existing system proceed. In Enforce gate mode: if the gate does not return ALLOW, the action must not be executed and the reason must be shown to the operator or reviewer.
             </p>
           </div>
         </section>
 
         <section className="mt-6 grid gap-4 md:grid-cols-3">
           {[
-            ['ALLOW', 'ปล่อย action ให้ agent เดิม execute ต่อ เมื่อเงื่อนไขผ่านและ evidence ครบ'],
-            ['STABILIZE', 'หยุดเพื่อกลับสู่จุดนิ่ง เมื่อ drift หรือ oscillation สูงเกิน policy'],
-            ['BLOCK', 'บล็อกก่อนเกิดผลเสีย เมื่อเจอ invariant, memory, network หรือ temporal breach'],
+            ['ALLOW', 'Permit the action for the existing agent to execute when conditions pass and evidence is complete'],
+            ['STABILIZE', 'Halt to return to a stable state when drift or oscillation exceeds policy thresholds'],
+            ['BLOCK', 'Block before harm occurs when an invariant, memory, network, or temporal breach is detected'],
           ].map(([title, body]) => (
             <article key={title} className="border border-white/10 bg-white/[0.03] p-6">
               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Decision</p>
@@ -167,7 +167,7 @@ export default function ProductPage() {
         <section className="mt-6 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="border border-emerald-400/20 bg-emerald-400/10 p-6">
             <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/80">User benefit</p>
-            <h2 className="mt-2 text-2xl font-semibold text-emerald-50">เห็นประโยชน์ทันที ไม่ต้องอธิบายยาว</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-emerald-50">Immediate value — no lengthy explanation needed</h2>
             <div className="mt-5 space-y-3">
               {benefits.map((benefit) => (
                 <div key={benefit} className="border border-emerald-300/15 bg-black/20 p-4 text-sm leading-7 text-emerald-50">
@@ -179,9 +179,9 @@ export default function ProductPage() {
 
           <div className="border border-white/10 bg-[#0d0f12] p-6">
             <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Connect to existing plane</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">ไม่แยกระบบใหม่จนหลุดจาก DSG เดิม</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white">No separate system — everything stays in DSG</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300">
-              Product page นี้เป็นหน้า core ใหม่สำหรับขายและอธิบาย CospinDSG แต่เส้นทางใช้งานจริงยังกลับเข้า Control Plane เดิม: dashboard สำหรับ monitor, integrations สำหรับต่อ agent, docs สำหรับ runtime spine และ audit evidence.
+              This product page is the new core page for DSG, but real usage still flows back into the existing Control Plane: dashboard for monitoring, integrations for connecting agents, docs for the runtime spine and audit evidence.
             </p>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
               <Link href="/dashboard" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-100">Dashboard</Link>
@@ -194,7 +194,7 @@ export default function ProductPage() {
         <section className="mt-6 border border-amber-300/25 bg-amber-300/10 p-5 text-sm leading-7 text-amber-50">
           <p className="font-semibold">Claim boundary</p>
           <p className="mt-2">
-            หน้านี้ต่อสวิตช์ Audit/Enforce กับ backend API/settings แล้ว แต่การใช้งาน production จริงยังต้องผ่าน test, typecheck, build, auth, database migration และ smoke evidence จริงก่อน.
+            This page wires the Audit/Enforce switch to the backend API and settings, but production use still requires passing tests, typecheck, build, auth, database migration, and live smoke evidence.
           </p>
         </section>
       </div>

@@ -431,7 +431,7 @@ export async function POST(_request: Request) {
 
     const coreMode = process.env.DSG_CORE_MODE;
     results.env_check = {
-      DSG_CORE_MODE: coreMode || '❌ NOT SET — dashboard จะ error',
+      DSG_CORE_MODE: coreMode || '❌ NOT SET — dashboard will error',
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅' : '❌ NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅' : '❌ NOT SET',
       STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? '✅' : '❌ NOT SET',
@@ -440,7 +440,7 @@ export async function POST(_request: Request) {
 
     if (apiKey) {
       results.api_key = apiKey;
-      results.api_key_warning = '⚠️ เก็บ key นี้ไว้ — จะไม่แสดงอีก';
+      results.api_key_warning = '⚠️ Save this key — it will not be shown again';
     }
 
     results.policy = policyStatus;
@@ -467,13 +467,13 @@ export async function POST(_request: Request) {
     results.ok = firstRunComplete;
     results.next_steps = [] as string[];
     if (!coreMode) {
-      (results.next_steps as string[]).push('ตั้ง DSG_CORE_MODE=internal บน Vercel');
+      (results.next_steps as string[]).push('Set DSG_CORE_MODE=internal on Vercel');
     }
     if (!process.env.STRIPE_SECRET_KEY) {
-      (results.next_steps as string[]).push('ตั้ง STRIPE_SECRET_KEY บน Vercel (ถ้าจะใช้ billing)');
+      (results.next_steps as string[]).push('Set STRIPE_SECRET_KEY on Vercel (if you want to enable billing)');
     }
     if (usedLegacyExecutionFallback || runtimeInfraNeedsRepair) {
-      (results.next_steps as string[]).push('รัน Supabase migrations ล่าสุดและ reload PostgREST schema cache เพื่อเปิดใช้งาน runtime RPC/checkpoint เต็มรูปแบบ');
+      (results.next_steps as string[]).push('Run the latest Supabase migrations and reload the PostgREST schema cache to fully enable runtime RPC/checkpoint');
       results.runtime_infra_fix = {
         required: true,
         commands: [...RUNTIME_INFRA_FIX_STEPS],

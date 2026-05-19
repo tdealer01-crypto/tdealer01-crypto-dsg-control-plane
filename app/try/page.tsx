@@ -93,28 +93,28 @@ export default function TryPage() {
       <section className="px-4 pt-20 pb-16 text-center">
         <div className="mx-auto max-w-3xl">
           <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1 text-xs font-bold text-emerald-300 uppercase tracking-widest mb-6">
-            ทดลองฟรี 15 วัน · ไม่ต้องใส่บัตรเครดิต
+            15-day free trial · No credit card required
           </span>
           <h1 className="text-5xl font-black tracking-tight leading-tight md:text-6xl">
-            ควบคุม AI Agent<br />
-            <span className="text-emerald-400">ก่อนมันทำให้คุณเดือดร้อน</span>
+            Control Your AI Agent<br />
+            <span className="text-emerald-400">Before It Causes Damage</span>
           </h1>
           <p className="mt-6 text-lg text-slate-400 leading-8 max-w-2xl mx-auto">
-            DSG นั่งระหว่าง AI agent กับระบบของคุณ — ตรวจทุก action ประทับตราเวลา บันทึก audit trail
-            และบล็อกสิ่งที่ไม่ได้รับอนุญาต ก่อนที่จะสายเกินไป
+            DSG sits between your AI agent and your systems — inspecting every action, timestamping it, recording an audit trail,
+            and blocking anything unauthorized before it is too late.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/signup"
               className="rounded-2xl bg-emerald-500 px-10 py-4 text-base font-black text-slate-950 hover:bg-emerald-400 transition-all hover:scale-105 shadow-lg shadow-emerald-500/25"
             >
-              เริ่มทดลองฟรี 15 วัน →
+              Start 15-day free trial →
             </Link>
             <Link
               href="/demo"
               className="rounded-2xl border border-white/15 px-8 py-4 text-base font-bold text-slate-300 hover:text-white hover:border-white/30 transition-colors"
             >
-              ดู demo ก่อน
+              View demo first
             </Link>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-5 text-xs text-slate-500">
@@ -129,8 +129,8 @@ export default function TryPage() {
           <div className="rounded-3xl border border-white/10 bg-slate-900 p-8 md:p-12">
             <div className="grid gap-10 lg:grid-cols-2 items-center">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-3">สิ่งที่ได้รับทันที</p>
-                <h2 className="text-3xl font-black text-white mb-6">ใช้งานเต็มรูปแบบ<br />ตั้งแต่วันแรก</h2>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-3">What you get immediately</p>
+                <h2 className="text-3xl font-black text-white mb-6">Full access<br />from day one</h2>
                 <ul className="space-y-3">
                   {WHAT_YOU_GET.map(item => (
                     <li key={item} className="flex items-center gap-3 text-sm text-slate-300">
@@ -176,8 +176,8 @@ export default function TryPage() {
       <section className="px-4 pb-20">
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-10">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">ฟีเจอร์ที่ได้รับในช่วงทดลอง</p>
-            <h2 className="text-3xl font-black text-white">ครบทุกอย่างที่ production ต้องการ</h2>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Features included during trial</p>
+            <h2 className="text-3xl font-black text-white">Everything production requires</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {TRIAL_FEATURES.map(f => (
@@ -195,8 +195,8 @@ export default function TryPage() {
       <section className="px-4 pb-20">
         <div className="mx-auto max-w-4xl">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-black text-white">Setup ใน 4 ขั้นตอน</h2>
-            <p className="mt-3 text-slate-400">จาก signup ถึง production-ready ใน 5 นาที</p>
+            <h2 className="text-3xl font-black text-white">Setup in 4 steps</h2>
+            <p className="mt-3 text-slate-400">From signup to production-ready in 5 minutes</p>
           </div>
           <div className="grid gap-4 md:grid-cols-4">
             {STEPS.map((s, i) => (
@@ -221,9 +221,9 @@ export default function TryPage() {
       <section className="px-4 pb-20">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-10">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">หลังครบ 15 วัน</p>
-            <h2 className="text-3xl font-black text-white">เลือก plan ที่เหมาะกับทีม</h2>
-            <p className="mt-3 text-slate-400">ยกเลิกได้ทุกเมื่อ ไม่มีค่าใช้จ่ายแอบแฝง</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">After 15 days</p>
+            <h2 className="text-3xl font-black text-white">Choose the plan that fits your team</h2>
+            <p className="mt-3 text-slate-400">Cancel anytime. No hidden fees.</p>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
             {PLANS_AFTER_TRIAL.map(plan => (
@@ -237,7 +237,7 @@ export default function TryPage() {
               >
                 {plan.highlight && (
                   <div className="mb-3 inline-block rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-bold text-emerald-300">
-                    แนะนำ
+                    Recommended
                   </div>
                 )}
                 <h3 className="text-xl font-black text-white">{plan.name}</h3>
@@ -263,19 +263,19 @@ export default function TryPage() {
       <section className="px-4 pb-24">
         <div className="mx-auto max-w-3xl text-center">
           <div className="rounded-3xl border border-emerald-500/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.95)_50%)] p-12">
-            <h2 className="text-4xl font-black text-white">เริ่มได้เลยวันนี้</h2>
+            <h2 className="text-4xl font-black text-white">Start today</h2>
             <p className="mt-4 text-slate-400 leading-7">
-              ไม่ต้องใส่บัตรเครดิต ไม่มีสัญญาผูกมัด<br />
-              ถ้าหลัง 15 วันแล้วไม่ถูกใจ — ยกเลิกและลบ account ได้ทันที
+              No credit card required. No contracts.<br />
+              If you are not satisfied after 15 days — cancel and delete your account instantly.
             </p>
             <Link
               href="/signup"
               className="mt-8 inline-block rounded-2xl bg-emerald-500 px-12 py-4 text-lg font-black text-slate-950 hover:bg-emerald-400 transition-all hover:scale-105 shadow-lg shadow-emerald-500/20"
             >
-              เริ่มทดลองฟรี 15 วัน →
+              Start 15-day free trial →
             </Link>
             <p className="mt-4 text-xs text-slate-500">
-              มีคำถาม? ติดต่อ founder โดยตรง — ตอบภายใน 4 ชั่วโมง
+              Have questions? Contact the founder directly — response within 4 hours.
             </p>
           </div>
         </div>
