@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { UserJourneyFlow } from '../../components/UserJourneyFlow';
 
 function getMessage(message?: string, error?: string) {
   if (message === 'check-email') return { tone: 'success', text: 'Trial link sent. Check your email to continue.' };
@@ -21,6 +22,10 @@ export default async function SignupPage({
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+      <div className="mx-auto mb-8 max-w-5xl rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Your journey</p>
+        <UserJourneyFlow currentPath="/signup" />
+      </div>
       <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[1fr_1fr]">
         <section className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
           <h1 className="text-4xl font-bold">Create your workspace trial</h1>

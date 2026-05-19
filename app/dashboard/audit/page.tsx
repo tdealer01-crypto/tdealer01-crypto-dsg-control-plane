@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
+import { UserJourneyFlow } from '../../../components/UserJourneyFlow';
 
 type AuditEvent = {
   id?: number;
@@ -136,6 +137,11 @@ export default function AuditPage() {
       actions={[{ href: '/dashboard/executions', label: 'Open executions', tone: 'gold' }, { href: '/dashboard/verification', label: 'Verify proof', tone: 'slate' }]}
       steps={steps}
     >
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Your journey</p>
+        <UserJourneyFlow currentPath="/dashboard/audit" />
+      </div>
+
       {error ? <div className="mt-6 border border-amber-300/25 bg-amber-300/10 p-4 text-sm text-amber-100">{error}</div> : null}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">

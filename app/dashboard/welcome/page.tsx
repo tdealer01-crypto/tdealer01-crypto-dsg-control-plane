@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { UserJourneyFlow } from '../../../components/UserJourneyFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,12 @@ export default async function WelcomePage() {
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-3xl">
+
+        {/* Journey progress */}
+        <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Your journey</p>
+          <UserJourneyFlow currentPath="/dashboard/welcome" />
+        </div>
 
         {/* Header */}
         <div className="mb-12 text-center">

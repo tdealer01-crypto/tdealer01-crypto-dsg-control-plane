@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { UserJourneyFlow } from '../../../components/UserJourneyFlow';
 
 type Scope = 'read' | 'write' | 'admin' | 'gates:evaluate' | 'proofs:prove';
 type KeyStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
@@ -153,6 +154,12 @@ export default function ApiKeysPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
+
+        {/* Journey progress */}
+        <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Your journey</p>
+          <UserJourneyFlow currentPath="/dashboard/api-keys" />
+        </div>
 
         {/* Header */}
         <section className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.92)_45%,rgba(245,197,92,0.06))] p-6">
