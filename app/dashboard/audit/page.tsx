@@ -198,9 +198,24 @@ export default function AuditPage() {
           <WorkflowPanel eyebrow="Evidence package" title="Export-ready JSON">
             <pre className="max-h-[360px] overflow-auto border border-white/10 bg-black/40 p-4 text-xs leading-6 text-slate-200">{evidenceJson}</pre>
             <div className="mt-4 flex flex-wrap gap-2">
+              <a
+                href="/api/audit/export?format=json&limit=1000"
+                download
+                className="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+              >
+                ⬇ Download JSON
+              </a>
+              <a
+                href="/api/audit/export?format=csv&limit=1000"
+                download
+                className="rounded-xl bg-blue-400 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-blue-300"
+              >
+                ⬇ Download CSV
+              </a>
               <Link href="/dashboard/verification" className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950">Verify proof</Link>
               <Link href="/dashboard/live-control" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">Back to live control</Link>
             </div>
+            <p className="mt-3 text-xs text-slate-500">JSON และ CSV มี hash, signature และ evidence ครบ — ส่งให้ compliance team ได้เลย</p>
           </WorkflowPanel>
         </div>
       </section>
