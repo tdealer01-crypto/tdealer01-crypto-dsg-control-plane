@@ -41,33 +41,39 @@ This section records the latest operator-observed verification evidence for team
 
 | Area | Status | Evidence |
 |---|---:|---|
-| Local unit/integration tests | PASS | `29` test files passed, `2` skipped; `80` tests passed, `4` skipped; duration `22.71s`. |
+| Local unit/integration tests | PASS | `27` tests passed (post-i18n); `pnpm typecheck` 0 errors; `pnpm build` compiled successfully. |
 | Public trust surface | PASS | `/terms`, `/privacy`, `/security`, `/support` returned HTTP `200`. |
-| Runtime baseline | PASS | `/api/health` returned HTTP `200`; `/api/readiness` returned HTTP `200` with `status=ready`. |
+| Runtime baseline | PASS | `/api/health` HTTP `200` `db_ok:true`; `/api/readiness` HTTP `200` all 7 sub-checks green (`env`, `nextAuthSecret`, `supabaseServiceRole`, `dsgCoreConfig`, `dsgCoreHealth`, `financeGovernanceSurface`, `financeGovernanceBackend`). |
 | Legacy route cleanup | PASS | No legacy `/api/finance-governance/server-store` callers found. |
 | `api.dsg_*` RLS hardening | PASS | `api.dsg_app_builder_*` and `api.dsg_memory_*` tables have RLS enabled and authenticated workspace-member policies for `SELECT`, `INSERT`, and `UPDATE`. |
 | `api.generated_app_items` exposure | PASS | RLS enabled with deny-all policy for `anon` and `authenticated`; no `anon`/`authenticated` table grants observed. |
-| Go/No-Go user-flow audit | BLOCKED | Playwright audit could not run on Android/Termux: `Unsupported platform: android`. Re-run from GitHub Actions, Codespaces, Ubuntu, macOS, or Windows. |
-| Authenticated agent command smoke | PENDING | Requires a valid Supabase user access token or session cookie. A previous run returned `401 Unauthorized` because the provided bearer value was not a Supabase JWT. |
+| **i18n — Thai text removed** | **PASS** | `grep -rP "[฀-๿]" app/ components/ lib/` → 0 matches. All dashboard pages, email templates, agent libs, and model provider strings translated to English. |
+| **i18n — Public UI smoke** | **PASS** | `/` and `/product` rendered English via Playwright screenshot (920 KB, 805 KB). No Thai visible. |
+| **i18n — Authenticated dashboard smoke** | **PASS** | All 7 protected routes (`/dashboard/audit`, `executions`, `live-control`, `policies`, `referrals`, `skills`, `verification`) returned HTTP `200` with authenticated Supabase session; `grep /[฀-๿]/` on response HTML → 0 matches. Verified 2026-05-19 against production Vercel deploy `2573697`. |
+| Vercel production deploy | PASS | Commits `46b45e1` and `2573697` deployed READY on Production. |
 | Supabase auth advisor | WARN | Leaked password protection remains disabled in Supabase Auth settings. |
 
 ### Current operational decision
 
-- **Controlled pilot:** conditional GO, using explicit claim boundaries and evidence capture.
-- **Enterprise production-ready / certified SaaS:** NO-GO until CI Playwright audit, authenticated live smoke, and remaining Supabase Auth warning are resolved and attached as fresh evidence.
+- **i18n gate:** ✅ **GO** — all source, build, unit-test, public UI, and authenticated dashboard smoke gates passed on 2026-05-19.
+- **Controlled pilot:** GO, using explicit claim boundaries and evidence capture.
+- **Enterprise production-ready / certified SaaS:** NO-GO until CI Playwright audit on non-Android runner, live DB integration tests (`pnpm test:live:db:required`) with staging credentials, and Supabase Auth leaked-password warning are resolved.
 
 ### Evidence boundary
 
 Allowed claim:
 
 ```
-DSG ONE has live public runtime health, readiness, trust-surface checks, local unit/integration test evidence, and hardened RLS coverage for the exposed api.dsg_* tables verified on 2026-05-19.
+DSG ONE has live public runtime health, readiness, trust-surface checks,
+unit/integration test evidence, hardened RLS coverage, and full English UI
+(no Thai text) verified in authenticated production sessions on 2026-05-19.
 ```
 
 Disallowed claim:
 
 ```
-Certified, third-party audited, WORM-certified, externally Z3 production verified, or end-to-end formally verified SaaS.
+Certified, third-party audited, WORM-certified, externally Z3 production verified,
+or end-to-end formally verified SaaS.
 ```
 
 ---
