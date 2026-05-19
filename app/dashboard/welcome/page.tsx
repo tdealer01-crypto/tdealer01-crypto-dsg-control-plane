@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import AutoSetupButton from './AutoSetupButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +102,18 @@ export default async function WelcomePage() {
               Trial · <span className="text-amber-300 font-semibold">{welcome.trialDaysLeft} days</span> remaining
             </p>
           )}
+        </div>
+
+        {/* Auto Setup */}
+        <div className="mb-6">
+          <AutoSetupButton />
+        </div>
+
+        {/* Divider */}
+        <div className="mb-6 flex items-center gap-4">
+          <div className="h-px flex-1 bg-slate-800" />
+          <span className="text-xs font-semibold uppercase tracking-widest text-slate-600">หรือตั้งค่าเอง</span>
+          <div className="h-px flex-1 bg-slate-800" />
         </div>
 
         {/* Steps */}
