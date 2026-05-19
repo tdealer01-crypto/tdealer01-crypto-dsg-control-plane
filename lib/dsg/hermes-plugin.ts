@@ -87,11 +87,11 @@ interface CommandProfile {
 // ─── preflight checks ───────────────────────────────────────────────────────
 
 const SENSITIVE_FILE_PATTERNS: RegExp[] = [
-  /\.env(\.|$)/i,
+  /\.env(?:[^a-zA-Z0-9]|$)/i,
   /\bsecrets?\b/i,
   /\btokens?\b/i,
   /private[_-]?key/i,
-  /\.pem$/i,
+  /\.pem(?:[^a-zA-Z0-9]|$)/i,
   /credentials?/i,
   /\.ssh\//i,
   /\bid_rsa\b/,
