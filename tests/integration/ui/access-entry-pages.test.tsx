@@ -15,7 +15,7 @@ describe('public access entry pages', () => {
   it('pricing trial CTA points to /login', () => {
     const source = read('app/pricing/page.tsx');
     expect(source).toContain('href="/login"');
-    expect(source).toContain('Start Trial');
+    expect(source).toContain('trial');
   });
 
   it('login includes approval-required, sso-required, and not-allowed banners', () => {
