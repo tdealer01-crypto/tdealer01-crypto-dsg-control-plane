@@ -10,6 +10,15 @@ type ChatLine = {
   content: string;
 };
 
+type RouteQaResult = {
+  ok?: boolean;
+  mode?: string;
+  summary?: { total?: number; passed?: number; failed?: number };
+  results?: Array<{ path?: string; ok?: boolean; status?: number; title?: string; latencyMs?: number }>;
+  truthBoundary?: string;
+  error?: string;
+};
+
 const STORAGE_KEY = 'dsg_chat_history';
 const MAX_HISTORY = 100;
 const AGENT_CHAT_ENDPOINT = '/api/agent-chat-v2';
@@ -38,15 +47,34 @@ function makeLine(role: ChatLine['role'], content: string): ChatLine {
   };
 }
 
+function formatRouteQa(result: RouteQaResult) {
+  if (result.error) return `Route QA failed: ${result.error}`;
+
+  const summary = result.summary;
+  const header = result.ok
+    ? `✅ Route QA passed: ${summary?.passed ?? 0}/${summary?.total ?? 0} page(s)`
+    : `⚠️ Route QA found issues: ${summary?.failed ?? 0}/${summary?.total ?? 0} failed`;
+
+  const rows = (result.results || [])
+    .map((row) => {
+      const state = row.ok ? 'PASS' : 'FAIL';
+      return `${state} ${row.path || '-'} • HTTP ${row.status ?? '-'} • ${row.latencyMs ?? '-'}ms${row.title ? ` • ${row.title}` : ''}`;
+    })
+    .join('\n');
+
+  return [header, rows, result.truthBoundary ? `Boundary: ${result.truthBoundary}` : ''].filter(Boolean).join('\n');
+}
+
 export default function AgentChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [qaBusy, setQaBusy] = useState(false);
   const [useCodex, setUseCodex] = useState(false);
   const [codexResponseId, setCodexResponseId] = useState<string | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'DSG Agent v2 ready — uses the new skills bundle for chatbot/agent runtime'),
+    makeLine('system', 'DSG Agent v2 ready — plan first, approve before execution. Page QA buttons check real routes.'),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +106,26 @@ export default function AgentChatWidget() {
   const suggestions = useMemo(() => {
     return PAGE_SUGGESTIONS[pathname] || PAGE_SUGGESTIONS['/dashboard'] || [];
   }, [pathname]);
+
+  async function runRouteQa(all: boolean) {
+    if (qaBusy) return;
+    setQaBusy(true);
+    setLines((prev) => [...prev, makeLine('user', all ? 'Check all public pages' : `Check current page ${pathname}`)]);
+
+    try {
+      const res = await fetch('/api/route-qa', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(all ? { all: true } : { path: pathname }),
+      });
+      const json = (await res.json().catch(() => ({}))) as RouteQaResult;
+      setLines((prev) => [...prev, makeLine('assistant', formatRouteQa(json))]);
+    } catch (err) {
+      setLines((prev) => [...prev, makeLine('assistant', err instanceof Error ? err.message : 'Route QA failed')]);
+    } finally {
+      setQaBusy(false);
+    }
+  }
 
   async function submit(message: string) {
     if (!message.trim() || busy) return;
@@ -122,7 +170,6 @@ export default function AgentChatWidget() {
           if (!raw.startsWith('data: ')) continue;
 
           if (useCodex) {
-            // Codex SSE format: { type, content/delta, responseId }
             try {
               const event = JSON.parse(raw.slice(6)) as Record<string, unknown>;
               if (event.type === 'token') {
@@ -142,7 +189,6 @@ export default function AgentChatWidget() {
               // skip malformed events
             }
           } else {
-            // Existing agent SSE format
             const event = parseSseData(raw);
             if (!event) continue;
             const msg = formatAgentEventMessage(event);
@@ -152,7 +198,6 @@ export default function AgentChatWidget() {
         }
       }
 
-      // Flush remaining Codex buffer
       if (useCodex && codexBuffer.trim()) {
         setLines((prev) => [...prev, makeLine('assistant', `🤖 Codex: ${codexBuffer}`)]);
       }
@@ -184,7 +229,7 @@ export default function AgentChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
+    <div className="fixed bottom-6 right-6 z-50 flex h-[560px] w-[390px] flex-col rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
       <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-slate-100">
@@ -196,15 +241,35 @@ export default function AgentChatWidget() {
           <button
             onClick={() => { setUseCodex((v) => !v); setCodexResponseId(null); }}
             className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${useCodex ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
-            title={useCodex ? 'Switch to DSG Agent' : 'Switch to Codex (free)'}
+            title={useCodex ? 'Switch to DSG Agent' : 'Switch to Codex'}
           >
             {useCodex ? 'Codex ON' : 'Codex'}
           </button>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close agent chat">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="border-b border-slate-800 px-4 py-2">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Page QA</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => void runRouteQa(false)}
+            disabled={qaBusy}
+            className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-100 disabled:opacity-50"
+          >
+            Check current page
+          </button>
+          <button
+            onClick={() => void runRouteQa(true)}
+            disabled={qaBusy}
+            className="rounded-lg border border-blue-400/30 bg-blue-400/10 px-2.5 py-1 text-[10px] font-bold text-blue-100 disabled:opacity-50"
+          >
+            Check all public pages
+          </button>
         </div>
       </div>
 
