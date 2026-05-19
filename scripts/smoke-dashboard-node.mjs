@@ -18,16 +18,16 @@
  */
 
 const BASE_URL      = (process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '');
-const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const ANON_KEY      = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const ANON_KEY      = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const EMAIL         = process.env.E2E_TEST_EMAIL;
 const PASSWORD      = process.env.E2E_TEST_PASSWORD;
 
 if (!SUPABASE_URL || !ANON_KEY || !EMAIL || !PASSWORD) {
   console.error([
-    'Missing required env vars:',
-    !SUPABASE_URL  && '  NEXT_PUBLIC_SUPABASE_URL',
-    !ANON_KEY      && '  NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'Missing required env vars (accepts NEXT_PUBLIC_ prefix or plain):',
+    !SUPABASE_URL  && '  NEXT_PUBLIC_SUPABASE_URL  (or SUPABASE_URL)',
+    !ANON_KEY      && '  NEXT_PUBLIC_SUPABASE_ANON_KEY  (or SUPABASE_ANON_KEY)',
     !EMAIL         && '  E2E_TEST_EMAIL',
     !PASSWORD      && '  E2E_TEST_PASSWORD',
   ].filter(Boolean).join('\n'));
