@@ -19,6 +19,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/trial-invite",
+      "schedule": "0 11 * * *"
+    },
+    {
       "path": "/api/cron/social-listen",
       "schedule": "30 8 * * *"
     },

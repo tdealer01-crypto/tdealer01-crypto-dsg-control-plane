@@ -318,6 +318,47 @@ export async function sendGitHubLeadOutreach(opts: {
   );
 }
 
+// ─── Trial Invite (for warmed leads) ─────────────────────────────────────────
+// Sent to leads that received outreach + followup but haven't signed up yet
+export async function sendLeadTrialInvite(opts: {
+  email: string;
+  framework: string;
+  githubRepo: string;
+}): Promise<void> {
+  const frameworkLabel: Record<string, string> = {
+    langchain: 'LangChain', 'langchain-js': 'LangChain.js',
+    autogen: 'AutoGen', crewai: 'CrewAI',
+    'openai-agents': 'OpenAI Agents SDK', 'openai-agents-js': 'OpenAI Agents SDK (JS)',
+    'pydantic-ai': 'PydanticAI',
+  };
+  const fw = frameworkLabel[opts.framework] ?? opts.framework;
+  const signupUrl = `${BASE_URL}/signup`;
+  await sendEmail(
+    opts.email,
+    `Free 14-day trial — add governance to ${opts.githubRepo} today`,
+    `<div style="font-family:sans-serif;max-width:560px;margin:auto;line-height:1.6">
+      <p>Hey,</p>
+      <p>We opened up self-serve trials for DSG ONE — no credit card, no waiting list.</p>
+      <p>You can add governance to your ${fw} agent in under 5 minutes:</p>
+      <ol>
+        <li>Sign up below (14-day trial, free)</li>
+        <li>Get an API key from the dashboard</li>
+        <li>Add one line before every agent action — DSG blocks anything outside your policy</li>
+      </ol>
+      <a href="${signupUrl}"
+         style="background:#10b981;color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;font-size:16px;margin-top:8px">
+        Start free trial →
+      </a>
+      <p style="margin-top:24px;color:#475569">If now isn't the right time, no problem — just reply and let me know.</p>
+      <p>— DSG ONE founder</p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#94a3b8">
+        <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(opts.email)}" style="color:#94a3b8">Unsubscribe</a>
+      </p>
+    </div>`,
+  );
+}
+
 // ─── GitHub Lead Follow-up ────────────────────────────────────────────────────
 export async function sendGitHubLeadFollowup(opts: {
   email: string;
