@@ -115,24 +115,24 @@ export default function SkillsPage() {
           <p className="text-sm uppercase tracking-[0.25em] text-emerald-400">DSG Skills</p>
           <h1 className="mt-3 text-4xl font-bold">Agent Tool Registry</h1>
           <p className="mt-3 max-w-3xl text-slate-300">
-            DSG tool/skill ที่ใช้งานจริงในระบบ ผ่าน{" "}
+            DSG tools and skills actively used in the system, accessed via{" "}
             <code className="rounded bg-slate-800 px-2 py-1 text-emerald-300">POST /api/agent-chat</code>{" "}
-            และ runtime spine เดียวกันทั้งหมด
+            and the same unified runtime spine
           </p>
         </section>
 
         <section className="rounded-2xl border border-emerald-400/30 bg-emerald-400/5 p-8">
-          <h2 className="text-xl font-semibold text-emerald-200">Auto-Setup (ตั้งค่าอัตโนมัติ)</h2>
+          <h2 className="text-xl font-semibold text-emerald-200">Auto-Setup (automated configuration)</h2>
           <p className="mt-2 text-sm text-slate-300">
-            กดปุ่มเดียว — สร้าง policy, agent, execution, billing subscription, onboarding state,
-            runtime roles ครบทั้งระบบ + เช็ค env vars ที่ยังขาด
+            One button — creates policy, agent, execution, billing subscription, onboarding state,
+            and runtime roles for the full system, plus checks for missing env vars
           </p>
           <button
             onClick={() => void runAutoSetup()}
             disabled={running}
             className="mt-4 rounded-xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
-            {running ? "กำลังตั้งค่า..." : "เริ่ม Auto-Setup"}
+            {running ? "Running setup..." : "Start Auto-Setup"}
           </button>
 
           {error && (
@@ -145,7 +145,7 @@ export default function SkillsPage() {
             <div className="mt-4 space-y-4">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <p className="font-semibold text-emerald-300">
-                  {result.ok ? "✅ Setup สำเร็จ" : "⚠️ Setup มีปัญหาบางส่วน"}
+                  {result.ok ? "✅ Setup complete" : "⚠️ Setup completed with some issues"}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">Org: {result.org_id}</p>
                 {result.execution_id && (
@@ -155,7 +155,7 @@ export default function SkillsPage() {
 
               {result.api_key && (
                 <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
-                  <p className="font-semibold text-amber-200">🔑 API Key (เก็บไว้ — จะไม่แสดงอีก)</p>
+                  <p className="font-semibold text-amber-200">🔑 API Key (save this — it will not be shown again)</p>
                   <code className="mt-2 block break-all rounded bg-slate-950 p-3 text-xs text-emerald-300">
                     {result.api_key}
                   </code>
@@ -198,7 +198,7 @@ export default function SkillsPage() {
 
               {result.next_steps && result.next_steps.length > 0 && (
                 <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
-                  <p className="font-semibold text-amber-200">ต้องทำเพิ่ม:</p>
+                  <p className="font-semibold text-amber-200">Action required:</p>
                   <ul className="mt-2 space-y-1 text-sm text-amber-100">
                     {result.next_steps.map((step, i) => (
                       <li key={i}>• {step}</li>
