@@ -44,7 +44,7 @@ describe("browser_qa", () => {
     console.log("prompt:\n", r.hermesExecutionPrompt);
   });
 
-  it("BLOCK when audit/evidence proof is missing", () => {
+  it("PASS without proof (observe-no-audit fast path)", () => {
     const req: HermesPluginRequest = {
       mode: "browser_qa",
       prompt: "Check /proofgate",
@@ -52,10 +52,13 @@ describe("browser_qa", () => {
       context: { ...BASE_CONTEXT },
     };
     const r = evaluateHermesPluginRequest(req);
-    expect(r.decision).toBe("BLOCK");
-    expect(r.canExecute).toBe(false);
-    console.log("\n--- browser_qa BLOCK (no proof) ---");
+    expect(r.decision).toBe("PASS");
+    expect(r.canExecute).toBe(true);
+    expect(r.reasons).toContain("observe_no_audit_pass");
+    expect(r.actionEnvelope).toBeUndefined();
+    console.log("\n--- browser_qa PASS (no proof, observe fast path) ---");
     console.log("reasons:", r.reasons);
+    console.log("prompt:", r.hermesExecutionPrompt);
   });
 });
 

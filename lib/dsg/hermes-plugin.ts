@@ -451,6 +451,28 @@ export function evaluateHermesPluginRequest(
     };
   }
 
+  // observe-only modes (browser_qa, x_search_signal) pass without full audit binding
+  const profile = buildCommandProfile(req);
+  if (profile.actionType === "observe" && !req.context.proof) {
+    const prompt = [
+      `DSG PASS (observe, no-audit) — Hermes may ${req.mode === "browser_qa" ? "open browser and QA" : "search"}.`,
+      req.path ?? req.url ?? req.query ?? req.prompt ?? "",
+      "No mutation will occur. No result callback required.",
+    ].filter(Boolean).join("\n");
+    return {
+      pluginVersion: HERMES_PLUGIN_VERSION,
+      mode: req.mode,
+      canExecute: true,
+      decision: "PASS",
+      status: "HERMES_EXECUTE",
+      hermesExecutionPrompt: prompt,
+      reasons: ["observe_no_audit_pass"],
+      evaluatedAt,
+      truthBoundary:
+        "DSG Hermes Plugin approved this observe-only action without audit binding. No mutations. No result callback required.",
+    };
+  }
+
   const gateRequest = buildGateRequest(req, now);
   const gateResult = evaluateAgentCommandGate(gateRequest, now);
 
