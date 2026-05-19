@@ -5,72 +5,72 @@ const TRIAL_FEATURES = [
   {
     icon: '🛂',
     title: 'AI Agent Gate',
-    desc: 'ประกาศสิทธิ์ล่วงหน้า — DSG ตรวจทุก action ก่อนผ่าน ประทับตราเวลาและบันทึก',
+    desc: 'Declare permissions upfront — DSG inspects every action before it passes, timestamps it, and records it.',
   },
   {
     icon: '📋',
-    title: 'Audit Trail จริง',
-    desc: 'ทุก decision มี hash, timestamp, และ reason — export PDF ให้ audit ได้ทันที',
+    title: 'Real Audit Trail',
+    desc: 'Every decision has a hash, timestamp, and reason — export to PDF for auditors instantly.',
   },
   {
     icon: '🔑',
-    title: 'API Key พร้อมใช้',
-    desc: 'รับ API key ทันทีหลัง signup — ต่อกับ agent ได้ใน 5 นาที',
+    title: 'API Key Ready Instantly',
+    desc: 'Get your API key immediately after signup — connect to your agent in 5 minutes.',
   },
   {
     icon: '👥',
     title: 'Team Management',
-    desc: 'เพิ่มทีม กำหนด role OWNER / ADMIN / OPERATOR / VIEWER ควบคุมว่าใครทำอะไรได้',
+    desc: 'Add team members and assign roles — OWNER / ADMIN / OPERATOR / VIEWER — to control who can do what.',
   },
   {
     icon: '🔔',
     title: 'Webhook & Notifications',
-    desc: 'ส่ง event ไปยัง Slack, PagerDuty, หรือ endpoint ของคุณเมื่อ gate block หรืออนุมัติ',
+    desc: 'Push events to Slack, PagerDuty, or your own endpoint when the gate blocks or approves an action.',
   },
   {
     icon: '📊',
     title: 'Finance Governance',
-    desc: 'Approval workflow, case tracking, และ PDF audit report สำหรับ AI agent ด้านการเงิน',
+    desc: 'Approval workflow, case tracking, and PDF audit reports for AI agents in finance operations.',
   },
 ];
 
 const WHAT_YOU_GET = [
-  '✓ ใช้ได้เต็มรูปแบบ 15 วัน — ไม่มีฟีเจอร์ที่ถูก lock',
-  '✓ ไม่ต้องใส่ข้อมูลบัตรเครดิต',
-  '✓ API key สำหรับ production ทันที',
-  '✓ Audit trail จริง — ไม่ใช่ sandbox',
-  '✓ Setup เสร็จใน 5 นาที',
-  '✓ Support ตรงจาก founder ตลอด 15 วัน',
+  '✓ Full access for 15 days — no features locked',
+  '✓ No credit card required',
+  '✓ Production API key from day one',
+  '✓ Real audit trail — not a sandbox',
+  '✓ Setup complete in 5 minutes',
+  '✓ Direct founder support throughout the 15-day trial',
 ];
 
 const STEPS = [
-  { num: '1', title: 'สร้างบัญชี', desc: 'กรอก email + workspace name — ใช้เวลา 30 วินาที' },
-  { num: '2', title: 'รับ API Key', desc: 'ได้ key ทันทีหลัง verify email — พร้อมใช้กับ agent' },
-  { num: '3', title: 'ประกาศ Policy', desc: 'บอก DSG ว่า agent ของคุณทำอะไรได้บ้าง' },
-  { num: '4', title: 'เห็น Audit Trail', desc: 'ทุก action มี stamp, reason, และ proof — real-time' },
+  { num: '1', title: 'Create account', desc: 'Enter your email and workspace name — takes 30 seconds' },
+  { num: '2', title: 'Receive API Key', desc: 'Get your key immediately after email verification — ready to connect to your agent' },
+  { num: '3', title: 'Declare Policy', desc: 'Tell DSG what your agent is allowed to do' },
+  { num: '4', title: 'View Audit Trail', desc: 'Every action has a stamp, reason, and proof — in real time' },
 ];
 
 const PLANS_AFTER_TRIAL = [
   {
     name: 'Pro',
     price: '$99',
-    per: '/เดือน',
+    per: '/month',
     highlight: false,
-    features: ['Gate evaluation ไม่จำกัด', 'Audit trail 90 วัน', 'API key 3 ชุด', 'Email support'],
+    features: ['Unlimited gate evaluations', '90-day audit trail', '3 API keys', 'Email support'],
   },
   {
     name: 'Business',
     price: '$299',
-    per: '/เดือน',
+    per: '/month',
     highlight: true,
-    features: ['ทุกอย่างใน Pro', 'Team management', 'Webhook & Notifications', 'PDF export', 'Priority support'],
+    features: ['Everything in Pro', 'Team management', 'Webhook & Notifications', 'PDF export', 'Priority support'],
   },
   {
     name: 'Enterprise',
     price: '$999',
-    per: '/เดือน',
+    per: '/month',
     highlight: false,
-    features: ['ทุกอย่างใน Business', 'Custom policy engine', 'SLA 99.9%', 'Dedicated onboarding', 'Custom audit report'],
+    features: ['Everything in Business', 'Custom policy engine', 'SLA 99.9%', 'Dedicated onboarding', 'Custom audit report'],
   },
 ];
 
@@ -84,7 +84,7 @@ export default function TryPage() {
           <Link href="/" className="text-lg font-black text-white">DSG</Link>
           <div className="flex items-center gap-4">
             <Link href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block">Pricing</Link>
-            <Link href="/auth/login" className="text-sm text-slate-400 hover:text-white transition-colors">เข้าสู่ระบบ</Link>
+            <Link href="/auth/login" className="text-sm text-slate-400 hover:text-white transition-colors">Log in</Link>
           </div>
         </div>
       </nav>
