@@ -80,7 +80,7 @@ export default function HomePage() {
             <div className="mt-8 rounded-3xl border border-emerald-300/25 bg-emerald-400/10 p-5 shadow-2xl shadow-emerald-950/30">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Try before login</p>
               <p className="mt-2 text-sm leading-7 text-emerald-50">
-                Had AI break things before? See proof/demo and ask DSG first — public mode does not execute actions and you don't need to migrate any data.
+                Had AI break things before? See proof/demo and ask DSG first — public mode does not execute actions and you don&apos;t need to migrate any data.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
