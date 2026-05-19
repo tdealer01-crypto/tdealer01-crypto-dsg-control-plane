@@ -3,7 +3,12 @@
 //
 // BLOCK response includes session state + guidance so the agent LLM can
 // decide next step without human intervention.
+//
+// Sessions are encoded as signed tokens so they survive across serverless
+// instances. Pass session_token from the declare response into every gate
+// call for reliable cross-instance operation.
 
+import { createHmac } from 'crypto';
 import { NextResponse } from 'next/server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 
@@ -11,6 +16,9 @@ export const dynamic = 'force-dynamic';
 
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 60_000;
+
+// Used to sign session tokens. Override in production via env.
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.NEXTAUTH_SECRET || 'dsg-try-session-secret-dev-only';
 
 type Session = {
   session_id: string;
@@ -21,15 +29,28 @@ type Session = {
   created_at: number;
 };
 
+// In-memory store — fast path when same serverless instance handles both declare and gate
 const sessions = new Map<string, Session>();
 
-// Clean expired sessions every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, s] of sessions) {
-    if (s.expires_at < now) sessions.delete(id);
-  }
-}, 5 * 60_000);
+// Encode session state into a signed token so it can be passed back by the client
+// and decoded on any serverless instance without shared state.
+function encodeSessionToken(session: Session): string {
+  const payload = Buffer.from(JSON.stringify(session)).toString('base64url');
+  const sig = createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+function decodeSessionToken(token: string): Session | null {
+  const dot = token.lastIndexOf('.');
+  if (dot < 1) return null;
+  const payload = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  const expected = createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  if (sig !== expected) return null;
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session;
+  } catch { return null; }
+}
 
 const BLOCKED_PATTERNS = [
   /delete\s+all/i, /drop\s+table/i, /truncate/i,
@@ -134,26 +155,29 @@ export async function POST(request: Request) {
 
     const stamp = makeStamp();
     const expiresAt = Date.now() + ttlMin * 60_000;
-    sessions.set(sessionId, {
+    const newSession: Session = {
       session_id: sessionId,
       declared_actions: declaredActions,
       expires_at: expiresAt,
       stamps: [stamp],
       blocked_count: 0,
       created_at: Date.now(),
-    });
+    };
+    sessions.set(sessionId, newSession);
+    const sessionToken = encodeSessionToken(newSession);
 
     return NextResponse.json({
       ok: true,
       decision: 'ALLOW',
       declaration_stamp: stamp,
       session_id: sessionId,
+      session_token: sessionToken,
       declared_actions: declaredActions,
       ttl_minutes: ttlMin,
       expires_at: new Date(expiresAt).toISOString(),
       agent_guidance: {
-        next_step: 'Call POST /api/try/gate with { session_id, action } before each action you take.',
-        reminder: 'Only declared actions will be stamped. Undeclared actions will be BLOCKED with guidance to rethink.',
+        next_step: 'Call POST /api/try/gate with { session_id, action, session_token } before each action you take.',
+        reminder: 'Pass session_token back in every gate call to ensure reliability across serverless instances. Only declared actions will be stamped. Undeclared actions will be BLOCKED with guidance to rethink.',
       },
     }, { headers });
   }
@@ -163,7 +187,17 @@ export async function POST(request: Request) {
     if (!sessionId) return NextResponse.json({ error: 'session_id required' }, { status: 400, headers });
 
     const action = body.action.slice(0, 500);
-    const session = sessions.get(sessionId);
+
+    // Prefer Map (same instance), fall back to client-supplied signed token (cross-instance)
+    let session = sessions.get(sessionId);
+    if (!session && typeof body.session_token === 'string') {
+      const decoded = decodeSessionToken(body.session_token);
+      if (decoded && decoded.session_id === sessionId) {
+        session = decoded;
+        // Re-register in local Map for subsequent calls from the same instance
+        sessions.set(sessionId, session);
+      }
+    }
 
     if (!session) {
       return NextResponse.json({
@@ -214,12 +248,14 @@ export async function POST(request: Request) {
     // ALLOW — stamp and record
     const stamp = makeStamp();
     session.stamps.push(stamp);
+    const updatedToken = encodeSessionToken(session);
 
     return NextResponse.json({
       decision: 'ALLOW',
       stamp,
       action,
       session_id: sessionId,
+      session_token: updatedToken,
       session_state: {
         stamps_issued: session.stamps.length,
         blocked_count: session.blocked_count,

@@ -9,6 +9,7 @@ function getMessage(message?: string, error?: string) {
   if (error === 'approval-required') return { tone: 'error', text: 'This workspace requires admin approval before sign in.' };
   if (error === 'sso-required') return { tone: 'error', text: 'This organization requires single sign-on for login.' };
   if (error === 'not-allowed') return { tone: 'error', text: 'Your account is not allowed to access this workspace.' };
+  if (error === 'not-provisioned') return { tone: 'error', text: 'No workspace found for this email. Start a trial or request access.' };
   if (error === 'invalid-email') return { tone: 'error', text: 'Please enter a valid work email address.' };
   if (error) return { tone: 'error', text: 'Unable to complete login. Please try again.' };
   return null;

@@ -2,6 +2,11 @@ import Link from 'next/link';
 
 function getMessage(message?: string, error?: string) {
   if (message === 'check-email') return { tone: 'success', text: 'Trial link sent. Check your email to continue.' };
+  if (error === 'already-provisioned') return { tone: 'error', text: 'This email already has a workspace. Log in instead.' };
+  if (error === 'missing-email') return { tone: 'error', text: 'Please enter a valid email address.' };
+  if (error === 'missing-workspace') return { tone: 'error', text: 'Please enter a workspace name.' };
+  if (error === 'signup-failed') return { tone: 'error', text: 'Signup failed — please try again or contact support.' };
+  if (error === 'access-denied') return { tone: 'error', text: 'Self-serve signup is not currently available. Request access instead.' };
   if (error) return { tone: 'error', text: 'We could not start the trial. Please verify your details and try again.' };
   return null;
 }
