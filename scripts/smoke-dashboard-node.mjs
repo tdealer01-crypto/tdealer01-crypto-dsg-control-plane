@@ -17,22 +17,37 @@
  *   4. Checks HTTP status and HTML for Thai characters
  */
 
-const BASE_URL      = (process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '');
-const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const ANON_KEY      = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-const EMAIL         = process.env.E2E_TEST_EMAIL;
-const PASSWORD      = process.env.E2E_TEST_PASSWORD;
+const BASE_URL = (process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '');
 
-if (!SUPABASE_URL || !ANON_KEY || !EMAIL || !PASSWORD) {
+// Accept multiple env var naming conventions + known production URL as fallback
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
+  process.env.SUPABASE_PROJECT_URL ||
+  // Decoded from the anon key JWT — public, not a secret
+  'https://zeyguilldygozufpgxms.supabase.co';
+
+const ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_KEY;
+
+const EMAIL    = process.env.E2E_TEST_EMAIL;
+const PASSWORD = process.env.E2E_TEST_PASSWORD;
+
+if (!ANON_KEY || !EMAIL || !PASSWORD) {
   console.error([
-    'Missing required env vars (accepts NEXT_PUBLIC_ prefix or plain):',
-    !SUPABASE_URL  && '  NEXT_PUBLIC_SUPABASE_URL  (or SUPABASE_URL)',
-    !ANON_KEY      && '  NEXT_PUBLIC_SUPABASE_ANON_KEY  (or SUPABASE_ANON_KEY)',
-    !EMAIL         && '  E2E_TEST_EMAIL',
-    !PASSWORD      && '  E2E_TEST_PASSWORD',
+    'Missing required env vars:',
+    !ANON_KEY  && '  NEXT_PUBLIC_SUPABASE_ANON_KEY  (or SUPABASE_ANON_KEY / SUPABASE_KEY)',
+    !EMAIL     && '  E2E_TEST_EMAIL',
+    !PASSWORD  && '  E2E_TEST_PASSWORD',
   ].filter(Boolean).join('\n'));
+  console.error('\nTip: run `vercel env pull .env.staging` then check key names with:');
+  console.error('  grep -i supabase .env.staging | cut -d= -f1');
   process.exit(2);
 }
+
+console.log(`Supabase: ${SUPABASE_URL}`);
 
 const ROUTES = [
   'audit',
