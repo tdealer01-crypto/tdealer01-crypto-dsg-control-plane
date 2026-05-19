@@ -124,7 +124,7 @@ export default function ProductPage() {
           <p className="text-[11px] uppercase tracking-[0.24em] text-blue-200">Connect to the customer&apos;s existing agent system</p>
           <h2 className="mt-2 text-2xl font-semibold text-white">Wrapper integration — no need to replace the existing agent</h2>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-300">
-            The correct integration method is not to migrate the customer's agent into DSG, but to place CospinDSG as a pre-action gate in front of the function that is about to run — such as transfer, deploy, approve, or write to an external system.
+            The correct integration method is not to migrate the customer&apos;s agent into DSG, but to place CospinDSG as a pre-action gate in front of the function that is about to run — such as transfer, deploy, approve, or write to an external system.
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-5">
             {connectSteps.map(([step, title, body]) => (
@@ -145,7 +145,7 @@ export default function ProductPage() {
           <div className="mt-5 border border-white/10 bg-[#0d0f12] p-4 text-sm leading-7 text-slate-300">
             <p className="font-semibold text-white">Integration rule</p>
             <p className="mt-2">
-              The customer's existing agent continues calling its existing tools as before, but before calling any real tool it must send an action envelope to DSG first. In Audit only mode: log the result and let the existing system proceed. In Enforce gate mode: if the gate does not return ALLOW, the action must not be executed and the reason must be shown to the operator or reviewer.
+              The customer&apos;s existing agent continues calling its existing tools as before, but before calling any real tool it must send an action envelope to DSG first. In Audit only mode: log the result and let the existing system proceed. In Enforce gate mode: if the gate does not return ALLOW, the action must not be executed and the reason must be shown to the operator or reviewer.
             </p>
           </div>
         </section>
