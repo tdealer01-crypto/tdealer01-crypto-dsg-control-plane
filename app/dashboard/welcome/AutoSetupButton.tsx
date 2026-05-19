@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 type SetupState = 'idle' | 'running' | 'done' | 'error';
+type Lang = 'python' | 'javascript' | 'curl';
 
 type SetupResult = {
   ok: boolean;
@@ -13,10 +14,67 @@ type SetupResult = {
   error?: string;
 };
 
+function codeSnippet(lang: Lang, apiKey: string) {
+  if (lang === 'python') return `import requests
+
+DSG_API_KEY = "${apiKey}"
+BASE_URL = "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+
+def gate(session_id: str, action: str) -> str:
+    r = requests.post(f"{BASE_URL}/api/execute", json={
+        "session_id": session_id,
+        "action": action,
+    }, headers={"Authorization": f"Bearer {DSG_API_KEY}"})
+    return r.json().get("decision", "BLOCK")
+
+# ใส่ก่อนทุก action ที่ agent จะทำ
+if gate("run-001", "send email to customer") == "ALLOW":
+    send_email()   # ✅ ผ่าน gate แล้ว ทำได้
+else:
+    pass           # 🚫 BLOCK — หยุด`;
+
+  if (lang === 'javascript') return `const DSG_API_KEY = "${apiKey}";
+const BASE_URL = "https://tdealer01-crypto-dsg-control-plane.vercel.app";
+
+async function gate(sessionId, action) {
+  const res = await fetch(\`\${BASE_URL}/api/execute\`, {
+    method: "POST",
+    headers: {
+      "Authorization": \`Bearer \${DSG_API_KEY}\`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ session_id: sessionId, action }),
+  });
+  const data = await res.json();
+  return data.decision; // "ALLOW" | "BLOCK"
+}
+
+// ใส่ก่อนทุก action ที่ agent จะทำ
+const decision = await gate("run-001", "send email to customer");
+if (decision === "ALLOW") {
+  await sendEmail(); // ✅ ผ่าน gate
+}`;
+
+  return `curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \\
+  -H "Authorization: Bearer ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "session_id": "run-001",
+    "action": "send email to customer"
+  }'
+
+# Response:
+# { "decision": "ALLOW", "stamp": "DSG-A4B2" }
+# หรือ
+# { "decision": "BLOCK", "reason": "action not declared" }`;
+}
+
 export default function AutoSetupButton() {
   const [state, setState] = useState<SetupState>('idle');
   const [result, setResult] = useState<SetupResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [lang, setLang] = useState<Lang>('python');
+  const [codeCopied, setCodeCopied] = useState(false);
 
   async function runSetup() {
     setState('running');
@@ -124,6 +182,45 @@ export default function AutoSetupButton() {
             </div>
           )}
         </div>
+
+        {/* Code snippet */}
+        {result.api_key && (
+          <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                เพิ่มในโค้ด agent ของคุณ
+              </p>
+              <div className="flex gap-1">
+                {(['python', 'javascript', 'curl'] as Lang[]).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={`rounded px-2 py-1 text-xs font-bold transition ${
+                      lang === l
+                        ? 'bg-emerald-400 text-slate-950'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {l === 'javascript' ? 'JS' : l === 'python' ? 'Python' : 'cURL'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <pre className="overflow-x-auto rounded-lg bg-slate-950 p-4 text-xs leading-6 text-emerald-300 font-mono">
+              {codeSnippet(lang, result.api_key)}
+            </pre>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(codeSnippet(lang, result.api_key!));
+                setCodeCopied(true);
+                setTimeout(() => setCodeCopied(false), 2000);
+              }}
+              className="text-xs font-semibold text-slate-400 hover:text-white"
+            >
+              {codeCopied ? '✓ Copied' : 'Copy code'}
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3 pt-2">
           <Link
