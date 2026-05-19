@@ -36,6 +36,73 @@ export default function TrustPage() {
           ))}
         </section>
 
+        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:p-8">
+          <p className="text-xs uppercase tracking-widest text-slate-400">Infrastructure compliance</p>
+          <h2 className="mt-2 text-2xl font-bold text-white">Vendor certification stack</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            DSG ONE is built on certified infrastructure. The certifications below belong to each vendor, not DSG directly — they reflect the compliance posture of the underlying platform.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⚙</span>
+                <span className="font-bold text-white">GitHub</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Source code &amp; CI/CD</p>
+              <ul className="mt-3 space-y-1">
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> SOC 2 Type 2
+                </li>
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> PCI DSS v4.0.1
+                </li>
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> ISO 27001
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">▲</span>
+                <span className="font-bold text-white">Vercel</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Hosting &amp; edge runtime</p>
+              <ul className="mt-3 space-y-1">
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> SOC 2 Type 2
+                </li>
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> GDPR compliant
+                </li>
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> ISO 27001
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🗄</span>
+                <span className="font-bold text-white">Supabase</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Database &amp; auth</p>
+              <ul className="mt-3 space-y-1">
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> SOC 2 Type 2
+                </li>
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> GDPR compliant
+                </li>
+                <li className="flex items-center gap-2 text-sm text-emerald-300">
+                  <span className="text-emerald-400">✓</span> HIPAA eligible
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            Certifications verified via vendor trust portals. DSG does not hold independent SOC 2, PCI DSS, or ISO 27001 certification at this stage.
+          </p>
+        </section>
+
         <section className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
           <h2 className="text-2xl font-bold">Boundary</h2>
           <p className="mt-3 leading-7 text-slate-300">
