@@ -82,9 +82,12 @@ if (RAW_COOKIE) {
   }
   console.log(`✅ Signed in as ${session.user?.email ?? EMAIL}\n`);
 
+  // @supabase/ssr v0.7 stores session as raw JSON, chunked at 3180 URI-encoded chars
+  const { createChunks } = await import('@supabase/ssr/dist/module/utils/chunker.js');
   const projectRef = SUPABASE_URL.replace(/^https?:\/\//, '').split('.')[0];
   const cookieName = `sb-${projectRef}-auth-token`;
-  cookieHeader = `${cookieName}=${Buffer.from(JSON.stringify(session)).toString('base64')}`;
+  const chunks = createChunks(cookieName, JSON.stringify(session));
+  cookieHeader = chunks.map(({ name, value }) => `${name}=${value}`).join('; ');
 
 } else {
   console.error('Provide one of:\n');
