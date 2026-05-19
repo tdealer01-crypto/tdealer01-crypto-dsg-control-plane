@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     origin: new URL(request.url).origin,
     authHeader: request.headers.get('authorization') || '',
     cookieHeader: request.headers.get('cookie') || '',
+    approvalToken: typeof body?.approvalToken === 'string' ? body.approvalToken : undefined,
     hermesProof: body?.hermesProof ?? undefined,
   };
 
