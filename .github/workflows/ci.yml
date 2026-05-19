@@ -66,8 +66,31 @@ jobs:
       - name: Full test suite
         run: npm run test
 
+      - name: i18n — no Thai text in source
+        run: |
+          count=$(grep -rP "[฀-๿]" app/ components/ lib/ \
+            --include="*.ts" --include="*.tsx" \
+            2>/dev/null | grep -v "^\s*//" | wc -l)
+          echo "Thai character matches: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "❌ Thai text found in source:"
+            grep -rnP "[฀-๿]" app/ components/ lib/ \
+              --include="*.ts" --include="*.tsx" | grep -v "^\s*//"
+            exit 1
+          fi
+          echo "✅ No Thai text in app/ components/ lib/"
+
       - name: Build
         run: npm run build
 
       - name: Production manifest gate
         run: npm run verify:production-manifest
+
+      - name: Live DB tests
+        if: >
+          secrets.NEXT_PUBLIC_SUPABASE_URL != '' &&
+          secrets.SUPABASE_SERVICE_ROLE_KEY != ''
+        run: npm run test:live:db:required
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
