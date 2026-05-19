@@ -27,10 +27,10 @@ const QUICK_THRESHOLD = {
 };
 
 const FLOW_STEPS = [
-  ['1', 'Load policy', 'อ่าน runtime policy ของ org ปัจจุบันจาก backend จริง'],
-  ['2', 'Review thresholds', 'ดูเงื่อนไข block/stabilize/audit ก่อนนำไปใช้กับ agent'],
-  ['3', 'Edit safely', 'แก้ JSON manifest แบบมี validation ไม่ยิง action จริงจากหน้า public'],
-  ['4', 'Deploy update', 'สร้าง runtime policy version ใหม่ แล้วเก็บ governance event'],
+  ['1', 'Load policy', 'Read the current org runtime policy from the real backend'],
+  ['2', 'Review thresholds', 'Review block/stabilize/audit conditions before applying them to the agent'],
+  ['3', 'Edit safely', 'Edit the JSON manifest with validation — no real actions are triggered from the public page'],
+  ['4', 'Deploy update', 'Create a new runtime policy version and store a governance event'],
 ];
 
 function formatDate(value?: string) {
@@ -140,7 +140,7 @@ export default function PoliciesPage() {
             <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">DSG Runtime Governance</p>
             <h1 className="mt-3 text-4xl font-semibold text-white md:text-5xl">Policy Control Flow</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-              หน้าออกแบบใหม่สำหรับผู้ใช้จริง: โหลด policy จาก runtime, ตรวจ threshold, แก้ manifest และ deploy เป็น policy version ใหม่ที่ agent ใช้ตรวจ action ก่อน execute.
+              A redesigned page for real users: load policy from runtime, review thresholds, edit the manifest, and deploy as a new policy version that the agent uses to inspect actions before execution.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -182,7 +182,7 @@ export default function PoliciesPage() {
                 {loading ? <div className="border border-white/10 bg-black/20 p-4 text-sm text-slate-400">Loading policies…</div> : null}
                 {!loading && policies.length === 0 ? (
                   <div className="border border-amber-300/25 bg-amber-300/10 p-4 text-sm leading-7 text-amber-50">
-                    ยังไม่มี policy ใน runtime. กด Deploy update เพื่อสร้าง policy แรกจาก default manifest.
+                    No policy found in runtime. Click Deploy update to create the first policy from the default manifest.
                   </div>
                 ) : null}
                 {policies.map((policy) => (
@@ -216,9 +216,9 @@ export default function PoliciesPage() {
 
             <div className="border border-emerald-300/20 bg-emerald-400/10 p-5">
               <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/80">What user gets</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">เห็นผลตรงไหน</h2>
+              <h2 className="mt-2 text-xl font-semibold text-white">Where you see results</h2>
               <p className="mt-3 text-sm leading-7 text-emerald-50/90">
-                เมื่อ deploy policy แล้ว agent/runtime จะมี threshold version ใหม่ให้ใช้กับ gate decision. หน้า dashboard เห็น source, status, governance state และ manifest ที่ใช้อยู่แบบตรวจย้อนกลับได้.
+                Once a policy is deployed, the agent/runtime has a new threshold version to use for gate decisions. The dashboard shows the source, status, governance state, and active manifest — all auditable and traceable.
               </p>
             </div>
           </div>

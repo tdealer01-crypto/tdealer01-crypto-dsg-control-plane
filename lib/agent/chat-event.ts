@@ -21,7 +21,7 @@ function toPlain(value: unknown): string {
 
 function formatStepResult(step: string, result: unknown): string {
   if (!result || typeof result !== 'object') {
-    return `ผลลัพธ์ ${step}: ${toPlain(result)}`;
+    return `Result ${step}: ${toPlain(result)}`;
   }
 
   const data = result as Record<string, unknown>;
@@ -33,14 +33,14 @@ function formatStepResult(step: string, result: unknown): string {
   }
 
   if (items && pagination && typeof pagination.total === 'number') {
-    return `สำเร็จ ${step}: พบ ${pagination.total} รายการ`;
+    return `Done ${step}: found ${pagination.total} items`;
   }
 
   if (typeof data.ok === 'boolean') {
-    return `สำเร็จ ${step}: ${data.ok ? 'พร้อมใช้งาน' : 'พบปัญหา'}`;
+    return `Done ${step}: ${data.ok ? 'ready' : 'issue detected'}`;
   }
 
-  return `ผลลัพธ์ ${step}:\n${toPlain(result)}`;
+  return `Result ${step}:\n${toPlain(result)}`;
 }
 
 export function formatAgentEventMessage(event: AgentChatEvent): string | null {
@@ -53,17 +53,17 @@ export function formatAgentEventMessage(event: AgentChatEvent): string | null {
 
   if (type === 'plan') {
     const steps = Array.isArray(event.steps) ? event.steps : [];
-    if (steps.length === 0) return 'กำลังประมวลผลคำสั่ง...';
+    if (steps.length === 0) return 'Processing command...';
     const list = steps.map((s) => `${s.id || '-'}:${s.toolId || '-'}`).join(', ');
-    return `แผนการทำงาน: ${list}`;
+    return `Action plan: ${list}`;
   }
 
   if (type === 'step_start') {
-    return `กำลังรัน ${event.step || '-'} • ${event.tool || 'tool'}`;
+    return `Running ${event.step || '-'} • ${event.tool || 'tool'}`;
   }
 
   if (type === 'step_error') {
-    return `ไม่สำเร็จ ${event.step || '-'}: ${event.error || 'เกิดข้อผิดพลาด'}`;
+    return `Failed ${event.step || '-'}: ${event.error || 'an error occurred'}`;
   }
 
   if (type === 'step_result') {
@@ -71,7 +71,7 @@ export function formatAgentEventMessage(event: AgentChatEvent): string | null {
   }
 
   if (type === 'done') {
-    return 'ทำงานเสร็จแล้ว';
+    return 'Done';
   }
 
   return null;

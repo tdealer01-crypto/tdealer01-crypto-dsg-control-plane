@@ -47,7 +47,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
   const lower = text.toLowerCase();
   const agentId = extractAgentId(text);
 
-  if (/^(ช่วย|help|แนะนำ|suggest)$/i.test(lower)) {
+  if (/^(help|suggest)$/i.test(lower)) {
     switch (pageContext) {
       case '/dashboard/agents':
         return { steps: [nextStep(1, 'list_agents', {})] };
@@ -69,11 +69,11 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     }
   }
 
-  if (/readiness|health|status|สถานะ/.test(lower)) {
+  if (/readiness|health|status/.test(lower)) {
     return { steps: [nextStep(1, 'readiness', {})] };
   }
 
-  if (/execute|run|รัน|ทำงาน/.test(lower)) {
+  if (/execute|run/.test(lower)) {
     return withAgentId(agentId, (id) => ({
       steps: [
         nextStep(1, 'readiness', {}),
@@ -82,7 +82,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     }));
   }
 
-  if (/audit|lineage|ตรวจสอบ/.test(lower)) {
+  if (/audit|lineage/.test(lower)) {
     return withAgentId(agentId, (id) => ({
       steps: [
         nextStep(1, 'audit_summary', { agent_id: id }),
@@ -91,7 +91,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     }));
   }
 
-  if (/checkpoint|บันทึก/.test(lower)) {
+  if (/checkpoint/.test(lower)) {
     return withAgentId(agentId, (id) => ({
       steps: [
         nextStep(1, 'recovery_validate', { agent_id: id }),
@@ -100,7 +100,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     }));
   }
 
-  if (/execution|executions|proof|replay|หลักฐาน/.test(lower)) {
+  if (/execution|executions|proof|replay/.test(lower)) {
     const executionId = text.match(/exec_[a-zA-Z0-9_-]+/)?.[0] || '';
     if (executionId) {
       return { steps: [nextStep(1, 'get_execution_proof', { execution_id: executionId })] };
@@ -113,11 +113,11 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     return { steps: [nextStep(1, 'list_executions', {})] };
   }
 
-  if (/ledger|บัญชี/.test(lower)) {
+  if (/ledger/.test(lower)) {
     return { steps: [nextStep(1, 'get_ledger', {})] };
   }
 
-  if (/usage|billing|ค่าใช้จ่าย|แพลน|plan/.test(lower)) {
+  if (/usage|billing|plan/.test(lower)) {
     return {
       steps: [
         nextStep(1, 'get_usage', {}),
@@ -130,15 +130,15 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     return { steps: [nextStep(1, 'get_metrics', {})] };
   }
 
-  if (/integration|เชื่อมต่อ/.test(lower)) {
+  if (/integration/.test(lower)) {
     return { steps: [nextStep(1, 'get_integration', {})] };
   }
 
-  if (/quota|capacity|โควต้า/.test(lower)) {
+  if (/quota|capacity/.test(lower)) {
     return { steps: [nextStep(1, 'capacity', {})] };
   }
 
-  if (/browser|navigate|open url|เปิดเว็บ|เปิดลิงก์|เข้าเว็บ/.test(lower)) {
+  if (/browser|navigate|open url/.test(lower)) {
     return withAgentId(agentId, (id) => ({
       steps: [
         nextStep(1, 'browser_navigate', {
@@ -150,17 +150,17 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     }));
   }
 
-  if (/search|ค้นหา|ออนไลน์|online|เว็บ|web/.test(lower)) {
+  if (/search|online|web/.test(lower)) {
     return {
       steps: [nextStep(1, 'realtime_web_search', { query: text })],
     };
   }
 
-  if (/list agents|show agents|agents|เอเจนต์ทั้งหมด/.test(lower)) {
+  if (/list agents|show agents|agents/.test(lower)) {
     return { steps: [nextStep(1, 'list_agents', {})] };
   }
 
-  if (/policy|นโยบาย/.test(lower)) {
+  if (/policy/.test(lower)) {
     return { steps: [nextStep(1, 'list_policies', {})] };
   }
 
@@ -175,7 +175,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     };
   }
 
-  if (/create agent|สร้างเอเจนต์|new agent/.test(lower)) {
+  if (/create agent|new agent/.test(lower)) {
     return {
       steps: [
         nextStep(1, 'create_agent', {
@@ -186,7 +186,7 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     };
   }
 
-  if (/agent detail|รายละเอียดเอเจนต์/.test(lower)) {
+  if (/agent detail/.test(lower)) {
     return withAgentId(agentId, (id) => ({ steps: [nextStep(1, 'get_agent_detail', { agent_id: id })] }));
   }
 
@@ -194,11 +194,11 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     return withAgentId(agentId, (id) => ({ steps: [nextStep(1, 'rotate_agent_key', { agent_id: id })] }));
   }
 
-  if (/delete agent|disable agent|ลบเอเจนต์/.test(lower)) {
+  if (/delete agent|disable agent/.test(lower)) {
     return withAgentId(agentId, (id) => ({ steps: [nextStep(1, 'delete_agent', { agent_id: id })] }));
   }
 
-  if (/chatbot|chat bot|แชทบอท|แชตบอท/.test(lower)) {
+  if (/chatbot|chat bot/.test(lower)) {
     return {
       steps: [
         nextStep(1, 'list_policies', {}),

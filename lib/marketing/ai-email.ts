@@ -18,28 +18,28 @@ type PersonalizedEmail = {
 
 const FALLBACKS: Record<string, { subject: string; openingLine: string }> = {
   no_agent_connected: {
-    subject: 'DSG รอต่อกับ agent อยู่ครับ — ใช้เวลาแค่ 5 นาที',
-    openingLine: 'สวัสดีครับ — สังเกตว่ายังไม่มี action ผ่าน gate เลย วันนี้ลองต่อ agent กับ DSG ดูได้เลย:',
+    subject: 'DSG is waiting for your agent — takes only 5 minutes',
+    openingLine: 'Hi — noticed no actions have passed through the gate yet. Try connecting your agent to DSG today:',
   },
   no_first_execution: {
-    subject: 'Gate ของคุณยังว่างอยู่ — ลองส่ง action แรก',
-    openingLine: 'สวัสดีครับ — DSG พร้อมแล้ว แต่ยังไม่เห็น traffic ผ่าน gate เลย ลองส่ง action ดูได้เลยครับ:',
+    subject: 'Your gate is still empty — try sending your first action',
+    openingLine: 'Hi — DSG is ready, but we haven\'t seen any traffic through the gate yet. Go ahead and send an action:',
   },
   first_block_founder: {
-    subject: '🛂 gate เพิ่ง block action ของ {{workspace}} — อยากคุย?',
-    openingLine: 'ลูกค้า {{workspace}} เพิ่งได้เห็น DSG block action แรก ถึงเวลาดี ๆ ที่จะ reach out ครับ',
+    subject: '🛂 gate just blocked an action from {{workspace}} — want to chat?',
+    openingLine: '{{workspace}} just saw DSG block their first action. Great time to reach out.',
   },
   enable_block_mode: {
-    subject: 'คุณใช้ audit mode อยู่ — ลอง block mode เพื่อเห็น DSG ทำงานจริง',
-    openingLine: 'สวัสดีครับ — เห็นว่ามี execution ผ่านแล้ว แต่ยังอยู่ใน audit mode ลอง enable gate เพื่อ block action ที่ไม่ได้รับอนุญาตดูครับ:',
+    subject: 'You\'re in audit mode — try block mode to see DSG in action',
+    openingLine: 'Hi — you\'ve had executions pass through, but you\'re still in audit mode. Try enabling the gate to block unauthorized actions:',
   },
   high_usage_upgrade: {
-    subject: 'คุณใช้งานหนักมาก — อัปเกรดก่อน quota หมด',
-    openingLine: 'สวัสดีครับ — เห็น execution ผ่าน gate เยอะมาก นั่นหมายความว่า DSG ทำงานได้ดี ถ้าอยากมี quota เพิ่มและฟีเจอร์ team ลองดู plan Business ครับ:',
+    subject: 'You\'re using DSG heavily — upgrade before you hit quota',
+    openingLine: 'Hi — we\'re seeing a lot of executions through the gate, which means DSG is working hard for you. If you want more quota and team features, check out the Business plan:',
   },
   stuck_offer_call: {
-    subject: 'ยังติดอะไรอยู่ไหมครับ? — นัด 15 นาทีกับ founder ได้เลย',
-    openingLine: 'สวัสดีครับ — ผมเป็น founder ของ DSG สังเกตว่าเริ่ม trial ไปแล้วแต่ยังไม่ได้ใช้งานจริง อยากรู้ว่ามีอะไรที่ยังไม่ชัดหรือเปล่า นัดคุย 15 นาทีได้เลยครับ:',
+    subject: 'Still stuck on something? — book 15 minutes with the founder',
+    openingLine: 'Hi — I\'m the founder of DSG. I noticed you started a trial but haven\'t fully set things up yet. Happy to help — book a 15-minute call anytime:',
   },
 };
 
@@ -65,7 +65,7 @@ async function callAnthropic(prompt: string): Promise<string | null> {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 120,
-        system: 'You are a B2B SaaS growth expert writing marketing emails for DSG ONE, an AI agent governance platform. Write in Thai unless specified. Be concise, friendly, founder-tone. Reply with ONLY the requested content, no preamble.',
+        system: 'You are a B2B SaaS growth expert writing marketing emails for DSG ONE, an AI agent governance platform. Write in English. Be concise, friendly, founder-tone. Reply with ONLY the requested content, no preamble.',
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -98,7 +98,7 @@ Completed milestones: ${[...ctx.milestones].join(', ') || 'none'}
 Email type: ${emailType}
 Base subject: "${subject}"
 
-Reply with ONLY the new subject line, in Thai, max 60 chars.`;
+Reply with ONLY the new subject line, in English, max 60 chars.`;
 
   const aiSubject = await callAnthropic(prompt);
   return {

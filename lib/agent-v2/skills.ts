@@ -30,7 +30,7 @@ export function cleanChatMessage(text: string) {
   if (quoted) return quoted;
 
   const cleaned = text
-    .replace(/chatbot|chat bot|แชทบอท|แชตบอท|ถามบอท|คุยกับบอท/gi, '')
+    .replace(/chatbot|chat bot/gi, '')
     .trim();
 
   return cleaned || text.trim();
@@ -193,11 +193,11 @@ export function planChatbotSkills(message: string): ChatbotSkillStep[] {
   const lower = text.toLowerCase();
   const agentId = extractAgentId(text);
 
-  if (/readiness|health|status|สถานะ/.test(lower)) {
+  if (/readiness|health|status/.test(lower)) {
     return [chatbotSkills.readiness()];
   }
 
-  if (/audit|lineage|ตรวจสอบ/.test(lower)) {
+  if (/audit|lineage/.test(lower)) {
     if (agentId) {
       return [
         chatbotSkills.runtimeSummary(agentId, 's1'),
@@ -211,8 +211,8 @@ export function planChatbotSkills(message: string): ChatbotSkillStep[] {
     ];
   }
 
-  if (/chatbot|chat bot|แชทบอท|แชตบอท/.test(lower)) {
-    if (/create|สร้าง|new|เพิ่ม/.test(lower) || !agentId) {
+  if (/chatbot|chat bot/.test(lower)) {
+    if (/create|new/.test(lower) || !agentId) {
       return [
         chatbotSkills.listPolicies('s1'),
         chatbotSkills.createChatbotAgent(extractQuotedText(text) || 'Chatbot Agent', 50000, 's2'),
@@ -223,15 +223,15 @@ export function planChatbotSkills(message: string): ChatbotSkillStep[] {
     return [chatbotSkills.chatbotMessage(agentId, cleanChatMessage(text), 's1')];
   }
 
-  if (/create agent|สร้างเอเจนต์|new agent/.test(lower)) {
+  if (/create agent|new agent/.test(lower)) {
     return [chatbotSkills.createAgent(extractQuotedText(text) || 'New Agent')];
   }
 
-  if (/agent|เอเจนต์|api เอเจ้น|api agent/.test(lower)) {
+  if (/agent|api agent/.test(lower)) {
     return [chatbotSkills.listAgents()];
   }
 
-  if (/auto_setup|auto setup|setup|ติดตั้ง/.test(lower)) {
+  if (/auto_setup|auto setup|setup/.test(lower)) {
     return [chatbotSkills.readiness(), chatbotSkills.autoSetup('s2')];
   }
 

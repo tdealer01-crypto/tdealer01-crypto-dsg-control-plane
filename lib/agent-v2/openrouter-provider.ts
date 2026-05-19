@@ -30,9 +30,9 @@ const TIMEOUT_MS = 12_000;
 
 function classifyIntent(message: string): ModelIntent {
   const lower = message.toLowerCase();
-  if (/json|config|schema|sql|code|โค้ด|สคริปต์|debug|build|typescript|route/.test(lower)) return 'code';
-  if (/why|ทำไม|วิเคราะห์|analyze|audit|proof|compare|เปรียบเทียบ|อธิบาย|explain|lineage/.test(lower)) return 'reasoning';
-  if (/^(hi|hello|สวัสดี|ช่วย|help|แนะนำ|อะไร|what|how|ยังไง|เล่า|tell)/.test(lower)) return 'chat';
+  if (/json|config|schema|sql|code|debug|build|typescript|route/.test(lower)) return 'code';
+  if (/why|analyze|audit|proof|compare|explain|lineage/.test(lower)) return 'reasoning';
+  if (/^(hi|hello|help|what|how|tell)/.test(lower)) return 'chat';
   return 'planning';
 }
 

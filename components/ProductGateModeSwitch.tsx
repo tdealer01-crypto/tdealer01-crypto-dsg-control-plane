@@ -15,12 +15,12 @@ const OPTIONS: Array<{ mode: GateMode; label: string; helper: string }> = [
   {
     mode: 'audit_only',
     label: 'Audit only',
-    helper: 'บันทึก decision/evidence แต่ยังไม่บล็อก action จริง',
+    helper: 'Records decision/evidence but does not block real actions yet',
   },
   {
     mode: 'enforce_gate',
     label: 'Enforce gate',
-    helper: 'ตรวจจริง และหยุด action เมื่อ gate ไม่คืน ALLOW',
+    helper: 'Actively inspects and halts actions when the gate does not return ALLOW',
   },
 ];
 
@@ -118,9 +118,9 @@ export default function ProductGateModeSwitch() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Step 4 live backend switch</p>
-          <h3 className="mt-2 text-lg font-semibold text-white">ลูกค้าเลือก: ออดิท หรือ ตรวจด้วย</h3>
+          <h3 className="mt-2 text-lg font-semibold text-white">Customer choice: Audit only or Enforce gate</h3>
           <p className="mt-3 text-sm leading-7 text-slate-300">
-            ค่านี้อ่าน/บันทึกผ่าน <code className="rounded bg-black/30 px-1 py-0.5 text-amber-100">/api/product/gate-mode</code> และผูกกับ org ของผู้ใช้ที่ login.
+            This value is read/saved via <code className="rounded bg-black/30 px-1 py-0.5 text-amber-100">/api/product/gate-mode</code> and is bound to the logged-in user&apos;s org.
           </p>
         </div>
 
@@ -178,7 +178,7 @@ export default function ProductGateModeSwitch() {
       {error ? (
         <div className="mt-4 border border-red-400/25 bg-red-500/10 p-3 text-sm leading-7 text-red-100">
           {error === 'database_migration_required'
-            ? 'Database migration ยังไม่ถูก apply ใน Supabase: ต้องรัน migration agent_gate_settings ก่อนจึงจะบันทึก switch ได้จริง'
+            ? 'Database migration has not been applied in Supabase: run the agent_gate_settings migration first before the switch can be saved'
             : error}
         </div>
       ) : null}

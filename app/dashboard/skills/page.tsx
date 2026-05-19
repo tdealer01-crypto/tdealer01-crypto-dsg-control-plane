@@ -213,27 +213,27 @@ export default function SkillsPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
           <h2 className="text-xl font-semibold">Tool Skills Studio (MCP + CLI Workflow)</h2>
           <p className="mt-2 text-sm text-slate-300">
-            ออกแบบ tool skills ใหม่สำหรับ workflow งานจริงแบบเรียลไทม์: รับงาน → แตกเป็นขั้นตอน →
-            map ไป MCP/API/CLI → ทดสอบผลลัพธ์
+            Design new tool skills for real-time production workflows: receive task → break into steps →
+            map to MCP/API/CLI → test output
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <input
               value={customToolName}
               onChange={(event) => setCustomToolName(event.target.value)}
-              placeholder="ชื่อ tool ใหม่ เช่น sec_news_scan"
+              placeholder="New tool name, e.g. sec_news_scan"
               className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
             />
             <input
               value={customToolPurpose}
               onChange={(event) => setCustomToolPurpose(event.target.value)}
-              placeholder="หน้าที่ เช่น สรุปข่าว compliance"
+              placeholder="Purpose, e.g. summarize compliance news"
               className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
             />
             <button
               onClick={addCustomTool}
               className="rounded-xl bg-sky-400 px-4 py-3 text-sm font-semibold text-slate-950"
             >
-              เพิ่มเครื่องมือ
+              Add tool
             </button>
           </div>
           {customTools.length > 0 && (
@@ -250,14 +250,14 @@ export default function SkillsPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
           <h2 className="text-xl font-semibold">Realtime Online Search</h2>
           <p className="mt-2 text-sm text-slate-300">
-            ค้นหาข้อมูลออนไลน์แบบเรียลไทม์สำหรับงานที่ได้รับ โดยเรียกผ่าน{" "}
+            Search for live online information for assigned tasks, accessed via{" "}
             <code className="rounded bg-slate-800 px-2 py-1 text-emerald-300">GET /api/realtime-search</code>
           </p>
           <div className="mt-4 flex flex-col gap-3 md:flex-row">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="ค้นหาสิ่งที่ต้องการ..."
+              placeholder="Search for what you need..."
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
             />
             <button
@@ -265,7 +265,7 @@ export default function SkillsPage() {
               disabled={searchLoading}
               className="rounded-xl bg-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
             >
-              {searchLoading ? "กำลังค้นหา..." : "ค้นหาแบบเรียลไทม์"}
+              {searchLoading ? "Searching..." : "Search in real time"}
             </button>
           </div>
           {searchError && (

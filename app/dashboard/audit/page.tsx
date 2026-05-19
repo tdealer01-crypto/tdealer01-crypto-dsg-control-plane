@@ -32,10 +32,10 @@ type DeterminismResult = {
 };
 
 const steps = [
-  { label: '1', title: 'Read timeline', body: 'ดู audit events เรียงตาม sequence และ timestamp เพื่อจับ incident เร็ว' },
-  { label: '2', title: 'Check determinism', body: 'ตรวจ deterministic state, entropy และ gate action ที่ควร freeze/review' },
-  { label: '3', title: 'Open evidence', body: 'ดู hash, signature, z3 proof และ state metadata สำหรับตรวจย้อนกลับ' },
-  { label: '4', title: 'Export proof', body: 'นำ evidence ไปใช้กับลูกค้า compliance หรือ Marketplace smoke proof' },
+  { label: '1', title: 'Read timeline', body: 'View audit events ordered by sequence and timestamp to detect incidents quickly' },
+  { label: '2', title: 'Check determinism', body: 'Inspect deterministic state, entropy, and gate actions that should be frozen or reviewed' },
+  { label: '3', title: 'Open evidence', body: 'View hash, signature, z3 proof, and state metadata for retroactive verification' },
+  { label: '4', title: 'Export proof', body: 'Use evidence with customer compliance requirements or as Marketplace smoke proof' },
 ];
 
 function formatDate(value?: string | null) {
@@ -130,7 +130,7 @@ export default function AuditPage() {
       active="/dashboard/audit"
       eyebrow="DSG Audit Evidence"
       title="Audit Evidence Flow"
-      description="หน้า audit ใหม่เน้นประโยชน์ผู้ใช้: เห็น timeline, ตรวจ determinism, เปิด proof package และรู้ว่าควรส่งต่อไปหน้าไหน"
+      description="The new audit page is user-benefit focused: see the timeline, check determinism, open the proof package, and know which page to navigate to next"
       status={loading ? 'Loading' : `${items.length} events`}
       statusTone={nondeterministicCount > 0 || freezeCount > 0 ? 'red' : 'green'}
       actions={[{ href: '/dashboard/executions', label: 'Open executions', tone: 'gold' }, { href: '/dashboard/verification', label: 'Verify proof', tone: 'slate' }]}
@@ -149,8 +149,8 @@ export default function AuditPage() {
 
           <WorkflowPanel eyebrow="Timeline" title="Audit events">
             <div className="space-y-2">
-              {loading ? <EmptyState title="Loading audit" body="กำลังโหลด audit timeline จาก backend" /> : null}
-              {!loading && items.length === 0 ? <EmptyState title="No audit events found" body="ยังไม่มี audit evidence ให้ตรวจ ให้รัน Auto-Setup หรือ execution ก่อน" href="/dashboard/executions" action="Open executions" /> : null}
+              {loading ? <EmptyState title="Loading audit" body="Loading audit timeline from backend" /> : null}
+              {!loading && items.length === 0 ? <EmptyState title="No audit events found" body="No audit evidence to review yet. Run Auto-Setup or an execution first." href="/dashboard/executions" action="Open executions" /> : null}
               {items.map((item) => {
                 const selected = selectedItem?.sequence === item.sequence;
                 return (
@@ -182,7 +182,7 @@ export default function AuditPage() {
                 <EvidenceRow label="Proof" value={shortenHash(selectedItem.z3_proof_hash || selectedItem.signature)} />
               </div>
             ) : (
-              <EmptyState title="No audit selected" body="เลือก audit event เพื่อดู proof package" />
+              <EmptyState title="No audit selected" body="Select an audit event to view the proof package" />
             )}
           </WorkflowPanel>
 

@@ -19,19 +19,19 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 export async function sendLeadWelcome(email: string): Promise<void> {
   await sendEmail(
     email,
-    'ยินดีต้อนรับสู่ DSG ONE — เริ่มต้นได้เลย',
+    'Welcome to DSG ONE — get started now',
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
       <h2 style="color:#10b981">DSG ONE — AI Governance Platform</h2>
-      <p>ขอบคุณที่สนใจ DSG ONE ครับ</p>
-      <p>สิ่งที่ทำได้ทันที:</p>
+      <p>Thank you for your interest in DSG ONE.</p>
+      <p>Things you can do right now:</p>
       <ul>
-        <li><a href="${BASE_URL}/enterprise-proof/demo">ดู Enterprise Proof Demo</a> — เห็น audit trail จริง</li>
-        <li><a href="${BASE_URL}/pricing">เปรียบเทียบ Plan</a> — Trial ฟรี ไม่ต้องใส่บัตร</li>
-        <li><a href="${BASE_URL}/request-access">ขอ Access</a> — เริ่มใช้ dashboard ได้เลย</li>
+        <li><a href="${BASE_URL}/enterprise-proof/demo">View Enterprise Proof Demo</a> — see a real audit trail</li>
+        <li><a href="${BASE_URL}/pricing">Compare plans</a> — free trial, no card required</li>
+        <li><a href="${BASE_URL}/request-access">Request access</a> — open the dashboard immediately</li>
       </ul>
       <a href="${BASE_URL}/request-access"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        เริ่มใช้งานฟรี →
+        Start for free →
       </a>
       <p style="color:#64748b;font-size:12px;margin-top:32px">DSG ONE | ${BASE_URL}</p>
     </div>`,
@@ -50,14 +50,14 @@ export async function sendQuotaAlert(opts: {
   const pct = Math.round(opts.utilization * 100);
   await sendEmail(
     opts.email,
-    `⚠️ คุณใช้ quota ไปแล้ว ${pct}% — อัปเกรดก่อนระบบหยุด`,
+    `⚠️ You've used ${pct}% of your quota — upgrade before the system pauses`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#f59e0b">⚠️ Quota ใกล้เต็มแล้ว</h2>
-      <p>Plan <strong>${opts.planKey.toUpperCase()}</strong>: ใช้ไป <strong>${opts.executions.toLocaleString()}</strong> จาก ${opts.included.toLocaleString()} executions (${pct}%)</p>
-      <p>เมื่อใช้ครบ execution จะถูกคิด overage $0.001/ครั้ง หรืออัปเกรด plan เพื่อ quota สูงขึ้น</p>
+      <h2 style="color:#f59e0b">⚠️ Quota nearly full</h2>
+      <p>Plan <strong>${opts.planKey.toUpperCase()}</strong>: <strong>${opts.executions.toLocaleString()}</strong> of ${opts.included.toLocaleString()} executions used (${pct}%)</p>
+      <p>Once you hit the limit, additional executions are billed at $0.001 each — or upgrade your plan for a higher quota.</p>
       <a href="${BASE_URL}/dashboard/billing"
          style="background:#f59e0b;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        ดู Plan และอัปเกรด →
+        View plans and upgrade →
       </a>
     </div>`,
   );
@@ -70,22 +70,22 @@ export async function sendTrialWelcome(opts: {
   planKey: string;
   trialEnd: string | null;
 }): Promise<void> {
-  const trialDate = opts.trialEnd ? new Date(opts.trialEnd).toLocaleDateString('th-TH') : '14 วัน';
+  const trialDate = opts.trialEnd ? new Date(opts.trialEnd).toLocaleDateString('en-US') : '14 days';
   await sendEmail(
     opts.email,
-    `🚀 Trial ${opts.planKey.toUpperCase()} เริ่มแล้ว — 3 สิ่งที่ควรทำก่อน`,
+    `🚀 Your ${opts.planKey.toUpperCase()} trial has started — 3 things to do first`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#10b981">🚀 Trial เริ่มแล้ว!</h2>
-      <p>Plan <strong>${opts.planKey.toUpperCase()}</strong> พร้อมใช้งานจนถึง <strong>${trialDate}</strong></p>
-      <h3>3 สิ่งที่ควรทำใน 24 ชั่วโมงแรก:</h3>
+      <h2 style="color:#10b981">🚀 Trial started!</h2>
+      <p>Plan <strong>${opts.planKey.toUpperCase()}</strong> is active until <strong>${trialDate}</strong></p>
+      <h3>3 things to do in the first 24 hours:</h3>
       <ol>
-        <li><a href="${BASE_URL}/dashboard/agents">สร้าง Agent แรก</a> — ใช้เวลา 2 นาที</li>
-        <li><a href="${BASE_URL}/dashboard/policies">ตั้ง Policy</a> — กำหนดว่า AI ทำอะไรได้บ้าง</li>
-        <li><a href="${BASE_URL}/finance-governance/app">เปิด Finance Governance</a> — ดู approval workflow</li>
+        <li><a href="${BASE_URL}/dashboard/agents">Create your first Agent</a> — takes 2 minutes</li>
+        <li><a href="${BASE_URL}/dashboard/policies">Set up a Policy</a> — define what your AI is allowed to do</li>
+        <li><a href="${BASE_URL}/finance-governance/app">Open Finance Governance</a> — see the approval workflow</li>
       </ol>
       <a href="${BASE_URL}/dashboard"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        เปิด Dashboard →
+        Open Dashboard →
       </a>
     </div>`,
   );
@@ -100,19 +100,19 @@ export async function sendTrialMidpoint(opts: {
 }): Promise<void> {
   await sendEmail(
     opts.email,
-    `📊 Trial ผ่านไปครึ่งทางแล้ว — คุณใช้ feature นี้ยัง?`,
+    `📊 You're halfway through your trial — have you tried this feature?`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#6366f1">📊 ผ่านมาครึ่งทางแล้ว</h2>
-      <p>เหลืออีก <strong>${opts.daysLeft} วัน</strong> ใน Trial ${opts.planKey.toUpperCase()}</p>
-      <p>Feature ที่ลูกค้าชอบมากที่สุด:</p>
+      <h2 style="color:#6366f1">📊 Halfway there</h2>
+      <p>You have <strong>${opts.daysLeft} days</strong> left in your ${opts.planKey.toUpperCase()} trial</p>
+      <p>Most popular features with customers:</p>
       <ul>
-        <li><strong>Approval Workflow</strong> — AI ขออนุมัติก่อน execute ทุกครั้ง</li>
-        <li><strong>Audit Ledger</strong> — log ทุก action พร้อม evidence</li>
-        <li><strong>Finance Governance</strong> — ควบคุม AI ที่จัดการงบประมาณ</li>
+        <li><strong>Approval Workflow</strong> — AI requests approval before every execution</li>
+        <li><strong>Audit Ledger</strong> — logs every action with evidence</li>
+        <li><strong>Finance Governance</strong> — control AI managing budgets</li>
       </ul>
       <a href="${BASE_URL}/dashboard/billing"
          style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        อัปเกรดก่อน Trial หมด →
+        Upgrade before your trial ends →
       </a>
     </div>`,
   );
@@ -127,19 +127,19 @@ export async function sendTrialExpiry(opts: {
 }): Promise<void> {
   await sendEmail(
     opts.email,
-    `⏰ Trial หมดใน ${opts.daysLeft} วัน — อัปเกรดก่อนข้อมูลหาย`,
+    `⏰ Your trial ends in ${opts.daysLeft} days — upgrade before your data is lost`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#ef4444">⏰ Trial ใกล้หมดแล้ว</h2>
-      <p>Plan <strong>${opts.planKey.toUpperCase()}</strong> จะหมดใน <strong>${opts.daysLeft} วัน</strong></p>
-      <p>อัปเกรดตอนนี้เพื่อ:</p>
+      <h2 style="color:#ef4444">⏰ Trial expiring soon</h2>
+      <p>Your <strong>${opts.planKey.toUpperCase()}</strong> plan expires in <strong>${opts.daysLeft} days</strong></p>
+      <p>Upgrade now to:</p>
       <ul>
-        <li>ข้อมูล audit trail และ agents ยังคงอยู่ครบ</li>
-        <li>ไม่มี downtime</li>
-        <li>ราคา Pro เริ่มต้น $99/เดือน</li>
+        <li>Keep your audit trail and agents intact</li>
+        <li>Zero downtime</li>
+        <li>Pro starts at $99/month</li>
       </ul>
       <a href="${BASE_URL}/dashboard/billing"
          style="background:#ef4444;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        อัปเกรดตอนนี้ →
+        Upgrade now →
       </a>
     </div>`,
   );
@@ -154,19 +154,19 @@ export async function sendUpgradeSuccess(opts: {
 }): Promise<void> {
   await sendEmail(
     opts.email,
-    `✅ อัปเกรดสำเร็จแล้ว — ยินดีต้อนรับสู่ DSG ONE ${opts.planKey.toUpperCase()}`,
+    `✅ Upgrade successful — welcome to DSG ONE ${opts.planKey.toUpperCase()}`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#10b981">✅ ยินดีด้วย!</h2>
-      <p>คุณอัปเกรดเป็น <strong>${opts.planKey.toUpperCase()} (${opts.billingInterval})</strong> สำเร็จแล้ว</p>
-      <p>สิ่งที่ unlock แล้ว:</p>
+      <h2 style="color:#10b981">✅ Congratulations!</h2>
+      <p>You've successfully upgraded to <strong>${opts.planKey.toUpperCase()} (${opts.billingInterval})</strong></p>
+      <p>What's now unlocked:</p>
       <ul>
-        <li>Executions เพิ่มขึ้นตาม plan</li>
+        <li>Higher execution quota per your plan</li>
         <li>Priority support</li>
         <li>Advanced governance features</li>
       </ul>
       <a href="${BASE_URL}/dashboard"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        เปิด Dashboard →
+        Open Dashboard →
       </a>
     </div>`,
   );
@@ -178,21 +178,21 @@ export async function sendBehavioralNoAgent(opts: {
 }): Promise<void> {
   await sendEmail(opts.email, opts.subject,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#10b981">🛂 DSG Gate รอ agent ของคุณอยู่</h2>
+      <h2 style="color:#10b981">🛂 DSG Gate is waiting for your agent</h2>
       <p>${opts.openingLine}</p>
-      <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px;overflow:auto">// 1. ประกาศ session
+      <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px;overflow:auto">// 1. Declare a session
 POST ${BASE_URL}/api/try/gate
 { "session_id": "sess_abc", "declared_actions": ["read_file","send_email"], "ttl_minutes": 30 }
 
-// 2. ตรวจก่อนทุก action
+// 2. Check before every action
 POST ${BASE_URL}/api/try/gate
 { "session_id": "sess_abc", "action": "read_file path=/reports/q1.pdf" }
 // → { "decision": "ALLOW", "stamp": "DSG-A3F8" }</pre>
       <a href="${BASE_URL}/dashboard/api-keys"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        รับ API Key →
+        Get API Key →
       </a>
-      <p style="color:#64748b;font-size:12px;margin-top:24px">มีคำถาม? ตอบ email นี้ได้เลยครับ</p>
+      <p style="color:#64748b;font-size:12px;margin-top:24px">Questions? Just reply to this email.</p>
     </div>`);
 }
 
@@ -202,14 +202,14 @@ export async function sendBehavioralEnableBlock(opts: {
 }): Promise<void> {
   await sendEmail(opts.email, opts.subject,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#f59e0b">🔒 เปิด BLOCK mode เพื่อเห็น DSG ทำงานจริง</h2>
+      <h2 style="color:#f59e0b">🔒 Enable BLOCK mode to see DSG working for real</h2>
       <p>${opts.openingLine}</p>
-      <p>ตอนนี้มี <strong>${opts.executions} executions</strong> ผ่าน gate แล้ว แต่ยังอยู่ใน <code>audit_only</code> mode</p>
+      <p>You've had <strong>${opts.executions} executions</strong> pass through the gate, but you're still in <code>audit_only</code> mode</p>
       <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px">PATCH /api/dsg/ledger/config
 { "mode": "gate" }</pre>
       <a href="${BASE_URL}/dashboard/settings"
          style="background:#f59e0b;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        เปิด Block Mode →
+        Enable Block Mode →
       </a>
     </div>`);
 }
@@ -220,18 +220,18 @@ export async function sendBehavioralStuckOffer(opts: {
 }): Promise<void> {
   await sendEmail(opts.email, opts.subject,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#6366f1">ยังเหลือ ${opts.daysLeft} วัน — ขอ 15 นาทีได้ไหมครับ?</h2>
+      <h2 style="color:#6366f1">You have ${opts.daysLeft} days left — can I get 15 minutes?</h2>
       <p>${opts.openingLine}</p>
       <ul style="color:#475569">
-        <li>ติด integration กับ framework ที่ใช้อยู่?</li>
-        <li>ยังไม่แน่ใจว่า DSG จะช่วยกรณีของคุณยังไง?</li>
-        <li>อยากให้ช่วย setup ดูให้?</li>
+        <li>Stuck integrating with your existing framework?</li>
+        <li>Not sure how DSG applies to your specific case?</li>
+        <li>Want a guided setup walkthrough?</li>
       </ul>
       <a href="mailto:${process.env.FOUNDER_EMAIL ?? 'founder@dsg.pics'}?subject=Trial%20call%20request"
          style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        ตอบ email นี้ → นัดเวลาได้เลย
+        Reply to this email → book a time
       </a>
-      <p style="color:#64748b;font-size:12px;margin-top:24px">ตอบภายใน 4 ชั่วโมงครับ</p>
+      <p style="color:#64748b;font-size:12px;margin-top:24px">I respond within 4 hours.</p>
     </div>`);
 }
 
@@ -241,19 +241,19 @@ export async function sendBehavioralHighUsage(opts: {
 }): Promise<void> {
   await sendEmail(opts.email, opts.subject,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#10b981">🚀 คุณใช้ DSG หนักมาก — ถึงเวลา upgrade</h2>
+      <h2 style="color:#10b981">🚀 You're using DSG heavily — time to upgrade</h2>
       <p>${opts.openingLine}</p>
-      <p>Stats: <strong>${opts.executions} executions</strong>, เหลือ <strong>${opts.daysLeft} วัน</strong> ใน trial</p>
+      <p>Stats: <strong>${opts.executions} executions</strong>, <strong>${opts.daysLeft} days</strong> left in trial</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
         <tr style="background:#0f172a;color:#94a3b8">
-          <th style="padding:8px;text-align:left">Plan</th><th style="padding:8px">ราคา</th><th style="padding:8px">Executions</th>
+          <th style="padding:8px;text-align:left">Plan</th><th style="padding:8px">Price</th><th style="padding:8px">Executions</th>
         </tr>
-        <tr><td style="padding:8px">Pro</td><td style="padding:8px;text-align:center">$99/เดือน</td><td style="padding:8px;text-align:center">ไม่จำกัด</td></tr>
-        <tr style="background:#f0fdf4"><td style="padding:8px;font-weight:bold">Business ★</td><td style="padding:8px;text-align:center">$299/เดือน</td><td style="padding:8px;text-align:center">ไม่จำกัด + team</td></tr>
+        <tr><td style="padding:8px">Pro</td><td style="padding:8px;text-align:center">$99/month</td><td style="padding:8px;text-align:center">Unlimited</td></tr>
+        <tr style="background:#f0fdf4"><td style="padding:8px;font-weight:bold">Business ★</td><td style="padding:8px;text-align:center">$299/month</td><td style="padding:8px;text-align:center">Unlimited + team</td></tr>
       </table>
       <a href="${BASE_URL}/dashboard/billing"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold">
-        อัปเกรดก่อน trial หมด →
+        Upgrade before your trial ends →
       </a>
     </div>`);
 }
@@ -266,7 +266,7 @@ export async function sendFounderAlertFirstBlock(opts: {
   if (!founderEmail) return;
   await sendEmail(
     founderEmail,
-    `🛂 ${opts.workspaceName} — gate ออก BLOCK แรกแล้ว (reach out now)`,
+    `🛂 ${opts.workspaceName} — gate issued first BLOCK (reach out now)`,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
       <h2 style="color:#10b981">WOW MOMENT: first BLOCK</h2>
       <table style="font-size:14px;border-collapse:collapse">
@@ -278,7 +278,7 @@ export async function sendFounderAlertFirstBlock(opts: {
       </table>
       <a href="mailto:${opts.email}?subject=DSG%20just%20blocked%20something%20%E2%80%94%20good%20sign!"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
-        Email ${opts.email} ตอนนี้ →
+        Email ${opts.email} now →
       </a>
     </div>`);
 }

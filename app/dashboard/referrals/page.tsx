@@ -41,7 +41,7 @@ export default function ReferralsPage() {
     <div className="mx-auto max-w-2xl px-6 py-10">
       <h1 className="text-2xl font-black text-slate-100">Referral Program</h1>
       <p className="mt-2 text-sm text-slate-400">
-        แชร์ลิงก์ของคุณ — ทุกคนที่สมัครผ่านลิงก์จะได้ Trial 14 วัน และคุณได้เครดิต $50 เมื่อเขา upgrade
+        Share your link — everyone who signs up through it gets a 14-day trial, and you earn $50 credit when they upgrade
       </p>
 
       {loading && (
@@ -83,19 +83,19 @@ export default function ReferralsPage() {
 
           {/* How it works */}
           <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="font-bold text-slate-100">วิธีทำงาน</h2>
+            <h2 className="font-bold text-slate-100">How it works</h2>
             <ol className="mt-4 space-y-3 text-sm text-slate-400">
-              <li><span className="font-bold text-emerald-400">1.</span> แชร์ลิงก์ให้เพื่อน/ทีม</li>
-              <li><span className="font-bold text-emerald-400">2.</span> เขาสมัครผ่านลิงก์ → Trial 14 วัน</li>
-              <li><span className="font-bold text-emerald-400">3.</span> เมื่อเขา upgrade → คุณได้ <strong className="text-slate-200">$50 account credit</strong></li>
-              <li><span className="font-bold text-emerald-400">4.</span> ไม่มีจำกัดจำนวน referral</li>
+              <li><span className="font-bold text-emerald-400">1.</span> Share your link with friends or your team</li>
+              <li><span className="font-bold text-emerald-400">2.</span> They sign up through the link → 14-day trial</li>
+              <li><span className="font-bold text-emerald-400">3.</span> When they upgrade → you earn <strong className="text-slate-200">$50 account credit</strong></li>
+              <li><span className="font-bold text-emerald-400">4.</span> No limit on the number of referrals</li>
             </ol>
           </div>
 
           {/* Share buttons */}
           <div className="mt-6 flex flex-wrap gap-3">
             <a
-              href={`https://twitter.com/intent/tweet?text=ลอง%20DSG%20ONE%20%E2%80%94%20AI%20governance%20%2B%20approval%20workflow%20สำหรับทีม&url=${encodeURIComponent(referralUrl)}`}
+              href={`https://twitter.com/intent/tweet?text=Try%20DSG%20ONE%20%E2%80%94%20AI%20governance%20%2B%20approval%20workflow%20for%20teams&url=${encodeURIComponent(referralUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-slate-500"

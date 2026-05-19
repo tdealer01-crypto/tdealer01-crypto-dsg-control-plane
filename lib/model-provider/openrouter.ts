@@ -37,7 +37,7 @@ function systemPrompt(pageContext?: string) {
   return `You are the DSG Agent planning brain.
 Return JSON only with this shape:
 {
-  "reply": "brief Thai or English response matching the user",
+  "reply": "brief English response",
   "plan": { "steps": [{ "id": "s1", "toolId": "readiness", "params": {} }] }
 }
 Never claim that an action has executed. Write/critical actions are only proposed and must be approved through the runtime gate.
@@ -51,7 +51,7 @@ export async function callOpenRouterProvider(request: ModelProviderRequest): Pro
 
   if (!apiKey) {
     return {
-      reply: 'ไม่มี model key ที่ใช้งานได้ จึงใช้ fallback skills planner แทน',
+      reply: 'No usable model key found — falling back to the skills planner.',
       plan: { steps: [] },
       modelUsed: 'fallback-skills-planner',
       provider: 'fallback-skills-planner',

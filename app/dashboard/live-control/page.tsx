@@ -74,10 +74,10 @@ type DashboardState = {
 };
 
 const steps = [
-  { label: '1', title: 'Watch runtime', body: 'โหลด health, usage, executions และ audit จาก endpoint จริงพร้อมกัน' },
-  { label: '2', title: 'Choose mode', body: 'ดูว่า agent ควรอยู่ Audit Only หรือ Enforce Gate ตามสถานะความเสี่ยง' },
-  { label: '3', title: 'Act safely', body: 'ถ้าเจอ BLOCK/FREEZE ให้ไป audit/executions ก่อนตัดสินใจแก้ policy' },
-  { label: '4', title: 'Prove result', body: 'บันทึกสถานะ runtime เพื่อใช้เป็น smoke evidence และ buyer proof' },
+  { label: '1', title: 'Watch runtime', body: 'Load health, usage, executions, and audit from real endpoints simultaneously' },
+  { label: '2', title: 'Choose mode', body: 'Determine whether the agent should be in Audit Only or Enforce Gate based on the current risk level' },
+  { label: '3', title: 'Act safely', body: 'When BLOCK or FREEZE is encountered, go to audit/executions before deciding to change policy' },
+  { label: '4', title: 'Prove result', body: 'Record runtime status to use as smoke evidence and buyer proof' },
 ];
 
 function formatDate(value?: string | null) {
@@ -180,7 +180,7 @@ export default function LiveControlPage() {
       active="/dashboard/live-control"
       eyebrow="DSG Live Runtime Control"
       title="Live Control Flow"
-      description="หน้าควบคุม runtime สำหรับผู้ใช้จริง: เห็นระบบสด, เห็น decision ล่าสุด, รู้ว่าควร audit หรือ enforce และมีทางไปตรวจหลักฐานต่อทันที"
+      description="Live runtime control for real users: see the system live, see the latest decisions, know whether to audit or enforce, and navigate directly to evidence review"
       status={runtimeStatus}
       statusTone={runtimeStatus === 'Live' ? 'green' : runtimeStatus === 'Degraded' ? 'gold' : 'red'}
       actions={[{ href: '/dashboard/executions', label: 'Open executions', tone: 'gold' }, { href: '/dashboard/audit', label: 'Open audit', tone: 'slate' }]}
@@ -197,7 +197,7 @@ export default function LiveControlPage() {
             <MetricTile label="Projected billing" value={formatMoney(data.usage?.projected_amount_usd)} helper={data.usage?.plan || 'plan'} tone="gold" />
           </div>
 
-          <WorkflowPanel eyebrow="Control score" title={`${integrityScore}% runtime integrity`} body="คะแนนนี้ช่วยให้ผู้ใช้เห็นภาพรวมทันทีว่า core/db/control-plane/audit พร้อมแค่ไหน ก่อนตัดสินใจเปิด enforce gate" tone={integrityScore >= 80 ? 'green' : 'gold'}>
+          <WorkflowPanel eyebrow="Control score" title={`${integrityScore}% runtime integrity`} body="This score gives users an immediate overview of how ready core/db/control-plane/audit are before deciding to enable enforce gate" tone={integrityScore >= 80 ? 'green' : 'gold'}>
             <div className="h-2 w-full bg-black/30">
               <div className="h-full bg-amber-300" style={{ width: `${integrityScore}%` }} />
             </div>
@@ -218,8 +218,8 @@ export default function LiveControlPage() {
 
           <WorkflowPanel eyebrow="Recent execution loop" title="Latest decisions">
             <div className="space-y-2">
-              {loading ? <EmptyState title="Loading runtime" body="กำลังโหลด execution และ audit feed จาก backend" /> : null}
-              {!loading && data.executions.length === 0 ? <EmptyState title="No executions found" body="ยังไม่มี execution ให้ตรวจ ให้รัน Auto-Setup หรือเชื่อม agent เพื่อสร้าง evidence แรก" href="/dashboard/skills" action="Run setup" /> : null}
+              {loading ? <EmptyState title="Loading runtime" body="Loading execution and audit feed from backend" /> : null}
+              {!loading && data.executions.length === 0 ? <EmptyState title="No executions found" body="No executions to review yet. Run Auto-Setup or connect an agent to create the first evidence." href="/dashboard/skills" action="Run setup" /> : null}
               {data.executions.slice(0, 5).map((execution) => (
                 <EvidenceRow key={execution.id} label={execution.decision} value={`${execution.latency_ms}ms · ${formatDate(execution.created_at)}`} tone={decisionTone(execution.decision)} />
               ))}

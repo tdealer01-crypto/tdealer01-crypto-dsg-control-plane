@@ -43,10 +43,10 @@ type ExecutionsResponse = {
 };
 
 const steps = [
-  { label: '1', title: 'Review executions', body: 'ดูรายการ action ที่ agent ส่งเข้า runtime gate ล่าสุด' },
-  { label: '2', title: 'Filter decision', body: 'แยก ALLOW, STABILIZE, BLOCK เพื่อเห็นความเสี่ยงเร็ว' },
-  { label: '3', title: 'Inspect evidence', body: 'เปิด trace, latency, policy version, reason และ ledger preview' },
-  { label: '4', title: 'Take next step', body: 'ส่งต่อไป audit หรือ policy workflow เมื่อต้องแก้ rule/threshold' },
+  { label: '1', title: 'Review executions', body: 'View the list of actions the agent recently submitted to the runtime gate' },
+  { label: '2', title: 'Filter decision', body: 'Separate ALLOW, STABILIZE, and BLOCK to spot risk quickly' },
+  { label: '3', title: 'Inspect evidence', body: 'Open trace, latency, policy version, reason, and ledger preview' },
+  { label: '4', title: 'Take next step', body: 'Forward to audit or policy workflow when a rule or threshold needs adjustment' },
 ];
 
 function formatDate(value?: string | null) {
@@ -148,7 +148,7 @@ export default function ExecutionsPage() {
       active="/dashboard/executions"
       eyebrow="DSG Execution Evidence"
       title="Execution Review Flow"
-      description="หน้ารีวิว action ที่ผ่าน runtime gate: เห็น decision, latency, policy version และหลักฐานที่ต้องใช้ตัดสินใจต่อ"
+      description="Review actions that passed through the runtime gate: see decision, latency, policy version, and the evidence needed for the next decision"
       status={loading ? 'Loading' : `${executions.length} traces`}
       statusTone="blue"
       actions={[{ href: '/dashboard/audit', label: 'Open audit', tone: 'gold' }, { href: '/dashboard/policies', label: 'Tune policy', tone: 'slate' }]}
@@ -166,7 +166,7 @@ export default function ExecutionsPage() {
             <MetricTile label="Block" value={String(coreMetrics?.block_count ?? countDecision(executions, 'BLOCK'))} helper="requires audit" tone="red" />
           </div>
 
-          <WorkflowPanel eyebrow="Decision filter" title="เลือกดูตามผลลัพธ์">
+          <WorkflowPanel eyebrow="Decision filter" title="Filter by outcome">
             <div className="flex flex-wrap gap-2">
               {['ALL', 'ALLOW', 'STABILIZE', 'BLOCK'].map((item) => (
                 <button
@@ -183,8 +183,8 @@ export default function ExecutionsPage() {
               ))}
             </div>
             <div className="mt-4 space-y-2">
-              {loading ? <EmptyState title="Loading executions" body="กำลังโหลด execution จาก backend" /> : null}
-              {!loading && filteredExecutions.length === 0 ? <EmptyState title="No matching executions" body="ไม่มี execution ใน filter นี้ ให้เปลี่ยน filter หรือรัน agent เพิ่ม" href="/dashboard/live-control" action="Open live control" /> : null}
+              {loading ? <EmptyState title="Loading executions" body="Loading executions from backend" /> : null}
+              {!loading && filteredExecutions.length === 0 ? <EmptyState title="No matching executions" body="No executions match this filter. Change the filter or run more agent actions." href="/dashboard/live-control" action="Open live control" /> : null}
               {filteredExecutions.slice(0, 8).map((execution) => (
                 <button key={execution.id} type="button" onClick={() => setSelectedId(execution.id)} className="w-full text-left">
                   <EvidenceRow label={execution.decision} value={`${execution.id.slice(0, 8)} · ${execution.latency_ms}ms`} tone={decisionTone(execution.decision)} />
@@ -206,7 +206,7 @@ export default function ExecutionsPage() {
                 <EvidenceRow label="Reason" value={selectedExecution.reason || '-'} />
               </div>
             ) : (
-              <EmptyState title="No trace selected" body="เลือก execution ด้านซ้ายเพื่อดูหลักฐาน" />
+              <EmptyState title="No trace selected" body="Select an execution on the left to view evidence" />
             )}
           </WorkflowPanel>
 

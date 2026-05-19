@@ -85,15 +85,15 @@ function cleanupStaleSessions(now: number) {
 function classifyIntent(message: string): Intent {
   const lower = message.toLowerCase();
 
-  if (/json|config|policy.*create|schema|sql|code|โค้ด|สคริปต์/.test(lower)) {
+  if (/json|config|policy.*create|schema|sql|code/.test(lower)) {
     return 'code';
   }
 
-  if (/why|ทำไม|วิเคราะห์|analyze|audit|proof|compare|เปรียบเทียบ|อธิบาย|explain/.test(lower)) {
+  if (/why|analyze|audit|proof|compare|explain/.test(lower)) {
     return 'reasoning';
   }
 
-  if (/^(hi|hello|สวัสดี|ช่วย|help|แนะนำ|อะไร|what|how|ยังไง|เล่า|tell)/.test(lower)) {
+  if (/^(hi|hello|help|what|how|tell)/.test(lower)) {
     return 'chat';
   }
 

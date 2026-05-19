@@ -5,22 +5,22 @@ const verificationSteps = [
   {
     label: '1',
     title: 'Collect evidence',
-    body: 'รวม execution, checkpoint, policy และ audit event จาก runtime จริงก่อนสรุปสถานะ',
+    body: 'Aggregate executions, checkpoints, policies, and audit events from the live runtime before summarizing status',
   },
   {
     label: '2',
     title: 'Verify chain',
-    body: 'ตรวจ ledger sequence, truth state และ checkpoint hash ว่าต่อกันครบหรือไม่',
+    body: 'Verify the ledger sequence, truth state, and checkpoint hash for completeness and continuity',
   },
   {
     label: '3',
     title: 'Review exceptions',
-    body: 'แยก warning/fail ให้ผู้ใช้รู้ว่าต้องแก้ policy, runtime หรือ environment',
+    body: 'Surface warnings and failures so users know whether to fix policy, runtime, or environment',
   },
   {
     label: '4',
     title: 'Package proof',
-    body: 'เตรียมหลักฐานสำหรับลูกค้า, audit, Marketplace หรือ Cloud Run smoke evidence',
+    body: 'Package evidence for customers, audits, Marketplace, or Cloud Run smoke evidence',
   },
 ];
 
@@ -37,7 +37,7 @@ export default function VerificationPage() {
       active="/dashboard/verification"
       eyebrow="DSG Evidence Verification"
       title="Verification Flow"
-      description="หน้าเช็กหลักฐานก่อนบอกลูกค้าหรือ Marketplace ว่าระบบพร้อมจริง: เห็นว่า runtime มีอะไรครบ, จุดไหนยัง pending, และขั้นต่อไปต้องทำอะไร"
+      description="Verify evidence before telling customers or Marketplace that the system is truly ready: see what the runtime has in place, what is still pending, and what needs to be done next"
       status="Evidence review"
       statusTone="blue"
       actions={[
@@ -49,16 +49,16 @@ export default function VerificationPage() {
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
           <div className="grid gap-3 sm:grid-cols-2">
-            <MetricTile label="Proof readiness" value="Review" helper="รอ smoke evidence จาก production deployment ล่าสุด" tone="blue" />
-            <MetricTile label="Runtime spine" value="Ready" helper="RPC/checkpoint path ถูกเติมใน Supabase แล้ว" tone="green" />
-            <MetricTile label="Policy flow" value="Ready" helper="หน้า policy workflow + runtime_policies ถูกเตรียมแล้ว" tone="gold" />
-            <MetricTile label="Claim boundary" value="Pending" helper="ยังไม่ claim production-ready จนกว่า Vercel build ผ่าน" tone="red" />
+            <MetricTile label="Proof readiness" value="Review" helper="Awaiting smoke evidence from the latest production deployment" tone="blue" />
+            <MetricTile label="Runtime spine" value="Ready" helper="RPC/checkpoint path has been filled in Supabase" tone="green" />
+            <MetricTile label="Policy flow" value="Ready" helper="Policy workflow page and runtime_policies have been prepared" tone="gold" />
+            <MetricTile label="Claim boundary" value="Pending" helper="Not claiming production-ready until Vercel build passes" tone="red" />
           </div>
 
           <WorkflowPanel
             eyebrow="What user gets"
-            title="เห็นผลทันทีตรงไหน"
-            body="ผู้ใช้ไม่ต้องอ่าน log ยาว ๆ ก่อนตัดสินใจ หน้านี้แยกให้เห็นว่าอะไรผ่านแล้ว อะไรต้องตรวจซ้ำ และควรกดหน้าไหนต่อเพื่อปิดหลักฐาน"
+            title="Where you see results immediately"
+            body="Users do not need to read long logs before deciding. This page clearly separates what has passed, what needs re-examination, and which page to navigate to in order to close evidence"
             tone="green"
           />
         </div>
@@ -72,10 +72,10 @@ export default function VerificationPage() {
             </div>
           </WorkflowPanel>
 
-          <WorkflowPanel eyebrow="Next action" title="ทำอะไรต่อ">
+          <WorkflowPanel eyebrow="Next action" title="What to do next">
             <EmptyState
-              title="ต้องมี deploy evidence ก่อนปิดงาน"
-              body="หลัง Vercel production build ผ่าน ให้เปิด Live Control และ Audit เพื่อตรวจ runtime status, executions, audit events แล้วค่อยบันทึก smoke evidence สำหรับ Cloud Run/Marketplace"
+              title="Deploy evidence required before closing"
+              body="After the Vercel production build passes, open Live Control and Audit to review runtime status, executions, and audit events, then record smoke evidence for Cloud Run/Marketplace"
               href="/dashboard/live-control"
               action="Go to live control"
             />
