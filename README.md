@@ -33,6 +33,45 @@ Passing repository tests alone does not mean the deployed environment is product
 
 ---
 
+## Current test and security evidence — 2026-05-19
+
+This section records the latest operator-observed verification evidence for team review. It is intentionally separated from final production certification claims.
+
+### Summary verdict
+
+| Area | Status | Evidence |
+|---|---:|---|
+| Local unit/integration tests | PASS | `29` test files passed, `2` skipped; `80` tests passed, `4` skipped; duration `22.71s`. |
+| Public trust surface | PASS | `/terms`, `/privacy`, `/security`, `/support` returned HTTP `200`. |
+| Runtime baseline | PASS | `/api/health` returned HTTP `200`; `/api/readiness` returned HTTP `200` with `status=ready`. |
+| Legacy route cleanup | PASS | No legacy `/api/finance-governance/server-store` callers found. |
+| `api.dsg_*` RLS hardening | PASS | `api.dsg_app_builder_*` and `api.dsg_memory_*` tables have RLS enabled and authenticated workspace-member policies for `SELECT`, `INSERT`, and `UPDATE`. |
+| `api.generated_app_items` exposure | PASS | RLS enabled with deny-all policy for `anon` and `authenticated`; no `anon`/`authenticated` table grants observed. |
+| Go/No-Go user-flow audit | BLOCKED | Playwright audit could not run on Android/Termux: `Unsupported platform: android`. Re-run from GitHub Actions, Codespaces, Ubuntu, macOS, or Windows. |
+| Authenticated agent command smoke | PENDING | Requires a valid Supabase user access token or session cookie. A previous run returned `401 Unauthorized` because the provided bearer value was not a Supabase JWT. |
+| Supabase auth advisor | WARN | Leaked password protection remains disabled in Supabase Auth settings. |
+
+### Current operational decision
+
+- **Controlled pilot:** conditional GO, using explicit claim boundaries and evidence capture.
+- **Enterprise production-ready / certified SaaS:** NO-GO until CI Playwright audit, authenticated live smoke, and remaining Supabase Auth warning are resolved and attached as fresh evidence.
+
+### Evidence boundary
+
+Allowed claim:
+
+```
+DSG ONE has live public runtime health, readiness, trust-surface checks, local unit/integration test evidence, and hardened RLS coverage for the exposed api.dsg_* tables verified on 2026-05-19.
+```
+
+Disallowed claim:
+
+```
+Certified, third-party audited, WORM-certified, externally Z3 production verified, or end-to-end formally verified SaaS.
+```
+
+---
+
 ## Customer journey
 
 ```
