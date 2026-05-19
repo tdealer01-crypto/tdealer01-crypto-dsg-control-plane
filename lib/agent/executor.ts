@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { resolveGate } from '../gate';
 import { evaluateHermesPluginRequest, type HermesMode } from '../dsg/hermes-plugin';
 import type { AgentContext } from './context';
@@ -22,6 +23,43 @@ function roleToPermissions(role: AgentContext['role']): string[] {
 }
 
 type HermesPluginContext = Parameters<typeof evaluateHermesPluginRequest>[0]['context'];
+
+function postHermesResult(
+  context: AgentContext,
+  envelope: NonNullable<ReturnType<typeof evaluateHermesPluginRequest>['actionEnvelope']>,
+  result: unknown,
+  startedAt: string,
+): void {
+  const completedAt = new Date().toISOString();
+  const observedResultHash = createHash('sha256')
+    .update(JSON.stringify(result ?? null))
+    .digest('hex');
+  const body = {
+    workspaceId: envelope.workspaceId,
+    agentId: envelope.agentId,
+    sessionId: envelope.sessionId,
+    commandId: envelope.commandId,
+    envelopeId: envelope.envelopeId,
+    decisionHash: envelope.decisionHash,
+    status: 'SUCCESS',
+    startedAt,
+    completedAt,
+    observedResultHash,
+    evidenceItemIds: [`observe:${envelope.envelopeId}`],
+  };
+  fetch(`${context.origin}${envelope.mustReturnResultTo}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: context.authHeader,
+      cookie: context.cookieHeader,
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  }).catch(() => {
+    // fire-and-forget — result callback failure does not block the caller
+  });
+}
 
 export async function executeToolSafely(
   tool: AgentTool,
@@ -97,5 +135,12 @@ export async function executeToolSafely(
     return { stabilized: true, reason: gateResult.reason, requiresApproval: true };
   }
 
-  return tool.execute(params, context);
+  const startedAt = new Date().toISOString();
+  const result = await tool.execute(params, context);
+
+  if (hermesResult.actionEnvelope) {
+    postHermesResult(context, hermesResult.actionEnvelope, result, startedAt);
+  }
+
+  return result;
 }

@@ -120,15 +120,17 @@ describe("browser_navigate maps to browser_qa mode", () => {
     console.log("\n--- browser_navigate PASS (browser_qa mode) ---");
   });
 
-  it("BLOCK without proof", async () => {
+  it("PASS without proof (observe-no-audit fast path)", async () => {
     const ctx = { ...BASE_CONTEXT, role: "org_admin" as const };
     const result = await executeToolSafely(
       BROWSER_TOOL,
       { agent_id: "ag_001", url: "/proofgate" },
       ctx,
     ) as Record<string, unknown>;
-    expect(result.blocked).toBe(true);
-    expect(result.hermesDecision).toBe("BLOCK");
+    // observe mode passes without proof — no mutation risk
+    expect(result.blocked).toBeUndefined();
+    expect(result.navigated).toBe(true);
+    console.log("\n--- browser_navigate PASS (no proof, observe fast path) ---");
   });
 });
 
