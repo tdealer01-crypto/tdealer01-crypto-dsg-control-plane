@@ -52,6 +52,7 @@ export interface HermesPluginRequest {
   query?: string;
   filePaths?: string[];
   prNumber?: number | string;
+  payload?: Record<string, unknown>;
   context: HermesPluginContext;
 }
 
@@ -281,11 +282,14 @@ function buildCommandProfile(req: HermesPluginRequest): CommandProfile {
 // ─── gate request builder ────────────────────────────────────────────────────
 
 function buildGateRequest(req: HermesPluginRequest, now: Date): AgentCommandGateRequest {
+  const payloadHash = req.payload ? sha256(req.payload) : undefined;
+
   const commandId = sha256({
     mode: req.mode,
     commandText: req.commandText,
     prompt: req.prompt,
     path: req.path,
+    payloadHash,
     bucket: Math.floor(now.getTime() / 5000),
   }).slice(0, 32);
 
@@ -318,6 +322,7 @@ function buildGateRequest(req: HermesPluginRequest, now: Date): AgentCommandGate
       riskLevel: profile.riskLevel,
       dataClasses: profile.dataClasses,
       path: req.path,
+      payloadHash,
       idempotencyKey: isMutation ? sha256({ commandId, mode: req.mode }).slice(0, 24) : undefined,
       rollbackPlanId: isMutation ? `rollback-${commandId.slice(0, 16)}` : undefined,
     },

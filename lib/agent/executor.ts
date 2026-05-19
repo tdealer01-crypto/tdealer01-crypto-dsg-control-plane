@@ -57,6 +57,7 @@ export async function executeToolSafely(
     prompt: `Execute tool: ${tool.name}`,
     path: typeof params.url === 'string' ? params.url : undefined,
     url: typeof params.url === 'string' ? params.url : undefined,
+    payload: params,
     context: {
       workspaceId: context.orgId,
       actorId: agentId,
