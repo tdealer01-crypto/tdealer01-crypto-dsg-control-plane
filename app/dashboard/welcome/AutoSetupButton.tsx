@@ -222,6 +222,37 @@ export default function AutoSetupButton() {
           </div>
         )}
 
+        {/* Download install file */}
+        <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-bold text-white">ดาวน์โหลดไฟล์ติดตั้ง</p>
+            <p className="text-xs text-slate-400 mt-1">
+              วางไฟล์นี้ในโฟลเดอร์ agent ของคุณ → import ใช้ได้เลย ไม่ต้อง config อะไรเพิ่ม
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/api/quickstart/download?lang=python"
+              download="dsg_gate.py"
+              className="flex items-center gap-2 rounded-lg border border-blue-400/40 bg-blue-400/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-400/20"
+            >
+              <span>⬇</span> dsg_gate.py
+            </a>
+            <a
+              href="/api/quickstart/download?lang=javascript"
+              download="dsg_gate.js"
+              className="flex items-center gap-2 rounded-lg border border-yellow-400/40 bg-yellow-400/10 px-4 py-2 text-sm font-bold text-yellow-300 hover:bg-yellow-400/20"
+            >
+              <span>⬇</span> dsg_gate.js
+            </a>
+          </div>
+          <p className="text-xs text-slate-500">
+            Python: <code className="text-slate-300">from dsg_gate import gate</code>
+            {' · '}
+            JS: <code className="text-slate-300">const {'{ gate }'} = require(&apos;./dsg_gate&apos;)</code>
+          </p>
+        </div>
+
         <div className="flex flex-wrap gap-3 pt-2">
           <Link
             href="/dashboard"
