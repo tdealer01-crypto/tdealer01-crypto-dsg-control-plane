@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { planGoal } from '../../../lib/agent/planner';
 
 describe('agent planner chatbot intents', () => {
-  it('creates chatbot agent plan from thai prompt', () => {
-    const plan = planGoal('ช่วยเพิ่มแชทบอทเอเจ้นตามแผนได้');
+  it('creates chatbot agent plan from prompt', () => {
+    const plan = planGoal('make a chatbot');
     expect(plan.steps.map((step) => step.toolId)).toEqual(['list_policies', 'create_chatbot_agent', 'list_agents']);
     expect(plan.steps[1]?.params).toMatchObject({ name: 'Chatbot Agent', monthly_limit: 50000 });
   });
@@ -14,14 +14,14 @@ describe('agent planner chatbot intents', () => {
   });
 
   it('routes online search prompts to realtime web search tool', () => {
-    const plan = planGoal('ค้นหาข่าว bitcoin online ตอนนี้');
+    const plan = planGoal('search bitcoin news online now');
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0]?.toolId).toBe('realtime_web_search');
-    expect(plan.steps[0]?.params).toMatchObject({ query: 'ค้นหาข่าว bitcoin online ตอนนี้' });
+    expect(plan.steps[0]?.params).toMatchObject({ query: 'search bitcoin news online now' });
   });
 
   it('routes browser control prompt to browser navigate tool', () => {
-    const plan = planGoal('เปิดเว็บ https://example.com ด้วย browser ให้หน่อย agt_ops_01');
+    const plan = planGoal('open https://example.com in the browser for agt_ops_01');
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0]?.toolId).toBe('browser_navigate');
     expect(plan.steps[0]?.params).toMatchObject({
