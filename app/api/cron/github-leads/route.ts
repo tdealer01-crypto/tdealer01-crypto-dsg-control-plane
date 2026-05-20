@@ -120,7 +120,7 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const token = process.env.GITHUB_TOKEN;
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
   const cutoffDate = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
   let found = 0;
@@ -152,9 +152,9 @@ export async function GET(request: Request) {
         });
         if (!validated) continue;
 
-        const { error: insertErr } = await supabase.from('leads').insert(validated as never);
+        const { error: insertErr } = await supabase.from('leads').insert(validated);
         if (!insertErr) saved++;
-        else if (insertErr.code !== '23505') errors.push(insertErr.message);
+        else if (insertErr.code !== '23505') errors.push(String(insertErr.message ?? 'insert failed'));
       }
 
       await new Promise(r => setTimeout(r, 1200));
