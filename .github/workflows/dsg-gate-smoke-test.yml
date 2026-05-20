@@ -1,0 +1,107 @@
+name: DSG Gate Smoke Test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Start local smoke-test API
+        run: |
+          cat > /tmp/dsg_smoke_server.py <<'PY'
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+          import json
+
+          class Handler(BaseHTTPRequestHandler):
+              def log_message(self, format, *args):
+                  return
+
+              def do_GET(self):
+                  if self.path == "/api/readiness":
+                      body = json.dumps({"ok": True, "service": "dsg-smoke-test"}).encode()
+                      self.send_response(200)
+                      self.send_header("Content-Type", "application/json")
+                      self.send_header("Content-Length", str(len(body)))
+                      self.end_headers()
+                      self.wfile.write(body)
+                      return
+
+                  if self.path == "/api/private-audit":
+                      body = json.dumps({"ok": False, "error": "Unauthorized"}).encode()
+                      self.send_response(401)
+                      self.send_header("Content-Type", "application/json")
+                      self.send_header("Content-Length", str(len(body)))
+                      self.end_headers()
+                      self.wfile.write(body)
+                      return
+
+                  self.send_response(404)
+                  self.end_headers()
+
+          HTTPServer(("127.0.0.1", 8787), Handler).serve_forever()
+          PY
+
+          python3 /tmp/dsg_smoke_server.py &
+          echo $! > /tmp/dsg_smoke_server.pid
+
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8787/api/readiness >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -i http://127.0.0.1:8787/api/readiness
+          curl -i http://127.0.0.1:8787/api/private-audit
+
+      - name: DSG Secure Deploy Gate v1.1.0
+        id: dsg
+        uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.1.0
+        with:
+          preset: strict
+          readiness_url: http://127.0.0.1:8787/api/readiness
+          expected_status: "200"
+          require_json_ok: "true"
+          protected_url: http://127.0.0.1:8787/api/private-audit
+          protected_expected: "401"
+          comment_on_pr: "true"
+          evidence_file: dsg-evidence.json
+          fail_on_no_go: "true"
+
+      - name: Verify evidence output
+        run: |
+          test -f dsg-evidence.json
+          cat dsg-evidence.json
+          python3 - <<'PY'
+          import json
+
+          with open("dsg-evidence.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          assert data["verdict"] == "GO", data
+          assert data["checks"]["readiness"]["status"] == 200, data
+          assert data["checks"]["readiness"]["json_ok"] is True, data
+          assert data["checks"]["protected_route"]["status"] == 401, data
+          assert data["checks"]["protected_route"]["passed"] is True, data
+          assert data["hashes"]["evidence"].startswith("sha256:"), data
+          assert data["hashes"]["policy"].startswith("sha256:"), data
+          assert data["hashes"]["proof"].startswith("sha256:"), data
+          assert data["hashes"]["chain"].startswith("sha256:"), data
+
+          print("DSG smoke test: PASS")
+          PY
+
+      - name: Stop local smoke-test API
+        if: always()
+        run: |
+          if [ -f /tmp/dsg_smoke_server.pid ]; then
+            kill "$(cat /tmp/dsg_smoke_server.pid)" || true
+          fi
