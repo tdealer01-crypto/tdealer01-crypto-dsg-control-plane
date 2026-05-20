@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ const FRAMEWORKS = [
   { name: 'openai-agents', query: 'openai-agents filename:requirements.txt', lang: 'python' },
   { name: 'openai-agents-js', query: '"@openai/agents" filename:package.json', lang: 'javascript' },
   { name: 'pydantic-ai', query: 'pydantic-ai filename:requirements.txt', lang: 'python' },
-];
+] as const;
 
 type GHRepo = {
   full_name: string;
@@ -32,6 +33,64 @@ type GHUser = {
   name?: string | null;
   company?: string | null;
 };
+
+type LeadInsert = {
+  email: string;
+  source: 'github-signal';
+  intent: 'high';
+  intent_score: number;
+  framework: string;
+  github_repo: string;
+  github_stars: number;
+  company: string | null;
+  messages: Array<{ role: 'system'; content: string }>;
+  last_seen_at: string;
+};
+
+function truncate(value: string | null | undefined, max: number): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, max);
+}
+
+function isValidEmail(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 255 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidRepoName(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 255 && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value);
+}
+
+function validateLead(input: {
+  email: unknown;
+  framework: string;
+  repo: GHRepo;
+  user: GHUser;
+  intentScore: number;
+}): LeadInsert | null {
+  if (!isValidEmail(input.email)) return null;
+  if (!isValidRepoName(input.repo.full_name)) return null;
+
+  const stars = Number(input.repo.stargazers_count);
+  if (!Number.isInteger(stars) || stars < 0) return null;
+
+  return {
+    email: input.email,
+    source: 'github-signal',
+    intent: 'high',
+    intent_score: Math.max(0, Math.min(100, Math.trunc(input.intentScore))),
+    framework: input.framework.slice(0, 50),
+    github_repo: input.repo.full_name,
+    github_stars: stars,
+    company: truncate(input.user.company, 255),
+    messages: [{
+      role: 'system',
+      content: `Found via GitHub: ${input.repo.html_url} (${stars}★) — uses ${input.framework}`.slice(0, 1000),
+    }],
+    last_seen_at: new Date().toISOString(),
+  };
+}
 
 async function searchGitHub(query: string, token?: string): Promise<GHRepo[]> {
   const headers: Record<string, string> = {
@@ -51,16 +110,14 @@ async function searchGitHub(query: string, token?: string): Promise<GHRepo[]> {
 async function getGitHubUser(login: string, token?: string): Promise<GHUser | null> {
   const headers: Record<string, string> = { accept: 'application/vnd.github+json' };
   if (token) headers.authorization = `Bearer ${token}`;
-  const res = await fetch(`https://api.github.com/users/${login}`, { headers });
+  const res = await fetch(`https://api.github.com/users/${encodeURIComponent(login)}`, { headers });
   if (!res.ok) return null;
   return res.json() as Promise<GHUser>;
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'github-leads');
+  if (!auth.ok) return auth.response;
 
   const token = process.env.GITHUB_TOKEN;
   const supabase = getSupabaseAdmin();
@@ -76,49 +133,38 @@ export async function GET(request: Request) {
 
       for (const repo of repos) {
         found++;
-        // Only recently active repos
         if (repo.updated_at < cutoffDate) continue;
-        // Skip low-signal repos — enterprise leads only
         if (repo.stargazers_count < 20) continue;
 
         const ownerLogin = repo.owner?.login;
         if (!ownerLogin) continue;
 
-        // Fetch public user profile for email
         const user = await getGitHubUser(ownerLogin, token);
-        const email = user?.email;
-        if (!email || !email.includes('@')) continue;
+        if (!user) continue;
 
-        const intentScore = Math.min(
-          40 + Math.floor(repo.stargazers_count / 10),
-          95,
-        );
-
-        const { error: insertErr } = await (supabase as any).from('leads').insert({
-          email,
-          source: 'github-signal',
-          intent: 'high',
-          intent_score: intentScore,
+        const intentScore = Math.min(40 + Math.floor(repo.stargazers_count / 10), 95);
+        const validated = validateLead({
+          email: user.email,
           framework: fw.name,
-          github_repo: repo.full_name,
-          github_stars: repo.stargazers_count,
-          company: user?.company ?? null,
-          messages: [{
-            role: 'system',
-            content: `Found via GitHub: ${repo.html_url} (${repo.stargazers_count}★) — uses ${fw.name}`,
-          }],
-          last_seen_at: new Date().toISOString(),
+          repo,
+          user,
+          intentScore,
         });
+        if (!validated) continue;
+
+        const { error: insertErr } = await supabase.from('leads').insert(validated as never);
         if (!insertErr) saved++;
-        else if ((insertErr as any).code !== '23505') errors.push(insertErr.message);
+        else if (insertErr.code !== '23505') errors.push(insertErr.message);
       }
 
-      // Respect GitHub rate limit
       await new Promise(r => setTimeout(r, 1200));
     } catch {
-      // continue to next framework
+      // Continue to next framework without leaking provider details.
     }
   }
 
-  return NextResponse.json({ ok: true, frameworks_searched: FRAMEWORKS.length, repos_found: found, leads_saved: saved, errors: errors.slice(0, 3) });
+  return NextResponse.json(
+    { ok: true, frameworks_searched: FRAMEWORKS.length, repos_found: found, leads_saved: saved, errors: errors.slice(0, 3) },
+    { headers: auth.headers },
+  );
 }
