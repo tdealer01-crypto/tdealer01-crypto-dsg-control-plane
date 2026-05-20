@@ -13,18 +13,19 @@ const hasLiveEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.S
 const describeLive = hasLiveEnv ? describe : describe.skip;
 
 describeLive('LIVE DB GATE: Supabase/Postgres production safety', () => {
-  const supabase = getSupabaseTestAdmin();
+  let supabase: ReturnType<typeof getSupabaseTestAdmin>;
   let orgA: SupabaseTestFixture;
   let orgB: SupabaseTestFixture;
 
   beforeAll(async () => {
+    supabase = getSupabaseTestAdmin();
     orgA = await createExecutionFixture(supabase);
     orgB = await createExecutionFixture(supabase);
   }, 30_000);
 
   afterAll(async () => {
-    if (orgA) await cleanupExecutionFixture(orgA, supabase);
-    if (orgB) await cleanupExecutionFixture(orgB, supabase);
+    if (orgA && supabase) await cleanupExecutionFixture(orgA, supabase);
+    if (orgB && supabase) await cleanupExecutionFixture(orgB, supabase);
   }, 30_000);
 
   it('required production tables are queryable with service role', async () => {
