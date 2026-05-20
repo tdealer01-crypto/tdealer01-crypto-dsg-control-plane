@@ -2,6 +2,9 @@ name: Production Quality Gates
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -62,7 +65,7 @@ jobs:
     needs: fast-gate
     timeout-minutes: 20
     if: >
-      github.event_name == 'workflow_dispatch' &&
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
       secrets.STAGING_SUPABASE_URL != '' &&
       secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY != ''
     env:
@@ -90,7 +93,7 @@ jobs:
     needs: live-db-required
     timeout-minutes: 30
     if: >
-      github.event_name == 'workflow_dispatch' &&
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
       secrets.STAGING_BASE_URL != ''
     env:
       CI: true
