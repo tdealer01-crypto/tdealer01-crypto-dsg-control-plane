@@ -1,6 +1,13 @@
-export type JsonParseResult<T = unknown> =
-  | { ok: true; value: T }
-  | { ok: false; status: number; error: string };
+export type JsonParseResult<T = unknown> = {
+  ok: boolean;
+  value: T | null;
+  status: number;
+  error: string | null;
+};
+
+function fail<T>(status: number, error: string): JsonParseResult<T> {
+  return { ok: false, value: null, status, error };
+}
 
 export async function readJsonBody<T = unknown>(
   request: Request,
@@ -9,28 +16,28 @@ export async function readJsonBody<T = unknown>(
   const maxBytes = options?.maxBytes ?? 64_000;
   const contentLength = request.headers.get('content-length');
   if (contentLength && Number(contentLength) > maxBytes) {
-    return { ok: false, status: 413, error: 'payload_too_large' };
+    return fail<T>(413, 'payload_too_large');
   }
 
   let raw = '';
   try {
     raw = await request.text();
   } catch {
-    return { ok: false, status: 400, error: 'invalid_body' };
+    return fail<T>(400, 'invalid_body');
   }
 
   if (raw.length === 0) {
-    return { ok: false, status: 400, error: 'empty_body' };
+    return fail<T>(400, 'empty_body');
   }
 
   if (Buffer.byteLength(raw, 'utf8') > maxBytes) {
-    return { ok: false, status: 413, error: 'payload_too_large' };
+    return fail<T>(413, 'payload_too_large');
   }
 
   try {
-    return { ok: true, value: JSON.parse(raw) as T };
+    return { ok: true, value: JSON.parse(raw) as T, status: 200, error: null };
   } catch {
-    return { ok: false, status: 400, error: 'invalid_json' };
+    return fail<T>(400, 'invalid_json');
   }
 }
 
