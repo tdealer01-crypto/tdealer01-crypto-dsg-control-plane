@@ -1,16 +1,21 @@
-// DSG Gate — public trial gate with full agent feedback on BLOCK
-// Immigration checkpoint: declare → stamp → inspect → rethink if blocked
-//
-// BLOCK response includes session state + guidance so the agent LLM can
-// decide next step without human intervention.
+// DSG Gate — trial gate with agent feedback on BLOCK.
+// Production hardening: Redis-backed sessions, signed stamps, bounded JSON,
+// optional public-trial mode, and explicit production secrets.
 
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { Redis } from '@upstash/redis';
 import { NextResponse } from 'next/server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+import { readJsonBody } from '../../../../lib/security/request-json';
+import { verifyBearerSecret } from '../../../../lib/security/secure-token';
 
 export const dynamic = 'force-dynamic';
 
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 60_000;
+const MAX_BODY_BYTES = 16_000;
+const SESSION_KEY_PREFIX = 'try-gate:session:';
+const AUDIT_KEY_PREFIX = 'try-gate:audit:';
 
 type Session = {
   session_id: string;
@@ -21,15 +26,17 @@ type Session = {
   created_at: number;
 };
 
-const sessions = new Map<string, Session>();
+type AuditEntry = {
+  timestamp_ms: number;
+  session_id: string;
+  decision: 'ALLOW' | 'BLOCK';
+  action?: string;
+  reason?: string;
+  stamp: string | null;
+};
 
-// Clean expired sessions every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, s] of sessions) {
-    if (s.expires_at < now) sessions.delete(id);
-  }
-}, 5 * 60_000);
+const devSessions = new Map<string, Session>();
+let redis: Redis | null = null;
 
 const BLOCKED_PATTERNS = [
   /delete\s+all/i, /drop\s+table/i, /truncate/i,
@@ -39,8 +46,140 @@ const BLOCKED_PATTERNS = [
   /exfiltrate/i, /steal/i,
 ];
 
-function makeStamp(): string {
-  return `DSG-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+function isProduction() {
+  return process.env.NODE_ENV === 'production';
+}
+
+function json(error: string, status: number, headers?: HeadersInit) {
+  return NextResponse.json({ error }, { status, headers });
+}
+
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  redis = new Redis({ url, token });
+  return redis;
+}
+
+function sessionKey(sessionId: string) {
+  return `${SESSION_KEY_PREFIX}${sessionId}`;
+}
+
+function auditKey(sessionId: string) {
+  return `${AUDIT_KEY_PREFIX}${sessionId}`;
+}
+
+function getStampSecret(): string | null {
+  const secret = process.env.DSG_STAMP_SECRET?.trim();
+  if (secret && secret.length >= 32) return secret;
+  if (!isProduction()) return 'dev-only-dsg-stamp-secret-minimum-32-bytes';
+  return null;
+}
+
+function makeStamp(input: { sessionId: string; action: string; timestamp: number }): string | null {
+  const secret = getStampSecret();
+  if (!secret) return null;
+  const nonce = randomBytes(8).toString('hex');
+  const payload = `${input.sessionId}:${input.action}:${input.timestamp}:${nonce}`;
+  const signature = createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32).toUpperCase();
+  return `DSG-${input.timestamp}-${nonce.toUpperCase()}-${signature}`;
+}
+
+function verifyStamp(stamp: string, input: { sessionId: string; action: string }): boolean {
+  const secret = getStampSecret();
+  if (!secret) return false;
+  const parts = stamp.split('-');
+  if (parts.length !== 4 || parts[0] !== 'DSG') return false;
+  const [, timestamp, nonce, signature] = parts;
+  if (!/^\d+$/.test(timestamp) || !/^[A-F0-9]{16}$/i.test(nonce) || !/^[A-F0-9]{32}$/i.test(signature)) return false;
+  const payload = `${input.sessionId}:${input.action}:${timestamp}:${nonce.toLowerCase()}`;
+  const expected = createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32).toUpperCase();
+  return timingSafeEqual(Buffer.from(signature.toUpperCase()), Buffer.from(expected));
+}
+
+async function getSession(sessionId: string): Promise<Session | null> {
+  const r = getRedis();
+  if (!r) {
+    if (isProduction()) throw new Error('redis_session_store_required');
+    return devSessions.get(sessionId) ?? null;
+  }
+  return await r.get<Session>(sessionKey(sessionId));
+}
+
+async function setSession(sessionId: string, session: Session, ttlSeconds: number) {
+  const r = getRedis();
+  if (!r) {
+    if (isProduction()) throw new Error('redis_session_store_required');
+    devSessions.set(sessionId, session);
+    return;
+  }
+  await r.set(sessionKey(sessionId), session, { ex: ttlSeconds });
+}
+
+async function deleteSession(sessionId: string) {
+  const r = getRedis();
+  if (!r) {
+    if (!isProduction()) devSessions.delete(sessionId);
+    return;
+  }
+  await r.del(sessionKey(sessionId));
+}
+
+async function appendAudit(entry: AuditEntry, ttlSeconds: number) {
+  const r = getRedis();
+  if (!r) return;
+  const key = auditKey(entry.session_id);
+  await r.rpush(key, JSON.stringify(entry));
+  await r.expire(key, ttlSeconds);
+}
+
+function isValidSessionId(value: unknown): value is string {
+  return typeof value === 'string' && value.length >= 3 && value.length <= 128 && /^[A-Za-z0-9_.:-]+$/.test(value);
+}
+
+function parseDeclaredActions(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 50) return null;
+  const actions = value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.slice(0, 200));
+  if (actions.length === 0) return null;
+  return Array.from(new Set(actions));
+}
+
+function parseTtlMinutes(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 30;
+  return Math.max(1, Math.min(Math.trunc(value), 120));
+}
+
+function parseAction(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const action = value.trim().slice(0, 500);
+  return action ? action : null;
+}
+
+function authorizeTryGate(request: Request): NextResponse | null {
+  if (process.env.DSG_TRY_GATE_PUBLIC_TRIAL === 'true') return null;
+
+  const configured = Boolean(process.env.DSG_TRY_GATE_API_KEY || process.env.DSG_TRY_GATE_API_KEY_SHA256);
+  if (!configured) {
+    if (isProduction()) {
+      return json('try_gate_auth_required', 503, { 'Cache-Control': 'no-store' });
+    }
+    return null;
+  }
+
+  if (!verifyBearerSecret(request, {
+    expected: process.env.DSG_TRY_GATE_API_KEY,
+    expectedSha256: process.env.DSG_TRY_GATE_API_KEY_SHA256,
+  })) {
+    return json('Unauthorized', 401, { 'Cache-Control': 'no-store' });
+  }
+
+  return null;
 }
 
 function matchesDeclared(action: string, declared: string[]): boolean {
@@ -58,7 +197,6 @@ function hasBlockedPattern(action: string): string | null {
   return null;
 }
 
-// Build rich guidance for the agent LLM to rethink after BLOCK
 function buildBlockGuidance(reason: string, session: Session, action: string): object {
   const ttlRemainingMs = Math.max(0, session.expires_at - Date.now());
   const ttlRemainingMin = Math.round(ttlRemainingMs / 60_000);
@@ -104,6 +242,9 @@ function buildBlockGuidance(reason: string, session: Session, action: string): o
 }
 
 export async function POST(request: Request) {
+  const authResponse = authorizeTryGate(request);
+  if (authResponse) return authResponse;
+
   const rateLimit = await applyRateLimit({
     key: getRateLimitKey(request, 'try-gate'),
     limit: RATE_LIMIT,
@@ -114,39 +255,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'rate_limit_exceeded', decision: 'BLOCK' }, { status: 429, headers });
   }
 
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-  if (!body) return NextResponse.json({ error: 'invalid_body' }, { status: 400, headers });
+  const parsed = await readJsonBody<Record<string, unknown>>(request, { maxBytes: MAX_BODY_BYTES });
+  if (!parsed.ok) return json(parsed.error, parsed.status, headers);
+  const body = parsed.value;
 
-  const sessionId = typeof body.session_id === 'string' ? body.session_id : null;
+  const sessionId = body.session_id;
+  if (!isValidSessionId(sessionId)) return json('session_id invalid or required', 400, headers);
 
-  // ── DECLARE: register session with declared actions ──────────────────────────
   if (Array.isArray(body.declared_actions)) {
-    if (!sessionId) return NextResponse.json({ error: 'session_id required' }, { status: 400, headers });
+    const declaredActions = parseDeclaredActions(body.declared_actions);
+    if (!declaredActions) return json('declared_actions must be a non-empty string array with max 50 items', 400, headers);
 
-    const ttlMin = typeof body.ttl_minutes === 'number' ? Math.min(body.ttl_minutes, 120) : 30;
-    const declaredActions = (body.declared_actions as unknown[])
-      .filter((a): a is string => typeof a === 'string')
-      .map(a => a.slice(0, 200));
+    const ttlMin = parseTtlMinutes(body.ttl_minutes);
+    const ttlSeconds = ttlMin * 60;
+    const timestamp = Date.now();
+    const stamp = makeStamp({ sessionId, action: 'declare', timestamp });
+    if (!stamp) return json('stamp_secret_required', 503, headers);
 
-    if (declaredActions.length === 0) {
-      return NextResponse.json({ error: 'declared_actions must be a non-empty string array' }, { status: 400, headers });
-    }
-
-    const stamp = makeStamp();
-    const expiresAt = Date.now() + ttlMin * 60_000;
-    sessions.set(sessionId, {
+    const expiresAt = Date.now() + ttlSeconds * 1000;
+    const session: Session = {
       session_id: sessionId,
       declared_actions: declaredActions,
       expires_at: expiresAt,
       stamps: [stamp],
       blocked_count: 0,
       created_at: Date.now(),
-    });
+    };
+    await setSession(sessionId, session, ttlSeconds);
+    await appendAudit({ timestamp_ms: timestamp, session_id: sessionId, decision: 'ALLOW', action: 'declare', stamp }, ttlSeconds);
 
     return NextResponse.json({
       ok: true,
       decision: 'ALLOW',
       declaration_stamp: stamp,
+      stamp_verifiable: verifyStamp(stamp, { sessionId, action: 'declare' }),
       session_id: sessionId,
       declared_actions: declaredActions,
       ttl_minutes: ttlMin,
@@ -158,12 +300,9 @@ export async function POST(request: Request) {
     }, { headers });
   }
 
-  // ── INSPECT: check a single action ──────────────────────────────────────────
-  if (typeof body.action === 'string') {
-    if (!sessionId) return NextResponse.json({ error: 'session_id required' }, { status: 400, headers });
-
-    const action = body.action.slice(0, 500);
-    const session = sessions.get(sessionId);
+  const action = parseAction(body.action);
+  if (action) {
+    const session = await getSession(sessionId);
 
     if (!session) {
       return NextResponse.json({
@@ -177,7 +316,7 @@ export async function POST(request: Request) {
     }
 
     if (Date.now() > session.expires_at) {
-      sessions.delete(sessionId);
+      await deleteSession(sessionId);
       return NextResponse.json({
         decision: 'BLOCK',
         reason: 'session_expired: TTL exceeded',
@@ -188,36 +327,34 @@ export async function POST(request: Request) {
       }, { status: 200, headers });
     }
 
-    // Always-block patterns — regardless of declaration
+    const ttlSeconds = Math.max(1, Math.ceil((session.expires_at - Date.now()) / 1000));
     const patternBlock = hasBlockedPattern(action);
     if (patternBlock) {
       session.blocked_count++;
-      return NextResponse.json(
-        buildBlockGuidance(patternBlock, session, action),
-        { status: 200, headers }
-      );
+      await setSession(sessionId, session, ttlSeconds);
+      await appendAudit({ timestamp_ms: Date.now(), session_id: sessionId, decision: 'BLOCK', action, reason: patternBlock, stamp: null }, ttlSeconds);
+      return NextResponse.json(buildBlockGuidance(patternBlock, session, action), { status: 200, headers });
     }
 
-    // Check declared actions
     if (!matchesDeclared(action, session.declared_actions)) {
       session.blocked_count++;
-      return NextResponse.json(
-        buildBlockGuidance(
-          `action_not_declared: "${action}" was not in your declared_actions list`,
-          session,
-          action
-        ),
-        { status: 200, headers }
-      );
+      const reason = `action_not_declared: "${action}" was not in your declared_actions list`;
+      await setSession(sessionId, session, ttlSeconds);
+      await appendAudit({ timestamp_ms: Date.now(), session_id: sessionId, decision: 'BLOCK', action, reason, stamp: null }, ttlSeconds);
+      return NextResponse.json(buildBlockGuidance(reason, session, action), { status: 200, headers });
     }
 
-    // ALLOW — stamp and record
-    const stamp = makeStamp();
+    const timestamp = Date.now();
+    const stamp = makeStamp({ sessionId, action, timestamp });
+    if (!stamp) return json('stamp_secret_required', 503, headers);
     session.stamps.push(stamp);
+    await setSession(sessionId, session, ttlSeconds);
+    await appendAudit({ timestamp_ms: timestamp, session_id: sessionId, decision: 'ALLOW', action, stamp }, ttlSeconds);
 
     return NextResponse.json({
       decision: 'ALLOW',
       stamp,
+      stamp_verifiable: verifyStamp(stamp, { sessionId, action }),
       action,
       session_id: sessionId,
       session_state: {
@@ -226,13 +363,12 @@ export async function POST(request: Request) {
         ttl_remaining_ms: Math.max(0, session.expires_at - Date.now()),
         declared_actions: session.declared_actions,
       },
-      timestamp_ms: Date.now(),
+      timestamp_ms: timestamp,
     }, { headers });
   }
 
-  // ── STATUS: check session state ──────────────────────────────────────────────
-  if (body.query === 'status' && sessionId) {
-    const session = sessions.get(sessionId);
+  if (body.query === 'status') {
+    const session = await getSession(sessionId);
     if (!session || Date.now() > session.expires_at) {
       return NextResponse.json({ session_id: sessionId, active: false }, { headers });
     }
@@ -247,12 +383,16 @@ export async function POST(request: Request) {
     }, { headers });
   }
 
-  return NextResponse.json({ error: 'provide declared_actions (declare), action (inspect), or query: "status"' }, { status: 400, headers });
+  return json('provide declared_actions (declare), action (inspect), or query: "status"', 400, headers);
 }
 
 export async function DELETE(request: Request) {
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-  const sessionId = typeof body?.session_id === 'string' ? body.session_id : null;
-  if (sessionId) sessions.delete(sessionId);
-  return NextResponse.json({ ok: true, cleared: Boolean(sessionId) });
+  const authResponse = authorizeTryGate(request);
+  if (authResponse) return authResponse;
+
+  const parsed = await readJsonBody<Record<string, unknown>>(request, { maxBytes: 4_000 });
+  if (!parsed.ok) return json(parsed.error, parsed.status);
+  const sessionId = parsed.value.session_id;
+  if (isValidSessionId(sessionId)) await deleteSession(sessionId);
+  return NextResponse.json({ ok: true, cleared: isValidSessionId(sessionId) });
 }
