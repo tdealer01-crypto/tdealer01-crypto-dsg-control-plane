@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
 import { buildEnterpriseProofReport } from '../../../lib/enterprise/proof';
+import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,9 +21,10 @@ export async function GET(request: Request) {
   try {
     const report = await buildEnterpriseProofReport({ orgId: access.orgId, agentId });
     return NextResponse.json(report);
-  } catch (err) {
+  } catch (error) {
+    logApiError('api/enterprise-proof', error, { orgId: access.orgId, agentId });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to generate report' },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }
