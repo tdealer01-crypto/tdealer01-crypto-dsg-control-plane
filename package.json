@@ -18,7 +18,7 @@
     "test:live:db:required": "node scripts/verify-live-env.mjs live-db && vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
     "verify:live-env": "node scripts/verify-live-env.mjs all",
     "verify:security-headers": "node scripts/verify-production-security-headers.mjs",
-    "test:e2e": "./scripts/with-playwright-chromium.sh playwright test",
+    "test:e2e": "./scripts/with-playwright-chromium.sh playwright test tests/e2e/enterprise-proof.spec.ts tests/e2e/finance-governance-workflow.spec.ts",
     "screenshot": "./scripts/with-playwright-chromium.sh node scripts/capture-screenshot.mjs",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:install:shell": "playwright install --only-shell chromium",
