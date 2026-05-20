@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
+import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,10 @@ const PUBLIC_ROUTES = [
   '/login',
 ];
 
+class RouteQaInputError extends Error {
+  status = 400;
+}
+
 function normalizeTarget(input: unknown, origin: string) {
   const value = String(input || '').trim();
   if (!value) return '';
@@ -25,7 +30,7 @@ function normalizeTarget(input: unknown, origin: string) {
   if (value.startsWith('http://') || value.startsWith('https://')) {
     const url = new URL(value);
     if (url.origin !== origin) {
-      throw new Error('ROUTE_QA_EXTERNAL_URL_BLOCKED');
+      throw new RouteQaInputError('external URL blocked');
     }
     return url.toString();
   }
@@ -113,8 +118,11 @@ export async function POST(request: Request) {
       truthBoundary: 'Route QA checks server-rendered route status and HTML basics. Browser console and visual layout still require browser runtime evidence.',
     });
   } catch (error) {
-    const code = error instanceof Error ? error.message : 'ROUTE_QA_FAILED';
-    const status = code === 'ROUTE_QA_EXTERNAL_URL_BLOCKED' ? 400 : 500;
-    return NextResponse.json({ ok: false, error: code }, { status });
+    if (error instanceof RouteQaInputError) {
+      return NextResponse.json({ ok: false, error: 'invalid_route_qa_target' }, { status: error.status });
+    }
+
+    logApiError('api/route-qa', error);
+    return NextResponse.json({ ok: false, error: internalErrorMessage() }, { status: 500 });
   }
 }
