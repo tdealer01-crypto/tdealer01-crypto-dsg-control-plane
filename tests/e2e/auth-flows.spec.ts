@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+const isStagingGate = process.env.PLAYWRIGHT_STAGING_GATE === 'true';
 
 test.describe('auth and protected route journeys', () => {
+  test.skip(!isStagingGate, 'Staging auth journey is skipped in local/demo E2E; run via npm run test:e2e:staging.');
+
   test('anonymous user is redirected from dashboard to login and preserves next path', async ({ page }) => {
     await page.goto(`${baseURL}/dashboard`);
 
