@@ -4,25 +4,23 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { getResend } from '../../../../lib/resend';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'weekly-report');
+  if (!auth.ok) return auth.response;
 
   const founderEmail = process.env.FOUNDER_EMAIL;
   if (!founderEmail) {
-    return NextResponse.json({ ok: false, error: 'FOUNDER_EMAIL not set' }, { status: 200 });
+    return NextResponse.json({ ok: false, error: 'FOUNDER_EMAIL not set' }, { status: 200, headers: auth.headers });
   }
 
   const admin = getSupabaseAdmin();
   const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const now = new Date().toISOString();
 
-  // ── Lead pipeline metrics ────────────────────────────────────────────────
   const { data: allLeads } = await (admin as any).from('leads').select('source, intent, outreach_sent, outreach_sent_at, intent_score, created_at, messages');
   const leads = (allLeads ?? []) as Array<{
     source: string; intent: string; outreach_sent: boolean; outreach_sent_at: string | null;
@@ -41,7 +39,6 @@ export async function GET(request: Request) {
     ? Math.round(leads.map(l => l.intent_score || 0).reduce((a, b) => a + b, 0) / leads.length)
     : 0;
 
-  // ── Trial signups ────────────────────────────────────────────────────────
   const { data: signups } = await (admin as any)
     .from('trial_signups')
     .select('status, created_at')
@@ -50,7 +47,6 @@ export async function GET(request: Request) {
   const newSignups = signupRows.length;
   const completedSignups = signupRows.filter(s => s.status === 'completed').length;
 
-  // ── Organizations ────────────────────────────────────────────────────────
   const { count: totalOrgs } = await (admin as any)
     .from('organizations')
     .select('id', { count: 'exact', head: true });
@@ -59,7 +55,6 @@ export async function GET(request: Request) {
     .select('id', { count: 'exact', head: true })
     .gte('created_at', weekAgo);
 
-  // ── Marketing agent runs ─────────────────────────────────────────────────
   let agentRuns: Array<{ run_at: string; summary: string; actions_taken: string[]; status: string }> = [];
   try {
     const { data } = await (admin as any)
@@ -73,7 +68,6 @@ export async function GET(request: Request) {
     // table may not exist yet
   }
 
-  // ── Build email HTML ─────────────────────────────────────────────────────
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
   const dateRange = `${new Date(weekAgo).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(now).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
@@ -88,7 +82,7 @@ export async function GET(request: Request) {
     ? agentRuns.map(r =>
         `<tr>
           <td style="padding:8px;font-size:12px;color:#64748b">${new Date(r.run_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
-          <td style="padding:8px;font-size:12px">${r.summary?.slice(0, 120) ?? '—'}</td>
+          <td style="padding:8px;font-size:12px">${String(r.summary ?? '—').slice(0, 120)}</td>
           <td style="padding:8px;text-align:center"><span style="color:${r.status === 'ok' ? '#10b981' : '#ef4444'}">${r.status === 'ok' ? '✓' : '✗'}</span></td>
         </tr>`
       ).join('')
@@ -162,7 +156,6 @@ export async function GET(request: Request) {
   </div>
 </div>`;
 
-  // ── Send email ───────────────────────────────────────────────────────────
   const resend = getResend();
   let emailed = false;
   if (resend.configured) {
@@ -188,5 +181,5 @@ export async function GET(request: Request) {
       agent_runs_this_week: agentRuns.length,
     },
     emailed_to: emailed ? founderEmail : null,
-  });
+  }, { headers: auth.headers });
 }
