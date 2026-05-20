@@ -6,27 +6,36 @@ const SAFE_ID_RE = /^[A-Za-z0-9_.:-]+$/;
 const SAFE_TOKEN_RE = /^[A-Za-z0-9_-]+$/;
 const HEX_HASH_RE = /^[a-fA-F0-9]{32,128}$/;
 
-export type ValidationResult =
-  | { ok: true; value: DeterministicProofRequest }
-  | { ok: false; error: string; details?: Array<{ field: string; message: string }> };
+type Issue = { field: string; message: string };
 
-function issue(field: string, message: string) {
+export type ValidationResult = {
+  ok: boolean;
+  value: DeterministicProofRequest | null;
+  error: string | null;
+  details: Issue[];
+};
+
+function issue(field: string, message: string): Issue {
   return { field, message };
 }
 
-function optionalSafeString(value: unknown, field: string, max = 255): { ok: true; value?: string } | { ok: false; detail: { field: string; message: string } } {
-  if (value === undefined || value === null || value === '') return { ok: true };
-  if (typeof value !== 'string') return { ok: false, detail: issue(field, 'must be a string') };
+function fail(details: Issue[]): ValidationResult {
+  return { ok: false, value: null, error: 'validation_failed', details };
+}
+
+function optionalSafeString(value: unknown, field: string, max = 255): { value?: string; detail?: Issue } {
+  if (value === undefined || value === null || value === '') return {};
+  if (typeof value !== 'string') return { detail: issue(field, 'must be a string') };
   const trimmed = value.trim();
-  if (trimmed.length > max) return { ok: false, detail: issue(field, `must be <= ${max} chars`) };
-  if (!SAFE_ID_RE.test(trimmed)) return { ok: false, detail: issue(field, 'contains unsupported characters') };
-  return { ok: true, value: trimmed };
+  if (trimmed.length > max) return { detail: issue(field, `must be <= ${max} chars`) };
+  if (!SAFE_ID_RE.test(trimmed)) return { detail: issue(field, 'contains unsupported characters') };
+  return { value: trimmed };
 }
 
 export function validateDeterministicProofRequest(raw: unknown): ValidationResult {
-  const details: Array<{ field: string; message: string }> = [];
+  const details: Issue[] = [];
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ok: false, error: 'validation_failed', details: [issue('body', 'must be an object')] };
+    return fail([issue('body', 'must be an object')]);
   }
 
   const body = raw as Record<string, unknown>;
@@ -56,7 +65,7 @@ export function validateDeterministicProofRequest(raw: unknown): ValidationResul
   const policyRef = optionalSafeString(body.policyRef, 'policyRef', 255);
   const policyVersion = optionalSafeString(body.policyVersion, 'policyVersion', 50);
   for (const parsed of [planId, policyRef, policyVersion]) {
-    if (!parsed.ok) details.push(parsed.detail);
+    if (parsed.detail) details.push(parsed.detail);
   }
 
   let riskLevel: DeterministicRiskLevel | undefined;
@@ -77,14 +86,16 @@ export function validateDeterministicProofRequest(raw: unknown): ValidationResul
     }
   }
 
-  if (details.length > 0) return { ok: false, error: 'validation_failed', details };
+  if (details.length > 0) return fail(details);
 
   return {
     ok: true,
+    error: null,
+    details: [],
     value: {
-      planId: planId.ok ? planId.value : undefined,
-      policyRef: policyRef.ok ? policyRef.value : undefined,
-      policyVersion: policyVersion.ok ? policyVersion.value : undefined,
+      planId: planId.value,
+      policyRef: policyRef.value,
+      policyVersion: policyVersion.value,
       riskLevel,
       previousProofHash,
       nonce,
