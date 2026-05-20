@@ -28,15 +28,16 @@ function executeRequest(fixture: SupabaseTestFixture, input: unknown = { message
 }
 
 describeLive('/api/execute live Supabase required gate', () => {
-  const supabase = getSupabaseTestAdmin();
+  let supabase: ReturnType<typeof getSupabaseTestAdmin>;
   let fixture: SupabaseTestFixture;
 
   beforeAll(async () => {
+    supabase = getSupabaseTestAdmin();
     fixture = await createExecutionFixture(supabase);
   }, 30_000);
 
   afterAll(async () => {
-    if (fixture) await cleanupExecutionFixture(fixture, supabase);
+    if (fixture && supabase) await cleanupExecutionFixture(fixture, supabase);
   }, 30_000);
 
   it('resolves an active Supabase agent from SHA-256 API key hash', async () => {
