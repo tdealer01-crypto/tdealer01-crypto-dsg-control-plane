@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { executeTool } from '../../../../lib/marketing/mcp-tools';
 import { getResend } from '../../../../lib/resend';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,18 +39,16 @@ function getWeekNumber(): number {
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'content-gen');
+  if (!auth.ok) return auth.response;
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ ok: false, error: 'ANTHROPIC_API_KEY not configured' }, { status: 200 });
+    return NextResponse.json({ ok: false, error: 'ANTHROPIC_API_KEY not configured' }, { status: 200, headers: auth.headers });
   }
 
   const founderEmail = process.env.FOUNDER_EMAIL;
   if (!founderEmail) {
-    return NextResponse.json({ ok: false, error: 'FOUNDER_EMAIL not set' }, { status: 200 });
+    return NextResponse.json({ ok: false, error: 'FOUNDER_EMAIL not set' }, { status: 200, headers: auth.headers });
   }
 
   const week = getWeekNumber();
@@ -62,32 +61,29 @@ export async function GET(request: Request) {
 
   const errors: string[] = [];
 
-  // Generate SEO article
   let article: Record<string, unknown> = {};
   try {
     article = await executeTool('generate_seo_article', { keyword });
-  } catch (err) {
-    errors.push(`article: ${err instanceof Error ? err.message : 'failed'}`);
+  } catch {
+    errors.push('article: failed');
   }
 
-  // Generate 3 LinkedIn posts
   const linkedinPosts: Array<{ angle: string; post: string }> = [];
   for (const angle of angles) {
     try {
       const result = await executeTool('generate_linkedin_post', { angle });
       linkedinPosts.push({ angle, post: String((result as Record<string, unknown>).post ?? '') });
-    } catch (err) {
-      errors.push(`linkedin(${angle}): ${err instanceof Error ? err.message : 'failed'}`);
+    } catch {
+      errors.push(`linkedin(${angle}): failed`);
     }
   }
 
-  // Email everything to founder
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
   const resend = getResend();
 
   if (resend.configured) {
     const articleSection = article.title
-      ? `<h2>📝 SEO Article — Week ${week}</h2>
+      ? `<h2>SEO Article — Week ${week}</h2>
          <p><strong>Keyword:</strong> ${keyword}</p>
          <p><strong>Title:</strong> ${article.title}</p>
          <p><strong>Meta:</strong> ${article.meta_description}</p>
@@ -99,7 +95,7 @@ export async function GET(request: Request) {
       .map(
         (p, i) =>
           `<h3>LinkedIn Post ${i + 1} — ${p.angle}</h3>
-           <div style="background:#f0f9ff;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px">${p.post}</div>`
+           <div style="background:#f0f9ff;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px">${p.post.slice(0, 3000)}</div>`
       )
       .join('<br/>');
 
@@ -110,9 +106,9 @@ export async function GET(request: Request) {
         <h1 style="color:#1e293b">DSG ONE — Weekly Content Package</h1>
         <p style="color:#64748b">Generated ${new Date().toISOString().split('T')[0]} · Week ${week} · <a href="${appUrl}/quickstart">Quickstart</a></p>
         ${articleSection}
-        <h2>📣 LinkedIn Posts (copy-paste ready)</h2>
+        <h2>LinkedIn Posts (copy-paste ready)</h2>
         ${postsSection}
-        ${errors.length ? `<p style="color:#ef4444">⚠️ Errors: ${errors.join(', ')}</p>` : ''}
+        ${errors.length ? `<p style="color:#ef4444">Errors: ${errors.join(', ')}</p>` : ''}
       </div>`,
     });
   }
@@ -125,5 +121,5 @@ export async function GET(request: Request) {
     linkedin_posts_generated: linkedinPosts.length,
     emailed_to: founderEmail,
     errors: errors.slice(0, 5),
-  });
+  }, { headers: auth.headers });
 }
