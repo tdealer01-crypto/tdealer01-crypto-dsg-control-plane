@@ -21,6 +21,21 @@ function resolveRemoteApiOrigin() {
   return parseOrigin(process.env.DSG_REMOTE_API_URL || process.env.NEXT_PUBLIC_DSG_REMOTE_API_URL);
 }
 
+function resolveCanonicalResponseOrigin() {
+  const appOrigin = parseOrigin(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL);
+  const vercelProductionOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
+    : null;
+  const vercelDeploymentOrigin = process.env.VERCEL_URL
+    ? parseOrigin(`https://${process.env.VERCEL_URL}`)
+    : null;
+
+  return appOrigin
+    || vercelProductionOrigin
+    || vercelDeploymentOrigin
+    || 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+}
+
 function buildConnectSrc() {
   const coreOrigin = parseOrigin(process.env.DSG_CORE_URL);
   const remoteApiOrigin = resolveRemoteApiOrigin();
@@ -52,7 +67,16 @@ const nextConfig = {
 
   async headers() {
     // API CORS is intentionally handled at route level via lib/security/cors.ts.
+    // Non-API document/static responses should never expose wildcard CORS.
+    const canonicalResponseOrigin = resolveCanonicalResponseOrigin();
+
     return [
+      {
+        source: '/((?!api/).*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: canonicalResponseOrigin },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [
