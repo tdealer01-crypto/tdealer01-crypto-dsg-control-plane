@@ -5,16 +5,15 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { sendGitHubLeadOutreach } from '../../../../lib/email/sales';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
 const BATCH_SIZE = 20;
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'lead-outreach');
+  if (!auth.ok) return auth.response;
 
   const supabase = getSupabaseAdmin();
 
@@ -28,7 +27,7 @@ export async function GET(request: Request) {
     .limit(BATCH_SIZE);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'query failed' }, { status: 500, headers: auth.headers });
   }
 
   let sent = 0;
@@ -49,9 +48,9 @@ export async function GET(request: Request) {
         .eq('id', lead.id);
 
       if (!updateErr) sent++;
-      else errors.push(updateErr.message);
-    } catch (e) {
-      errors.push(e instanceof Error ? e.message : String(e));
+      else errors.push('update failed');
+    } catch {
+      errors.push('send failed');
     }
   }
 
@@ -60,5 +59,5 @@ export async function GET(request: Request) {
     leads_found: (leads ?? []).length,
     emails_sent: sent,
     errors: errors.slice(0, 3),
-  });
+  }, { headers: auth.headers });
 }

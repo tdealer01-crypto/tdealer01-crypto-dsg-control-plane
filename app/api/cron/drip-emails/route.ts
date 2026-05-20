@@ -1,8 +1,9 @@
 // Daily cron: send trial drip emails at D7 (mid-point) and D13 (expiry warning)
-// Vercel cron calls this with Authorization: Bearer CRON_SECRET
+// Vercel cron calls this with Authorization: Bearer CRON_DRIP_EMAILS_SECRET or CRON_SECRET.
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { sendTrialMidpoint, sendTrialExpiry } from '../../../../lib/email/sales';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +12,8 @@ function daysBetween(a: Date, b: Date) {
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
+  const auth = requireCronAuth(request, 'drip-emails');
+  if (!auth.ok) return auth.response;
 
   const supabase = getSupabaseAdmin();
   const now = new Date();
@@ -31,7 +27,7 @@ export async function GET(request: Request) {
     .not('customer_email', 'is', null);
 
   if (error || !trials) {
-    return NextResponse.json({ error: error?.message || 'query failed' }, { status: 500 });
+    return NextResponse.json({ error: 'query failed' }, { status: 500, headers: auth.headers });
   }
 
   let sent = 0;
@@ -95,5 +91,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, processed: trials.length, sent });
+  return NextResponse.json({ ok: true, processed: trials.length, sent }, { headers: auth.headers });
 }

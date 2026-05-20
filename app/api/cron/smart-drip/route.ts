@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { getMilestones, hasSent, recordSend } from '../../../../lib/marketing/milestones';
 import { personalizeEmail } from '../../../../lib/marketing/ai-email';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 import {
   sendBehavioralNoAgent,
   sendBehavioralEnableBlock,
@@ -17,10 +18,8 @@ function daysBetween(a: Date, b: Date) {
 }
 
 export async function GET(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'smart-drip');
+  if (!auth.ok) return auth.response;
 
   const admin = getSupabaseAdmin();
   const now = new Date();
@@ -34,7 +33,7 @@ export async function GET(request: Request) {
 
   if (error) {
     logApiError('api/cron/smart-drip', error, { stage: 'load-trials' });
-    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500, headers: auth.headers });
   }
 
   const results: string[] = [];
@@ -111,5 +110,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, processed: trials?.length ?? 0, sent: results });
+  return NextResponse.json({ ok: true, processed: trials?.length ?? 0, sent: results }, { headers: auth.headers });
 }

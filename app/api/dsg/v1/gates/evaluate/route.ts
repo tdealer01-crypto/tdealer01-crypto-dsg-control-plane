@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 import { evaluateDeterministicGate } from '../../../../../../lib/dsg/deterministic/gate-engine';
-import type { DeterministicProofRequest } from '../../../../../../lib/dsg/deterministic/types';
+import { validateDeterministicProofRequest } from '../../../../../../lib/dsg/deterministic/request-validation';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../../../lib/security/rate-limit';
+import { readJsonBody } from '../../../../../../lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
-
-function text(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
-}
 
 export async function POST(request: Request) {
   const rateLimitResult = await applyRateLimit({
@@ -23,33 +20,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.json().catch(() => null) as Partial<DeterministicProofRequest> | null;
-
-  if (!body || !body.context || typeof body.context !== 'object') {
-    return NextResponse.json({ ok: false, error: 'missing_context' }, { status: 400 });
+  const body = await readJsonBody(request, { maxBytes: 16_000 });
+  if (!body.ok) {
+    return NextResponse.json(
+      { ok: false, error: body.error },
+      { status: body.status, headers: rateLimitHeaders },
+    );
   }
 
-  const nonce = text(body.nonce) || text(request.headers.get('x-dsg-nonce'));
-  const idempotencyKey = text(body.idempotencyKey) || text(request.headers.get('idempotency-key'));
-
-  if (!nonce) {
-    return NextResponse.json({ ok: false, error: 'missing_nonce' }, { status: 400 });
+  const validated = validateDeterministicProofRequest(body.value);
+  if (!validated.ok) {
+    return NextResponse.json(
+      { ok: false, error: validated.error, details: validated.details ?? [] },
+      { status: 400, headers: rateLimitHeaders },
+    );
   }
 
-  if (!idempotencyKey) {
-    return NextResponse.json({ ok: false, error: 'missing_idempotency_key' }, { status: 400 });
-  }
-
-  const result = evaluateDeterministicGate({
-    planId: body.planId,
-    policyRef: body.policyRef,
-    policyVersion: body.policyVersion,
-    riskLevel: body.riskLevel,
-    previousProofHash: body.previousProofHash,
-    nonce,
-    idempotencyKey,
-    context: body.context,
-  });
+  const result = evaluateDeterministicGate(validated.value);
 
   return NextResponse.json(
     {

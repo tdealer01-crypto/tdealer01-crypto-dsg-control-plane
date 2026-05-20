@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { sendFounderAlertFirstBlock } from '../../../../lib/email/sales';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,7 @@ function scorePost(title: string, body: string): { score: number; matched: strin
 }
 
 async function fetchReddit(subreddit: string): Promise<RedditPost[]> {
-  const url = `https://www.reddit.com/r/${subreddit}/new.json?limit=25&t=day`;
+  const url = `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/new.json?limit=25&t=day`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'DSGGrowthBot/1.0' },
   });
@@ -84,10 +85,8 @@ async function fetchHN(): Promise<HNItem[]> {
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'social-listen');
+  if (!auth.ok) return auth.response;
 
   const supabase = getSupabaseAdmin();
   const alerts: string[] = [];
@@ -101,7 +100,8 @@ export async function GET(request: Request) {
         const { score, matched } = scorePost(post.title, post.selftext);
         if (score < 30) continue;
 
-        const fakeEmail = `reddit_${post.author}@social-lead.dsg.internal`;
+        const safeAuthor = String(post.author || 'unknown').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 80);
+        const fakeEmail = `reddit_${safeAuthor}@social-lead.dsg.internal`;
 
         const { error: redditErr } = await (supabase as any).from('leads').insert({
           email: fakeEmail,
@@ -109,17 +109,17 @@ export async function GET(request: Request) {
           intent: score >= 60 ? 'high' : 'browse',
           intent_score: score,
           framework: 'reddit',
-          company: `r/${sub}`,
+          company: `r/${sub}`.slice(0, 255),
           messages: [{
             role: 'system',
-            content: `Reddit r/${sub}: "${post.title}" — score ${score} — matched: ${matched.join(', ')} — ${post.url}`,
+            content: `Reddit r/${sub}: "${post.title}" — score ${score} — matched: ${matched.join(', ')} — ${post.url}`.slice(0, 1000),
           }],
           last_seen_at: new Date().toISOString(),
         });
         if (!redditErr || (redditErr as any).code === '23505') saved++;
 
         if (score >= 60) {
-          alerts.push(`[Reddit r/${sub}] "${post.title}" score=${score}`);
+          alerts.push(`[Reddit r/${sub}] "${post.title}" score=${score}`.slice(0, 300));
         }
       }
       await new Promise(r => setTimeout(r, 500));
@@ -133,7 +133,8 @@ export async function GET(request: Request) {
       const { score, matched } = scorePost(item.title, item.story_text ?? '');
       if (score < 30) continue;
 
-      const fakeEmail = `hn_${item.author}@social-lead.dsg.internal`;
+      const safeAuthor = String(item.author || 'unknown').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 80);
+      const fakeEmail = `hn_${safeAuthor}@social-lead.dsg.internal`;
       const { error: hnErr } = await (supabase as any).from('leads').insert({
         email: fakeEmail,
         source: 'hn-signal',
@@ -142,14 +143,14 @@ export async function GET(request: Request) {
         framework: 'hackernews',
         messages: [{
           role: 'system',
-          content: `HN: "${item.title}" — score ${score} — matched: ${matched.join(', ')} — https://news.ycombinator.com/item?id=${item.objectID}`,
+          content: `HN: "${item.title}" — score ${score} — matched: ${matched.join(', ')} — https://news.ycombinator.com/item?id=${item.objectID}`.slice(0, 1000),
         }],
         last_seen_at: new Date().toISOString(),
       });
       if (!hnErr || (hnErr as any).code === '23505') saved++;
 
       if (score >= 60) {
-        alerts.push(`[HN] "${item.title}" score=${score}`);
+        alerts.push(`[HN] "${item.title}" score=${score}`.slice(0, 300));
       }
     }
   } catch { /* skip HN failure */ }
@@ -165,5 +166,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, leads_saved: saved, hot_alerts: alerts.length, alerts });
+  return NextResponse.json({ ok: true, leads_saved: saved, hot_alerts: alerts.length, alerts }, { headers: auth.headers });
 }
