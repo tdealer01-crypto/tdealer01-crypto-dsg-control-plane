@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { MARKETING_TOOL_DEFINITIONS, executeTool } from '../../../../lib/marketing/mcp-tools';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { requireCronAuth } from '../../../../lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,8 +63,7 @@ Never call more than one tool in a single step.`,
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`Anthropic API ${res.status}`);
   }
   return res.json() as Promise<ClaudeResponse>;
 }
@@ -84,19 +84,16 @@ async function logAgentRun(
       error: error ?? null,
     });
   } catch {
-    // Table may not exist yet — log to console only
     console.log('[marketing-agent] run logged to console (table not found)', { summary, actions, status });
   }
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = requireCronAuth(request, 'marketing-agent');
+  if (!auth.ok) return auth.response;
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ ok: false, error: 'ANTHROPIC_API_KEY not configured' }, { status: 200 });
+    return NextResponse.json({ ok: false, error: 'ANTHROPIC_API_KEY not configured' }, { status: 200, headers: auth.headers });
   }
 
   const messages: ClaudeMessage[] = [
@@ -156,10 +153,9 @@ export async function GET(request: Request) {
       actions: actionsLog,
       summary: finalSummary,
       run_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    await logAgentRun('Agent run failed', actionsLog, 'error', msg);
-    return NextResponse.json({ ok: false, error: msg, actions: actionsLog }, { status: 200 });
+    }, { headers: auth.headers });
+  } catch {
+    await logAgentRun('Agent run failed', actionsLog, 'error', 'marketing_agent_failed');
+    return NextResponse.json({ ok: false, error: 'marketing_agent_failed', actions: actionsLog }, { status: 200, headers: auth.headers });
   }
 }
