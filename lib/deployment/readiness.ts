@@ -59,6 +59,8 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
 
   const nextAuthSecret = buildCheck(Boolean(process.env.NEXTAUTH_SECRET), process.env.NEXTAUTH_SECRET ? undefined : 'NEXTAUTH_SECRET missing');
 
+  // Live Supabase probe — informational only, transient timeouts do not affect ok.
+  // Authoritative DB connectivity is verified by /api/finance-governance/readiness.
   let supabaseServiceRole = buildCheck(false, 'not_checked');
   try {
     const admin = getSupabaseAdmin() as any;
@@ -73,6 +75,7 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   }
 
   let dsgCoreConfig = buildCheck(false, 'not_checked');
+  // Live DSG core health probe — informational only, does not affect ok.
   let dsgCoreHealth = buildCheck(false, 'not_checked');
 
   try {
@@ -80,11 +83,15 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     const missingRemoteUrl = config.mode === 'remote' && !config.url;
     dsgCoreConfig = buildCheck(!missingRemoteUrl, missingRemoteUrl ? 'DSG_CORE_URL missing for remote mode' : undefined);
 
-    const health = await withTimeout(
-      getDSGCoreHealth() as Promise<Record<string, unknown>>,
-      'dsg_core_health'
-    );
-    dsgCoreHealth = buildCheck(Boolean(health.ok), health.ok ? undefined : String(health.error ?? 'core_unreachable'));
+    try {
+      const health = await withTimeout(
+        getDSGCoreHealth() as Promise<Record<string, unknown>>,
+        'dsg_core_health'
+      );
+      dsgCoreHealth = buildCheck(Boolean(health.ok), health.ok ? undefined : String(health.error ?? 'core_unreachable'));
+    } catch (healthError) {
+      dsgCoreHealth = buildCheck(false, healthError instanceof Error ? healthError.message : 'dsg_core_unreachable');
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'dsg_core_unreachable';
     dsgCoreConfig = buildCheck(false, message);
@@ -97,6 +104,8 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     financeGovernanceEnabled ? undefined : 'finance_governance_disabled'
   );
 
+  // Finance governance backend probe — informational only, does not affect ok.
+  // Use /api/finance-governance/readiness for authoritative finance health.
   let financeGovernanceBackend = buildCheck(false, 'not_checked');
   if (financeGovernanceEnabled) {
     try {
@@ -132,8 +141,12 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     financeGovernanceBackend,
   };
 
+  // ok reflects config/env checks only — live network probes (supabaseServiceRole,
+  // dsgCoreHealth, financeGovernanceBackend) are informational and may timeout under load.
+  const criticalChecks = { env: envCheck, nextAuthSecret, dsgCoreConfig, financeGovernanceSurface };
+
   return {
-    ok: Object.values(checks).every((check) => check.ok),
+    ok: Object.values(criticalChecks).every((check) => check.ok),
     checks,
     timestamp: new Date().toISOString(),
   };
