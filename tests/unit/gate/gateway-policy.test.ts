@@ -17,7 +17,7 @@ const validTool: GatewayToolRegistryEntry = {
   provider: 'zapier',
   action: 'post_message',
   risk: 'medium',
-  executionMode: 'sync',
+  executionMode: 'gateway',
   requiresApproval: false,
   description: 'Post a message to Slack',
 };
@@ -93,14 +93,14 @@ describe('evaluateGatewayToolRequest', () => {
   );
 
   it('returns review when requiresApproval=true and no token', () => {
-    const criticalTool = { ...validTool, requiresApproval: true, risk: 'critical' as const };
+    const criticalTool: GatewayToolRegistryEntry = { ...validTool, requiresApproval: true, risk: 'critical' };
     const result = evaluateGatewayToolRequest(validRequest, criticalTool);
     expect(result.decision).toBe('review');
     expect(result.reason).toBe('approval_required');
   });
 
   it('allows when requiresApproval=true and approval token present', () => {
-    const criticalTool = { ...validTool, requiresApproval: true, risk: 'critical' as const };
+    const criticalTool: GatewayToolRegistryEntry = { ...validTool, requiresApproval: true, risk: 'critical' };
     const result = evaluateGatewayToolRequest(
       { ...validRequest, approvalToken: 'tok_abc123' },
       criticalTool
@@ -109,14 +109,14 @@ describe('evaluateGatewayToolRequest', () => {
   });
 
   it('returns review when risk is critical even if requiresApproval=false', () => {
-    const criticalRiskTool = { ...validTool, requiresApproval: false, risk: 'critical' as const };
+    const criticalRiskTool: GatewayToolRegistryEntry = { ...validTool, requiresApproval: false, risk: 'critical' };
     const result = evaluateGatewayToolRequest(validRequest, criticalRiskTool);
     expect(result.decision).toBe('review');
     expect(result.reason).toBe('approval_required');
   });
 
   it('returns review when executionMode is critical', () => {
-    const criticalModeTool = { ...validTool, executionMode: 'critical' as const, requiresApproval: false, risk: 'medium' as const };
+    const criticalModeTool: GatewayToolRegistryEntry = { ...validTool, executionMode: 'critical', requiresApproval: false, risk: 'medium' };
     const result = evaluateGatewayToolRequest(validRequest, criticalModeTool);
     expect(result.decision).toBe('review');
   });

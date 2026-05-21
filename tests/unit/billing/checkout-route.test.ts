@@ -6,21 +6,21 @@ const mockStripeInstance = {
 };
 
 vi.mock('stripe', () => ({ default: vi.fn(() => mockStripeInstance) }));
-vi.mock('../../../../lib/supabase/server', () => ({ createClient: vi.fn() }));
-vi.mock('../../../../lib/security/rate-limit', () => ({
+vi.mock('../../../lib/supabase/server', () => ({ createClient: vi.fn() }));
+vi.mock('../../../lib/security/rate-limit', () => ({
   applyRateLimit: vi.fn(),
   buildRateLimitHeaders: vi.fn(() => ({})),
   getRateLimitKey: vi.fn(() => 'test-key'),
 }));
-vi.mock('../../../../lib/security/api-error', () => ({
+vi.mock('../../../lib/security/api-error', () => ({
   handleApiError: vi.fn((_, err) =>
     new Response(JSON.stringify({ error: String(err) }), { status: 500 })
   ),
 }));
 
-import { POST } from '../../../../app/api/billing/checkout/route';
-import { createClient } from '../../../../lib/supabase/server';
-import { applyRateLimit } from '../../../../lib/security/rate-limit';
+import { POST } from '../../../app/api/billing/checkout/route';
+import { createClient } from '../../../lib/supabase/server';
+import { applyRateLimit } from '../../../lib/security/rate-limit';
 
 const mockCreateClient = vi.mocked(createClient);
 const mockApplyRateLimit = vi.mocked(applyRateLimit);

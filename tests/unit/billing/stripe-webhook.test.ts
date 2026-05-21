@@ -7,21 +7,21 @@ const mockStripeInstance = {
 
 vi.mock('stripe', () => ({ default: vi.fn(() => mockStripeInstance) }));
 
-vi.mock('../../../../lib/supabase-server', () => ({
+vi.mock('../../../lib/supabase-server', () => ({
   getSupabaseAdmin: vi.fn(),
 }));
-vi.mock('../../../../lib/email/sales', () => ({
+vi.mock('../../../lib/email/sales', () => ({
   sendTrialWelcome: vi.fn(),
   sendUpgradeSuccess: vi.fn(),
 }));
-vi.mock('../../../../lib/security/api-error', () => ({
+vi.mock('../../../lib/security/api-error', () => ({
   internalErrorMessage: vi.fn(() => 'Internal server error'),
   logApiError: vi.fn(),
 }));
 
-import { POST } from '../../../../app/api/billing/webhook/route';
-import { getSupabaseAdmin } from '../../../../lib/supabase-server';
-import { sendUpgradeSuccess } from '../../../../lib/email/sales';
+import { POST } from '../../../app/api/billing/webhook/route';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { sendUpgradeSuccess } from '../../../lib/email/sales';
 
 const mockGetAdmin = vi.mocked(getSupabaseAdmin);
 const mockSendUpgradeSuccess = vi.mocked(sendUpgradeSuccess);

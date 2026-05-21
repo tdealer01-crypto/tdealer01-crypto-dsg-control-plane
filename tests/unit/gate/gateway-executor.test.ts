@@ -8,26 +8,26 @@ vi.mock('../../../lib/gateway/providers', () => ({
 }));
 vi.mock('../../../lib/gateway/audit', () => ({
   buildGatewayAuditProof: vi.fn(() => ({
-    auditId: 'audit-1',
-    orgId: 'org-1',
-    decision: 'allow',
-    timestamp: new Date().toISOString(),
+    committed: false,
+    requestHash: 'req-hash-1',
+    recordHash: 'rec-hash-1',
   })),
 }));
 
 import { executeGatewayTool, normalizeGatewayToolRequest } from '../../../lib/gateway/executor';
 import { findGatewayTool } from '../../../lib/gateway/tool-registry';
 import { executeGatewayProvider } from '../../../lib/gateway/providers';
+import type { GatewayToolRegistryEntry, GatewayToolProviderResult } from '../../../lib/gateway/types';
 
 const mockFindTool = vi.mocked(findGatewayTool);
 const mockExecuteProvider = vi.mocked(executeGatewayProvider);
 
-const validTool = {
+const validTool: GatewayToolRegistryEntry = {
   name: 'zapier.slack.post_message',
   provider: 'zapier',
   action: 'post_message',
-  risk: 'medium' as const,
-  executionMode: 'sync' as const,
+  risk: 'medium',
+  executionMode: 'gateway',
   requiresApproval: false,
   description: 'Post a Slack message',
 };
@@ -118,14 +118,15 @@ describe('executeGatewayTool', () => {
 
   it('calls provider and returns ok=true when policy allows', async () => {
     mockFindTool.mockResolvedValue(validTool);
-    mockExecuteProvider.mockResolvedValue({
+    const providerResult: GatewayToolProviderResult = {
       ok: true,
       provider: 'zapier',
       toolName: 'zapier.slack.post_message',
       action: 'post_message',
       target: 'zapier.slack.post_message',
-      output: { messageId: 'msg-1' },
-    });
+      result: { messageId: 'msg-1' },
+    };
+    mockExecuteProvider.mockResolvedValue(providerResult);
 
     const result = await executeGatewayTool(validRequest);
     expect(result.ok).toBe(true);
@@ -145,14 +146,15 @@ describe('executeGatewayTool', () => {
 
   it('returns block when provider returns ok=false', async () => {
     mockFindTool.mockResolvedValue(validTool);
-    mockExecuteProvider.mockResolvedValue({
+    const failedResult: GatewayToolProviderResult = {
       ok: false,
       provider: 'zapier',
       toolName: 'zapier.slack.post_message',
       action: 'post_message',
       target: 'zapier.slack.post_message',
       error: 'rate_limited',
-    });
+    };
+    mockExecuteProvider.mockResolvedValue(failedResult);
 
     const result = await executeGatewayTool(validRequest);
     expect(result.ok).toBe(false);
@@ -163,6 +165,7 @@ describe('executeGatewayTool', () => {
     mockFindTool.mockResolvedValue(null);
     const result = await executeGatewayTool(validRequest);
     expect(result.audit).toBeDefined();
+    expect(result.audit.requestHash).toBeDefined();
   });
 
   it('does not call provider when policy blocks', async () => {
