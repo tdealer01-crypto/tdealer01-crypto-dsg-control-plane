@@ -14,3 +14,5 @@ jobs:
           readiness_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/finance-governance/readiness"
           expected_status: "200"
           require_json_ok: "true"
+          protected_url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/api-keys"
+          protected_expected: "401,403"
