@@ -1,4 +1,3 @@
-import type { GatewayToolRequest } from './types';
 import constraints from './verified-constraints.json';
 
 export interface DeFiTransaction {
@@ -14,11 +13,6 @@ export type DeFiValidationResult =
   | { ok: true }
   | { ok: false; reason: string; field: keyof DeFiTransaction; bound: number | string[] };
 
-/**
- * Pure, deterministic DeFi transaction validator.
- * Constraints sourced from verified-constraints.json, produced by Z3 formal proofs.
- * All bounds are mathematically proven (Theorems 6–8 in lib/gateway/z3/).
- */
 export function validateDeFiTransaction(tx: DeFiTransaction): DeFiValidationResult {
   if (tx.amountUSD <= 0)
     return { ok: false, reason: 'amount_non_positive', field: 'amountUSD', bound: 0 };
