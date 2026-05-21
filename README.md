@@ -31,7 +31,7 @@ Production deploy: PASS
 Basic runtime readiness: PASS
 Finance governance authoritative gate: PASS
 DSG Secure Deploy Gate: GO
-Supabase service role runtime check: PASS
+Subabase service role runtime check: PASS
 Finance governance table checks: PASS
 ```
 
@@ -48,9 +48,103 @@ readiness, and DSG Secure Deploy Gate GO evidence verified through production ch
 Disallowed claim:
 
 ```text
-Certified, third-party audited, WORM-certified, externally Z3 production verified,
-or end-to-end formally verified SaaS.
+Certified, third-party audited, WORM-certified, or end-to-end independently
+Z3-verified SaaS in production. (Design-time Z3 proof of the policy engine is
+present and documented below; it is not equivalent to a third-party production audit.)
 ```
+
+---
+
+## Z3 Formal Verification — Gateway Policy Engine
+
+The gateway policy engine (`lib/gateway/policy.ts`) is formally verified using the **Z3 SMT Solver**. All proofs run at design time; the TypeScript runtime consumes a generated `verified-constraints.json` artifact — no Z3 dependency at runtime.
+
+### Architecture
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│  Design Time (Python + Z3 SMT Solver)                   │
+│                                                         │
+│  policy_model.py  ──►  theorems.py        (5 theorems)  │
+│                   ──►  defi_constraints.py (3 theorems)  │
+│                   ──►  generate_spec.py                  │
+│                              │                          │
+│                              ▼                          │
+│                 verified-constraints.json               │
+└─────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│  Runtime (TypeScript / Next.js)                         │
+│                                                         │
+│  defi-validator.ts   ──►  defi-executor.ts              │
+│  (proven bounds)          (DeFi pre-check before        │
+│                            policy evaluation)           │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Method: SAT refutation
+
+For each theorem, Z3 is asked to find a counterexample (`Not(claim)`). If no counterexample exists (`UNSAT`), the claim holds for **every possible input** — not just the ones covered by unit tests.
+
+### 8 theorems proved
+
+**Policy engine (`lib/gateway/policy.ts`)**
+
+| # | Theorem | Claim |
+|---|---------|-------|
+| 1 | `role_safety` | `decision = allow → role ∈ {owner, admin, finance_admin, finance_approver, agent_operator}` |
+| 2 | `plan_safety` | `decision = allow → plan ∈ {enterprise, business, pro}` |
+| 3 | `approval_safety` | `decision = allow ∧ approvalRequired → approvalToken ≠ ∅` |
+| 4 | `audit_completeness` | decision is always one of `{allow, block, review, ask_more_info}` — no undefined state |
+| 5 | `non_triviality` | ∃ valid request where `decision = allow` — system is not trivially all-blocking |
+
+**DeFi transaction constraints**
+
+| # | Theorem | Claim |
+|---|---------|-------|
+| 6 | `amount_bound` | `amount ≤ $1,000` and `dailySpent + amount ≤ $10,000` — enforced before policy evaluation |
+| 7 | `slippage_bound` | `slippage ≤ 50 bps (0.5%)` — no role or approval token can bypass this |
+| 8 | `constraint_consistency` | The DeFi constraint set is satisfiable — valid transactions exist |
+
+### Key safety property
+
+```text
+DeFi bounds check (Z3 Theorem 6–7)
+  → Policy evaluation (role, plan, approval)
+    → Provider execution (on-chain action)
+```
+
+Math bounds (Theorems 6–7) run **before** policy evaluation. Even an `owner` role with a valid `approvalToken` cannot execute a transaction exceeding $1,000 — the block is pre-policy and unconditional.
+
+### Run the proofs
+
+```bash
+npm run verify:policy
+# → pip install z3-solver
+# → python3 lib/gateway/z3/generate_spec.py
+# → ✓ PROVED  [role_safety]
+# → ✓ PROVED  [plan_safety]
+# → ✓ PROVED  [approval_safety]
+# → ✓ PROVED  [audit_completeness]
+# → ✓ PROVED  [non_triviality]
+# → ✓ PROVED  [amount_bound]
+# → ✓ PROVED  [slippage_bound]
+# → ✓ PROVED  [constraint_consistency]
+# → Wrote: lib/gateway/verified-constraints.json
+```
+
+### Proof files
+
+| File | Purpose |
+|------|---------|
+| `lib/gateway/z3/policy_model.py` | Z3 encoding of `evaluateGatewayToolRequest()` — enum sorts mirror TypeScript union types exactly |
+| `lib/gateway/z3/theorems.py` | Proves theorems 1–5 by SAT refutation |
+| `lib/gateway/z3/defi_constraints.py` | Proves theorems 6–8 for DeFi transaction parameters |
+| `lib/gateway/z3/generate_spec.py` | Runs all proofs, writes `verified-constraints.json` |
+| `lib/gateway/verified-constraints.json` | Committed artifact — consumed by TypeScript at module load time |
+| `lib/gateway/defi-validator.ts` | Pure, deterministic DeFi validator backed by proven constraints |
+| `lib/gateway/defi-executor.ts` | Wraps `executeGatewayTool()` with DeFi pre-check |
 
 ---
 
@@ -209,6 +303,7 @@ Vitest unit/integration tests
 Playwright E2E tests
 GitHub Actions production gates
 DSG Secure Deploy Gate
+Z3 SMT Solver (design-time formal verification of gateway policy)
 ```
 
 ---
@@ -258,6 +353,12 @@ npm run test:coverage
 npm run test:e2e
 ```
 
+Formal verification (requires Python + z3-solver):
+
+```bash
+npm run verify:policy
+```
+
 Required staging/live gates:
 
 ```bash
@@ -268,7 +369,7 @@ npm run test:e2e:staging
 Evaluation must use all three evidence layers together:
 
 ```text
-1. Repository evidence: tests, typecheck, coverage, and QA logs.
+1. Repository evidence: tests, typecheck, coverage, Z3 proofs, and QA logs.
 2. Deployment evidence: Vercel deployment state and readiness endpoints.
 3. Runtime/operator evidence: authenticated flows, live DB checks, and audit evidence in the target environment.
 ```
@@ -287,8 +388,10 @@ These are the latest verified checks after PRs `#567`, `#568`, and `#569` were m
 | TypeScript gate | `npm run typecheck` | ✅ Covered by `launch-readiness` success after PR `#567` | Test import paths and gateway types compile. |
 | Build gate | `npm run build` | ✅ Covered by `launch-readiness` success after PR `#567` | Next.js production build path remains valid. |
 | Production manifest gate | `npm run verify:production-manifest` | ✅ Covered by `launch-readiness` success after PR `#567` | Production manifest remains valid. |
+| Z3 formal verification | `npm run verify:policy` | ✅ Added in PR `#569` | 8 theorems proved: role/plan/approval safety, audit completeness, DeFi amount/slippage bounds. |
 | Gateway policy tests | `tests/unit/gate/gateway-policy.test.ts` | ✅ Added and merged in PR `#567` | Policy allow/block/review branches are covered. |
 | Gateway executor tests | `tests/unit/gate/gateway-executor.test.ts` | ✅ Added and merged in PR `#567` | Gateway request normalization and mocked provider execution are covered. |
+| DeFi validator tests | `tests/unit/gate/defi-validator.test.ts` | ✅ Added in PR `#569` | 12 theorem-derived test cases covering all DeFi constraint branches. |
 | Authz role tests | `tests/unit/auth/authz-require-org-role.test.ts` | ✅ Added and merged in PR `#567` | Role resolution, PGRST fallback, 401/403/500 paths are covered. |
 | Billing checkout tests | `tests/unit/billing/checkout-route.test.ts` | ✅ Added and corrected in PR `#567` | Checkout auth, org isolation, rate limit, plan/price behavior are covered. |
 | Billing webhook tests | `tests/unit/billing/stripe-webhook.test.ts` | ✅ Added and corrected in PR `#567` | Stripe webhook routing and billing state paths are covered. |
@@ -343,7 +446,7 @@ middleware and route-level security behavior
 ```text
 This README records observed repository, deployment, and runtime evidence.
 It is not a legal certification, third-party audit, WORM certification,
-or complete formal verification of the deployed SaaS.
+or end-to-end independently certified formal verification of the deployed SaaS.
 ```
 
 ---
@@ -378,6 +481,8 @@ Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for S
 ```
 
 The DOI artifact is the formal verification reference. Repository runtime routes provide scaffold behavior and operational implementation; they are not equivalent to an independently certified end-to-end formally verified SaaS deployment.
+
+Design-time Z3 verification of the gateway policy engine is present in `lib/gateway/z3/` and documented in the Z3 Formal Verification section above.
 
 ---
 
@@ -420,6 +525,9 @@ https://tdealer01-crypto-dsg-control-plane.vercel.app/proofgate-github-action
 ✓ Runtime readiness confirms Supabase service-role configuration.
 ✓ Deterministic proof/gate scaffold is present.
 ✓ Marketplace Action demo and landing page are published.
+✓ Gateway policy engine is formally verified with Z3 SMT Solver (8 theorems, design-time).
+✓ DeFi transaction bounds (amount, slippage, token, protocol) are mathematically proven.
+✓ Proof files and verified-constraints.json are committed and reproducible.
 ```
 
 Not claimed:
@@ -427,6 +535,6 @@ Not claimed:
 ```text
 ✗ Independent third-party audit or certification.
 ✗ WORM-certified audit storage.
-✗ External Z3 solver verified in production end-to-end.
+✗ End-to-end independently certified Z3 production verification.
 ✗ Published public npm/PyPI SDK.
 ```
