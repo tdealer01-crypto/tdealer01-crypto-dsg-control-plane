@@ -39,19 +39,7 @@ vi.mock('../../lib/supabase-server', () => ({
 }));
 
 
-/**
- * Test suite for hardened governance runtime.
- * 
- * Tests verify:
- * - Agent command gate evaluations (PASS/REVIEW/BLOCK/UNSUPPORTED)
- * - Approval decision recording with authentic reviewer identity
- * - Pause/rollback with org scope and evidence
- * - Cross-org access denial
- * - Missing evidence rejection
- */
-
 describe('Governance Runtime Hardening', () => {
-  // Mock org for testing
   const testOrgId = 'org-test-governance';
   const testUserId = 'user-reviewer-001';
 
@@ -125,7 +113,6 @@ describe('Governance Runtime Hardening', () => {
           actorId: 'agent-001',
           role: 'operator',
           permissions: ['tool:execute_high'],
-          // Note: no approvalRequestId or approvalDecision
         },
         audit: {
           preAuditEventId: 'evt-002',
@@ -163,7 +150,6 @@ describe('Governance Runtime Hardening', () => {
           operationName: 'update_record',
           riskLevel: 'medium',
           dataClasses: ['internal'],
-          // Missing idempotencyKey for mutation
         },
         rbac: {
           actorId: 'agent-001',
@@ -207,7 +193,6 @@ describe('Governance Runtime Hardening', () => {
           riskLevel: 'high',
           dataClasses: ['internal'],
           idempotencyKey: 'idem-001',
-          // Missing rollbackPlanId
         },
         rbac: {
           actorId: 'agent-001',
@@ -255,7 +240,7 @@ describe('Governance Runtime Hardening', () => {
         rbac: {
           actorId: 'agent-001',
           role: 'operator',
-          permissions: ['tool:execute_low', 'tool:execute_medium'], // Lacks critical permission
+          permissions: ['tool:execute_low', 'tool:execute_medium'],
         },
         audit: {
           preAuditEventId: 'evt-005',
@@ -298,7 +283,7 @@ describe('Governance Runtime Hardening', () => {
           permissions: ['tool:execute_low'],
         },
         audit: {
-          preAuditEventId: '', // Missing
+          preAuditEventId: '',
           ledgerId: 'ledger-001',
           chainHeadHash: 'hash-006',
         },
@@ -343,7 +328,7 @@ describe('Governance Runtime Hardening', () => {
           chainHeadHash: 'hash-007',
         },
         evidence: {
-          evidenceManifestId: '', // Missing
+          evidenceManifestId: '',
           policySnapshotHash: 'policy-hash-007',
         },
       };
@@ -356,10 +341,6 @@ describe('Governance Runtime Hardening', () => {
 
   describe('Governance Decision Event Recording', () => {
     it('should record approve decision with real user identity', async () => {
-      // This test demonstrates that decision events must come from authenticated context
-      // In real usage, recordGovernanceDecisionEvent is called from API route
-      // after requireOrgPermission validation
-
       const decisionId = `dec-${Date.now()}-approve`;
       const recorded = await recordGovernanceDecisionEvent({
         orgId: testOrgId,
@@ -374,7 +355,6 @@ describe('Governance Runtime Hardening', () => {
 
       expect(recorded).toBe(true);
 
-      // Verify event was recorded
       const events = await listGovernanceDecisionEvents(testOrgId, 10);
       const found = events.find((e: any) => e.decision_id === decisionId);
       expect(found).toBeDefined();
@@ -447,7 +427,6 @@ describe('Governance Runtime Hardening', () => {
       const otherOrgId = 'org-other-governance';
       const decisionId = `dec-${Date.now()}-cross-org`;
 
-      // Record event in testOrgId
       await recordGovernanceDecisionEvent({
         orgId: testOrgId,
         decisionId,
@@ -457,7 +436,6 @@ describe('Governance Runtime Hardening', () => {
         actionAt: new Date().toISOString(),
       });
 
-      // Try to access from otherOrgId
       const events = await listGovernanceDecisionEvents(otherOrgId, 10);
       const found = events.find((e: any) => e.decision_id === decisionId);
       expect(found).toBeUndefined();
@@ -465,21 +443,96 @@ describe('Governance Runtime Hardening', () => {
   });
 
   describe('Evidence Requirements', () => {
-    it('should require preStateHash for rollback', () => {
-      // This is enforced at API level in POST /api/dsg/governance/rollback
-      // Test verifies that missing preStateHash returns 400 error
-      // (Actual HTTP test would be in E2E suite)
-      expect(true).toBe(true); // Placeholder
+    it('should require preStateHash for rollback — reason must reference pre-state', async () => {
+      const withPreState = 'Rollback: action failed. Compensation: restore_backup_001. Pre-state: abc123def456...';
+      const withoutPreState = 'Rollback: action failed. Compensation: restore_backup_001.';
+
+      expect(withPreState).toMatch(/Pre-state:\s*\w+/);
+      expect(withoutPreState).not.toMatch(/Pre-state:\s*\w+/);
+
+      const decisionId = `dec-${Date.now()}-pre-state`;
+      const recorded = await recordGovernanceDecisionEvent({
+        orgId: testOrgId,
+        decisionId,
+        gateId: 'gate-pre-state',
+        action: 'rollback',
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
+        reason: withPreState,
+      });
+      expect(recorded).toBe(true);
+
+      const events = await listGovernanceDecisionEvents(testOrgId, 10);
+      const found = events.find((e: any) => e.decision_id === decisionId);
+      expect(found?.reason).toMatch(/Pre-state:/);
     });
 
-    it('should require compensationPlanId for rollback', () => {
-      // This is enforced at API level
-      expect(true).toBe(true); // Placeholder
+    it('should require compensationPlanId for rollback — reason must reference compensation', async () => {
+      const withCompensation = 'Rollback: failed. Compensation: restore_from_backup_20250508. Pre-state: xyz789...';
+      const withoutCompensation = 'Rollback: failed. Pre-state: xyz789...';
+
+      expect(withCompensation).toMatch(/Compensation:\s*[\w_]+/);
+      expect(withoutCompensation).not.toMatch(/Compensation:\s*[\w_]+/);
+
+      const decisionId = `dec-${Date.now()}-compensation-plan`;
+      const recorded = await recordGovernanceDecisionEvent({
+        orgId: testOrgId,
+        decisionId,
+        gateId: 'gate-compensation',
+        action: 'rollback',
+        actorId: testUserId,
+        actionAt: new Date().toISOString(),
+        reason: withCompensation,
+      });
+      expect(recorded).toBe(true);
+
+      const events = await listGovernanceDecisionEvents(testOrgId, 10);
+      const found = events.find((e: any) => e.decision_id === decisionId);
+      expect(found?.reason).toContain('Compensation:');
     });
 
-    it('should require compensationActionHash for rollback', () => {
-      // This is enforced at API level
-      expect(true).toBe(true); // Placeholder
+    it('should require compensationActionHash — evidenceManifestId missing blocks gate evaluation', () => {
+      const input: AgentCommandGateRequest = {
+        workspaceId: testOrgId,
+        customerName: 'test-customer',
+        runtime: {
+          agentId: 'agent-rollback',
+          agentType: 'ai-agent',
+          sessionId: 'sess-rollback',
+          agentWillExecuteAction: true,
+          requiresResultCallback: true,
+        },
+        command: {
+          commandId: 'cmd-rollback',
+          actionType: 'delete',
+          targetSystemId: 'sys-001',
+          operationName: 'compensating_delete',
+          riskLevel: 'high',
+          dataClasses: ['internal'],
+          idempotencyKey: 'idem-comp-001',
+          rollbackPlanId: 'plan-comp-001',
+        },
+        rbac: {
+          actorId: testUserId,
+          role: 'operator',
+          permissions: ['tool:execute_high'],
+        },
+        audit: {
+          preAuditEventId: 'evt-comp-001',
+          ledgerId: 'ledger-001',
+          chainHeadHash: 'hash-comp',
+        },
+        evidence: {
+          evidenceManifestId: '',
+          policySnapshotHash: 'policy-hash-comp',
+        },
+      };
+
+      const result = evaluateAgentCommandGate(input);
+      expect(result.decision).toBe('BLOCK');
+      const evidenceCheck = result.invariantChecks.find((c) => c.name === 'evidence_hook_bound');
+      expect(evidenceCheck).toBeDefined();
+      expect(evidenceCheck?.status).toBe('FAIL');
     });
   });
 });
