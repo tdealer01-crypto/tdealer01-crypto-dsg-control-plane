@@ -83,6 +83,12 @@ export default function ProofGateGitHubActionPage() {
               >
                 View source
               </a>
+              <a
+                href="https://github.com/tdealer01-crypto/dsg-gate-demo-nextjs"
+                className="dsg-btn-blue"
+              >
+                View demo repo
+              </a>
               <Link href="/quickstart" className="dsg-btn-red">
                 Control Plane quickstart
               </Link>
