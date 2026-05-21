@@ -14,22 +14,25 @@ DSG ONE ProofGate Control Plane is deployed on Vercel production and the runtime
 
 | Checkpoint | Status | Evidence |
 |---|---:|---|
-| Production deployment | ✅ READY | Vercel deployment `dpl_JDnMy6savmpHyYi8chJohcwicbiK` reached `READY`. |
-| Production commit | ✅ Verified | GitHub merge commit `29ae61224e26f725d3205bd90912aa961338202f` from PR `#561`. |
+| Production deployment | ✅ READY | Vercel production deployment reached `READY`. |
+| Production commit | ✅ Verified | GitHub merge commits are verified on the current production path. |
 | Production alias | ✅ Active | `tdealer01-crypto-dsg-control-plane.vercel.app` is attached to the READY deployment. |
-| Runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` and `ok: true`. |
+| Basic runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` and `ok: true`. |
+| Finance governance readiness | ✅ PASS | `GET /api/finance-governance/readiness` returned HTTP `200` and `ok: true`. |
 | Environment check | ✅ PASS | Runtime readiness reports `env`, `nextAuthSecret`, `supabaseServiceRole`, `dsgCoreConfig`, and `dsgCoreHealth` as `ok`. |
-| Finance governance readiness | ✅ PASS | Runtime readiness reports `financeGovernanceSurface` and `financeGovernanceBackend` as `ok`. |
-| Default Docker E2E boundary | ✅ Fixed | `npm run test:e2e` now runs only demo-safe specs, while staging-only auth/API-key/billing flows run through `npm run test:e2e:staging`. |
-| Production health endpoint | ⚠️ Rate-limited by design | `/api/health` can return HTTP `429`; `/api/readiness` is the authoritative runtime readiness gate. |
+| Finance governance backend | ✅ PASS | Finance governance reports required Supabase tables as reachable. |
+| Default Docker E2E boundary | ✅ Fixed | `npm run test:e2e` runs demo-safe specs, while staging-only auth/API-key/billing flows run through `npm run test:e2e:staging`. |
+| Production health endpoint | ⚠️ Rate-limited by design | `/api/health` can return HTTP `429`; this is non-fatal in the production readiness workflow. |
 
 ### Operational status
 
 ```text
 Production deploy: PASS
-Runtime readiness: PASS
+Basic runtime readiness: PASS
+Finance governance authoritative gate: PASS
+DSG Secure Deploy Gate: GO
 Supabase service role runtime check: PASS
-Finance governance readiness: PASS
+Finance governance table checks: PASS
 ```
 
 ### Claim boundary
@@ -37,9 +40,9 @@ Finance governance readiness: PASS
 Allowed claim:
 
 ```text
-DSG ONE ProofGate Control Plane is live on Vercel production with runtime readiness,
-Supabase service-role configuration, DSG core health, and finance-governance readiness
-verified through /api/readiness on 2026-05-20.
+DSG ONE ProofGate Control Plane is live on Vercel production with basic runtime
+readiness, Supabase service-role configuration, DSG core health, finance-governance
+readiness, and DSG Secure Deploy Gate GO evidence verified through production checks.
 ```
 
 Disallowed claim:
@@ -149,7 +152,7 @@ Permanently blocked patterns include: `delete all`, `drop table`, `truncate`, `b
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/api-keys` | List organization API keys. |
+| `GET` | `/api/api-keys` | List organization API keys. Requires authentication and returns `401`/`403` for anonymous requests. |
 | `POST` | `/api/api-keys` | Create an API key. The raw key is returned once. |
 | `DELETE` | `/api/api-keys/:id` | Revoke an API key. |
 
@@ -162,7 +165,8 @@ Permanently blocked patterns include: `delete all`, `drop table`, `truncate`, `b
 | `POST` | `/api/dsg/v1/gates/evaluate` | Deterministic gate evaluation. |
 | `POST` | `/api/dsg/v1/proofs/prove` | Generate deterministic proof scaffold. |
 | `GET` | `/api/dsg/v1/policies/manifest` | Fetch policy manifest. |
-| `GET` | `/api/readiness` | Authoritative production runtime readiness check. |
+| `GET` | `/api/readiness` | Basic production runtime readiness check. Network probes are reported but are not the authoritative deployment gate. |
+| `GET` | `/api/finance-governance/readiness` | Authoritative finance-governance readiness gate for production deployment. |
 
 ---
 
@@ -173,6 +177,7 @@ Permanently blocked patterns include: `delete all`, `drop table`, `truncate`, `b
 | `/` | Homepage |
 | `/eu-ai-act` | EU AI Act compliance landing page |
 | `/proofgate` | ProofGate product story |
+| `/proofgate-github-action` | GitHub Marketplace Action landing page |
 | `/enterprise-ready` | Enterprise setup page |
 | `/finance-governance` | Payment and finance controls |
 | `/automation` | Webhook and workflow automation |
@@ -202,6 +207,8 @@ Stripe billing webhooks
 Vercel deployment + crons
 Vitest unit/integration tests
 Playwright E2E tests
+GitHub Actions production gates
+DSG Secure Deploy Gate
 ```
 
 ---
@@ -270,14 +277,86 @@ Green repository tests alone are not final proof of deployment readiness.
 
 ---
 
+## Current test and gate evidence — 2026-05-21
+
+These are the latest verified checks after PRs `#567`, `#568`, and `#569` were merged.
+
+| Evidence layer | Command / workflow | Latest observed status | What it proves |
+|---|---|---:|---|
+| Unit + integration baseline | `npm test` | ✅ Covered by `launch-readiness` success after PR `#567` | Repository tests compile and run after gateway/authz/billing test additions. |
+| TypeScript gate | `npm run typecheck` | ✅ Covered by `launch-readiness` success after PR `#567` | Test import paths and gateway types compile. |
+| Build gate | `npm run build` | ✅ Covered by `launch-readiness` success after PR `#567` | Next.js production build path remains valid. |
+| Production manifest gate | `npm run verify:production-manifest` | ✅ Covered by `launch-readiness` success after PR `#567` | Production manifest remains valid. |
+| Gateway policy tests | `tests/unit/gate/gateway-policy.test.ts` | ✅ Added and merged in PR `#567` | Policy allow/block/review branches are covered. |
+| Gateway executor tests | `tests/unit/gate/gateway-executor.test.ts` | ✅ Added and merged in PR `#567` | Gateway request normalization and mocked provider execution are covered. |
+| Authz role tests | `tests/unit/auth/authz-require-org-role.test.ts` | ✅ Added and merged in PR `#567` | Role resolution, PGRST fallback, 401/403/500 paths are covered. |
+| Billing checkout tests | `tests/unit/billing/checkout-route.test.ts` | ✅ Added and corrected in PR `#567` | Checkout auth, org isolation, rate limit, plan/price behavior are covered. |
+| Billing webhook tests | `tests/unit/billing/stripe-webhook.test.ts` | ✅ Added and corrected in PR `#567` | Stripe webhook routing and billing state paths are covered. |
+| Playwright Docker E2E | `E2E Playwright Docker` | ✅ Passed on PR `#567` | Browser E2E baseline remains green. |
+| Production readiness | `Production Readiness Check #591` | ✅ Success | `/api/readiness` is non-blocking/basic, `/api/finance-governance/readiness` is the authoritative runtime gate. |
+| DSG deploy gate | `DSG Secure Deploy Gate #507` | ✅ `GO` | Strict gate returned readiness `200`, protected route `401`, failure reason `none`, and evidence/proof/chain hashes. |
+| Vercel production deploy | Vercel status on merge commit `3356a699` | ✅ Success | Production deployment completed after readiness gate fix. |
+
+### Production readiness evidence
+
+```text
+Production Readiness Check #591
+Status: Success
+/api/health: rate_limited, non-fatal
+/api/readiness: pass
+/api/finance-governance/readiness: pass, authoritative gate
+/api/core/monitor: auth_required, expected for unauthenticated CI
+/api/usage: auth_required, expected for unauthenticated CI
+Overall: Production Runtime Ready
+```
+
+### DSG Secure Deploy Gate evidence
+
+```text
+DSG Secure Deploy Gate #507
+Status: Success
+Verdict: GO
+Preset: strict
+Readiness status: 200
+Protected status: 401
+Failure reason: none
+Evidence hash: present
+Proof hash: present
+Chain hash: present
+```
+
+### Test coverage improvement from PR #567
+
+PR `#567` added and fixed tests for the areas that were highest risk after the earlier coverage review:
+
+```text
+gateway policy evaluation
+gateway executor normalization and provider execution
+authz org-role enforcement
+API key and organization access boundaries
+billing checkout and Stripe webhook paths
+middleware and route-level security behavior
+```
+
+### Evidence boundary
+
+```text
+This README records observed repository, deployment, and runtime evidence.
+It is not a legal certification, third-party audit, WORM certification,
+or complete formal verification of the deployed SaaS.
+```
+
+---
+
 ## GitHub workflows
 
-| Workflow | Purpose |
-|---|---|
-| `E2E Pipeline` | Docker Playwright baseline and repository E2E checks. |
-| `Production Readiness Check` | Runtime readiness, deployment health, and management-secret checks. |
-| `Production Quality Gates` | Coverage, live DB required gate, and staging Playwright gate. |
-| `DSG Secure Deploy Gate` | Secure deployment policy gate. |
+| Workflow | Purpose | Current role |
+|---|---|---|
+| `launch-readiness` | Typecheck, tests, build, production manifest. | Repository merge gate. |
+| `E2E Pipeline` | Docker Playwright baseline and repository E2E checks. | Browser regression gate. |
+| `Production Readiness Check` | Runtime readiness, deployment health, and management-secret checks. | Production runtime gate. |
+| `Production Quality Gates` | Coverage, live DB required gate, and staging Playwright gate. | Manual/staging quality gate. |
+| `DSG Secure Deploy Gate` | Secure deployment policy gate. | Deterministic GO / NO-GO deploy evidence. |
 
 ---
 
@@ -306,7 +385,7 @@ The DOI artifact is the formal verification reference. Repository runtime routes
 
 ```yaml
 - name: DSG Secure Deploy Gate
-  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.0.2
+  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1
 ```
 
 Marketplace:
@@ -315,17 +394,32 @@ Marketplace:
 https://github.com/marketplace/actions/dsg-secure-deploy-gate
 ```
 
+Demo repo:
+
+```text
+https://github.com/tdealer01-crypto/dsg-gate-demo-nextjs
+```
+
+Landing page:
+
+```text
+https://tdealer01-crypto-dsg-control-plane.vercel.app/proofgate-github-action
+```
+
 ---
 
 ## Supported claims
 
 ```text
 ✓ REST API gate endpoint is live.
-✓ Production readiness endpoint is green on 2026-05-20.
+✓ Basic production readiness endpoint is green on 2026-05-21.
+✓ Finance-governance readiness is green through /api/finance-governance/readiness.
+✓ Production Readiness Check #591 completed successfully.
+✓ DSG Secure Deploy Gate #507 returned GO with strict preset evidence.
 ✓ API key management uses scoped, revocable keys with server-side hashing.
 ✓ Runtime readiness confirms Supabase service-role configuration.
-✓ Finance-governance readiness is green through /api/readiness.
 ✓ Deterministic proof/gate scaffold is present.
+✓ Marketplace Action demo and landing page are published.
 ```
 
 Not claimed:
