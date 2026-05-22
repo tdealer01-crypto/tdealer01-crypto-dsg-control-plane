@@ -8,8 +8,26 @@ Gate 1 + Gate 2.5 started.
 
 This status file is evidence tracking for the one-cycle revenue-ready cut. It must not be treated as production readiness by itself.
 
+## End-user outcome contract
+
+Canonical user-facing contract: `docs/END_USER_OUTCOME_CONTRACT.md`.
+
+This cycle is complete only when a real user can:
+
+1. Visit the website.
+2. Click **Start Trial**.
+3. Receive an API key.
+4. Copy a working curl example.
+5. Receive a deterministic decision: `allow`, `review`, or `block`.
+6. See an `audit_id`.
+7. Understand that upgrade is required when quota is exhausted.
+8. Pay and continue using the product under the paid plan.
+
+Any work that does not improve or prove one of these eight outcomes is out of scope for this cut.
+
 ## Added in this pass
 
+- `docs/END_USER_OUTCOME_CONTRACT.md`
 - `tools/proofs/requirements.txt`
 - `tools/proofs/dsg_revenue_model.py`
 - `tools/proofs/governed_agent_model.py`
@@ -85,9 +103,10 @@ npm run go:no-go
 - Need entitlement before/after evidence.
 - Need `/api/execute` quota proof under free and paid plans.
 - Need production deployment/go-no-go evidence.
+- Need executable evidence for all eight end-user outcome steps.
 
 ## Current verdict
 
 VERDICT: NO-GO
 
-Reason: proof gate files and scripts have been added, and deterministic proof artifact replay stability has been improved, but no runtime command output, Stripe webhook evidence, or production go/no-go evidence has been collected yet.
+Reason: the end-user outcome contract, proof gate files, and deterministic proof artifact replay stability change have been added, but no runtime command output, Stripe webhook evidence, or production go/no-go evidence has been collected yet.
