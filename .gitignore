@@ -42,3 +42,4 @@ supabase/.temp/
 
 # security scan reports
 gitleaks-report.json
+coverage/
