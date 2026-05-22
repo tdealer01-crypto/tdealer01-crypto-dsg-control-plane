@@ -25,7 +25,7 @@ afterEach(() => {
 
 function getLastSentPayload() {
   const call = fetchSpy.mock.calls[0];
-  return JSON.parse(call[1]?.body as string) as {
+  return JSON.parse((call[1] as RequestInit)?.body as string) as {
     to: string;
     from: string;
     subject: string;

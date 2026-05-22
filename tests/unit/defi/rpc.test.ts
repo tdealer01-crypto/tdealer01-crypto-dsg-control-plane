@@ -18,15 +18,15 @@ beforeEach(() => {
 
 describe('decodeUint256', () => {
   it('returns 0n for empty 0x', () => {
-    expect(decodeUint256('0x')).toBe(0n);
+    expect(decodeUint256('0x')).toBe(BigInt(0));
   });
 
   it('parses a valid hex value', () => {
-    expect(decodeUint256('0x64')).toBe(100n);
+    expect(decodeUint256('0x64')).toBe(BigInt(100));
   });
 
   it('handles 0x0', () => {
-    expect(decodeUint256('0x0')).toBe(0n);
+    expect(decodeUint256('0x0')).toBe(BigInt(0));
   });
 });
 
@@ -77,6 +77,6 @@ describe('ethGetBalance', () => {
   it('returns 0n when result is missing', async () => {
     mockFetchJson({});
     const balance = await ethGetBalance('0xaddr');
-    expect(balance).toBe(0n);
+    expect(balance).toBe(BigInt(0));
   });
 });

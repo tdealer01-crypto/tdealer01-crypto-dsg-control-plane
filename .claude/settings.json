@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "dsg-control-plane": {
+      "type": "http",
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server",
+      "headers": {
+        "Authorization": "Bearer ${DSG_ACCESS_TOKEN}"
+      }
+    },
+    "dsg-one-v1": {
+      "type": "http",
+      "url": "https://dsg-one-v1.vercel.app/api/mcp-server",
+      "headers": {
+        "Authorization": "Bearer ${DSG_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

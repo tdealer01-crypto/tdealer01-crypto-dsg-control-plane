@@ -18,8 +18,10 @@ useDefault = true
   # Exclude this config file from scanning — it contains regex pattern strings
   # that reference secret-looking prefixes, which would cause gitleaks to flag
   # its own allowlist entries as secrets.
+  # .claude/settings.json uses ${ENV_VAR} references only — no real secrets.
   paths = [
     ".gitleaks.toml",
+    ".claude/settings.json",
   ]
 
   # Precise fingerprints for known false positives across all branches.
