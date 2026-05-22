@@ -49,7 +49,7 @@ describe('validateDeFiTransaction — Theorem 6: amount bounds', () => {
   it('blocks amount exceeding single-tx limit', () => {
     const r = validateDeFiTransaction({ ...VALID, amountUSD: constraints.defi.maxSingleTxUSD + 1 });
     expect(r.ok).toBe(false);
-    if (!r.ok) {
+    if (r.ok === false) {
       expect(r.reason).toBe('exceeds_single_tx_limit');
       expect(r.field).toBe('amountUSD');
       expect(r.bound).toBe(constraints.defi.maxSingleTxUSD);
@@ -59,7 +59,7 @@ describe('validateDeFiTransaction — Theorem 6: amount bounds', () => {
   it('blocks when daily cumulative exceeds maxDailyUSD', () => {
     const r = validateDeFiTransaction({ ...VALID, amountUSD: 500, dailySpentUSD: constraints.defi.maxDailyUSD - 400 });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe('exceeds_daily_limit');
+    if (r.ok === false) expect(r.reason).toBe('exceeds_daily_limit');
   });
 });
 
@@ -67,7 +67,7 @@ describe('validateDeFiTransaction — Theorem 7: slippage bound', () => {
   it('blocks slippage exceeding maxSlippageBps', () => {
     const r = validateDeFiTransaction({ ...VALID, slippageBps: constraints.defi.maxSlippageBps + 1 });
     expect(r.ok).toBe(false);
-    if (!r.ok) {
+    if (r.ok === false) {
       expect(r.reason).toBe('exceeds_max_slippage');
       expect(r.field).toBe('slippageBps');
       expect(r.bound).toBe(constraints.defi.maxSlippageBps);
@@ -79,18 +79,18 @@ describe('validateDeFiTransaction — allowlists', () => {
   it('blocks unknown tokenIn', () => {
     const r = validateDeFiTransaction({ ...VALID, tokenIn: 'DOGE' });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe('token_not_whitelisted');
+    if (r.ok === false) expect(r.reason).toBe('token_not_whitelisted');
   });
 
   it('blocks unknown tokenOut', () => {
     const r = validateDeFiTransaction({ ...VALID, tokenOut: 'SHIB' });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe('token_not_whitelisted');
+    if (r.ok === false) expect(r.reason).toBe('token_not_whitelisted');
   });
 
   it('blocks unknown protocol', () => {
     const r = validateDeFiTransaction({ ...VALID, protocol: 'uniswap-v3' });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe('protocol_not_whitelisted');
+    if (r.ok === false) expect(r.reason).toBe('protocol_not_whitelisted');
   });
 });
