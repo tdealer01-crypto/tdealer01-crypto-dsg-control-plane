@@ -34,6 +34,12 @@ export default defineConfig({
         'qa-logs/**',
         '**/*.d.ts',
       ],
+      thresholds: {
+        lines: 50,
+        functions: 50,
+        branches: 40,
+        statements: 50,
+      },
     },
   },
 });
