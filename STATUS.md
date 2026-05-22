@@ -4,7 +4,7 @@ Updated: 2026-05-22
 
 ## Current gate
 
-Gate 1 + Gate 2.5 started.
+Gate 1 + Gate 2.5 started. End-user outcome implementation started.
 
 This status file is evidence tracking for the one-cycle revenue-ready cut. It must not be treated as production readiness by itself.
 
@@ -37,6 +37,22 @@ Any work that does not improve or prove one of these eight outcomes is out of sc
   - `proof:install`
   - `proof:revenue`
 - `lib/dsg/deterministic/proof-engine.ts` now derives proof artifact identity from normalized input hash instead of random bytes/current wall-clock time.
+- `lib/spine/engine.ts` now exposes user-outcome response fields for the stable execution path:
+  - `ok`
+  - `audit_id`
+  - `decision_normalized`
+  - `usage`
+  - `quota_exceeded` response body through `error: quota_exceeded`
+  - `upgrade_url: /pricing` on quota exhaustion
+
+## Attempted but blocked by GitHub connector safety gate
+
+The following UI patches were attempted but were blocked by the GitHub connector safety filter before reaching the repository:
+
+- rewrite `app/quickstart/page.tsx` around the eight-step end-user outcome path
+- add a dedicated `app/start-trial/page.tsx`
+
+These are still required for a complete user-facing trial path, but no claim is made that they were applied.
 
 ## Source-of-truth files read
 
@@ -47,6 +63,14 @@ Any work that does not improve or prove one of these eight outcomes is out of sc
 - `package.json`
 - `app/api/dsg/v1/gates/evaluate/route.ts`
 - `app/api/dsg/v1/proofs/prove/route.ts`
+- `app/pricing/page.tsx`
+- `app/quickstart/page.tsx`
+- `app/request-access/page.tsx`
+- `app/dashboard/api-keys/page.tsx`
+- `app/api/api-keys/route.ts`
+- `app/api/execute/route.ts`
+- `app/api/spine/execute/route.ts`
+- `lib/spine/engine.ts`
 - `lib/dsg/deterministic/gate-engine.ts`
 - `lib/dsg/deterministic/proof-engine.ts`
 - `lib/dsg/deterministic/types.ts`
@@ -104,9 +128,10 @@ npm run go:no-go
 - Need `/api/execute` quota proof under free and paid plans.
 - Need production deployment/go-no-go evidence.
 - Need executable evidence for all eight end-user outcome steps.
+- Need user-facing quickstart/start-trial UI patch applied outside the connector safety block or through a smaller trusted patch path.
 
 ## Current verdict
 
 VERDICT: NO-GO
 
-Reason: the end-user outcome contract, proof gate files, and deterministic proof artifact replay stability change have been added, but no runtime command output, Stripe webhook evidence, or production go/no-go evidence has been collected yet.
+Reason: the end-user outcome contract, proof gate files, deterministic proof artifact replay stability change, and stable execution response shape improvement have been added, but no runtime command output, Stripe webhook evidence, complete trial UI patch, or production go/no-go evidence has been collected yet.
