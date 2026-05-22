@@ -27,5 +27,13 @@
     "maxSlippageBps": 50,
     "allowedTokens": ["KUB", "KKUB", "USDT", "ETH", "BTC"],
     "allowedProtocols": ["kubswap", "kub-perps", "kub-lend", "kub-liquid-stake"]
+  },
+  "yieldInvariants": {
+    "theorems": ["share_sum_unity", "share_non_negative", "yield_upper_bound", "gain_threshold_monotone"],
+    "maxApyPct": 50,
+    "gainThresholdBps": 50
+  },
+  "custodialBounds": {
+    "theorems": ["withdrawal_within_balance", "withdrawal_non_negative"]
   }
 }
