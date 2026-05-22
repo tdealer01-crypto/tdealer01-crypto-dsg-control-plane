@@ -58,9 +58,7 @@ describe('fulfillSubscription', () => {
     setupMock({ message: 'DB error' });
     const result = await fulfillSubscription('org-1', 'pro', 'active');
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toContain('DB error');
-    }
+    expect(result.error).toContain('DB error');
   });
 
   it('is idempotent: calling twice produces same final state', async () => {

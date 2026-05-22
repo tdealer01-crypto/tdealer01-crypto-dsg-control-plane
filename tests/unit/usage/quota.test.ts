@@ -68,11 +68,9 @@ describe('checkQuota', () => {
 
     const result = await checkQuota('org-1', 'agent-1');
     expect(result.allowed).toBe(false);
-    if (!result.allowed) {
-      expect(result.used).toBe(60);
-      expect(result.limit).toBe(60);
-      expect(result.upgradeUrl).toContain('/pricing');
-    }
+    expect(result.used).toBe(60);
+    expect(result.limit).toBe(60);
+    expect(result.upgradeUrl).toContain('/pricing');
   });
 
   it('uses free plan quota when org has no plan set', async () => {
@@ -90,10 +88,8 @@ describe('checkQuota', () => {
 
     const result = await checkQuota('org-1', 'agent-1');
     expect(result.allowed).toBe(true);
-    if (result.allowed) {
-      expect(result.limit).toBe(60); // FREE_QUOTA
-      expect(result.used).toBe(0);
-    }
+    expect(result.limit).toBe(60); // FREE_QUOTA
+    expect(result.used).toBe(0);
   });
 
   it('returns upgrade_url from NEXT_PUBLIC_APP_URL env', async () => {
@@ -111,9 +107,8 @@ describe('checkQuota', () => {
     });
 
     const result = await checkQuota('org-1', 'agent-1');
-    if (!result.allowed) {
-      expect(result.upgradeUrl).toBe('https://app.example.com/pricing');
-    }
+    expect(result.allowed).toBe(false);
+    expect(result.upgradeUrl).toBe('https://app.example.com/pricing');
   });
 });
 

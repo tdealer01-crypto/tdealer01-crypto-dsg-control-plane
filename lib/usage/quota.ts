@@ -13,9 +13,12 @@
 import { getSupabaseAdmin } from '../supabase-server';
 import { getQuotaForPlan } from '../billing/entitlements';
 
-export type QuotaStatus =
-  | { allowed: true; used: number; limit: number }
-  | { allowed: false; used: number; limit: number; upgradeUrl: string };
+export type QuotaStatus = {
+  allowed: boolean;
+  used: number;
+  limit: number;
+  upgradeUrl?: string;
+};
 
 function currentBillingPeriod(): string {
   const now = new Date();

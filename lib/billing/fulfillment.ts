@@ -11,9 +11,10 @@
 import { getSupabaseAdmin } from '../supabase-server';
 import { effectivePlan } from './entitlements';
 
-export type FulfillResult =
-  | { ok: true }
-  | { ok: false; error: string };
+export type FulfillResult = {
+  ok: boolean;
+  error?: string;
+};
 
 /**
  * Update organizations.plan to reflect an active/trialing subscription.
