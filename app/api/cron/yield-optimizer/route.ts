@@ -36,10 +36,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { ...optimizerResult, userUpdates, usersProcessed: userUpdates.length },
       { status }
     );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown error';
+  } catch {
     return NextResponse.json(
-      { action: 'error', reason: message, timestamp: new Date().toISOString() },
+      { action: 'error', reason: 'YIELD_OPTIMIZER_INTERNAL_ERROR', timestamp: new Date().toISOString() },
       { status: 500 }
     );
   }

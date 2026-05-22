@@ -8,8 +8,7 @@ export async function GET(): Promise<NextResponse> {
     const yields = await getAllYields();
     const best = yields.reduce((b, y) => (y.apyPct > b.apyPct ? y : b), yields[0]);
     return NextResponse.json({ ok: true, yields, best });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'YIELDS_INTERNAL_ERROR' }, { status: 500 });
   }
 }
