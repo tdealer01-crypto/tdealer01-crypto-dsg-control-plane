@@ -14,6 +14,34 @@ function getIncludedExecutions(planKey?: string | null) {
   return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
 }
 
+function buildUsage(used: number, limit: number) {
+  const safeUsed = Math.max(0, Number.isFinite(used) ? Math.floor(used) : 0);
+  const safeLimit = Math.max(0, Number.isFinite(limit) ? Math.floor(limit) : 0);
+  return {
+    used: safeUsed,
+    limit: safeLimit,
+    remaining: Math.max(0, safeLimit - safeUsed),
+  };
+}
+
+function buildQuotaExceededBody(params: {
+  scope: 'agent' | 'organization';
+  used: number;
+  limit: number;
+  auditId?: string | null;
+}) {
+  const label = params.scope === 'agent' ? 'Agent' : 'Organization';
+  return {
+    ok: false,
+    error: 'quota_exceeded',
+    decision: 'block',
+    reason: `${label} quota exhausted. Upgrade is required to continue governed execution.`,
+    audit_id: params.auditId ?? null,
+    upgrade_url: '/pricing',
+    usage: buildUsage(params.used, params.limit),
+  };
+}
+
 function rpcErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
     return String((error as { message?: unknown }).message || '');
@@ -46,10 +74,16 @@ function mapRpcError(error: unknown) {
   }
 
   if (hasAny('agent_quota_exceeded', 'agent quota exceeded')) {
-    return { status: 429, body: { error: 'Agent monthly quota exceeded' } };
+    return {
+      status: 402,
+      body: buildQuotaExceededBody({ scope: 'agent', used: 0, limit: 0 }),
+    };
   }
   if (hasAny('org_quota_exceeded', 'org quota exceeded')) {
-    return { status: 429, body: { error: 'Organization execution quota exceeded' } };
+    return {
+      status: 402,
+      body: buildQuotaExceededBody({ scope: 'organization', used: 0, limit: 0 }),
+    };
   }
   if (hasAny('approval_request_expired', 'approval request expired')) {
     return { status: 409, body: { error: 'Runtime intent expired' } };
@@ -230,7 +264,16 @@ export async function executeSpineIntent(params: {
   const currentAgentExecutions = Number(counter?.executions || 0);
   const monthlyLimit = Number(agent.monthly_limit || 0);
   if (monthlyLimit > 0 && currentAgentExecutions >= monthlyLimit) {
-    return { ok: false as const, status: 429, body: { error: 'Agent monthly quota exceeded' } };
+    return {
+      ok: false as const,
+      status: 402,
+      body: buildQuotaExceededBody({
+        scope: 'agent',
+        used: currentAgentExecutions,
+        limit: monthlyLimit,
+        auditId: String(approvalRequest.id),
+      }),
+    };
   }
 
   const { data: subscription, error: subscriptionError } = await supabase
@@ -260,8 +303,18 @@ export async function executeSpineIntent(params: {
   }
 
   const orgExecutions = (orgCounters || []).reduce((sum, row) => sum + Number(row.executions || 0), 0);
-  if (orgExecutions >= getIncludedExecutions(subscription?.plan_key || 'trial')) {
-    return { ok: false as const, status: 429, body: { error: 'Organization execution quota exceeded' } };
+  const orgPlanLimit = getIncludedExecutions(subscription?.plan_key || 'trial');
+  if (orgExecutions >= orgPlanLimit) {
+    return {
+      ok: false as const,
+      status: 402,
+      body: buildQuotaExceededBody({
+        scope: 'organization',
+        used: orgExecutions,
+        limit: orgPlanLimit,
+        auditId: String(approvalRequest.id),
+      }),
+    };
   }
 
   const { data: latestTruthRow } = await supabase
@@ -369,7 +422,7 @@ export async function executeSpineIntent(params: {
     p_usage_amount_usd: getOverageRateUsd(),
     p_created_at: nowIso,
     p_agent_monthly_limit: monthlyLimit,
-    p_org_plan_limit: getIncludedExecutions(subscription?.plan_key || 'trial'),
+    p_org_plan_limit: orgPlanLimit,
   });
 
   if (rpcError) {
@@ -406,18 +459,25 @@ export async function executeSpineIntent(params: {
     }
   })();
 
+  const auditId = String(commitRow.execution_id);
+  const usage = buildUsage(orgExecutions + 1, orgPlanLimit);
+
   return {
     ok: true as const,
     status: 200,
     body: {
-      request_id: String(commitRow.execution_id),
+      ok: true,
+      request_id: auditId,
+      audit_id: auditId,
       decision: pipeline.final_decision,
+      decision_normalized: String(pipeline.final_decision || '').toLowerCase(),
       reason: pipeline.final_reason,
       latency_ms: pipeline.total_latency_ms,
       policy_version: pipeline.final_policy_version,
       replayed: Boolean(commitRow.replayed),
       ledger_sequence: Number(commitRow.ledger_sequence || 0),
       truth_sequence: Number(commitRow.truth_sequence || 0),
+      usage,
       proof: pipeline.proof,
       authoritative_plugin_id: pipeline.authoritative_plugin_id,
       pipeline_trace: pipeline.stages,
