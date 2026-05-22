@@ -18,6 +18,29 @@ This status file is evidence tracking for the one-cycle revenue-ready cut. It mu
 - `package.json` scripts:
   - `proof:install`
   - `proof:revenue`
+- `lib/dsg/deterministic/proof-engine.ts` now derives proof artifact identity from normalized input hash instead of random bytes/current wall-clock time.
+
+## Source-of-truth files read
+
+- `README.md`
+- `PROJECT_TRUTH.md`
+- `docs/REPO_TRUTH.md`
+- `docs/RUNBOOK_DEPLOY.md`
+- `package.json`
+- `app/api/dsg/v1/gates/evaluate/route.ts`
+- `app/api/dsg/v1/proofs/prove/route.ts`
+- `lib/dsg/deterministic/gate-engine.ts`
+- `lib/dsg/deterministic/proof-engine.ts`
+- `lib/dsg/deterministic/types.ts`
+- `lib/dsg/deterministic/proof-hash.ts`
+
+## Claim boundary confirmed from repo truth
+
+- `/api/execute` is the stable execution entry.
+- `/api/dsg/v1/gates/evaluate` is a live deterministic gate scaffold.
+- `/api/dsg/v1/proofs/prove` is a live deterministic proof scaffold.
+- The deterministic proof/gate routes do not invoke an external Z3 solver at runtime.
+- Repository docs do not support third-party certification, complete production governance, or full end-to-end formal verification claims.
 
 ## Formal proof gate scope
 
@@ -67,4 +90,4 @@ npm run go:no-go
 
 VERDICT: NO-GO
 
-Reason: proof gate files and scripts have been added, but no runtime command output, Stripe webhook evidence, or production go/no-go evidence has been collected yet.
+Reason: proof gate files and scripts have been added, and deterministic proof artifact replay stability has been improved, but no runtime command output, Stripe webhook evidence, or production go/no-go evidence has been collected yet.
