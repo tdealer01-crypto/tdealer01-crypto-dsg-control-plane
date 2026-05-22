@@ -5,6 +5,7 @@ import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/security/cors';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
+import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,23 @@ export async function POST(request: Request) {
     }
 
     const orgId = String(agent.org_id);
+    const agentId = String(agent.id);
+
+    // Quota gate: check before executing (read-only, safe to run first)
+    const quota = await checkQuota(orgId, agentId);
+    if (!quota.allowed) {
+      return jsonWithHeaders(
+        request,
+        {
+          error: 'Monthly execution quota exceeded',
+          used: quota.used,
+          limit: quota.limit,
+          upgrade_url: quota.upgradeUrl,
+        },
+        402,
+        responseHeaders
+      );
+    }
 
     let result = await executeSpineIntent({
       orgId,
@@ -107,6 +125,11 @@ export async function POST(request: Request) {
         apiKey,
         payload,
       });
+    }
+
+    // Count executions only on success (2xx)
+    if (result.status >= 200 && result.status < 300) {
+      void incrementQuota(orgId, agentId);
     }
 
     return NextResponse.json(result.body, {

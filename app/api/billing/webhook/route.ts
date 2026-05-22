@@ -4,6 +4,8 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
 import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
+import { fulfillSubscription, revokeSubscription } from '../../../../lib/billing/fulfillment';
+import { REVOKED_STATUSES } from '../../../../lib/billing/entitlements';
 
 export const dynamic = 'force-dynamic';
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
@@ -288,6 +290,11 @@ export async function POST(request: Request) {
           const record = subscriptionToRecord(subscription, { orgId, customerEmail });
           await upsertBillingSubscription(supabase, record);
 
+          // Entitlement: grant plan to org immediately on checkout
+          if (orgId && record.plan_key) {
+            await fulfillSubscription(orgId, record.plan_key, subscription.status);
+          }
+
           // D0: send trial welcome email
           if (customerEmail && subscription.trial_end) {
             void sendTrialWelcome({
@@ -320,6 +327,16 @@ export async function POST(request: Request) {
         });
 
         await upsertBillingSubscription(supabase, record);
+
+        // Entitlement: keep organizations.plan in sync with subscription state
+        const orgId = record.org_id;
+        if (orgId) {
+          if (REVOKED_STATUSES.has(subscription.status)) {
+            await revokeSubscription(orgId);
+          } else if (record.plan_key) {
+            await fulfillSubscription(orgId, record.plan_key, subscription.status);
+          }
+        }
 
         // Paid conversion: trialing → active is when money actually exchanges hands.
         // checkout.session.completed fires at trial start (before payment), so we

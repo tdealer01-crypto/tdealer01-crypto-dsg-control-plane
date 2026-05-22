@@ -5,11 +5,15 @@ const {
   executeSpineIntentMock,
   issueSpineIntentMock,
   applyRateLimitMock,
+  checkQuotaMock,
+  incrementQuotaMock,
 } = vi.hoisted(() => ({
   resolveAgentFromApiKeyMock: vi.fn(),
   executeSpineIntentMock: vi.fn(),
   issueSpineIntentMock: vi.fn(),
   applyRateLimitMock: vi.fn(),
+  checkQuotaMock: vi.fn(),
+  incrementQuotaMock: vi.fn(),
 }));
 
 vi.mock('../../../lib/agent-auth', () => ({
@@ -29,6 +33,11 @@ vi.mock('../../../lib/security/rate-limit', () => ({
     'x-ratelimit-reset': String(rateLimit.reset ?? Date.now() + 60_000),
   }),
   getRateLimitKey: () => 'test-rate-key',
+}));
+
+vi.mock('../../../lib/usage/quota', () => ({
+  checkQuota: checkQuotaMock,
+  incrementQuota: incrementQuotaMock,
 }));
 
 function request(body: unknown, headers: Record<string, string> = {}) {
@@ -52,6 +61,8 @@ describe('/api/execute critical route contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     applyRateLimitMock.mockResolvedValue({ allowed: true, remaining: 59, reset: Date.now() + 60_000 });
+    checkQuotaMock.mockResolvedValue({ allowed: true, used: 0, limit: 10000 });
+    incrementQuotaMock.mockResolvedValue(undefined);
     resolveAgentFromApiKeyMock.mockResolvedValue({
       id: 'agent-test',
       org_id: 'org-test',
