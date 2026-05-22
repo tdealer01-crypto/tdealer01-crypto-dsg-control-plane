@@ -45,7 +45,9 @@
     "verify:production-manifest": "node scripts/verify-production-manifest.mjs",
     "ops:live-ui-check": "./scripts/live-ui-readiness-check.sh",
     "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh",
-    "smoke:agent-command-gate:live": "node scripts/smoke-agent-command-gate-live.mjs"
+    "smoke:agent-command-gate:live": "node scripts/smoke-agent-command-gate-live.mjs",
+    "proof:install": "python -m pip install -r tools/proofs/requirements.txt",
+    "proof:revenue": "python tools/proofs/prove_revenue_ready.py"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
