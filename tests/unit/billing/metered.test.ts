@@ -18,6 +18,10 @@ vi.mock('../../../lib/supabase-server', () => ({
           maybeSingle: () => Promise.resolve({ data: { stripe_customer_id: 'cus_test123' }, error: null }),
         }),
       }),
+      upsert: () => Promise.resolve({ error: null }),
+      update: () => ({
+        eq: () => Promise.resolve({ error: null }),
+      }),
     }),
   }),
 }));
@@ -34,7 +38,7 @@ describe('Stripe metered billing', () => {
   it('reports meter event successfully', async () => {
     mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_001' });
 
-    const result = await reportMeterEvent('cus_test123', 'org-1', 1);
+    const result = await reportMeterEvent('cus_test123', 'org-1', 1, 'exec-001');
     expect(result.ok).toBe(true);
     if (result.ok) expect((result as any).eventId).toBe('mtr_evt_001');
     expect(mockMeterEventsCreate).toHaveBeenCalledOnce();
@@ -43,7 +47,7 @@ describe('Stripe metered billing', () => {
   it('passes correct payload to Stripe', async () => {
     mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_002' });
 
-    await reportMeterEvent('cus_abc', 'org-2', 3);
+    await reportMeterEvent('cus_abc', 'org-2', 3, 'exec-002');
 
     const call = mockMeterEventsCreate.mock.calls[0][0];
     expect(call.event_name).toBe('dsg_execution');
@@ -51,10 +55,32 @@ describe('Stripe metered billing', () => {
     expect(call.payload.value).toBe('3');
   });
 
+  it('uses executionId as idempotency key (prevents same-second deduplication)', async () => {
+    mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_003' });
+
+    await reportMeterEvent('cus_abc', 'org-2', 1, 'exec-unique-123');
+
+    const options = mockMeterEventsCreate.mock.calls[0][1];
+    expect(options.idempotencyKey).toBe('dsg-meter-exec-unique-123');
+  });
+
+  it('two different executionIds in the same second produce different idempotency keys', async () => {
+    mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_004' });
+
+    await reportMeterEvent('cus_abc', 'org-2', 1, 'exec-A');
+    await reportMeterEvent('cus_abc', 'org-2', 1, 'exec-B');
+
+    const keyA = mockMeterEventsCreate.mock.calls[0][1].idempotencyKey;
+    const keyB = mockMeterEventsCreate.mock.calls[1][1].idempotencyKey;
+    expect(keyA).not.toBe(keyB);
+    expect(keyA).toBe('dsg-meter-exec-A');
+    expect(keyB).toBe('dsg-meter-exec-B');
+  });
+
   it('skips gracefully when STRIPE_METER_EVENT_NAME is not set', async () => {
     delete process.env.STRIPE_METER_EVENT_NAME;
 
-    const result = await reportMeterEvent('cus_test', 'org-3', 1);
+    const result = await reportMeterEvent('cus_test', 'org-3', 1, 'exec-003');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).skipped).toBe(true);
     expect(mockMeterEventsCreate).not.toHaveBeenCalled();
@@ -63,7 +89,7 @@ describe('Stripe metered billing', () => {
   it('skips gracefully when STRIPE_SECRET_KEY is not set', async () => {
     delete process.env.STRIPE_SECRET_KEY;
 
-    const result = await reportMeterEvent('cus_test', 'org-4', 1);
+    const result = await reportMeterEvent('cus_test', 'org-4', 1, 'exec-004');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).skipped).toBe(true);
   });
@@ -71,7 +97,7 @@ describe('Stripe metered billing', () => {
   it('returns error (not throw) when Stripe call fails', async () => {
     mockMeterEventsCreate.mockRejectedValue(new Error('Stripe API error'));
 
-    const result = await reportMeterEvent('cus_test', 'org-5', 1);
+    const result = await reportMeterEvent('cus_test', 'org-5', 1, 'exec-005');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).error).toContain('Stripe API error');
   });

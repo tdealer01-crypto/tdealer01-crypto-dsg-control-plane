@@ -342,6 +342,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      billing_meter_outbox: {
+        Row: {
+          id: string;
+          execution_id: string;
+          org_id: string;
+          stripe_customer_id: string;
+          event_name: string;
+          quantity: number;
+          status: string;
+          stripe_event_id: string | null;
+          error: string | null;
+          created_at: string;
+          flushed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          execution_id: string;
+          org_id: string;
+          stripe_customer_id: string;
+          event_name: string;
+          quantity?: number;
+          status?: string;
+          stripe_event_id?: string | null;
+          error?: string | null;
+          created_at?: string;
+          flushed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          execution_id?: string;
+          org_id?: string;
+          stripe_customer_id?: string;
+          event_name?: string;
+          quantity?: number;
+          status?: string;
+          stripe_event_id?: string | null;
+          error?: string | null;
+          created_at?: string;
+          flushed_at?: string | null;
+        };
+        Relationships: [];
+      };
       billing_customers: {
         Row: {
           id: string;

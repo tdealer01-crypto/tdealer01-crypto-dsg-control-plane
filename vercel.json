@@ -8,6 +8,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/cron/flush-meter-outbox",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/cron/drip-emails",
       "schedule": "0 9 * * *"
     },

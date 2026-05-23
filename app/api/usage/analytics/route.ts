@@ -49,14 +49,12 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const requestedPeriod = searchParams.get('period');
-    const currentPeriod   = new Date().toISOString().slice(0, 7);
-    const period          = requestedPeriod ?? currentPeriod;
+    const period = searchParams.get('period') ?? new Date().toISOString().slice(0, 7);
 
-    // Get current period snapshot (includes nudge level)
-    const snapshot = await getOrgUsageSnapshot(profile.org_id);
+    // Snapshot for the requested period (quota, nudge level, etc.)
+    const snapshot = await getOrgUsageSnapshot(profile.org_id, period);
 
-    // Get historical usage for trend chart (last 6 months)
+    // Historical usage for trend chart (trailing 6 months, always absolute)
     const { data: history } = await admin
       .from('usage_counters')
       .select('billing_period, executions, agent_id')
@@ -73,27 +71,27 @@ export async function GET(request: Request) {
       );
     }
 
-    // Top agents by usage in current period
+    // Top agents by usage in the requested period
     const { data: agentUsage } = await admin
       .from('usage_counters')
       .select('agent_id, executions')
       .eq('org_id', profile.org_id)
-      .eq('billing_period', currentPeriod)
+      .eq('billing_period', period)
       .order('executions', { ascending: false })
       .limit(10);
 
     return NextResponse.json({
       ok: true,
-      period: currentPeriod,
+      period,
       quota: {
-        plan:         snapshot.plan,
-        used:         snapshot.used,
-        limit:        snapshot.limit,
-        remaining:    snapshot.limit - snapshot.used,
-        pct:          snapshot.pct,
-        nudge:        snapshot.nudge,
-        upgradeUrl:   snapshot.nudge !== 'none' ? snapshot.upgradeUrl : null,
-        nextPlan:     snapshot.nextPlan,
+        plan:          snapshot.plan,
+        used:          snapshot.used,
+        limit:         snapshot.limit,
+        remaining:     snapshot.limit - snapshot.used,
+        pct:           snapshot.pct,
+        nudge:         snapshot.nudge,
+        upgradeUrl:    snapshot.nudge !== 'none' ? snapshot.upgradeUrl : null,
+        nextPlan:      snapshot.nextPlan,
         nextPlanQuota: snapshot.nextPlanQuota,
       },
       history: [...periodTotals.entries()].map(([p, executions]) => ({

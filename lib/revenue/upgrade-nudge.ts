@@ -68,11 +68,14 @@ function formatSavings(plan: string): string | null {
 }
 
 /**
- * Get current usage snapshot for a single org in the current billing period.
+ * Get usage snapshot for a single org.
+ *
+ * @param orgId   DSG org ID
+ * @param period  Billing period in YYYY-MM format (defaults to current month)
  */
-export async function getOrgUsageSnapshot(orgId: string): Promise<UsageSnapshot> {
+export async function getOrgUsageSnapshot(orgId: string, period?: string): Promise<UsageSnapshot> {
   const supabase = getSupabaseAdmin();
-  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const billingPeriod = period ?? new Date().toISOString().slice(0, 7); // YYYY-MM
 
   const [orgResult, usageResult] = await Promise.all([
     supabase.from('organizations').select('plan').eq('id', orgId).maybeSingle(),
@@ -80,7 +83,7 @@ export async function getOrgUsageSnapshot(orgId: string): Promise<UsageSnapshot>
       .from('usage_counters')
       .select('executions')
       .eq('org_id', orgId)
-      .eq('billing_period', period),
+      .eq('billing_period', billingPeriod),
   ]);
 
   const plan  = orgResult.data?.plan ?? 'free';
