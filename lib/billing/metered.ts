@@ -30,23 +30,36 @@ function getMeterEventName(): string | null {
   return process.env.STRIPE_METER_EVENT_NAME ?? null;
 }
 
+function normalizeExecutionId(executionId: string): string | null {
+  const normalized = executionId.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 /**
  * Report a single execution event to Stripe Metering.
  *
  * Called after a successful /api/execute response.
- * Fire-and-forget safe — errors are logged but never thrown.
+ * Execution-level idempotency prevents same-second org activity from being
+ * silently deduped by Stripe while still making retries of the same execution safe.
  *
  * @param stripeCustomerId  The org's Stripe customer ID (from billing_customers table)
- * @param orgId             DSG org ID (used as idempotency key component)
- * @param quantity          Number of executions to meter (default: 1)
+ * @param orgId             DSG org ID
+ * @param quantity          Number of executions to meter
+ * @param executionId       Canonical execution/audit row ID for idempotency
  */
 export async function reportMeterEvent(
   stripeCustomerId: string,
   orgId: string,
-  quantity = 1
+  quantity: number,
+  executionId: string
 ): Promise<MeterEventResult> {
   const stripe = getStripe();
   const eventName = getMeterEventName();
+  const normalizedExecutionId = normalizeExecutionId(executionId);
+
+  if (!normalizedExecutionId) {
+    return { ok: false, error: 'executionId is required for Stripe meter idempotency' };
+  }
 
   if (!stripe || !eventName) {
     return { ok: false, error: 'Stripe metering not configured', skipped: true };
@@ -54,11 +67,12 @@ export async function reportMeterEvent(
 
   try {
     const timestamp = Math.floor(Date.now() / 1000);
-    const idempotencyKey = `dsg-meter-${orgId}-${timestamp}`;
+    const idempotencyKey = `dsg-meter-${normalizedExecutionId}`;
 
     const event = await stripe.billing.meterEvents.create(
       {
         event_name: eventName,
+        identifier: idempotencyKey,
         payload: {
           stripe_customer_id: stripeCustomerId,
           value: String(quantity),
@@ -97,10 +111,10 @@ export async function getStripeCustomerIdForOrg(orgId: string): Promise<string |
  * Combined: report meter event for an org if they have a Stripe customer.
  * Safe to call from /api/execute — never throws, skips gracefully if unconfigured.
  */
-export async function meterExecution(orgId: string, quantity = 1): Promise<void> {
+export async function meterExecution(orgId: string, quantity: number, executionId: string): Promise<void> {
   const customerId = await getStripeCustomerIdForOrg(orgId);
   if (!customerId) return;
-  void reportMeterEvent(customerId, orgId, quantity);
+  void reportMeterEvent(customerId, orgId, quantity, executionId);
 }
 
 /**
