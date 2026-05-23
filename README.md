@@ -1,12 +1,66 @@
 # DSG ONE V1 — Autonomous Governed Runtime
 
-DSG ONE V1 is a governed app-builder and autonomous runtime control plane.
+DSG ONE V1 is a governed app-builder and autonomous runtime control plane.  
+Includes **DSG SkillGate** — open-source GitHub skill discovery, inspection, verification, lock, and governed-run pipeline.
 
-Production alias: `https://dsg-one-v1.vercel.app`
+Production: `https://dsg-one-v1.vercel.app`
 
-## Current status
+---
 
-Last verified: **2026-05-11 ICT**
+## SkillGate — Test Status (2026-05-23)
+
+### CI verified — GitHub Actions [`skillgate-ci.yml`](/.github/workflows/skillgate-ci.yml)
+
+| Suite | Tests | Status |
+|---|---|---|
+| `agent-skills-build-draft` | 8 | ✓ PASS |
+| `agent-skills-verify` | 8 | ✓ PASS |
+| `agent-skills-lock` | 16 | ✓ PASS |
+| `agent-skills-run` | 7 | ✓ PASS |
+| `agent-skills-pipeline` | 5 | ✓ PASS |
+| **Total** | **44** | **✓ ALL PASS** |
+
+```text
+npx tsc --noEmit          EXIT: 0   (no type errors)
+npm run build             ✓ Compiled successfully in 17.4s
+SkillGate CI job          ✓ 77495915449 — conclusion: success
+```
+
+### Production smoke (2026-05-23 ICT)
+
+```text
+login:                    PASS — t.dealer01@dsg.pics authenticated
+governed-tool-request:    PASS — AUDIT ID + REQUEST HASH generated
+risk-status:              data_verified
+truth-ok:                 true
+gate:                     VERIFIED — fail-closed before execution
+```
+
+### Safety invariants (enforced at runtime)
+
+```text
+noClone:                        true
+noInstall:                      true
+noRawCodeExecution:             true
+githubReadOnlyInspection:       true
+governedExecutionRequired:      true
+blockedSkillsRequireForceReg:   true
+needsApprovalDeniedAtRunGate:   true
+```
+
+### Evidence pack
+
+| File | Purpose |
+|---|---|
+| `docs/openapi-agent-skills.yaml` | OpenAPI 3.1.0 contract — 6 endpoints |
+| `docs/skillgate-evidence.json` | Machine-readable safety claims + test matrix |
+| `docs/TEST_EXECUTION_SUMMARY.md` | Verbatim command output (not self-written) |
+
+---
+
+## Overall status
+
+Last verified: **2026-05-23 ICT**
 
 ```text
 System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE
