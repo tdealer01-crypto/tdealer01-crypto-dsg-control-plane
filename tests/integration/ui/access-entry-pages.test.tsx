@@ -12,9 +12,11 @@ describe('public access entry pages', () => {
     expect(source).toContain('Continue with email');
   });
 
-  it('pricing trial CTA points to /login', () => {
+  it('pricing trial CTA points to signup and paid checkout preserves plan selection', () => {
     const source = read('app/pricing/page.tsx');
-    expect(source).toContain('href="/login"');
+    expect(source).toContain("ctaHref: '/signup'");
+    expect(source).toContain('signupHref(planKey, interval)');
+    expect(source).toContain('plan: planKey, interval');
     expect(source).toContain('trial');
   });
 
