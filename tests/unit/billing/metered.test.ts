@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock stripe before imports
 const mockMeterEventsCreate = vi.fn();
@@ -71,7 +71,6 @@ import { reportMeterEvent, isMeteredBillingConfigured, flushMeterOutbox } from '
 describe('Stripe metered billing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.restoreAllMocks();
     process.env.STRIPE_SECRET_KEY       = 'sk_test_xxx';
     process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution';
     mockOutboxInsert.mockImplementation(() => Promise.resolve({
@@ -81,10 +80,6 @@ describe('Stripe metered billing', () => {
     mockOutboxUpdate.mockResolvedValue({ data: null, error: null });
     mockOutboxSelectAll.mockResolvedValue({ data: [], error: null });
     mockCustomerMaybeSingle.mockResolvedValue({ data: { stripe_customer_id: 'cus_test123' }, error: null });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('reports meter event successfully', async () => {
@@ -131,13 +126,14 @@ describe('Stripe metered billing', () => {
 
   it('uses distinct idempotency keys for same-second executions from the same org', async () => {
     mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_same_second' });
-    vi.spyOn(Date, 'now').mockReturnValue(1_777_000_000_000);
+    const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(1_777_000_000_000);
 
     await reportMeterEvent('cus_abc', 'org-same', 1, 'exec-same-1');
     await reportMeterEvent('cus_abc', 'org-same', 1, 'exec-same-2');
 
     expect(mockMeterEventsCreate.mock.calls[0][1].idempotencyKey).toBe('dsg-meter-exec-same-1');
     expect(mockMeterEventsCreate.mock.calls[1][1].idempotencyKey).toBe('dsg-meter-exec-same-2');
+    dateSpy.mockRestore();
   });
 
   it('requires executionId to prevent unsafe timestamp-only metering', async () => {
