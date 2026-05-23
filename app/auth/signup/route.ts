@@ -64,7 +64,9 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingProvisionedError) {
-      throw existingProvisionedError;
+      console.error('[trial-signup] users query failed:', existingProvisionedError);
+      redirectToSignup.searchParams.set('error', 'db-users-error');
+      return NextResponse.redirect(redirectToSignup, { status: 302 });
     }
 
     if (existingProvisioned) {
@@ -82,7 +84,9 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingPendingError) {
-      throw existingPendingError;
+      console.error('[trial-signup] trial_signups query failed:', existingPendingError);
+      redirectToSignup.searchParams.set('error', 'db-signups-error');
+      return NextResponse.redirect(redirectToSignup, { status: 302 });
     }
 
     const refCode = request.cookies.get('ref_code')?.value?.trim() || null;
@@ -98,7 +102,9 @@ export async function POST(request: NextRequest) {
         .eq('id', existingPending.id);
 
       if (updateIntentError) {
-        throw updateIntentError;
+        console.error('[trial-signup] trial_signups update failed:', updateIntentError);
+        redirectToSignup.searchParams.set('error', 'db-update-error');
+        return NextResponse.redirect(redirectToSignup, { status: 302 });
       }
     } else {
       const { error: insertIntentError } = await admin.from('trial_signups').insert({
@@ -110,7 +116,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (insertIntentError) {
-        throw insertIntentError;
+        console.error('[trial-signup] trial_signups insert failed:', insertIntentError);
+        redirectToSignup.searchParams.set('error', 'db-insert-error');
+        return NextResponse.redirect(redirectToSignup, { status: 302 });
       }
 
       if (refCode) {
@@ -131,7 +139,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      redirectToSignup.searchParams.set('error', 'signup-failed');
+      console.error('[trial-signup] signInWithOtp failed:', error);
+      redirectToSignup.searchParams.set('error', 'otp-failed');
       return NextResponse.redirect(redirectToSignup, { status: 302 });
     }
 
