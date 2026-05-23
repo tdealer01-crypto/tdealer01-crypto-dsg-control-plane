@@ -10,29 +10,34 @@ vi.mock('stripe', () => ({
   })),
 }));
 
-const mockOutboxInsert = vi.fn();
-const mockOutboxUpdate = vi.fn();
+const mockOutboxInsertCall = vi.fn();
+const mockOutboxInsertMaybeSingle = vi.fn();
+const mockOutboxExistingMaybeSingle = vi.fn();
+const mockOutboxUpdateCall = vi.fn();
+const mockOutboxUpdateEq = vi.fn();
 const mockOutboxSelectAll = vi.fn();
 const mockCustomerMaybeSingle = vi.fn();
 
-function outboxInsertChain() {
+function outboxInsertChain(payload: Record<string, unknown>) {
+  mockOutboxInsertCall(payload);
   return {
     select: () => ({
-      maybeSingle: mockOutboxInsert,
+      maybeSingle: mockOutboxInsertMaybeSingle,
     }),
   };
 }
 
-function outboxUpdateChain() {
+function outboxUpdateChain(payload: Record<string, unknown>) {
+  mockOutboxUpdateCall(payload);
   return {
-    eq: mockOutboxUpdate,
+    eq: mockOutboxUpdateEq,
   };
 }
 
 function outboxSelectChain() {
   return {
     eq: () => ({
-      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: mockOutboxExistingMaybeSingle,
     }),
     in: () => ({
       lt: () => ({
@@ -49,8 +54,8 @@ vi.mock('../../../lib/supabase-server', () => ({
     from: (table: string) => {
       if (table === 'billing_meter_outbox') {
         return {
-          insert: mockOutboxInsert.mockImplementationOnce(() => outboxInsertChain()),
-          update: mockOutboxUpdate.mockImplementationOnce(() => outboxUpdateChain()),
+          insert: outboxInsertChain,
+          update: outboxUpdateChain,
           select: () => outboxSelectChain(),
         };
       }
@@ -73,11 +78,12 @@ describe('Stripe metered billing', () => {
     vi.clearAllMocks();
     process.env.STRIPE_SECRET_KEY       = 'sk_test_xxx';
     process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution';
-    mockOutboxInsert.mockImplementation(() => Promise.resolve({
+    mockOutboxInsertMaybeSingle.mockResolvedValue({
       data: { id: 'outbox-001', status: 'pending', stripe_event_id: null },
       error: null,
-    }));
-    mockOutboxUpdate.mockResolvedValue({ data: null, error: null });
+    });
+    mockOutboxExistingMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockOutboxUpdateEq.mockResolvedValue({ data: null, error: null });
     mockOutboxSelectAll.mockResolvedValue({ data: [], error: null });
     mockCustomerMaybeSingle.mockResolvedValue({ data: { stripe_customer_id: 'cus_test123' }, error: null });
   });
@@ -96,7 +102,7 @@ describe('Stripe metered billing', () => {
 
     await reportMeterEvent('cus_test123', 'org-1', 1, 'exec-001');
 
-    expect(mockOutboxInsert).toHaveBeenCalledWith({
+    expect(mockOutboxInsertCall).toHaveBeenCalledWith({
       execution_id: 'exec-001',
       org_id: 'org-1',
       stripe_customer_id: 'cus_test123',
@@ -104,7 +110,7 @@ describe('Stripe metered billing', () => {
       quantity: 1,
       status: 'pending',
     });
-    expect(mockOutboxUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockOutboxUpdateCall).toHaveBeenCalledWith(expect.objectContaining({
       status: 'sent',
       stripe_event_id: 'mtr_evt_001',
       error: null,
@@ -149,7 +155,7 @@ describe('Stripe metered billing', () => {
     const result = await reportMeterEvent('cus_test', 'org-3', 1, 'exec-003');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).skipped).toBe(true);
-    expect(mockOutboxInsert).not.toHaveBeenCalled();
+    expect(mockOutboxInsertCall).not.toHaveBeenCalled();
     expect(mockMeterEventsCreate).not.toHaveBeenCalled();
   });
 
@@ -167,7 +173,7 @@ describe('Stripe metered billing', () => {
     const result = await reportMeterEvent('cus_test', 'org-5', 1, 'exec-005');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).error).toContain('Stripe API error');
-    expect(mockOutboxUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockOutboxUpdateCall).toHaveBeenCalledWith(expect.objectContaining({
       status: 'failed',
       error: 'Stripe API error',
     }));
