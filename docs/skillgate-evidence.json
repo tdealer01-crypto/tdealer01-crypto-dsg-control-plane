@@ -148,9 +148,11 @@
     "npm test -- tests/dsg/agent-skills-pipeline.test.ts",
     "npm run build"
   ],
-  "lastVerified": null,
+  "lastVerified": "2026-05-23T04:07:00Z",
+  "lastVerifiedBy": "local — branch claude/test-coverage-analysis-qbAC3",
+  "lastVerifiedLog": "docs/TEST_EXECUTION_SUMMARY.md",
   "notes": [
-    "Set lastVerified only after CI or local command output is attached.",
+    "lastVerified reflects local run. Replace with CI run date once GitHub Actions are wired.",
     "Lock tests use real temp directories — no fs mocking. Failures reflect actual filesystem behavior.",
     "Run gate tests assert that blocked/needs_review/needs_approval paths never call prepareGovernedToolRequest.",
     "Pipeline test is fully offline — no GitHub API calls made."
