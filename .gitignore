@@ -43,3 +43,8 @@ supabase/.temp/
 # security scan reports
 gitleaks-report.json
 coverage/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
