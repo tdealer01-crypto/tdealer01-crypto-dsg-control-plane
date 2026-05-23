@@ -30,19 +30,16 @@ export default async function LoginPage({
       <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
           <h1 className="text-4xl font-bold">Log in to your workspace</h1>
-          <p className="mt-4 text-base leading-7 text-slate-300">Use password login if your workspace already exists.</p>
+          <p className="mt-4 text-base leading-7 text-slate-300">Use password login if your workspace already exists, or request a recovery link below.</p>
 
           {notice ? <div className={['mt-6 rounded-2xl border p-4 text-sm', notice.tone === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100' : 'border-red-500/30 bg-red-500/10 text-red-200'].join(' ')}>{notice.text}</div> : null}
 
-          <div className="mt-8 space-y-4">
-            <label className="block text-sm text-slate-300">Work email</label>
-            <input
-              type="email"
-              placeholder="name@company.com"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3"
-              disabled
-            />
-            <Link href={passwordHref} className="block w-full rounded-2xl bg-emerald-400 px-5 py-4 text-center font-semibold text-slate-950">
+          <div className="mt-8 rounded-3xl border border-white/10 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold text-slate-100">Password login</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Continue to the password form for active workspace accounts.
+            </p>
+            <Link href={passwordHref} className="mt-4 block w-full rounded-2xl bg-emerald-400 px-5 py-4 text-center font-semibold text-slate-950 transition hover:scale-[1.01]">
               Continue with password
             </Link>
           </div>
