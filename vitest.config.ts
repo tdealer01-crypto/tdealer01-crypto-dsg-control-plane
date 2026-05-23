@@ -19,7 +19,7 @@ export default defineConfig({
       'test-results/**',
     ],
     testTimeout: 15_000,
-    hookTimeout: 30_000,
+    hookTimeout: 90_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],

@@ -4,8 +4,8 @@
   "ignoreCommand": "exit 1",
   "crons": [
     {
-      "path": "/api/health",
-      "schedule": "0 3 * * *"
+      "path": "/api/cron/usage-alerts",
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/drip-emails",
