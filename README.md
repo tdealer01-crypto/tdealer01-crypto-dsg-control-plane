@@ -19,8 +19,26 @@ This section is the operator-facing status checkpoint. Do not replace it with op
 | ProofGate GitHub Action launch page | ✅ PASS | `GET /proofgate-github-action` returned HTTP `200`. |
 | GitHub/Vercel main commit | ✅ PASS | `main` commit `6e6bcebe8c93654c4480d5961fbba60f928e6adf` has a successful production deployment record. |
 | Upstash Redis env presence | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are present in production. Secret values must never be committed or printed. |
-| Upstash Redis token/runtime auth | ✅ PASS | `GET /api/debug/upstash` returned Redis `PONG`; token/runtime auth is valid. |
+| Upstash Redis token/runtime auth | ✅ PASS | `GET /api/debug/upstash` returned Redis `PONG` before the endpoint was protected; token/runtime auth is valid. |
+| Upstash debug endpoint exposure | ✅ PROTECTED IN CODE | `GET /api/debug/upstash` now requires `DSG_OPERATOR_TOKEN` plus header `x-dsg-operator-token`; unauthenticated requests return `404`. Set `DSG_OPERATOR_TOKEN` in Vercel Production before using this diagnostic endpoint. |
 | Health endpoint | ⚠️ RATE-LIMITED IN CURRENT BUCKET | `GET /api/health` may return HTTP `429` when the production rate-limit bucket is exhausted. This is not an Upstash auth failure after `PONG` is observed. |
+
+### Operator-only Upstash diagnostic
+
+Set this secret in Vercel Production only:
+
+```text
+DSG_OPERATOR_TOKEN=<strong random operator token>
+```
+
+Then call the protected diagnostic endpoint with the matching header:
+
+```bash
+curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/debug/upstash \
+  -H "x-dsg-operator-token: $DSG_OPERATOR_TOKEN"
+```
+
+Unauthenticated requests intentionally return `404` to avoid advertising the endpoint.
 
 ### Retest policy
 
@@ -36,7 +54,8 @@ For an **env-only change** such as rotating `UPSTASH_REDIS_REST_TOKEN`, run only
 ```bash
 curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/
 curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/readiness
-curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/debug/upstash
+curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/debug/upstash \
+  -H "x-dsg-operator-token: $DSG_OPERATOR_TOKEN"
 curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
 ```
 
@@ -52,7 +71,7 @@ npm run test:e2e
 npm run go:no-go
 ```
 
-After Upstash is confirmed with `PONG`, remove the temporary `/api/debug/upstash` endpoint or protect it behind an operator-only guard.
+Remove `/api/debug/upstash` after the diagnostic window closes, or keep it behind the operator-only guard.
 
 ---
 
