@@ -32,10 +32,16 @@ export async function GET(request: Request) {
   try {
     const result = await flushMeterOutbox(limit);
     const status = result.errors.length > 0 && result.sent === 0 ? 500 : 200;
-    return NextResponse.json({ ok: status === 200, ...result }, { status });
+    return NextResponse.json({
+      ok: status === 200,
+      scanned: result.scanned,
+      sent: result.sent,
+      failed: result.failed,
+      skipped: result.skipped,
+      errorCount: result.errors.length,
+    }, { status });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('[flush-meter-outbox] cron failed:', message);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error('[flush-meter-outbox] cron failed:', error);
+    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }
