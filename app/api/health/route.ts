@@ -2,7 +2,7 @@ import { getDSGCoreHealth } from '../../../lib/dsg-core';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { getDeploymentReadiness, type ReadinessReport } from '../../../lib/deployment/readiness';
 import { handleApiError } from '../../../lib/security/api-error';
-import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey, isRateLimiterConfigured } from '../../../lib/security/rate-limit';
 
 const HEALTH_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_CHECK = { ok: false, detail: 'health_dependency_unavailable' };
@@ -48,16 +48,25 @@ function unavailableReadiness(detail: string): ReadinessReport {
 
 export async function GET(request: Request) {
   try {
-    const rateLimit = await applyRateLimit({
-      key: getRateLimitKey(request, 'health'),
-      limit: 60,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.allowed) {
-      return Response.json(
-        { error: 'Too many requests' },
-        { status: 429, headers: buildRateLimitHeaders(rateLimit, 60) }
-      );
+    const rateLimiterConfigured = isRateLimiterConfigured();
+    let rateLimitHeaders: Record<string, string> = {};
+
+    // Health must always be reachable to surface component failures.
+    // Only apply rate limiting when Upstash is configured; otherwise report
+    // the misconfiguration as a 503 component failure rather than silently 429ing.
+    if (rateLimiterConfigured) {
+      const rateLimit = await applyRateLimit({
+        key: getRateLimitKey(request, 'health'),
+        limit: 60,
+        windowMs: 60_000,
+      });
+      if (!rateLimit.allowed) {
+        return Response.json(
+          { error: 'Too many requests' },
+          { status: 429, headers: buildRateLimitHeaders(rateLimit, 60) }
+        );
+      }
+      rateLimitHeaders = buildRateLimitHeaders(rateLimit, 60);
     }
 
     let dbOk = false;
@@ -97,13 +106,25 @@ export async function GET(request: Request) {
       error?: unknown;
     };
 
+    const allOk = core.ok && dbOk && readiness.ok && rateLimiterConfigured;
+
     return Response.json({
-      ok: core.ok && dbOk && readiness.ok,
+      ok: allOk,
       service: 'dsg-control-plane',
       timestamp: new Date().toISOString(),
       core_ok: core.ok,
       db_ok: dbOk,
-      error: (core.ok && dbOk && readiness.ok) ? null : (!dbOk ? 'db_unreachable' : (coreDetails.error ?? 'release_not_ready')),
+      error: allOk ? null : (
+        !rateLimiterConfigured ? 'rate_limiter_misconfigured' :
+        !dbOk ? 'db_unreachable' :
+        (coreDetails.error ?? 'release_not_ready')
+      ),
+      rateLimiter: {
+        ok: rateLimiterConfigured,
+        detail: rateLimiterConfigured
+          ? 'configured'
+          : 'UPSTASH_REDIS_REST_URL not set — execute gate will fail closed',
+      },
       core: {
         ok: core.ok && dbOk && readiness.ok,
         status: coreDetails.status ?? null,
@@ -112,7 +133,7 @@ export async function GET(request: Request) {
         error: core.ok ? null : coreDetails.error ?? 'core_unreachable',
       },
       readiness,
-    }, { headers: buildRateLimitHeaders(rateLimit, 60) });
+    }, { status: allOk ? 200 : 503, headers: rateLimitHeaders });
   } catch (error) {
     return handleApiError('api/health', error);
   }
