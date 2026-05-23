@@ -1,0 +1,160 @@
+{
+  "name": "DSG SkillGate",
+  "status": "mvp",
+  "version": "1.0.0",
+  "description": "Open-source GitHub skill discovery, inspection, verification, locking, and gated execution.",
+  "pipeline": [
+    "search",
+    "inspect",
+    "build-draft",
+    "verify",
+    "register",
+    "run-via-gate"
+  ],
+  "safetyClaims": {
+    "noClone": true,
+    "noInstall": true,
+    "noRawCodeExecution": true,
+    "githubReadOnlyInspection": true,
+    "governedExecutionRequired": true,
+    "blockedSkillsRequireForceRegister": true,
+    "needsApprovalDeniedAtRunGate": true
+  },
+  "testSuites": [
+    "agent-skills-build-draft",
+    "agent-skills-verify",
+    "agent-skills-lock",
+    "agent-skills-run",
+    "agent-skills-pipeline"
+  ],
+  "testCoverage": {
+    "buildSkillDraft": [
+      "clean read-only skill -> low risk",
+      "missing README -> medium risk",
+      "code execution detected -> medium risk (permissions.codeExecution=true)",
+      "code execution + external write -> high risk",
+      "hardcoded secrets detected -> critical risk (permissions.secrets=true)",
+      "slug id from fullName",
+      "org/repo names with dots and uppercase -> lowercase slug",
+      "draftedAt is a valid ISO timestamp"
+    ],
+    "verifySkill": [
+      "all checks pass -> verified, reasons[]",
+      "missing README -> needs_review, MISSING_README",
+      "missing LICENSE -> needs_review, MISSING_LICENSE",
+      "no tests found -> needs_review, NO_TESTS_FOUND",
+      "code execution detected -> needs_approval, CODE_EXECUTION_CAPABILITY",
+      "external write detected -> needs_approval, EXTERNAL_WRITE_CAPABILITY",
+      "hardcoded secrets -> blocked, HARDCODED_SECRET_DETECTED (overrides other flags)",
+      "multiple soft flags -> all reasons accumulated"
+    ],
+    "lockSkill": [
+      "computeSkillHash: 64-char hex, deterministic",
+      "computeSkillHash: differs on sourceCommit change",
+      "computeSkillHash: differs on riskLevel change",
+      "computeSkillHash: differs on permissions change",
+      "computeSkillHash: handles null sourceCommit",
+      "buildLockEntry: status/riskLevel/source/sourceCommit correct",
+      "buildLockEntry: preserves blocked status",
+      "buildLockEntry: sets needs_approval status",
+      "buildLockEntry: registeredAt is valid ISO timestamp",
+      "buildLockEntry: computedHash matches standalone computeSkillHash",
+      "readSkillsLock: ENOENT -> empty lock (no throw)",
+      "readSkillsLock: parses existing lock file",
+      "registerSkillToLock: writes skill to temp-dir lock, returns updated lock",
+      "registerSkillToLock: blocked skill written with blocked status",
+      "registerSkillToLock: persisted lock can be re-read with correct data"
+    ],
+    "runSkillAction": [
+      "unknown skillId -> blocked, SKILL_NOT_REGISTERED, governed gate NOT called",
+      "blocked registry entry -> blocked, SKILL_BLOCKED_IN_REGISTRY, governed gate NOT called",
+      "needs_approval entry -> review, governed gate NOT called",
+      "needs_review entry -> review, governed gate NOT called",
+      "verified + gate allows -> ok:true, gateStatus:ready",
+      "verified + gate blocks -> ok:false, gateReason contains blocked reason",
+      "args.skillId, args.sourceUrl, evidence skill_hash: passed to governed gate"
+    ],
+    "pipeline": [
+      "Step 1: buildSkillDraft from EXAMPLE_SOURCE (anthropics/claude-code)",
+      "Step 2: verifySkill returns verified for clean inspection",
+      "Step 3: buildLockEntry has deterministic hash pinned to commit",
+      "Step 4: risky repo (secrets+exec+write) -> blocked before lock",
+      "Step 5: same input always produces same hash (Z3 determinism invariant)"
+    ]
+  },
+  "exampleFlow": {
+    "source": "anthropics/claude-code",
+    "sourceUrl": "https://github.com/anthropics/claude-code",
+    "stars": 8000,
+    "license": "MIT",
+    "language": "TypeScript",
+    "inspection": {
+      "hasReadme": true,
+      "hasLicense": true,
+      "hasTests": true,
+      "hasSchemaOrTypes": true,
+      "hasSecretHardcoded": false,
+      "hasExternalWrite": false,
+      "hasCodeExecution": false,
+      "securityPolicy": true
+    },
+    "draft": {
+      "id": "anthropics-claude-code",
+      "riskLevel": "low",
+      "permissions": {
+        "network": true,
+        "filesystem": "none",
+        "secrets": false,
+        "codeExecution": false,
+        "externalWrite": false
+      },
+      "status": "draft"
+    },
+    "verification": {
+      "status": "verified",
+      "reasons": [],
+      "checks": {
+        "hasReadme": true,
+        "hasLicense": true,
+        "hasTests": true,
+        "noHardcodedSecrets": true,
+        "noExternalWrite": true,
+        "noCodeExecution": true,
+        "riskLevel": "low"
+      }
+    },
+    "lockEntry": {
+      "source": "anthropics/claude-code",
+      "status": "verified",
+      "riskLevel": "low",
+      "sourceCommit": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "computedHash": "<sha256 of sourceUrl+sourceCommit+riskLevel+permissions>"
+    },
+    "runGate": {
+      "skillId": "anthropics-claude-code",
+      "goal": "Summarize recent commits in this repository",
+      "gateStatus": "ready",
+      "simulated": true,
+      "note": "Gate ALLOW. Live execution requires a connected runtime sandbox."
+    }
+  },
+  "openApiContract": "docs/openapi-agent-skills.yaml",
+  "requiredCommands": [
+    "npm run typecheck",
+    "npm test -- tests/dsg/agent-skills-build-draft.test.ts",
+    "npm test -- tests/dsg/agent-skills-verify.test.ts",
+    "npm test -- tests/dsg/agent-skills-lock.test.ts",
+    "npm test -- tests/dsg/agent-skills-run.test.ts",
+    "npm test -- tests/dsg/agent-skills-pipeline.test.ts",
+    "npm run build"
+  ],
+  "lastVerified": "2026-05-23T04:07:00Z",
+  "lastVerifiedBy": "local — branch claude/test-coverage-analysis-qbAC3",
+  "lastVerifiedLog": "docs/TEST_EXECUTION_SUMMARY.md",
+  "notes": [
+    "lastVerified reflects local run. Replace with CI run date once GitHub Actions are wired.",
+    "Lock tests use real temp directories — no fs mocking. Failures reflect actual filesystem behavior.",
+    "Run gate tests assert that blocked/needs_review/needs_approval paths never call prepareGovernedToolRequest.",
+    "Pipeline test is fully offline — no GitHub API calls made."
+  ]
+}
