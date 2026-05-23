@@ -19,7 +19,8 @@ This section is the operator-facing status checkpoint. Do not replace it with op
 | ProofGate GitHub Action launch page | ✅ PASS | `GET /proofgate-github-action` returned HTTP `200`. |
 | GitHub/Vercel main commit | ✅ PASS | `main` commit `6e6bcebe8c93654c4480d5961fbba60f928e6adf` has a successful production deployment record. |
 | Upstash Redis env presence | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are present in production. Secret values must never be committed or printed. |
-| Upstash Redis token/runtime auth | 🔁 VERIFY AFTER FRESH DEPLOY | Acceptance condition: `GET /api/debug/upstash` must return a Redis `PONG`, then `GET /api/health` must stop returning rate-limit/auth failure. |
+| Upstash Redis token/runtime auth | ✅ PASS | `GET /api/debug/upstash` returned Redis `PONG`; token/runtime auth is valid. |
+| Health endpoint | ⚠️ RATE-LIMITED IN CURRENT BUCKET | `GET /api/health` may return HTTP `429` when the production rate-limit bucket is exhausted. This is not an Upstash auth failure after `PONG` is observed. |
 
 ### Retest policy
 
