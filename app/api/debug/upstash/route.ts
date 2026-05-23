@@ -1,8 +1,33 @@
-// Temporary diagnostic endpoint — remove after Upstash is confirmed live in production.
-// Returns Upstash connectivity status and env var presence without exposing secret values.
+// Operator-only diagnostic endpoint for Upstash production connectivity.
+// Returns env presence and Redis ping status without exposing secret values.
+// Access is intentionally hidden behind a shared operator token.
 import { isRateLimiterConfigured } from '../../../../lib/security/rate-limit';
 
-export async function GET() {
+const OPERATOR_HEADER = 'x-dsg-operator-token';
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function isAuthorized(request: Request): boolean {
+  const expected = process.env.DSG_OPERATOR_TOKEN;
+  const provided = request.headers.get(OPERATOR_HEADER);
+
+  if (!expected || !provided) return false;
+  return timingSafeEqual(provided, expected);
+}
+
+export async function GET(request: Request) {
+  if (!isAuthorized(request)) {
+    return Response.json({ error: 'not_found' }, { status: 404 });
+  }
+
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   const configured = isRateLimiterConfigured();
