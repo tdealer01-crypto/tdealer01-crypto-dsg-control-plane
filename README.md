@@ -17,28 +17,11 @@ This section is the operator-facing status checkpoint. Do not replace it with op
 | Production homepage | ✅ PASS | `GET /` returned HTTP `200` on the production URL. |
 | Runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` with `ok: true`. |
 | ProofGate GitHub Action launch page | ✅ PASS | `GET /proofgate-github-action` returned HTTP `200`. |
-| GitHub/Vercel main commit | 🔁 REDEPLOY TRIGGERED | Latest `main` includes protected Upstash debug endpoint and health endpoint fix. Verify production alias after Vercel finishes. |
+| GitHub/Vercel main commit | 🔁 REDEPLOY TRIGGERED | Latest `main` removes the temporary Upstash debug endpoint and includes the health endpoint fix. Verify production alias after Vercel finishes. |
 | Upstash Redis env presence | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are present in production. Secret values must never be committed or printed. |
-| Upstash Redis token/runtime auth | ✅ PASS | `GET /api/debug/upstash` returned Redis `PONG` before the endpoint was protected; token/runtime auth is valid. |
-| Upstash debug endpoint exposure | ✅ PROTECTED IN CODE | `GET /api/debug/upstash` now requires `DSG_OPERATOR_TOKEN` plus header `x-dsg-operator-token`; unauthenticated requests return `404`. Set `DSG_OPERATOR_TOKEN` in Vercel Production before using this diagnostic endpoint. |
+| Upstash Redis token/runtime auth | ✅ PASS | Redis `PONG` was verified before removing the temporary debug endpoint. Future checks should use Vercel logs and `/api/health`/`/api/readiness`, not a public debug route. |
+| Upstash debug endpoint exposure | ✅ REMOVED IN CODE | Temporary `/api/debug/upstash` route has been deleted from `main`. Production should return `404` after the latest deployment is active. |
 | Health endpoint | ✅ FIXED IN CODE | `/api/health` no longer consumes the production rate-limit bucket. Verify after production alias points at the latest deployment. |
-
-### Operator-only Upstash diagnostic
-
-Set this secret in Vercel Production only:
-
-```text
-DSG_OPERATOR_TOKEN=<strong random operator token>
-```
-
-Then call the protected diagnostic endpoint with the matching header:
-
-```bash
-curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/debug/upstash \
-  -H "x-dsg-operator-token: $DSG_OPERATOR_TOKEN"
-```
-
-Unauthenticated requests intentionally return `404` to avoid advertising the endpoint.
 
 ### Retest policy
 
@@ -49,13 +32,11 @@ Do **not** rerun the full proof/test stack every time someone asks for a status 
 - Vercel deployment alias or deployment target;
 - billing, entitlement, quota, auth, or rate-limit logic.
 
-For an **env-only change** such as rotating `UPSTASH_REDIS_REST_TOKEN`, run only the production smoke checks first:
+For an **env-only change** such as rotating `UPSTASH_REDIS_REST_TOKEN`, run only the production-safe smoke checks first:
 
 ```bash
 curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/
 curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/readiness
-curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/debug/upstash \
-  -H "x-dsg-operator-token: $DSG_OPERATOR_TOKEN"
 curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
 ```
 
@@ -70,8 +51,6 @@ npm run test:coverage
 npm run test:e2e
 npm run go:no-go
 ```
-
-Remove `/api/debug/upstash` after the diagnostic window closes, or keep it behind the operator-only guard.
 
 ---
 
