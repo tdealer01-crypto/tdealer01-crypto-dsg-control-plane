@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type {
   DeterministicConstraintResult,
   DeterministicFailureReason,
@@ -21,9 +20,16 @@ function statusFromFailures(failures: DeterministicFailureReason[]): Determinist
   return 'PASS';
 }
 
+function deterministicProofId(inputHash: string) {
+  return `dpf_${inputHash.slice(0, 32)}`;
+}
+
+function deterministicProofTimestamp(inputHash: string) {
+  const seconds = Number.parseInt(inputHash.slice(0, 8), 16);
+  return new Date(seconds * 1000).toISOString();
+}
+
 export function proveDeterministicPlan(request: DeterministicProofRequest): DeterministicProof {
-  const timestamp = new Date().toISOString();
-  const proofId = `dpf_${crypto.randomBytes(16).toString('hex')}`;
   const manifest = getDeterministicPolicyManifest();
   const solver = getDeterministicSolverMetadata();
   const policyRef = request.policyRef ?? manifest.policyRef;
@@ -57,6 +63,8 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     nonce: request.nonce,
     idempotencyKey: request.idempotencyKey,
   });
+  const proofId = deterministicProofId(inputHash);
+  const timestamp = deterministicProofTimestamp(inputHash);
   const replayProtection = {
     nonce: request.nonce,
     idempotencyKey: request.idempotencyKey,
@@ -76,8 +84,7 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     previousProofHash: request.previousProofHash,
     failureReasons,
     constraints,
-    replayProtection,
-  } as any);
+  });
 
   return {
     proofId,
