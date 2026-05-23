@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock stripe before imports
 const mockMeterEventsCreate = vi.fn();
@@ -10,25 +10,81 @@ vi.mock('stripe', () => ({
   })),
 }));
 
-vi.mock('../../../lib/supabase-server', () => ({
-  getSupabaseAdmin: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: () => Promise.resolve({ data: { stripe_customer_id: 'cus_test123' }, error: null }),
+const mockOutboxInsert = vi.fn();
+const mockOutboxUpdate = vi.fn();
+const mockOutboxSelectAll = vi.fn();
+const mockCustomerMaybeSingle = vi.fn();
+
+function outboxInsertChain() {
+  return {
+    select: () => ({
+      maybeSingle: mockOutboxInsert,
+    }),
+  };
+}
+
+function outboxUpdateChain() {
+  return {
+    eq: mockOutboxUpdate,
+  };
+}
+
+function outboxSelectChain() {
+  return {
+    eq: () => ({
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    }),
+    in: () => ({
+      lt: () => ({
+        order: () => ({
+          limit: mockOutboxSelectAll,
         }),
       }),
     }),
+  };
+}
+
+vi.mock('../../../lib/supabase-server', () => ({
+  getSupabaseAdmin: () => ({
+    from: (table: string) => {
+      if (table === 'billing_meter_outbox') {
+        return {
+          insert: mockOutboxInsert.mockImplementationOnce(() => outboxInsertChain()),
+          update: mockOutboxUpdate.mockImplementationOnce(() => outboxUpdateChain()),
+          select: () => outboxSelectChain(),
+        };
+      }
+
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: mockCustomerMaybeSingle,
+          }),
+        }),
+      };
+    },
   }),
 }));
 
-import { reportMeterEvent, isMeteredBillingConfigured } from '../../../lib/billing/metered';
+import { reportMeterEvent, isMeteredBillingConfigured, flushMeterOutbox } from '../../../lib/billing/metered';
 
 describe('Stripe metered billing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     process.env.STRIPE_SECRET_KEY       = 'sk_test_xxx';
     process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution';
+    mockOutboxInsert.mockImplementation(() => Promise.resolve({
+      data: { id: 'outbox-001', status: 'pending', stripe_event_id: null },
+      error: null,
+    }));
+    mockOutboxUpdate.mockResolvedValue({ data: null, error: null });
+    mockOutboxSelectAll.mockResolvedValue({ data: [], error: null });
+    mockCustomerMaybeSingle.mockResolvedValue({ data: { stripe_customer_id: 'cus_test123' }, error: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('reports meter event successfully', async () => {
@@ -38,6 +94,26 @@ describe('Stripe metered billing', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect((result as any).eventId).toBe('mtr_evt_001');
     expect(mockMeterEventsCreate).toHaveBeenCalledOnce();
+  });
+
+  it('writes an outbox row before Stripe delivery and marks it sent on success', async () => {
+    mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_001' });
+
+    await reportMeterEvent('cus_test123', 'org-1', 1, 'exec-001');
+
+    expect(mockOutboxInsert).toHaveBeenCalledWith({
+      execution_id: 'exec-001',
+      org_id: 'org-1',
+      stripe_customer_id: 'cus_test123',
+      event_name: 'dsg_execution',
+      quantity: 1,
+      status: 'pending',
+    });
+    expect(mockOutboxUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'sent',
+      stripe_event_id: 'mtr_evt_001',
+      error: null,
+    }));
   });
 
   it('passes correct payload and execution idempotency key to Stripe', async () => {
@@ -77,6 +153,7 @@ describe('Stripe metered billing', () => {
     const result = await reportMeterEvent('cus_test', 'org-3', 1, 'exec-003');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).skipped).toBe(true);
+    expect(mockOutboxInsert).not.toHaveBeenCalled();
     expect(mockMeterEventsCreate).not.toHaveBeenCalled();
   });
 
@@ -88,12 +165,44 @@ describe('Stripe metered billing', () => {
     if (!result.ok) expect((result as any).skipped).toBe(true);
   });
 
-  it('returns error (not throw) when Stripe call fails', async () => {
+  it('returns error and marks outbox failed when Stripe call fails', async () => {
     mockMeterEventsCreate.mockRejectedValue(new Error('Stripe API error'));
 
     const result = await reportMeterEvent('cus_test', 'org-5', 1, 'exec-005');
     expect(result.ok).toBe(false);
     if (!result.ok) expect((result as any).error).toContain('Stripe API error');
+    expect(mockOutboxUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'failed',
+      error: 'Stripe API error',
+    }));
+  });
+
+  it('flushMeterOutbox retries pending rows', async () => {
+    mockOutboxSelectAll.mockResolvedValue({
+      data: [{
+        id: 'outbox-retry-1',
+        execution_id: 'exec-retry-1',
+        org_id: 'org-retry',
+        stripe_customer_id: 'cus_retry',
+        event_name: 'dsg_execution',
+        quantity: 1,
+        status: 'pending',
+        stripe_event_id: null,
+        error: null,
+        created_at: '2026-05-01T00:00:00.000Z',
+      }],
+      error: null,
+    });
+    mockMeterEventsCreate.mockResolvedValue({ identifier: 'mtr_evt_retry' });
+
+    const result = await flushMeterOutbox(10);
+
+    expect(result.scanned).toBe(1);
+    expect(result.sent).toBe(1);
+    expect(mockMeterEventsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ identifier: 'dsg-meter-exec-retry-1' }),
+      { idempotencyKey: 'dsg-meter-exec-retry-1' }
+    );
   });
 
   it('isMeteredBillingConfigured returns true when both env vars are set', () => {
