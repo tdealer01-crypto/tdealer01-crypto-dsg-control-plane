@@ -2,7 +2,7 @@ import { getDSGCoreHealth } from '../../../lib/dsg-core';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { getDeploymentReadiness, type ReadinessReport } from '../../../lib/deployment/readiness';
 import { handleApiError } from '../../../lib/security/api-error';
-import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey, isRateLimiterConfigured } from '../../../lib/security/rate-limit';
+import { isRateLimiterConfigured } from '../../../lib/security/rate-limit';
 
 const HEALTH_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_CHECK = { ok: false, detail: 'health_dependency_unavailable' };
@@ -46,29 +46,14 @@ function unavailableReadiness(detail: string): ReadinessReport {
   };
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const rateLimiterConfigured = isRateLimiterConfigured();
-    let rateLimitHeaders: Record<string, string> = {};
 
-    // Health must always be reachable to surface component failures.
-    // Only apply rate limiting when Upstash is configured; otherwise report
-    // the misconfiguration as a 503 component failure rather than silently 429ing.
-    if (rateLimiterConfigured) {
-      const rateLimit = await applyRateLimit({
-        key: getRateLimitKey(request, 'health'),
-        limit: 60,
-        windowMs: 60_000,
-      });
-      if (!rateLimit.allowed) {
-        return Response.json(
-          { error: 'Too many requests' },
-          { status: 429, headers: buildRateLimitHeaders(rateLimit, 60) }
-        );
-      }
-      rateLimitHeaders = buildRateLimitHeaders(rateLimit, 60);
-    }
-
+    // Health is an operator/monitoring signal, not an abuse-sensitive action.
+    // It must not consume the production rate-limit bucket; otherwise uptime
+    // checks can mask a healthy service as HTTP 429. Abuse-sensitive endpoints
+    // such as /api/execute remain fail-closed behind the Redis-backed limiter.
     let dbOk = false;
     try {
       const dbResult = await withTimeout(
@@ -122,7 +107,7 @@ export async function GET(request: Request) {
       rateLimiter: {
         ok: rateLimiterConfigured,
         detail: rateLimiterConfigured
-          ? 'configured'
+          ? 'configured; health endpoint does not consume limiter bucket'
           : 'UPSTASH_REDIS_REST_URL not set — execute gate will fail closed',
       },
       core: {
@@ -133,7 +118,7 @@ export async function GET(request: Request) {
         error: core.ok ? null : coreDetails.error ?? 'core_unreachable',
       },
       readiness,
-    }, { status: allOk ? 200 : 503, headers: rateLimitHeaders });
+    }, { status: allOk ? 200 : 503 });
   } catch (error) {
     return handleApiError('api/health', error);
   }
