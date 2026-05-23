@@ -15,7 +15,7 @@ import { getSafeNext } from '../../../lib/auth/safe-next';
 import { validateAuthConfig } from '../../../lib/auth/preflight';
 import { logSecurityEvent, toSafeErrorInfo } from '../../../lib/security/safe-log';
 
-const AUTH_CONTINUE_RATE_LIMIT = 8;
+const AUTH_CONTINUE_RATE_LIMIT = 20;
 const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
 const AUTH_CONTINUE_EMAIL_RATE_LIMIT = 3;
 const AUTH_CONTINUE_EMAIL_RATE_WINDOW_MS = 60 * 1000;
