@@ -8,6 +8,53 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## Current production verification — 2026-05-23
+
+This section is the operator-facing status checkpoint. Do not replace it with optimistic claims; update it only from observed Vercel/GitHub/runtime evidence.
+
+| Surface | Latest observed status | Evidence boundary |
+|---|---:|---|
+| Production homepage | ✅ PASS | `GET /` returned HTTP `200` on the production URL. |
+| Runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` with `ok: true`. |
+| ProofGate GitHub Action launch page | ✅ PASS | `GET /proofgate-github-action` returned HTTP `200`. |
+| GitHub/Vercel main commit | ✅ PASS | `main` commit `6e6bcebe8c93654c4480d5961fbba60f928e6adf` has a successful production deployment record. |
+| Upstash Redis env presence | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are present in production. Secret values must never be committed or printed. |
+| Upstash Redis token/runtime auth | 🔁 VERIFY AFTER FRESH DEPLOY | Acceptance condition: `GET /api/debug/upstash` must return a Redis `PONG`, then `GET /api/health` must stop returning rate-limit/auth failure. |
+
+### Retest policy
+
+Do **not** rerun the full proof/test stack every time someone asks for a status check. Reuse the latest recorded evidence unless one of these changed:
+
+- application code, package files, migrations, or test configuration;
+- production environment variables;
+- Vercel deployment alias or deployment target;
+- billing, entitlement, quota, auth, or rate-limit logic.
+
+For an **env-only change** such as rotating `UPSTASH_REDIS_REST_TOKEN`, run only the production smoke checks first:
+
+```bash
+curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/
+curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/readiness
+curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/debug/upstash
+curl -i https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
+```
+
+Only run the full local/CI stack when code changes or before a release/merge:
+
+```bash
+npm run proof:revenue
+npm run typecheck
+npm run lint
+npm run test
+npm run test:coverage
+npm run test:e2e
+npm run go:no-go
+```
+
+After Upstash is confirmed with `PONG`, remove the temporary `/api/debug/upstash` endpoint or protect it behind an operator-only guard.
+
+---
+
 ## Z3 Formal Verification — Gateway Policy Engine
 
 The gateway policy engine (`lib/gateway/policy.ts`) is formally verified using the **Z3 SMT Solver**. All proofs run at design time; the TypeScript runtime consumes `verified-constraints.json` — no Z3 dependency at runtime.
@@ -189,5 +236,7 @@ Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for S
 
 ```yaml
 - name: DSG Secure Deploy Gate
-  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1
+  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.1.0
 ```
+
+Launch page: `https://tdealer01-crypto-dsg-control-plane.vercel.app/proofgate-github-action`
