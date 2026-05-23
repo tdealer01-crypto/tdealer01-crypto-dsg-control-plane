@@ -94,13 +94,24 @@ async function getOrgAdminEmails(orgIds: string[]): Promise<Map<string, string[]
   return map;
 }
 
-export async function GET(request: Request) {
-  // Verify cron secret (Vercel sets this automatically for cron jobs)
+function authorizeCron(request: Request): NextResponse | null {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  return null;
+}
+
+export async function GET(request: Request) {
+  const authError = authorizeCron(request);
+  if (authError) return authError;
 
   try {
     const snapshots = await scanOrgsForNudge(['soft', 'hard']);
