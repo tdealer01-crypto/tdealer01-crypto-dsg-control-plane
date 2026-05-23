@@ -211,7 +211,7 @@ export async function reportMeterEvent(
     quantity: meteredQuantity,
   });
 
-  if (!outbox.ok) {
+  if ('error' in outbox) {
     return { ok: false, error: outbox.error };
   }
 
