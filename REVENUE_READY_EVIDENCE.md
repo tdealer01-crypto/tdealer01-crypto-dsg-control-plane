@@ -1,8 +1,8 @@
 # Revenue Ready Evidence Pack
 
-Branch: `claude/test-coverage-analysis-I29iA`
-Date: 2026-05-23 (redeploy with Upstash)
-Commits: a4d7ae9, e7760ca, 61d3469, a1aaf85, 2efcddb
+Branch: `main`
+Date: 2026-05-23 (Stripe env vars added — redeploy triggered)
+Commits: a4d7ae9, e7760ca, 61d3469, a1aaf85, 2efcddb, 3433043
 
 ---
 
