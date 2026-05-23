@@ -17,11 +17,11 @@ This section is the operator-facing status checkpoint. Do not replace it with op
 | Production homepage | ✅ PASS | `GET /` returned HTTP `200` on the production URL. |
 | Runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` with `ok: true`. |
 | ProofGate GitHub Action launch page | ✅ PASS | `GET /proofgate-github-action` returned HTTP `200`. |
-| GitHub/Vercel main commit | ✅ PASS | `main` commit `6e6bcebe8c93654c4480d5961fbba60f928e6adf` has a successful production deployment record. |
+| GitHub/Vercel main commit | 🔁 REDEPLOY TRIGGERED | Latest `main` includes protected Upstash debug endpoint and health endpoint fix. Verify production alias after Vercel finishes. |
 | Upstash Redis env presence | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are present in production. Secret values must never be committed or printed. |
 | Upstash Redis token/runtime auth | ✅ PASS | `GET /api/debug/upstash` returned Redis `PONG` before the endpoint was protected; token/runtime auth is valid. |
 | Upstash debug endpoint exposure | ✅ PROTECTED IN CODE | `GET /api/debug/upstash` now requires `DSG_OPERATOR_TOKEN` plus header `x-dsg-operator-token`; unauthenticated requests return `404`. Set `DSG_OPERATOR_TOKEN` in Vercel Production before using this diagnostic endpoint. |
-| Health endpoint | ⚠️ RATE-LIMITED IN CURRENT BUCKET | `GET /api/health` may return HTTP `429` when the production rate-limit bucket is exhausted. This is not an Upstash auth failure after `PONG` is observed. |
+| Health endpoint | ✅ FIXED IN CODE | `/api/health` no longer consumes the production rate-limit bucket. Verify after production alias points at the latest deployment. |
 
 ### Operator-only Upstash diagnostic
 
