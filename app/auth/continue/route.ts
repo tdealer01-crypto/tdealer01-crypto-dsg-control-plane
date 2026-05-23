@@ -121,9 +121,8 @@ async function applyEmailRateLimitOrRespond(
   request: NextRequest,
   email: string
 ) {
-  const pathname = request.nextUrl?.pathname ?? new URL(request.url).pathname;
   const emailHash = createHash('sha256').update(email).digest('hex');
-  const emailRateLimitKey = `auth-continue-email:${pathname}:${emailHash}`;
+  const emailRateLimitKey = `auth-continue-email:${emailHash}`;
 
   const emailRateLimit = await applyRateLimit({
     key: emailRateLimitKey,
