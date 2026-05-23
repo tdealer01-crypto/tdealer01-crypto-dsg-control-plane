@@ -11,7 +11,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
-import { getOrgUsageSnapshot } from '../../../../lib/revenue/upgrade-nudge';
+import { getOrgUsageSnapshot, normalizeBillingPeriod } from '../../../../lib/revenue/upgrade-nudge';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -50,11 +50,10 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const requestedPeriod = searchParams.get('period');
-    const currentPeriod   = new Date().toISOString().slice(0, 7);
-    const period          = requestedPeriod ?? currentPeriod;
+    const period          = normalizeBillingPeriod(requestedPeriod);
 
-    // Get current period snapshot (includes nudge level)
-    const snapshot = await getOrgUsageSnapshot(profile.org_id);
+    // Get requested period snapshot (includes nudge level)
+    const snapshot = await getOrgUsageSnapshot(profile.org_id, period);
 
     // Get historical usage for trend chart (last 6 months)
     const { data: history } = await admin
@@ -73,18 +72,18 @@ export async function GET(request: Request) {
       );
     }
 
-    // Top agents by usage in current period
+    // Top agents by usage in requested period
     const { data: agentUsage } = await admin
       .from('usage_counters')
       .select('agent_id, executions')
       .eq('org_id', profile.org_id)
-      .eq('billing_period', currentPeriod)
+      .eq('billing_period', period)
       .order('executions', { ascending: false })
       .limit(10);
 
     return NextResponse.json({
       ok: true,
-      period: currentPeriod,
+      period,
       quota: {
         plan:         snapshot.plan,
         used:         snapshot.used,

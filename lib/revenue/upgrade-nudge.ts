@@ -31,6 +31,7 @@ export type UsageSnapshot = {
 
 const SOFT_THRESHOLD  = 0.80; // 80%
 const HARD_THRESHOLD  = 0.95; // 95%
+const BILLING_PERIOD_PATTERN = /^\d{4}-\d{2}$/;
 
 const PLAN_UPGRADE_PATH: Record<string, KnownPlan | null> = {
   free:       'trial',
@@ -39,6 +40,16 @@ const PLAN_UPGRADE_PATH: Record<string, KnownPlan | null> = {
   business:   'enterprise',
   enterprise: null,
 };
+
+function currentBillingPeriod(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
+export function normalizeBillingPeriod(period?: string | null): string {
+  if (!period) return currentBillingPeriod();
+  const normalized = period.trim();
+  return BILLING_PERIOD_PATTERN.test(normalized) ? normalized : currentBillingPeriod();
+}
 
 function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.dsg.pics';
@@ -68,11 +79,11 @@ function formatSavings(plan: string): string | null {
 }
 
 /**
- * Get current usage snapshot for a single org in the current billing period.
+ * Get usage snapshot for a single org in a target billing period.
  */
-export async function getOrgUsageSnapshot(orgId: string): Promise<UsageSnapshot> {
+export async function getOrgUsageSnapshot(orgId: string, period?: string | null): Promise<UsageSnapshot> {
   const supabase = getSupabaseAdmin();
-  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const billingPeriod = normalizeBillingPeriod(period);
 
   const [orgResult, usageResult] = await Promise.all([
     supabase.from('organizations').select('plan').eq('id', orgId).maybeSingle(),
@@ -80,7 +91,7 @@ export async function getOrgUsageSnapshot(orgId: string): Promise<UsageSnapshot>
       .from('usage_counters')
       .select('executions')
       .eq('org_id', orgId)
-      .eq('billing_period', period),
+      .eq('billing_period', billingPeriod),
   ]);
 
   const plan  = orgResult.data?.plan ?? 'free';
@@ -109,7 +120,7 @@ export async function getOrgUsageSnapshot(orgId: string): Promise<UsageSnapshot>
  */
 export async function scanOrgsForNudge(nudgeFilter: NudgeLevel[] = ['soft', 'hard', 'blocked']): Promise<UsageSnapshot[]> {
   const supabase = getSupabaseAdmin();
-  const period   = new Date().toISOString().slice(0, 7);
+  const period   = currentBillingPeriod();
 
   // Fetch all orgs with usage in the current period
   const { data: usageRows, error } = await supabase
