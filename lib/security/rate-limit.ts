@@ -119,3 +119,7 @@ export function buildRateLimitHeaders(result: RateLimitResult, limit: number) {
     'X-RateLimit-Reset': String(Math.floor(result.resetAt / 1000)),
   };
 }
+
+export function isRateLimiterConfigured(): boolean {
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}

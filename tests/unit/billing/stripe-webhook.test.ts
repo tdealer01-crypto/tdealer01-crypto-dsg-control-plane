@@ -18,13 +18,26 @@ vi.mock('../../../lib/security/api-error', () => ({
   internalErrorMessage: vi.fn(() => 'Internal server error'),
   logApiError: vi.fn(),
 }));
+vi.mock('../../../lib/billing/fulfillment', () => ({
+  fulfillSubscription: vi.fn().mockResolvedValue({ ok: true }),
+  revokeSubscription: vi.fn().mockResolvedValue({ ok: true }),
+}));
+vi.mock('../../../lib/billing/entitlements', () => ({
+  REVOKED_STATUSES: new Set(['canceled', 'unpaid', 'past_due', 'incomplete_expired']),
+  effectivePlan: vi.fn((status: string, planKey: string) =>
+    ['canceled', 'unpaid', 'past_due', 'incomplete_expired'].includes(status) ? 'free' : planKey
+  ),
+}));
 
 import { POST } from '../../../app/api/billing/webhook/route';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { sendUpgradeSuccess } from '../../../lib/email/sales';
+import { fulfillSubscription, revokeSubscription } from '../../../lib/billing/fulfillment';
 
 const mockGetAdmin = vi.mocked(getSupabaseAdmin);
 const mockSendUpgradeSuccess = vi.mocked(sendUpgradeSuccess);
+const mockFulfill = vi.mocked(fulfillSubscription);
+const mockRevoke = vi.mocked(revokeSubscription);
 
 function makeSupabaseAdmin() {
   const fromMock = vi.fn().mockReturnValue({
@@ -164,5 +177,93 @@ describe('POST /api/billing/webhook', () => {
     const body = await res.json();
     expect(body.received).toBe(true);
     expect(body.type).toBe('payment_intent.created');
+  });
+
+  it('calls fulfillSubscription when subscription.updated is active', async () => {
+    const subscription = {
+      id: 'sub_1',
+      customer: 'cus_1',
+      status: 'active',
+      items: { data: [{ price: { id: 'price_pro', product: 'prod_1' } }] },
+      metadata: { plan_key: 'pro', billing_interval: 'monthly' },
+      cancel_at_period_end: false,
+      current_period_start: 1700000000,
+      current_period_end: 1702592000,
+      trial_start: null,
+      trial_end: null,
+    };
+    const event = {
+      id: 'evt_fulfill',
+      type: 'customer.subscription.updated',
+      data: { object: subscription, previous_attributes: {} },
+    };
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue(event as any);
+
+    const adminMock = makeSupabaseAdmin();
+    adminMock.from.mockReturnValue({
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      like: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
+        error: null,
+      }),
+      not: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      rpc: vi.fn().mockReturnThis(),
+    });
+    mockGetAdmin.mockReturnValue(adminMock as any);
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockFulfill).toHaveBeenCalledWith('org-1', 'pro', 'active');
+  });
+
+  it('calls revokeSubscription when subscription.deleted fires', async () => {
+    const subscription = {
+      id: 'sub_1',
+      customer: 'cus_1',
+      status: 'canceled',
+      items: { data: [{ price: { id: 'price_pro', product: 'prod_1' } }] },
+      metadata: { plan_key: 'pro', billing_interval: 'monthly' },
+      cancel_at_period_end: false,
+      current_period_start: 1700000000,
+      current_period_end: 1702592000,
+      trial_start: null,
+      trial_end: null,
+    };
+    const event = {
+      id: 'evt_revoke',
+      type: 'customer.subscription.deleted',
+      data: { object: subscription, previous_attributes: {} },
+    };
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue(event as any);
+
+    const adminMock = makeSupabaseAdmin();
+    adminMock.from.mockReturnValue({
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      like: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
+        error: null,
+      }),
+      not: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      rpc: vi.fn().mockReturnThis(),
+    });
+    mockGetAdmin.mockReturnValue(adminMock as any);
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockRevoke).toHaveBeenCalledWith('org-1');
   });
 });
