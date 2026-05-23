@@ -148,11 +148,12 @@
     "npm test -- tests/dsg/agent-skills-pipeline.test.ts",
     "npm run build"
   ],
-  "lastVerified": "2026-05-23T04:07:00Z",
-  "lastVerifiedBy": "local — branch claude/test-coverage-analysis-qbAC3",
-  "lastVerifiedLog": "docs/TEST_EXECUTION_SUMMARY.md",
+  "lastVerified": "2026-05-23T04:15:11Z",
+  "lastVerifiedBy": "GitHub Actions — skillgate-ci.yml — run 26323185657",
+  "lastVerifiedLog": "https://github.com/tdealer01-crypto/dsg-one-v1/actions/runs/26323185657/job/77495915449",
+  "localVerifiedLog": "docs/TEST_EXECUTION_SUMMARY.md",
   "notes": [
-    "lastVerified reflects local run. Replace with CI run date once GitHub Actions are wired.",
+    "lastVerified reflects CI run on main after PR #93 merged.",
     "Lock tests use real temp directories — no fs mocking. Failures reflect actual filesystem behavior.",
     "Run gate tests assert that blocked/needs_review/needs_approval paths never call prepareGovernedToolRequest.",
     "Pipeline test is fully offline — no GitHub API calls made."
