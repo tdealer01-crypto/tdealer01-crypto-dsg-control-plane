@@ -2,33 +2,33 @@
 
 > **Block before the AI agent acts — not after the damage is done.**
 
-DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gate every action before execution, and keep a cryptographic audit trail for regulated AI-agent operations.
+DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gate every action before execution, and keep a deterministic decision-evidence trail for regulated AI-agent operations.
 
 **Production URL:** `https://tdealer01-crypto-dsg-control-plane.vercel.app`
 
 ---
 
-## Production announcement — 2026-05-20
+## Observed deployment and gate evidence — 2026-05-21
 
-DSG ONE ProofGate Control Plane is deployed on Vercel production and the runtime readiness endpoint is green.
+This section records evidence from specific GitHub Actions and deployment checks that already ran successfully. It is not a certification, a full production-readiness guarantee, a third-party audit, a KUB mainnet deployment claim, or a user/TVL/DAU metrics claim.
 
-| Checkpoint | Status | Evidence |
+| Checkpoint | Status | Evidence boundary |
 |---|---:|---|
-| Production deployment | ✅ READY | Vercel production deployment reached `READY`. |
-| Production commit | ✅ Verified | GitHub merge commits are verified on the current production path. |
-| Production alias | ✅ Active | `tdealer01-crypto-dsg-control-plane.vercel.app` is attached to the READY deployment. |
-| Basic runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` and `ok: true`. |
-| Finance governance readiness | ✅ PASS | `GET /api/finance-governance/readiness` returned HTTP `200` and `ok: true`. |
-| Environment check | ✅ PASS | Runtime readiness reports `env`, `nextAuthSecret`, `supabaseServiceRole`, `dsgCoreConfig`, and `dsgCoreHealth` as `ok`. |
-| Finance governance backend | ✅ PASS | Finance governance reports required Supabase tables as reachable. |
+| Observed Vercel deployment | ✅ Observed | Vercel deployment evidence was recorded for the referenced production path. |
+| Production commit path | ✅ Observed | GitHub merge commits were recorded on the current production path. |
+| Production alias | ✅ Observed | `tdealer01-crypto-dsg-control-plane.vercel.app` was attached to the observed deployment. |
+| Basic runtime readiness | ✅ Observed | `GET /api/readiness` returned HTTP `200` and `ok: true`; after PR `#569`, this endpoint is informational/non-authoritative for deploy gating. |
+| Finance governance readiness | ✅ Authoritative gate observed | `GET /api/finance-governance/readiness` returned HTTP `200` and `ok: true` in the recorded readiness run. |
+| Environment check | ✅ Observed | Runtime readiness reported `env`, `nextAuthSecret`, `supabaseServiceRole`, `dsgCoreConfig`, and `dsgCoreHealth` as `ok`. |
+| Finance governance backend | ✅ Observed | Finance governance readiness reported required Supabase tables as reachable. |
 | Default Docker E2E boundary | ✅ Fixed | `npm run test:e2e` runs demo-safe specs, while staging-only auth/API-key/billing flows run through `npm run test:e2e:staging`. |
 | Production health endpoint | ⚠️ Rate-limited by design | `/api/health` can return HTTP `429`; this is non-fatal in the production readiness workflow. |
 
-### Operational status
+### Observed workflow status
 
 ```text
-Production deploy: PASS
-Basic runtime readiness: PASS
+Observed Vercel deployment evidence: PASS
+Basic runtime readiness: PASS / informational
 Finance governance authoritative gate: PASS
 DSG Secure Deploy Gate: GO
 Supabase service role runtime check: PASS
@@ -40,16 +40,19 @@ Finance governance table checks: PASS
 Allowed claim:
 
 ```text
-DSG ONE ProofGate Control Plane is live on Vercel production with basic runtime
-readiness, Supabase service-role configuration, DSG core health, finance-governance
-readiness, and DSG Secure Deploy Gate GO evidence verified through production checks.
+DSG ONE ProofGate Control Plane has observed Vercel deployment evidence, basic
+runtime readiness evidence, Supabase service-role configuration evidence, DSG core
+health evidence, finance-governance readiness evidence, and DSG Secure Deploy Gate
+GO evidence from the recorded workflow runs.
 ```
 
 Disallowed claim:
 
 ```text
-Certified, third-party audited, WORM-certified, externally Z3 production verified,
-or end-to-end formally verified SaaS.
+Full production-ready certification, independent third-party audit, WORM-certified
+audit storage, external Z3 production-solver verification, end-to-end formally
+verified SaaS deployment, KUB mainnet deployment, TVL, DAU, wallet, user, or
+transaction metrics.
 ```
 
 ---
@@ -61,7 +64,7 @@ Other tools tell you what your agent did *after* the fact. DSG ONE intercepts th
 ```text
 Agent wants to act
   → POST /api/try/gate  { session_id, action }
-  → ALLOW + cryptographic stamp   (agent proceeds)
+  → ALLOW + deterministic stamp   (agent proceeds)
   → BLOCK + suggested_llm_prompt  (agent self-corrects)
 ```
 
@@ -126,7 +129,7 @@ Example `BLOCK` response:
 ```json
 {
   "decision": "BLOCK",
-  "reason": "Pattern \"delete\\s+all\" is permanently blocked",
+  "reason": "Action violates a high-risk policy pattern",
   "agent_guidance": {
     "can_proceed_with": ["read database", "send email", "update user record"],
     "suggested_llm_prompt": "Your action was blocked. You can still perform the allowed actions."
@@ -136,7 +139,7 @@ Example `BLOCK` response:
 
 Trial limits: `60 req/min`, session TTL `60 min`, no API key required for trial gate calls.
 
-Permanently blocked patterns include: `delete all`, `drop table`, `truncate`, `bypass policy`, `rm -rf`, `exfiltrate`, `steal`.
+The trial gate includes permanently blocked high-risk policy patterns. The exact pattern list should be reviewed in source code, not copied into public grant or marketing claims.
 
 ---
 
@@ -279,23 +282,23 @@ Green repository tests alone are not final proof of deployment readiness.
 
 ## Current test and gate evidence — 2026-05-21
 
-These are the latest verified checks after PRs `#567`, `#568`, and `#569` were merged.
+These are the recorded checks after PRs `#567`, `#568`, and `#569` were merged. They are workflow evidence from successful runs, not a certification and not a reason to rerun the same gates solely to reproduce this README evidence.
 
-| Evidence layer | Command / workflow | Latest observed status | What it proves |
+| Evidence layer | Command / workflow | Latest observed status | What it supports |
 |---|---|---:|---|
 | Unit + integration baseline | `npm test` | ✅ Covered by `launch-readiness` success after PR `#567` | Repository tests compile and run after gateway/authz/billing test additions. |
 | TypeScript gate | `npm run typecheck` | ✅ Covered by `launch-readiness` success after PR `#567` | Test import paths and gateway types compile. |
-| Build gate | `npm run build` | ✅ Covered by `launch-readiness` success after PR `#567` | Next.js production build path remains valid. |
-| Production manifest gate | `npm run verify:production-manifest` | ✅ Covered by `launch-readiness` success after PR `#567` | Production manifest remains valid. |
+| Build gate | `npm run build` | ✅ Covered by `launch-readiness` success after PR `#567` | Next.js build path remains valid for the checked commit. |
+| Production manifest gate | `npm run verify:production-manifest` | ✅ Covered by `launch-readiness` success after PR `#567` | Production manifest remains valid for the checked commit. |
 | Gateway policy tests | `tests/unit/gate/gateway-policy.test.ts` | ✅ Added and merged in PR `#567` | Policy allow/block/review branches are covered. |
 | Gateway executor tests | `tests/unit/gate/gateway-executor.test.ts` | ✅ Added and merged in PR `#567` | Gateway request normalization and mocked provider execution are covered. |
 | Authz role tests | `tests/unit/auth/authz-require-org-role.test.ts` | ✅ Added and merged in PR `#567` | Role resolution, PGRST fallback, 401/403/500 paths are covered. |
 | Billing checkout tests | `tests/unit/billing/checkout-route.test.ts` | ✅ Added and corrected in PR `#567` | Checkout auth, org isolation, rate limit, plan/price behavior are covered. |
 | Billing webhook tests | `tests/unit/billing/stripe-webhook.test.ts` | ✅ Added and corrected in PR `#567` | Stripe webhook routing and billing state paths are covered. |
-| Playwright Docker E2E | `E2E Playwright Docker` | ✅ Passed on PR `#567` | Browser E2E baseline remains green. |
-| Production readiness | `Production Readiness Check #591` | ✅ Success | `/api/readiness` is non-blocking/basic, `/api/finance-governance/readiness` is the authoritative runtime gate. |
+| Playwright Docker E2E | `E2E Playwright Docker` | ✅ Passed on PR `#567` | Browser E2E baseline remains green for the checked workflow run. |
+| Production readiness | `Production Readiness Check #591` | ✅ Success | Observed runtime checks passed; `/api/readiness` is non-blocking/basic, and `/api/finance-governance/readiness` is the authoritative runtime gate. |
 | DSG deploy gate | `DSG Secure Deploy Gate #507` | ✅ `GO` | Strict gate returned readiness `200`, protected route `401`, failure reason `none`, and evidence/proof/chain hashes. |
-| Vercel production deploy | Vercel status on merge commit `3356a699` | ✅ Success | Production deployment completed after readiness gate fix. |
+| Vercel deployment evidence | Vercel status on merge commit `3356a699` | ✅ Observed success | Deployment evidence was recorded after the readiness gate fix. |
 
 ### Production readiness evidence
 
@@ -303,11 +306,11 @@ These are the latest verified checks after PRs `#567`, `#568`, and `#569` were m
 Production Readiness Check #591
 Status: Success
 /api/health: rate_limited, non-fatal
-/api/readiness: pass
+/api/readiness: pass, informational/non-authoritative
 /api/finance-governance/readiness: pass, authoritative gate
 /api/core/monitor: auth_required, expected for unauthenticated CI
 /api/usage: auth_required, expected for unauthenticated CI
-Overall: Production Runtime Ready
+Overall observed workflow result: Success
 ```
 
 ### DSG Secure Deploy Gate evidence
@@ -341,9 +344,9 @@ middleware and route-level security behavior
 ### Evidence boundary
 
 ```text
-This README records observed repository, deployment, and runtime evidence.
-It is not a legal certification, third-party audit, WORM certification,
-or complete formal verification of the deployed SaaS.
+This README records observed repository, deployment, and runtime workflow evidence.
+It is not a legal certification, third-party audit, WORM certification, KUB mainnet
+evidence, user/TVL/DAU evidence, or complete formal verification of the deployed SaaS.
 ```
 
 ---
@@ -354,7 +357,7 @@ or complete formal verification of the deployed SaaS.
 |---|---|---|
 | `launch-readiness` | Typecheck, tests, build, production manifest. | Repository merge gate. |
 | `E2E Pipeline` | Docker Playwright baseline and repository E2E checks. | Browser regression gate. |
-| `Production Readiness Check` | Runtime readiness, deployment health, and management-secret checks. | Production runtime gate. |
+| `Production Readiness Check` | Runtime readiness, deployment health, and management-secret checks. | Runtime workflow evidence gate. |
 | `Production Quality Gates` | Coverage, live DB required gate, and staging Playwright gate. | Manual/staging quality gate. |
 | `DSG Secure Deploy Gate` | Secure deployment policy gate. | Deterministic GO / NO-GO deploy evidence. |
 
@@ -365,7 +368,7 @@ or complete formal verification of the deployed SaaS.
 | Article | Requirement | DSG ONE |
 |---|---|---|
 | Art. 9 | Risk management before action | Gate every action before execution. |
-| Art. 12 | Record keeping | Decision evidence and audit trail. |
+| Art. 12 | Record keeping | Decision evidence and audit trail scaffold. |
 | Art. 14 | Human oversight | BLOCK guidance and approval workflow. |
 
 ---
@@ -377,7 +380,7 @@ DOI: https://doi.org/10.5281/zenodo.18225586
 Title: Deterministic State Gate (DSG): Formally Verified Control Primitive for Safety-Critical AI Systems
 ```
 
-The DOI artifact is the formal verification reference. Repository runtime routes provide scaffold behavior and operational implementation; they are not equivalent to an independently certified end-to-end formally verified SaaS deployment.
+The DOI artifact is the formal verification reference. Repository runtime routes provide scaffold behavior and operational implementation; they are not equivalent to an independently certified end-to-end formally verified SaaS deployment or an external Z3 production-solver verification claim.
 
 ---
 
@@ -412,12 +415,12 @@ https://tdealer01-crypto-dsg-control-plane.vercel.app/proofgate-github-action
 
 ```text
 ✓ REST API gate endpoint is live.
-✓ Basic production readiness endpoint is green on 2026-05-21.
-✓ Finance-governance readiness is green through /api/finance-governance/readiness.
 ✓ Production Readiness Check #591 completed successfully.
+✓ Production Readiness Check #591 observed /api/readiness pass as informational/non-authoritative.
+✓ Finance-governance readiness passed through /api/finance-governance/readiness as the authoritative gate.
 ✓ DSG Secure Deploy Gate #507 returned GO with strict preset evidence.
 ✓ API key management uses scoped, revocable keys with server-side hashing.
-✓ Runtime readiness confirms Supabase service-role configuration.
+✓ Runtime readiness confirms Supabase service-role configuration in the observed run.
 ✓ Deterministic proof/gate scaffold is present.
 ✓ Marketplace Action demo and landing page are published.
 ```
@@ -425,8 +428,11 @@ https://tdealer01-crypto-dsg-control-plane.vercel.app/proofgate-github-action
 Not claimed:
 
 ```text
+✗ Full production-ready certification.
 ✗ Independent third-party audit or certification.
 ✗ WORM-certified audit storage.
 ✗ External Z3 solver verified in production end-to-end.
+✗ KUB mainnet deployment.
+✗ TVL, DAU, wallet, user, partner, or transaction metrics.
 ✗ Published public npm/PyPI SDK.
 ```
