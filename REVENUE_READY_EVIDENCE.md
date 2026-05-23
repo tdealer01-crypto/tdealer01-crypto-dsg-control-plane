@@ -1,7 +1,7 @@
 # Revenue Ready Evidence Pack
 
 Branch: `main`
-Date: 2026-05-23 (Stripe env vars added — redeploy triggered)
+Date: 2026-05-23 (cross-repo webhook connected — DSG_ONE_WEBHOOK_SECRET configured)
 Commits: a4d7ae9, e7760ca, 61d3469, a1aaf85, 2efcddb, 3433043
 
 ---
