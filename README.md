@@ -8,20 +8,47 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
-## Current production verification — 2026-05-23
+## Current production verification — 2026-05-24
 
-This section is the operator-facing status checkpoint. Do not replace it with optimistic claims; update it only from observed Vercel/GitHub/runtime evidence.
+This section is the operator-facing status checkpoint. Updated only from observed evidence — no optimistic claims.
 
-| Surface | Latest observed status | Evidence boundary |
-|---|---:|---|
-| Production homepage | ✅ PASS | `GET /` returned HTTP `200` on the production URL. |
-| Runtime readiness | ✅ PASS | `GET /api/readiness` returned HTTP `200` with `ok: true`. |
-| ProofGate GitHub Action launch page | ✅ PASS | `GET /proofgate-github-action` returned HTTP `200`. |
-| GitHub/Vercel main commit | 🔁 REDEPLOY TRIGGERED | Latest `main` removes the temporary Upstash debug endpoint and includes the health endpoint fix. Verify production alias after Vercel finishes. |
-| Upstash Redis env presence | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are present in production. Secret values must never be committed or printed. |
-| Upstash Redis token/runtime auth | ✅ PASS | Redis `PONG` was verified before removing the temporary debug endpoint. Future checks should use Vercel logs and `/api/health`/`/api/readiness`, not a public debug route. |
-| Upstash debug endpoint exposure | ✅ REMOVED IN CODE | Temporary `/api/debug/upstash` route has been deleted from `main`. Production should return `404` after the latest deployment is active. |
-| Health endpoint | ✅ FIXED IN CODE | `/api/health` no longer consumes the production rate-limit bucket. Verify after production alias points at the latest deployment. |
+| Surface | Status | Evidence |
+|---|:---:|---|
+| Production homepage | ✅ PASS | `GET /` → HTTP 200 |
+| Runtime readiness | ✅ PASS | `GET /api/readiness` → HTTP 200 `status=ready` |
+| `/api/health` | ✅ PASS | HTTP 200, `rateLimiter.ok: true` |
+| `/terms` `/privacy` `/security` `/support` | ✅ PASS | All HTTP 200 (go:no-go gate) |
+| User-flow audit (Playwright) | ✅ PASS | finance-governance e2e — submit → approve → Supabase persisted |
+| **go:no-go gate** | ✅ **PASS** | `npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app` — all scripted checks green |
+| Upstash Redis | ✅ CONFIGURED | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` in Vercel production |
+| Stripe webhook | ✅ LIVE | Endpoint live, returns 400 on missing signature (expected) |
+| `CRON_SECRET` | ✅ CONFIGURED | Cron routes fail-closed: missing → 503, wrong → 401 |
+
+### Revenue hardening — Issue #577 (2026-05-24)
+
+| Fix | Status | Detail |
+|---|:---:|---|
+| Stripe meter idempotency | ✅ FIXED | Key = `dsg-meter-{executionId}` — eliminates same-second dedup revenue leak |
+| Billing outbox | ✅ LIVE | `billing_meter_outbox` table + hourly flush cron — no silent loss on Stripe outage |
+| Cron auth fail-closed | ✅ FIXED | `usage-alerts` + `flush-meter-outbox` both fail-closed |
+| Analytics period param | ✅ FIXED | `GET /api/usage/analytics?period=YYYY-MM` returns correct period data |
+
+### Test evidence — 2026-05-24
+
+```
+Test Files  101 passed | 4 skipped (105)
+     Tests  521 passed | 12 skipped (533)
+  Duration  15.89s
+```
+
+```
+npm run typecheck     → 0 errors
+npm run verify:policy → 8 Z3 theorems proved
+npm run proof:revenue → 16 theorems — FORMAL PROOF PASS
+npm run go:no-go      → GO/NO-GO RESULT: PASS
+```
+
+Branch: `proofgate-founder-market-leader-z3` · Commit: `41ed458`
 
 ### Retest policy
 
