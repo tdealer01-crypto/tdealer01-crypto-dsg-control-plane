@@ -7,7 +7,7 @@
 create table if not exists public.billing_meter_outbox (
   id uuid primary key default gen_random_uuid(),
   execution_id text not null unique,
-  org_id text not null references public.organizations(id) on delete cascade,
+  org_id text not null,
   stripe_customer_id text not null,
   event_name text not null,
   quantity integer not null default 1 check (quantity > 0),
