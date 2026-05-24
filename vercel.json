@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/flush-meter-outbox",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/usage-alerts",
@@ -53,6 +53,14 @@
     {
       "path": "/api/cron/yield-optimizer",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/agent-orchestrator",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/agent-health-check",
+      "schedule": "0 * * * *"
     }
   ]
 }
