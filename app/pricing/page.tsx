@@ -92,9 +92,23 @@ function signupHref(planKey: string, interval: Interval) {
 export default function PricingPage() {
   const [interval, setInterval] = useState<Interval>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
 
+  function setError(planKey: string, msg: string) {
+    setErrors((prev) => ({ ...prev, [planKey]: msg }));
+  }
+
+  function clearError(planKey: string) {
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[planKey];
+      return next;
+    });
+  }
+
   async function handleCheckout(planKey: string) {
+    clearError(planKey);
     setLoading(planKey);
     try {
       const res = await fetch('/api/billing/checkout', {
@@ -104,8 +118,16 @@ export default function PricingPage() {
       });
       if (res.status === 401) { router.push(signupHref(planKey, interval)); return; }
       if (res.status === 403) { router.push('/login?next=/dashboard/billing'); return; }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(planKey, data?.error || 'Checkout failed — please try again');
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       if (data?.url) window.location.href = data.url;
+      else setError(planKey, 'Checkout failed — please try again');
+    } catch {
+      setError(planKey, 'Something went wrong');
     } finally {
       setLoading(null);
     }
@@ -193,13 +215,18 @@ export default function PricingPage() {
                     {plan.cta}
                   </Link>
                 ) : (
-                  <button
-                    onClick={() => handleCheckout(plan.key)}
-                    disabled={loading === plan.key}
-                    className={['mt-5 rounded-xl py-2.5 text-sm font-bold transition disabled:opacity-60', plan.featured ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'border border-white/15 text-slate-100 hover:border-emerald-400/40'].join(' ')}
-                  >
-                    {loading === plan.key ? 'Loading…' : plan.cta}
-                  </button>
+                  <div className="mt-5">
+                    <button
+                      onClick={() => handleCheckout(plan.key)}
+                      disabled={loading === plan.key}
+                      className={['w-full rounded-xl py-2.5 text-sm font-bold transition disabled:opacity-60', plan.featured ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'border border-white/15 text-slate-100 hover:border-emerald-400/40'].join(' ')}
+                    >
+                      {loading === plan.key ? 'Loading…' : plan.cta}
+                    </button>
+                    {errors[plan.key] && (
+                      <p className="mt-1.5 text-xs text-red-400">{errors[plan.key]}</p>
+                    )}
+                  </div>
                 )}
               </article>
             );
@@ -253,9 +280,14 @@ export default function PricingPage() {
               <p className="font-bold text-slate-100">Need all packs?</p>
               <p className="mt-1 text-xs text-slate-400">Enterprise plan includes all skill packs + custom builder + SLA + CSM.</p>
             </div>
-            <button onClick={() => handleCheckout('enterprise')} className="mt-4 rounded-xl border border-slate-600 py-2 text-xs font-bold text-slate-300 hover:border-emerald-400">
-              Start Enterprise pilot →
-            </button>
+            <div className="mt-4">
+              <button onClick={() => handleCheckout('enterprise')} disabled={loading === 'enterprise'} className="w-full rounded-xl border border-slate-600 py-2 text-xs font-bold text-slate-300 hover:border-emerald-400 disabled:opacity-60">
+                {loading === 'enterprise' ? 'Loading…' : 'Start Enterprise pilot →'}
+              </button>
+              {errors['enterprise'] && (
+                <p className="mt-1.5 text-xs text-red-400">{errors['enterprise']}</p>
+              )}
+            </div>
           </div>
         </div>
       </section>

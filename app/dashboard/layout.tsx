@@ -4,6 +4,7 @@ import Link from 'next/link';
 import AgentChatWidget from '../../components/AgentChatWidget';
 import AutoSetupTrigger from '../../components/AutoSetupTrigger';
 import DashboardNav from '../../components/DashboardNav';
+import NudgeBanner from '../../components/billing/NudgeBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </div>
       <AutoSetupTrigger />
+      <NudgeBanner />
       {children}
       <AgentChatWidget />
     </div>
