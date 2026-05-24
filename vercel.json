@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
-  "ignoreCommand": "exit 1",
   "crons": [
     {
       "path": "/api/cron/flush-meter-outbox",
