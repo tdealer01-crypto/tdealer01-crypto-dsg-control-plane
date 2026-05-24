@@ -88,13 +88,8 @@ export async function applyRateLimit(options: RateLimitOptions): Promise<RateLim
   const limiter = getLimiter(prefix, options.limit, options.windowMs);
 
   if (!limiter) {
-    if (isProduction()) {
-      console.error('[rate-limit] Redis rate limiter is required in production; blocking request');
-      return blockedResult(options.windowMs);
-    }
-
     if (!warnedNoRedis) {
-      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (dev/test only)');
+      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback');
       warnedNoRedis = true;
     }
     return applyMemoryRateLimit(options);
@@ -104,10 +99,7 @@ export async function applyRateLimit(options: RateLimitOptions): Promise<RateLim
     const { success, remaining, reset } = await limiter.limit(options.key);
     return { allowed: success, remaining, resetAt: reset };
   } catch (error) {
-    if (isProduction()) {
-      console.error('[rate-limit] Redis rate limiter failed in production; blocking request', error);
-      return blockedResult(options.windowMs);
-    }
+    console.error('[rate-limit] Redis limiter error — falling back to in-memory', error);
     return applyMemoryRateLimit(options);
   }
 }
