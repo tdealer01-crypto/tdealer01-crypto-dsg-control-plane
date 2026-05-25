@@ -4,12 +4,14 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
+  const cronSecret = process.env.CRON_SECRET;
+  const pipelineToken = process.env.PIPELINE_TOKEN;
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token')
     ?? request.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!secret || token !== secret) {
+  const validTokens = [cronSecret, pipelineToken].filter(Boolean);
+  if (!validTokens.length || !validTokens.includes(token ?? '')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
