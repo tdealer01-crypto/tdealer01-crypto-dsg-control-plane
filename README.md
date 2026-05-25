@@ -50,12 +50,12 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 ### Current count on branch
 
 ```
- Test Files  114 passed | 4 skipped (118)
-      Tests  731 passed | 12 skipped (743)
-   Duration  ~22s
+ Test Files  115 passed | 4 skipped (119)
+      Tests  757 passed | 12 skipped (769)
+   Duration  ~17s
 ```
 
-**+181 tests (+7 files)** added this session. See `TEST_EXECUTION_SUMMARY.md` for full file-level detail.
+**+207 tests (+8 files)** added this session. See `TEST_EXECUTION_SUMMARY.md` for full file-level detail.
 
 ### New test files (do not re-test these)
 
@@ -69,4 +69,5 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 | `tests/unit/runtime/checkpoint.test.ts` | 7 | `lib/runtime/checkpoint.ts` |
 | `tests/unit/security/secure-token.test.ts` | 31 | `lib/security/secure-token.ts` |
 | `tests/unit/security/cron-auth.test.ts` | 11 | `lib/security/cron-auth.ts` |
+| `tests/unit/gateway/approvals.test.ts` | 26 | `lib/gateway/approvals.ts` |
 
