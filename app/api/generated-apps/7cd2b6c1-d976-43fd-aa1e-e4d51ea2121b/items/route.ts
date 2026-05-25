@@ -1,67 +1,36 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireVerifiedDsgActor } from '@/lib/dsg/server/context';
+import { getDsgSupabaseRpcConfig, readDsgRest } from '@/lib/dsg/server/supabase-rpc';
 
-type SupabaseRequest = { method?: 'GET' | 'POST'; path: string; query?: string; body?: unknown };
 type ItemRow = { id: string; app_id: string; title: string; completed: boolean; created_at: string };
 
-const APP_ID = "7cd2b6c1-d976-43fd-aa1e-e4d51ea2121b";
+const APP_ID = '7cd2b6c1-d976-43fd-aa1e-e4d51ea2121b';
 
-function supabaseConfig() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('GENERATED_APP_SUPABASE_ENV_REQUIRED');
-  return { url: url.replace(/\/$/, ''), key };
-}
-
-async function supabaseRest<T>(input: SupabaseRequest): Promise<T> {
-  const { url, key } = supabaseConfig();
-  const response = await fetch(`${url}/rest/v1/${input.path}${input.query ?? ''}`, {
-    method: input.method ?? 'GET',
-    headers: {
-      apikey: key,
-      authorization: `Bearer ${key}`,
-      'content-type': 'application/json',
-      prefer: 'return=representation',
-    },
-    body: input.body === undefined ? undefined : JSON.stringify(input.body),
-  });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!response.ok) {
-    const message = typeof data?.message === 'string' ? data.message : response.statusText;
-    throw new Error(message || 'GENERATED_APP_SUPABASE_REQUEST_FAILED');
-  }
-  return data as T;
-}
-
-function fail(error: unknown) {
-  const message = error instanceof Error ? error.message : 'GENERATED_APP_REQUEST_FAILED';
-  return NextResponse.json({ ok: false, error: { code: message, message } }, { status: 400 });
-}
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const rows = await supabaseRest<ItemRow[]>({
-      path: 'generated_app_items',
-      query: `?app_id=eq.${encodeURIComponent(APP_ID)}&select=id,title,completed,created_at&order=created_at.desc`,
+    const actor = await requireVerifiedDsgActor(req.headers, 'read:generated-apps');
+    const config = getDsgSupabaseRpcConfig();
+    const rows = await readDsgRest<ItemRow[]>(config, 'generated_app_items', {
+      select: 'id,title,completed,created_at',
+      app_id: `eq.${APP_ID}`,
+      actor_id: `eq.${actor.actorId}`,
+      order: 'created_at.desc',
     });
     return NextResponse.json({ ok: true, data: { appId: APP_ID, items: rows } });
-  } catch (error) {
-    return fail(error);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'GENERATED_APP_REQUEST_FAILED';
+    const status = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
+    return NextResponse.json({ ok: false, error: { code: message } }, { status });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { title?: string };
-    const title = body.title?.trim();
-    if (!title) throw new Error('GENERATED_APP_TITLE_REQUIRED');
-    const rows = await supabaseRest<ItemRow[]>({
-      method: 'POST',
-      path: 'generated_app_items',
-      body: { app_id: APP_ID, title, completed: false },
-    });
-    return NextResponse.json({ ok: true, data: { item: rows[0] } });
-  } catch (error) {
-    return fail(error);
+    await requireVerifiedDsgActor(req.headers, 'write:generated-apps');
+    return NextResponse.json({ ok: false, error: { code: 'WRITE_RPC_NOT_WIRED' } }, { status: 501 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'GENERATED_APP_REQUEST_FAILED';
+    const status = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
+    return NextResponse.json({ ok: false, error: { code: message } }, { status });
   }
 }

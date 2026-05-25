@@ -12,12 +12,6 @@ type AppBuildRow = {
 
 type DayGroup = Record<string, number>;
 
-const PROVIDER_USAGE = [
-  { name: 'Gemini', pct: 48 },
-  { name: 'OpenAI', pct: 34 },
-  { name: 'Anthropic', pct: 18 },
-];
-
 function getDayLabel(date: Date): string {
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
 }
@@ -100,7 +94,6 @@ export async function GET(request: Request) {
         stats: buildStats(rows, validRange),
         buildActivity: buildActivityChart(rows),
         recentBuilds,
-        providerUsage: PROVIDER_USAGE,
         updatedEvery: '5 minutes',
       },
     });
