@@ -13,7 +13,7 @@ function makeAuthzMock(result: object) {
 }
 
 function makeReconcileMock(result: object) {
-  return { reconcileEffectCallback: vi.fn(async () => result) };
+  return { reconcileEffectCallback: vi.fn(async (_args: Record<string, unknown>) => result) };
 }
 
 function makeErrorMocks() {
