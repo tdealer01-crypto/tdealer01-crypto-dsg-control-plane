@@ -5,39 +5,34 @@ Apply to: **Production**, **Preview**, and **Development** unless noted.
 
 ---
 
-## Required for All Crons to Start
+## Required Now (4 active crons)
 
 | Variable | Where to get | Required by |
 |---|---|---|
-| `CRON_SECRET` | Generate: `openssl rand -hex 32` | `flush-meter-outbox`, `usage-alerts`, `yield-optimizer`, `agent-orchestrator`, `agent-health-check` |
-
-Without `CRON_SECRET` these routes return **503 fail-closed** — they will not run.
-
----
-
-## Core Infrastructure
-
-| Variable | Where to get | Required by |
-|---|---|---|
+| `CRON_SECRET` | `openssl rand -hex 32` | ทุก cron — ขาดแล้ว return 503 fail-closed |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project → Settings → API | All DB reads/writes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project → Settings → API | Server-side DB access, crons |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project → Settings → API | Server-side DB, crons |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project → Settings → API | Client auth |
-| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys | Billing, `flush-meter-outbox` |
+| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys | Billing, `flush-meter-outbox` |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → signing secret | Webhook verification |
 | `UPSTASH_REDIS_REST_URL` | Upstash Console → Database → REST URL | Rate limiting |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Console → Database → REST token | Rate limiting |
-| `RESEND_API_KEY` | Resend Dashboard → API Keys | Email sends |
-| `NEXT_PUBLIC_APP_URL` | `https://tdealer01-crypto-dsg-control-plane.vercel.app` | Email links, cron self-reference |
+| `RESEND_API_KEY` | Resend Dashboard → API Keys | Magic-link OTP, email sends |
+| `NEXT_PUBLIC_APP_URL` | `https://tdealer01-crypto-dsg-control-plane.vercel.app` | Email links, `usage-alerts` |
+| `DSG_ONE_V1_URL` | `https://dsg-one-v1.vercel.app` | `agent-orchestrator`, `agent-health-check` |
 
 ---
 
-## Agent Crons
+## When Outreach Crons Are Re-activated
 
-| Variable | Value / Source | Required by |
+เพิ่มกลับใน `vercel.json` แล้วค่อยเซต:
+
+| Variable | Where to get | Required by |
 |---|---|---|
-| `DSG_ONE_V1_URL` | `https://dsg-one-v1.vercel.app` | `agent-orchestrator`, `agent-health-check` |
-
-Without `DSG_ONE_V1_URL` the agent crons fall back to the default URL above — set it explicitly if you run a staging deployment.
+| `FOUNDER_EMAIL` | Your email address | `weekly-report`, `social-listen`, `content-gen` |
+| `RESEND_API_KEY` | *(already set above)* | `drip-emails`, `lead-outreach`, `lead-followup`, `trial-invite` |
+| `ANTHROPIC_API_KEY` | Anthropic Console → API Keys | `marketing-agent`, `content-gen` |
+| `GITHUB_TOKEN` | GitHub → Settings → PAT (read:user, public_repo) | `github-leads`, `social-listen` |
 
 ---
 
@@ -51,7 +46,7 @@ Without `DSG_ONE_V1_URL` the agent crons fall back to the default URL above — 
 | `agent-health-check` | `0 * * * *` | 744 | infra health |
 
 Vercel Pro includes 2 crons free; additional crons cost $2/cron/month.  
-**Active cost: 2 extra crons × $2 = $4/month.**
+**Active cost: 2 extra crons x $2 = $4/month.**
 
 > Outreach crons (`drip-emails`, `marketing-agent`, `github-leads`, etc.) have been removed from active rotation.  
 > Routes still exist under `app/api/cron/` — re-add to `vercel.json` when ready to activate.
@@ -67,7 +62,6 @@ Vercel Pro includes 2 crons free; additional crons cost $2/cron/month.
 5. Set `NEXT_PUBLIC_APP_URL`
 6. **Set `CRON_SECRET`** — all crons are fail-closed until this is set
 7. Set `DSG_ONE_V1_URL` (optional — defaults to production URL)
-8. Set `FOUNDER_EMAIL`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` for outreach crons
 
 ## Verify
 
