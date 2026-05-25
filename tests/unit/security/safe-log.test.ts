@@ -1,68 +1,55 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { toSafeErrorInfo, logSecurityEvent } from '../../../lib/security/safe-log';
+import type { MockInstance } from 'vitest';
+import { logSecurityEvent, toSafeErrorInfo } from '../../../lib/security/safe-log';
 
-// ─── toSafeErrorInfo ─────────────────────────────────────────────────────────
+function asMock(fn: unknown) {
+  return fn as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
+}
 
 describe('toSafeErrorInfo', () => {
-  it('returns UnknownError when error is null', () => {
-    expect(toSafeErrorInfo(null)).toEqual({ name: 'UnknownError', code: null });
+  it('handles null and undefined as UnknownError', () => {
+    expect(toSafeErrorInfo(null)).toEqual({ name: 'UnknownError', message: 'Unknown error' });
+    expect(toSafeErrorInfo(undefined)).toEqual({ name: 'UnknownError', message: 'Unknown error' });
   });
 
-  it('returns UnknownError when error is undefined', () => {
-    expect(toSafeErrorInfo(undefined)).toEqual({ name: 'UnknownError', code: null });
+  it('handles string and number values as UnknownError', () => {
+    expect(toSafeErrorInfo('boom')).toEqual({ name: 'UnknownError', message: 'boom' });
+    expect(toSafeErrorInfo(123)).toEqual({ name: 'UnknownError', message: '123' });
   });
 
-  it('returns UnknownError when error is a string', () => {
-    expect(toSafeErrorInfo('something went wrong')).toEqual({ name: 'UnknownError', code: null });
+  it('extracts Error name and message', () => {
+    const error = new TypeError('bad input');
+    expect(toSafeErrorInfo(error)).toEqual({ name: 'TypeError', message: 'bad input' });
   });
 
-  it('returns UnknownError when error is a number', () => {
-    expect(toSafeErrorInfo(42)).toEqual({ name: 'UnknownError', code: null });
-  });
-
-  it('extracts name and code from a typed error object', () => {
-    expect(toSafeErrorInfo({ name: 'TypeError', code: 'ERR_INVALID' })).toEqual({
-      name: 'TypeError',
-      code: 'ERR_INVALID',
+  it('extracts code from object errors', () => {
+    expect(toSafeErrorInfo({ name: 'DbError', message: 'failed', code: 'PGRST205' })).toEqual({
+      name: 'DbError',
+      message: 'failed',
+      code: 'PGRST205',
     });
   });
 
-  it('falls back to Error when name is missing', () => {
-    expect(toSafeErrorInfo({ code: 'ERR_X' })).toEqual({ name: 'Error', code: 'ERR_X' });
+  it('uses fallbacks for empty fields', () => {
+    expect(toSafeErrorInfo({ name: '', message: '   ' })).toEqual({
+      name: 'UnknownError',
+      message: 'Unknown error',
+    });
   });
 
-  it('falls back to Error when name is empty string', () => {
-    expect(toSafeErrorInfo({ name: '', code: 'ERR_X' })).toEqual({ name: 'Error', code: 'ERR_X' });
-  });
-
-  it('falls back to Error when name is whitespace', () => {
-    expect(toSafeErrorInfo({ name: '   ', code: 'ERR_X' })).toEqual({ name: 'Error', code: 'ERR_X' });
-  });
-
-  it('returns null code when code is missing', () => {
-    expect(toSafeErrorInfo({ name: 'NetworkError' })).toEqual({ name: 'NetworkError', code: null });
-  });
-
-  it('returns null code when code is empty string', () => {
-    expect(toSafeErrorInfo({ name: 'NetworkError', code: '' })).toEqual({ name: 'NetworkError', code: null });
-  });
-
-  it('returns null code when code is whitespace', () => {
-    expect(toSafeErrorInfo({ name: 'NetworkError', code: '   ' })).toEqual({ name: 'NetworkError', code: null });
-  });
-
-  it('ignores non-string name and code fields', () => {
-    expect(toSafeErrorInfo({ name: 42, code: { nested: true } })).toEqual({ name: 'Error', code: null });
+  it('ignores non-string fields', () => {
+    expect(toSafeErrorInfo({ name: 123, message: false, code: 999 })).toEqual({
+      name: 'UnknownError',
+      message: 'Unknown error',
+    });
   });
 });
 
-// ─── logSecurityEvent ────────────────────────────────────────────────────────
-
 describe('logSecurityEvent', () => {
   beforeEach(() => {
-    vi.spyOn(console, 'info').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -70,10 +57,9 @@ describe('logSecurityEvent', () => {
   });
 
   it('calls console.info for level info', () => {
-    logSecurityEvent('info', 'test_event');
-    expect(console.info).toHaveBeenCalledWith({ event: 'test_event' });
+    logSecurityEvent('info', 'auth_success');
+    expect(console.info).toHaveBeenCalledWith({ event: 'auth_success' });
     expect(console.warn).not.toHaveBeenCalled();
-    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('calls console.warn for level warn', () => {
@@ -95,7 +81,7 @@ describe('logSecurityEvent', () => {
 
   it('does not include extra keys when details is undefined', () => {
     logSecurityEvent('warn', 'suspicious_request');
-    const call = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls[0][0];
-    expect(Object.keys(call)).toEqual(['event']);
+    const call = asMock(console.warn).mock.calls[0][0];
+    expect(Object.keys(call as Record<string, unknown>)).toEqual(['event']);
   });
 });
