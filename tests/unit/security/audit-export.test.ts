@@ -17,6 +17,11 @@ function makeChain(result: { data: unknown; error: { message?: string; code?: st
   return chain;
 }
 
+function expectFailureReason(result: Awaited<ReturnType<typeof fetchAuditLogsForExport>>, reason: 'relation-missing' | 'query-error') {
+  expect(result.ok).toBe(false);
+  expect((result as { ok: false; reason: 'relation-missing' | 'query-error' }).reason).toBe(reason);
+}
+
 describe('fetchAuditLogsForExport', () => {
   it('returns ok:true with rows on success', async () => {
     const rows = [{ id: 'log-1', decision: 'allow' }];
@@ -43,40 +48,28 @@ describe('fetchAuditLogsForExport', () => {
     mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'relation does not exist' } }));
 
     const result = await fetchAuditLogsForExport('org-1', 50);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('relation-missing');
-    }
+    expectFailureReason(result, 'relation-missing');
   });
 
   it('returns relation-missing when error contains "does not exist"', async () => {
     mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'table does not exist' } }));
 
     const result = await fetchAuditLogsForExport('org-1', 50);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('relation-missing');
-    }
+    expectFailureReason(result, 'relation-missing');
   });
 
   it('returns relation-missing when error code is PGRST205', async () => {
     mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'query error', code: 'PGRST205' } }));
 
     const result = await fetchAuditLogsForExport('org-1', 50);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('relation-missing');
-    }
+    expectFailureReason(result, 'relation-missing');
   });
 
   it('returns query-error for generic DB errors', async () => {
     mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'connection timeout' } }));
 
     const result = await fetchAuditLogsForExport('org-1', 50);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('query-error');
-    }
+    expectFailureReason(result, 'query-error');
   });
 
   it('passes orgId filter to query', async () => {
