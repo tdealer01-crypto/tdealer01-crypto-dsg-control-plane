@@ -32,11 +32,11 @@
     },
     {
       "path": "/api/cron/agent-orchestrator",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/agent-health-check",
-      "schedule": "0 * * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
