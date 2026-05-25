@@ -6,7 +6,7 @@ const routes = [
   { href: "/security-review", title: "Security Review", body: "Security review scope, evidence boundaries, and next trust steps." },
   { href: "/customer-reference", title: "Customer Reference", body: "Reference-pack structure for pilots, partners, and enterprise buyers." },
   { href: "/marketplace/production-evidence", title: "Production Evidence", body: "Current benchmark and runtime evidence already published." },
-  { href: "/evidence-pack", title: "Evidence Pack", body: "Signed/hash evidence bundle for audit-ready review." },
+  { href: "/compliance-evidence-pack", title: "Compliance Evidence Pack", body: "Pre-audit PDF report: 24 Z3 theorems, 874 test assertions, WORM hash chain, EU AI Act Art. 12/14 + ISO 42001 control mapping." },
 ];
 
 export default function TrustPage() {
@@ -22,7 +22,7 @@ export default function TrustPage() {
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/reproducibility" className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-black">Run reproducibility path</Link>
             <Link href="/case-studies" className="rounded-xl border border-emerald-300/40 px-5 py-3 font-bold text-emerald-100">Open case-study pack</Link>
-            <Link href="/evidence-pack" className="rounded-xl border border-slate-700 px-5 py-3 font-bold text-slate-200">Open evidence pack</Link>
+            <Link href="/compliance-evidence-pack" className="rounded-xl border border-amber-300/40 px-5 py-3 font-bold text-amber-200">Download evidence pack</Link>
           </div>
         </section>
 

@@ -95,7 +95,7 @@ describe('logSecurityEvent', () => {
 
   it('does not include extra keys when details is undefined', () => {
     logSecurityEvent('warn', 'suspicious_request');
-    const call = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls[0][0];
+    const call = vi.mocked(console.warn).mock.calls[0][0];
     expect(Object.keys(call)).toEqual(['event']);
   });
 });
