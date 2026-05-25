@@ -17,7 +17,7 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | Gate | Result | Command / Evidence |
 |---|:---:|---|
 | TypeScript typecheck | ✅ 0 errors | `npm run typecheck` |
-| Unit + integration tests | ✅ **521 passed** / 533 total | `npm run test` — 15.89s |
+| Unit + integration tests | ✅ **550 passed** / 566 total | `npm run test` — 15.89s |
 | Policy Z3 proofs | ✅ 8 theorems UNSAT | `npm run verify:policy` |
 | Revenue Z3 proofs | ✅ 16 theorems FORMAL PROOF PASS | `npm run proof:revenue` |
 | Production homepage | ✅ HTTP 200 | `GET /` |
@@ -27,13 +27,13 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | User-flow E2E | ✅ PASS | finance-governance submit → approve → Supabase persisted |
 | **go:no-go gate** | ✅ **PASS** | `npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app` |
 
-### Full test output — 2026-05-24 22:20 UTC
+### Full test output — 2026-05-25
 
 ```
- Test Files  101 passed | 4 skipped (105)
-      Tests  521 passed | 12 skipped (533)
-   Start at  22:20:44
-   Duration  15.89s (transform 2.53s, setup 0ms, collect 3.74s, tests 10.60s)
+ Test Files  107 passed | 4 skipped (111)
+      Tests  550 passed | 12 skipped (566)
+   Start at  2026-05-25
+   Duration  ~16s
 ```
 
 ```
@@ -200,7 +200,7 @@ Supabase auth + Postgres (RLS)
 Stripe billing + metered usage
 Upstash Redis rate limiting
 Resend transactional email
-Vitest 521 tests (unit + integration)
+Vitest 566 tests (unit + integration)
 Playwright E2E
 Z3 SMT Solver — 24 theorems at design time
 GitHub Actions + DSG Secure Deploy Gate
@@ -212,7 +212,7 @@ GitHub Actions + DSG Secure Deploy Gate
 
 ```bash
 npm run typecheck          # TypeScript — 0 errors
-npm run test               # 521 tests
+npm run test               # 566 tests
 npm run verify:policy      # Z3 policy proofs (Python)
 npm run proof:revenue      # Z3 billing proofs (Python)
 npm run go:no-go <url>     # Full production gate
@@ -225,7 +225,7 @@ npm run go:no-go <url>     # Full production gate
 ```
 ✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions.
 ✓ Runtime readiness is green (HTTP 200, status=ready).
-✓ 521 unit + integration tests pass, 0 failures.
+✓ 566 unit + integration tests pass, 0 failures.
 ✓ TypeScript compiles with 0 errors.
 ✓ Gateway policy engine formally verified — 8 Z3 theorems, design-time.
 ✓ Billing quota model formally verified — 16 Z3 theorems, design-time.
