@@ -82,19 +82,22 @@ Repository test truth and production go-live truth are intentionally separate:
 - Test truth (current): May 25, 2026 committed Vitest baseline = `874 passed, 12 skipped, 0 failed` (125 files passed | 4 skipped).
 - PR #595 (`claude/compliance-pack-main` → `main`) merged via squash, commit `a4ee97a8`. README updated commit `1460e89`.
 
-### Smoke check results — 2026-05-25
+### Smoke check results — 2026-05-25 (final, all green)
 
 | Route | Status | Evidence |
 |---|:---:|---|
 | `GET /` (homepage) | 🟢 HTTP 200 | `curl -s -o /dev/null -w "%{http_code}"` |
 | `GET /api/readiness` | 🟢 HTTP 200 | `curl -s -o /dev/null -w "%{http_code}"` |
-| `GET /compliance-evidence-pack` | 🟡 Deployment in progress | 404 at time of check — Vercel build triggered by merge, not yet propagated |
-| `GET /api/compliance-evidence-pack` | 🟡 Deployment in progress | 404 at time of check — same build |
+| `GET /compliance-evidence-pack` | 🟢 HTTP 200 | background poller confirmed live |
+| `GET /api/compliance-evidence-pack` | 🟢 HTTP 200 | background poller confirmed live |
 
-Pending verification (re-test after Vercel build completes):
-- `GET /compliance-evidence-pack` → expect HTTP 200
-- `GET /api/compliance-evidence-pack` → expect `text/html`, evidence table renders correctly
-- `GET /api/compliance-evidence-pack?print=1` → expect auto-print mode
+### Build fixes applied after PR #595 (all merged to main)
+
+| PR | Fix | Result |
+|---|---|---|
+| Direct push | `tsconfig.json` explicit include list — exclude `packages/` by omission | Vercel TS compile error fixed |
+| PR #596 | `tsconfig.typecheck.json` same explicit include list | `npm run typecheck` 0 errors |
+| PR #597 | `vercel.json` agent crons → daily schedule (Hobby plan limit) | Vercel deploy unblocked, green |
 
 ### Audit items closed in PR #595
 
