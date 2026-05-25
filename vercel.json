@@ -56,7 +56,7 @@
     },
     {
       "path": "/api/cron/agent-orchestrator",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/agent-health-check",
