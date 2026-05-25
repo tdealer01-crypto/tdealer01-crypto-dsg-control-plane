@@ -7,9 +7,9 @@ import { GateResultCard } from '../components/GateResultCard';
 import RefTracker from '../components/RefTracker';
 
 const trustBar = [
-  'Policy-routed action control',
-  'Deterministic PASS/BLOCK/REVIEW/UNSUPPORTED gates',
-  'Audit-ready proof and replay evidence',
+  'Deterministic Security Gateway — SMT Solver-verified policy invariants (24 Z3 theorems)',
+  'WORM audit trail — SHA-256 requestHash → recordHash → bundleHash · tamper-evident by construction',
+  'EU AI Act Art. 12/14 · ISO 42001 — pre-audit compliance evidence pack included',
 ];
 
 const painCards = [
@@ -68,13 +68,13 @@ export default function HomePage() {
         <div className="relative mx-auto grid min-h-[calc(100svh-73px)] max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
             <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
-              Live Deterministic Gate Scaffold
+              Deterministic Security Gateway · SMT-Verified · WORM Audit
             </p>
             <h1 className="mt-7 max-w-5xl text-5xl font-bold leading-[1.02] text-white md:text-7xl">
               Govern AI actions before they reach production.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-              DSG ONE is a runtime governance gateway for AI actions — not another GRC record system. It routes high-risk AI, workflow, finance, and deployment actions through policy, approval, deterministic gate checks, and audit evidence before execution.
+              DSG ONE is a runtime governance gateway driven by a Deterministic Security Gateway — policy invariants verified by SMT Solver, every action gated before execution, every decision recorded as a tamper-evident WORM hash chain. EU AI Act Art. 12/14 evidence pack included.
             </p>
 
             <div className="mt-8 rounded-3xl border border-emerald-300/25 bg-emerald-400/10 p-5 shadow-2xl shadow-emerald-950/30">
@@ -104,6 +104,9 @@ export default function HomePage() {
               </Link>
               <Link href="/pricing" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
                 Pricing
+              </Link>
+              <Link href="/compliance-evidence-pack" className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-6 py-4 text-base font-semibold text-amber-100 transition hover:border-amber-300/60">
+                Evidence Pack
               </Link>
               <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-emerald-300/40">
                 Continue with email

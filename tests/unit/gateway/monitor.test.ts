@@ -38,6 +38,7 @@ const baseRequest: GatewayToolRequest = {
   orgId: 'org-1',
   actorId: 'actor-1',
   actorRole: 'admin',
+  orgPlan: 'enterprise',
   toolName: 'slack.send',
   action: 'send_message',
   input: { text: 'hello' },
