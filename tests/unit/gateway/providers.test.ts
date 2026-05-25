@@ -6,6 +6,7 @@ const baseRequest: GatewayToolRequest = {
   orgId: 'org-1',
   actorId: 'actor-1',
   actorRole: 'admin',
+  orgPlan: 'enterprise',
   toolName: 'mock.echo',
   action: 'execute',
   input: { key: 'value' },
