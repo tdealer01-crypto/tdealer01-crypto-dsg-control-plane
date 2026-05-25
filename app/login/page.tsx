@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ArrowRight, LockKeyhole, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_DSG_ONE_V1_SUPABASE_URL;
@@ -13,16 +13,14 @@ function safeNextPath(value: string | null): string {
 }
 
 export default function LoginPage() {
-  const [nextPath, setNextPath] = useState('/dsg/app-builder');
+  const [nextPath] = useState<string>(() => {
+    if (typeof window === 'undefined') return '/dsg/app-builder';
+    return safeNextPath(new URLSearchParams(window.location.search).get('next'));
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'success'>('idle');
   const [message, setMessage] = useState('Sign in to continue to the protected DSG workspace.');
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setNextPath(safeNextPath(params.get('next')));
-  }, []);
 
   async function signIn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,7 +74,7 @@ export default function LoginPage() {
             </p>
             <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Next route</p>
-              <p className="mt-2 break-all font-mono text-sm text-indigo-200">{nextPath}</p>
+              <p className="mt-2 break-all font-mono text-sm text-indigo-200" suppressHydrationWarning>{nextPath}</p>
             </div>
           </div>
 

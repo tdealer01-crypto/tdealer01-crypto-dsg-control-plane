@@ -1,0 +1,54 @@
+name: Ship
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for shipping'
+        required: false
+        default: 'agent-initiated ship'
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        id: test
+        run: npm test
+
+      - name: Verify production status
+        id: status
+        run: |
+          RESPONSE=$(curl -s https://dsg-one-v1.vercel.app/api/agent/status)
+          echo "response=$RESPONSE"
+          echo "STATUS_RESPONSE=$RESPONSE" >> "$GITHUB_ENV"
+          echo "$RESPONSE"
+
+      - name: Write step summary
+        run: |
+          echo "## Ship Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Reason** | ${{ github.event.inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit SHA** | ${{ github.sha }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Test result** | passed |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Status endpoint response** | \`$STATUS_RESPONSE\` |" >> "$GITHUB_STEP_SUMMARY"

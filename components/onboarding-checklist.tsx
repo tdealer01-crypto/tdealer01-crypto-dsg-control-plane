@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore, useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -14,9 +14,7 @@ import {
   Globe,
   Users,
 } from 'lucide-react';
-
-const STORAGE_KEY_DISMISSED = 'dsg_onboarding_dismissed';
-const STORAGE_KEY_STEPS = 'dsg_onboarding_steps';
+import { checklistStore } from '@/store/checklistStore';
 
 type Step = {
   id: string;
@@ -71,53 +69,34 @@ const STEPS: Step[] = [
 ];
 
 export function OnboardingChecklist() {
-  const [dismissed, setDismissed] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
-  const [mounted, setMounted] = useState(false);
 
-  // Read persisted state after mount to avoid SSR mismatch
-  useEffect(() => {
-    setMounted(true);
-    const isDismissed = localStorage.getItem(STORAGE_KEY_DISMISSED) === 'true';
-    setDismissed(isDismissed);
+  const { dismissed, completedSteps } = useSyncExternalStore(
+    checklistStore.subscribe,
+    checklistStore.getSnapshot,
+    checklistStore.getServerSnapshot,
+  );
 
-    const raw = localStorage.getItem(STORAGE_KEY_STEPS);
-    const saved: string[] = raw ? JSON.parse(raw) : [];
+  if (dismissed) return null;
 
-    // Also auto-complete steps whose storage flags are set
-    const autoCompleted = new Set(saved);
-    for (const step of STEPS) {
-      if (step.storageFlag && localStorage.getItem(step.storageFlag) === 'true') {
-        autoCompleted.add(step.id);
-      }
-    }
-    setCompleted(autoCompleted);
-  }, []);
+  const completed = new Set(completedSteps);
+  const total = STEPS.length;
+  const done = STEPS.filter((s) => completed.has(s.id) || completed.has(s.storageFlag ?? '')).length;
+  const progress = Math.round((done / total) * 100);
 
   function dismiss() {
-    localStorage.setItem(STORAGE_KEY_DISMISSED, 'true');
-    setDismissed(true);
+    checklistStore.update({ dismissed: true });
   }
 
   function toggleStep(id: string) {
-    setCompleted((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      localStorage.setItem(STORAGE_KEY_STEPS, JSON.stringify([...next]));
-      return next;
-    });
+    const next = new Set(completedSteps);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    checklistStore.update({ completedSteps: [...next] });
   }
-
-  if (!mounted || dismissed) return null;
-
-  const total = STEPS.length;
-  const done = STEPS.filter((s) => completed.has(s.id)).length;
-  const progress = Math.round((done / total) * 100);
 
   return (
     <div className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl shadow-black/60">
@@ -139,10 +118,7 @@ export function OnboardingChecklist() {
             <ChevronDown className="h-4 w-4 text-slate-400" />
           )}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              dismiss();
-            }}
+            onClick={(e) => { e.stopPropagation(); dismiss(); }}
             className="rounded-md p-0.5 text-slate-500 transition hover:bg-slate-800 hover:text-slate-200"
             aria-label="Dismiss"
           >
@@ -166,7 +142,8 @@ export function OnboardingChecklist() {
         <div className="divide-y divide-slate-800/60 px-1 py-1">
           {STEPS.map((step) => {
             const Icon = step.icon;
-            const isComplete = completed.has(step.id);
+            const isComplete =
+              completed.has(step.id) || completed.has(step.storageFlag ?? '');
             return (
               <div key={step.id} className="flex items-start gap-3 rounded-xl px-3 py-3">
                 <button
@@ -183,11 +160,7 @@ export function OnboardingChecklist() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Icon className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                    <p
-                      className={`text-sm font-semibold leading-5 ${
-                        isComplete ? 'text-slate-500 line-through' : 'text-slate-100'
-                      }`}
-                    >
+                    <p className={`text-sm font-semibold leading-5 ${isComplete ? 'text-slate-500 line-through' : 'text-slate-100'}`}>
                       {step.title}
                     </p>
                   </div>

@@ -98,3 +98,49 @@ try {
   return NextResponse.json({ error: String(err) }, { status: 500 });
 }
 ```
+
+## Client stores (`store/`)
+
+All browser-persistent shared state lives in `store/`. Import from the barrel:
+
+```ts
+import { useChecklist, useAppLanguage, checklistStore, languageStore } from '@/store';
+```
+
+### Available hooks
+
+| Hook | Returns | Use when |
+|---|---|---|
+| `useChecklist()` | `{ dismissed, completedSteps, dismiss, restore, completeStep, uncompleteStep, toggleStep }` | onboarding widget หรือ settings page |
+| `useAppLanguage(default?)` | `'th' \| 'en'` | component ที่ต้องรู้ภาษาปัจจุบัน |
+
+### Available stores (raw — ใช้เมื่อเรียกนอก component)
+
+| Store | Key methods |
+|---|---|
+| `checklistStore` | `.getSnapshot()` `.update(patch)` `.subscribe(cb)` |
+| `languageStore` | `.getSnapshot()` `.setLanguage(lang)` `.subscribe(cb)` |
+
+### Rules สำหรับ store ใหม่
+
+- สร้างไฟล์ใน `store/` เสมอ ไม่ใช้ useState + useEffect สำหรับ localStorage
+- export hook convenience ใน `store/useXxx.ts` แล้วเพิ่มใน `store/index.ts`
+- `getSnapshot` ต้องคืน stable reference (cache + freeze)
+- `subscribe` ต้องลงทะเบียน window listener แค่ครั้งเดียว (lazy mount/unmount pattern)
+- ห้าม setState ใน useEffect — ใช้ `useSyncExternalStore` แทน
+
+## Production control loop
+
+### Check if production is alive
+GET https://dsg-one-v1.vercel.app/api/agent/status
+
+### Ship from chat (triggers CI → verify)
+Use GitHub MCP tool `mcp__github__create_dispatch_event` or trigger workflow_dispatch on `.github/workflows/ship.yml` with input `reason: "<what you did>"`.
+
+### Full loop
+1. Write code → commit → push to claude/* branch
+2. Open PR or push to main
+3. Vercel auto-deploys
+4. Call GET /api/agent/status to verify deploy is live
+5. If status ok → done. If not → diagnose and fix.
+

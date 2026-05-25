@@ -195,7 +195,7 @@ export default function NotificationsPage() {
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-12 text-center">
             <Bell className="mx-auto h-10 w-10 text-slate-600" />
             <p className="mt-4 text-lg font-bold text-slate-400">No notifications</p>
-            <p className="mt-2 text-sm text-slate-500">You're all caught up.</p>
+            <p className="mt-2 text-sm text-slate-500">You&apos;re all caught up.</p>
           </div>
         ) : (
           <ol className="space-y-2">

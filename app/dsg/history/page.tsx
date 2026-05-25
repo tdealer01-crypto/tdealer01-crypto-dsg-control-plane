@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import Link from 'next/link';
 import {
   History,
   Search,
@@ -217,9 +218,9 @@ export default function BuildHistoryPage() {
             <History className="mx-auto h-10 w-10 text-slate-600" />
             <p className="mt-4 text-lg font-bold text-slate-400">No builds yet</p>
             <p className="mt-2 text-sm text-slate-500">Start building your first app in the App Builder to see version history here.</p>
-            <a href="/dsg/app-builder" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-500">
+            <Link href="/dsg/app-builder" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-500">
               Open App Builder
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="relative">

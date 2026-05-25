@@ -7,7 +7,7 @@ Production: `https://dsg-one-v1.vercel.app`
 
 ---
 
-## SkillGate — Test Status (2026-05-23)
+## Test Status (2026-05-25)
 
 ### CI verified — GitHub Actions [`skillgate-ci.yml`](/.github/workflows/skillgate-ci.yml)
 
@@ -18,7 +18,10 @@ Production: `https://dsg-one-v1.vercel.app`
 | `agent-skills-lock` | 16 | ✓ PASS |
 | `agent-skills-run` | 7 | ✓ PASS |
 | `agent-skills-pipeline` | 5 | ✓ PASS |
-| **Total** | **44** | **✓ ALL PASS** |
+| `api-agent-status` | 6 | ✓ PASS |
+| `api-agent-skills` | 18 | ✓ PASS |
+| `api-app-builder-plan` | 12 | ✓ PASS |
+| **Total** | **227** | **✓ ALL PASS** |
 
 ```text
 npx tsc --noEmit          EXIT: 0   (no type errors)

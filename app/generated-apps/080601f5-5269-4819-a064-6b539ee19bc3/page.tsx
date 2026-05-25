@@ -16,12 +16,11 @@ export default function GeneratedDsgAppPage() {
   // Initialize with loading text so useEffect never sets state synchronously
   const [status, setStatus] = useState('Loading backend evidence…');
 
-  async function loadItems() {
+  async function loadItems(): Promise<{ items: Item[]; status: string }> {
     const response = await fetch(`/api/generated-apps/${APP_ID}/items`, { cache: 'no-store' });
     const json = await response.json();
     if (!response.ok || !json.ok) throw new Error(json.error?.message || 'GENERATED_APP_BACKEND_FAILED');
-    setItems(json.data.items);
-    setStatus('Backend API + database table reachable');
+    return { items: json.data.items, status: 'Backend API + database table reachable' };
   }
 
   async function addItem() {
@@ -35,11 +34,20 @@ export default function GeneratedDsgAppPage() {
     const json = await response.json();
     if (!response.ok || !json.ok) throw new Error(json.error?.message || 'GENERATED_APP_CREATE_FAILED');
     setTitle('');
-    await loadItems();
+    const result = await loadItems();
+    setItems(result.items);
+    setStatus(result.status);
   }
 
   useEffect(() => {
-    loadItems().catch((error) => setStatus(error instanceof Error ? error.message : 'GENERATED_APP_LOAD_FAILED'));
+    loadItems()
+      .then((result) => {
+        setItems(result.items);
+        setStatus(result.status);
+      })
+      .catch((error) => {
+        setStatus(error instanceof Error ? error.message : 'GENERATED_APP_LOAD_FAILED');
+      });
   }, []);
 
   return (
