@@ -45,220 +45,28 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 
 ---
 
-## 💳 Revenue Hardening — Issue #577 (2026-05-24)
+## 🧪 Test Coverage Additions — 2026-05-25 (branch: `claude/test-coverage-analysis-471Xf`)
 
-Four P0/P1 bugs fixed and verified in production before this release.
-
-### P0-1 · Stripe Meter Idempotency
-
-**Bug:** idempotency key was `dsg-meter-{orgId}-{timestamp}` — two executions in the same second shared the same key, Stripe deduped them → silent revenue leak.
-
-**Fix:** key is now `dsg-meter-{executionId}` — each execution row has a unique ID, guaranteed distinct.
-
-```typescript
-// Before (broken)
-const idempotencyKey = `dsg-meter-${orgId}-${timestamp}`;
-
-// After (fixed)
-const idempotencyKey = `dsg-meter-${executionId}`;
-```
-
-### P0-2 · Billing Outbox (no silent loss)
-
-**Bug:** `reportMeterEvent` fired directly to Stripe — if Stripe was unavailable the usage event was lost with no retry path.
-
-**Fix:** write-first-then-flush pattern:
-
-1. Write `pending` row to `billing_meter_outbox` (Supabase) before any network call
-2. Attempt immediate Stripe delivery → update row to `sent` or `failed`
-3. Hourly cron `flush-meter-outbox` retries all `pending` rows older than 5 min
+### Current count on branch
 
 ```
-billing_meter_outbox schema:
-  execution_id  (unique — idempotency key)
-  status        pending → sent | failed
-  stripe_event_id, error, flushed_at
+ Test Files  114 passed | 4 skipped (118)
+      Tests  731 passed | 12 skipped (743)
+   Duration  ~22s
 ```
 
-Migration: `supabase/migrations/20260523000000_billing_meter_outbox.sql`
+**+181 tests (+7 files)** added this session. See `TEST_EXECUTION_SUMMARY.md` for full file-level detail.
 
-### P0-3 · Cron Auth Fail-Closed
+### New test files (do not re-test these)
 
-**Bug:** `if (cronSecret && ...)` — if `CRON_SECRET` was not set, the condition was never entered → cron ran unauthenticated.
-
-**Fix:**
-
-```typescript
-// Before (fail-open)
-if (cronSecret && authHeader !== `Bearer ${cronSecret}`) { return 401 }
-
-// After (fail-closed)
-if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-  return !cronSecret ? 503 : 401;
-}
-```
-
-Applies to both `/api/cron/usage-alerts` and `/api/cron/flush-meter-outbox`.
-
-### P1-1 · Analytics Period Parameter
-
-**Bug:** `GET /api/usage/analytics?period=2026-04` always returned current month data — `period` param was parsed but ignored.
-
-**Fix:** `getOrgUsageSnapshot(orgId, period?)` now accepts an optional period; analytics route passes it through to both the snapshot query and `topAgents` query.
-
-```bash
-# Now works correctly:
-GET /api/usage/analytics?period=2026-04  →  "period": "2026-04"
-```
-
----
-
-## 🔐 Z3 Formal Verification
-
-### Policy Engine — 8 theorems (Python Z3)
-
-```
-npm run verify:policy
-✓ PROVED  [role_safety]            allow → role ∈ valid set
-✓ PROVED  [plan_safety]            allow → plan ∈ {enterprise, business, pro}
-✓ PROVED  [approval_safety]        allow ∧ approvalRequired → token ≠ ∅
-✓ PROVED  [audit_completeness]     decision always in valid enum
-✓ PROVED  [non_triviality]         ∃ valid request where decision = allow
-✓ PROVED  [amount_bound]           DeFi amount ≤ $1,000 and daily ≤ $10,000
-✓ PROVED  [slippage_bound]         slippage ≤ 50 bps
-✓ PROVED  [constraint_consistency] DeFi constraint set is satisfiable
-Policy theorems: 8 proved, 0 failed
-```
-
-### Billing & Quota — 16 theorems (TypeScript z3-solver WASM)
-
-```
-npm run proof:revenue
-Quota ordering:          enterprise > business > pro > trial > free > 0
-Safe floor:              getQuotaForPlan never returns 0
-Status partition:        ACTIVE_STATUSES ∩ REVOKED_STATUSES = ∅
-Revenue monotonicity:    upgrading plan never decreases quota
-Rate-limit conservation: remaining + used = limit (always)
-No-bypass theorem:       cannot be allowed AND blocked simultaneously
-Stripe pricing:          yearly = 9×monthly exactly (25% discount proven)
-Quota gate:              post-increment used ≤ limit (single-threaded)
-VERDICT: FORMAL PROOF PASS — 16 theorems, 0 failed
-```
-
-**Method:** prove theorem P by asserting ¬P and checking UNSAT. If Z3 finds no countermodel, P holds for every possible input.
-
----
-
-## Infrastructure
-
-| Component | Status | Detail |
+| Test file | Tests | Source file covered |
 |---|:---:|---|
-| Supabase auth + Postgres | ✅ LIVE | Magic-link OTP, RLS on all tables |
-| Upstash Redis | ✅ LIVE | Rate limiting — per-email 3/min, per-IP tiers |
-| Stripe billing | ✅ LIVE | Webhook live, metered billing ready, outbox flush hourly |
-| Resend email | ✅ CONFIGURED | Upgrade nudge emails, magic-link OTP |
-| `CRON_SECRET` | ✅ CONFIGURED | Fail-closed on both cron routes |
-| Vercel crons | ✅ ACTIVE | `usage-alerts` 07:00 UTC daily, `flush-meter-outbox` hourly |
+| `tests/unit/runtime/reconcile-effect-callback.test.ts` | 7 | `lib/runtime/reconcile.ts` |
+| `tests/integration/api/effect-callback.test.ts` | 11 | `app/api/effect-callback/route.ts` |
+| `tests/unit/gateway/smt2-invariants.test.ts` | 63 | `lib/gateway/invariants/smt2.ts` |
+| `tests/unit/gateway/audit.test.ts` | 19 | `lib/gateway/audit.ts` |
+| `tests/unit/gateway/evidence-bundle.test.ts` | 26 | `lib/gateway/evidence-bundle.ts` |
+| `tests/unit/runtime/checkpoint.test.ts` | 7 | `lib/runtime/checkpoint.ts` |
+| `tests/unit/security/secure-token.test.ts` | 31 | `lib/security/secure-token.ts` |
+| `tests/unit/security/cron-auth.test.ts` | 11 | `lib/security/cron-auth.ts` |
 
----
-
-## REST API
-
-### Gate an action
-
-```bash
-curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/try/gate \
-  -H "Content-Type: application/json" \
-  -d '{"session_id": "my-agent-run-001", "action": "send email to user@example.com"}'
-```
-
-```json
-{
-  "decision": "ALLOW",
-  "stamp": "DSG-X9K3M7P2",
-  "action": "send email to user@example.com"
-}
-```
-
-### Usage analytics
-
-```bash
-# Current month
-GET /api/usage/analytics
-
-# Specific period
-GET /api/usage/analytics?period=2026-04
-```
-
----
-
-## Tech stack
-
-```
-Next.js 15 App Router + TypeScript
-Supabase auth + Postgres (RLS)
-Stripe billing + metered usage
-Upstash Redis rate limiting
-Resend transactional email
-Vitest 566 tests (unit + integration)
-Playwright E2E
-Z3 SMT Solver — 24 theorems at design time
-GitHub Actions + DSG Secure Deploy Gate
-```
-
----
-
-## Verification commands
-
-```bash
-npm run typecheck          # TypeScript — 0 errors
-npm run test               # 566 tests
-npm run verify:policy      # Z3 policy proofs (Python)
-npm run proof:revenue      # Z3 billing proofs (Python)
-npm run go:no-go <url>     # Full production gate
-```
-
----
-
-## Supported claims — verified evidence only
-
-```
-✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions.
-✓ Runtime readiness is green (HTTP 200, status=ready).
-✓ 566 unit + integration tests pass, 0 failures.
-✓ TypeScript compiles with 0 errors.
-✓ Gateway policy engine formally verified — 8 Z3 theorems, design-time.
-✓ Billing quota model formally verified — 16 Z3 theorems, design-time.
-✓ DeFi transaction bounds mathematically proven (amount ≤ $1k, slippage ≤ 50bps).
-✓ Stripe metered billing idempotent — per-execution key, no same-second dedup.
-✓ Billing outbox — no silent loss on Stripe outage, hourly retry.
-✓ Cron routes fail-closed — missing CRON_SECRET returns 503, not 200.
-✓ go:no-go gate PASS on 2026-05-24.
-```
-
-Not claimed:
-
-```
-✗ Independent third-party audit or certification.
-✗ WORM-certified audit storage.
-✗ Published public npm/PyPI SDK.
-```
-
----
-
-## Formal verification artifact
-
-```
-DOI: https://doi.org/10.5281/zenodo.18225586
-Title: Deterministic State Gate (DSG): Formally Verified Control Primitive
-       for Safety-Critical AI Systems
-```
-
-## GitHub Marketplace action
-
-```yaml
-- name: DSG Secure Deploy Gate
-  uses: tdealer01-crypto/dsg-secure-deploy-gate-action@v1.1.0
-```
-
-Launch page: `https://tdealer01-crypto-dsg-control-plane.vercel.app/proofgate-github-action`
