@@ -157,8 +157,9 @@ describe('POST /api/effect-callback', () => {
     const { POST } = await import('../../../app/api/effect-callback/route');
     await POST(postRequest({ effect_id: 'eff-1', status: 'failed' }));
 
-    const call = reconcile.reconcileEffectCallback.mock.calls[0][0];
-    expect(call.status).toBe('failed');
+    expect(reconcile.reconcileEffectCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed' })
+    );
   });
 
   it('defaults to status:succeeded when status is omitted', async () => {
@@ -170,8 +171,9 @@ describe('POST /api/effect-callback', () => {
     const { POST } = await import('../../../app/api/effect-callback/route');
     await POST(postRequest({ effect_id: 'eff-1' }));
 
-    const call = reconcile.reconcileEffectCallback.mock.calls[0][0];
-    expect(call.status).toBe('succeeded');
+    expect(reconcile.reconcileEffectCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'succeeded' })
+    );
   });
 
   it('passes orgId from auth context to reconcile (cross-org isolation)', async () => {
@@ -184,8 +186,9 @@ describe('POST /api/effect-callback', () => {
     const { POST } = await import('../../../app/api/effect-callback/route');
     await POST(postRequest({ effect_id: 'eff-1' }));
 
-    const call = reconcile.reconcileEffectCallback.mock.calls[0][0];
-    expect(call.orgId).toBe('org-specific');
+    expect(reconcile.reconcileEffectCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: 'org-specific' })
+    );
   });
 
   it('returns 500 when reconcile throws unexpectedly', async () => {
