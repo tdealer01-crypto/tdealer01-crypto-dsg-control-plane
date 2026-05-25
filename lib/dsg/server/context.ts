@@ -18,14 +18,16 @@ export type DsgPermission =
   | 'deployment:write'
   | 'production:write'
   | 'skill:read'
-  | 'skill:execute';
+  | 'skill:execute'
+  | 'read:generated-apps'
+  | 'write:generated-apps';
 
 const permissionsByRole: Record<DsgServerActor['role'], DsgPermission[]> = {
-  OWNER: ['job:read', 'job:create', 'job:plan', 'job:control', 'approval:write', 'evidence:write', 'audit:export', 'replay:verify', 'deployment:write', 'production:write', 'skill:read', 'skill:execute'],
-  ADMIN: ['job:read', 'job:create', 'job:plan', 'job:control', 'approval:write', 'evidence:write', 'audit:export', 'replay:verify', 'deployment:write', 'skill:read', 'skill:execute'],
-  OPERATOR: ['job:read', 'job:create', 'job:plan', 'job:control', 'approval:write', 'evidence:write', 'replay:verify', 'skill:read', 'skill:execute'],
-  AUDITOR: ['job:read', 'audit:export', 'replay:verify', 'skill:read'],
-  VIEWER: ['job:read', 'skill:read'],
+  OWNER: ['job:read', 'job:create', 'job:plan', 'job:control', 'approval:write', 'evidence:write', 'audit:export', 'replay:verify', 'deployment:write', 'production:write', 'skill:read', 'skill:execute', 'read:generated-apps', 'write:generated-apps'],
+  ADMIN: ['job:read', 'job:create', 'job:plan', 'job:control', 'approval:write', 'evidence:write', 'audit:export', 'replay:verify', 'deployment:write', 'skill:read', 'skill:execute', 'read:generated-apps', 'write:generated-apps'],
+  OPERATOR: ['job:read', 'job:create', 'job:plan', 'job:control', 'approval:write', 'evidence:write', 'replay:verify', 'skill:read', 'skill:execute', 'read:generated-apps', 'write:generated-apps'],
+  AUDITOR: ['job:read', 'audit:export', 'replay:verify', 'skill:read', 'read:generated-apps'],
+  VIEWER: ['job:read', 'skill:read', 'read:generated-apps'],
 };
 
 export function assertDsgPermission(actor: DsgServerActor | null, permission: DsgPermission): DsgServerActor {
