@@ -50,14 +50,14 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 ### Current count on branch
 
 ```
- Test Files  115 passed | 4 skipped (119)
-      Tests  757 passed | 12 skipped (769)
-   Duration  ~17s
+ Test Files  125 passed | 4 skipped (129)
+      Tests  874 passed | 12 skipped (886)
+   Duration  ~15s
 ```
 
-**+207 tests (+8 files)** added this session. See `TEST_EXECUTION_SUMMARY.md` for full file-level detail.
+**+324 tests (+19 files)** added across two sessions. See `TEST_EXECUTION_SUMMARY.md` for full file-level detail.
 
-### New test files (do not re-test these)
+### Session 1 — P0 coverage (8 files, 207 tests)
 
 | Test file | Tests | Source file covered |
 |---|:---:|---|
@@ -70,4 +70,19 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 | `tests/unit/security/secure-token.test.ts` | 31 | `lib/security/secure-token.ts` |
 | `tests/unit/security/cron-auth.test.ts` | 11 | `lib/security/cron-auth.ts` |
 | `tests/unit/gateway/approvals.test.ts` | 26 | `lib/gateway/approvals.ts` |
+
+### Session 2 — P1 coverage (11 files, 117 tests)
+
+| Test file | Tests | Source file covered |
+|---|:---:|---|
+| `tests/unit/gateway/control-templates.test.ts` | 17 | `lib/gateway/control-templates.ts` |
+| `tests/unit/gateway/providers.test.ts` | 14 | `lib/gateway/providers.ts` |
+| `tests/unit/gateway/monitor.test.ts` | 16 | `lib/gateway/monitor.ts` |
+| `tests/unit/gateway/managed-connectors.test.ts` | 11 | `lib/gateway/managed-connectors.ts` |
+| `tests/unit/runtime/commit-rpc.test.ts` | 8 | `lib/runtime/commit-rpc.ts` |
+| `tests/unit/security/safe-log.test.ts` | 17 | `lib/security/safe-log.ts` |
+| `tests/unit/security/audit-export.test.ts` | 7 | `lib/security/audit-export.ts` |
+| `tests/unit/security/request-json.test.ts` | 21 | `lib/security/request-json.ts` |
+| `tests/unit/agent-governance/policy.test.ts` | 4 | `lib/agent-governance/policy.ts` |
+| `tests/unit/agent-governance/planner.test.ts` | 8 | `lib/agent-governance/planner.ts` |
 

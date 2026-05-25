@@ -30,12 +30,19 @@ function makeReadChain(result: unknown) {
   return chain;
 }
 
+function makeUpdateChain(result: unknown) {
+  const chain: Record<string, unknown> = {};
+  chain.update = vi.fn().mockReturnValue(chain);
+  chain.eq = vi.fn().mockReturnValue(chain);
+  return Object.assign(chain, { then: (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve) });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockRecordGovernanceDecisionEvent.mockResolvedValue(true);
 });
 
-// ─── buildApprovalToken ────────────────────────────────────────────
+// ─── buildApprovalToken ──────────────────────────────────────────────────
 
 describe('buildApprovalToken', () => {
   it('starts with gap_ prefix', () => {
@@ -56,7 +63,7 @@ describe('buildApprovalToken', () => {
   });
 });
 
-// ─── buildApprovalHash ───────────────────────────────────────────
+// ─── buildApprovalHash ───────────────────────────────────────────────────
 
 describe('buildApprovalHash', () => {
   it('returns a 64-char hex string (SHA-256)', () => {
@@ -76,7 +83,7 @@ describe('buildApprovalHash', () => {
   });
 });
 
-// ─── listPendingGatewayApprovals ──────────────────────────────────
+// ─── listPendingGatewayApprovals ─────────────────────────────────────────
 
 describe('listPendingGatewayApprovals', () => {
   it('returns ok:false and missing_org_id when orgId is empty', async () => {
@@ -116,7 +123,7 @@ describe('listPendingGatewayApprovals', () => {
   });
 });
 
-// ─── decideGatewayApproval — validation ──────────────────────────
+// ─── decideGatewayApproval — validation ──────────────────────────────────
 
 describe('decideGatewayApproval — input validation', () => {
   const base = {
@@ -152,7 +159,7 @@ describe('decideGatewayApproval — input validation', () => {
   });
 });
 
-// ─── decideGatewayApproval — DB read failures ──────────────────────
+// ─── decideGatewayApproval — DB read failures ─────────────────────────────
 
 describe('decideGatewayApproval — DB read', () => {
   const base = {
@@ -192,7 +199,7 @@ describe('decideGatewayApproval — DB read', () => {
   });
 });
 
-// ─── decideGatewayApproval — success paths ───────────────────────
+// ─── decideGatewayApproval — success paths ───────────────────────────────
 
 describe('decideGatewayApproval — approved', () => {
   const base = {
@@ -205,22 +212,33 @@ describe('decideGatewayApproval — approved', () => {
   };
 
   const pendingEvent = {
-    id: 'ev-1', org_id: 'org-1', audit_token: 'tok-abc', decision: 'review',
-    request_hash: 'req-hash-abc', constraints: null, input: null,
+    id: 'ev-1',
+    org_id: 'org-1',
+    audit_token: 'tok-abc',
+    decision: 'review',
+    request_hash: 'req-hash-abc',
+    constraints: null,
+    input: null,
   };
 
   function setupMocks() {
     let callCount = 0;
     mockFrom.mockImplementation(() => {
       callCount++;
-      if (callCount === 1) return makeReadChain({ data: pendingEvent, error: null });
-      return {
+      if (callCount === 1) {
+        return makeReadChain({ data: pendingEvent, error: null });
+      }
+      const updateChain: Record<string, unknown> = {};
+      updateChain.update = vi.fn().mockReturnValue(updateChain);
+      updateChain.eq = vi.fn().mockReturnValue(updateChain);
+      (updateChain as unknown as Promise<unknown>) as unknown;
+      return Object.assign(updateChain, {
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ error: null }),
           }),
         }),
-      };
+      });
     });
   }
 
@@ -261,15 +279,22 @@ describe('decideGatewayApproval — rejected', () => {
   };
 
   const pendingEvent = {
-    id: 'ev-1', org_id: 'org-1', audit_token: 'tok-abc', decision: 'review',
-    request_hash: 'req-hash-abc', constraints: null, input: null,
+    id: 'ev-1',
+    org_id: 'org-1',
+    audit_token: 'tok-abc',
+    decision: 'review',
+    request_hash: 'req-hash-abc',
+    constraints: null,
+    input: null,
   };
 
   function setupMocks() {
     let callCount = 0;
     mockFrom.mockImplementation(() => {
       callCount++;
-      if (callCount === 1) return makeReadChain({ data: pendingEvent, error: null });
+      if (callCount === 1) {
+        return makeReadChain({ data: pendingEvent, error: null });
+      }
       return {
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({

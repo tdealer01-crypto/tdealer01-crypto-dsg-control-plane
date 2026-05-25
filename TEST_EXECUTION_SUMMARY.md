@@ -5,7 +5,28 @@ This document tracks test coverage additions per session so future sessions can 
 
 ---
 
-## 2026-05-25 — Test Coverage Session (`claude/test-coverage-analysis-471Xf`)
+## 2026-05-25 — Session 2: P1 coverage (`claude/test-coverage-analysis-471Xf`)
+
+**Result:** 874 passed / 886 total across 129 files (+117 tests, +11 files vs session 1)
+
+### Files added this session
+
+| Test file | Tests | Source file | What's covered |
+|---|:---:|---|---|
+| `tests/unit/gateway/control-templates.test.ts` | 17 | `lib/gateway/control-templates.ts` | data integrity (unique IDs, valid categories/modes/risks/statuses), at-least-one requiredEvidence, `listGatewayControlTemplates` reference equality |
+| `tests/unit/gateway/providers.test.ts` | 14 | `lib/gateway/providers.ts` | mock provider echo/deterministic, unknown→not_supported, zapier no-config/specific-env-key/fallback-URL/503-error/non-JSON, custom_http no-config/registryEntry-endpointUrl/custom_http. prefix |
+| `tests/unit/gateway/monitor.test.ts` | 16 | `lib/gateway/monitor.ts` | createMonitorPlanCheck (DB insert error, no event id, allow/block decision, auditToken format, requestHash/decisionHash, constraints); commitMonitorAudit (missing orgId/token, DB read error/not-found/non-allow, update error, success) |
+| `tests/unit/gateway/managed-connectors.test.ts` | 11 | `lib/gateway/managed-connectors.ts` | empty orgId/toolName guard, null data, relation error swallowed, non-relation error thrown, connector not connected, null connector, object connector, array connector, requiresApproval cast, description fallback |
+| `tests/unit/runtime/commit-rpc.test.ts` | 8 | `lib/runtime/commit-rpc.ts` | success→mode:latest, single call on success, non-signature error→latest, schema-cache mismatch→legacy call, legacy strips limit fields, full args on first call, rpc function name, optional limits absent |
+| `tests/unit/security/safe-log.test.ts` | 17 | `lib/security/safe-log.ts` | toSafeErrorInfo (null/undefined/string/number→UnknownError, name/code extraction, empty/whitespace fallbacks, non-string fields); logSecurityEvent (info/warn/error routing, details spread, no-details payload) |
+| `tests/unit/security/audit-export.test.ts` | 7 | `lib/security/audit-export.ts` | success with rows, null data→empty, relation error, "does not exist" error, PGRST205 code, generic error→query-error, orgId filter passed |
+| `tests/unit/security/request-json.test.ts` | 21 | `lib/security/request-json.ts` | readJsonBody (valid JSON, empty body, invalid JSON, content-length 413, custom maxBytes, arrays, primitives, generic type); jsonSizeBytes (object/empty/{}/null/unicode); maxObjectDepth (flat/null/primitive/array, within-8/over-8, custom limit, nested array) |
+| `tests/unit/agent-governance/policy.test.ts` | 4 | `lib/agent-governance/policy.ts` | allow/review_required/block pass-through |
+| `tests/unit/agent-governance/planner.test.ts` | 8 | `lib/agent-governance/planner.ts` | empty string, whitespace-only, single step, step_index/tool/params/policy_mode/status |
+
+---
+
+## 2026-05-25 — Session 1: P0 coverage (`claude/test-coverage-analysis-471Xf`)
 
 **Result:** 757 passed / 769 total across 115 files (+207 tests, +8 files vs main)
 
@@ -23,21 +44,16 @@ This document tracks test coverage additions per session so future sessions can 
 | `tests/unit/security/cron-auth.test.ts` | 11 | `lib/security/cron-auth.ts` | 503 production/401 dev when no secret; shared CRON_SECRET match/mismatch/sha256; job-specific CRON_\<JOB\>_SECRET with name normalization; Cache-Control: no-store always set |
 | `tests/unit/gateway/approvals.test.ts` | 26 | `lib/gateway/approvals.ts` | buildApprovalToken (prefix/format/randomness), buildApprovalHash (determinism/sensitivity), listPendingGatewayApprovals (missing orgId/DB error/success/null data), decideGatewayApproval (all 4 validation errors, DB read error/not-found/not-review, approved+rejected paths with PASS/BLOCK governance events, governance failure) |
 
-### Source files NOT yet unit-tested (candidates for next session)
+### Source files covered in Session 2 (do not re-test)
+
+`lib/gateway/control-templates.ts`, `lib/gateway/providers.ts`, `lib/gateway/monitor.ts`, `lib/gateway/managed-connectors.ts`, `lib/runtime/commit-rpc.ts`, `lib/security/safe-log.ts`, `lib/security/audit-export.ts`, `lib/security/request-json.ts`, `lib/agent-governance/policy.ts`, `lib/agent-governance/planner.ts`
+
+### Source files NOT yet unit-tested
 
 | Source file | Priority | Notes |
 |---|:---:|---|
 | `lib/gateway/approvals-hardened.ts` | Low | Re-export only — covered via approvals.ts |
-| `lib/gateway/control-templates.ts` | Medium | Policy template rendering |
-| `lib/gateway/monitor.ts` | Medium | Gateway monitoring |
-| `lib/gateway/providers.ts` | Medium | Provider dispatch |
-| `lib/gateway/managed-connectors.ts` | Medium | Connector management |
-| `lib/runtime/commit-rpc.ts` | Medium | RPC commit layer |
-| `lib/security/safe-log.ts` | Low | toSafeErrorInfo, logSecurityEvent |
-| `lib/security/audit-export.ts` | Low | Audit export helpers |
-| `lib/security/request-json.ts` | Low | Safe JSON body parsing |
-| `lib/agent-governance/policy.ts` | Medium | Agent governance policy |
-| `lib/agent-governance/planner.ts` | Medium | Governance planning |
+| `lib/gateway/tool-registry.ts` | Low | Thin DB wrapper — integration tested via monitor/gateway routes |
 
 ---
 
