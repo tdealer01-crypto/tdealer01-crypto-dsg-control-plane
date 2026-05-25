@@ -41,38 +41,20 @@ Without `DSG_ONE_V1_URL` the agent crons fall back to the default URL above — 
 
 ---
 
-## Marketing / Outreach Crons
-
-| Variable | Where to get | Required by |
-|---|---|---|
-| `FOUNDER_EMAIL` | Your email address | `weekly-report`, `social-listen`, `content-gen` |
-| `ANTHROPIC_API_KEY` | Anthropic Console → API Keys | `marketing-agent`, `content-gen` |
-| `GITHUB_TOKEN` | GitHub → Settings → Developer settings → PAT (read:user, public_repo) | `github-leads` |
-
----
-
 ## Cron Schedule Reference
 
-| Cron | Schedule | Calls/month | Cost tier |
+| Cron | Schedule | Calls/month | Notes |
 |---|---|---|---|
-| `flush-meter-outbox` | `0 0 * * *` | 31 | free |
-| `usage-alerts` | `0 7 * * *` | 31 | free |
-| `drip-emails` | `0 9 * * *` | 31 | free |
-| `smart-drip` | `0 10 * * *` | 31 | free |
-| `github-leads` | `0 8 * * *` | 31 | free |
-| `trial-invite` | `0 11 * * *` | 31 | free |
-| `social-listen` | `30 8 * * *` | 31 | free |
-| `lead-outreach` | `0 9 * * *` | 31 | free |
-| `lead-followup` | `0 10 * * *` | 31 | free |
-| `marketing-agent` | `0 7 * * *` | 31 | free |
-| `content-gen` | `0 6 * * 1` | 4–5 | free |
-| `weekly-report` | `0 8 * * 1` | 4–5 | free |
-| `yield-optimizer` | `0 2 * * *` | 31 | free |
-| `agent-orchestrator` | `*/15 * * * *` | 2,880 | paid |
-| `agent-health-check` | `0 * * * *` | 744 | paid |
+| `flush-meter-outbox` | `0 0 * * *` | 31 | billing critical |
+| `usage-alerts` | `0 7 * * *` | 31 | monitoring |
+| `agent-orchestrator` | `*/15 * * * *` | 2,880 | agent dispatch |
+| `agent-health-check` | `0 * * * *` | 744 | infra health |
 
 Vercel Pro includes 2 crons free; additional crons cost $2/cron/month.  
-`agent-orchestrator` and `agent-health-check` will each incur the $2/month charge.
+**Active cost: 2 extra crons × $2 = $4/month.**
+
+> Outreach crons (`drip-emails`, `marketing-agent`, `github-leads`, etc.) have been removed from active rotation.  
+> Routes still exist under `app/api/cron/` — re-add to `vercel.json` when ready to activate.
 
 ---
 
