@@ -33,6 +33,9 @@ const gates: MarketplaceReadinessGate[] = [
     verifiedEvidence: [
       'Existing package script: dsg:production-flow-check',
       'Existing Vercel deployment proof must be attached from deployment logs before marketplace submission',
+      'Production URL confirmed HTTP 200: GET /compliance-evidence-pack (2026-05-25)',
+      'Production URL confirmed HTTP 200: GET /api/compliance-evidence-pack (2026-05-25)',
+      'Vercel deployment green — PR #596 (tsconfig.typecheck.json fix) + PR #597 (cron daily schedule fix)',
     ],
     requiredEvidence: [
       'Latest production deployment READY proof',

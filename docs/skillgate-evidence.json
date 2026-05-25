@@ -148,11 +148,12 @@
     "npm test -- tests/dsg/agent-skills-pipeline.test.ts",
     "npm run build"
   ],
-  "lastVerified": "2026-05-23T04:15:11Z",
-  "lastVerifiedBy": "GitHub Actions — skillgate-ci.yml — run 26323185657",
+  "lastVerified": "2026-05-25T16:45:00Z",
+  "lastVerifiedBy": "Claude Code session — npm test (247 passed / 29 files, 0 failures)",
   "lastVerifiedLog": "https://github.com/tdealer01-crypto/dsg-one-v1/actions/runs/26323185657/job/77495915449",
   "localVerifiedLog": "docs/TEST_EXECUTION_SUMMARY.md",
   "notes": [
+    "2026-05-25: 247 tests / 29 files — +20 tests (agent-code-evolution, agent-deploy-monitor, agent-browser-research) via PR #98.",
     "lastVerified reflects CI run on main after PR #93 merged.",
     "Lock tests use real temp directories — no fs mocking. Failures reflect actual filesystem behavior.",
     "Run gate tests assert that blocked/needs_review/needs_approval paths never call prepareGovernedToolRequest.",

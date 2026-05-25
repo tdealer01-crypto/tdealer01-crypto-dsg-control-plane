@@ -9,7 +9,7 @@ Production: `https://dsg-one-v1.vercel.app`
 
 ## Test Status (2026-05-25)
 
-### CI verified — GitHub Actions [`skillgate-ci.yml`](/.github/workflows/skillgate-ci.yml)
+### CI verified — 247 tests / 29 files, 0 failures
 
 | Suite | Tests | Status |
 |---|---|---|
@@ -21,15 +21,23 @@ Production: `https://dsg-one-v1.vercel.app`
 | `api-agent-status` | 6 | ✓ PASS |
 | `api-agent-skills` | 18 | ✓ PASS |
 | `api-app-builder-plan` | 12 | ✓ PASS |
-| **Total** | **227** | **✓ ALL PASS** |
+| `agent-z3-integration` | 19 | ✓ PASS |
+| `agent-orchestrator` | 5 | ✓ PASS |
+| `agent-seed-engine` | 9 | ✓ PASS |
+| `agent-security-gate` | 6 | ✓ PASS |
+| `agent-test-coverage` | 6 | ✓ PASS |
+| `agent-code-evolution` | 8 | ✓ PASS |
+| `agent-deploy-monitor` | 6 | ✓ PASS |
+| `agent-browser-research` | 6 | ✓ PASS |
+| + 13 other suites | 93 | ✓ PASS |
+| **Total** | **247** | **✓ ALL PASS** |
 
 ```text
-npx tsc --noEmit          EXIT: 0   (no type errors)
-npm run build             ✓ Compiled successfully in 17.4s
-SkillGate CI job          ✓ 77495915449 — conclusion: success
+npm run dsg:typecheck    EXIT: 0   (no type errors)
+npm test                 247 passed / 29 files — 3.5s
 ```
 
-### Production smoke (2026-05-23 ICT)
+### Production smoke (2026-05-25 ICT)
 
 ```text
 login:                    PASS — t.dealer01@dsg.pics authenticated
@@ -37,6 +45,9 @@ governed-tool-request:    PASS — AUDIT ID + REQUEST HASH generated
 risk-status:              data_verified
 truth-ok:                 true
 gate:                     VERIFIED — fail-closed before execution
+GET /compliance-evidence-pack       HTTP 200 ✓ (live)
+GET /api/compliance-evidence-pack   HTTP 200 ✓ (live)
+Vercel deploy:            GREEN — PR #596 + PR #597
 ```
 
 ### Safety invariants (enforced at runtime)
@@ -63,15 +74,39 @@ needsApprovalDeniedAtRunGate:   true
 
 ## Overall status
 
-Last verified: **2026-05-23 ICT**
+Last verified: **2026-05-25 ICT**
 
 ```text
 System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE
 Completion: true
 Passed required lanes: 9/9
+Tests: 247 passed / 29 files, 0 failures
+TypeScript: 0 errors
+Vercel deploy: GREEN
 Marketplace readiness: REVIEW
 Audit packet final verdict: BLOCKED
 Production-ready marketplace claim: false
+```
+
+## Self-Evolving Agent Platform (PR #98 — 2026-05-25)
+
+6 specialized agents governed by Z3 formal verification + Seed Engine:
+
+| Agent | Z3 Invariant | Key Rule |
+|---|---|---|
+| Orchestrator | `goal_locked → can_dispatch` | Blocks all dispatch without goal lock |
+| Code Evolution | `writes_code → plan_approved` | Cannot write without approved plan |
+| Test Coverage | `new_coverage >= previous` | Coverage can only go up |
+| Deploy Monitor | `triggers_deploy → gate_pass ∧ evidence ∧ ¬mock` | Gate + evidence required |
+| Browser Research | `uses_result → evidence_hash_set` | Every result must carry SHA-256 hash |
+| Security Gate | `action → gate_decision == ALLOW` | Wraps every other agent |
+
+```text
+formal/agent-invariants.smt2       SMT-LIB 2 spec — 6 agent invariant blocks
+lib/dsg/logic/z3-agent-gate.ts     TypeScript → Z3 bridge (PASS / BLOCK)
+lib/dsg/seed/seed-engine.ts        Seed Engine — data needed → must search, never guess
+skills/{agent}/skill.ts            6 agent skill files (SkillGate pipeline)
+lib/dsg/agents/{types,registry,executor,loop}.ts   Core agent library
 ```
 
 ## Production smoke evidence
