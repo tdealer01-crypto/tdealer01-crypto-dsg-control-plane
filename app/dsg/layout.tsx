@@ -17,22 +17,28 @@ import {
   ArrowLeft,
   Menu,
   X,
+  BookOpen,
+  TrendingUp,
+  UploadCloud,
 } from 'lucide-react';
 
 const navSections = [
   {
     label: 'Build',
     items: [
-      { label: 'App Builder', href: '/dsg/app-builder', iconName: 'sparkles' },
-      { label: 'Templates', href: '/dsg/templates', iconName: 'layoutTemplate' },
-      { label: 'Flow Studio', href: '/dsg/flow-studio', iconName: 'gitBranch' },
+      { label: 'App Builder',    href: '/dsg/app-builder',           iconName: 'sparkles'       },
+      { label: 'Templates',      href: '/dsg/templates',             iconName: 'layoutTemplate' },
+      { label: 'Sell Template',  href: '/dsg/templates/submit',      iconName: 'uploadCloud'    },
+      { label: 'Flow Studio',    href: '/dsg/flow-studio',           iconName: 'gitBranch'      },
     ],
   },
   {
     label: 'Manage',
     items: [
-      { label: 'My Apps', href: '/dsg/action-layer', iconName: 'layoutGrid' },
-      { label: 'History', href: '/dsg/history', iconName: 'history' },
+      { label: 'My Apps',          href: '/dsg/action-layer',          iconName: 'layoutGrid' },
+      { label: 'My Templates',     href: '/dsg/templates/my',          iconName: 'bookOpen'   },
+      { label: 'Creator Earnings', href: '/dsg/templates/my-payouts',  iconName: 'trendingUp' },
+      { label: 'History',          href: '/dsg/history',               iconName: 'history'    },
     ],
   },
   {
@@ -63,6 +69,9 @@ function NavIcon({ name }: { name: string }) {
     case 'cpu':            return <Cpu className={cls} />;
     case 'bell':           return <Bell className={cls} />;
     case 'settings':       return <Settings className={cls} />;
+    case 'bookOpen':       return <BookOpen className={cls} />;
+    case 'trendingUp':     return <TrendingUp className={cls} />;
+    case 'uploadCloud':    return <UploadCloud className={cls} />;
     default:               return null;
   }
 }
