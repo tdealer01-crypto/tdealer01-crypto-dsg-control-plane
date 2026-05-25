@@ -62,3 +62,17 @@ After changing code, run the narrowest relevant checks, report exact pass/fail r
 ## Safe default
 
 If an instruction conflicts with `AGENTS.md`, `docs/agents/CLAUDE_TOOL_API_CONTRACT.md`, secrets policy, production safety, or verified evidence, stop and report the conflict instead of guessing.
+
+## Production control loop
+
+### Check if production is alive
+GET https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/status
+
+### Ship from chat
+Trigger workflow_dispatch on `.github/workflows/ship.yml` with input `reason: "<what you did>"`.
+
+### Full loop
+1. Write code → commit → push to claude/* branch
+2. Vercel auto-deploys on merge to main
+3. Call GET /api/agent/status to verify deploy is live
+4. If ok → done. If not → diagnose and fix.

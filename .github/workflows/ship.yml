@@ -1,0 +1,59 @@
+name: Ship
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for shipping (used in step summary)'
+        required: false
+        default: 'agent-initiated ship'
+
+jobs:
+  ship:
+    name: Lint, typecheck, test, and verify production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Verify production status
+        id: status
+        run: |
+          echo "Calling /api/agent/status …"
+          RESPONSE=$(curl -sf https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/status)
+          echo "response=$RESPONSE"
+          echo "AGENT_STATUS_RESPONSE=$RESPONSE" >> "$GITHUB_ENV"
+
+      - name: Write step summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Ship summary
+
+          | Field | Value |
+          |-------|-------|
+          | Reason | ${{ github.event.inputs.reason }} |
+          | Commit SHA | ${{ github.sha }} |
+          | Lint | ${{ steps.status.outcome != 'skipped' && 'passed' || 'skipped' }} |
+          | Typecheck | ${{ steps.status.outcome != 'skipped' && 'passed' || 'skipped' }} |
+          | Tests | ${{ steps.status.outcome != 'skipped' && 'passed' || 'skipped' }} |
+          | Production /api/agent/status | \`${{ env.AGENT_STATUS_RESPONSE }}\` |
+          EOF
