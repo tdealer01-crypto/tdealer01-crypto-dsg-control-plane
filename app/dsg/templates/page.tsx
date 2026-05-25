@@ -76,7 +76,7 @@ export default function TemplatesPage() {
       const data = await res.json();
       if (data.ok) {
         if (data.data.checkoutRequired && data.data.checkoutUrl) {
-          window.location.href = data.data.checkoutUrl;
+          window.location.assign(data.data.checkoutUrl);
           return;
         } else {
           alert(`ได้รับ template "${template.name}" แล้ว! ไปที่ App Builder เพื่อใช้งาน`);

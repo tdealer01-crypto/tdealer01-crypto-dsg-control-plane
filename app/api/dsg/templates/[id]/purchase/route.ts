@@ -9,7 +9,11 @@ import {
 } from '@/lib/dsg/marketplace/template-commission';
 import type { DsgMarketTemplate } from '@/lib/dsg/app-builder/templates/template-registry';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
+  return new Stripe(key);
+}
 
 type TemplateRow = {
   id: string;
@@ -66,6 +70,17 @@ export async function POST(
       return NextResponse.json({ ok: false, error: { code: 'CANNOT_BUY_OWN_TEMPLATE' } }, { status: 422 });
     }
 
+    // Duplicate purchase guard
+    const existing = await readDsgRest<{ sale_id: string }[]>(config, 'dsg_template_sales', {
+      select: 'sale_id',
+      template_id: `eq.${template.id}`,
+      buyer_id: `eq.${actor.actorId}`,
+      status: `neq.REFUNDED`,
+    });
+    if (existing.length > 0) {
+      return NextResponse.json({ ok: false, error: { code: 'ALREADY_PURCHASED' } }, { status: 422 });
+    }
+
     const eligibility = checkTemplateMonetizationEligibility(
       toMarketTemplateShape(template),
       template.price_satang,
@@ -87,7 +102,7 @@ export async function POST(
     });
 
     if (template.price_satang > 0) {
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         mode: 'payment',
         line_items: [
           {
