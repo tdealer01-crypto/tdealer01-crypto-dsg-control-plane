@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Search, Star, ArrowRight, Zap, BarChart2, MessageSquare, ShoppingCart, Settings, FileText, GitBranch, ClipboardList, BookOpen, Briefcase, Receipt } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Star, ArrowRight, Zap, ShoppingCart, Loader2 } from 'lucide-react';
 
 type Template = {
+  id: string;
   slug: string;
   name: string;
   description: string;
-  category: 'SaaS' | 'Dashboard' | 'AI/Chat' | 'E-commerce' | 'Internal Tools';
+  category: string;
   stack: string[];
   stars: number;
-  popular?: boolean;
-  icon: React.ReactNode;
+  popular: boolean;
+  price_satang: number;
+  seller_id: string | null;
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -22,132 +24,40 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Internal Tools': 'border-slate-500/40 bg-slate-500/10 text-slate-300',
 };
 
-const CATEGORIES = ['All', 'SaaS', 'Dashboard', 'AI/Chat', 'E-commerce', 'Internal Tools'] as const;
-
-const TEMPLATES: Template[] = [
-  {
-    slug: 'saas-starter',
-    name: 'SaaS Starter',
-    description: 'Full-stack SaaS boilerplate with billing, auth, and a ready-made dashboard.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Supabase', 'Stripe'],
-    stars: 2_840,
-    popular: true,
-    icon: <Zap className="h-5 w-5" />,
-  },
-  {
-    slug: 'ai-chatbot',
-    name: 'AI Chatbot',
-    description: 'Streaming AI chat with persistent memory, conversation history, and multi-model support.',
-    category: 'AI/Chat',
-    stack: ['Next.js', 'Vercel AI SDK', 'Redis'],
-    stars: 1_930,
-    icon: <MessageSquare className="h-5 w-5" />,
-  },
-  {
-    slug: 'analytics-dashboard',
-    name: 'Analytics Dashboard',
-    description: 'Interactive analytics UI with charts, dimension filters, and CSV export.',
-    category: 'Dashboard',
-    stack: ['Next.js', 'Recharts', 'Postgres'],
-    stars: 1_420,
-    icon: <BarChart2 className="h-5 w-5" />,
-  },
-  {
-    slug: 'crm-lite',
-    name: 'CRM Lite',
-    description: 'Lightweight CRM with contact management, deal pipeline, and activity notes.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'Supabase', 'Tailwind'],
-    stars: 980,
-    icon: <Briefcase className="h-5 w-5" />,
-  },
-  {
-    slug: 'ecommerce-store',
-    name: 'E-commerce Store',
-    description: 'Full storefront with product catalog, cart, checkout, and Stripe payments.',
-    category: 'E-commerce',
-    stack: ['Next.js', 'Stripe', 'Sanity'],
-    stars: 2_110,
-    popular: true,
-    icon: <ShoppingCart className="h-5 w-5" />,
-  },
-  {
-    slug: 'internal-admin',
-    name: 'Internal Admin',
-    description: 'CRUD admin panel with server-side search, pagination, and role-based access.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'Prisma', 'Postgres'],
-    stars: 760,
-    icon: <Settings className="h-5 w-5" />,
-  },
-  {
-    slug: 'document-ai',
-    name: 'Document AI',
-    description: 'Upload documents, extract structured data, and generate AI-powered summaries.',
-    category: 'AI/Chat',
-    stack: ['Next.js', 'LangChain', 'Pinecone'],
-    stars: 1_650,
-    icon: <FileText className="h-5 w-5" />,
-  },
-  {
-    slug: 'workflow-automator',
-    name: 'Workflow Automator',
-    description: 'Visual workflow builder with triggers, conditions, and multi-step action chains.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'Temporal', 'Redis'],
-    stars: 870,
-    icon: <GitBranch className="h-5 w-5" />,
-  },
-  {
-    slug: 'feedback-collector',
-    name: 'Feedback Collector',
-    description: 'Custom feedback forms, response inbox, tagging, and built-in analytics.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Supabase', 'Resend'],
-    stars: 610,
-    icon: <ClipboardList className="h-5 w-5" />,
-  },
-  {
-    slug: 'team-wiki',
-    name: 'Team Wiki',
-    description: 'Collaborative documentation with full-text search and page versioning.',
-    category: 'Internal Tools',
-    stack: ['Next.js', 'MDX', 'Postgres'],
-    stars: 730,
-    icon: <BookOpen className="h-5 w-5" />,
-  },
-  {
-    slug: 'job-board',
-    name: 'Job Board',
-    description: 'Post job listings, collect applications, and manage candidate status.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Supabase', 'Resend'],
-    stars: 540,
-    icon: <Briefcase className="h-5 w-5" />,
-  },
-  {
-    slug: 'invoice-generator',
-    name: 'Invoice Generator',
-    description: 'Create PDF invoices, send by email, and collect payments via Stripe.',
-    category: 'SaaS',
-    stack: ['Next.js', 'Stripe', 'Resend'],
-    stars: 890,
-    icon: <Receipt className="h-5 w-5" />,
-  },
-];
-
 function formatStars(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
+function formatPrice(priceSatang: number): string {
+  if (priceSatang === 0) return 'ฟรี';
+  return `฿${(priceSatang / 100).toLocaleString('th-TH', { minimumFractionDigits: 0 })}`;
+}
+
 export default function TemplatesPage() {
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<(typeof CATEGORIES)[number]>('All');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/dsg/templates')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.ok) setTemplates(res.data ?? []);
+      })
+      .catch(() => {/* silently degrade — grid stays empty */})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(templates.map((t) => t.category)));
+    return ['All', ...cats.sort()];
+  }, [templates]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return TEMPLATES.filter((t) => {
+    return templates.filter((t) => {
       const matchesCategory = activeCategory === 'All' || t.category === activeCategory;
       const matchesSearch =
         !q ||
@@ -156,7 +66,30 @@ export default function TemplatesPage() {
         t.stack.some((s) => s.toLowerCase().includes(q));
       return matchesCategory && matchesSearch;
     });
-  }, [search, activeCategory]);
+  }, [templates, search, activeCategory]);
+
+  async function handlePurchase(template: Template) {
+    if (purchasing) return;
+    setPurchasing(template.id);
+    try {
+      const res = await fetch(`/api/dsg/templates/${template.id}/purchase`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        if (data.data.checkoutRequired) {
+          // Redirect to Stripe checkout when wired
+          alert(`ชำระเงิน ฿${data.data.priceTHB} — Stripe checkout จะเปิดที่นี่`);
+        } else {
+          alert(`ได้รับ template "${template.name}" แล้ว! ไปที่ App Builder เพื่อใช้งาน`);
+        }
+      } else {
+        alert(`ไม่สามารถซื้อได้: ${data.error?.code}`);
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } finally {
+      setPurchasing(null);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 md:px-8">
@@ -185,7 +118,7 @@ export default function TemplatesPage() {
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -201,13 +134,23 @@ export default function TemplatesPage() {
           </div>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+          </div>
+        )}
+
         {/* Results count */}
-        <p className="text-sm text-slate-500">
-          {filtered.length} template{filtered.length !== 1 ? 's' : ''}{activeCategory !== 'All' ? ` in ${activeCategory}` : ''}
-        </p>
+        {!loading && (
+          <p className="text-sm text-slate-500">
+            {filtered.length} template{filtered.length !== 1 ? 's' : ''}
+            {activeCategory !== 'All' ? ` in ${activeCategory}` : ''}
+          </p>
+        )}
 
         {/* Grid */}
-        {filtered.length === 0 ? (
+        {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-800 bg-slate-900 py-24 text-center">
             <Search className="mb-4 h-10 w-10 text-slate-600" />
             <p className="text-lg font-bold text-slate-300">No templates found</p>
@@ -219,57 +162,88 @@ export default function TemplatesPage() {
               Clear filters
             </button>
           </div>
-        ) : (
+        )}
+
+        {!loading && filtered.length > 0 && (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((template) => (
-              <div
-                key={template.slug}
-                className="flex flex-col rounded-3xl border border-slate-800 bg-slate-900 p-5 transition-colors hover:border-slate-700"
-              >
-                {/* Icon + badges */}
-                <div className="mb-4 flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800 text-slate-300">
-                    {template.icon}
+            {filtered.map((template) => {
+              const isFree = template.price_satang === 0;
+              const isBuying = purchasing === template.id;
+              return (
+                <div
+                  key={template.slug}
+                  className="flex flex-col rounded-3xl border border-slate-800 bg-slate-900 p-5 transition-colors hover:border-slate-700"
+                >
+                  {/* Badges */}
+                  <div className="mb-4 flex items-start justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800 text-slate-300">
+                      <ShoppingCart className="h-5 w-5" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {template.popular && (
+                        <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                          Popular
+                        </span>
+                      )}
+                      {template.category && (
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${CATEGORY_COLORS[template.category] ?? 'border-slate-500/40 bg-slate-500/10 text-slate-300'}`}>
+                          {template.category}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {template.popular && (
-                      <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
-                        Popular
+
+                  <h3 className="text-base font-black text-slate-100">{template.name}</h3>
+                  <p className="mt-1 flex-1 text-sm leading-6 text-slate-400">{template.description}</p>
+
+                  {/* Stack */}
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {template.stack.map((tag) => (
+                      <span key={tag} className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-[11px] text-slate-400">
+                        {tag}
                       </span>
+                    ))}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="mt-5 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className={`text-sm font-bold ${isFree ? 'text-emerald-400' : 'text-amber-300'}`}>
+                        {formatPrice(template.price_satang)}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <Star className="h-3.5 w-3.5 text-amber-400" />
+                        {formatStars(template.stars)}
+                      </span>
+                    </div>
+
+                    {template.seller_id ? (
+                      <button
+                        onClick={() => handlePurchase(template)}
+                        disabled={isBuying}
+                        className="inline-flex items-center gap-1.5 rounded-2xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60"
+                      >
+                        {isBuying ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            {isFree ? 'รับฟรี' : 'ซื้อเลย'}
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <a
+                        href={`/dsg/app-builder?template=${template.slug}`}
+                        className="inline-flex items-center gap-1.5 rounded-2xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500"
+                      >
+                        Use template <ArrowRight className="h-3.5 w-3.5" />
+                      </a>
                     )}
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${CATEGORY_COLORS[template.category]}`}>
-                      {template.category}
-                    </span>
                   </div>
                 </div>
-
-                <h3 className="text-base font-black text-slate-100">{template.name}</h3>
-                <p className="mt-1 flex-1 text-sm leading-6 text-slate-400">{template.description}</p>
-
-                {/* Stack tags */}
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {template.stack.map((tag) => (
-                    <span key={tag} className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-[11px] text-slate-400">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Footer */}
-                <div className="mt-5 flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-xs text-slate-500">
-                    <Star className="h-3.5 w-3.5 text-amber-400" />
-                    {formatStars(template.stars)}
-                  </span>
-                  <a
-                    href={`/dsg/app-builder?template=${template.slug}`}
-                    className="inline-flex items-center gap-1.5 rounded-2xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500"
-                  >
-                    Use template <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
