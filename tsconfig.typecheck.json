@@ -7,6 +7,7 @@
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next",
+    "packages/dsg-mcp-workspace-agent"
   ]
 }
