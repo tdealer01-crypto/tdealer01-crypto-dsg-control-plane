@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: { code: 'INVALID_PRICE' } }, { status: 400 });
     }
 
-    // Build a minimal DsgMarketTemplate shape to run the eligibility check
+    // Build a minimal DsgMarketTemplate shape to run the eligibility check.
+    // This does not mark the marketplace PASS; it only blocks unsafe monetization inputs.
     const candidate: Pick<DsgMarketTemplate, 'id' | 'sharingMode' | 'blockedUntil'> & Partial<DsgMarketTemplate> = {
       id: body.slug,
       sharingMode: 'public',
@@ -56,19 +57,17 @@ export async function POST(req: NextRequest) {
     }
 
     const config = getDsgSupabaseRpcConfig();
-    const result = await callDsgRpc<{ id: string }>(config, 'submit_template_for_sale', {
+    const templateId = await callDsgRpc<string>(config, 'submit_template_for_sale', {
+      p_actor_id: actor.actorId,
       p_slug: body.slug,
       p_name: body.name,
       p_description: body.description,
       p_category: body.category,
       p_stack: body.stack ?? [],
       p_price_satang: body.price_satang,
-      p_version: body.version ?? '1.0.0',
-      p_seller_id: actor.actorId,
-      p_sharing_mode: 'public',
     });
 
-    return NextResponse.json({ ok: true, data: result }, { status: 201 });
+    return NextResponse.json({ ok: true, data: { id: templateId } }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'TEMPLATE_SUBMIT_FAILED';
     const status = message === 'DSG_AUTH_REQUIRED' || message === 'DSG_PERMISSION_DENIED' ? 403 : 500;
