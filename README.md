@@ -72,6 +72,7 @@ System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE + TEMPLATE_MARKETPLACE_LIVE + GRAPHM
 Completion: true
 Passed required lanes: 9/9
 Template marketplace: LIVE (Stripe Checkout wired)
+GraphMap Plugin: DEPLOYED — agents query repo graph autonomously via AGENTS.md rules
 Audit packet final verdict: BLOCKED (governance gates unchanged)
 Production-ready marketplace claim: false (pending RBAC + entitlement enforcement)
 ```
@@ -153,6 +154,14 @@ Gate:
 
 Plugin manifest: plugins/graphmap/plugin.json
   read_repo: true | write_repo: false | call_dsg_gate: true
+
+Agent autonomous use (rules in AGENTS.md):
+  1. GET  /api/plugins/graphmap/status   → EMPTY or isStale?
+  2. POST /api/plugins/graphmap/build    → ถ้าต้อง rebuild
+  3. POST /api/plugins/graphmap/query    → { "question": "..." }
+  ALLOW  → ตอบพร้อม evidence
+  REVIEW → ตอบพร้อมบอก confidence
+  BLOCK  → ไม่ตอบ บอก user ว่าต้อง build ก่อน
 ```
 
 ### Enterprise & Governance
