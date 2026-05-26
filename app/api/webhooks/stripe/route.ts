@@ -1,5 +1,8 @@
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getDsgSupabaseRpcConfig, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';
+
+export const runtime = 'nodejs';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -8,24 +11,39 @@ function getStripe() {
 }
 
 export async function POST(req: Request) {
-  const body = await req.text();
-  const sig = req.headers.get('stripe-signature') ?? '';
+  const signature = req.headers.get('stripe-signature');
+  if (!signature) {
+    return NextResponse.json({ ok: false, error: 'Missing Stripe-Signature header' }, { status: 400 });
+  }
+
+  const rawBody = await req.text();
 
   let event: Stripe.Event;
   try {
-    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? '');
-  } catch {
-    return new Response('Invalid signature', { status: 400 });
+    event = getStripe().webhooks.constructEvent(rawBody, signature, process.env.STRIPE_WEBHOOK_SECRET ?? '');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid signature';
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
+
+    const paymentIntentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id ?? null;
+
+    if (!paymentIntentId) {
+      return NextResponse.json({ ok: false, error: 'Missing payment_intent on checkout session' }, { status: 400 });
+    }
+
     const config = getDsgSupabaseRpcConfig();
     await callDsgRpc(config, 'clear_template_sale', {
       p_stripe_checkout_session_id: session.id,
-      p_stripe_payment_intent_id: String(session.payment_intent ?? ''),
+      p_stripe_payment_intent_id: paymentIntentId,
     });
   }
 
-  return new Response('ok', { status: 200 });
+  return NextResponse.json({ ok: true });
 }
