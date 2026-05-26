@@ -68,7 +68,7 @@ needsApprovalDeniedAtRunGate:   true
 Last verified: **2026-05-26 ICT**
 
 ```text
-System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE + TEMPLATE_MARKETPLACE_LIVE
+System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE + TEMPLATE_MARKETPLACE_LIVE + GRAPHMAP_PLUGIN_DEPLOYED
 Completion: true
 Passed required lanes: 9/9
 Template marketplace: LIVE (Stripe Checkout wired)
@@ -133,6 +133,26 @@ This README does **not** claim marketplace PASS, production-ready status, comple
 /api/dsg/templates/my/purchases         — GET buyer's cleared purchases
 /api/dsg/templates/my/payouts           — GET creator earnings summary + sales
 /api/webhooks/stripe                    — POST Stripe webhook (clears PENDING sales)
+```
+
+### GraphMap Plugin (new 2026-05-26)
+
+```text
+/api/plugins/graphmap/build   — POST skill:execute — scan repo → build graph → Supabase
+/api/plugins/graphmap/query   — POST skill:read    — keyword BFS → evidence + gate
+/api/plugins/graphmap/status  — GET  skill:read    — EMPTY | READY, isStale boolean
+
+Edge confidence:
+  import / link   → EXTRACTED  (direct parse evidence)
+  co-located      → INFERRED   (same-directory heuristic)
+
+Gate:
+  ALLOW   — ≥3 EXTRACTED evidence + graph age < 24h
+  REVIEW  — any INFERRED, stale, or < 3 EXTRACTED
+  BLOCK   — no evidence or all AMBIGUOUS
+
+Plugin manifest: plugins/graphmap/plugin.json
+  read_repo: true | write_repo: false | call_dsg_gate: true
 ```
 
 ### Enterprise & Governance
@@ -207,4 +227,6 @@ MARKETPLACE_PASS: locked until full enforcement, review, and approval evidence e
 4. Add entitlement or billing provider proof, quota denial tests, and upgrade-path proof.
 5. Add accessibility review notes for keyboard, semantics, contrast, mobile viewport.
 6. Add owner approvals and convert only proven gates from REVIEW/BLOCKED to PASS.
+7. GraphMap: add /dsg/graphmap UI page + sidebar nav link.
+8. GraphMap: add LLM-backed semantic query on top of keyword BFS.
 ```
