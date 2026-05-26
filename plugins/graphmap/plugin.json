@@ -1,0 +1,14 @@
+{
+  "name": "dsg-graphmap",
+  "version": "0.1.0",
+  "kind": "knowledge-graph-plugin",
+  "description": "Build and query a project knowledge graph for DSG agents.",
+  "permissions": {
+    "read_repo": true,
+    "write_repo": false,
+    "call_dsg_gate": true
+  },
+  "inputs": ["include_patterns", "exclude_patterns", "question"],
+  "outputs": ["graph.json", "GRAPH_REPORT.md", "evidence.json"],
+  "default_decision": "REVIEW"
+}
