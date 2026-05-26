@@ -1,36 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireVerifiedDsgActor } from '@/lib/dsg/server/context';
-import { getBearerToken } from '@/lib/dsg/server/supabase-rpc';
 import { loadLatestGraph } from '@/lib/plugins/graphmap/storage';
 import { queryGraph } from '@/lib/plugins/graphmap/querier';
 
 export async function POST(req: NextRequest) {
   const actor = await requireVerifiedDsgActor(req.headers, 'skill:read');
-  const userAccessToken = getBearerToken(req.headers) ?? '';
 
   let question = '';
   let maxDepth = 2;
   try {
     const body = await req.json();
-    question = typeof body.question === 'string' ? body.question : '';
-    if (typeof body.max_depth === 'number') maxDepth = Math.min(body.max_depth, 4);
+    question = typeof body.question === 'string' ? body.question.trim() : '';
+    if (typeof body.max_depth === 'number') maxDepth = Math.min(Math.max(1, body.max_depth), 4);
   } catch {
     return NextResponse.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (!question.trim()) {
+  if (!question) {
     return NextResponse.json({ ok: false, error: 'question is required' }, { status: 400 });
   }
 
   try {
-    const latest = await loadLatestGraph(userAccessToken, actor.workspaceId);
+    const latest = await loadLatestGraph(actor.workspaceId);
     if (!latest) {
       return NextResponse.json({
         ok: true,
         decision: 'BLOCK',
-        answer: 'No graph found for this workspace. Run POST /api/plugins/graphmap/build first.',
+        answer: 'No graph found for this workspace. Call POST /api/plugins/graphmap/build first.',
         evidence: [],
-        blockedClaims: ['No graph available'],
+        blockedClaims: ['No graph available — cannot answer without evidence'],
       });
     }
 

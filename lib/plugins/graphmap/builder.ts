@@ -1,5 +1,5 @@
 import { stat } from 'fs/promises';
-import { join, dirname, resolve, normalize } from 'path';
+import { join, dirname, normalize } from 'path';
 import { readFileContent } from './scanner';
 import type { GraphNode, GraphEdge, GraphNodeType, GraphSnapshot } from './types';
 
@@ -9,7 +9,7 @@ function classifyNode(relPath: string): GraphNodeType {
   if (/supabase\/migrations\/.+\.sql$/.test(relPath)) return 'migration';
   if (/^lib\//.test(relPath)) return 'lib';
   if (/app\/dsg\/.+\.[jt]sx?$/.test(relPath)) return 'component';
-  if (/^scripts\//.test(relPath) || /^scripts\//.test(relPath)) return 'script';
+  if (/^scripts\//.test(relPath)) return 'script';
   if (/\.(md|mdx|yaml|yml)$/.test(relPath)) return 'doc';
   if (/\.(json|toml|env)$/.test(relPath)) return 'config';
   return 'other';

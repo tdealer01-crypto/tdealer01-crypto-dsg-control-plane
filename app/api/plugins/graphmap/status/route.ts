@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireVerifiedDsgActor } from '@/lib/dsg/server/context';
-import { getBearerToken } from '@/lib/dsg/server/supabase-rpc';
 import { loadLatestGraph } from '@/lib/plugins/graphmap/storage';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const actor = await requireVerifiedDsgActor(req.headers, 'skill:read');
-  const userAccessToken = getBearerToken(req.headers) ?? '';
 
   try {
-    const latest = await loadLatestGraph(userAccessToken, actor.workspaceId);
+    const latest = await loadLatestGraph(actor.workspaceId);
     if (!latest) {
-      return NextResponse.json({ ok: true, status: 'NONE', builtAt: null, nodeCount: 0, edgeCount: 0, isStale: true });
+      return NextResponse.json({
+        ok: true,
+        status: 'EMPTY',
+        builtAt: null,
+        nodeCount: 0,
+        edgeCount: 0,
+        isStale: true,
+      });
     }
 
     const { row, graphAgeMs } = latest;
