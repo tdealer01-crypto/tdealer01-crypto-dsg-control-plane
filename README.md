@@ -7,7 +7,7 @@ Production: `https://dsg-one-v1.vercel.app`
 
 ---
 
-## Test Status (2026-05-25)
+## Test Status (2026-05-26)
 
 ### CI verified — GitHub Actions [`skillgate-ci.yml`](/.github/workflows/skillgate-ci.yml)
 
@@ -21,12 +21,14 @@ Production: `https://dsg-one-v1.vercel.app`
 | `api-agent-status` | 6 | ✓ PASS |
 | `api-agent-skills` | 18 | ✓ PASS |
 | `api-app-builder-plan` | 12 | ✓ PASS |
-| **Total** | **227** | **✓ ALL PASS** |
+| `template-commission` | 12 | ✓ PASS |
+| **Total** | **259** | **✓ ALL PASS** |
 
 ```text
 npx tsc --noEmit          EXIT: 0   (no type errors)
-npm run build             ✓ Compiled successfully in 17.4s
-SkillGate CI job          ✓ 77495915449 — conclusion: success
+npm run lint              EXIT: 0   (no lint errors)
+npm run build             ✓ Compiled successfully
+vitest run                259 passed / 30 files
 ```
 
 ### Production smoke (2026-05-23 ICT)
@@ -63,15 +65,15 @@ needsApprovalDeniedAtRunGate:   true
 
 ## Overall status
 
-Last verified: **2026-05-23 ICT**
+Last verified: **2026-05-26 ICT**
 
 ```text
-System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE
+System claim: DSG_AUTONOMOUS_LEVEL_COMPLETE + TEMPLATE_MARKETPLACE_LIVE
 Completion: true
 Passed required lanes: 9/9
-Marketplace readiness: REVIEW
-Audit packet final verdict: BLOCKED
-Production-ready marketplace claim: false
+Template marketplace: LIVE (Stripe Checkout wired)
+Audit packet final verdict: BLOCKED (governance gates unchanged)
+Production-ready marketplace claim: false (pending RBAC + entitlement enforcement)
 ```
 
 ## Production smoke evidence
@@ -116,9 +118,26 @@ This README does **not** claim marketplace PASS, production-ready status, comple
 
 ## Runtime surface
 
+### App Builder & Marketplace (new 2026-05-26)
+
 ```text
 /dsg/app-builder
-/api/dsg/app-builder/outcome
+/dsg/templates                          — marketplace gallery (live data, owned badges)
+/dsg/templates/submit                   — creator submit form (80/20 revenue split)
+/dsg/templates/my                       — buyer library (purchased templates)
+/dsg/templates/my-payouts               — creator earnings dashboard + revenue chart
+
+/api/dsg/templates                      — GET list with search & category filter
+/api/dsg/templates/[id]/purchase        — POST purchase (Stripe Checkout for paid)
+/api/dsg/templates/submit               — POST creator list template for sale
+/api/dsg/templates/my/purchases         — GET buyer's cleared purchases
+/api/dsg/templates/my/payouts           — GET creator earnings summary + sales
+/api/webhooks/stripe                    — POST Stripe webhook (clears PENDING sales)
+```
+
+### Enterprise & Governance
+
+```text
 /enterprise/readiness
 /enterprise/accessibility
 /enterprise/market
@@ -139,6 +158,21 @@ This README does **not** claim marketplace PASS, production-ready status, comple
 /api/dsg/flow-studio/config
 /dsg/autonomous-level
 /api/dsg/autonomous-level/status
+```
+
+### Template Marketplace — Revenue Flow
+
+```text
+Creator: /dsg/templates/submit → POST /api/dsg/templates/submit
+Buyer:   /dsg/templates → POST /api/dsg/templates/[id]/purchase
+         → Stripe Checkout (paid) or CLEARED instantly (free)
+         → POST /api/webhooks/stripe (checkout.session.completed)
+         → sale status: PENDING → CLEARED
+Creator: /dsg/templates/my-payouts → GET /api/dsg/templates/my/payouts
+         → clearedPayoutTHB (80%), pendingPayoutTHB, totalRevenueTHB
+
+Commission: 20% platform / 80% creator (2000 bps, integer satang)
+Duplicate guard: UNIQUE(template_id, buyer_id) — returns ALREADY_PURCHASED 422
 ```
 
 ## Production verification
@@ -166,8 +200,11 @@ MARKETPLACE_PASS: locked until full enforcement, review, and approval evidence e
 ## Next upgrade
 
 ```text
-1. Add server-side RBAC enforcement tests and cross-org denial tests.
-2. Add entitlement or billing provider proof, quota denial tests, and upgrade-path proof.
-3. Add accessibility review notes for keyboard, semantics, contrast, mobile viewport, and status readability.
-4. Add owner approvals and convert only proven gates from REVIEW/BLOCKED to PASS.
+1. Apply Supabase migrations on production DB (000001–000003).
+2. Register https://dsg-one-v1.vercel.app/api/webhooks/stripe in Stripe dashboard
+   → event: checkout.session.completed
+3. Add server-side RBAC enforcement tests and cross-org denial tests.
+4. Add entitlement or billing provider proof, quota denial tests, and upgrade-path proof.
+5. Add accessibility review notes for keyboard, semantics, contrast, mobile viewport.
+6. Add owner approvals and convert only proven gates from REVIEW/BLOCKED to PASS.
 ```
