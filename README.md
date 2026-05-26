@@ -238,4 +238,44 @@ MARKETPLACE_PASS: locked until full enforcement, review, and approval evidence e
 6. Add owner approvals and convert only proven gates from REVIEW/BLOCKED to PASS.
 7. GraphMap: add /dsg/graphmap UI page + sidebar nav link.
 8. GraphMap: add LLM-backed semantic query on top of keyword BFS.
+9. MCP Server: publish dsg-one-mcp to npm registry for easy install.
 ```
+
+## MCP Server (Claude Desktop / Cursor)
+
+```bash
+cd mcp/dsg-one-mcp
+npm install && npm run build
+
+# stdio transport (Claude Desktop, Cursor)
+DSG_APP_URL=https://dsg-one-v1.vercel.app node ./dist/index.js
+
+# HTTP/SSE transport (port 3001)
+DSG_APP_URL=https://dsg-one-v1.vercel.app node ./dist/index.js --http
+```
+
+Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "dsg-one": {
+      "command": "node",
+      "args": ["/path/to/mcp/dsg-one-mcp/dist/index.js"],
+      "env": { "DSG_APP_URL": "https://dsg-one-v1.vercel.app" }
+    }
+  }
+}
+```
+
+Available tools (all gated via `/api/dsg/marketplace/audit-packet`):
+
+| Tool | Gate | Description |
+|---|---|---|
+| `dsg_agent_status` | open | Production health check |
+| `dsg_skillgate_audit` | open | Audit-packet finalVerdict |
+| `dsg_marketplace_list_templates` | ALLOW/REVIEW | Browse templates |
+| `dsg_marketplace_purchase` | ALLOW only | Stripe Checkout |
+| `dsg_revenue_summary` | ALLOW only | Creator payout summary |
+| `dsg_graphmap_status` | ALLOW | Graph EMPTY/READY/isStale |
+| `dsg_graphmap_build` | ALLOW | Rebuild repo knowledge graph |
+| `dsg_graphmap_query` | ALLOW | BFS query + evidence decision |
