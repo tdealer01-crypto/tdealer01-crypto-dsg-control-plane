@@ -34,7 +34,7 @@ class AgentBackendClient {
             .put("eventType", eventType)
             .put("executionState", executionState)
             .put("message", message)
-            .put("signatureDigest", command.approvalSignature?.commandDigest)
+            .put("signatureDigest", command.approvalSignature?.commandDigest ?: command.commandDigest)
             .put("errorCode", errorCode)
         val url = URL("${DsgConfig.BASE_URL}/api/agent/commands")
         val connection = (url.openConnection() as HttpURLConnection).apply {
@@ -96,8 +96,6 @@ class AgentBackendClient {
         return local.copy(
             commandId = envelope.getString("commandId"),
             policyVersion = policy.optString("policyVersion", local.policyVersion),
-            idempotencyKey = envelope.getJSONObject("idempotency").optString("key", local.idempotencyKey),
-            commandDigest = envelope.getJSONObject("idempotency").optString("digest", local.commandDigest).removePrefix("sha256:"),
             expiresAt = runCatching { java.time.Instant.parse(policy.getString("expiresAt")).toEpochMilli() }.getOrDefault(local.expiresAt),
         )
     }
