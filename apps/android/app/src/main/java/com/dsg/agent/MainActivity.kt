@@ -19,6 +19,7 @@ import com.dsg.agent.automation.AgentCommandType
 import com.dsg.agent.automation.AgentErrorCodes
 import com.dsg.agent.automation.AuditLogStore
 import com.dsg.agent.automation.CommandExecutionResult
+import com.dsg.agent.automation.FullFileManager
 import com.dsg.agent.automation.PermissionGate
 import com.dsg.agent.automation.OwnerApprovalSigner
 import com.dsg.agent.service.AgentForegroundService
@@ -27,6 +28,7 @@ class MainActivity : Activity() {
     private lateinit var statusView: TextView
     private lateinit var commandListView: LinearLayout
     private lateinit var auditView: TextView
+    private lateinit var filePreviewView: TextView
 
     private lateinit var commandStore: AgentCommandStore
     private lateinit var auditLogStore: AuditLogStore
@@ -115,6 +117,65 @@ class MainActivity : Activity() {
             setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DsgConfig.OPENCLAW_URL))) }
         })
 
+        root.addView(sectionTitle("Full File Manager Mode"))
+        root.addView(TextView(this).apply {
+            text = "High-risk mode. It requests Android All files access so this app can list and manage shared storage. The owner must open the Android settings screen and enable it manually. File operations still go through Command Inbox approval, Keystore signing, permission gate, and audit log."
+            textSize = 14f
+        })
+
+        root.addView(Button(this).apply {
+            text = "Open Full File Manager Permission"
+            setOnClickListener {
+                auditLogStore.append("FILE_PERMISSION_REQUESTED", "local", "Owner opened All files access settings")
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                runCatching { startActivity(intent) }.getOrElse {
+                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                }
+            }
+        })
+
+        root.addView(Button(this).apply {
+            text = "Queue file command: list shared storage"
+            setOnClickListener {
+                queueDemoCommand(
+                    AgentCommandType.FILE_LIST_ROOT,
+                    FullFileManager.rootPath().absolutePath,
+                    "Owner requested a full-file-manager listing of shared storage root",
+                )
+            }
+        })
+
+        root.addView(Button(this).apply {
+            text = "Queue file command: send selected files to Claw"
+            setOnClickListener {
+                queueDemoCommand(
+                    AgentCommandType.FILE_SEND_TO_CLAW,
+                    "selected-files://local-demo",
+                    "Owner requested selected files to be sent to Claw after review",
+                )
+            }
+        })
+
+        root.addView(Button(this).apply {
+            text = "Queue file command: delete sensitive test file"
+            setOnClickListener {
+                queueDemoCommand(
+                    AgentCommandType.FILE_DELETE,
+                    "/sdcard/Download/api_keys.env",
+                    "Owner requested delete test for a sensitive file. This must be blocked by policy in MVP.",
+                )
+            }
+        })
+
+        filePreviewView = TextView(this).apply {
+            text = "No file listing yet."
+            textSize = 12f
+            setPadding(0, 12, 0, 12)
+        }
+        root.addView(filePreviewView)
+
         root.addView(sectionTitle("Local Command Inbox"))
         root.addView(TextView(this).apply {
             text = "Demo commands model Chat / CLI / MCP requests. No command runs until owner approves it here."
@@ -190,7 +251,7 @@ class MainActivity : Activity() {
     private fun queueDemoCommand(type: AgentCommandType, target: String, reason: String) {
         commandStore.pruneExpired()
         val command = AgentCommand.create(
-            source = "local-demo",
+            source = if (type.name.startsWith("FILE_")) "local-file-manager" else "local-demo",
             type = type,
             target = target,
             reason = reason,
@@ -198,12 +259,16 @@ class MainActivity : Activity() {
             requiresUserConfirm = true,
         )
         commandStore.add(command)
-        auditLogStore.append("COMMAND_QUEUED", command.commandId, "Queued ${command.type.name} digest=${command.commandDigest}")
+        val eventType = if (type.name.startsWith("FILE_")) "FILE_ACTION_QUEUED" else "COMMAND_QUEUED"
+        auditLogStore.append(eventType, command.commandId, "Queued ${command.type.name} digest=${command.commandDigest}")
         refreshUi("Queued ${command.type.name}")
     }
 
     private fun refreshUi(extra: String? = null) {
         statusView.text = buildStatusText(extra)
+        if (::filePreviewView.isInitialized && permissionGate.isFullFileManagerEnabled()) {
+            filePreviewView.text = "Full file manager permission enabled. Queue and approve list command to render files."
+        }
         renderCommands()
         renderAuditLog()
     }
@@ -251,6 +316,14 @@ class MainActivity : Activity() {
     }
 
     private fun approveCommand(command: AgentCommand) {
+        val policyBlock = filePolicyBlock(command)
+        if (policyBlock != null) {
+            commandStore.markBlocked(command.commandId, policyBlock)
+            auditLogStore.append("FILE_ACTION_BLOCKED", command.commandId, policyBlock, AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
+            refreshUi(policyBlock)
+            return
+        }
+
         val gate = permissionGate.evaluate(command)
         if (!gate.allowed) {
             if (gate.errorCode == AgentErrorCodes.PERMISSION_REQUIRED) {
@@ -258,7 +331,8 @@ class MainActivity : Activity() {
             } else {
                 commandStore.markBlocked(command.commandId, gate.message)
             }
-            auditLogStore.append("COMMAND_BLOCKED", command.commandId, gate.message, gate.errorCode)
+            val eventType = if (command.type.name.startsWith("FILE_")) "FILE_ACTION_BLOCKED" else "COMMAND_BLOCKED"
+            auditLogStore.append(eventType, command.commandId, gate.message, gate.errorCode)
             refreshUi("Blocked: ${gate.message}")
             return
         }
@@ -278,18 +352,29 @@ class MainActivity : Activity() {
             return
         }
 
-        auditLogStore.append("COMMAND_APPROVED", signed.commandId, "Owner approved signed digest=${signed.commandDigest}")
+        val approvedEvent = if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_APPROVED" else "COMMAND_APPROVED"
+        auditLogStore.append(approvedEvent, signed.commandId, "Owner approved signed digest=${signed.commandDigest}")
         commandStore.markApproved(signed.commandId, signed.approvalSignature!!)
 
         val result = executeCommand(signed)
         if (result.success) {
             commandStore.markExecuted(signed.commandId)
-            auditLogStore.append("COMMAND_EXECUTED", signed.commandId, result.message)
+            val eventType = if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_EXECUTED" else "COMMAND_EXECUTED"
+            auditLogStore.append(eventType, signed.commandId, result.message)
         } else {
             commandStore.markFailed(signed.commandId, result.errorCode ?: "EXECUTION_FAILED", result.message)
             auditLogStore.append("COMMAND_FAILED", signed.commandId, result.message, result.errorCode)
         }
         refreshUi(result.message)
+    }
+
+    private fun filePolicyBlock(command: AgentCommand): String? {
+        if (!command.type.name.startsWith("FILE_")) return null
+        val lowered = command.target.lowercase()
+        val isSecret = lowered.endsWith(".env") || lowered.contains("api_key") || lowered.contains("apikey") || lowered.contains("token") || lowered.contains("secret") || lowered.endsWith(".pem") || lowered.endsWith(".key")
+        if (isSecret) return "Blocked sensitive file action for ${command.target}. Secret-like files require a future explicit sensitive-file approval sheet."
+        if (command.type == AgentCommandType.FILE_DELETE) return "Delete is blocked in MVP. It requires a future destructive-action confirmation sheet."
+        return null
     }
 
     private fun executeCommand(command: AgentCommand): CommandExecutionResult {
@@ -318,6 +403,18 @@ class MainActivity : Activity() {
             AgentCommandType.HOME -> AccessibilityActionBridge.performHome()
             AgentCommandType.SCROLL_DOWN -> AccessibilityActionBridge.performScrollDown()
             AgentCommandType.NOTIFICATION_SUMMARY -> CommandExecutionResult(false, "Notification summary executor is not enabled in this MVP", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
+            AgentCommandType.FILE_LIST_ROOT -> {
+                val summary = FullFileManager.buildListSummary()
+                filePreviewView.text = summary
+                auditLogStore.append("FILE_LISTED", command.commandId, "Listed shared storage root")
+                CommandExecutionResult(true, "Listed shared storage root")
+            }
+            AgentCommandType.FILE_PREVIEW -> CommandExecutionResult(true, "Preview action approved for ${command.target}")
+            AgentCommandType.FILE_SELECT -> CommandExecutionResult(true, "Selected file ${command.target}")
+            AgentCommandType.FILE_SEND_TO_CLAW -> CommandExecutionResult(true, "Queued selected files for Claw processing after owner approval")
+            AgentCommandType.FILE_RENAME,
+            AgentCommandType.FILE_MOVE -> CommandExecutionResult(false, "Rename/move executor is not enabled in this MVP", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
+            AgentCommandType.FILE_DELETE -> CommandExecutionResult(false, "Delete executor is blocked in this MVP", AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
         }
     }
 
@@ -331,7 +428,8 @@ class MainActivity : Activity() {
             "Mode: owner-device, permission-first, approval-signature-required, audit-required",
             "Accessibility enabled: ${permissionGate.isAccessibilityEnabled()}",
             "Notification listener enabled: ${permissionGate.isNotificationListenerEnabled()}",
-            "Enabled actions v1: status, open_url, open_settings, open_app, back, home, scroll_down",
+            "Full file manager enabled: ${permissionGate.isFullFileManagerEnabled()}",
+            "Enabled actions v1: status, open_url, open_settings, open_app, back, home, scroll_down, file_list_root, file_send_to_claw",
             "Pending commands: ${commandStore.listPending().size}",
             extra,
         ).joinToString("\n")
