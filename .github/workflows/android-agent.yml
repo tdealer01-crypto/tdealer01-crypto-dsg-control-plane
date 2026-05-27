@@ -41,7 +41,26 @@ jobs:
 
       - name: Build debug APK
         working-directory: apps/android
-        run: gradle assembleDebug --no-daemon --stacktrace --warning-mode all
+        shell: bash
+        run: |
+          set +e
+          gradle assembleDebug --no-daemon --stacktrace --warning-mode all 2>&1 | tee android-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo ""
+            echo "==== Android build root-error hints ===="
+            grep -n -E "FAILURE:|What went wrong:|Execution failed for task|Android resource linking failed|Unresolved reference|Manifest merger failed|Compilation error" android-build.log || true
+            echo "==== End Android build root-error hints ===="
+            exit "$status"
+          fi
+
+      - name: Upload Android build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-agent-android-build-log
+          path: apps/android/android-build.log
+          if-no-files-found: ignore
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
