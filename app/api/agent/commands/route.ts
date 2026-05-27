@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT: MVP command queue returns structured JSON API errors and does not throw raw errors
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCommandEnvelope, isExpired } from '@/lib/commands/normalize';
 import type { DsgCommandEnvelope } from '@/lib/commands/schema';
