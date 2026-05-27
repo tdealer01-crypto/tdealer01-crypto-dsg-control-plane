@@ -6,6 +6,7 @@ const routeChecks = [
   { route: '/proofgate', file: 'app/proofgate/page.tsx', outcome: 'ProofGate product page is reachable.' },
   { route: '/enterprise-ready', file: 'app/enterprise-ready/page.tsx', outcome: 'Enterprise setup page is reachable.' },
   { route: '/dashboard/integrations', file: 'app/dashboard/integrations/page.tsx', outcome: 'Self-service integration setup page is reachable.' },
+  { route: '/finance-approval-gate', file: 'app/finance-approval-gate/page.tsx', outcome: 'Finance Approval Gate pilot page is reachable.' },
   { route: '/ai-compliance', file: 'app/ai-compliance/page.tsx', outcome: 'Compliance landing page is reachable.' },
   { route: '/iso-42001', file: 'app/iso-42001/page.tsx', outcome: 'ISO alignment page is reachable.' },
   { route: '/nist-ai-rmf', file: 'app/nist-ai-rmf/page.tsx', outcome: 'NIST AI RMF alignment page is reachable.' },
@@ -27,6 +28,7 @@ const forbiddenLinks = [
   { file: 'app/proofgate/page.tsx', text: 'href="#"', reason: 'ProofGate product page must not use placeholder anchors.' },
   { file: 'app/enterprise-ready/page.tsx', text: 'href="#"', reason: 'Enterprise setup page must not use placeholder anchors.' },
   { file: 'app/dashboard/integrations/page.tsx', text: 'href="#"', reason: 'Integration setup page must not use placeholder anchors.' },
+  { file: 'app/finance-approval-gate/page.tsx', text: 'href="#"', reason: 'Finance Approval Gate page must not use placeholder anchors.' },
 ];
 
 const requiredText = [
@@ -46,6 +48,10 @@ const requiredText = [
   { file: 'docs/ENTERPRISE_READY_AUTOPILOT.md', text: 'one existing system -> one governed action -> one evidence trail -> one expansion decision', reason: 'Enterprise runbook must define the tangible user outcome.' },
   { file: 'docs/ENTERPRISE_READY_AUTOPILOT.md', text: '/proofgate', reason: 'Runbook must mention the ProofGate product surface.' },
   { file: 'components/GlobalNav.tsx', text: 'ProofGate', reason: 'Global nav must expose ProofGate page.' },
+  { file: 'components/GlobalNav.tsx', text: 'Finance Approval Gate', reason: 'Global nav must expose Finance Approval Gate page.' },
+  { file: 'app/finance-approval-gate/page.tsx', text: 'Request Finance Gate Pilot', reason: 'Finance Approval Gate page must expose the pilot CTA.' },
+  { file: 'app/finance-approval-gate/page.tsx', text: 'Pre-audit evidence only. No independent certification claimed.', reason: 'Finance Approval Gate page must show evidence boundary.' },
+  { file: 'app/finance-approval-gate/page.tsx', text: 'ALLOW, BLOCK, REVIEW, or UNSUPPORTED', reason: 'Finance Approval Gate page must state all bounded decisions.' },
   { file: 'app/controls/page.tsx', text: 'Action map', reason: 'Controls page must explain action outcomes.' },
   { file: 'app/approvals/page.tsx', text: 'Approve', reason: 'Approval page must expose approve action.' },
   { file: 'app/approvals/page.tsx', text: 'Reject', reason: 'Approval page must expose reject action.' },
@@ -60,6 +66,15 @@ const flowOutcomes = [
     output: '/proofgate and /dashboard/integrations',
     files: ['app/proofgate/page.tsx', 'app/dashboard/integrations/page.tsx', 'docs/ENTERPRISE_READY_AUTOPILOT.md'],
     requiredText: ['Connect first system', 'Seven-step product flow', 'Five-layer architecture', 'policy-gated AI and automation execution'],
+  },
+  {
+    id: 'finance-approval-gate-pilot',
+    benefit: 'Finance buyer can understand one bounded payment approval pilot before requesting access.',
+    action: 'Open /finance-approval-gate and click Request Finance Gate Pilot.',
+    evidence: 'Finance Approval Gate page exposes workflow, five demo scenarios, outcomes, and evidence boundary.',
+    output: '/finance-approval-gate and /request-access?pilot=finance-approval-gate',
+    files: ['app/finance-approval-gate/page.tsx', 'components/GlobalNav.tsx'],
+    requiredText: ['Request Finance Gate Pilot', 'Low-risk payment allowed', 'High-value payment requires review', 'Missing invoice evidence requires review', 'Destructive action blocked', 'Unsupported action returned as unsupported', 'Pre-audit evidence only. No independent certification claimed.'],
   },
   {
     id: 'enterprise-ready-to-integration-proof',
