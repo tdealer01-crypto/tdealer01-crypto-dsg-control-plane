@@ -48,8 +48,11 @@ jobs:
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             echo ""
+            echo "==== Android build root-error context ===="
+            sed -n '/What went wrong:/,/Try:/p' android-build.log | sed -n '1,160p' || true
+            echo ""
             echo "==== Android build root-error hints ===="
-            grep -n -E "FAILURE:|What went wrong:|Execution failed for task|Android resource linking failed|Unresolved reference|Manifest merger failed|Compilation error" android-build.log || true
+            grep -n -E "FAILURE:|What went wrong:|Execution failed for task|Android resource linking failed|Unresolved reference|Manifest merger failed|Compilation error|Inconsistent JVM-target|e: file:|error:" android-build.log || true
             echo "==== End Android build root-error hints ===="
             exit "$status"
           fi
@@ -60,6 +63,16 @@ jobs:
         with:
           name: dsg-agent-android-build-log
           path: apps/android/android-build.log
+          if-no-files-found: ignore
+
+      - name: Upload Android build reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-agent-android-build-reports
+          path: |
+            apps/android/app/build/reports/**
+            apps/android/build/reports/**
           if-no-files-found: ignore
 
       - name: Upload debug APK artifact
