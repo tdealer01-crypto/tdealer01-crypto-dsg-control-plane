@@ -27,6 +27,11 @@ export function sha256(value: string): string {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
+function privateLikePath(path: string) {
+  const lowered = path.toLowerCase();
+  return lowered.endsWith('.env') || lowered.includes('api_key') || lowered.includes('apikey') || lowered.includes('private') || lowered.endsWith('.pem') || lowered.endsWith('.key');
+}
+
 export function normalizeArgs(toolName: DsgCommandToolName, args: Record<string, unknown>) {
   if (toolName === 'device.open_url') {
     const raw = String(args.url ?? '').trim();
@@ -42,6 +47,15 @@ export function normalizeArgs(toolName: DsgCommandToolName, args: Record<string,
   }
   if (toolName === 'ui.scroll') {
     return { direction: String(args.direction ?? 'down').trim(), amount: 'single_step' };
+  }
+  if (toolName.startsWith('file.')) {
+    const path = String(args.path ?? args.target ?? '/sdcard').trim();
+    return {
+      path,
+      requestedMode: String(args.mode ?? 'owner-approved').trim(),
+      sensitive: privateLikePath(path),
+      selectedFiles: Array.isArray(args.selectedFiles) ? args.selectedFiles : [],
+    };
   }
   return { ...args };
 }
@@ -63,10 +77,13 @@ export function buildCommandEnvelope(input: {
   const policy = TOOL_POLICY[toolName];
   if (!policy) throw new Error(`Unsupported tool: ${input.toolName}`);
 
-  const requestedAt = nowIso();
-  const expiresAt = new Date(Date.now() + COMMAND_TTL_MS).toISOString();
   const args = input.args ?? {};
   const normalizedArgs = normalizeArgs(toolName, args);
+  const fileNeedsBlock = toolName.startsWith('file.') && normalizedArgs.sensitive === true;
+  const effectivePolicy = fileNeedsBlock ? { ...policy, class: 'BLOCK' as const, risk: 'blocked' as const } : policy;
+
+  const requestedAt = nowIso();
+  const expiresAt = new Date(Date.now() + COMMAND_TTL_MS).toISOString();
   const target = {
     deviceId: input.deviceId ?? String(args.deviceId ?? 'android.owner.default'),
     platform: 'android' as const,
@@ -77,12 +94,13 @@ export function buildCommandEnvelope(input: {
     target,
     toolName,
     normalizedArgs,
-    risk: policy.risk,
+    risk: effectivePolicy.risk,
     expiresAt,
     policyVersion: POLICY_VERSION,
     idempotencyKey: key,
   });
   const digest = sha256(digestMaterial);
+  const decision = effectivePolicy.class === 'BLOCK' ? 'BLOCK' : effectivePolicy.class === 'REVIEW' ? 'REVIEW' : 'ALLOW';
 
   return {
     version: 'dsg.command/1',
@@ -97,15 +115,15 @@ export function buildCommandEnvelope(input: {
     target,
     tool: {
       name: toolName,
-      class: policy.class,
+      class: effectivePolicy.class,
     },
     args,
     normalizedArgs,
     policy: {
-      decision: policy.class === 'BLOCK' ? 'BLOCK' : policy.class === 'REVIEW' ? 'REVIEW' : 'ALLOW',
-      risk: policy.risk,
-      requiresOwnerApproval: true,
-      requiresPermissions: policy.requiresPermissions,
+      decision,
+      risk: effectivePolicy.risk,
+      requiresOwnerApproval: decision !== 'BLOCK',
+      requiresPermissions: effectivePolicy.requiresPermissions,
       policyVersion: POLICY_VERSION,
       expiresAt,
     },
@@ -113,13 +131,14 @@ export function buildCommandEnvelope(input: {
     approval: {
       state: 'awaiting_owner',
       boundFields: ['target.deviceId', 'tool.name', 'normalizedArgs', 'policy.risk', 'policy.expiresAt', 'policy.policyVersion'],
-      localSignatureRequired: true,
+      localSignatureRequired: decision !== 'BLOCK',
     },
     audit: {
       requestedAt,
       traceId: id('trace'),
+      deviceEvents: [],
     },
-    executionState: 'awaiting_owner',
+    executionState: decision === 'BLOCK' ? 'blocked' : 'awaiting_owner',
   };
 }
 
