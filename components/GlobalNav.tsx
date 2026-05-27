@@ -32,6 +32,12 @@ const PRODUCT_ITEMS = [
     description: 'Payment & finance controls',
   },
   {
+    href: '/finance-approval-gate',
+    icon: DollarSign,
+    title: 'Finance Approval Gate',
+    description: 'AI payment approval pilot',
+  },
+  {
     href: '/automation',
     icon: Zap,
     title: 'Automation',
