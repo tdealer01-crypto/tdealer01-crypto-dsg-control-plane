@@ -13,6 +13,13 @@ enum class AgentCommandType {
     HOME,
     SCROLL_DOWN,
     NOTIFICATION_SUMMARY,
+    FILE_LIST_ROOT,
+    FILE_PREVIEW,
+    FILE_SELECT,
+    FILE_SEND_TO_CLAW,
+    FILE_RENAME,
+    FILE_MOVE,
+    FILE_DELETE,
 }
 
 enum class CommandState {
@@ -123,7 +130,7 @@ data class AgentCommand(
 
     companion object {
         private const val DEFAULT_TTL_MS = 15 * 60 * 1000L
-        private const val DEFAULT_POLICY_VERSION = "2026-05-27-owner-command-mvp"
+        private const val DEFAULT_POLICY_VERSION = "2026-05-28-owner-full-file-manager"
 
         fun create(
             source: String,
