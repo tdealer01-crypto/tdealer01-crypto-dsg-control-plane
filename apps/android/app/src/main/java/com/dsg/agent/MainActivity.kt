@@ -9,10 +9,12 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -34,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var commandListView: LinearLayout
     private lateinit var auditView: TextView
     private lateinit var filePreviewView: TextView
+    private lateinit var chatInput: EditText
 
     private lateinit var commandStore: AgentCommandStore
     private lateinit var auditLogStore: AuditLogStore
@@ -66,6 +69,7 @@ class MainActivity : Activity() {
 
         addHero(root)
         addTabs(root)
+        addNoCodeChat(root)
         addServiceCard(root)
         addFullFileManagerCard(root)
         addCommandInbox(root)
@@ -82,7 +86,6 @@ class MainActivity : Activity() {
         val hero = card(COLOR_SURFACE_DARK, stroke = COLOR_PRIMARY_SOFT).apply {
             setPadding(dp(18), dp(18), dp(18), dp(18))
         }
-
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -94,7 +97,6 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
             background = rounded(COLOR_PRIMARY, 14)
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
-
         top.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, 0, 0)
@@ -105,22 +107,19 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
             })
             addView(TextView(this@MainActivity).apply {
-                text = "Owner-approved Android automation"
+                text = "No-code owner-approved Android agent"
                 textSize = 13f
                 setTextColor(COLOR_TEXT_MUTED_DARK)
             })
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-
         top.addView(statusPill("AUDIT ON", true))
         hero.addView(top)
-
         hero.addView(TextView(this).apply {
-            text = "Commands enter an inbox first. Approval is bound to the exact digest by Android Keystore before execution."
+            text = "พิมพ์คำสั่งเป็นภาษาคนได้ แต่ทุกคำสั่งต้องเข้า Inbox และให้เจ้าของเครื่อง Approve ก่อนเสมอ"
             textSize = 14f
             setTextColor(COLOR_TEXT_SOFT_DARK)
             setPadding(0, dp(16), 0, dp(14))
         })
-
         statusView = TextView(this).apply {
             text = buildStatusText()
             textSize = 12f
@@ -137,59 +136,77 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        row.addView(tab("📁 Files", true))
+        row.addView(tab("💬 Chat", true))
+        row.addView(tab("📁 Files", false))
         row.addView(tab("🛠 Skills", false))
         row.addView(tab("📋 Logs", false))
-        row.addView(tab("💬 Chat", false))
         addWithMargin(root, row, bottom = 12)
+    }
+
+    private fun addNoCodeChat(root: LinearLayout) {
+        val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        card.addView(sectionHeader("No-code Chat Command", "Vibe coding → command proposal → owner approval"))
+        card.addView(TextView(this).apply {
+            text = "ตัวอย่าง: เปิด status, เปิด settings, แสดงไฟล์, ส่งไฟล์ให้ Claw, back, home, scroll"
+            textSize = 12f
+            setTextColor(COLOR_TEXT_MUTED)
+            setPadding(0, 0, 0, dp(10))
+        })
+        chatInput = EditText(this).apply {
+            hint = "พิมพ์คำสั่งที่ต้องการ เช่น เปิด status หรือ แสดงไฟล์ในเครื่อง"
+            textSize = 14f
+            minLines = 3
+            maxLines = 5
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setTextColor(COLOR_TEXT)
+            setHintTextColor(COLOR_TEXT_MUTED)
+            background = rounded(COLOR_BG, 18, COLOR_BORDER, 1)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+        }
+        addWithMargin(card, chatInput, bottom = 10)
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row.addView(compactButton("Create command", ButtonTone.PRIMARY) { queueNoCodePrompt() })
+        row.addView(compactButton("Clear", ButtonTone.SECONDARY) { chatInput.setText("") })
+        card.addView(row)
+        addWithMargin(root, card, bottom = 12)
     }
 
     private fun addServiceCard(root: LinearLayout) {
         val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
         card.addView(sectionHeader("Gateway & Permissions", "Live device gates"))
-
-        val grid = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        grid.addView(actionButton("Start Agent Service", "Foreground worker", ButtonTone.PRIMARY) {
+        card.addView(actionButton("Start Agent Service", "Poll backend queue every 5s", ButtonTone.PRIMARY) {
             startForegroundService(Intent(this@MainActivity, AgentForegroundService::class.java))
             auditLogStore.append("SERVICE_START_REQUESTED", "local", "Foreground service start requested")
             refreshUi("Foreground service start requested")
         })
-        grid.addView(actionButton("Stop Agent Service", "Safe shutdown", ButtonTone.SECONDARY) {
+        card.addView(actionButton("Stop Agent Service", "Safe shutdown", ButtonTone.SECONDARY) {
             stopService(Intent(this@MainActivity, AgentForegroundService::class.java))
             auditLogStore.append("SERVICE_STOP_REQUESTED", "local", "Foreground service stop requested")
             refreshUi("Foreground service stop requested")
         })
-        grid.addView(actionButton("Open Accessibility Permission", "Back / Home / Scroll gate", ButtonTone.SECONDARY) {
+        card.addView(actionButton("Open Accessibility Permission", "Back / Home / Scroll gate", ButtonTone.SECONDARY) {
             auditLogStore.append("OPEN_PERMISSION_SCREEN", "local", "Accessibility settings opened by owner")
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         })
-        grid.addView(actionButton("Open Notification Listener Permission", "Notification summary gate", ButtonTone.SECONDARY) {
+        card.addView(actionButton("Open Notification Listener Permission", "Notification summary gate", ButtonTone.SECONDARY) {
             auditLogStore.append("OPEN_PERMISSION_SCREEN", "local", "Notification listener settings opened by owner")
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         })
-        grid.addView(actionButton("Open DSG Status API", "Verify backend", ButtonTone.SECONDARY) {
+        card.addView(actionButton("Open DSG Status API", "Verify backend", ButtonTone.SECONDARY) {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DsgConfig.STATUS_URL)))
         })
-        grid.addView(actionButton("Open Bridge Manifest", "OpenClaw mapping", ButtonTone.SECONDARY) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DsgConfig.OPENCLAW_URL)))
-        })
-        card.addView(grid)
         addWithMargin(root, card, bottom = 12)
     }
 
     private fun addFullFileManagerCard(root: LinearLayout) {
         val fmCard = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
         fmCard.addView(sectionHeader("Full File Manager Mode", "Owner-approved all-files access"))
-
         fmCard.addView(TextView(this).apply {
             text = "High-risk mode. Android Settings must grant All files access manually. Every file action still goes through inbox approval, Keystore signing, permission gate, and audit."
             textSize = 13f
             setTextColor(COLOR_TEXT_MUTED)
             setPadding(0, 0, 0, dp(12))
         })
-
         val storageCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(COLOR_ACCENT_SOFT, 18, COLOR_ACCENT_BORDER, 1)
@@ -201,48 +218,28 @@ class MainActivity : Activity() {
                 setTextColor(COLOR_TEXT)
             })
             addView(TextView(this@MainActivity).apply {
-                text = "40 GB cloud target • local selection first • sensitive files blocked by policy"
+                text = "40 GB cloud target • local selection first • private files blocked by policy"
                 textSize = 12f
                 setTextColor(COLOR_TEXT_MUTED)
                 setPadding(0, dp(4), 0, dp(10))
             })
-            addView(View(this@MainActivity).apply {
-                background = rounded(COLOR_PRIMARY, 6)
-            }, LinearLayout.LayoutParams(dp(132), dp(8)))
+            addView(View(this@MainActivity).apply { background = rounded(COLOR_PRIMARY, 6) }, LinearLayout.LayoutParams(dp(132), dp(8)))
         }
         addWithMargin(fmCard, storageCard, bottom = 12)
-
         fmCard.addView(actionButton("Open Full File Manager Permission", "Android All files access", ButtonTone.WARNING) {
             auditLogStore.append("FILE_PERMISSION_REQUESTED", "local", "Owner opened All files access settings")
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = Uri.parse("package:$packageName")
-            }
-            runCatching { startActivity(intent) }.getOrElse {
-                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-            }
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply { data = Uri.parse("package:$packageName") }
+            runCatching { startActivity(intent) }.getOrElse { startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
         })
         fmCard.addView(actionButton("Queue file command: list shared storage", "Requires approval + all-files gate", ButtonTone.PRIMARY) {
-            queueDemoCommand(
-                AgentCommandType.FILE_LIST_ROOT,
-                FullFileManager.rootPath().absolutePath,
-                "Owner requested a full-file-manager listing of shared storage root",
-            )
+            queueDemoCommand(AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath, "Owner requested a full-file-manager listing of shared storage root", "local-file-manager")
         })
         fmCard.addView(actionButton("Queue file command: send selected files to Claw", "Creates approved file workflow", ButtonTone.SECONDARY) {
-            queueDemoCommand(
-                AgentCommandType.FILE_SEND_TO_CLAW,
-                "selected-files://local-demo",
-                "Owner requested selected files to be sent to Claw after review",
-            )
+            queueDemoCommand(AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://local-demo", "Owner requested selected files to be sent to Claw after review", "local-file-manager")
         })
-        fmCard.addView(actionButton("Queue file command: delete sensitive test file", "Should be blocked in MVP", ButtonTone.DANGER) {
-            queueDemoCommand(
-                AgentCommandType.FILE_DELETE,
-                "/sdcard/Download/api_keys.env",
-                "Owner requested delete test for a sensitive file. This must be blocked by policy in MVP.",
-            )
+        fmCard.addView(actionButton("Queue file command: delete private test file", "Should be blocked in MVP", ButtonTone.DANGER) {
+            queueDemoCommand(AgentCommandType.FILE_DELETE, "/sdcard/Download/api_keys.env", "Owner requested delete test for a private file. This must be blocked by policy in MVP.", "local-file-manager")
         })
-
         filePreviewView = TextView(this).apply {
             text = "No file listing yet. Queue and approve FILE_LIST_ROOT after enabling permission."
             textSize = 12f
@@ -250,45 +247,33 @@ class MainActivity : Activity() {
             background = rounded(COLOR_BG, 16, COLOR_BORDER, 1)
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
-        addWithMargin(fmCard, filePreviewView, top = 8, bottom = 0)
+        addWithMargin(fmCard, filePreviewView, top = 8)
         addWithMargin(root, fmCard, bottom = 12)
     }
 
     private fun addCommandInbox(root: LinearLayout) {
         val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
         card.addView(sectionHeader("Command Inbox", "Approve before execution"))
-
-        val demoRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        demoRow.addView(actionButton("Queue demo: open_url", "Visible browser action", ButtonTone.SECONDARY) {
-            queueDemoCommand(
-                AgentCommandType.OPEN_URL,
-                DsgConfig.STATUS_URL,
-                "Open DSG status page for visible owner verification",
-            )
+        card.addView(actionButton("Queue demo: open_url", "Visible browser action", ButtonTone.SECONDARY) {
+            queueDemoCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL, "Open DSG status page for visible owner verification", "local-demo")
         })
-        demoRow.addView(actionButton("Queue demo: open_app settings", "Open Android Settings", ButtonTone.SECONDARY) {
-            queueDemoCommand(
-                AgentCommandType.OPEN_APP,
-                "com.android.settings",
-                "Open Android Settings package for owner-approved setup",
-            )
+        card.addView(actionButton("Queue demo: open_app settings", "Open Android Settings", ButtonTone.SECONDARY) {
+            queueDemoCommand(AgentCommandType.OPEN_APP, "com.android.settings", "Open Android Settings package for owner-approved setup", "local-demo")
         })
-        demoRow.addView(actionButton("Queue demo: back", "Accessibility-gated", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.BACK, "GLOBAL_BACK", "Run Android Back through Accessibility after owner approval")
+        card.addView(actionButton("Queue demo: back", "Accessibility-gated", ButtonTone.SECONDARY) {
+            queueDemoCommand(AgentCommandType.BACK, "GLOBAL_BACK", "Run Android Back through Accessibility after owner approval", "local-demo")
         })
-        demoRow.addView(actionButton("Queue demo: home", "Accessibility-gated", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.HOME, "GLOBAL_HOME", "Run Android Home through Accessibility after owner approval")
+        card.addView(actionButton("Queue demo: home", "Accessibility-gated", ButtonTone.SECONDARY) {
+            queueDemoCommand(AgentCommandType.HOME, "GLOBAL_HOME", "Run Android Home through Accessibility after owner approval", "local-demo")
         })
-        demoRow.addView(actionButton("Queue demo: scroll down", "Accessibility-gated", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE", "Run one scroll down through Accessibility after owner approval")
+        card.addView(actionButton("Queue demo: scroll down", "Accessibility-gated", ButtonTone.SECONDARY) {
+            queueDemoCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE", "Run one scroll down through Accessibility after owner approval", "local-demo")
         })
-        demoRow.addView(actionButton("Kill Switch: Clear Pending Commands", "Owner emergency stop", ButtonTone.DANGER) {
+        card.addView(actionButton("Kill Switch: Clear Pending Commands", "Owner emergency stop", ButtonTone.DANGER) {
             val count = commandStore.clearPending()
             auditLogStore.append("KILL_SWITCH_CLEAR_PENDING", "local", "Owner cleared $count pending command(s)")
             refreshUi("Kill switch cleared $count pending command(s)")
         })
-        card.addView(demoRow)
-
         commandListView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(10), 0, 0)
@@ -307,13 +292,43 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
         card.addView(auditView)
-        addWithMargin(root, card, bottom = 0)
+        addWithMargin(root, card)
     }
 
-    private fun queueDemoCommand(type: AgentCommandType, target: String, reason: String) {
+    private fun queueNoCodePrompt() {
+        val prompt = chatInput.text.toString().trim()
+        if (prompt.isBlank()) {
+            auditLogStore.append("NO_CODE_EMPTY", "local", "No-code prompt was empty")
+            refreshUi("พิมพ์คำสั่งก่อน")
+            return
+        }
+        val mapped = mapNoCodePrompt(prompt)
+        queueDemoCommand(mapped.type, mapped.target, "No-code chat: $prompt", "no-code-chat")
+        chatInput.setText("")
+    }
+
+    private data class MappedCommand(val type: AgentCommandType, val target: String)
+
+    private fun mapNoCodePrompt(prompt: String): MappedCommand {
+        val lower = prompt.lowercase()
+        val url = Regex("https?://\\S+").find(prompt)?.value
+        return when {
+            url != null -> MappedCommand(AgentCommandType.OPEN_URL, url)
+            lower.contains("status") || lower.contains("สถานะ") -> MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL)
+            lower.contains("setting") || lower.contains("ตั้งค่า") -> MappedCommand(AgentCommandType.OPEN_APP, "com.android.settings")
+            lower.contains("ไฟล์") || lower.contains("file") || lower.contains("storage") || lower.contains("sdcard") -> MappedCommand(AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath)
+            lower.contains("claw") || lower.contains("ส่ง") -> MappedCommand(AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://no-code-chat")
+            lower.contains("back") || lower.contains("ย้อน") -> MappedCommand(AgentCommandType.BACK, "GLOBAL_BACK")
+            lower.contains("home") || lower.contains("หน้าหลัก") -> MappedCommand(AgentCommandType.HOME, "GLOBAL_HOME")
+            lower.contains("scroll") || lower.contains("เลื่อน") -> MappedCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE")
+            else -> MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL)
+        }
+    }
+
+    private fun queueDemoCommand(type: AgentCommandType, target: String, reason: String, source: String) {
         commandStore.pruneExpired()
         val command = AgentCommand.create(
-            source = if (type.name.startsWith("FILE_")) "local-file-manager" else "local-demo",
+            source = source,
             type = type,
             target = target,
             reason = reason,
@@ -347,11 +362,8 @@ class MainActivity : Activity() {
             })
             return
         }
-
         pending.forEach { command ->
-            val item = card(COLOR_CARD_ALT, radius = 18, stroke = COLOR_BORDER).apply {
-                setPadding(dp(14), dp(14), dp(14), dp(14))
-            }
+            val item = card(COLOR_CARD_ALT, radius = 18, stroke = COLOR_BORDER).apply { setPadding(dp(14), dp(14), dp(14), dp(14)) }
             item.addView(TextView(this).apply {
                 text = command.type.name
                 textSize = 15f
@@ -364,18 +376,14 @@ class MainActivity : Activity() {
                 setTextColor(COLOR_TEXT_MUTED)
                 setPadding(0, dp(8), 0, dp(10))
             })
-
-            val actionRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-            actionRow.addView(compactButton("Approve", ButtonTone.PRIMARY) { approveCommand(command) })
-            actionRow.addView(compactButton("Reject", ButtonTone.SECONDARY) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(compactButton("Approve", ButtonTone.PRIMARY) { approveCommand(command) })
+            row.addView(compactButton("Reject", ButtonTone.SECONDARY) {
                 commandStore.markRejected(command.commandId)
                 auditLogStore.append("COMMAND_REJECTED", command.commandId, "Owner rejected ${command.type.name}")
                 refreshUi("Rejected ${command.type.name}")
             })
-            item.addView(actionRow)
+            item.addView(row)
             addWithMargin(commandListView, item, bottom = 10)
         }
     }
@@ -388,20 +396,14 @@ class MainActivity : Activity() {
             refreshUi(policyBlock)
             return
         }
-
         val gate = permissionGate.evaluate(command)
         if (!gate.allowed) {
-            if (gate.errorCode == AgentErrorCodes.PERMISSION_REQUIRED) {
-                commandStore.markWaitingPermission(command.commandId, gate.message)
-            } else {
-                commandStore.markBlocked(command.commandId, gate.message)
-            }
+            if (gate.errorCode == AgentErrorCodes.PERMISSION_REQUIRED) commandStore.markWaitingPermission(command.commandId, gate.message) else commandStore.markBlocked(command.commandId, gate.message)
             val eventType = if (command.type.name.startsWith("FILE_")) "FILE_ACTION_BLOCKED" else "COMMAND_BLOCKED"
             auditLogStore.append(eventType, command.commandId, gate.message, gate.errorCode)
             refreshUi("Blocked: ${gate.message}")
             return
         }
-
         val signed = runCatching { command.withApproval(approvalSigner.sign(command)) }.getOrElse { error ->
             val message = error.message ?: "Failed to sign owner approval"
             commandStore.markFailed(command.commandId, AgentErrorCodes.APPROVAL_SIGNATURE_INVALID, message)
@@ -409,18 +411,15 @@ class MainActivity : Activity() {
             refreshUi(message)
             return
         }
-
         if (!approvalSigner.verify(signed)) {
             commandStore.markFailed(command.commandId, AgentErrorCodes.APPROVAL_SIGNATURE_INVALID, "Approval signature verification failed")
             auditLogStore.append("COMMAND_FAILED", command.commandId, "Approval signature verification failed", AgentErrorCodes.APPROVAL_SIGNATURE_INVALID)
             refreshUi("Approval signature verification failed")
             return
         }
-
         val approvedEvent = if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_APPROVED" else "COMMAND_APPROVED"
         auditLogStore.append(approvedEvent, signed.commandId, "Owner approved signed digest=${signed.commandDigest}")
         commandStore.markApproved(signed.commandId, signed.approvalSignature!!)
-
         val result = executeCommand(signed)
         if (result.success) {
             commandStore.markExecuted(signed.commandId)
@@ -435,17 +434,15 @@ class MainActivity : Activity() {
 
     private fun filePolicyBlock(command: AgentCommand): String? {
         if (!command.type.name.startsWith("FILE_")) return null
-        val lowered = command.target.lowercase()
-        val isSecret = lowered.endsWith(".env") || lowered.contains("api_key") || lowered.contains("apikey") || lowered.contains("token") || lowered.contains("secret") || lowered.endsWith(".pem") || lowered.endsWith(".key")
-        if (isSecret) return "Blocked sensitive file action for ${command.target}. Secret-like files require a future explicit sensitive-file approval sheet."
+        val lower = command.target.lowercase()
+        val privateLike = lower.endsWith(".env") || lower.contains("api_key") || lower.contains("apikey") || lower.contains("private") || lower.endsWith(".pem") || lower.endsWith(".key")
+        if (privateLike) return "Blocked private file action for ${command.target}. It requires a future explicit sensitive-file approval sheet."
         if (command.type == AgentCommandType.FILE_DELETE) return "Delete is blocked in MVP. It requires a future destructive-action confirmation sheet."
         return null
     }
 
     private fun executeCommand(command: AgentCommand): CommandExecutionResult {
-        if (!approvalSigner.verify(command)) {
-            return CommandExecutionResult(false, "Executor refused unsigned or mutated command digest", AgentErrorCodes.APPROVAL_SIGNATURE_INVALID)
-        }
+        if (!approvalSigner.verify(command)) return CommandExecutionResult(false, "Executor refused unsigned or mutated command digest", AgentErrorCodes.APPROVAL_SIGNATURE_INVALID)
         return when (command.type) {
             AgentCommandType.STATUS -> CommandExecutionResult(true, "Status command reviewed; app is running")
             AgentCommandType.OPEN_URL -> {
@@ -458,8 +455,7 @@ class MainActivity : Activity() {
             }
             AgentCommandType.OPEN_APP -> {
                 val launchIntent = packageManager.getLaunchIntentForPackage(command.target)
-                if (launchIntent == null) CommandExecutionResult(false, "Package not launchable: ${command.target}", "PACKAGE_NOT_LAUNCHABLE")
-                else {
+                if (launchIntent == null) CommandExecutionResult(false, "Package not launchable: ${command.target}", "PACKAGE_NOT_LAUNCHABLE") else {
                     startActivity(launchIntent)
                     CommandExecutionResult(true, "Opened app package visibly: ${command.target}")
                 }
@@ -469,9 +465,8 @@ class MainActivity : Activity() {
             AgentCommandType.SCROLL_DOWN -> AccessibilityActionBridge.performScrollDown()
             AgentCommandType.NOTIFICATION_SUMMARY -> CommandExecutionResult(false, "Notification summary executor is not enabled in this MVP", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
             AgentCommandType.FILE_LIST_ROOT -> {
-                val summary = FullFileManager.buildListSummary()
                 fileListRendered = true
-                filePreviewView.text = summary
+                filePreviewView.text = FullFileManager.buildListSummary()
                 auditLogStore.append("FILE_LISTED", command.commandId, "Listed shared storage root")
                 CommandExecutionResult(true, "Listed shared storage root")
             }
@@ -488,36 +483,31 @@ class MainActivity : Activity() {
         auditView.text = auditLogStore.tail(20).ifEmpty { "No audit events yet." }
     }
 
-    private fun buildStatusText(extra: String? = null): String {
-        return listOfNotNull(
-            "Backend: ${DsgConfig.BASE_URL}",
-            "Mode: owner-device • permission-first • signed approval • audit-required",
-            "Accessibility: ${permissionGate.isAccessibilityEnabled()}",
-            "Notifications: ${permissionGate.isNotificationListenerEnabled()}",
-            "Full file manager: ${permissionGate.isFullFileManagerEnabled()}",
-            "Actions: open_url, open_app, back, home, scroll, file_list_root, file_send_to_claw",
-            "Pending: ${commandStore.listPending().size}",
-            extra,
-        ).joinToString("\n")
-    }
+    private fun buildStatusText(extra: String? = null): String = listOfNotNull(
+        "Backend: ${DsgConfig.BASE_URL}",
+        "Mode: no-code • owner-device • signed approval • audit-required",
+        "Accessibility: ${permissionGate.isAccessibilityEnabled()}",
+        "Notifications: ${permissionGate.isNotificationListenerEnabled()}",
+        "Full file manager: ${permissionGate.isFullFileManagerEnabled()}",
+        "Pending: ${commandStore.listPending().size}",
+        extra,
+    ).joinToString("\n")
 
-    private fun sectionHeader(title: String, subtitle: String): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, dp(12))
-            addView(TextView(this@MainActivity).apply {
-                text = title
-                textSize = 20f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(COLOR_TEXT)
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = subtitle
-                textSize = 12f
-                setTextColor(COLOR_TEXT_MUTED)
-                setPadding(0, dp(2), 0, 0)
-            })
-        }
+    private fun sectionHeader(title: String, subtitle: String): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, 0, 0, dp(12))
+        addView(TextView(this@MainActivity).apply {
+            text = title
+            textSize = 20f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_TEXT)
+        })
+        addView(TextView(this@MainActivity).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(COLOR_TEXT_MUTED)
+            setPadding(0, dp(2), 0, 0)
+        })
     }
 
     private fun actionButton(title: String, subtitle: String, tone: ButtonTone, onClick: () -> Unit): View {
@@ -552,96 +542,61 @@ class MainActivity : Activity() {
         return row
     }
 
-    private fun compactButton(textValue: String, tone: ButtonTone, onClick: () -> Unit): Button {
-        return Button(this).apply {
-            text = textValue
-            textSize = 12f
-            isAllCaps = false
-            setTextColor(if (tone == ButtonTone.PRIMARY) Color.WHITE else COLOR_TEXT)
-            background = rounded(buttonBg(tone), 14, buttonBorder(tone), 1)
-            setOnClickListener { onClick() }
-            val lp = LinearLayout.LayoutParams(0, dp(44), 1f)
-            lp.setMargins(0, 0, dp(8), 0)
-            layoutParams = lp
-        }
+    private fun compactButton(textValue: String, tone: ButtonTone, onClick: () -> Unit): Button = Button(this).apply {
+        text = textValue
+        textSize = 12f
+        isAllCaps = false
+        setTextColor(if (tone == ButtonTone.PRIMARY) Color.WHITE else COLOR_TEXT)
+        background = rounded(buttonBg(tone), 14, buttonBorder(tone), 1)
+        setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f).apply { setMargins(0, 0, dp(8), 0) }
     }
 
-    private fun tab(label: String, active: Boolean): TextView {
-        return TextView(this).apply {
-            text = label
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(if (active) Color.WHITE else COLOR_TEXT_MUTED)
-            background = rounded(if (active) COLOR_PRIMARY else COLOR_CARD, 22, if (active) COLOR_PRIMARY else COLOR_BORDER, 1)
-            val lp = LinearLayout.LayoutParams(0, dp(42), 1f)
-            lp.setMargins(0, 0, dp(8), 0)
-            layoutParams = lp
-        }
+    private fun tab(label: String, active: Boolean): TextView = TextView(this).apply {
+        text = label
+        textSize = 13f
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        setTextColor(if (active) Color.WHITE else COLOR_TEXT_MUTED)
+        background = rounded(if (active) COLOR_PRIMARY else COLOR_CARD, 22, if (active) COLOR_PRIMARY else COLOR_BORDER, 1)
+        layoutParams = LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(0, 0, dp(8), 0) }
     }
 
-    private fun statusPill(label: String, ok: Boolean): TextView {
-        return TextView(this).apply {
-            text = label
-            textSize = 11f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(if (ok) COLOR_GREEN else COLOR_RED)
-            background = rounded(if (ok) COLOR_GREEN_SOFT else COLOR_RED_SOFT, 18, if (ok) COLOR_GREEN_BORDER else COLOR_RED_BORDER, 1)
-            setPadding(dp(10), dp(6), dp(10), dp(6))
-        }
+    private fun statusPill(label: String, ok: Boolean): TextView = TextView(this).apply {
+        text = label
+        textSize = 11f
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        setTextColor(if (ok) COLOR_GREEN else COLOR_RED)
+        background = rounded(if (ok) COLOR_GREEN_SOFT else COLOR_RED_SOFT, 18, if (ok) COLOR_GREEN_BORDER else COLOR_RED_BORDER, 1)
+        setPadding(dp(10), dp(6), dp(10), dp(6))
     }
 
-    private fun card(color: Int = COLOR_CARD, radius: Int = 24, stroke: Int = COLOR_BORDER): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(color, radius, stroke, 1)
-        }
+    private fun card(color: Int = COLOR_CARD, radius: Int = 24, stroke: Int = COLOR_BORDER): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = rounded(color, radius, stroke, 1)
     }
 
-    private fun rounded(color: Int, radius: Int, strokeColor: Int? = null, strokeWidth: Int = 0): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = dp(radius).toFloat()
-            if (strokeColor != null && strokeWidth > 0) setStroke(dp(strokeWidth), strokeColor)
-        }
+    private fun rounded(color: Int, radius: Int, strokeColor: Int? = null, strokeWidth: Int = 0): GradientDrawable = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = dp(radius).toFloat()
+        if (strokeColor != null && strokeWidth > 0) setStroke(dp(strokeWidth), strokeColor)
     }
 
     private fun addWithMargin(parent: LinearLayout, child: View, top: Int = 0, bottom: Int = 0) {
-        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lp.setMargins(0, dp(top), 0, dp(bottom))
-        parent.addView(child, lp)
+        parent.addView(child, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            setMargins(0, dp(top), 0, dp(bottom))
+        })
     }
 
     private fun addBottomMargin(view: View, bottom: Int) {
-        view.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            setMargins(0, 0, 0, dp(bottom))
-        }
+        view.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, dp(bottom)) }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-
-    private fun buttonBg(tone: ButtonTone): Int = when (tone) {
-        ButtonTone.PRIMARY -> COLOR_PRIMARY
-        ButtonTone.SECONDARY -> COLOR_CARD_ALT
-        ButtonTone.WARNING -> COLOR_WARNING_SOFT
-        ButtonTone.DANGER -> COLOR_RED_SOFT
-    }
-
-    private fun buttonBorder(tone: ButtonTone): Int = when (tone) {
-        ButtonTone.PRIMARY -> COLOR_PRIMARY
-        ButtonTone.SECONDARY -> COLOR_BORDER
-        ButtonTone.WARNING -> COLOR_WARNING_BORDER
-        ButtonTone.DANGER -> COLOR_RED_BORDER
-    }
-
-    private fun buttonIcon(tone: ButtonTone): String = when (tone) {
-        ButtonTone.PRIMARY -> "🚀"
-        ButtonTone.SECONDARY -> "›"
-        ButtonTone.WARNING -> "⚠️"
-        ButtonTone.DANGER -> "⛔"
-    }
-
+    private fun buttonBg(tone: ButtonTone): Int = when (tone) { ButtonTone.PRIMARY -> COLOR_PRIMARY; ButtonTone.SECONDARY -> COLOR_CARD_ALT; ButtonTone.WARNING -> COLOR_WARNING_SOFT; ButtonTone.DANGER -> COLOR_RED_SOFT }
+    private fun buttonBorder(tone: ButtonTone): Int = when (tone) { ButtonTone.PRIMARY -> COLOR_PRIMARY; ButtonTone.SECONDARY -> COLOR_BORDER; ButtonTone.WARNING -> COLOR_WARNING_BORDER; ButtonTone.DANGER -> COLOR_RED_BORDER }
+    private fun buttonIcon(tone: ButtonTone): String = when (tone) { ButtonTone.PRIMARY -> "🚀"; ButtonTone.SECONDARY -> "›"; ButtonTone.WARNING -> "⚠️"; ButtonTone.DANGER -> "⛔" }
     private enum class ButtonTone { PRIMARY, SECONDARY, WARNING, DANGER }
 
     companion object {
@@ -657,7 +612,6 @@ class MainActivity : Activity() {
         private const val COLOR_ACCENT_BORDER = 0xFFB7DBFF.toInt()
         private const val COLOR_WARNING_SOFT = 0xFFFFF7E8.toInt()
         private const val COLOR_WARNING_BORDER = 0xFFFFC66D.toInt()
-        private const val COLOR_RED = 0xFFE23B3B.toInt()
         private const val COLOR_RED_SOFT = 0xFFFFECEC.toInt()
         private const val COLOR_RED_BORDER = 0xFFFFB5B5.toInt()
         private const val COLOR_GREEN = 0xFF0FA66B.toInt()
