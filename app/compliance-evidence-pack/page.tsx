@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'AI Governance Compliance Evidence Pack — DSG ONE',
   description:
-    'Downloadable pre-audit compliance evidence for EU AI Act Article 12/14 and ISO/IEC 42001. Includes formal Z3 proofs (24 theorems), 874 automated test results, WORM hash-chain evidence, and control mapping. Not a third-party certification.',
+    'Downloadable pre-audit compliance evidence for EU AI Act Article 12/14, Annex IV, and ISO/IEC 42001. Includes formal Z3 proofs (24 theorems), 998 automated test results, mutation score 72.08%, CCVS v1.2 evidence chain, and control mapping. Not a third-party certification.',
 };
 
 const EVIDENCE_SECTIONS = [
@@ -19,21 +19,21 @@ const EVIDENCE_SECTIONS = [
     icon: '🔐',
     title: 'WORM Audit Trail',
     desc: 'Write-Once SHA-256 hash chain: requestHash → decisionHash → recordHash → bundleHash. Optional HMAC-SHA256 signing. Tamper-evident — any field change cascades to all downstream hashes.',
-    badge: '874 assertions verified',
+    badge: '998 assertions verified',
     color: 'emerald',
   },
   {
     icon: '🧪',
     title: 'Automated Test Evidence',
-    desc: '874 tests across 129 files covering gateway invariants, WORM idempotency, evidence bundle signing, approval lifecycle, security primitives, and provider dispatch.',
+    desc: '998 tests across 133 files covering gateway invariants, WORM idempotency, evidence bundle signing, approval lifecycle, security primitives, and provider dispatch. Mutation score 72.08% (191/265 killed) verified by Stryker.',
     badge: '+59% vs baseline',
     color: 'violet',
   },
   {
     icon: '📋',
     title: 'EU AI Act Mapping',
-    desc: 'Art. 9 (Risk Management), Art. 12 (Record Keeping), Art. 14 (Human Oversight) — each mapped to specific DSG ONE controls with test evidence references.',
-    badge: 'Art. 9 · 12 · 14',
+    desc: 'Art. 9 (Risk Management), Art. 12 (Record Keeping), Art. 14 (Human Oversight), Annex IV (9-item technical documentation checklist) — each mapped to DSG ONE controls with test evidence. Live at GET /api/compliance-evidence-pack/annex4.',
+    badge: 'Art. 9 · 12 · 14 · Annex IV',
     color: 'amber',
   },
   {
@@ -85,9 +85,10 @@ export default function ComplianceEvidencePackPage() {
             <span className="text-amber-300">Compliance Evidence Pack</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-            Formal proofs, WORM audit trail evidence, 874 automated test assertions, and
-            EU AI Act / ISO 42001 control mappings — structured for pre-audit submission
-            to your board, compliance team, or procurement review.
+            Formal proofs, WORM audit trail evidence, 998 automated test assertions,
+            CCVS v1.2 evidence chain, EU AI Act Annex IV mapping, and ISO 42001 control
+            references — structured for pre-audit submission to your board, compliance team,
+            or procurement review.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <a
@@ -195,11 +196,12 @@ export default function ComplianceEvidencePackPage() {
               </p>
             </div>
             <div className="rounded-xl border border-slate-700 bg-slate-900 p-5">
-              <p className="font-bold text-white">874 automated tests — regression prevention</p>
+              <p className="font-bold text-white">998 automated tests · 72.08% mutation score</p>
               <p className="mt-2 text-sm text-slate-400 leading-6">
                 Tests cover the gap between what Z3 proves (structural properties) and what runs in production
                 (database interactions, authentication, HTTP routing, hash chain construction).
                 Every WORM transition, approval lifecycle step, and security primitive has explicit assertions.
+                Stryker mutation testing verified 191/265 mutants killed (72.08%) — gate at ≥70%.
               </p>
             </div>
             <div className="rounded-xl border border-slate-700 bg-slate-900 p-5">

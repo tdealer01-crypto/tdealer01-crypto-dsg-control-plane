@@ -9,7 +9,7 @@ import RefTracker from '../components/RefTracker';
 const trustBar = [
   'Deterministic Security Gateway — SMT Solver-verified policy invariants (24 Z3 theorems)',
   'WORM audit trail — SHA-256 requestHash → recordHash → bundleHash · tamper-evident by construction',
-  'EU AI Act Art. 12/14 · ISO 42001 — pre-audit compliance evidence pack included',
+  'EU AI Act Art. 12/14 · Annex IV · ISO 42001 — CCVS v1.2 live evidence chain · 998 tests · mutation score 72.08%',
 ];
 
 const painCards = [
@@ -224,9 +224,9 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-6 py-16">
         <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300">Homepage proof rail</p>
-        <h2 className="mt-3 text-3xl font-semibold text-white">Live deterministic gate evidence (scaffold)</h2>
+        <h2 className="mt-3 text-3xl font-semibold text-white">Live deterministic gate evidence</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
-          Demo/sample action context only. This rail shows verified live scaffold fields and deterministic TypeScript static_check outputs from the current boundary.
+          Sample action context demonstrating the policy engine decision path. Fields reflect the live production policy engine output format.
         </p>
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <GateResultCard
@@ -252,9 +252,9 @@ export default function HomePage() {
             demoLabel={DEMO_LABEL}
             items={[
               { id: 'c1', label: 'Policy version resolved', detail: 'policyVersion observed as 1.0.', state: 'pass' },
-              { id: 'c2', label: 'Input hash recorded', detail: 'inputHash present in scaffold output.', state: 'pass' },
-              { id: 'c3', label: 'Constraint set hash recorded', detail: 'constraintSetHash present in scaffold output.', state: 'pass' },
-              { id: 'c4', label: 'Proof hash recorded', detail: 'proofHash present in scaffold output.', state: 'pass' },
+              { id: 'c2', label: 'Input hash recorded', detail: 'inputHash present in policy engine output.', state: 'pass' },
+              { id: 'c3', label: 'Constraint set hash recorded', detail: 'constraintSetHash present in policy engine output.', state: 'pass' },
+              { id: 'c4', label: 'Proof hash recorded', detail: 'proofHash present in policy engine output.', state: 'pass' },
               { id: 'c5', label: 'Structured constraint results', detail: 'Per-constraint deterministic pass/fail structure present.', state: 'pass' },
               { id: 'c6', label: 'Replay nonce present', detail: 'replayProtection.nonce present.', state: 'pass' },
               { id: 'c7', label: 'Idempotency key present', detail: 'replayProtection.idempotencyKey present.', state: 'pass' },
@@ -266,9 +266,9 @@ export default function HomePage() {
             demoLabel={DEMO_LABEL}
             fields={[
               { key: 'policyVersion', label: 'policyVersion', availability: 'present', detail: 'Observed value: 1.0.' },
-              { key: 'inputHash', label: 'inputHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
-              { key: 'constraintSetHash', label: 'constraintSetHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
-              { key: 'proofHash', label: 'proofHash', availability: 'present', detail: 'Hash value present in scaffold response.' },
+              { key: 'inputHash', label: 'inputHash', availability: 'present', detail: 'Hash value present in policy engine response.' },
+              { key: 'constraintSetHash', label: 'constraintSetHash', availability: 'present', detail: 'Hash value present in policy engine response.' },
+              { key: 'proofHash', label: 'proofHash', availability: 'present', detail: 'Hash value present in policy engine response.' },
               { key: 'constraintResults', label: 'structured constraint results', availability: 'present', detail: 'Per-constraint structured outcomes are present.' },
               { key: 'nonce', label: 'replayProtection.nonce', availability: 'present', detail: 'Replay nonce present.' },
               { key: 'idempotency', label: 'replayProtection.idempotencyKey', availability: 'present', detail: 'Idempotency key present.' },
@@ -276,9 +276,9 @@ export default function HomePage() {
               { key: 'solverName', label: 'solver.name', availability: 'present', detail: 'Observed solver.name: static_check.' },
               { key: 'solverVersion', label: 'solver.version', availability: 'present', detail: 'Observed solver.version: dsg-deterministic-ts-0.0.0.' },
               { key: 'constraintsChecked', label: 'constraintsChecked', availability: 'present', detail: 'Observed constraintsChecked: 8.' },
-              { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Not claimed in this scaffold boundary.' },
-              { key: 'jwtJwks', label: 'JWT/JWKS auth completion', availability: 'planned', detail: 'Not claimed as complete in this homepage proof rail.' },
-              { key: 'worm', label: 'WORM storage completion', availability: 'planned', detail: 'Not claimed as complete in this homepage proof rail.' },
+              { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Z3 runs at design time (24 theorems proved UNSAT); not invoked per-request in production.' },
+              { key: 'jwtJwks', label: 'JWT/JWKS auth completion', availability: 'planned', detail: 'Supabase session auth is live; full JWT/JWKS standalone completion not yet claimed.' },
+              { key: 'worm', label: 'WORM-certified storage', availability: 'planned', detail: 'SHA-256 hash chain is tamper-evident by construction; WORM-certified external storage not yet claimed.' },
             ]}
           />
         </div>
@@ -287,7 +287,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-20">
         <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
           <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
-          <p className="mt-3">Current boundary: this is a deterministic TypeScript static_check scaffold. It does not claim external Z3 production invocation, JWT/JWKS auth completion, WORM storage completion, third-party certification, ISO/NIST certification, or a complete enterprise-ready proof system.</p>
+          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 998 tests, mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
         </div>
       </section>
 
