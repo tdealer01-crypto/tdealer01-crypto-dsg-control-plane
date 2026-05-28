@@ -35,15 +35,13 @@ export default defineConfig({
         '**/*.d.ts',
       ],
       thresholds: {
-        // Phase-1 targets (raised from 20/45/20/20 per CCVS compliance gap remediation).
-        // Phase-2: 75/80/70/75. Phase-3: 85/90/80/85.
-        // Critical governance paths target ≥90/90/85/90 as per-file floors in Phase-2:
-        //   lib/gate/**, lib/governance/**, lib/commands/**, lib/executors/**,
-        //   lib/model-provider/**, lib/deployment/**, lib/billing/**, lib/usage/**
+        // Phase-1 global targets. Phase-2: 75/80/70/75. Phase-3: 85/90/80/85.
         lines: 60,
         functions: 65,
         branches: 55,
         statements: 60,
+        // Phase-2 per-file floors for critical governance paths (gate is Phase-2-ready now).
+        'lib/runtime/gate.ts': { lines: 90, functions: 90, branches: 85, statements: 90 },
       },
     },
   },
