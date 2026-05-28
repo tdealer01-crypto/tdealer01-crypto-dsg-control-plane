@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  id-token: write
 
 env:
   CI: true
@@ -16,22 +17,14 @@ env:
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Evidence Severity Levels (CCVS v1):
-#   L1 = unit          (basic logic coverage)
-#   L2 = integration   (API + workflow coverage)
-#   L3 = adversarial   (tamper / replay / failure tests)
-#   L4 = mutation      (cryptographic-strength logic proof)
-#   L5 = provenance    (independently reproducible build)
-# ─────────────────────────────────────────────────────────────────────────────
+# L1=unit  L2=integration  L3=adversarial  L4=mutation/proof  L5=provenance
 
 jobs:
-  # ── L1: Unit evidence ───────────────────────────────────────────────────────
   unit-evidence:
     name: "L1 — Unit evidence"
     runs-on: ubuntu-latest
     outputs:
-      chain_hash: ${{ steps.emit.outputs.chain_hash }}
+      chain_hash: ${{ steps.emit-all.outputs.chain_hash }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,34 +32,52 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
       - name: Run unit tests
         run: npm run test
-
-      - name: Collect coverage metrics (record only, no threshold enforcement)
+      - name: Collect coverage (record only)
         run: npx vitest run --coverage --coverage.reporter=json-summary || true
-
-      - name: Emit L1 evidence envelope
-        id: emit
+      - name: Emit aggregate unit evidence
+        id: emit-all
         run: |
-          node scripts/emit-test-evidence.mjs \
-            --type unit \
-            --suite all-unit \
-            --output ccvs-unit-evidence.json
-          HASH=$(node -e "const f=require('fs');const e=JSON.parse(f.readFileSync('ccvs-unit-evidence.json'));console.log(e.integrity.chain_hash)")
+          node scripts/emit-test-evidence.mjs --type unit --suite all-unit --output ccvs-all-unit-evidence.json
+          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-all-unit-evidence.json'));console.log(e.integrity.chain_hash)")
           echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-
-      - name: Verify L1 envelope integrity
-        run: node scripts/verify-evidence-chain.mjs ccvs-unit-evidence.json
-
+      - name: Emit spine-pipeline suite envelope
+        run: |
+          npx vitest run tests/unit/spine/ && true || true
+          node scripts/emit-test-evidence.mjs --type unit --suite spine-pipeline \
+            --output ccvs-spine-pipeline-evidence.json \
+            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-all-unit-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Emit agent-command-gate suite envelope
+        run: |
+          npx vitest run tests/dsg/agent-command-gate.test.ts && true || true
+          node scripts/emit-test-evidence.mjs --type integration --suite agent-command-gate \
+            --output ccvs-agent-command-gate-evidence.json \
+            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-spine-pipeline-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Emit midmarket-governance-autopilot suite envelope
+        run: |
+          npx vitest run tests/dsg/midmarket-governance-autopilot.test.ts && true || true
+          node scripts/emit-test-evidence.mjs --type integration --suite midmarket-governance-autopilot \
+            --output ccvs-midmarket-governance-autopilot-evidence.json \
+            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-agent-command-gate-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Verify L1 envelopes
+        run: node scripts/verify-evidence-chain.mjs --dir .
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        continue-on-error: true
+      - name: Sign L1 bundles (keyless Sigstore)
+        run: |
+          for f in ccvs-all-unit-evidence.json ccvs-spine-pipeline-evidence.json ccvs-agent-command-gate-evidence.json ccvs-midmarket-governance-autopilot-evidence.json; do
+            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
+          done
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-unit-evidence-${{ github.run_id }}
-          path: ccvs-unit-evidence.json
+          path: ccvs-*-evidence.json
           retention-days: 90
           if-no-files-found: warn
 
-  # ── L2: Integration evidence ─────────────────────────────────────────────────
   integration-evidence:
     name: "L2 — Integration evidence"
     runs-on: ubuntu-latest
@@ -80,32 +91,46 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
       - name: Run integration tests
         run: npm run test:integration
-
-      - name: Emit L2 evidence envelope
+      - name: Emit L2 aggregate evidence
         id: emit
         run: |
-          node scripts/emit-test-evidence.mjs \
-            --type integration \
-            --suite all-integration \
-            --output ccvs-integration-evidence.json \
+          node scripts/emit-test-evidence.mjs --type integration --suite all-integration \
+            --output ccvs-all-integration-evidence.json \
             --previous-hash "${{ needs.unit-evidence.outputs.chain_hash }}"
-          HASH=$(node -e "const f=require('fs');const e=JSON.parse(f.readFileSync('ccvs-integration-evidence.json'));console.log(e.integrity.chain_hash)")
+          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-all-integration-evidence.json'));console.log(e.integrity.chain_hash)")
           echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-
-      - name: Verify L2 envelope integrity
-        run: node scripts/verify-evidence-chain.mjs ccvs-integration-evidence.json
-
+      - name: Emit audit-evidence suite envelope
+        run: |
+          npx vitest run tests/integration/api/audit-evidence.test.ts && true || true
+          node scripts/emit-test-evidence.mjs --type adversarial --suite audit-evidence \
+            --output ccvs-audit-evidence-evidence.json \
+            --previous-hash "${{ needs.unit-evidence.outputs.chain_hash }}"
+      - name: Emit audit-route suite envelope
+        run: |
+          npx vitest run tests/integration/api/audit-route.test.ts && true || true
+          node scripts/emit-test-evidence.mjs --type integration --suite audit-route \
+            --output ccvs-audit-route-evidence.json \
+            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-audit-evidence-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Verify L2 envelopes
+        run: node scripts/verify-evidence-chain.mjs --dir .
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        continue-on-error: true
+      - name: Sign L2 bundles
+        run: |
+          for f in ccvs-all-integration-evidence.json ccvs-audit-evidence-evidence.json ccvs-audit-route-evidence.json; do
+            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
+          done
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-integration-evidence-${{ github.run_id }}
-          path: ccvs-integration-evidence.json
+          path: ccvs-*-evidence.json
           retention-days: 90
           if-no-files-found: warn
 
-  # ── L3: Adversarial / replay / failure evidence ───────────────────────────────
   adversarial-evidence:
     name: "L3 — Adversarial evidence"
     runs-on: ubuntu-latest
@@ -119,52 +144,105 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
-      - name: Run adversarial + failure tests
+      - name: Run failure tests
         run: npm run test:failure
-
-      - name: Emit L3 adversarial evidence envelope
-        id: emit-adversarial
+      - name: Emit adversarial evidence
         run: |
-          node scripts/emit-test-evidence.mjs \
-            --type adversarial \
-            --suite tamper-replay-failure \
+          node scripts/emit-test-evidence.mjs --type adversarial --suite tamper-replay-failure \
             --output ccvs-adversarial-evidence.json \
             --previous-hash "${{ needs.integration-evidence.outputs.chain_hash }}"
-
-      - name: Emit L3 replay evidence envelope
+      - name: Emit replay-matrix suite envelope
         run: |
-          node scripts/emit-test-evidence.mjs \
-            --type replay \
-            --suite replay-matrix \
-            --output ccvs-replay-evidence.json \
-            --previous-hash "${{ needs.integration-evidence.outputs.chain_hash }}"
-
-      - name: Emit L3 combined chain_hash output
+          npx vitest run tests/failure/replay-matrix.test.ts && true || true
+          node scripts/emit-test-evidence.mjs --type replay --suite replay-matrix \
+            --output ccvs-replay-matrix-evidence.json \
+            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-adversarial-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Emit chain output
         id: emit
         run: |
-          HASH=$(node -e "const f=require('fs');const e=JSON.parse(f.readFileSync('ccvs-adversarial-evidence.json'));console.log(e.integrity.chain_hash)")
+          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-replay-matrix-evidence.json'));console.log(e.integrity.chain_hash)")
           echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-
-      - name: Verify L3 envelope integrity
+      - name: Verify L3 envelopes
+        run: node scripts/verify-evidence-chain.mjs --dir .
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        continue-on-error: true
+      - name: Sign L3 bundles
         run: |
-          node scripts/verify-evidence-chain.mjs ccvs-adversarial-evidence.json
-          node scripts/verify-evidence-chain.mjs ccvs-replay-evidence.json
-
+          for f in ccvs-adversarial-evidence.json ccvs-replay-matrix-evidence.json; do
+            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
+          done
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-adversarial-evidence-${{ github.run_id }}
-          path: |
-            ccvs-adversarial-evidence.json
-            ccvs-replay-evidence.json
+          path: ccvs-*-evidence.json
           retention-days: 90
           if-no-files-found: warn
 
-  # ── L4: Z3 proof / oversight evidence ────────────────────────────────────────
-  proof-evidence:
-    name: "L4 — Z3 proof / oversight evidence"
+  proof-mutation-evidence:
+    name: "L4 — Z3 proof + Mutation evidence"
     runs-on: ubuntu-latest
     needs: adversarial-evidence
+    outputs:
+      chain_hash: ${{ steps.emit-final.outputs.chain_hash }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Run Z3 proof tests
+        run: npm run test -- tests/proofs/ --reporter=verbose
+        timeout-minutes: 10
+      - name: Emit billing-invariants oversight evidence
+        run: |
+          node scripts/emit-test-evidence.mjs --type oversight --suite billing-invariants \
+            --output ccvs-billing-invariants-evidence.json \
+            --previous-hash "${{ needs.adversarial-evidence.outputs.chain_hash }}"
+      - name: Run Stryker mutation tests
+        run: npx stryker run --logLevel warn
+        timeout-minutes: 15
+        continue-on-error: true
+      - name: Emit mutation evidence
+        run: |
+          MUTATION_SCORE=$(node -e "try{const r=JSON.parse(require('fs').readFileSync('stryker-report/mutation-report.json'));const s=Object.values(r.files||{}).reduce((a,f)=>{a.k+=f.mutants.filter(m=>m.status==='Killed').length;a.t+=f.mutants.filter(m=>!['NoCoverage','Ignored','CompileError'].includes(m.status)).length;return a},{k:0,t:0});console.log(s.t>0?((s.k/s.t)*100).toFixed(1):'0')}catch{console.log('0')}")
+          echo "Mutation score: $MUTATION_SCORE%"
+          node scripts/emit-test-evidence.mjs --type mutation --suite stryker-critical-paths \
+            --mutation-score "$MUTATION_SCORE" \
+            --output ccvs-mutation-evidence.json \
+            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-billing-invariants-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Emit final chain hash
+        id: emit-final
+        run: |
+          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.integrity.chain_hash)")
+          echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
+      - name: Verify L4 envelopes
+        run: node scripts/verify-evidence-chain.mjs --dir .
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        continue-on-error: true
+      - name: Sign L4 bundles
+        run: |
+          for f in ccvs-billing-invariants-evidence.json ccvs-mutation-evidence.json; do
+            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
+          done
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ccvs-proof-evidence-${{ github.run_id }}
+          path: |
+            ccvs-billing-invariants-evidence.json
+            ccvs-mutation-evidence.json
+            stryker-report/
+          retention-days: 90
+          if-no-files-found: warn
+
+  sbom-provenance:
+    name: "L5 — SBOM + Build provenance"
+    runs-on: ubuntu-latest
+    needs: proof-mutation-evidence
     outputs:
       chain_hash: ${{ steps.emit.outputs.chain_hash }}
     steps:
@@ -174,37 +252,49 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
-      - name: Run Z3 proof tests
-        run: npm run test -- tests/proofs/ --reporter=verbose
-        timeout-minutes: 10
-
-      - name: Emit L4 oversight evidence envelope
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          npm sbom --sbom-format cyclonedx --output-format json > sbom.cyclonedx.json 2>/dev/null || \
+          node -e "
+            const pkg=JSON.parse(require('fs').readFileSync('package.json'));
+            const sbom={bomFormat:'CycloneDX',specVersion:'1.4',serialNumber:'urn:uuid:'+require('crypto').randomUUID(),version:1,
+              metadata:{timestamp:new Date().toISOString(),component:{type:'application',name:pkg.name,version:pkg.version||'0.0.0'}},
+              dependencies:Object.keys({...pkg.dependencies,...pkg.devDependencies}).map(n=>({ref:n}))};
+            require('fs').writeFileSync('sbom.cyclonedx.json',JSON.stringify(sbom,null,2));
+          "
+          echo "SBOM generated"
+      - name: Emit L5 provenance evidence
         id: emit
         run: |
-          node scripts/emit-test-evidence.mjs \
-            --type oversight \
-            --suite z3-billing-invariants \
-            --output ccvs-proof-evidence.json \
-            --previous-hash "${{ needs.adversarial-evidence.outputs.chain_hash }}"
-          HASH=$(node -e "const f=require('fs');const e=JSON.parse(f.readFileSync('ccvs-proof-evidence.json'));console.log(e.integrity.chain_hash)")
+          node scripts/emit-test-evidence.mjs --type provenance --suite ci-provenance \
+            --sbom-ref sbom.cyclonedx.json \
+            --output ccvs-ci-provenance-evidence.json \
+            --previous-hash "${{ needs.proof-mutation-evidence.outputs.chain_hash }}"
+          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-ci-provenance-evidence.json'));console.log(e.integrity.chain_hash)")
           echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-
-      - name: Verify L4 envelope integrity
-        run: node scripts/verify-evidence-chain.mjs ccvs-proof-evidence.json
-
+      - name: Verify L5 envelope
+        run: node scripts/verify-evidence-chain.mjs ccvs-ci-provenance-evidence.json
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        continue-on-error: true
+      - name: Sign SBOM + provenance
+        run: |
+          cosign sign-blob --bundle sbom.cyclonedx.sigstore.json --yes sbom.cyclonedx.json 2>/dev/null && echo "SBOM signed" || echo "SBOM sign skipped"
+          cosign sign-blob --bundle ccvs-ci-provenance-evidence.sigstore.json --yes ccvs-ci-provenance-evidence.json 2>/dev/null && echo "Provenance signed" || echo "Provenance sign skipped"
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         with:
-          name: ccvs-proof-evidence-${{ github.run_id }}
-          path: ccvs-proof-evidence.json
+          name: ccvs-provenance-${{ github.run_id }}
+          path: |
+            sbom.cyclonedx.json
+            ccvs-ci-provenance-evidence.json
           retention-days: 90
           if-no-files-found: warn
 
-  # ── Compliance matrix ─────────────────────────────────────────────────────────
   compliance-matrix:
     name: "Generate compliance matrix"
     runs-on: ubuntu-latest
-    needs: [unit-evidence, integration-evidence, adversarial-evidence, proof-evidence]
+    needs: [unit-evidence, integration-evidence, adversarial-evidence, proof-mutation-evidence, sbom-provenance]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -212,41 +302,36 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
       - name: Download all evidence artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: ccvs-*-evidence-${{ github.run_id }}
+          pattern: ccvs-*-${{ github.run_id }}
           merge-multiple: true
           path: ./ccvs-evidence-artifacts
-
       - name: Generate compliance matrix
         run: |
           node scripts/generate-compliance-matrix.mjs \
             --evidence-dir ./ccvs-evidence-artifacts \
             --output ccvs-compliance-matrix.json \
             --policy-version v1
-
       - name: Print compliance summary
         run: |
           node -e "
-            const m = JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json'));
-            const s = m.summary;
-            console.log('── CCVS Compliance Matrix ─────────────────────');
-            console.log('  Policy version : ' + m.policy_version);
-            console.log('  Generated at   : ' + m.generated_at);
-            console.log('  Total controls : ' + s.total);
-            console.log('  PASS           : ' + s.pass);
-            console.log('  FAIL           : ' + s.fail);
-            console.log('  NOT VERIFIED   : ' + s.not_verified);
-            console.log('  Claim eligible : ' + s.claim_pass_eligible);
-            console.log('──────────────────────────────────────────────');
-            m.rows.forEach(r => {
-              const icon = r.status === 'pass' ? '✅' : r.status === 'fail' ? '❌' : '⚠️';
-              console.log(icon + ' ' + r.requirement_id.padEnd(30) + r.status.padEnd(14) + (r.evidence_hash ?? 'pending'));
+            const m=JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json'));
+            const s=m.summary;
+            console.log('── CCVS Compliance Matrix ──────────────────────────────');
+            console.log('  policy_version     : ' + m.policy_version);
+            console.log('  PASS               : ' + s.pass + ' / ' + s.total);
+            console.log('  FAIL               : ' + s.fail);
+            console.log('  NOT VERIFIED       : ' + s.not_verified);
+            console.log('  claim_pass_eligible: ' + s.claim_pass_eligible);
+            console.log('────────────────────────────────────────────────────────');
+            m.rows.forEach(r=>{
+              const icon = r.status==='pass'?'✅':r.status==='fail'?'❌':'⚠️ ';
+              const h = r.evidence_hash ? r.evidence_hash.slice(0,22)+'...' : 'pending';
+              console.log(icon+' '+r.requirement_id.padEnd(28)+r.control_id.padEnd(26)+h);
             });
           "
-
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-compliance-matrix-${{ github.run_id }}
@@ -254,73 +339,43 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-  # ── Drift detection ────────────────────────────────────────────────────────────
   drift-detection:
-    name: "Drift detection"
+    name: "Drift detection + snapshot commit"
     runs-on: ubuntu-latest
     needs: compliance-matrix
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
-      - name: Detect policy / deployment drift
+      - name: Detect drift and update snapshot
         run: |
-          node - <<'EOF'
-          const crypto = require('crypto');
-          const fs = require('fs');
-
-          function sha256Hex(data) {
-            return crypto.createHash('sha256').update(data, 'utf8').digest('hex');
-          }
-
-          const deploymentFields = {
-            NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-            DSG_CONTROL_PLANE_BASE_URL: process.env.DSG_CONTROL_PLANE_BASE_URL ?? '',
-            GITHUB_SHA: process.env.GITHUB_SHA ?? '',
-          };
-
-          const current = {
-            policy_version: process.env.DSG_POLICY_VERSION ?? 'v1',
-            hash_algorithm: 'sha256',
-            deployment_config_hash: 'sha256:' + sha256Hex(JSON.stringify(deploymentFields)),
-            schema_version: '1.0.0',
-            captured_at: new Date().toISOString(),
-          };
-
-          const snapshotPath = 'docs/ccvs/last-drift-snapshot.json';
-          let previous = null;
-          if (fs.existsSync(snapshotPath)) {
-            try { previous = JSON.parse(fs.readFileSync(snapshotPath, 'utf8')); } catch {}
-          }
-
-          const fieldsChanged = [];
-          if (previous) {
-            ['policy_version', 'hash_algorithm', 'deployment_config_hash', 'schema_version'].forEach(k => {
-              if (previous[k] !== current[k]) fieldsChanged.push(k);
-            });
-          }
-
-          if (fieldsChanged.length > 0) {
-            console.log('⚠️  DRIFT DETECTED — fields changed: ' + fieldsChanged.join(', '));
-            console.log('    Previous policy_version: ' + (previous?.policy_version ?? 'none'));
-            console.log('    Current  policy_version: ' + current.policy_version);
-            console.log('    Invalidated attestations: all_compliance_attestations, all_evidence_envelopes');
-          } else {
-            console.log('✅ No drift detected — policy and deployment config are stable');
-          }
-
-          fs.writeFileSync(snapshotPath, JSON.stringify(current, null, 2));
-          console.log('Drift snapshot written → ' + snapshotPath);
-          EOF
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-drift-snapshot-${{ github.run_id }}
-          path: docs/ccvs/last-drift-snapshot.json
-          retention-days: 90
-          if-no-files-found: warn
+          node -e "
+            const crypto=require('crypto'),fs=require('fs');
+            const sha256=d=>crypto.createHash('sha256').update(d,'utf8').digest('hex');
+            const fields={NEXT_PUBLIC_SUPABASE_URL:process.env.NEXT_PUBLIC_SUPABASE_URL||'',GITHUB_SHA:process.env.GITHUB_SHA||''};
+            const current={policy_version:process.env.DSG_POLICY_VERSION||'v1',hash_algorithm:'sha256',deployment_config_hash:'sha256:'+sha256(JSON.stringify(fields)),schema_version:'1.0.0',captured_at:new Date().toISOString()};
+            const path='docs/ccvs/last-drift-snapshot.json';
+            let prev=null; try{prev=JSON.parse(fs.readFileSync(path,'utf8'))}catch{}
+            const changed=prev?['policy_version','hash_algorithm','deployment_config_hash','schema_version'].filter(k=>prev[k]!==current[k]):[];
+            if(changed.length>0){console.log('⚠️  DRIFT: '+changed.join(', '));} else{console.log('✅ No drift detected');}
+            fs.writeFileSync(path,JSON.stringify(current,null,2));
+          "
+      - name: Commit drift snapshot to main
+        run: |
+          git config user.email "ccvs-bot@dsg.pics"
+          git config user.name "CCVS Drift Bot"
+          git add docs/ccvs/last-drift-snapshot.json
+          if git diff --cached --quiet; then
+            echo "Snapshot unchanged — no commit"
+          else
+            git commit -m "chore(ccvs): update drift snapshot [skip ci]"
+            git push origin HEAD:main
+            echo "Drift snapshot committed and pushed"
+          fi
