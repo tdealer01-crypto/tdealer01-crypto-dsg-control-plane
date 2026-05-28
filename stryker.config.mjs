@@ -20,7 +20,7 @@ export default {
   reporters: ['html', 'json', 'progress'],
   htmlReporter: { fileName: 'stryker-report/index.html' },
   jsonReporter: { fileName: 'stryker-report/mutation-report.json' },
-  ignorePatterns: ['node_modules', '.next', 'coverage', 'stryker-report'],
+  ignorePatterns: ['node_modules', '.next', 'coverage', 'stryker-report', '.factory', '.agents', '.devin', '.forge', '.goose', '.hermes', '.openhands', '.pi', 'skills'],
   vitest: {
     configFile: 'vitest.config.ts',
   },

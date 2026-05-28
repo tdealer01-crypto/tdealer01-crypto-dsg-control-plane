@@ -83,6 +83,42 @@ describe('buildEvidenceEnvelope', () => {
     expect(env.integrity.sbom_ref).toBe('sbom.cyclonedx.json');
   });
 
+  it('includes bundle_ref when bundleRef is provided', () => {
+    const env = buildEvidenceEnvelope({ ...baseOpts, bundleRef: 'evidence.sigstore.json' });
+    expect(env.integrity.bundle_ref).toBe('evidence.sigstore.json');
+  });
+
+  it('includes verification_policy_ref when verificationPolicyRef is provided', () => {
+    const env = buildEvidenceEnvelope({ ...baseOpts, verificationPolicyRef: 'policy.json' });
+    expect(env.integrity.verification_policy_ref).toBe('policy.json');
+  });
+
+  it('respects explicit policyVersion override', () => {
+    const env = buildEvidenceEnvelope({ ...baseOpts, policyVersion: 'v2' });
+    expect(env.policy_version).toBe('v2');
+  });
+
+  it('defaults policy_version to v1 when not provided', () => {
+    const env = buildEvidenceEnvelope(baseOpts);
+    expect(env.policy_version).toBe('v1');
+  });
+
+  it('chain_hash changes when subjects array changes', () => {
+    const a = buildEvidenceEnvelope({ ...baseOpts, subjects: [{ name: 'repo:org/repo', digest: { sha1: 'abc' } }] });
+    const b = buildEvidenceEnvelope({ ...baseOpts, subjects: [{ name: 'repo:org/repo', digest: { sha1: 'def' } }] });
+    expect(a.integrity.chain_hash).not.toBe(b.integrity.chain_hash);
+  });
+
+  it('handles empty metrics object', () => {
+    const env = buildEvidenceEnvelope({ ...baseOpts, metrics: {} });
+    expect(env.integrity.chain_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it('handles metrics with null-like falsy values', () => {
+    const env = buildEvidenceEnvelope({ ...baseOpts, metrics: { tests_total: 0, tests_failed: 0, tests_passed: 0 } });
+    expect(verifyEnvelopeIntegrity(env).ok).toBe(true);
+  });
+
   it('generated_at is a valid ISO date', () => {
     const env = buildEvidenceEnvelope(baseOpts);
     expect(new Date(env.generated_at).toISOString()).toBe(env.generated_at);
@@ -115,6 +151,20 @@ describe('verifyEnvelopeIntegrity', () => {
   });
 });
 
+describe('buildEvidenceEnvelope — metrics fallback', () => {
+  it('defaults metrics to empty object when not provided', () => {
+    const optsNoMetrics: CollectorOptions = {
+      evidenceType: 'unit',
+      subjects: [{ name: 'repo:org/repo', digest: { sha1: 'abc1234' } }],
+      run: testRun,
+      oidc: testOIDC,
+    };
+    const env = buildEvidenceEnvelope(optsNoMetrics);
+    expect(env.metrics).toEqual({});
+    expect(env.integrity.chain_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+});
+
 describe('buildRunContextFromEnv', () => {
   const savedEnv = { ...process.env };
 
@@ -138,6 +188,18 @@ describe('buildRunContextFromEnv', () => {
   it('builds invocation_id from run_id + attempt', () => {
     const ctx = buildRunContextFromEnv();
     expect(ctx.invocation_id).toBe('12345-1');
+  });
+
+  it('includes ref when GITHUB_REF is set', () => {
+    process.env.GITHUB_REF = 'refs/heads/main';
+    const ctx = buildRunContextFromEnv();
+    expect(ctx.ref).toBe('refs/heads/main');
+  });
+
+  it('includes runner_os when RUNNER_OS is set', () => {
+    process.env.RUNNER_OS = 'Linux';
+    const ctx = buildRunContextFromEnv();
+    expect(ctx.runner_os).toBe('Linux');
   });
 });
 

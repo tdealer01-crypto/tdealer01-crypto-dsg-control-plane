@@ -36,6 +36,20 @@ describe('detectOscillation', () => {
     expect(detectOscillation([0.1, 0.31], STRICT)).toBe(false); // only 2 < window=3
     expect(detectOscillation([0.1, 0.31, 0.1], STRICT)).toBe(true); // spread=0.21 ≥ 0.2
   });
+
+  it('returns false when called with no arguments (default empty array)', () => {
+    expect(detectOscillation()).toBe(false);
+  });
+
+  it('returns true when spread equals exactly oscillationSpread threshold (0.35)', () => {
+    // default oscillationSpread=0.35, window=4; max-min = 0.35-0.0 = 0.35 >= 0.35 → true
+    expect(detectOscillation([0.0, 0.35, 0.0, 0.35])).toBe(true);
+  });
+
+  it('returns false when spread is one epsilon below oscillationSpread (0.35)', () => {
+    // spread = 0.34, which is < 0.35 → false
+    expect(detectOscillation([0.0, 0.34, 0.0, 0.34])).toBe(false);
+  });
 });
 
 describe('evaluateGate — default policy', () => {
