@@ -27,6 +27,8 @@ const suiteName = flag('--suite') ?? 'default';
 const outputPath = flag('--output') ?? 'ccvs-evidence.json';
 const previousChainHash = flag('--previous-hash') ?? '';
 const policyVersion = flag('--policy-version') ?? process.env.DSG_POLICY_VERSION ?? 'v1';
+const sbomRef = flag('--sbom-ref') ?? undefined;
+const mutationScore = flag('--mutation-score') ? parseFloat(flag('--mutation-score')) : undefined;
 
 const SEVERITY = {
   unit: 1, integration: 2, adversarial: 3, replay: 3,
@@ -105,10 +107,12 @@ const envelope = {
     tests_failed,
     coverage,
     ...(duration_ms ? { duration_ms } : {}),
+    ...(mutationScore !== undefined ? { mutation_score: mutationScore } : {}),
   },
   integrity: {
     previous_chain_hash: previousChainHash,
     chain_hash: '',
+    ...(sbomRef ? { sbom_ref: sbomRef } : {}),
   },
   policy_version: policyVersion,
   generated_at: new Date().toISOString(),

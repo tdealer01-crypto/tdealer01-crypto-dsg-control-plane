@@ -51,7 +51,9 @@
     "ccvs:emit": "node scripts/emit-test-evidence.mjs",
     "ccvs:matrix": "node scripts/generate-compliance-matrix.mjs",
     "ccvs:verify": "node scripts/verify-evidence-chain.mjs",
-    "ccvs:pipeline": "npm run test:coverage && node scripts/emit-test-evidence.mjs --type unit --suite all-unit --output ccvs-unit-evidence.json && node scripts/verify-evidence-chain.mjs ccvs-unit-evidence.json && node scripts/generate-compliance-matrix.mjs --output ccvs-compliance-matrix.json"
+    "ccvs:pipeline": "npm run test:coverage && node scripts/emit-test-evidence.mjs --type unit --suite all-unit --output ccvs-unit-evidence.json && node scripts/verify-evidence-chain.mjs ccvs-unit-evidence.json && node scripts/generate-compliance-matrix.mjs --output ccvs-compliance-matrix.json",
+    "test:mutation": "npx stryker run",
+    "test:mutation:ci": "npx stryker run --logLevel warn"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",
@@ -69,6 +71,8 @@
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^20.17.0",
     "@types/react": "^18.2.79",
     "@vitest/coverage-v8": "^2.1.9",
