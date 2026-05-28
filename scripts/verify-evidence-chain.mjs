@@ -67,7 +67,7 @@ if (dirFlag !== -1) {
     process.exit(1);
   }
   files = fs.readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
+    .filter((f) => f.startsWith('ccvs-') && f.endsWith('.json'))
     .map((f) => path.join(dir, f));
 } else if (args.length > 0 && !args[0].startsWith('--')) {
   files = args.filter((a) => !a.startsWith('--'));
