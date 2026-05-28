@@ -20,6 +20,10 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | Unit + integration tests | ✅ **938 passed** / 950 total | `npm run test` — 129 files passed, 4 skipped |
 | Policy Z3 proofs | ✅ 8 theorems UNSAT | `npm run verify:policy` |
 | Revenue Z3 proofs | ✅ 16 theorems FORMAL PROOF PASS | `npm run proof:revenue` |
+| Mutation score gate | ✅ ≥70% enforced on main | `npm run test:mutation:ci` — Stryker break=70 |
+| Cosign bundle signing | ✅ L1/L4/L5 required on main | Keyless Sigstore, `id-token: write` |
+| gate.ts coverage floor | ✅ lines/fn/stmt ≥90%, branch ≥85% | `vitest.config.ts` per-file threshold |
+| claim_pass_eligible | ✅ Step Summary badge 🟢/🔴 | `ccvs-evidence.yml` compliance-matrix job |
 | Production homepage | ✅ HTTP 200 | `GET /` |
 | Runtime readiness | ✅ HTTP 200 `status=ready` | `GET /api/readiness` |
 | Health + rate limiter | ✅ HTTP 200 `rateLimiter.ok: true` | `GET /api/health` |
@@ -46,7 +50,7 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 
 ---
 
-## 🔐 Evidence-Driven Compliance Pipeline — CCVS v1 (2026-05-28)
+## 🔐 Evidence-Driven Compliance Pipeline — CCVS v1.1 (2026-05-28)
 
 Every passing test is automatically upgraded into a **cryptographically-chained, audit-ready evidence artifact**.
 
@@ -67,6 +71,12 @@ L1 Unit → L2 Integration → L3 Adversarial+Replay → L4 Mutation(Stryker)+Z3
 ```
 
 Each job computes a `chain_hash = sha256(canonicalized_envelope)` and passes it to the next job as `previous_chain_hash`. The chain is tamper-evident.
+
+**Enforcement on main (v1.1 hardening):**
+- Mutation score **≥70% required** before compliance matrix runs (exits 1 if below)
+- Cosign `.sigstore.json` bundles **required** at L1, L4, L5 — missing bundle fails the job
+- `lib/runtime/gate.ts` coverage floor **lines/fn/stmt ≥90%, branch ≥85%** enforced via vitest per-file threshold
+- `claim_pass_eligible` badge (🟢/🔴) written to GitHub Actions Step Summary on every main push
 
 ### Compliance Matrix
 
