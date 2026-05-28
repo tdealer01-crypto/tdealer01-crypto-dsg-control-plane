@@ -41,7 +41,7 @@ const navSections = [
     label: 'Insights',
     items: [
       { label: 'Analytics', href: '/dsg/analytics', iconName: 'barChart2' },
-      { label: 'Governance', href: '/dsg/action-layer', iconName: 'shield' },
+      { label: 'Governance', href: '/dsg/governance', iconName: 'shield' },
       { label: 'Autonomous Level', href: '/dsg/autonomous-level', iconName: 'cpu' },
     ],
   },
@@ -94,7 +94,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         )}
       </div>
 
-      {/* navigation sections */}
+      {/* navigation */}
       <nav className="flex-1 overflow-y-auto py-2">
         {navSections.map((section) => (
           <div key={section.label}>
@@ -124,7 +124,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         ))}
       </nav>
 
-      {/* bottom items */}
+      {/* bottom */}
       <div className="border-t border-slate-800 py-2">
         {bottomItems.map((item) => {
           const active = pathname === item.href;
@@ -180,7 +180,6 @@ export default function DsgLayout({ children }: { children: React.ReactNode }) {
 
       {/* main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* mobile top bar */}
         <div className="flex h-14 items-center border-b border-slate-800 px-4 md:hidden">
           <button
             onClick={() => setMobileOpen(true)}
@@ -193,7 +192,6 @@ export default function DsgLayout({ children }: { children: React.ReactNode }) {
             DSG ONE
           </span>
         </div>
-
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
