@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private lateinit var approvalSigner: OwnerApprovalSigner
 
     private var fileListRendered = false
+    private var workSessionEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,15 +67,13 @@ class MainActivity : Activity() {
             setPadding(dp(18), dp(18), dp(18), dp(28))
             setBackgroundColor(COLOR_BG)
         }
-
         addHero(root)
         addTabs(root)
         addNoCodeChat(root)
-        addServiceCard(root)
-        addFullFileManagerCard(root)
+        addWorkSessionCard(root)
+        addFileManagerCard(root)
         addCommandInbox(root)
         addAuditLog(root)
-
         setContentView(ScrollView(this).apply {
             setBackgroundColor(COLOR_BG)
             addView(root)
@@ -107,7 +106,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
             })
             addView(TextView(this@MainActivity).apply {
-                text = "No-code owner-approved Android agent"
+                text = "No-code work session agent"
                 textSize = 13f
                 setTextColor(COLOR_TEXT_MUTED_DARK)
             })
@@ -115,13 +114,12 @@ class MainActivity : Activity() {
         top.addView(statusPill("AUDIT ON", true))
         hero.addView(top)
         hero.addView(TextView(this).apply {
-            text = "พิมพ์คำสั่งเป็นภาษาคนได้ แต่ทุกคำสั่งต้องเข้า Inbox และให้เจ้าของเครื่อง Approve ก่อนเสมอ"
+            text = "พิมพ์เป้าหมายงาน แล้วให้ Agent ทำงานต่อใน Work Session; งานที่ต้องใช้สิทธิ์ใหม่หรือกระทบไฟล์สำคัญจะหยุดให้ตรวจ"
             textSize = 14f
             setTextColor(COLOR_TEXT_SOFT_DARK)
             setPadding(0, dp(16), 0, dp(14))
         })
         statusView = TextView(this).apply {
-            text = buildStatusText()
             textSize = 12f
             setTextColor(COLOR_TEXT_SOFT_DARK)
             background = rounded(COLOR_SURFACE_DARK_2, 14, COLOR_BORDER_DARK, 1)
@@ -144,16 +142,16 @@ class MainActivity : Activity() {
     }
 
     private fun addNoCodeChat(root: LinearLayout) {
-        val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        card.addView(sectionHeader("No-code Chat Command", "Vibe coding → command proposal → owner approval"))
-        card.addView(TextView(this).apply {
-            text = "ตัวอย่าง: เปิด status, เปิด settings, แสดงไฟล์, ส่งไฟล์ให้ Claw, back, home, scroll"
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("No-code Chat", "พิมพ์งานเดียว แล้วให้ Agent สร้างงานให้"))
+        box.addView(TextView(this).apply {
+            text = "ตัวอย่าง: ตรวจระบบให้ครบ, เปิด status, แสดงไฟล์, ส่งไฟล์ให้ Claw, เปิด settings, back, home, scroll"
             textSize = 12f
             setTextColor(COLOR_TEXT_MUTED)
             setPadding(0, 0, 0, dp(10))
         })
         chatInput = EditText(this).apply {
-            hint = "พิมพ์คำสั่งที่ต้องการ เช่น เปิด status หรือ แสดงไฟล์ในเครื่อง"
+            hint = "พิมพ์เป้าหมายงาน เช่น ตรวจระบบให้ครบ"
             textSize = 14f
             minLines = 3
             maxLines = 5
@@ -163,113 +161,98 @@ class MainActivity : Activity() {
             background = rounded(COLOR_BG, 18, COLOR_BORDER, 1)
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
-        addWithMargin(card, chatInput, bottom = 10)
+        addWithMargin(box, chatInput, bottom = 10)
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(compactButton("Create command", ButtonTone.PRIMARY) { queueNoCodePrompt() })
+        row.addView(compactButton("Run", ButtonTone.PRIMARY) { runNoCodePrompt() })
         row.addView(compactButton("Clear", ButtonTone.SECONDARY) { chatInput.setText("") })
-        card.addView(row)
-        addWithMargin(root, card, bottom = 12)
+        box.addView(row)
+        addWithMargin(root, box, bottom = 12)
     }
 
-    private fun addServiceCard(root: LinearLayout) {
-        val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        card.addView(sectionHeader("Gateway & Permissions", "Live device gates"))
-        card.addView(actionButton("Start Agent Service", "Poll backend queue every 5s", ButtonTone.PRIMARY) {
+    private fun addWorkSessionCard(root: LinearLayout) {
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("Work Session", "ลดการกดซ้ำ ใช้ manual fallback ได้"))
+        box.addView(TextView(this).apply {
+            text = "เปิด Work Session แล้วคำสั่ง low-risk ที่ permission พร้อมจะรันต่อเอง พร้อมบันทึก audit ทุก step"
+            textSize = 12f
+            setTextColor(COLOR_TEXT_MUTED)
+            setPadding(0, 0, 0, dp(10))
+        })
+        box.addView(actionButton("Start Work Session", "Run allowed steps without approving each one", ButtonTone.PRIMARY) {
+            workSessionEnabled = true
+            auditLogStore.append("WORK_SESSION_STARTED", "local", "Owner started work session")
+            refreshUi("Work Session enabled")
+        })
+        box.addView(actionButton("Stop Work Session", "Return to manual review", ButtonTone.DANGER) {
+            workSessionEnabled = false
+            auditLogStore.append("WORK_SESSION_STOPPED", "local", "Owner stopped work session")
+            refreshUi("Work Session stopped")
+        })
+        box.addView(actionButton("Start Agent Service", "Poll backend queue every 5s", ButtonTone.SECONDARY) {
             startForegroundService(Intent(this@MainActivity, AgentForegroundService::class.java))
             auditLogStore.append("SERVICE_START_REQUESTED", "local", "Foreground service start requested")
             refreshUi("Foreground service start requested")
         })
-        card.addView(actionButton("Stop Agent Service", "Safe shutdown", ButtonTone.SECONDARY) {
-            stopService(Intent(this@MainActivity, AgentForegroundService::class.java))
-            auditLogStore.append("SERVICE_STOP_REQUESTED", "local", "Foreground service stop requested")
-            refreshUi("Foreground service stop requested")
-        })
-        card.addView(actionButton("Open Accessibility Permission", "Back / Home / Scroll gate", ButtonTone.SECONDARY) {
+        box.addView(actionButton("Open Accessibility Permission", "Back / Home / Scroll gate", ButtonTone.SECONDARY) {
             auditLogStore.append("OPEN_PERMISSION_SCREEN", "local", "Accessibility settings opened by owner")
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         })
-        card.addView(actionButton("Open Notification Listener Permission", "Notification summary gate", ButtonTone.SECONDARY) {
+        box.addView(actionButton("Open Notification Listener Permission", "Notification summary gate", ButtonTone.SECONDARY) {
             auditLogStore.append("OPEN_PERMISSION_SCREEN", "local", "Notification listener settings opened by owner")
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         })
-        card.addView(actionButton("Open DSG Status API", "Verify backend", ButtonTone.SECONDARY) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DsgConfig.STATUS_URL)))
-        })
-        addWithMargin(root, card, bottom = 12)
+        addWithMargin(root, box, bottom = 12)
     }
 
-    private fun addFullFileManagerCard(root: LinearLayout) {
-        val fmCard = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        fmCard.addView(sectionHeader("Full File Manager Mode", "Owner-approved all-files access"))
-        fmCard.addView(TextView(this).apply {
-            text = "High-risk mode. Android Settings must grant All files access manually. Every file action still goes through inbox approval, Keystore signing, permission gate, and audit."
+    private fun addFileManagerCard(root: LinearLayout) {
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("Full File Manager Mode", "Owner-enabled all-files access"))
+        box.addView(TextView(this).apply {
+            text = "All files access ต้องเปิดเองใน Android Settings ก่อน หลังจากนั้น list/send workflow จะรันใน Work Session ได้ ถ้าผ่าน gate"
             textSize = 13f
             setTextColor(COLOR_TEXT_MUTED)
             setPadding(0, 0, 0, dp(12))
         })
-        val storageCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(COLOR_ACCENT_SOFT, 18, COLOR_ACCENT_BORDER, 1)
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            addView(TextView(this@MainActivity).apply {
-                text = "☁️ Claw File Workspace"
-                textSize = 16f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(COLOR_TEXT)
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = "40 GB cloud target • local selection first • private files blocked by policy"
-                textSize = 12f
-                setTextColor(COLOR_TEXT_MUTED)
-                setPadding(0, dp(4), 0, dp(10))
-            })
-            addView(View(this@MainActivity).apply { background = rounded(COLOR_PRIMARY, 6) }, LinearLayout.LayoutParams(dp(132), dp(8)))
-        }
-        addWithMargin(fmCard, storageCard, bottom = 12)
-        fmCard.addView(actionButton("Open Full File Manager Permission", "Android All files access", ButtonTone.WARNING) {
-            auditLogStore.append("FILE_PERMISSION_REQUESTED", "local", "Owner opened All files access settings")
+        box.addView(actionButton("Open Full File Manager Permission", "Android All files access", ButtonTone.WARNING) {
+            auditLogStore.append("FILE_PERMISSION_REQUESTED", "local", "Owner opened all files access settings")
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply { data = Uri.parse("package:$packageName") }
             runCatching { startActivity(intent) }.getOrElse { startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
         })
-        fmCard.addView(actionButton("Queue file command: list shared storage", "Requires approval + all-files gate", ButtonTone.PRIMARY) {
-            queueDemoCommand(AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath, "Owner requested a full-file-manager listing of shared storage root", "local-file-manager")
+        box.addView(actionButton("List shared storage", "Show files after permission", ButtonTone.PRIMARY) {
+            val command = queueCommand(AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath, "List shared storage", "local-file-manager")
+            runInSessionIfAllowed(command)
         })
-        fmCard.addView(actionButton("Queue file command: send selected files to Claw", "Creates approved file workflow", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://local-demo", "Owner requested selected files to be sent to Claw after review", "local-file-manager")
-        })
-        fmCard.addView(actionButton("Queue file command: delete private test file", "Should be blocked in MVP", ButtonTone.DANGER) {
-            queueDemoCommand(AgentCommandType.FILE_DELETE, "/sdcard/Download/api_keys.env", "Owner requested delete test for a private file. This must be blocked by policy in MVP.", "local-file-manager")
+        box.addView(actionButton("Send selected files to Claw", "Placeholder Claw workflow", ButtonTone.SECONDARY) {
+            val command = queueCommand(AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://local-demo", "Prepare selected files for Claw", "local-file-manager")
+            runInSessionIfAllowed(command)
         })
         filePreviewView = TextView(this).apply {
-            text = "No file listing yet. Queue and approve FILE_LIST_ROOT after enabling permission."
+            text = "No file listing yet. Open permission, start Work Session, then ask: แสดงไฟล์"
             textSize = 12f
             setTextColor(COLOR_TEXT_MUTED)
             background = rounded(COLOR_BG, 16, COLOR_BORDER, 1)
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
-        addWithMargin(fmCard, filePreviewView, top = 8)
-        addWithMargin(root, fmCard, bottom = 12)
+        addWithMargin(box, filePreviewView, top = 8)
+        addWithMargin(root, box, bottom = 12)
     }
 
     private fun addCommandInbox(root: LinearLayout) {
-        val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        card.addView(sectionHeader("Command Inbox", "Approve before execution"))
-        card.addView(actionButton("Queue demo: open_url", "Visible browser action", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL, "Open DSG status page for visible owner verification", "local-demo")
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("Command Inbox", "Manual fallback"))
+        box.addView(actionButton("Queue demo: open_url", "Visible browser action", ButtonTone.SECONDARY) {
+            queueCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL, "Open DSG status page", "local-demo")
         })
-        card.addView(actionButton("Queue demo: open_app settings", "Open Android Settings", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.OPEN_APP, "com.android.settings", "Open Android Settings package for owner-approved setup", "local-demo")
+        box.addView(actionButton("Queue demo: open settings", "Open Android Settings", ButtonTone.SECONDARY) {
+            queueCommand(AgentCommandType.OPEN_APP, "com.android.settings", "Open Android Settings", "local-demo")
         })
-        card.addView(actionButton("Queue demo: back", "Accessibility-gated", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.BACK, "GLOBAL_BACK", "Run Android Back through Accessibility after owner approval", "local-demo")
+        box.addView(actionButton("Queue demo: back", "Accessibility-gated", ButtonTone.SECONDARY) {
+            queueCommand(AgentCommandType.BACK, "GLOBAL_BACK", "Run Android Back", "local-demo")
         })
-        card.addView(actionButton("Queue demo: home", "Accessibility-gated", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.HOME, "GLOBAL_HOME", "Run Android Home through Accessibility after owner approval", "local-demo")
+        box.addView(actionButton("Queue demo: home", "Accessibility-gated", ButtonTone.SECONDARY) {
+            queueCommand(AgentCommandType.HOME, "GLOBAL_HOME", "Run Android Home", "local-demo")
         })
-        card.addView(actionButton("Queue demo: scroll down", "Accessibility-gated", ButtonTone.SECONDARY) {
-            queueDemoCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE", "Run one scroll down through Accessibility after owner approval", "local-demo")
-        })
-        card.addView(actionButton("Kill Switch: Clear Pending Commands", "Owner emergency stop", ButtonTone.DANGER) {
+        box.addView(actionButton("Kill Switch: Clear Pending Commands", "Owner emergency stop", ButtonTone.DANGER) {
             val count = commandStore.clearPending()
             auditLogStore.append("KILL_SWITCH_CLEAR_PENDING", "local", "Owner cleared $count pending command(s)")
             refreshUi("Kill switch cleared $count pending command(s)")
@@ -278,73 +261,102 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(10), 0, 0)
         }
-        card.addView(commandListView)
-        addWithMargin(root, card, bottom = 12)
+        box.addView(commandListView)
+        addWithMargin(root, box, bottom = 12)
     }
 
     private fun addAuditLog(root: LinearLayout) {
-        val card = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        card.addView(sectionHeader("Local Audit Log", "Hash-chained device evidence"))
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("Local Audit Log", "Device evidence"))
         auditView = TextView(this).apply {
             textSize = 12f
             setTextColor(COLOR_TEXT_MUTED)
             background = rounded(COLOR_BG, 16, COLOR_BORDER, 1)
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
-        card.addView(auditView)
-        addWithMargin(root, card)
+        box.addView(auditView)
+        addWithMargin(root, box)
     }
 
-    private fun queueNoCodePrompt() {
+    private fun runNoCodePrompt() {
         val prompt = chatInput.text.toString().trim()
         if (prompt.isBlank()) {
-            auditLogStore.append("NO_CODE_EMPTY", "local", "No-code prompt was empty")
             refreshUi("พิมพ์คำสั่งก่อน")
             return
         }
-        val mapped = mapNoCodePrompt(prompt)
-        queueDemoCommand(mapped.type, mapped.target, "No-code chat: $prompt", "no-code-chat")
+        val commands = planFromPrompt(prompt)
+        commands.forEach { mapped ->
+            val command = queueCommand(mapped.type, mapped.target, "No-code: $prompt", "no-code-chat")
+            runInSessionIfAllowed(command)
+        }
         chatInput.setText("")
     }
 
     private data class MappedCommand(val type: AgentCommandType, val target: String)
 
-    private fun mapNoCodePrompt(prompt: String): MappedCommand {
+    private fun planFromPrompt(prompt: String): List<MappedCommand> {
         val lower = prompt.lowercase()
         val url = Regex("https?://\\S+").find(prompt)?.value
+        if (url != null) return listOf(MappedCommand(AgentCommandType.OPEN_URL, url))
+        if (lower.contains("ตรวจระบบ") || lower.contains("status") || lower.contains("สถานะ")) {
+            return listOf(
+                MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL),
+                MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.OPENCLAW_URL),
+            )
+        }
         return when {
-            url != null -> MappedCommand(AgentCommandType.OPEN_URL, url)
-            lower.contains("status") || lower.contains("สถานะ") -> MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL)
-            lower.contains("setting") || lower.contains("ตั้งค่า") -> MappedCommand(AgentCommandType.OPEN_APP, "com.android.settings")
-            lower.contains("ไฟล์") || lower.contains("file") || lower.contains("storage") || lower.contains("sdcard") -> MappedCommand(AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath)
-            lower.contains("claw") || lower.contains("ส่ง") -> MappedCommand(AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://no-code-chat")
-            lower.contains("back") || lower.contains("ย้อน") -> MappedCommand(AgentCommandType.BACK, "GLOBAL_BACK")
-            lower.contains("home") || lower.contains("หน้าหลัก") -> MappedCommand(AgentCommandType.HOME, "GLOBAL_HOME")
-            lower.contains("scroll") || lower.contains("เลื่อน") -> MappedCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE")
-            else -> MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL)
+            lower.contains("setting") || lower.contains("ตั้งค่า") -> listOf(MappedCommand(AgentCommandType.OPEN_APP, "com.android.settings"))
+            lower.contains("ไฟล์") || lower.contains("file") || lower.contains("storage") -> listOf(MappedCommand(AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath))
+            lower.contains("claw") || lower.contains("ส่ง") -> listOf(MappedCommand(AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://no-code-chat"))
+            lower.contains("back") || lower.contains("ย้อน") -> listOf(MappedCommand(AgentCommandType.BACK, "GLOBAL_BACK"))
+            lower.contains("home") || lower.contains("หน้าหลัก") -> listOf(MappedCommand(AgentCommandType.HOME, "GLOBAL_HOME"))
+            lower.contains("scroll") || lower.contains("เลื่อน") -> listOf(MappedCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE"))
+            else -> listOf(MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL))
         }
     }
 
-    private fun queueDemoCommand(type: AgentCommandType, target: String, reason: String, source: String) {
+    private fun queueCommand(type: AgentCommandType, target: String, reason: String, source: String): AgentCommand {
         commandStore.pruneExpired()
-        val command = AgentCommand.create(
-            source = source,
-            type = type,
-            target = target,
-            reason = reason,
-            requiresPermission = PermissionGate.requiredPermissionFor(type),
-            requiresUserConfirm = true,
-        )
+        val command = AgentCommand.create(source, type, target, reason, PermissionGate.requiredPermissionFor(type), true)
         commandStore.add(command)
-        val eventType = if (type.name.startsWith("FILE_")) "FILE_ACTION_QUEUED" else "COMMAND_QUEUED"
-        auditLogStore.append(eventType, command.commandId, "Queued ${command.type.name} digest=${command.commandDigest}")
+        auditLogStore.append(if (type.name.startsWith("FILE_")) "FILE_ACTION_QUEUED" else "COMMAND_QUEUED", command.commandId, "Queued ${command.type.name} digest=${command.commandDigest}")
         refreshUi("Queued ${command.type.name}")
+        return command
+    }
+
+    private fun runInSessionIfAllowed(command: AgentCommand) {
+        if (!workSessionEnabled) return
+        if (!sessionCanRun(command)) {
+            auditLogStore.append("WORK_SESSION_WAITING", command.commandId, "Manual review required for ${command.type.name}")
+            refreshUi("Manual review required for ${command.type.name}")
+            return
+        }
+        auditLogStore.append("WORK_SESSION_RUN", command.commandId, "Running ${command.type.name} in active work session")
+        approveCommand(command)
+    }
+
+    private fun sessionCanRun(command: AgentCommand): Boolean = when (command.type) {
+        AgentCommandType.STATUS,
+        AgentCommandType.OPEN_URL,
+        AgentCommandType.OPEN_SETTINGS,
+        AgentCommandType.OPEN_APP,
+        AgentCommandType.BACK,
+        AgentCommandType.HOME,
+        AgentCommandType.SCROLL_DOWN,
+        AgentCommandType.FILE_LIST_ROOT,
+        AgentCommandType.FILE_SEND_TO_CLAW -> true
+        AgentCommandType.NOTIFICATION_SUMMARY,
+        AgentCommandType.FILE_PREVIEW,
+        AgentCommandType.FILE_SELECT,
+        AgentCommandType.FILE_RENAME,
+        AgentCommandType.FILE_MOVE,
+        AgentCommandType.FILE_DELETE -> false
     }
 
     private fun refreshUi(extra: String? = null) {
         statusView.text = buildStatusText(extra)
         if (::filePreviewView.isInitialized && permissionGate.isFullFileManagerEnabled() && !fileListRendered) {
-            filePreviewView.text = "Full file manager permission enabled. Queue and approve list command to render files."
+            filePreviewView.text = "Full file manager permission enabled. Start Work Session, then ask: แสดงไฟล์"
         }
         renderCommands()
         renderAuditLog()
@@ -355,7 +367,7 @@ class MainActivity : Activity() {
         val pending = commandStore.listPending()
         if (pending.isEmpty()) {
             commandListView.addView(TextView(this).apply {
-                text = "No pending commands."
+                text = if (workSessionEnabled) "No pending commands. Work Session is active." else "No pending commands."
                 textSize = 13f
                 setTextColor(COLOR_TEXT_MUTED)
                 setPadding(0, dp(8), 0, 0)
@@ -389,18 +401,17 @@ class MainActivity : Activity() {
     }
 
     private fun approveCommand(command: AgentCommand) {
-        val policyBlock = filePolicyBlock(command)
-        if (policyBlock != null) {
-            commandStore.markBlocked(command.commandId, policyBlock)
-            auditLogStore.append("FILE_ACTION_BLOCKED", command.commandId, policyBlock, AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
-            refreshUi(policyBlock)
+        val blockMessage = filePolicyBlock(command)
+        if (blockMessage != null) {
+            commandStore.markBlocked(command.commandId, blockMessage)
+            auditLogStore.append("FILE_ACTION_BLOCKED", command.commandId, blockMessage, AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
+            refreshUi(blockMessage)
             return
         }
         val gate = permissionGate.evaluate(command)
         if (!gate.allowed) {
             if (gate.errorCode == AgentErrorCodes.PERMISSION_REQUIRED) commandStore.markWaitingPermission(command.commandId, gate.message) else commandStore.markBlocked(command.commandId, gate.message)
-            val eventType = if (command.type.name.startsWith("FILE_")) "FILE_ACTION_BLOCKED" else "COMMAND_BLOCKED"
-            auditLogStore.append(eventType, command.commandId, gate.message, gate.errorCode)
+            auditLogStore.append(if (command.type.name.startsWith("FILE_")) "FILE_ACTION_BLOCKED" else "COMMAND_BLOCKED", command.commandId, gate.message, gate.errorCode)
             refreshUi("Blocked: ${gate.message}")
             return
         }
@@ -417,14 +428,12 @@ class MainActivity : Activity() {
             refreshUi("Approval signature verification failed")
             return
         }
-        val approvedEvent = if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_APPROVED" else "COMMAND_APPROVED"
-        auditLogStore.append(approvedEvent, signed.commandId, "Owner approved signed digest=${signed.commandDigest}")
+        auditLogStore.append(if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_APPROVED" else "COMMAND_APPROVED", signed.commandId, "Owner approved signed digest=${signed.commandDigest}")
         commandStore.markApproved(signed.commandId, signed.approvalSignature!!)
         val result = executeCommand(signed)
         if (result.success) {
             commandStore.markExecuted(signed.commandId)
-            val eventType = if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_EXECUTED" else "COMMAND_EXECUTED"
-            auditLogStore.append(eventType, signed.commandId, result.message)
+            auditLogStore.append(if (signed.type.name.startsWith("FILE_")) "FILE_ACTION_EXECUTED" else "COMMAND_EXECUTED", signed.commandId, result.message)
         } else {
             commandStore.markFailed(signed.commandId, result.errorCode ?: "EXECUTION_FAILED", result.message)
             auditLogStore.append("COMMAND_FAILED", signed.commandId, result.message, result.errorCode)
@@ -435,23 +444,22 @@ class MainActivity : Activity() {
     private fun filePolicyBlock(command: AgentCommand): String? {
         if (!command.type.name.startsWith("FILE_")) return null
         val lower = command.target.lowercase()
-        val privateLike = lower.endsWith(".env") || lower.contains("api_key") || lower.contains("apikey") || lower.contains("private") || lower.endsWith(".pem") || lower.endsWith(".key")
-        if (privateLike) return "Blocked private file action for ${command.target}. It requires a future explicit sensitive-file approval sheet."
-        if (command.type == AgentCommandType.FILE_DELETE) return "Delete is blocked in MVP. It requires a future destructive-action confirmation sheet."
+        if (command.type == AgentCommandType.FILE_DELETE) return "Delete is blocked in this build."
+        if (lower.endsWith(".env") || lower.contains("api_key") || lower.contains("private") || lower.endsWith(".pem")) return "This file action needs a separate review sheet."
         return null
     }
 
     private fun executeCommand(command: AgentCommand): CommandExecutionResult {
-        if (!approvalSigner.verify(command)) return CommandExecutionResult(false, "Executor refused unsigned or mutated command digest", AgentErrorCodes.APPROVAL_SIGNATURE_INVALID)
+        if (!approvalSigner.verify(command)) return CommandExecutionResult(false, "Executor refused unsigned or changed command", AgentErrorCodes.APPROVAL_SIGNATURE_INVALID)
         return when (command.type) {
-            AgentCommandType.STATUS -> CommandExecutionResult(true, "Status command reviewed; app is running")
+            AgentCommandType.STATUS -> CommandExecutionResult(true, "Status command reviewed")
             AgentCommandType.OPEN_URL -> {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(command.target)))
                 CommandExecutionResult(true, "Opened URL visibly: ${command.target}")
             }
             AgentCommandType.OPEN_SETTINGS -> {
                 startActivity(Intent(Settings.ACTION_SETTINGS))
-                CommandExecutionResult(true, "Opened Android Settings visibly")
+                CommandExecutionResult(true, "Opened Android Settings")
             }
             AgentCommandType.OPEN_APP -> {
                 val launchIntent = packageManager.getLaunchIntentForPackage(command.target)
@@ -463,19 +471,19 @@ class MainActivity : Activity() {
             AgentCommandType.BACK -> AccessibilityActionBridge.performBack()
             AgentCommandType.HOME -> AccessibilityActionBridge.performHome()
             AgentCommandType.SCROLL_DOWN -> AccessibilityActionBridge.performScrollDown()
-            AgentCommandType.NOTIFICATION_SUMMARY -> CommandExecutionResult(false, "Notification summary executor is not enabled in this MVP", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
+            AgentCommandType.NOTIFICATION_SUMMARY -> CommandExecutionResult(false, "Notification summary executor is not enabled", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
             AgentCommandType.FILE_LIST_ROOT -> {
                 fileListRendered = true
                 filePreviewView.text = FullFileManager.buildListSummary()
                 auditLogStore.append("FILE_LISTED", command.commandId, "Listed shared storage root")
                 CommandExecutionResult(true, "Listed shared storage root")
             }
-            AgentCommandType.FILE_PREVIEW -> CommandExecutionResult(true, "Preview action approved for ${command.target}")
-            AgentCommandType.FILE_SELECT -> CommandExecutionResult(true, "Selected file ${command.target}")
-            AgentCommandType.FILE_SEND_TO_CLAW -> CommandExecutionResult(true, "Queued selected files for Claw processing after owner approval")
+            AgentCommandType.FILE_SEND_TO_CLAW -> CommandExecutionResult(true, "Prepared selected files for Claw workflow")
+            AgentCommandType.FILE_PREVIEW,
+            AgentCommandType.FILE_SELECT,
             AgentCommandType.FILE_RENAME,
-            AgentCommandType.FILE_MOVE -> CommandExecutionResult(false, "Rename/move executor is not enabled in this MVP", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
-            AgentCommandType.FILE_DELETE -> CommandExecutionResult(false, "Delete executor is blocked in this MVP", AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
+            AgentCommandType.FILE_MOVE,
+            AgentCommandType.FILE_DELETE -> CommandExecutionResult(false, "File executor not enabled for this action", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
         }
     }
 
@@ -485,7 +493,8 @@ class MainActivity : Activity() {
 
     private fun buildStatusText(extra: String? = null): String = listOfNotNull(
         "Backend: ${DsgConfig.BASE_URL}",
-        "Mode: no-code • owner-device • signed approval • audit-required",
+        "Mode: no-code • work-session • signed execution • audit",
+        "Work Session: $workSessionEnabled",
         "Accessibility: ${permissionGate.isAccessibilityEnabled()}",
         "Notifications: ${permissionGate.isNotificationListenerEnabled()}",
         "Full file manager: ${permissionGate.isFullFileManagerEnabled()}",
@@ -612,6 +621,7 @@ class MainActivity : Activity() {
         private const val COLOR_ACCENT_BORDER = 0xFFB7DBFF.toInt()
         private const val COLOR_WARNING_SOFT = 0xFFFFF7E8.toInt()
         private const val COLOR_WARNING_BORDER = 0xFFFFC66D.toInt()
+        private const val COLOR_RED = 0xFFE23B3B.toInt()
         private const val COLOR_RED_SOFT = 0xFFFFECEC.toInt()
         private const val COLOR_RED_BORDER = 0xFFFFB5B5.toInt()
         private const val COLOR_GREEN = 0xFF0FA66B.toInt()
