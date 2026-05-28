@@ -71,6 +71,15 @@ jobs:
             [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
           done
         continue-on-error: true
+      - name: Require L1 signed bundles (main only)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          missing=0
+          for f in ccvs-all-unit-evidence.json ccvs-spine-pipeline-evidence.json; do
+            bundle="${f%.json}.sigstore.json"
+            if [ ! -f "$bundle" ]; then echo "❌ Missing: $bundle"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] && echo "✅ L1 bundles present" || { echo "Cosign OIDC not configured — run: gh secret set ACTIONS_ID_TOKEN_REQUEST_URL"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-unit-evidence-${{ github.run_id }}
@@ -213,6 +222,12 @@ jobs:
             --mutation-score "$MUTATION_SCORE" \
             --output ccvs-mutation-evidence.json \
             --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-billing-invariants-evidence.json'));console.log(e.integrity.chain_hash)")"
+      - name: Validate mutation score (≥70 required on main)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          SCORE=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.metrics?.mutation_score ?? 0)")
+          echo "Mutation score on main: $SCORE%"
+          node -e "const s=parseFloat('$SCORE');if(s<70){console.error('❌ Mutation score '+s+'% < 70% break threshold — claim_pass_eligible blocked');process.exit(1);}else{console.log('✅ Mutation score '+s+'% ≥ 70%');}"
       - name: Emit final chain hash
         id: emit-final
         run: |
@@ -229,6 +244,15 @@ jobs:
             [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
           done
         continue-on-error: true
+      - name: Require L4 signed bundles (main only)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          missing=0
+          for f in ccvs-billing-invariants-evidence.json ccvs-mutation-evidence.json; do
+            bundle="${f%.json}.sigstore.json"
+            if [ ! -f "$bundle" ]; then echo "❌ Missing: $bundle"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] && echo "✅ L4 bundles present" || { echo "Cosign L4 signing required on main (permissions: id-token: write is set — check Sigstore availability)"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-proof-evidence-${{ github.run_id }}
@@ -282,6 +306,14 @@ jobs:
           cosign sign-blob --bundle sbom.cyclonedx.sigstore.json --yes sbom.cyclonedx.json 2>/dev/null && echo "SBOM signed" || echo "SBOM sign skipped"
           cosign sign-blob --bundle ccvs-ci-provenance-evidence.sigstore.json --yes ccvs-ci-provenance-evidence.json 2>/dev/null && echo "Provenance signed" || echo "Provenance sign skipped"
         continue-on-error: true
+      - name: Require L5 signed bundles (main only)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          missing=0
+          for f in sbom.cyclonedx.sigstore.json ccvs-ci-provenance-evidence.sigstore.json; do
+            if [ ! -f "$f" ]; then echo "❌ Missing: $f"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] && echo "✅ L5 SBOM + provenance bundles present" || { echo "Cosign L5 signing required on main (SLSA provenance claim needs signed bundle)"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: ccvs-provenance-${{ github.run_id }}
@@ -331,6 +363,37 @@ jobs:
               const h = r.evidence_hash ? r.evidence_hash.slice(0,22)+'...' : 'pending';
               console.log(icon+' '+r.requirement_id.padEnd(28)+r.control_id.padEnd(26)+h);
             });
+          "
+      - name: Write claim_pass_eligible to Step Summary
+        if: always()
+        run: |
+          node -e "
+            const m=JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json'));
+            const s=m.summary;
+            const eligible=s.claim_pass_eligible;
+            const badge=eligible?'🟢 ELIGIBLE':'🔴 NOT ELIGIBLE';
+            const rows=m.rows.map(r=>{
+              const icon=r.status==='pass'?'✅':r.status==='fail'?'❌':'⚠️';
+              const h=r.evidence_hash?r.evidence_hash.slice(0,22)+'...':'pending';
+              return '| '+icon+' | '+r.requirement_id+' | '+r.control_id+' | '+r.status+' | \`'+h+'\` |';
+            }).join('\n');
+            const md=[
+              '## CCVS Compliance Matrix — '+new Date().toISOString().slice(0,10),
+              '',
+              '| Field | Value |',
+              '|-------|-------|',
+              '| **claim_pass_eligible** | **'+badge+'** |',
+              '| policy_version | '+m.policy_version+' |',
+              '| PASS | '+s.pass+' / '+s.total+' |',
+              '| FAIL | '+s.fail+' |',
+              '| NOT VERIFIED | '+s.not_verified+' |',
+              '',
+              '| Status | Requirement | Control | Result | Evidence Hash |',
+              '|--------|-------------|---------|--------|---------------|',
+              rows,
+            ].join('\n');
+            require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md+'\n');
+            if(!eligible){process.exit(1);}
           "
       - uses: actions/upload-artifact@v4
         with:
