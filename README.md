@@ -17,7 +17,7 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | Gate | Result | Command / Evidence |
 |---|:---:|---|
 | TypeScript typecheck | ✅ 0 errors | `npm run typecheck` |
-| Unit + integration tests | ✅ **925 passed** / 937 total | `npm run test` — 129 files passed, 4 skipped |
+| Unit + integration tests | ✅ **938 passed** / 950 total | `npm run test` — 129 files passed, 4 skipped |
 | Policy Z3 proofs | ✅ 8 theorems UNSAT | `npm run verify:policy` |
 | Revenue Z3 proofs | ✅ 16 theorems FORMAL PROOF PASS | `npm run proof:revenue` |
 | Production homepage | ✅ HTTP 200 | `GET /` |
@@ -31,11 +31,11 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 
 ```
  Test Files  129 passed | 4 skipped (133)
-      Tests  925 passed | 12 skipped (937)
+      Tests  938 passed | 12 skipped (950)
    Start at  2026-05-28
 ```
 
-Includes 46 new CCVS compliance pipeline tests (evidence-collector, compliance-matrix, drift-detector).
+Includes 46 CCVS compliance pipeline tests (evidence-collector, compliance-matrix, drift-detector) and 13 new gate boundary tests (detectOscillation + evaluateGate full coverage, 3→16 tests in gate.test.ts).
 
 ```
 npm run typecheck     ✅  0 errors
@@ -57,13 +57,13 @@ Every passing test is automatically upgraded into a **cryptographically-chained,
 | L1 | `unit` | Test results + coverage metrics | Internal quality |
 | L2 | `integration` | API & workflow coverage | Feature readiness |
 | L3 | `adversarial` / `replay` | Tamper / replay rejection tests | Security review |
-| L4 | `mutation` / `oversight` | Mutation score ≥90%, Z3 formal proofs | Compliance claims |
+| L4 | `mutation` / `oversight` | Stryker mutation score ≥90% (break=70), Z3 formal proofs | Compliance claims |
 | L5 | `provenance` | SLSA provenance, reproducible build | Regulatory assertion |
 
 ### CI Evidence Chain
 
 ```
-L1 Unit → L2 Integration → L3 Adversarial+Replay → L4 Z3 Proof → Compliance Matrix → Drift Detection
+L1 Unit → L2 Integration → L3 Adversarial+Replay → L4 Mutation(Stryker)+Z3 Proof → L5 SBOM+Provenance → Compliance Matrix → Drift Detection
 ```
 
 Each job computes a `chain_hash = sha256(canonicalized_envelope)` and passes it to the next job as `previous_chain_hash`. The chain is tamper-evident.
