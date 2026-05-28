@@ -36,6 +36,10 @@ test-results/
 playwright-report/
 artifacts/
 
+# stryker mutation testing output
+stryker-report/
+.stryker-tmp/
+
 # playwright auth/session state
 playwright/.auth/
 supabase/.temp/

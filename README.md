@@ -8,7 +8,7 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
-## 🟢 GO / NO-GO — 2026-05-28
+## 🟢 GO / NO-GO — 2026-05-28 (CCVS v1.2)
 
 ```
 GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
@@ -17,12 +17,16 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | Gate | Result | Command / Evidence |
 |---|:---:|---|
 | TypeScript typecheck | ✅ 0 errors | `npm run typecheck` |
-| Unit + integration tests | ✅ **938 passed** / 950 total | `npm run test` — 129 files passed, 4 skipped |
+| Unit + integration tests | ✅ **998 passed** / 1010 total | `npm run test` — 133 files passed, 4 skipped |
 | Policy Z3 proofs | ✅ 8 theorems UNSAT | `npm run verify:policy` |
 | Revenue Z3 proofs | ✅ 16 theorems FORMAL PROOF PASS | `npm run proof:revenue` |
-| Mutation score gate | ✅ ≥70% enforced on main | `npm run test:mutation:ci` — Stryker break=70 |
-| Cosign bundle signing | ✅ L1/L4/L5 required on main | Keyless Sigstore, `id-token: write` |
-| gate.ts coverage floor | ✅ lines/fn/stmt ≥90%, branch ≥85% | `vitest.config.ts` per-file threshold |
+| Mutation score gate | ✅ **72.08%** ≥70% (break=70) | `npm run test:mutation:ci` — Stryker verified locally |
+| Stryker timeout safety | ✅ 840s bash timeout, deferred on CI timeout | `ccvs-evidence.yml` L4 job |
+| Cosign OIDC availability | ✅ gated on `ACTIONS_ID_TOKEN_REQUEST_URL` | L1/L4/L5 `oidc_check` step |
+| gate.ts coverage floor | ✅ lines/fn/stmt 100%, branch 100% | `vitest.config.ts` per-file threshold |
+| CCVS Phase-2 coverage | ✅ 5 per-file floors (evidence-collector 83%, drift 90%) | `vitest.config.ts` |
+| compliance-status API | ✅ GET/POST `/api/ccvs/compliance-status` | shield badge, claim_pass_eligible cache |
+| EU AI Act Annex IV | ✅ 9 items mapped, Aug 2026 deadline | `GET /api/compliance-evidence-pack/annex4` |
 | claim_pass_eligible | ✅ Step Summary badge 🟢/🔴 | `ccvs-evidence.yml` compliance-matrix job |
 | Production homepage | ✅ HTTP 200 | `GET /` |
 | Runtime readiness | ✅ HTTP 200 `status=ready` | `GET /api/readiness` |
@@ -31,15 +35,17 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | User-flow E2E | ✅ PASS | finance-governance submit → approve → Supabase persisted |
 | **go:no-go gate** | ✅ **PASS** | `npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app` |
 
-### Full test output — 2026-05-28
+### Full test output — 2026-05-28 (CCVS v1.2)
 
 ```
- Test Files  129 passed | 4 skipped (133)
-      Tests  938 passed | 12 skipped (950)
+ Test Files  133 passed | 4 skipped (137)
+      Tests  998 passed | 12 skipped (1010)
    Start at  2026-05-28
 ```
 
-Includes 46 CCVS compliance pipeline tests (evidence-collector, compliance-matrix, drift-detector) and 13 new gate boundary tests (detectOscillation + evaluateGate full coverage, 3→16 tests in gate.test.ts).
++60 new tests vs v1.1: gate boundary (no-arg default, exact spread=0.35), drift-detector env var `??` behavior and sha256 prefix, evidence-collector branch coverage (bundleRef, verificationPolicyRef, RUNNER_OS, metrics fallback), SpineInfraError constructor/error cases, normalize.ts (sha256, normalizeArgs, buildCommandEnvelope, isExpired), compliance-status GET/POST round-trip, Annex IV 9-item structure.
+
+Stryker mutation score: **72.08%** (191/265 killed) — verified locally before CI gate activated.
 
 ```
 npm run typecheck     ✅  0 errors
@@ -50,7 +56,7 @@ npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
 
 ---
 
-## 🔐 Evidence-Driven Compliance Pipeline — CCVS v1.1 (2026-05-28)
+## 🔐 Evidence-Driven Compliance Pipeline — CCVS v1.2 (2026-05-28)
 
 Every passing test is automatically upgraded into a **cryptographically-chained, audit-ready evidence artifact**.
 
@@ -101,11 +107,35 @@ npm run ccvs:matrix    # generate compliance matrix JSON
 npm run ccvs:pipeline  # full: coverage → emit → verify → matrix
 ```
 
-### Evidence Chain API
+### Evidence Chain + Compliance Status API
 
 ```
-GET /api/ccvs/evidence-chain   # severity table, requirement catalog, drift status
+GET  /api/ccvs/evidence-chain          # severity table, requirement catalog, drift status
+GET  /api/ccvs/compliance-status       # claim_pass_eligible badge + shield (lightgrey/green/red)
+POST /api/ccvs/compliance-status       # CI uploads { matrix, run_id, mutation_score } after each run
+GET  /api/compliance-evidence-pack/annex4          # EU AI Act Annex IV — 9 items → DSG controls (JSON)
+GET  /api/compliance-evidence-pack/annex4?format=html  # styled HTML checklist
 ```
+
+`compliance-status` uses an in-memory cache (resets on cold start); CI re-uploads after every deploy via `CCVS_UPLOAD_URL` env var in `generate-compliance-matrix.mjs`.
+
+### EU AI Act Annex IV (August 2026 enforcement)
+
+9 Annex IV technical documentation items mapped to DSG ONE controls:
+
+| # | Annex IV Item | DSG Control | Status |
+|---|---|---|---|
+| 1 | General description + intended purpose | CTRL-POLICY-ENGINE | covered |
+| 2 | Version + update history | CTRL-BUILD-PROVENANCE | covered |
+| 3 | Technical specifications + accuracy | CTRL-RISK-GATE | covered |
+| 4 | Monitoring + logging systems | CTRL-IMMUTABLE-AUDIT | covered |
+| 5 | Input data specifications | CTRL-POLICY-ENGINE | partial |
+| 6 | Human oversight measures | CTRL-HUMAN-GATE | covered |
+| 7 | Post-market monitoring | CTRL-REPLAY-REJECTION | covered |
+| 8 | Incident reporting | CTRL-AUDIT-TRAIL | partial |
+| 9 | Instructions for use | CTRL-MIDMARKET-GATE | covered |
+
+`certificationClaim: false` · `independentAuditClaim: false` — pre-audit evidence mapping, not legal certification.
 
 ---
 

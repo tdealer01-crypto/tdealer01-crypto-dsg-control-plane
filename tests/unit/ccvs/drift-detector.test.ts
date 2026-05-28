@@ -34,6 +34,44 @@ describe('buildDriftSnapshot', () => {
     const snap = buildDriftSnapshot();
     expect(new Date(snap.captured_at).toISOString()).toBe(snap.captured_at);
   });
+
+  it('deployment_config_hash starts with sha256: followed by 64 hex chars', () => {
+    const snap = buildDriftSnapshot();
+    expect(snap.deployment_config_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it('deployment_config_hash is same whether NEXT_PUBLIC_SUPABASE_URL is unset or empty string', () => {
+    const saved = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hash1 = buildDriftSnapshot().deployment_config_hash;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = '';
+    const hash2 = buildDriftSnapshot().deployment_config_hash;
+    expect(hash1).toBe(hash2);
+    if (saved !== undefined) process.env.NEXT_PUBLIC_SUPABASE_URL = saved;
+    else delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  });
+
+  it('deployment_config_hash is same whether DSG_CONTROL_PLANE_BASE_URL is unset or empty string', () => {
+    const saved = process.env.DSG_CONTROL_PLANE_BASE_URL;
+    delete process.env.DSG_CONTROL_PLANE_BASE_URL;
+    const hash1 = buildDriftSnapshot().deployment_config_hash;
+    process.env.DSG_CONTROL_PLANE_BASE_URL = '';
+    const hash2 = buildDriftSnapshot().deployment_config_hash;
+    expect(hash1).toBe(hash2);
+    if (saved !== undefined) process.env.DSG_CONTROL_PLANE_BASE_URL = saved;
+    else delete process.env.DSG_CONTROL_PLANE_BASE_URL;
+  });
+
+  it('deployment_config_hash is same whether VERCEL_GIT_COMMIT_SHA is unset or empty string', () => {
+    const saved = process.env.VERCEL_GIT_COMMIT_SHA;
+    delete process.env.VERCEL_GIT_COMMIT_SHA;
+    const hash1 = buildDriftSnapshot().deployment_config_hash;
+    process.env.VERCEL_GIT_COMMIT_SHA = '';
+    const hash2 = buildDriftSnapshot().deployment_config_hash;
+    expect(hash1).toBe(hash2);
+    if (saved !== undefined) process.env.VERCEL_GIT_COMMIT_SHA = saved;
+    else delete process.env.VERCEL_GIT_COMMIT_SHA;
+  });
 });
 
 describe('detectDrift — no previous', () => {
