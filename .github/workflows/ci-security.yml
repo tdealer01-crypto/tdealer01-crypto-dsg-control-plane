@@ -61,3 +61,8 @@ jobs:
         run: |
           chmod +x ./scripts/check-error-handlers.sh
           ./scripts/check-error-handlers.sh
+
+      - name: Check request body safety (informational)
+        run: |
+          chmod +x ./scripts/check-request-body-safety.sh
+          ./scripts/check-request-body-safety.sh
