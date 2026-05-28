@@ -40,6 +40,9 @@ artifacts/
 stryker-report/
 .stryker-tmp/
 
+# locally-generated CCVS evidence artifacts (CI-generated only; commit=unknown)
+ccvs-*.json
+
 # playwright auth/session state
 playwright/.auth/
 supabase/.temp/
