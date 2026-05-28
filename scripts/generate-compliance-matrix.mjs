@@ -119,6 +119,50 @@ console.log('[compliance-matrix] total=' + rows.length + ' pass=' + pass + ' fai
 console.log('[compliance-matrix] claim_pass_eligible=' + claimPassEligible);
 console.log('[compliance-matrix] written → ' + outputPath);
 
+// POST matrix to live compliance-status endpoint when CCVS_UPLOAD_URL is set (non-blocking)
+const uploadUrl = process.env.CCVS_UPLOAD_URL;
+if (uploadUrl) {
+  const runId = process.env.GITHUB_RUN_ID ?? 'local-' + Date.now();
+  const mutationScore = process.env.MUTATION_SCORE ? parseFloat(process.env.MUTATION_SCORE) : undefined;
+  try {
+    const payload = JSON.stringify({
+      matrix,
+      run_id: runId,
+      ...(mutationScore !== undefined ? { mutation_score: mutationScore } : {}),
+    });
+    const url = new URL(uploadUrl);
+    const mod = url.protocol === 'https:' ? await import('node:https') : await import('node:http');
+    await new Promise((resolve) => {
+      const req = mod.request(
+        {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname + url.search,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        },
+        (res) => {
+          let body = '';
+          res.on('data', (d) => (body += d));
+          res.on('end', () => {
+            if (res.statusCode && res.statusCode < 300) {
+              console.log('[compliance-matrix] uploaded → ' + uploadUrl + ' status=' + res.statusCode);
+            } else {
+              console.warn('[compliance-matrix] upload warn: status=' + res.statusCode);
+            }
+            resolve(undefined);
+          });
+        },
+      );
+      req.on('error', (e) => { console.warn('[compliance-matrix] upload error: ' + e.message); resolve(undefined); });
+      req.write(payload);
+      req.end();
+    });
+  } catch (e) {
+    console.warn('[compliance-matrix] upload skipped: ' + e.message);
+  }
+}
+
 // Exit non-zero if any requirement fails
 if (fail > 0) {
   process.exit(1);
