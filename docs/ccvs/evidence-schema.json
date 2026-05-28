@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://dsg.one/schemas/ccvs/evidence-envelope/v1",
+  "title": "CCVS Evidence Envelope v1.0.0",
+  "description": "Canonical evidence envelope for CCVS governance records. Aligned with in-toto Statement/v1 subject+predicate model. Use predicateType to distinguish artifact classes. All fields under 'integrity' must reference verifiable external bundles before a Claim Passed gate can be asserted.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "subject",
+    "run",
+    "oidc",
+    "metrics",
+    "integrity",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": ["unit", "integration", "adversarial", "replay", "oversight", "sbom", "provenance", "mutation"],
+      "description": "Classifies the artifact type. Determines which predicate namespace to use when wrapping in an in-toto Statement."
+    },
+    "subject": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "digest"],
+        "properties": {
+          "name": { "type": "string" },
+          "digest": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["repo", "commit", "workflow_run_id", "builder_id", "invocation_id"],
+      "properties": {
+        "repo": { "type": "string" },
+        "commit": { "type": "string", "minLength": 7 },
+        "ref": { "type": "string" },
+        "workflow_run_id": { "type": "string" },
+        "builder_id": { "type": "string" },
+        "invocation_id": { "type": "string" },
+        "runner_os": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "oidc": {
+      "type": "object",
+      "required": ["issuer", "audience", "sub"],
+      "properties": {
+        "issuer": { "type": "string", "format": "uri" },
+        "audience": { "type": "string" },
+        "sub": { "type": "string" },
+        "repository": { "type": "string" },
+        "ref": { "type": "string" },
+        "environment": { "type": "string" },
+        "jti": { "type": "string", "description": "JWT ID – used for nonce/replay-cache lookup." }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "tests_total": { "type": "integer", "minimum": 0 },
+        "tests_passed": { "type": "integer", "minimum": 0 },
+        "tests_failed": { "type": "integer", "minimum": 0 },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "lines": { "type": "number", "minimum": 0, "maximum": 100 },
+            "branches": { "type": "number", "minimum": 0, "maximum": 100 },
+            "functions": { "type": "number", "minimum": 0, "maximum": 100 },
+            "statements": { "type": "number", "minimum": 0, "maximum": 100 }
+          },
+          "additionalProperties": false
+        },
+        "mutation_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "duration_ms": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["chain_hash"],
+      "properties": {
+        "previous_chain_hash": {
+          "type": "string",
+          "description": "Chain hash of the immediately preceding evidence envelope. Empty string for the first record."
+        },
+        "chain_hash": {
+          "type": "string",
+          "description": "SHA-256 of the canonicalized envelope (excluding this field). Signed by Cosign/Sigstore."
+        },
+        "sbom_ref": { "type": "string", "description": "Path or URI to the accompanying SBOM file." },
+        "bundle_ref": { "type": "string", "description": "Path or URI to the Sigstore bundle (.sigstore.json)." },
+        "verification_policy_ref": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "policy_version": { "type": "string" },
+    "nonce": { "type": "string", "description": "Single-use nonce for replay-attack prevention." },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "generated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

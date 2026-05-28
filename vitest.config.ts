@@ -35,13 +35,15 @@ export default defineConfig({
         '**/*.d.ts',
       ],
       thresholds: {
-        lines: 20,
-        functions: 45,
-        branches: 20,
-        statements: 20,
-        // Revenue-critical paths have higher per-file floors (enforced via CI comments)
-        // lib/billing/*:    ~88% lines (entitlements 100%, fulfillment 93%, overage 71%)
-        // lib/usage/*:      100% lines (quota.ts fully covered)
+        // Phase-1 targets (raised from 20/45/20/20 per CCVS compliance gap remediation).
+        // Phase-2: 75/80/70/75. Phase-3: 85/90/80/85.
+        // Critical governance paths target ≥90/90/85/90 as per-file floors in Phase-2:
+        //   lib/gate/**, lib/governance/**, lib/commands/**, lib/executors/**,
+        //   lib/model-provider/**, lib/deployment/**, lib/billing/**, lib/usage/**
+        lines: 60,
+        functions: 65,
+        branches: 55,
+        statements: 60,
       },
     },
   },
