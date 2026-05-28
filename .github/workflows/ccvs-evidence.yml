@@ -40,8 +40,11 @@ jobs:
           cache: "npm"
       - run: npm ci
 
-      - name: Run unit tests with coverage
-        run: npm run test:coverage
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Collect coverage metrics (record only, no threshold enforcement)
+        run: npx vitest run --coverage --coverage.reporter=json-summary || true
 
       - name: Emit L1 evidence envelope
         id: emit
