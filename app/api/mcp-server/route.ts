@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { readJsonBody } from '@/lib/security/request-json';
 
 // ERROR_HANDLER_EXEMPT: MCP JSON-RPC protocol requires structured error responses
 export const dynamic = 'force-dynamic';
@@ -170,13 +171,16 @@ async function callTool(
 export async function POST(request: Request) {
   let id: string | number | null = null;
   try {
-    const body = await request.json();
+    const parsed = await readJsonBody<{ method: string; params?: Record<string, unknown>; id?: string | number }>(
+      request,
+      { maxBytes: 65_536 },
+    );
+    if (!parsed.ok) {
+      return Response.json({ jsonrpc: '2.0', id, error: { code: -32700, message: parsed.error } }, { status: parsed.status });
+    }
+    const body = parsed.value!;
     id = body.id ?? null;
-    const { method, params } = body as {
-      method: string;
-      params?: Record<string, unknown>;
-      id?: string | number;
-    };
+    const { method, params } = body;
 
     if (method === 'initialize') {
       return Response.json({

@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import type { ComplianceMatrix } from '../../../../lib/ccvs/compliance-matrix';
 import { REQUIREMENT_CATALOG } from '../../../../lib/ccvs/compliance-matrix';
+import { readJsonBody } from '../../../../lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,14 +65,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  let body: { matrix?: ComplianceMatrix; run_id?: string; mutation_score?: number };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 });
+  const parsed = await readJsonBody<{ matrix?: ComplianceMatrix; run_id?: string; mutation_score?: number }>(
+    request,
+    { maxBytes: 262_144 },
+  );
+  if (!parsed.ok) {
+    return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
   }
-
-  const { matrix, run_id, mutation_score } = body;
+  const { matrix, run_id, mutation_score } = parsed.value ?? {};
 
   if (!matrix || typeof matrix !== 'object') {
     return NextResponse.json({ ok: false, error: 'matrix is required' }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeGatewayTool, normalizeGatewayToolRequest } from '../../../../../lib/gateway/executor';
+import { readJsonBody } from '../../../../../lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,11 @@ function statusForDecision(result: Awaited<ReturnType<typeof executeGatewayTool>
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readJsonBody<Record<string, unknown>>(request, { maxBytes: 32_768 });
+    if (!parsed.ok) {
+      return NextResponse.json({ ok: false, decision: 'block', reason: parsed.error }, { status: parsed.status });
+    }
+    const body = parsed.value ?? {};
     const gatewayRequest = normalizeGatewayToolRequest(body, request.headers);
     const result = await executeGatewayTool(gatewayRequest);
 

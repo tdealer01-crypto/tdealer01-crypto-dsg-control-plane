@@ -4,9 +4,14 @@ import {
   planExecution,
 } from '../../../lib/agent-governance/service';
 import type { AgentExecuteBody } from '../../../lib/agent-governance/types';
+import { readJsonBody } from '../../../lib/security/request-json';
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as AgentExecuteBody | null;
+  const parsed = await readJsonBody<AgentExecuteBody>(req, { maxBytes: 65_536 });
+  if (!parsed.ok) {
+    return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
+  }
+  const body = parsed.value;
   if (!body?.workspace_id || !body?.org_id || !body?.provider || !body?.agent_id) {
     return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 });
   }
