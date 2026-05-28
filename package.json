@@ -47,7 +47,11 @@
     "smoke:memory-api": "bash scripts/dsg-memory-api-smoke.sh",
     "smoke:agent-command-gate:live": "node scripts/smoke-agent-command-gate-live.mjs",
     "proof:install": "python -m pip install -r tools/proofs/requirements.txt",
-    "proof:revenue": "python tools/proofs/prove_revenue_ready.py"
+    "proof:revenue": "python tools/proofs/prove_revenue_ready.py",
+    "ccvs:emit": "node scripts/emit-test-evidence.mjs",
+    "ccvs:matrix": "node scripts/generate-compliance-matrix.mjs",
+    "ccvs:verify": "node scripts/verify-evidence-chain.mjs",
+    "ccvs:pipeline": "npm run test:coverage && node scripts/emit-test-evidence.mjs --type unit --suite all-unit --output ccvs-unit-evidence.json && node scripts/verify-evidence-chain.mjs ccvs-unit-evidence.json && node scripts/generate-compliance-matrix.mjs --output ccvs-compliance-matrix.json"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.48.0",

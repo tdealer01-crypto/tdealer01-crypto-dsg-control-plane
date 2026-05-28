@@ -8,7 +8,7 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
-## 🟢 GO / NO-GO — 2026-05-25
+## 🟢 GO / NO-GO — 2026-05-28
 
 ```
 GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
@@ -17,7 +17,7 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | Gate | Result | Command / Evidence |
 |---|:---:|---|
 | TypeScript typecheck | ✅ 0 errors | `npm run typecheck` |
-| Unit + integration tests | ✅ **874 passed** / 886 total | `npm run test` — 20.44s |
+| Unit + integration tests | ✅ **925 passed** / 937 total | `npm run test` — 129 files passed, 4 skipped |
 | Policy Z3 proofs | ✅ 8 theorems UNSAT | `npm run verify:policy` |
 | Revenue Z3 proofs | ✅ 16 theorems FORMAL PROOF PASS | `npm run proof:revenue` |
 | Production homepage | ✅ HTTP 200 | `GET /` |
@@ -27,20 +27,74 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | User-flow E2E | ✅ PASS | finance-governance submit → approve → Supabase persisted |
 | **go:no-go gate** | ✅ **PASS** | `npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app` |
 
-### Full test output — 2026-05-25
+### Full test output — 2026-05-28
 
 ```
- Test Files  125 passed | 4 skipped (129)
-      Tests  874 passed | 12 skipped (886)
-   Start at  2026-05-25
-   Duration  20.44s
+ Test Files  129 passed | 4 skipped (133)
+      Tests  925 passed | 12 skipped (937)
+   Start at  2026-05-28
 ```
+
+Includes 46 new CCVS compliance pipeline tests (evidence-collector, compliance-matrix, drift-detector).
 
 ```
 npm run typecheck     ✅  0 errors
 npm run verify:policy ✅  8 theorems proved, 0 failed
 npm run proof:revenue ✅  16 theorems — VERDICT: FORMAL PROOF PASS
 npm run go:no-go      ✅  GO/NO-GO RESULT: PASS
+```
+
+---
+
+## 🔐 Evidence-Driven Compliance Pipeline — CCVS v1 (2026-05-28)
+
+Every passing test is automatically upgraded into a **cryptographically-chained, audit-ready evidence artifact**.
+
+### Evidence Severity Levels
+
+| Level | Type | Description | Minimum for |
+|-------|------|-------------|-------------|
+| L1 | `unit` | Test results + coverage metrics | Internal quality |
+| L2 | `integration` | API & workflow coverage | Feature readiness |
+| L3 | `adversarial` / `replay` | Tamper / replay rejection tests | Security review |
+| L4 | `mutation` / `oversight` | Mutation score ≥90%, Z3 formal proofs | Compliance claims |
+| L5 | `provenance` | SLSA provenance, reproducible build | Regulatory assertion |
+
+### CI Evidence Chain
+
+```
+L1 Unit → L2 Integration → L3 Adversarial+Replay → L4 Z3 Proof → Compliance Matrix → Drift Detection
+```
+
+Each job computes a `chain_hash = sha256(canonicalized_envelope)` and passes it to the next job as `previous_chain_hash`. The chain is tamper-evident.
+
+### Compliance Matrix
+
+Auto-generated from test results — maps every regulatory requirement to a control, test file, and evidence hash:
+
+| Framework | Requirement | Control | Min Level |
+|-----------|-------------|---------|-----------|
+| EU AI Act | Art. 14 Human oversight | CTRL-HUMAN-GATE | L2 |
+| EU AI Act | Art. 12 Record-keeping | CTRL-IMMUTABLE-AUDIT | L3 |
+| ISO 42001 | A.7.3 Risk assessment | CTRL-RISK-GATE | L3 |
+| ISO 42001 | A.9.2 Internal audit | CTRL-AUDIT-TRAIL | L2 |
+| NIST AI RMF | GOVERN 1.1 | CTRL-POLICY-ENGINE | L1 |
+| NIST AI RMF | MAP 2.1 | CTRL-PROOF-VALIDITY | L4 |
+| SLSA | Level 2 Provenance | CTRL-BUILD-PROVENANCE | L5 |
+
+### npm scripts
+
+```bash
+npm run ccvs:emit      # emit evidence envelope after test run
+npm run ccvs:verify    # verify chain_hash integrity on all envelopes
+npm run ccvs:matrix    # generate compliance matrix JSON
+npm run ccvs:pipeline  # full: coverage → emit → verify → matrix
+```
+
+### Evidence Chain API
+
+```
+GET /api/ccvs/evidence-chain   # severity table, requirement catalog, drift status
 ```
 
 ---
