@@ -1,0 +1,96 @@
+name: ccvs-evidence
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-evidence:
+    name: Emit CCVS unit evidence envelope
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Emit evidence envelope
+        id: emit
+        run: |
+          node - <<'JSEOF'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          let coverage = {};
+          try {
+            const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const t = summary.total;
+            coverage = {
+              lines: t.lines.pct,
+              branches: t.branches.pct,
+              functions: t.functions.pct,
+              statements: t.statements.pct
+            };
+          } catch (e) {
+            console.warn('coverage-summary.json not found – coverage metrics will be empty:', e.message);
+          }
+
+          const envelope = {
+            schema_version: '1.0.0',
+            evidence_type: 'unit',
+            subject: [{
+              name: 'repo:' + process.env.GITHUB_REPOSITORY,
+              digest: { sha1: process.env.GITHUB_SHA }
+            }],
+            run: {
+              repo: process.env.GITHUB_REPOSITORY,
+              commit: process.env.GITHUB_SHA,
+              ref: process.env.GITHUB_REF,
+              workflow_run_id: process.env.GITHUB_RUN_ID,
+              builder_id: 'https://github.com/actions/runner',
+              invocation_id: process.env.GITHUB_RUN_ID + '-' + (process.env.GITHUB_RUN_ATTEMPT || '1')
+            },
+            oidc: {
+              issuer: 'https://token.actions.githubusercontent.com',
+              audience: 'ccvs-evidence',
+              sub: 'repo:' + process.env.GITHUB_REPOSITORY + ':ref:' + process.env.GITHUB_REF,
+              repository: process.env.GITHUB_REPOSITORY,
+              ref: process.env.GITHUB_REF
+            },
+            metrics: { coverage },
+            integrity: {
+              previous_chain_hash: '',
+              chain_hash: ''
+            },
+            policy_version: 'v1',
+            generated_at: new Date().toISOString()
+          };
+
+          const raw = JSON.stringify(envelope, null, 2);
+          const digest = crypto.createHash('sha256').update(raw).digest('hex');
+          envelope.integrity.chain_hash = 'sha256:' + digest;
+
+          const out = JSON.stringify(envelope, null, 2);
+          fs.writeFileSync('ccvs-unit-evidence.json', out);
+          console.log('Evidence chain_hash: sha256:' + digest);
+          console.log('Coverage:', JSON.stringify(coverage));
+          JSEOF
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccvs-unit-evidence-${{ github.run_id }}
+          path: ccvs-unit-evidence.json
+          retention-days: 90
+          if-no-files-found: warn

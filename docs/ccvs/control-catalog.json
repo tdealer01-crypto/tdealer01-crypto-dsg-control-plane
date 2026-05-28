@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0.0",
+  "catalog_id": "ccvs-control-catalog",
+  "last_updated": "2026-05-28",
+  "description": "CCVS control catalog. Maps governance controls to requirements and evidence types. Every production claim gate must trace back to at least one control in this catalog with current signed evidence.",
+  "controls": [
+    {
+      "id": "CTRL-001",
+      "family": "software-supply-chain",
+      "name": "Build Provenance",
+      "description": "Every production artifact must have SLSA-aligned build provenance signed by the hosted build platform.",
+      "requirements": ["SLSA-BUILD-L2", "SLSA-BUILD-L3"],
+      "evidence_type": "provenance",
+      "owner": "platform-team",
+      "frequency": "per-release",
+      "acceptance_criteria": "provenance.json exists; subject digest matches release artifact; builder_id is an expected hosted runner; cosign verify-blob passes with expected identity and issuer",
+      "corrective_action_status": "pending-implementation"
+    },
+    {
+      "id": "CTRL-002",
+      "family": "testing",
+      "name": "Unit Test Evidence",
+      "description": "All production code must have signed unit test evidence meeting per-repo coverage thresholds.",
+      "requirements": ["ISO42001-A.6.2", "NIST-AI-RMF-MEASURE"],
+      "evidence_type": "unit",
+      "owner": "engineering",
+      "frequency": "per-commit",
+      "acceptance_criteria": "tests_passed > 0; coverage.lines >= threshold; signed Sigstore bundle exists; chain_hash continuous from previous run",
+      "corrective_action_status": "in-progress"
+    },
+    {
+      "id": "CTRL-003",
+      "family": "testing",
+      "name": "Integration Test Evidence",
+      "description": "Critical integration paths must have signed integration test evidence with masked external interactions.",
+      "requirements": ["ISO42001-A.6.2", "NIST-AI-RMF-MEASURE"],
+      "evidence_type": "integration",
+      "owner": "engineering",
+      "frequency": "per-commit",
+      "acceptance_criteria": "decision_trace present; service_graph_ref present; masked_requests logged; chain_hash continuous",
+      "corrective_action_status": "pending-implementation"
+    },
+    {
+      "id": "CTRL-004",
+      "family": "testing",
+      "name": "Adversarial and Replay Test Evidence",
+      "description": "Gate and security-critical paths must pass adversarial and replay tests with detection latency within bounds.",
+      "requirements": ["EU-AI-ACT-ART9", "NIST-AI-RMF-GOVERN"],
+      "evidence_type": "adversarial",
+      "owner": "security-team",
+      "frequency": "per-release",
+      "acceptance_criteria": "all attack vectors pass; replay nonce rejected with detection_latency_ms < 1000; replay_store_hit confirmed",
+      "corrective_action_status": "pending-implementation"
+    },
+    {
+      "id": "CTRL-005",
+      "family": "human-oversight",
+      "name": "Human Oversight Record",
+      "description": "High-severity decisions must have a signed oversight record with segregation-of-duties verification.",
+      "requirements": ["EU-AI-ACT-ART14", "ISO42001-A.4.3"],
+      "evidence_type": "oversight",
+      "owner": "governance-team",
+      "frequency": "per-high-severity-decision",
+      "acceptance_criteria": "approver_identity present; approver_identity != requester_identity (SoD); competence_ref valid; signed bundle exists and verifies",
+      "corrective_action_status": "pending-implementation"
+    },
+    {
+      "id": "CTRL-006",
+      "family": "sbom",
+      "name": "Software Bill of Materials",
+      "description": "Every release must have an SBOM meeting NTIA minimum elements in SPDX or CycloneDX format bound to the release digest.",
+      "requirements": ["NTIA-SBOM-MIN", "EU-AI-ACT-ART12"],
+      "evidence_type": "sbom",
+      "owner": "platform-team",
+      "frequency": "per-release",
+      "acceptance_criteria": "SPDX or CycloneDX schema validates; supplier/name/version/identifier/dependency/author/timestamp all present; SBOM digest bound to release artifact digest",
+      "corrective_action_status": "pending-implementation"
+    },
+    {
+      "id": "CTRL-007",
+      "family": "immutable-retention",
+      "name": "Immutable Evidence Retention",
+      "description": "Production evidence must be uploaded to WORM-compliant object storage with verifiable retention receipts.",
+      "requirements": ["EU-AI-ACT-ART12", "ISO42001-A.9.1"],
+      "evidence_type": "unit",
+      "owner": "platform-team",
+      "frequency": "per-commit",
+      "acceptance_criteria": "Object Lock COMPLIANCE mode enabled; Retain-Until-Date set per retention policy; upload receipt retrievable and matches object version ID",
+      "corrective_action_status": "pending-implementation"
+    },
+    {
+      "id": "CTRL-008",
+      "family": "testing",
+      "name": "Mutation Testing Gate",
+      "description": "Critical governance paths must pass mutation score thresholds before a Claim Passed gate is asserted.",
+      "requirements": ["NIST-AI-RMF-MEASURE", "ISO42001-A.6.2"],
+      "evidence_type": "mutation",
+      "owner": "engineering",
+      "frequency": "per-release",
+      "acceptance_criteria": "mutation_score >= 95 for proof/hash/replay paths; >= 90 for gate/governance/command paths; signed mutation evidence bundle exists",
+      "corrective_action_status": "pending-implementation"
+    }
+  ],
+  "requirement_registry": {
+    "ISO42001-A.6.2": "ISO/IEC 42001:2023 Annex A, Control A.6.2 – AI system testing",
+    "ISO42001-A.4.3": "ISO/IEC 42001:2023 Annex A, Control A.4.3 – Human oversight of AI systems",
+    "ISO42001-A.9.1": "ISO/IEC 42001:2023 Annex A, Control A.9.1 – Record-keeping",
+    "NIST-AI-RMF-MEASURE": "NIST AI RMF 1.0 – MEASURE function",
+    "NIST-AI-RMF-GOVERN": "NIST AI RMF 1.0 – GOVERN function",
+    "EU-AI-ACT-ART9": "EU AI Act Article 9 – Risk management system",
+    "EU-AI-ACT-ART12": "EU AI Act Article 12 – Record-keeping",
+    "EU-AI-ACT-ART14": "EU AI Act Article 14 – Human oversight",
+    "SLSA-BUILD-L2": "SLSA v1.0 Build Track Level 2 – hosted build platform provenance",
+    "SLSA-BUILD-L3": "SLSA v1.0 Build Track Level 3 – hardened builds",
+    "NTIA-SBOM-MIN": "NTIA SBOM Minimum Elements (2021)"
+  }
+}
