@@ -8,7 +8,7 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
-## 🟢 GO / NO-GO — 2026-05-28 (CCVS v1.2)
+## 🟢 GO / NO-GO — 2026-05-28 (CCVS v1.2 + Security Hardening)
 
 ```
 GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
@@ -28,6 +28,8 @@ GO/NO-GO RESULT: PASS  ✅  (all scripted checks green)
 | compliance-status API | ✅ GET/POST `/api/ccvs/compliance-status` | shield badge, claim_pass_eligible cache |
 | EU AI Act Annex IV | ✅ 9 items mapped, Aug 2026 deadline | `GET /api/compliance-evidence-pack/annex4` |
 | claim_pass_eligible | ✅ Step Summary badge 🟢/🔴 | `ccvs-evidence.yml` compliance-matrix job |
+| npm vulnerability gate | ✅ **6 moderate (dev-only)**, 0 high/critical | `npm audit --audit-level=high` — CI enforced |
+| Request body safety | ✅ 5 critical routes → `readJsonBody` (size-limited) | `scripts/check-request-body-safety.sh` |
 | Production homepage | ✅ HTTP 200 | `GET /` |
 | Runtime readiness | ✅ HTTP 200 `status=ready` | `GET /api/readiness` |
 | Health + rate limiter | ✅ HTTP 200 `rateLimiter.ok: true` | `GET /api/health` |
@@ -139,12 +141,12 @@ GET  /api/compliance-evidence-pack/annex4?format=html  # styled HTML checklist
 
 ---
 
-## 📋 Compliance Evidence Pack — 2026-05-25
+## 📋 Compliance Evidence Pack — 2026-05-28
 
 Pre-formatted evidence report for EU AI Act and ISO 42001 compliance review.
 
 - **24 Z3 theorems** — 8 policy + 16 billing, UNSAT proof for each
-- **874 test assertions** — 129 test files, 0 failures
+- **998 test assertions** — 133 test files, 0 failures
 - **WORM hash chain** — SHA-256 `requestHash → decisionHash → recordHash → bundleHash`
 - **EU AI Act Art. 12/14** — Record keeping and human oversight control mapping
 - **ISO/IEC 42001** — A.6, A.9, A.10 AI management system controls
@@ -224,6 +226,46 @@ Applies to both `/api/cron/usage-alerts` and `/api/cron/flush-meter-outbox`.
 # Now works correctly:
 GET /api/usage/analytics?period=2026-04  →  "period": "2026-04"
 ```
+
+---
+
+## 🛡️ Security Hardening — 2026-05-28
+
+### Dependency Vulnerability Reduction (15 → 6 moderate)
+
+`package.json` npm `overrides` force safe transitive dep versions:
+
+```json
+"overrides": {
+  "qs":      ">=6.15.2",
+  "ws":      ">=8.20.1",
+  "postcss": ">=8.5.15"
+}
+```
+
+| Package | Issue | Fix |
+|---|---|---|
+| `qs` <6.15.2 | Prototype pollution via `typed-rest-client` | override to ≥6.15.2 |
+| `ws` <8.20.1 | DoS via `ethers` transitive dep | `ethers` ^6.13→^6.16 + override |
+| `postcss` <8.5.10 | Line-return injection | override to ≥8.5.15 |
+
+**Remaining 6 moderate**: all `vitest`/`esbuild` dev-only (CVSS 5.3, no dev server in CI `vitest run` mode). Require vitest v4 major bump — tracked via Dependabot.
+
+CI enforcement: `npm audit --audit-level=high` in `ci-security.yml` — 0 high/critical blocks the build.
+
+### Request Body Safety
+
+5 critical API routes migrated from raw `request.json()` to `readJsonBody` (size-limited, depth-checked):
+
+| Route | Max body | Purpose |
+|---|---|---|
+| `gateway/tools/execute` | 32 KB | AI tool execution gateway |
+| `mcp-server` | 64 KB | JSON-RPC MCP endpoint |
+| `agent-execute` | 64 KB | Agent execution planner |
+| `ccvs/compliance-status` | 256 KB | CI compliance matrix upload |
+| `finance-governance/submit` | 4 KB | Finance case submission |
+
+`scripts/check-request-body-safety.sh` — CI linter (informational, non-blocking) flags any new `request.json()` regressions in POST/PUT/PATCH handlers. Wired into `ci-security.yml`.
 
 ---
 
@@ -314,10 +356,11 @@ Supabase auth + Postgres (RLS)
 Stripe billing + metered usage
 Upstash Redis rate limiting
 Resend transactional email
-Vitest 874 tests (unit + integration)
+Vitest 998 tests (unit + integration)
 Playwright E2E
 Z3 SMT Solver — 24 theorems at design time
 GitHub Actions + DSG Secure Deploy Gate
+npm overrides — qs/ws/postcss transitive dep hardening
 ```
 
 ---
@@ -326,10 +369,12 @@ GitHub Actions + DSG Secure Deploy Gate
 
 ```bash
 npm run typecheck          # TypeScript — 0 errors
-npm run test               # 874 tests
+npm run test               # 998 tests
 npm run verify:policy      # Z3 policy proofs (Python)
 npm run proof:revenue      # Z3 billing proofs (Python)
 npm run go:no-go <url>     # Full production gate
+npm audit --audit-level=high          # 0 high/critical (6 dev-only moderate)
+bash scripts/check-request-body-safety.sh  # request body safety linter
 ```
 
 ---
@@ -352,6 +397,9 @@ npm run go:no-go <url>     # Full production gate
 ✓ EU AI Act Annex IV 9-item checklist live — GET /api/compliance-evidence-pack/annex4 (7 covered, 2 partial).
 ✓ go:no-go gate PASS on 2026-05-28 (CCVS v1.2).
 ✓ Compliance Evidence Pack — pre-audit PDF report served at /api/compliance-evidence-pack.
+✓ npm dependency hardening — qs/ws/postcss overrides, 15 → 6 moderate vulns, 0 high/critical.
+✓ Request body safety — 5 critical routes use readJsonBody with explicit size limits (4–256 KB).
+✓ CI body-safety linter — scripts/check-request-body-safety.sh flags raw request.json() regressions.
 ```
 
 Not claimed:
