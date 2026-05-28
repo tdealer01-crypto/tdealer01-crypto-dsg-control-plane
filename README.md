@@ -339,7 +339,7 @@ npm run go:no-go <url>     # Full production gate
 ```
 ✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions.
 ✓ Runtime readiness is green (HTTP 200, status=ready).
-✓ 874 unit + integration tests pass, 0 failures.
+✓ 998 unit + integration tests pass, 0 failures (133 files, 4 skipped).
 ✓ TypeScript compiles with 0 errors.
 ✓ Gateway policy engine formally verified — 8 Z3 theorems, design-time.
 ✓ Billing quota model formally verified — 16 Z3 theorems, design-time.
@@ -347,7 +347,10 @@ npm run go:no-go <url>     # Full production gate
 ✓ Stripe metered billing idempotent — per-execution key, no same-second dedup.
 ✓ Billing outbox — no silent loss on Stripe outage, hourly retry.
 ✓ Cron routes fail-closed — missing CRON_SECRET returns 503, not 200.
-✓ go:no-go gate PASS on 2026-05-25.
+✓ Mutation score gate 72.08% ≥70% (191/265 killed) — Stryker verified locally.
+✓ CCVS compliance-status API live — GET /api/ccvs/compliance-status returns ok:true (commit da78ef0).
+✓ EU AI Act Annex IV 9-item checklist live — GET /api/compliance-evidence-pack/annex4 (7 covered, 2 partial).
+✓ go:no-go gate PASS on 2026-05-28 (CCVS v1.2).
 ✓ Compliance Evidence Pack — pre-audit PDF report served at /api/compliance-evidence-pack.
 ```
 
