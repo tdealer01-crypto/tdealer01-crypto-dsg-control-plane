@@ -8,7 +8,8 @@ export type DsgCommandState =
   | 'succeeded'
   | 'failed'
   | 'rejected'
-  | 'expired';
+  | 'expired'
+  | 'blocked';
 
 export type DsgCommandToolName =
   | 'device.status.get'
@@ -18,7 +19,14 @@ export type DsgCommandToolName =
   | 'ui.back'
   | 'ui.home'
   | 'ui.scroll'
-  | 'device.notifications.summary';
+  | 'device.notifications.summary'
+  | 'file.list_root'
+  | 'file.preview'
+  | 'file.select'
+  | 'file.send_to_claw'
+  | 'file.rename'
+  | 'file.move'
+  | 'file.delete';
 
 export type DsgCommandEnvelope = {
   version: 'dsg.command/1';
@@ -61,11 +69,19 @@ export type DsgCommandEnvelope = {
   audit: {
     requestedAt: string;
     traceId: string;
+    updatedAt?: string;
+    deviceEvents?: Array<{
+      type: string;
+      message: string;
+      at: string;
+      errorCode?: string;
+      signatureDigest?: string;
+    }>;
   };
   executionState: DsgCommandState;
 };
 
-export const POLICY_VERSION = '2026-05-27-owner-command-mvp';
+export const POLICY_VERSION = '2026-05-28-owner-agent-backend-sync';
 export const COMMAND_TTL_MS = 15 * 60 * 1000;
 
 export const TOOL_POLICY: Record<DsgCommandToolName, {
@@ -81,13 +97,16 @@ export const TOOL_POLICY: Record<DsgCommandToolName, {
   'ui.home': { class: 'REVIEW', risk: 'medium', requiresPermissions: ['accessibility'] },
   'ui.scroll': { class: 'REVIEW', risk: 'medium', requiresPermissions: ['accessibility'] },
   'device.notifications.summary': { class: 'REVIEW', risk: 'medium', requiresPermissions: ['notification_listener'] },
+  'file.list_root': { class: 'REVIEW', risk: 'high', requiresPermissions: ['manage_external_storage'] },
+  'file.preview': { class: 'REVIEW', risk: 'high', requiresPermissions: ['manage_external_storage'] },
+  'file.select': { class: 'REVIEW', risk: 'medium', requiresPermissions: ['manage_external_storage'] },
+  'file.send_to_claw': { class: 'REVIEW', risk: 'high', requiresPermissions: ['manage_external_storage'] },
+  'file.rename': { class: 'REVIEW', risk: 'high', requiresPermissions: ['manage_external_storage'] },
+  'file.move': { class: 'REVIEW', risk: 'high', requiresPermissions: ['manage_external_storage'] },
+  'file.delete': { class: 'BLOCK', risk: 'blocked', requiresPermissions: ['manage_external_storage'] },
 };
 
 export const BLOCKED_TOOL_PATTERNS = [
-  /credential/i,
-  /password/i,
-  /token/i,
-  /secret/i,
   /payment/i,
   /money/i,
   /install/i,

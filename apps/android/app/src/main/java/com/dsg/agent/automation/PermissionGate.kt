@@ -3,8 +3,8 @@ package com.dsg.agent.automation
 import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
+import android.os.Environment
 import android.provider.Settings
-import android.text.TextUtils
 import com.dsg.agent.service.DsgAccessibilityService
 
 object AgentErrorCodes {
@@ -14,6 +14,7 @@ object AgentErrorCodes {
     const val PERMISSION_REVOKED_MID_FLIGHT = "PERMISSION_REVOKED_MID_FLIGHT"
     const val ACCESSIBILITY_SERVICE_NOT_CONNECTED = "ACCESSIBILITY_SERVICE_NOT_CONNECTED"
     const val EXECUTOR_UNSUPPORTED = "EXECUTOR_UNSUPPORTED"
+    const val FILE_SENSITIVE_REVIEW_REQUIRED = "FILE_SENSITIVE_REVIEW_REQUIRED"
 }
 
 data class GateResult(val allowed: Boolean, val message: String, val errorCode: String? = null)
@@ -36,6 +37,11 @@ class PermissionGate(private val context: Context) {
             } else {
                 GateResult(false, "Notification listener permission is required", AgentErrorCodes.PERMISSION_REQUIRED)
             }
+            PERMISSION_FULL_FILE_MANAGER -> if (isFullFileManagerEnabled()) {
+                GateResult(true, "Full file manager permission is enabled")
+            } else {
+                GateResult(false, "Full file manager permission is required for ${command.type.name}", AgentErrorCodes.PERMISSION_REQUIRED)
+            }
             else -> GateResult(false, "Unsupported permission gate: $required", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
         }
     }
@@ -57,10 +63,13 @@ class PermissionGate(private val context: Context) {
         }
     }
 
+    fun isFullFileManagerEnabled(): Boolean = Environment.isExternalStorageManager()
+
     companion object {
         const val PERMISSION_NONE = "none"
         const val PERMISSION_ACCESSIBILITY = "accessibility"
         const val PERMISSION_NOTIFICATION_LISTENER = "notification_listener"
+        const val PERMISSION_FULL_FILE_MANAGER = "manage_external_storage"
 
         fun requiredPermissionFor(type: AgentCommandType): String = when (type) {
             AgentCommandType.STATUS,
@@ -71,6 +80,13 @@ class PermissionGate(private val context: Context) {
             AgentCommandType.HOME,
             AgentCommandType.SCROLL_DOWN -> PERMISSION_ACCESSIBILITY
             AgentCommandType.NOTIFICATION_SUMMARY -> PERMISSION_NOTIFICATION_LISTENER
+            AgentCommandType.FILE_LIST_ROOT,
+            AgentCommandType.FILE_PREVIEW,
+            AgentCommandType.FILE_SELECT,
+            AgentCommandType.FILE_SEND_TO_CLAW,
+            AgentCommandType.FILE_RENAME,
+            AgentCommandType.FILE_MOVE,
+            AgentCommandType.FILE_DELETE -> PERMISSION_FULL_FILE_MANAGER
         }
     }
 }
