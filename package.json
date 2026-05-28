@@ -30,8 +30,10 @@
     "smoke:first-value-flow": "node scripts/dsg-first-value-flow-smoke.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.54.0",
     "@google/genai": "^1.17.0",
     "@hookform/resolvers": "^5.2.1",
+    "@supabase/supabase-js": "^2.50.0",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
