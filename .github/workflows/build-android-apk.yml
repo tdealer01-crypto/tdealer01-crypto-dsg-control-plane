@@ -70,10 +70,10 @@ jobs:
           path: ${{ steps.apk.outputs.name }}
           retention-days: 30
 
-      - name: Publish to GitHub Release (android-latest)
+      - name: Publish to GitHub Release (android-apk-latest)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-latest
+          tag_name: android-apk-latest
           name: "DSG Agent — latest debug APK"
           prerelease: true
           make_latest: false
