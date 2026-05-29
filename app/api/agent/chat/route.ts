@@ -53,7 +53,7 @@ export async function GET() {
     endpoint: 'POST /api/agent/chat',
     body: '{ messages: [{role: "user"|"assistant", content: string}] }',
     stream: 'text/event-stream — {"type":"text","delta":"..."} | {"type":"command",...} | {"type":"done"} | {"type":"error",...}',
-    model: 'claude-opus-4-8',
+    model: 'claude-haiku-4-5-20251001',
   });
 }
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-8',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         stream: true,
         system: SYSTEM_PROMPT,
