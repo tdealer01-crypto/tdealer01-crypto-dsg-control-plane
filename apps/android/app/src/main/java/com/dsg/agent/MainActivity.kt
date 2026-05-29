@@ -785,7 +785,7 @@ class MainActivity : Activity() {
             lower.contains("back") || lower.contains("ย้อน") -> listOf(MappedCommand(AgentCommandType.BACK, "GLOBAL_BACK"))
             lower.contains("home") || lower.contains("หน้าหลัก") -> listOf(MappedCommand(AgentCommandType.HOME, "GLOBAL_HOME"))
             lower.contains("scroll") || lower.contains("เลื่อน") -> listOf(MappedCommand(AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE"))
-            else -> listOf(MappedCommand(AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL))
+            else -> emptyList()
         }
     }
 
