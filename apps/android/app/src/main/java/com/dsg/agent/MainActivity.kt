@@ -26,6 +26,9 @@ import com.dsg.agent.automation.AgentCommandType
 import com.dsg.agent.automation.AgentErrorCodes
 import com.dsg.agent.automation.AuditLogStore
 import com.dsg.agent.automation.CommandExecutionResult
+import com.dsg.agent.automation.DadBotCallback
+import com.dsg.agent.automation.DadBotClient
+import com.dsg.agent.automation.DadBotMessage
 import com.dsg.agent.automation.FullFileManager
 import com.dsg.agent.automation.OwnerApprovalSigner
 import com.dsg.agent.automation.PermissionGate
@@ -45,6 +48,12 @@ class MainActivity : Activity() {
 
     private var fileListRendered = false
     private var workSessionEnabled = false
+    private val dadBotMessages = mutableListOf<DadBotMessage>()
+    private var dadBotTyping = false
+    private lateinit var dadBotClient: DadBotClient
+    private lateinit var dadBotMessageList: LinearLayout
+    private lateinit var dadBotStreamView: TextView
+    private lateinit var dadBotInput: EditText
     private var autonomousModeEnabled: Boolean
         get() = getSharedPreferences("dsg_prefs", MODE_PRIVATE).getBoolean("autonomous_mode", false)
         set(value) { getSharedPreferences("dsg_prefs", MODE_PRIVATE).edit().putBoolean("autonomous_mode", value).apply() }
@@ -56,6 +65,7 @@ class MainActivity : Activity() {
         auditLogStore = AuditLogStore(this)
         permissionGate = PermissionGate(this)
         approvalSigner = OwnerApprovalSigner()
+        dadBotClient = DadBotClient()
         render()
     }
 
@@ -73,6 +83,7 @@ class MainActivity : Activity() {
         addHero(root)
         addTabs(root)
         addAutonomousModeCard(root)
+        addDadBotSection(root)
         addNoCodeChat(root)
         addWorkSessionCard(root)
         addFileManagerCard(root)
