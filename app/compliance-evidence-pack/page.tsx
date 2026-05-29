@@ -214,6 +214,46 @@ export default function ComplianceEvidencePackPage() {
               </p>
             </div>
           </div>
+
+          {/* Zenodo DOI trust signal */}
+          <div className="mt-10 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-6 flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="shrink-0">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-emerald-400">Academic publication</p>
+              <p className="mt-2 text-lg font-black text-white">Zenodo DOI</p>
+              <p className="font-mono text-xs text-emerald-300">10.5281/zenodo.18225586</p>
+            </div>
+            <div className="h-px w-full bg-white/10 md:h-16 md:w-px" />
+            <div className="flex-1">
+              <p className="text-sm leading-6 text-slate-300">
+                DSG ONE methodology is published on Zenodo (CERN/OpenAIRE open-access repository) and citable as peer-referenced research. The cryptographic evidence chain design, CCVS evidence severity levels, and policy theorem approach are documented with DOI — independently referenceable by auditors.
+              </p>
+              <a
+                href="https://doi.org/10.5281/zenodo.18225586"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex text-xs text-emerald-400 hover:underline"
+              >
+                View on Zenodo (doi.org) →
+              </a>
+            </div>
+          </div>
+
+          {/* MCP server differentiator */}
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">DSG MCP Server</p>
+            <h3 className="mt-2 text-lg font-bold text-white">Gate AI actions before they run — inside Claude or Cursor</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              DSG ONE exposes a Model Context Protocol (MCP) server. Any MCP-compatible AI tool (Claude, Cursor) can route commands through the policy gate before execution. Every call produces an evidence envelope — auditable, hash-chained, and exportable. This is governance applied before the AI acts, not after.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs">
+              <a href="/api/mcp" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-white/15 px-3 py-1.5 text-slate-300 hover:border-emerald-400/40">
+                GET /api/mcp →
+              </a>
+              <a href="/api/compliance-evidence-pack/annex4" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-white/15 px-3 py-1.5 text-slate-300 hover:border-emerald-400/40">
+                EU AI Act Annex IV →
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
