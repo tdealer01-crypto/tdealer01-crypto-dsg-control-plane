@@ -1869,6 +1869,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      delivery_proof_reports: {
+        Row: {
+          id: string;
+          run_id: string;
+          claim_pass_eligible: boolean;
+          mutation_score: number | null;
+          requirements_pass: number | null;
+          requirements_total: number | null;
+          matrix_json: Record<string, unknown> | null;
+          last_ci_run: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          run_id: string;
+          claim_pass_eligible: boolean;
+          mutation_score?: number | null;
+          requirements_pass?: number | null;
+          requirements_total?: number | null;
+          matrix_json?: Record<string, unknown> | null;
+          last_ci_run?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          run_id?: string;
+          claim_pass_eligible?: boolean;
+          mutation_score?: number | null;
+          requirements_pass?: number | null;
+          requirements_total?: number | null;
+          matrix_json?: Record<string, unknown> | null;
+          last_ci_run?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       alert_summary_open: {
