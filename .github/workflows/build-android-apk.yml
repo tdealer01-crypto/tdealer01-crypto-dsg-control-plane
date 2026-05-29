@@ -1,0 +1,74 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Build variant (debug / release)'
+        required: false
+        default: 'debug'
+  push:
+    branches: [main, claude/evidence-driven-compliance-E9TJR]
+    paths:
+      - 'apps/android/**'
+
+jobs:
+  build-apk:
+    name: Build DSG Agent APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant Gradle execute permission
+        working-directory: apps/android
+        run: chmod +x gradlew || gradle wrapper --gradle-version 8.9
+
+      - name: Generate Gradle wrapper if missing
+        working-directory: apps/android
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
+
+      - name: Build debug APK
+        working-directory: apps/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+      - name: Rename APK with version + date
+        working-directory: apps/android
+        run: |
+          DATE=$(date +%Y%m%d)
+          cp app/build/outputs/apk/debug/app-debug.apk \
+             app/build/outputs/apk/debug/dsg-agent-${DATE}-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsg-agent-apk
+          path: apps/android/app/build/outputs/apk/debug/dsg-agent-*-debug.apk
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          APK=$(ls apps/android/app/build/outputs/apk/debug/dsg-agent-*-debug.apk 2>/dev/null | head -1)
+          SIZE=$(du -sh "$APK" 2>/dev/null | cut -f1)
+          echo "## ✅ APK Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| File | $(basename $APK) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Size | $SIZE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Variant | debug |" >> $GITHUB_STEP_SUMMARY
+          echo "| Model | claude-haiku-4-5-20251001 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download from **Actions → dsg-agent-apk** artifact" >> $GITHUB_STEP_SUMMARY
