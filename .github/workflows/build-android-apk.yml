@@ -2,15 +2,13 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
-    inputs:
-      variant:
-        description: 'Build variant (debug / release)'
-        required: false
-        default: 'debug'
   push:
     branches: [main, claude/evidence-driven-compliance-E9TJR]
     paths:
       - 'apps/android/**'
+
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -28,47 +26,42 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant Gradle execute permission
-        working-directory: apps/android
-        run: chmod +x gradlew || gradle wrapper --gradle-version 8.9
-
-      - name: Generate Gradle wrapper if missing
-        working-directory: apps/android
-        run: |
-          if [ ! -f gradlew ]; then
-            gradle wrapper --gradle-version 8.9
-          fi
-
       - name: Build debug APK
         working-directory: apps/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Rename APK with version + date
-        working-directory: apps/android
+      - name: Rename APK
+        id: apk
         run: |
           DATE=$(date +%Y%m%d)
-          cp app/build/outputs/apk/debug/app-debug.apk \
-             app/build/outputs/apk/debug/dsg-agent-${DATE}-debug.apk
+          SRC=apps/android/app/build/outputs/apk/debug/app-debug.apk
+          DEST=dsg-agent-${DATE}-debug.apk
+          cp "$SRC" "$DEST"
+          echo "name=$DEST" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dsg-agent-apk
-          path: apps/android/app/build/outputs/apk/debug/dsg-agent-*-debug.apk
+          path: ${{ steps.apk.outputs.name }}
           retention-days: 30
 
-      - name: Summary
-        run: |
-          APK=$(ls apps/android/app/build/outputs/apk/debug/dsg-agent-*-debug.apk 2>/dev/null | head -1)
-          SIZE=$(du -sh "$APK" 2>/dev/null | cut -f1)
-          echo "## ✅ APK Build Complete" >> $GITHUB_STEP_SUMMARY
-          echo "| | |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| File | $(basename $APK) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Size | $SIZE |" >> $GITHUB_STEP_SUMMARY
-          echo "| Variant | debug |" >> $GITHUB_STEP_SUMMARY
-          echo "| Model | claude-haiku-4-5-20251001 |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download from **Actions → dsg-agent-apk** artifact" >> $GITHUB_STEP_SUMMARY
+      - name: Publish to GitHub Release (android-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: "DSG Agent — latest debug APK"
+          prerelease: true
+          files: ${{ steps.apk.outputs.name }}
+          body: |
+            ## DSG Agent Android — latest build
+
+            **Features:**
+            - ⚡ Owner Autonomous Mode — bypass all approval gates
+            - 🤖 DadBot AI Chat — real-time Thai/English via Claude Haiku
+            - 📁 Full File Manager — read/rename/move/delete
+            - 🔒 Audit log every action
+
+            Built from `${{ github.sha }}`
