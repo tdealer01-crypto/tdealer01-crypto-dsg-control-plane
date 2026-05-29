@@ -16,6 +16,7 @@ const PLANS = [
     featured: false,
     cta: 'Start free',
     ctaHref: '/signup',
+    badge: null,
     features: ['1,000 executions / mo', 'Policy gate', 'Audit trail', 'Finance governance', '14-day full access'],
   },
   {
@@ -26,17 +27,27 @@ const PLANS = [
     executions: '10,000 / mo',
     featured: false,
     cta: 'Start Pro trial',
+    badge: null,
     features: ['10,000 executions / mo', 'Everything in Trial', 'Approval workflow', 'Email notifications', 'Priority support'],
   },
   {
-    key: 'business',
-    name: 'Business',
+    key: 'agency',
+    name: 'Agency',
     monthly: 299,
     yearly: 249,
-    executions: '100,000 / mo',
+    executions: 'Unlimited projects',
     featured: true,
-    cta: 'Start Business trial',
-    features: ['100,000 executions / mo', 'Everything in Pro', 'Finance Pack included', 'Audit export PDF + JSON', 'SSO ready'],
+    cta: 'Start Agency trial',
+    badge: 'Best for agencies',
+    features: [
+      'Unlimited proof checks / mo',
+      'Everything in Pro',
+      'White-label Delivery Proof Report',
+      'Share link per client project',
+      'Multi-project dashboard',
+      'Audit export PDF + JSON',
+      'Priority support',
+    ],
   },
   {
     key: 'enterprise',
@@ -46,7 +57,8 @@ const PLANS = [
     executions: 'Custom',
     featured: false,
     cta: 'Start Enterprise pilot',
-    features: ['Custom quota', 'Everything in Business', 'All skill packs', 'Custom skill builder', 'SLA 4h + CSM'],
+    badge: null,
+    features: ['Custom quota', 'Everything in Agency', 'All skill packs', 'Custom skill builder', 'SSO + RBAC', 'SLA 4h + CSM'],
   },
 ];
 
@@ -169,6 +181,10 @@ export default function PricingPage() {
         <div className="mb-8 flex flex-col items-center gap-4">
           <h2 className="text-2xl font-black">Subscription Plans</h2>
           <p className="text-sm text-slate-400">Pay for executions, not seats. Every plan includes policy gate, audit ledger, and approval workflow.</p>
+          <p className="text-xs text-emerald-300">
+            🆕 <strong>Agency plan</strong>: white-label Delivery Proof Report + share link per client — ideal สำหรับ agency ที่ใช้ AI ทำงานให้ลูกค้า →{' '}
+            <Link href="/delivery-proof" className="underline hover:text-emerald-200">ดู Delivery Proof</Link>
+          </p>
           <div className="inline-flex rounded-xl border border-slate-700 bg-slate-900 p-1">
             {(['monthly', 'yearly'] as Interval[]).map((iv) => (
               <button
@@ -191,8 +207,8 @@ export default function PricingPage() {
                 key={plan.key}
                 className={['relative flex flex-col rounded-2xl border p-6', plan.featured ? 'border-emerald-500/40 bg-emerald-500/10 shadow-2xl shadow-emerald-950/30' : 'border-white/10 bg-white/[0.03]'].join(' ')}
               >
-                {plan.featured && (
-                  <span className="absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">Popular</span>
+                {plan.badge && (
+                  <span className="absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">{plan.badge}</span>
                 )}
                 <h3 className="text-xl font-black">{plan.name}</h3>
                 <div className="mt-3 flex items-end gap-1">
@@ -202,7 +218,7 @@ export default function PricingPage() {
                   }
                 </div>
                 {interval === 'yearly' && price > 0 && <p className="text-xs text-emerald-400">billed ${price * 12}/yr</p>}
-                <p className="mt-1 text-xs text-slate-500">{plan.executions} executions</p>
+                <p className="mt-1 text-xs text-slate-500">{plan.executions}</p>
                 <ul className="mt-4 flex-1 space-y-2">
                   {plan.features.map((f) => (
                     <li key={f} className="flex gap-2 text-sm text-slate-300">
