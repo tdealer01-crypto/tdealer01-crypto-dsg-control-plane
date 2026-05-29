@@ -5,6 +5,12 @@ on:
     paths:
       - "apps/android/**"
       - ".github/workflows/android-agent.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/android/**"
+      - ".github/workflows/android-agent.yml"
   workflow_dispatch:
 
 permissions:
@@ -83,6 +89,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish APK to android-apk-latest release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
           set -e
           APK=$(ls apps/android/app/build/outputs/apk/debug/*.apk | head -1)
