@@ -8,6 +8,19 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 GO / NO-GO — 2026-05-29 (CCVS v1.2 + AI Delivery Proof MVP + Agency Pricing)
+
+### New in this release
+| Feature | Path | Description |
+|---|---|---|
+| AI Delivery Proof | `/delivery-proof` | Agency-facing live proof check — paste URL, get GO/NO-GO + share link |
+| Live proof scan API | `POST /api/delivery-proof/scan` | 5 checks (homepage, readiness, health, auth gate, repo URL) |
+| Shareable report | `/delivery-proof/report/[run_id]` | Persistent Supabase-backed report link per CI run |
+| Agency pricing | `/pricing` | Business→Agency $299/mo — unlimited proof checks, white-label reports |
+| EU AI Act Annex IV | `GET /api/compliance-evidence-pack/annex4` | 9-item checklist, 7 covered, 2 partial |
+| MCP server marketing | `/pricing`, `/compliance-evidence-pack` | Positioned as differentiator vs Vanta/Sonar |
+| Zenodo DOI trust | `/pricing`, `/compliance-evidence-pack` | doi.org/10.5281/zenodo.18225586 prominently surfaced |
+
 ## 🟢 GO / NO-GO — 2026-05-28 (CCVS v1.2 + Security Hardening)
 
 ```
