@@ -427,8 +427,12 @@ Not claimed:
 
 ## Formal verification artifact
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18225586.svg)](https://doi.org/10.5281/zenodo.18225586)
+
+**Peer-archived reference implementation — CERN/OpenAIRE indexed**
+
 ```
-DOI: https://doi.org/10.5281/zenodo.18225586
+DOI:   https://doi.org/10.5281/zenodo.18225586
 Title: Deterministic State Gate (DSG): Formally Verified Control Primitive
        for Safety-Critical AI Systems
 ```
