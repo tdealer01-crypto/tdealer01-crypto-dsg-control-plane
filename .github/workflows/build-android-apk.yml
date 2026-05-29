@@ -54,6 +54,7 @@ jobs:
           tag_name: android-latest
           name: "DSG Agent — latest debug APK"
           prerelease: true
+          make_latest: false
           files: ${{ steps.apk.outputs.name }}
           body: |
             ## DSG Agent Android — latest build
@@ -65,3 +66,5 @@ jobs:
             - 🔒 Audit log every action
 
             Built from `${{ github.sha }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
