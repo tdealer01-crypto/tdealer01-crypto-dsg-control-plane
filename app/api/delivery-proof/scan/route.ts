@@ -123,8 +123,8 @@ export async function POST(request: Request) {
   // 3. Health endpoint
   checks.push(await checkEndpoint('Health endpoint', `${base}/api/health`, [200], true));
 
-  // 4. Protected route (should reject unauthenticated)
-  const protectedCheck = await checkEndpoint('Protected route (auth gate)', `${base}/api/execute`, [401, 403]);
+  // 4. Protected route (should reject unauthenticated) — use GET /api/agent-executions which returns 401
+  const protectedCheck = await checkEndpoint('Protected route (auth gate)', `${base}/api/agent-executions`, [401, 403]);
   checks.push(protectedCheck);
 
   // 5. repo_url provided (just note it, no live check without token)
