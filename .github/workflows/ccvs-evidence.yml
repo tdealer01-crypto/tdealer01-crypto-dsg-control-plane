@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   unit-evidence:
@@ -88,30 +87,10 @@ jobs:
           console.log('Coverage:', JSON.stringify(coverage));
           JSEOF
 
-      - name: Install cosign
-        if: github.event_name == 'push'
-        uses: sigstore/cosign-installer@v3
-
-      - name: Sign evidence (keyless Sigstore/OIDC)
-        if: github.event_name == 'push'
-        continue-on-error: true
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          cosign sign-blob \
-            --yes \
-            --oidc-issuer=https://token.actions.githubusercontent.com \
-            ccvs-unit-evidence.json \
-            --bundle ccvs-unit-evidence.json.bundle \
-          && echo "Cosign bundle written to ccvs-unit-evidence.json.bundle" \
-          || echo "Cosign signing unavailable – evidence artifact will be unsigned"
-
       - name: Upload evidence artifact
         uses: actions/upload-artifact@v4
         with:
           name: ccvs-unit-evidence-${{ github.run_id }}
-          path: |
-            ccvs-unit-evidence.json
-            ccvs-unit-evidence.json.bundle
+          path: ccvs-unit-evidence.json
           retention-days: 90
           if-no-files-found: warn
