@@ -83,16 +83,34 @@ jobs:
           if-no-files-found: error
 
       - name: Publish APK to android-apk-latest release
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # Remove any existing APK assets so upload doesn't conflict
-          ASSET_IDS=$(gh api repos/${{ github.repository }}/releases/tags/android-apk-latest \
-            --jq '.assets[] | select(.name | endswith(".apk")) | .id' 2>/dev/null || true)
-          for ID in $ASSET_IDS; do
-            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$ID" && \
-              echo "Removed old APK asset $ID"
-          done
-          gh release upload android-apk-latest \
-            apps/android/app/build/outputs/apk/debug/*.apk \
-            --repo ${{ github.repository }}
+          set -e
+          APK=$(ls apps/android/app/build/outputs/apk/debug/*.apk | head -1)
+          APK_NAME=$(basename "$APK")
+
+          # Fetch release metadata
+          RELEASE=$(curl -fsS \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/android-apk-latest")
+          RELEASE_ID=$(echo "$RELEASE" | jq -r '.id')
+
+          # Delete existing APK assets
+          ASSET_IDS=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .id')
+          while IFS= read -r ID; do
+            [ -z "$ID" ] && continue
+            curl -sS -X DELETE \
+              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$ID" \
+              && echo "Deleted asset $ID" || echo "Warning: could not delete $ID"
+          done <<< "$ASSET_IDS"
+
+          # Upload new APK via uploads endpoint
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${APK_NAME}" \
+            --data-binary "@${APK}"
+          echo "Published: $APK_NAME"
