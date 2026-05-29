@@ -94,9 +94,10 @@ async function saveToSupabase(status: CachedStatus, matrix: ComplianceMatrix): P
   }
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const runId = searchParams.get('run_id') ?? undefined;
+export async function GET(request?: Request) {
+  const runId = request?.url
+    ? (new URL(request.url).searchParams.get('run_id') ?? undefined)
+    : undefined;
 
   const deployment = {
     commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
