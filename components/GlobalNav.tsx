@@ -10,9 +10,17 @@ import {
   Zap,
   ShieldCheck,
   ChevronDown,
+  FileCheck,
 } from 'lucide-react';
 
 const PRODUCT_ITEMS = [
+  {
+    href: '/delivery-proof',
+    icon: FileCheck,
+    title: 'Delivery Proof',
+    description: 'AI code proof report สำหรับ agency',
+    highlight: true,
+  },
   {
     href: '/proofgate',
     icon: Shield,
@@ -127,14 +135,17 @@ export default function GlobalNav() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setProductOpen(false)}
-                      className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.05]"
+                      className={`flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.05] ${'highlight' in item && item.highlight ? 'border border-emerald-400/20 bg-emerald-400/5' : ''}`}
                     >
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-amber-300">
+                      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${'highlight' in item && item.highlight ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-white/10 bg-white/[0.04] text-amber-300'}`}>
                         <item.icon className="h-3.5 w-3.5" />
                       </span>
                       <span>
                         <span className="block text-sm font-semibold text-slate-100">
                           {item.title}
+                          {'highlight' in item && item.highlight && (
+                            <span className="ml-2 rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">New</span>
+                          )}
                         </span>
                         <span className="block text-xs text-slate-400">{item.description}</span>
                       </span>
@@ -228,9 +239,9 @@ export default function GlobalNav() {
                     key={item.href}
                     href={item.href}
                     onClick={closeMobileMenu}
-                    className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.05]"
+                    className={`flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.05] ${'highlight' in item && item.highlight ? 'border border-emerald-400/20 bg-emerald-400/5' : ''}`}
                   >
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-amber-300">
+                    <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${'highlight' in item && item.highlight ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-white/10 bg-white/[0.04] text-amber-300'}`}>
                       <item.icon className="h-3.5 w-3.5" />
                     </span>
                     <span>

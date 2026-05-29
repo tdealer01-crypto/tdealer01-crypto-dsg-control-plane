@@ -36,6 +36,13 @@ const howSteps = [
 
 const launchLinks = [
   {
+    title: 'AI Delivery Proof',
+    body: 'ออก Proof Report ให้ลูกค้าก่อนส่งงาน — ยืนยันว่าโค้ด/AI agent ผ่านอะไรแล้ว สำหรับ agency, SaaS, dev team.',
+    cta: 'ดู Delivery Proof →',
+    href: '/delivery-proof',
+    highlight: true,
+  },
+  {
     title: 'Finance Governance Workspace',
     body: 'See the approval queue, case detail, exception posture, and evidence bundle path.',
     cta: 'Open finance workspace',
@@ -46,12 +53,6 @@ const launchLinks = [
     body: 'Start with one invoice or payment approval workflow and prove audit readiness before broad rollout.',
     cta: 'Request access',
     href: '/request-access',
-  },
-  {
-    title: 'Readiness Gate',
-    body: 'Use health and readiness contracts to prove the deployment is safe before production launch.',
-    cta: 'View docs',
-    href: '/docs',
   },
 ];
 
@@ -99,14 +100,14 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/demo" className="rounded-2xl bg-emerald-400 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-emerald-300">
+              <Link href="/delivery-proof" className="rounded-2xl bg-emerald-400 px-6 py-4 text-base font-bold text-slate-950 transition hover:bg-emerald-300">
+                Delivery Proof →
+              </Link>
+              <Link href="/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
                 Try demo
               </Link>
-              <Link href="/pricing" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
+              <Link href="/pricing" className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-6 py-4 text-base font-semibold text-amber-100 transition hover:border-amber-300/60">
                 Pricing
-              </Link>
-              <Link href="/compliance-evidence-pack" className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-6 py-4 text-base font-semibold text-amber-100 transition hover:border-amber-300/60">
-                Evidence Pack
               </Link>
               <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-emerald-300/40">
                 Continue with email
@@ -209,11 +210,13 @@ export default function HomePage() {
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {launchLinks.map((item) => (
-              <article key={item.title} className="border border-white/10 bg-white/[0.03] p-6">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Path</p>
+              <article key={item.title} className={'highlight' in item && item.highlight ? 'border border-emerald-400/30 bg-emerald-400/5 p-6' : 'border border-white/10 bg-white/[0.03] p-6'}>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                  {'highlight' in item && item.highlight ? '🆕 New' : 'Path'}
+                </p>
                 <h3 className="mt-4 text-2xl font-semibold text-white">{item.title}</h3>
                 <p className="mt-3 min-h-[110px] text-sm leading-7 text-slate-300">{item.body}</p>
-                <Link href={item.href} className="mt-5 inline-flex border-b border-amber-300 pb-1 text-sm font-semibold text-amber-100">
+                <Link href={item.href} className={'highlight' in item && item.highlight ? 'mt-5 inline-flex border-b border-emerald-300 pb-1 text-sm font-semibold text-emerald-200' : 'mt-5 inline-flex border-b border-amber-300 pb-1 text-sm font-semibold text-amber-100'}>
                   {item.cta}
                 </Link>
               </article>
