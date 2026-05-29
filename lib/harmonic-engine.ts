@@ -56,17 +56,20 @@ function weightedHarmonicMean(signals: Signal[]): number {
   return totalWeight / denom;
 }
 
-function shannonEntropy(signals: Signal[]): number {
-  const weightedSum = signals.reduce((s, sig) => s + sig.weight * sig.value, 0);
-  if (weightedSum === 0) return 1;
-  let h = 0;
-  for (const sig of signals) {
-    const p = (sig.weight * sig.value) / weightedSum;
-    if (p > 0) h -= p * Math.log2(p);
-  }
-  // Normalize to 0–1 using max entropy = log2(n)
-  const maxH = Math.log2(Math.max(signals.length, 2));
-  return Math.min(h / maxH, 1);
+/**
+ * Signal spread entropy — measures how scattered values are, not their distribution.
+ * Low spread (all signals similar & high) → low entropy → UNITY.
+ * High spread (signals diverge across 0–1 range) → high entropy → CHAOS.
+ *
+ * Formula: weighted std-dev of values, normalised by max possible std-dev (0.5).
+ */
+function signalSpreadEntropy(signals: Signal[]): number {
+  const totalWeight = signals.reduce((s, sig) => s + sig.weight, 0);
+  if (totalWeight === 0) return 1;
+  const mean = signals.reduce((s, sig) => s + sig.weight * sig.value, 0) / totalWeight;
+  const variance = signals.reduce((s, sig) => s + sig.weight * (sig.value - mean) ** 2, 0) / totalWeight;
+  // Max std-dev for values in [0,1] is 0.5 — normalise to [0,1]
+  return Math.min(Math.sqrt(variance) / 0.5, 1);
 }
 
 function detectPhase(confidence: number, entropy: number, config: ProfileConfig): Phase {
@@ -98,7 +101,7 @@ export class HarmonicEngine {
     }
 
     const confidence = weightedHarmonicMean(signals);
-    const entropy = shannonEntropy(signals);
+    const entropy = signalSpreadEntropy(signals);
 
     // Apply memory penalty: if recent evaluations were unstable, raise entropy
     const adjustedEntropy = this._memoryAdjustedEntropy(entropy);
