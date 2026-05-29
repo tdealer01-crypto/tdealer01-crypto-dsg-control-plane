@@ -20,9 +20,13 @@ object AgentErrorCodes {
 data class GateResult(val allowed: Boolean, val message: String, val errorCode: String? = null)
 
 class PermissionGate(private val context: Context) {
-    fun evaluate(command: AgentCommand): GateResult {
+    fun evaluate(command: AgentCommand, autonomousMode: Boolean = false): GateResult {
         if (command.isExpired()) {
             return GateResult(false, "Command expired before owner approval", AgentErrorCodes.COMMAND_EXPIRED)
+        }
+        // Autonomous mode: owner has pre-authorised all commands — bypass permission gates
+        if (autonomousMode) {
+            return GateResult(true, "Autonomous mode — permission gate bypassed by owner")
         }
         val required = requiredPermissionFor(command.type)
         return when (required) {
