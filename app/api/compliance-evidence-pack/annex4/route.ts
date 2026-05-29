@@ -83,7 +83,7 @@ const ANNEX_IV_ITEMS: AnnexIVItem[] = [
     evidence_type: 'unit',
     ccvs_requirement_id: 'NIST-RMF-GOVERN-1.1',
     status: 'partial',
-    coverage_notes: 'Input schema validated by normalize.ts (100% tested). DSG ONE is a governance layer, not an ML model — training data not applicable.',
+    coverage_notes: 'DSG ONE is a governance layer, not an ML model — training data specifications are not applicable. Input schema for DsgCommandEnvelope is fully validated by normalize.ts (100% line coverage). Formal input data documentation (docs/api/command-envelope.md) is pending and will move this item to covered.',
   },
   {
     item_number: 6,
@@ -116,7 +116,7 @@ const ANNEX_IV_ITEMS: AnnexIVItem[] = [
     evidence_type: 'integration',
     ccvs_requirement_id: 'ISO42001-A9.2',
     status: 'partial',
-    coverage_notes: 'Audit trail records all decisions. Incident-specific reporting workflow (external SIEM / alerting) is pending integration.',
+    coverage_notes: 'Audit trail records all governed decisions with SHA-256 hash chain and Supabase persistence. Incident notification stub: POST /api/notifications with severity=critical triggers alert channel. Full SIEM/PagerDuty integration is pending (roadmap Q3 2026). Status remains partial until external alerting is verified end-to-end.',
   },
   {
     item_number: 9,

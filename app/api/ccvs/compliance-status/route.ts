@@ -130,6 +130,12 @@ export async function GET(request?: Request) {
 }
 
 export async function POST(request: Request) {
+  const token = request.headers.get('authorization')?.replace('Bearer ', '');
+  const expected = process.env.CCVS_UPLOAD_TOKEN;
+  if (expected && token !== expected) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const parsed = await readJsonBody<{ matrix?: ComplianceMatrix; run_id?: string; mutation_score?: number }>(
     request,
     { maxBytes: 262_144 },
