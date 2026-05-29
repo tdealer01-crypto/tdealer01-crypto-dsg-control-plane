@@ -27,10 +27,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'platforms;android-35 build-tools;34.0.0'
+      - name: Install Android SDK components
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Create local.properties
         working-directory: apps/android
@@ -40,7 +41,7 @@ jobs:
         working-directory: apps/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -60
 
       - name: Rename APK
         id: apk
@@ -50,6 +51,8 @@ jobs:
           DEST=dsg-agent-${DATE}-debug.apk
           cp "$SRC" "$DEST"
           echo "name=$DEST" >> "$GITHUB_OUTPUT"
+          SIZE=$(du -sh "$DEST" | cut -f1)
+          echo "APK: $DEST ($SIZE)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
