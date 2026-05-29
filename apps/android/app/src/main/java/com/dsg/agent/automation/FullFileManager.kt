@@ -46,7 +46,9 @@ object FullFileManager {
             ?: emptyList()
     }
 
-    fun riskFor(file: File): FileRisk {
+    fun riskFor(file: File, autonomousMode: Boolean = false): FileRisk {
+        // Autonomous mode: owner accepts all file risks — no blocks
+        if (autonomousMode) return FileRisk.NORMAL
         val name = file.name.lowercase()
         if (file.isDirectory) return FileRisk.NORMAL
         if (
@@ -74,6 +76,30 @@ object FullFileManager {
         ) return FileRisk.ARCHIVE_REVIEW
         return FileRisk.NORMAL
     }
+
+    fun readFile(path: String, maxBytes: Long = 8192L): String {
+        val file = File(path)
+        if (!file.exists() || !file.isFile) return "File not found: $path"
+        return try {
+            file.inputStream().use { it.readBytes().take(maxBytes.toInt()) }.toByteArray().toString(Charsets.UTF_8)
+        } catch (e: Exception) {
+            "Cannot read file: ${e.message}"
+        }
+    }
+
+    fun renameFile(path: String, newName: String): Boolean {
+        val file = File(path)
+        val dest = File(file.parent ?: return false, newName)
+        return file.renameTo(dest)
+    }
+
+    fun moveFile(path: String, destDir: String): Boolean {
+        val file = File(path)
+        val dest = File(destDir, file.name)
+        return file.renameTo(dest)
+    }
+
+    fun deleteFile(path: String): Boolean = File(path).deleteRecursively()
 
     fun buildListSummary(): String {
         val entries = listRoot()
