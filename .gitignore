@@ -11,6 +11,7 @@ out/
 
 # Claude Code local secrets — never commit
 .claude/settings.local.json
+.claude/worktrees/
 .env.*.local
 
 # logs
