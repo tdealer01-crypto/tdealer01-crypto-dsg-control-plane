@@ -3,20 +3,30 @@ package com.dsg.agent
 import android.Manifest
 import android.animation.ObjectAnimator
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
+import android.text.Spannable
+import android.text.SpannableStringBuilder
 import android.text.InputType
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.text.style.TypefaceSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -54,6 +64,7 @@ class MainActivity : Activity() {
     private lateinit var typingRow: LinearLayout
     private var typingAnimators: List<ObjectAnimator> = emptyList()
     private var liveBotBubble: TextView? = null
+    private var liveBotWrapper: LinearLayout? = null
     private var liveBotBuffer = StringBuilder()
 
     // Domain objects
@@ -259,18 +270,38 @@ class MainActivity : Activity() {
         )
         dadBotMessageList.addView(greetBubble)
 
-        // Typing indicator (GONE until AI is thinking)
+        // Kimi-style thinking box (GONE until AI is thinking)
         typingRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), dp(8), 0, dp(4))
+            orientation = LinearLayout.VERTICAL
+            background = rounded(COLOR_SURFACE_DARK_2, 12, COLOR_PRIMARY, 1)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             visibility = View.GONE
         }
-        val dotLp = LinearLayout.LayoutParams(dp(8), dp(8)).apply { setMargins(dp(2), 0, dp(2), 0) }
-        typingDot1 = makeDot(); typingDot2 = makeDot(); typingDot3 = makeDot()
-        typingRow.addView(typingDot1, dotLp)
-        typingRow.addView(typingDot2, dotLp)
-        typingRow.addView(typingDot3, dotLp)
+        val thinkHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        typingDot1 = TextView(this).apply { text = "🧠"; textSize = 14f; gravity = Gravity.CENTER }
+        thinkHeader.addView(typingDot1, LinearLayout.LayoutParams(dp(26), dp(26)))
+        thinkHeader.addView(TextView(this).apply {
+            text = " กำลังคิด..."
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_PRIMARY)
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        typingRow.addView(thinkHeader)
+        typingDot2 = TextView(this).apply {
+            text = "  • วิเคราะห์คำถาม"
+            textSize = 12f; setTextColor(COLOR_TEXT_MUTED_DARK); alpha = 0f
+            setPadding(dp(4), dp(4), 0, 0)
+        }
+        typingDot3 = TextView(this).apply {
+            text = "  • เตรียมคำตอบ"
+            textSize = 12f; setTextColor(COLOR_TEXT_MUTED_DARK); alpha = 0f
+            setPadding(dp(4), dp(2), 0, 0)
+        }
+        typingRow.addView(typingDot2)
+        typingRow.addView(typingDot3)
         dadBotMessageList.addView(typingRow)
 
         dadBotScroll.addView(dadBotMessageList)
@@ -310,17 +341,15 @@ class MainActivity : Activity() {
         inputRow.addView(sendBtn, LinearLayout.LayoutParams(dp(52), dp(52)))
         box.addView(inputRow)
 
-        // Quick suggestion chips
-        val chipScroll = HorizontalScrollView(this).apply {
-            isHorizontalFadingEdgeEnabled = true
-            setPadding(0, dp(10), 0, 0)
-        }
-        val chipRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        listOf("ตรวจระบบ", "แสดงไฟล์", "ย้อนกลับ", "เปิด settings").forEach { label ->
-            chipRow.addView(makeChip(label) { sendDadBot(label) })
-        }
-        chipScroll.addView(chipRow)
-        box.addView(chipScroll)
+        // 2×2 Kimi-style welcome card grid
+        val promptRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
+        val promptRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
+        promptRow1.addView(makeWelcomeCard("🔍", "ตรวจระบบ", "ดูสถานะ permissions") { sendDadBot("ตรวจระบบ") })
+        promptRow1.addView(makeWelcomeCard("📁", "แสดงไฟล์", "รายการไฟล์ทั้งหมด") { sendDadBot("แสดงไฟล์") })
+        promptRow2.addView(makeWelcomeCard("↩️", "ย้อนกลับ", "Android Back button") { sendDadBot("ย้อนกลับ") })
+        promptRow2.addView(makeWelcomeCard("⚙️", "เปิด settings", "ตั้งค่าระบบ") { sendDadBot("เปิด settings") })
+        box.addView(promptRow1)
+        box.addView(promptRow2)
 
         addWithMargin(root, box, bottom = 12)
     }
@@ -332,22 +361,131 @@ class MainActivity : Activity() {
             setPadding(0, dp(3), 0, dp(3))
         }
         val screenW = resources.displayMetrics.widthPixels
-        val bubble = TextView(this).apply {
-            this.text = text
-            textSize = 14f
-            setTextColor(if (isUser) Color.WHITE else COLOR_TEXT_SOFT_DARK)
-            background = makeBubbleDrawable(isUser)
-            setPadding(dp(12), dp(9), dp(12), dp(9))
-            maxWidth = (screenW * 0.78).toInt()
-            setLineSpacing(dp(2).toFloat(), 1f)
+        if (isUser) {
+            val bubble = TextView(this).apply {
+                this.text = text
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                background = makeBubbleDrawable(isUser = true)
+                setPadding(dp(12), dp(9), dp(12), dp(9))
+                maxWidth = (screenW * 0.78).toInt()
+                setLineSpacing(dp(2).toFloat(), 1f)
+            }
+            outerRow.addView(bubble, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = (screenW * 0.18).toInt() })
+        } else {
+            // Bot: contentWrap (vertical) holds bubble + long-press action row
+            val contentWrap = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val bubble = TextView(this).apply {
+                setText(renderMarkdown(text), TextView.BufferType.SPANNABLE)
+                textSize = 14f
+                setTextColor(COLOR_TEXT_SOFT_DARK)
+                background = makeBubbleDrawable(isUser = false)
+                setPadding(dp(12), dp(9), dp(12), dp(9))
+                maxWidth = (screenW * 0.78).toInt()
+                setLineSpacing(dp(2).toFloat(), 1f)
+            }
+            contentWrap.addView(bubble, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            val actionsRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                visibility = View.GONE
+                setPadding(dp(4), dp(6), 0, dp(2))
+            }
+            actionsRow.addView(makeIconBtn("📋") {
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("msg", bubble.text))
+            })
+            actionsRow.addView(makeIconBtn("👍") { v -> UiAnimations.buttonPressScale(v) })
+            actionsRow.addView(makeIconBtn("👎") { v -> UiAnimations.buttonPressScale(v) })
+            contentWrap.addView(actionsRow)
+            contentWrap.setOnLongClickListener {
+                actionsRow.visibility = if (actionsRow.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                true
+            }
+            outerRow.addView(contentWrap, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { marginEnd = (screenW * 0.18).toInt() })
         }
-        outerRow.addView(bubble, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        ).apply {
-            if (isUser) marginStart = (screenW * 0.18).toInt() else marginEnd = (screenW * 0.18).toInt()
-        })
         return outerRow
+    }
+
+    private fun makeIconBtn(icon: String, onClick: (View) -> Unit): TextView = TextView(this).apply {
+        text = icon; textSize = 16f; gravity = Gravity.CENTER
+        setPadding(dp(8), dp(4), dp(8), dp(4))
+        setOnClickListener { onClick(it) }
+    }
+
+    private fun makeWelcomeCard(icon: String, title: String, subtitle: String, onClick: () -> Unit): LinearLayout {
+        val cardView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(COLOR_SURFACE_DARK_2, 12, COLOR_PRIMARY_SOFT, 1)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setOnClickListener { UiAnimations.buttonPressScale(this); onClick() }
+        }
+        cardView.addView(TextView(this).apply {
+            text = "$icon  $title"; textSize = 13f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
+        })
+        cardView.addView(TextView(this).apply {
+            text = subtitle; textSize = 11f; setTextColor(COLOR_TEXT_MUTED_DARK); setPadding(0, dp(3), 0, 0)
+        })
+        cardView.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(dp(3), 0, dp(3), 0)
+        }
+        return cardView
+    }
+
+    private fun renderMarkdown(text: String): SpannableStringBuilder {
+        val sb = SpannableStringBuilder()
+        val lines = text.split("\n")
+        lines.forEachIndexed { idx, line ->
+            val headerMatch = Regex("^(#{1,3})\\s+(.+)$").find(line)
+            if (headerMatch != null) {
+                val level = headerMatch.groupValues[1].length
+                val content = headerMatch.groupValues[2]
+                val start = sb.length
+                sb.append(content)
+                sb.setSpan(StyleSpan(Typeface.BOLD), start, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                val scale = when (level) { 1 -> 1.3f; 2 -> 1.15f; else -> 1.05f }
+                sb.setSpan(RelativeSizeSpan(scale), start, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else {
+                var i = 0
+                while (i < line.length) {
+                    when {
+                        i + 1 < line.length && line[i] == '*' && line[i + 1] == '*' -> {
+                            val end = line.indexOf("**", i + 2)
+                            if (end > i) {
+                                val s = sb.length; sb.append(line.substring(i + 2, end))
+                                sb.setSpan(StyleSpan(Typeface.BOLD), s, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                i = end + 2
+                            } else { sb.append(line[i]); i++ }
+                        }
+                        line[i] == '*' -> {
+                            val end = line.indexOf('*', i + 1)
+                            if (end > i) {
+                                val s = sb.length; sb.append(line.substring(i + 1, end))
+                                sb.setSpan(StyleSpan(Typeface.ITALIC), s, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                i = end + 1
+                            } else { sb.append(line[i]); i++ }
+                        }
+                        line[i] == '`' -> {
+                            val end = line.indexOf('`', i + 1)
+                            if (end > i) {
+                                val s = sb.length; sb.append(line.substring(i + 1, end))
+                                sb.setSpan(TypefaceSpan("monospace"), s, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                sb.setSpan(BackgroundColorSpan(0xFF2D2040.toInt()), s, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                sb.setSpan(ForegroundColorSpan(0xFFD8B4FE.toInt()), s, sb.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                i = end + 1
+                            } else { sb.append(line[i]); i++ }
+                        }
+                        else -> { sb.append(line[i]); i++ }
+                    }
+                }
+            }
+            if (idx < lines.lastIndex) sb.append("\n")
+        }
+        return sb
     }
 
     private fun makeBubbleDrawable(isUser: Boolean): GradientDrawable {
@@ -400,9 +538,11 @@ class MainActivity : Activity() {
         // Show typing dots
         showTyping()
 
-        // Add live bot bubble placeholder (invisible until first token)
-        val botBubbleWrapper = makeBubble("", isUser = false)
-        liveBotBubble = (botBubbleWrapper.getChildAt(0) as? TextView)?.also { it.visibility = View.INVISIBLE }
+        // Live bot bubble — contentWrap is child 0 of outerRow, bubble TextView is child 0 of contentWrap
+        val botBubbleWrapper = makeBubble("กำลังคิด...", isUser = false)
+        liveBotWrapper = botBubbleWrapper
+        val contentWrap = botBubbleWrapper.getChildAt(0) as? LinearLayout
+        liveBotBubble = (contentWrap?.getChildAt(0) as? TextView)?.also { it.alpha = 0.55f }
         liveBotBuffer = StringBuilder()
         dadBotMessageList.addView(botBubbleWrapper, dadBotMessageList.childCount - 1)
 
@@ -412,15 +552,15 @@ class MainActivity : Activity() {
             override fun onToken(token: String) {
                 liveBotBuffer.append(token)
                 liveBotBubble?.let {
-                    it.text = liveBotBuffer.toString()
-                    if (it.visibility != View.VISIBLE) it.visibility = View.VISIBLE
+                    it.alpha = 1f
+                    it.text = liveBotBuffer.toString() + "▋"  // streaming cursor
                 }
                 dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
             }
 
             override fun onCommand(type: AgentCommandType, target: String, reason: String) {
                 val cmd = queueCommand(type, target, reason, "dadbot")
-                if (workSessionEnabled || autonomousModeEnabled) runInSessionIfAllowed(cmd)
+                if (workSessionEnabled && !autonomousModeEnabled) this@MainActivity.runInSessionIfAllowed(cmd)
             }
 
             override fun onDone() {
@@ -428,11 +568,12 @@ class MainActivity : Activity() {
                 val finalText = liveBotBuffer.toString()
                 if (finalText.isNotBlank()) {
                     dadBotMessages.add(DadBotMessage("assistant", finalText))
-                    liveBotBubble?.parent?.let { parent ->
-                        if (parent is View) UiAnimations.fadeInSlideUp(parent)
-                    }
+                    liveBotBubble?.setText(renderMarkdown(finalText), TextView.BufferType.SPANNABLE)
+                    liveBotWrapper?.let { UiAnimations.fadeInSlideUp(it) }
+                } else {
+                    liveBotWrapper?.visibility = View.GONE
                 }
-                liveBotBubble = null
+                liveBotBubble = null; liveBotWrapper = null
                 dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
             }
 
@@ -440,16 +581,25 @@ class MainActivity : Activity() {
                 hideTyping()
                 liveBotBubble?.let {
                     it.text = "⚠️ $message"
-                    it.visibility = View.VISIBLE
+                    val fallbackCmds = planFromPrompt(dadBotMessages.lastOrNull { m -> m.role == "user" }?.content ?: "")
+                    if (fallbackCmds.isNotEmpty()) {
+                        it.text = "⚠️ $message\n\n▶ ใช้งาน offline แทน: ${fallbackCmds.joinToString(", ") { c -> c.type.name }}"
+                        fallbackCmds.forEach { mapped ->
+                            val cmd = this@MainActivity.queueCommand(mapped.type, mapped.target, "DadBot offline: ${mapped.type.name}", "dadbot-fallback")
+                            if (workSessionEnabled || autonomousModeEnabled) this@MainActivity.runInSessionIfAllowed(cmd)
+                        }
+                    }
                 }
-                liveBotBubble = null
+                liveBotBubble = null; liveBotWrapper = null
             }
         })
     }
 
     private fun showTyping() {
         typingRow.visibility = View.VISIBLE
-        typingAnimators = UiAnimations.startTypingPulse(listOf(typingDot1, typingDot2, typingDot3))
+        typingAnimators = UiAnimations.startTypingPulse(listOf(typingDot1))
+        UiAnimations.fadeInSlideUp(typingDot2, delayMs = 200)
+        UiAnimations.fadeInSlideUp(typingDot3, delayMs = 400)
         dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -457,6 +607,8 @@ class MainActivity : Activity() {
         UiAnimations.stopTypingPulse(typingAnimators)
         typingAnimators = emptyList()
         typingRow.visibility = View.GONE
+        typingDot2.alpha = 0f
+        typingDot3.alpha = 0f
     }
 
     private fun addNoCodeChat(root: LinearLayout) {
@@ -1003,28 +1155,29 @@ class MainActivity : Activity() {
     private enum class ButtonTone { PRIMARY, SECONDARY, WARNING, DANGER }
 
     companion object {
-        private const val COLOR_BG = 0xFFF5F6FA.toInt()
-        private const val COLOR_CARD = 0xFFFFFFFF.toInt()
-        private const val COLOR_CARD_ALT = 0xFFF3F4F8.toInt()
-        private const val COLOR_BORDER = 0xFFE3E5ED.toInt()
-        private const val COLOR_TEXT = 0xFF171821.toInt()
-        private const val COLOR_TEXT_MUTED = 0xFF707486.toInt()
-        private const val COLOR_PRIMARY = 0xFF5B5FEF.toInt()
-        private const val COLOR_PRIMARY_SOFT = 0xFF8387FF.toInt()
-        @Suppress("unused") private const val COLOR_ACCENT_SOFT = 0xFFEFF7FF.toInt()
-        @Suppress("unused") private const val COLOR_ACCENT_BORDER = 0xFFB7DBFF.toInt()
-        private const val COLOR_WARNING_SOFT = 0xFFFFF7E8.toInt()
+        // Kimi-style dark palette
+        private const val COLOR_BG = 0xFF0D0D0D.toInt()
+        private const val COLOR_CARD = 0xFF111111.toInt()
+        private const val COLOR_CARD_ALT = 0xFF1A1A1A.toInt()
+        private const val COLOR_BORDER = 0xFF2A2A2A.toInt()
+        private const val COLOR_TEXT = 0xFFEAEAEA.toInt()
+        private const val COLOR_TEXT_MUTED = 0xFF888888.toInt()
+        private const val COLOR_PRIMARY = 0xFFa855f7.toInt()
+        private const val COLOR_PRIMARY_SOFT = 0xFF7c3aed.toInt()
+        @Suppress("unused") private const val COLOR_ACCENT_SOFT = 0xFF1A0A2E.toInt()
+        @Suppress("unused") private const val COLOR_ACCENT_BORDER = 0xFF6D28D9.toInt()
+        private const val COLOR_WARNING_SOFT = 0xFF2A2010.toInt()
         private const val COLOR_WARNING_BORDER = 0xFFFFC66D.toInt()
-        private const val COLOR_RED = 0xFFE23B3B.toInt()
-        private const val COLOR_RED_SOFT = 0xFFFFECEC.toInt()
-        private const val COLOR_RED_BORDER = 0xFFFFB5B5.toInt()
-        private const val COLOR_GREEN = 0xFF0FA66B.toInt()
-        private const val COLOR_GREEN_SOFT = 0xFFEAFBF3.toInt()
-        private const val COLOR_GREEN_BORDER = 0xFFA7EACB.toInt()
-        private const val COLOR_SURFACE_DARK = 0xFF111225.toInt()
-        private const val COLOR_SURFACE_DARK_2 = 0xFF1C1E36.toInt()
-        private const val COLOR_BORDER_DARK = 0xFF2F3358.toInt()
-        private const val COLOR_TEXT_MUTED_DARK = 0xFFAEB2D5.toInt()
-        private const val COLOR_TEXT_SOFT_DARK = 0xFFD6D8F6.toInt()
+        private const val COLOR_RED = 0xFFFF6B6B.toInt()
+        private const val COLOR_RED_SOFT = 0xFF2A1010.toInt()
+        private const val COLOR_RED_BORDER = 0xFFFF6B6B.toInt()
+        private const val COLOR_GREEN = 0xFF4ade80.toInt()
+        private const val COLOR_GREEN_SOFT = 0xFF0A2218.toInt()
+        private const val COLOR_GREEN_BORDER = 0xFF4ade80.toInt()
+        private const val COLOR_SURFACE_DARK = 0xFF111111.toInt()
+        private const val COLOR_SURFACE_DARK_2 = 0xFF1A1A1A.toInt()
+        private const val COLOR_BORDER_DARK = 0xFF2A2A2A.toInt()
+        private const val COLOR_TEXT_MUTED_DARK = 0xFF888888.toInt()
+        private const val COLOR_TEXT_SOFT_DARK = 0xFFD0D0D0.toInt()
     }
 }

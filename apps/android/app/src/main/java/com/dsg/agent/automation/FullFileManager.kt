@@ -81,7 +81,22 @@ object FullFileManager {
         val file = File(path)
         if (!file.exists() || !file.isFile) return "File not found: $path"
         return try {
-            file.inputStream().use { it.readBytes().take(maxBytes.toInt()) }.toByteArray().toString(Charsets.UTF_8)
+            val limit = maxBytes
+                .coerceAtLeast(0L)
+                .coerceAtMost(Int.MAX_VALUE.toLong())
+                .toInt()
+            if (limit == 0) return ""
+
+            val buffer = ByteArray(limit)
+            var totalRead = 0
+            file.inputStream().use { input ->
+                while (totalRead < limit) {
+                    val bytesRead = input.read(buffer, totalRead, limit - totalRead)
+                    if (bytesRead == -1) break
+                    totalRead += bytesRead
+                }
+            }
+            buffer.copyOf(totalRead).toString(Charsets.UTF_8)
         } catch (e: Exception) {
             "Cannot read file: ${e.message}"
         }

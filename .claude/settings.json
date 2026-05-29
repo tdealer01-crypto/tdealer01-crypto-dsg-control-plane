@@ -14,5 +14,33 @@
         "Authorization": "Bearer ${DSG_ACCESS_TOKEN}"
       }
     }
+  },
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "WebFetch",
+      "WebSearch",
+      "Skill",
+      "Agent"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -n --arg ctx \"$(cat CLAUDE.md AGENTS.md docs/agents/CLAUDE_TOOL_API_CONTRACT.md 2>/dev/null | head -400)\" '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":$ctx}}' 2>/dev/null || true",
+            "timeout": 15,
+            "statusMessage": "Loading project rules..."
+          }
+        ]
+      }
+    ]
   }
 }
