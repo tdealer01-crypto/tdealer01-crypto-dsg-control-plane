@@ -209,6 +209,18 @@ jobs:
       - name: Run Z3 proof tests
         run: npm run test -- tests/proofs/ --reporter=verbose
         timeout-minutes: 10
+      - name: Set up Python for Z3 formal proof
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install z3-solver
+        run: pip install z3-solver --quiet
+      - name: Run Makk-8 Z3 formal verification
+        id: makk8_z3
+        run: |
+          python scripts/makk8-z3-proof.py --output ccvs-makk8-z3-proof.json
+          echo "formal_proof_ok=true" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
       - name: Emit billing-invariants oversight evidence
         run: |
           node scripts/emit-test-evidence.mjs --type oversight --suite billing-invariants \
@@ -295,6 +307,7 @@ jobs:
           path: |
             ccvs-billing-invariants-evidence.json
             ccvs-mutation-evidence.json
+            ccvs-makk8-z3-proof.json
             stryker-report/
           retention-days: 90
           if-no-files-found: warn
