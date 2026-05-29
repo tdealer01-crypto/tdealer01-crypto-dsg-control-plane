@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -52,7 +51,34 @@ export async function generateMetadata({ params }: { params: Promise<{ run_id: s
 export default async function DeliveryProofReportPage({ params }: { params: Promise<{ run_id: string }> }) {
   const { run_id } = await params;
   const report = await fetchReport(run_id);
-  if (!report) notFound();
+
+  if (!report) {
+    return (
+      <main className="min-h-screen bg-[#07080a] text-white">
+        <section className="border-b border-white/10 bg-[#0b0d10]">
+          <div className="mx-auto max-w-3xl px-6 py-12">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">DSG ONE · Delivery Proof Report</p>
+            <h1 className="mt-3 text-3xl font-bold text-white">Report Not Found</h1>
+            <p className="mt-2 font-mono text-sm text-slate-400">run_id: {run_id}</p>
+            <div className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-6 py-5">
+              <p className="text-sm text-amber-200">
+                This report may have been generated before persistent storage was enabled, or the run_id is invalid.
+                Run a new proof scan to generate a fresh shareable report.
+              </p>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/delivery-proof" className="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-300">
+                Run New Scan →
+              </Link>
+              <Link href="/" className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-white/30">
+                ← Home
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   const claim = claimLabel(report.claim_pass_eligible);
   const passRate = report.requirements_pass !== null && report.requirements_total
