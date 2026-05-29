@@ -14,6 +14,8 @@
     "test:failure": "vitest run tests/failure",
     "test:migrations": "vitest run tests/migrations",
     "test:coverage": "vitest run --coverage",
+    "test:mutation": "npx stryker run",
+    "test:mutation:ci": "npx stryker run --logLevel warn",
     "test:live:db": "vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
     "test:live:db:required": "node scripts/verify-live-env.mjs live-db && vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
     "verify:live-env": "node scripts/verify-live-env.mjs all",

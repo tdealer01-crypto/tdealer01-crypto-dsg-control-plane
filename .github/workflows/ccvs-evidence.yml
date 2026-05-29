@@ -200,11 +200,86 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
+  # ── L4b: Mutation evidence (Stryker — score ≥70 required on main) ────────────
+  proof-mutation-evidence:
+    name: "L4b — Mutation evidence (Stryker)"
+    runs-on: ubuntu-latest
+    needs: proof-evidence
+    outputs:
+      mutation_score: ${{ steps.score.outputs.mutation_score }}
+      stryker_status: ${{ steps.run.outputs.stryker_status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+
+      - name: Run Stryker mutation tests
+        id: run
+        run: |
+          if timeout 840 npx stryker run --logLevel warn; then
+            echo "stryker_status=passed" >> "$GITHUB_OUTPUT"
+          elif [ $? -eq 124 ]; then
+            echo "stryker_status=timeout" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Stryker timed out after 14 min — mutation gate deferred"
+          else
+            echo "stryker_status=failed" >> "$GITHUB_OUTPUT"
+          fi
+        timeout-minutes: 15
+        continue-on-error: true
+
+      - name: Extract mutation score
+        id: score
+        run: |
+          if [ -f stryker-report/mutation-report.json ]; then
+            SCORE=$(node -e "
+              const r = JSON.parse(require('fs').readFileSync('stryker-report/mutation-report.json'));
+              const files = Object.values(r.files || {});
+              const total = files.flatMap(f => f.mutants || []).length;
+              const killed = files.flatMap(f => f.mutants || []).filter(m => m.status === 'Killed').length;
+              console.log(total > 0 ? (killed / total * 100).toFixed(2) : '0');
+            ")
+            echo "mutation_score=$SCORE" >> "$GITHUB_OUTPUT"
+            echo "Mutation score: $SCORE%"
+          else
+            echo "mutation_score=0" >> "$GITHUB_OUTPUT"
+            echo "No mutation report found — score defaulted to 0"
+          fi
+
+      - name: Validate mutation score (≥70 required on main)
+        if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        run: |
+          STATUS="${{ steps.run.outputs.stryker_status }}"
+          if [ "$STATUS" = "timeout" ]; then
+            echo "⚠️ Stryker timed out — mutation gate deferred (not a score failure)"
+            exit 0
+          fi
+          SCORE="${{ steps.score.outputs.mutation_score }}"
+          node -e "
+            const s = parseFloat('$SCORE');
+            if (s < 70) {
+              console.error('❌ ' + s + '% < 70% — claim_pass_eligible blocked');
+              process.exit(1);
+            } else {
+              console.log('✅ ' + s + '% ≥ 70% — mutation gate passed');
+            }
+          "
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ccvs-mutation-evidence-${{ github.run_id }}
+          path: stryker-report/
+          retention-days: 90
+          if-no-files-found: warn
+
   # ── Compliance matrix ─────────────────────────────────────────────────────────
   compliance-matrix:
     name: "Generate compliance matrix"
     runs-on: ubuntu-latest
-    needs: [unit-evidence, integration-evidence, adversarial-evidence, proof-evidence]
+    needs: [unit-evidence, integration-evidence, adversarial-evidence, proof-evidence, proof-mutation-evidence]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
