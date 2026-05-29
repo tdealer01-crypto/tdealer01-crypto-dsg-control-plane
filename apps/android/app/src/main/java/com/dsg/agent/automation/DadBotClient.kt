@@ -25,26 +25,27 @@ class DadBotClient {
         Thread {
             var conn: HttpURLConnection? = null
             try {
-                val url = URL("${DsgConfig.BASE_URL}/api/agent/chat")
-                conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 15_000
-                    readTimeout = 60_000
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "text/event-stream")
-                }
+                val connection = URL("${DsgConfig.BASE_URL}/api/agent/chat").openConnection() as HttpURLConnection
+                conn = connection
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 15_000
+                connection.readTimeout = 60_000
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Accept", "text/event-stream")
 
-                val arr = JSONArray().also { a -> messages.forEach { m -> a.put(JSONObject().put("role", m.role).put("content", m.content)) } }
-                OutputStreamWriter(conn.outputStream).use { it.write(JSONObject().put("messages", arr).toString()) }
+                val arr = JSONArray()
+                messages.forEach { m -> arr.put(JSONObject().put("role", m.role).put("content", m.content)) }
+                val payload = JSONObject().put("messages", arr).toString()
+                OutputStreamWriter(connection.outputStream).use { it.write(payload) }
 
-                if (conn.responseCode >= 400) {
-                    val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${conn.responseCode}"
+                if (connection.responseCode >= 400) {
+                    val err = connection.errorStream?.bufferedReader()?.readText() ?: "HTTP ${connection.responseCode}"
                     ui.post { callback.onError(err) }
                     return@Thread
                 }
 
-                conn.inputStream.bufferedReader().use { reader ->
+                connection.inputStream.bufferedReader().use { reader ->
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
                         val l = line?.trim() ?: continue
