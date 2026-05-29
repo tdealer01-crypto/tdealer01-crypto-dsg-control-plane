@@ -109,6 +109,13 @@ export async function POST(request: NextRequest) {
       index.delete(command.idempotency.key);
     }
 
+    // X-DSG-Autonomous: true — owner pre-authorised; mark command approved for instant Android execution
+    if (request.headers.get('X-DSG-Autonomous') === 'true') {
+      command.executionState = 'approved';
+      command.approval.state = 'approved';
+      command.audit.updatedAt = new Date().toISOString();
+    }
+
     queue().set(command.commandId, command);
     index.set(command.idempotency.key, command.commandId);
 

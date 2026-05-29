@@ -45,6 +45,9 @@ class MainActivity : Activity() {
 
     private var fileListRendered = false
     private var workSessionEnabled = false
+    private var autonomousModeEnabled: Boolean
+        get() = getSharedPreferences("dsg_prefs", MODE_PRIVATE).getBoolean("autonomous_mode", false)
+        set(value) { getSharedPreferences("dsg_prefs", MODE_PRIVATE).edit().putBoolean("autonomous_mode", value).apply() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,6 +72,7 @@ class MainActivity : Activity() {
         }
         addHero(root)
         addTabs(root)
+        addAutonomousModeCard(root)
         addNoCodeChat(root)
         addWorkSessionCard(root)
         addFileManagerCard(root)
@@ -167,6 +171,44 @@ class MainActivity : Activity() {
         row.addView(compactButton("Clear", ButtonTone.SECONDARY) { chatInput.setText("") })
         box.addView(row)
         addWithMargin(root, box, bottom = 12)
+    }
+
+    private fun addAutonomousModeCard(root: LinearLayout) {
+        val card = card(if (autonomousModeEnabled) Color.parseColor("#1a2e1a") else COLOR_CARD_ALT,
+            stroke = if (autonomousModeEnabled) Color.parseColor("#4ade80") else COLOR_BORDER).apply {
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        card.addView(TextView(this).apply {
+            text = if (autonomousModeEnabled) "⚡ AUTONOMOUS MODE — ON" else "🔒 Autonomous Mode — Off"
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(if (autonomousModeEnabled) Color.parseColor("#4ade80") else COLOR_TEXT_MUTED)
+        })
+        card.addView(TextView(this).apply {
+            text = if (autonomousModeEnabled)
+                "All commands execute instantly. No approval dialog. No file blocks. Permission gates bypassed."
+            else
+                "Enable to run all commands without approval popups, remove file restrictions, and bypass permission gates."
+            textSize = 12f
+            setTextColor(COLOR_TEXT_MUTED)
+            setPadding(0, dp(4), 0, dp(10))
+        })
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        if (autonomousModeEnabled) {
+            row.addView(compactButton("Disable Autonomous Mode", ButtonTone.SECONDARY) {
+                autonomousModeEnabled = false
+                auditLogStore.append("AUTONOMOUS_MODE_DISABLED", "owner", "Owner disabled autonomous mode")
+                render()
+            })
+        } else {
+            row.addView(compactButton("Enable Autonomous Mode", ButtonTone.PRIMARY) {
+                autonomousModeEnabled = true
+                auditLogStore.append("AUTONOMOUS_MODE_ENABLED", "owner", "Owner enabled autonomous mode — all gates bypassed")
+                render()
+            })
+        }
+        card.addView(row)
+        addWithMargin(root, card, bottom = 12)
     }
 
     private fun addWorkSessionCard(root: LinearLayout) {
@@ -320,7 +362,14 @@ class MainActivity : Activity() {
         val command = AgentCommand.create(source, type, target, reason, PermissionGate.requiredPermissionFor(type), true)
         commandStore.add(command)
         auditLogStore.append(if (type.name.startsWith("FILE_")) "FILE_ACTION_QUEUED" else "COMMAND_QUEUED", command.commandId, "Queued ${command.type.name} digest=${command.commandDigest}")
-        refreshUi("Queued ${command.type.name}")
+        // Autonomous mode: skip inbox, execute immediately
+        if (autonomousModeEnabled) {
+            auditLogStore.append("AUTONOMOUS_AUTO_EXEC", command.commandId, "Autonomous mode — executing ${command.type.name} without approval dialog")
+            approveCommand(command)
+        } else {
+            refreshUi("Queued ${command.type.name}")
+            runInSessionIfAllowed(command)
+        }
         return command
     }
 
@@ -335,22 +384,26 @@ class MainActivity : Activity() {
         approveCommand(command)
     }
 
-    private fun sessionCanRun(command: AgentCommand): Boolean = when (command.type) {
-        AgentCommandType.STATUS,
-        AgentCommandType.OPEN_URL,
-        AgentCommandType.OPEN_SETTINGS,
-        AgentCommandType.OPEN_APP,
-        AgentCommandType.BACK,
-        AgentCommandType.HOME,
-        AgentCommandType.SCROLL_DOWN,
-        AgentCommandType.FILE_LIST_ROOT,
-        AgentCommandType.FILE_SEND_TO_CLAW -> true
-        AgentCommandType.NOTIFICATION_SUMMARY,
-        AgentCommandType.FILE_PREVIEW,
-        AgentCommandType.FILE_SELECT,
-        AgentCommandType.FILE_RENAME,
-        AgentCommandType.FILE_MOVE,
-        AgentCommandType.FILE_DELETE -> false
+    // In autonomous mode all command types are allowed; otherwise whitelist only low-risk ones
+    private fun sessionCanRun(command: AgentCommand): Boolean {
+        if (autonomousModeEnabled) return true
+        return when (command.type) {
+            AgentCommandType.STATUS,
+            AgentCommandType.OPEN_URL,
+            AgentCommandType.OPEN_SETTINGS,
+            AgentCommandType.OPEN_APP,
+            AgentCommandType.BACK,
+            AgentCommandType.HOME,
+            AgentCommandType.SCROLL_DOWN,
+            AgentCommandType.FILE_LIST_ROOT,
+            AgentCommandType.FILE_SEND_TO_CLAW -> true
+            AgentCommandType.NOTIFICATION_SUMMARY,
+            AgentCommandType.FILE_PREVIEW,
+            AgentCommandType.FILE_SELECT,
+            AgentCommandType.FILE_RENAME,
+            AgentCommandType.FILE_MOVE,
+            AgentCommandType.FILE_DELETE -> false
+        }
     }
 
     private fun refreshUi(extra: String? = null) {
@@ -401,14 +454,16 @@ class MainActivity : Activity() {
     }
 
     private fun approveCommand(command: AgentCommand) {
-        val blockMessage = filePolicyBlock(command)
-        if (blockMessage != null) {
-            commandStore.markBlocked(command.commandId, blockMessage)
-            auditLogStore.append("FILE_ACTION_BLOCKED", command.commandId, blockMessage, AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
-            refreshUi(blockMessage)
-            return
+        if (!autonomousModeEnabled) {
+            val blockMessage = filePolicyBlock(command)
+            if (blockMessage != null) {
+                commandStore.markBlocked(command.commandId, blockMessage)
+                auditLogStore.append("FILE_ACTION_BLOCKED", command.commandId, blockMessage, AgentErrorCodes.FILE_SENSITIVE_REVIEW_REQUIRED)
+                refreshUi(blockMessage)
+                return
+            }
         }
-        val gate = permissionGate.evaluate(command)
+        val gate = permissionGate.evaluate(command, autonomousModeEnabled)
         if (!gate.allowed) {
             if (gate.errorCode == AgentErrorCodes.PERMISSION_REQUIRED) commandStore.markWaitingPermission(command.commandId, gate.message) else commandStore.markBlocked(command.commandId, gate.message)
             auditLogStore.append(if (command.type.name.startsWith("FILE_")) "FILE_ACTION_BLOCKED" else "COMMAND_BLOCKED", command.commandId, gate.message, gate.errorCode)
@@ -479,11 +534,48 @@ class MainActivity : Activity() {
                 CommandExecutionResult(true, "Listed shared storage root")
             }
             AgentCommandType.FILE_SEND_TO_CLAW -> CommandExecutionResult(true, "Prepared selected files for Claw workflow")
-            AgentCommandType.FILE_PREVIEW,
-            AgentCommandType.FILE_SELECT,
-            AgentCommandType.FILE_RENAME,
-            AgentCommandType.FILE_MOVE,
-            AgentCommandType.FILE_DELETE -> CommandExecutionResult(false, "File executor not enabled for this action", AgentErrorCodes.EXECUTOR_UNSUPPORTED)
+            AgentCommandType.FILE_PREVIEW -> {
+                val content = FullFileManager.readFile(command.target)
+                filePreviewView.text = content
+                auditLogStore.append("FILE_PREVIEWED", command.commandId, "Previewed ${command.target}")
+                CommandExecutionResult(true, "Previewed: ${command.target}")
+            }
+            AgentCommandType.FILE_SELECT -> {
+                filePreviewView.text = "Selected: ${command.target}"
+                auditLogStore.append("FILE_SELECTED", command.commandId, "Selected ${command.target}")
+                CommandExecutionResult(true, "Selected: ${command.target}")
+            }
+            AgentCommandType.FILE_RENAME -> {
+                val parts = command.target.split("||")
+                if (parts.size < 2) return CommandExecutionResult(false, "Rename format: <path>||<newName>", "INVALID_ARGS")
+                val ok = FullFileManager.renameFile(parts[0].trim(), parts[1].trim())
+                if (ok) {
+                    auditLogStore.append("FILE_RENAMED", command.commandId, "Renamed ${parts[0]} → ${parts[1]}")
+                    CommandExecutionResult(true, "Renamed to ${parts[1]}")
+                } else {
+                    CommandExecutionResult(false, "Rename failed for ${parts[0]}", "FILE_OP_FAILED")
+                }
+            }
+            AgentCommandType.FILE_MOVE -> {
+                val parts = command.target.split("||")
+                if (parts.size < 2) return CommandExecutionResult(false, "Move format: <path>||<destDir>", "INVALID_ARGS")
+                val ok = FullFileManager.moveFile(parts[0].trim(), parts[1].trim())
+                if (ok) {
+                    auditLogStore.append("FILE_MOVED", command.commandId, "Moved ${parts[0]} → ${parts[1]}")
+                    CommandExecutionResult(true, "Moved to ${parts[1]}")
+                } else {
+                    CommandExecutionResult(false, "Move failed for ${parts[0]}", "FILE_OP_FAILED")
+                }
+            }
+            AgentCommandType.FILE_DELETE -> {
+                val ok = FullFileManager.deleteFile(command.target)
+                if (ok) {
+                    auditLogStore.append("FILE_DELETED", command.commandId, "Deleted ${command.target}")
+                    CommandExecutionResult(true, "Deleted: ${command.target}")
+                } else {
+                    CommandExecutionResult(false, "Delete failed for ${command.target}", "FILE_OP_FAILED")
+                }
+            }
         }
     }
 
@@ -493,7 +585,7 @@ class MainActivity : Activity() {
 
     private fun buildStatusText(extra: String? = null): String = listOfNotNull(
         "Backend: ${DsgConfig.BASE_URL}",
-        "Mode: no-code • work-session • signed execution • audit",
+        if (autonomousModeEnabled) "⚡ AUTONOMOUS MODE: ON — all gates bypassed" else "Mode: no-code • work-session • signed execution • audit",
         "Work Session: $workSessionEnabled",
         "Accessibility: ${permissionGate.isAccessibilityEnabled()}",
         "Notifications: ${permissionGate.isNotificationListenerEnabled()}",
