@@ -222,7 +222,127 @@ class MainActivity : Activity() {
         addWithMargin(root, card, bottom = 12)
     }
 
-    private fun addWorkSessionCard(root: LinearLayout) {
+    private fun addDadBotSection(root: LinearLayout) {
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(12))
+        }
+        headerRow.addView(TextView(this).apply {
+            text = "🤖 DadBot"
+            textSize = 20f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_TEXT)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        headerRow.addView(TextView(this).apply {
+            text = "Haiku"
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_PRIMARY)
+            background = rounded(0xFFEEEFFF.toInt(), 10, COLOR_PRIMARY_SOFT, 1)
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+        })
+        box.addView(headerRow)
+
+        dadBotMessageList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 0, 0, dp(8))
+        }
+        box.addView(dadBotMessageList)
+
+        dadBotStreamView = TextView(this).apply {
+            text = ""
+            textSize = 13f
+            setTextColor(COLOR_TEXT)
+            background = rounded(0xFFEEEFFF.toInt(), 14, COLOR_PRIMARY_SOFT, 1)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            visibility = View.GONE
+        }
+        addWithMargin(box, dadBotStreamView, bottom = 8)
+
+        dadBotInput = EditText(this).apply {
+            hint = "พิมพ์คำสั่ง เช่น เปิด YouTube, แสดงไฟล์"
+            textSize = 14f
+            maxLines = 3
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setTextColor(COLOR_TEXT)
+            setHintTextColor(COLOR_TEXT_MUTED)
+            background = rounded(COLOR_BG, 16, COLOR_BORDER, 1)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+        }
+        addWithMargin(box, dadBotInput, bottom = 8)
+
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row.addView(compactButton("Send", ButtonTone.PRIMARY) { sendDadBotMessage() })
+        row.addView(compactButton("Clear", ButtonTone.SECONDARY) {
+            dadBotMessages.clear()
+            dadBotMessageList.removeAllViews()
+            dadBotInput.setText("")
+        })
+        box.addView(row)
+        addWithMargin(root, box, bottom = 12)
+    }
+
+    private fun sendDadBotMessage() {
+        val text = dadBotInput.text.toString().trim()
+        if (text.isBlank() || dadBotTyping) return
+        dadBotInput.setText("")
+        dadBotMessages.add(DadBotMessage("user", text))
+        appendDadBotBubble("You", text, COLOR_CARD_ALT)
+        dadBotTyping = true
+        dadBotStreamView.text = "..."
+        dadBotStreamView.visibility = View.VISIBLE
+        var streamBuffer = ""
+        dadBotClient.chat(dadBotMessages.toList(), object : DadBotCallback {
+            override fun onToken(token: String) {
+                streamBuffer += token
+                dadBotStreamView.text = streamBuffer
+            }
+            override fun onCommand(type: AgentCommandType, target: String, reason: String) {
+                appendDadBotBubble("Action", "▶ ${type.name}: $target", 0xFFEAFBF3.toInt())
+                queueCommand(type, target, "DadBot: $reason", "dadbot")
+            }
+            override fun onDone() {
+                if (streamBuffer.isNotBlank()) {
+                    dadBotMessages.add(DadBotMessage("assistant", streamBuffer))
+                    appendDadBotBubble("DadBot", streamBuffer, COLOR_CARD)
+                }
+                dadBotStreamView.text = ""
+                dadBotStreamView.visibility = View.GONE
+                dadBotTyping = false
+            }
+            override fun onError(message: String) {
+                appendDadBotBubble("Error", message, COLOR_RED_SOFT)
+                dadBotStreamView.visibility = View.GONE
+                dadBotTyping = false
+            }
+        })
+    }
+
+    private fun appendDadBotBubble(label: String, content: String, bgColor: Int) {
+        val bubble = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(bgColor, 14, COLOR_BORDER, 1)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+        bubble.addView(TextView(this).apply {
+            text = label
+            textSize = 10f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_TEXT_MUTED)
+        })
+        bubble.addView(TextView(this).apply {
+            text = content
+            textSize = 13f
+            setTextColor(COLOR_TEXT)
+            setPadding(0, dp(2), 0, 0)
+        })
+        addWithMargin(dadBotMessageList, bubble, bottom = 6)
+    }
+
+
         val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
         box.addView(sectionHeader("Work Session", "ลดการกดซ้ำ ใช้ manual fallback ได้"))
         box.addView(TextView(this).apply {
