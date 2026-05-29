@@ -30,13 +30,21 @@ const PLANS = [
   },
   {
     key: 'business',
-    name: 'Business',
+    name: 'Agency',
     monthly: 299,
     yearly: 249,
-    executions: '100,000 / mo',
+    executions: 'Unlimited projects',
     featured: true,
-    cta: 'Start Business trial',
-    features: ['100,000 executions / mo', 'Everything in Pro', 'Finance Pack included', 'Audit export PDF + JSON', 'SSO ready'],
+    badge: 'Best for agencies',
+    cta: 'Start Agency trial',
+    features: [
+      'Unlimited proof checks',
+      'Everything in Pro',
+      'White-label Delivery Proof Report',
+      'Share link per client project',
+      'Finance Pack + Audit export PDF',
+      'MCP server access',
+    ],
   },
   {
     key: 'enterprise',
@@ -46,7 +54,7 @@ const PLANS = [
     executions: 'Custom',
     featured: false,
     cta: 'Start Enterprise pilot',
-    features: ['Custom quota', 'Everything in Business', 'All skill packs', 'Custom skill builder', 'SLA 4h + CSM'],
+    features: ['Custom quota', 'Everything in Agency', 'SSO + RBAC', 'All skill packs', 'Custom skill builder', 'SLA 4h + CSM'],
   },
 ];
 
@@ -192,7 +200,9 @@ export default function PricingPage() {
                 className={['relative flex flex-col rounded-2xl border p-6', plan.featured ? 'border-emerald-500/40 bg-emerald-500/10 shadow-2xl shadow-emerald-950/30' : 'border-white/10 bg-white/[0.03]'].join(' ')}
               >
                 {plan.featured && (
-                  <span className="absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">Popular</span>
+                  <span className="absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
+                    {'badge' in plan ? (plan as { badge?: string }).badge : 'Popular'}
+                  </span>
                 )}
                 <h3 className="text-xl font-black">{plan.name}</h3>
                 <div className="mt-3 flex items-end gap-1">
@@ -233,6 +243,19 @@ export default function PricingPage() {
           })}
         </div>
         <p className="mt-4 text-center text-xs text-slate-600">No credit card required for Trial · Overage $0.001/execution · Cancel anytime</p>
+
+        {/* Agency CTA callout */}
+        <div className="mt-8 rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Built for AI code agencies</p>
+            <p className="mt-1 text-slate-200 text-sm leading-6">
+              Agency plan includes white-label Delivery Proof Reports — send each client a shareable link that proves their AI code shipped with evidence. No more vague green badges.
+            </p>
+          </div>
+          <Link href="/readiness-report" className="shrink-0 rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-300">
+            Run free proof check →
+          </Link>
+        </div>
       </section>
 
       <hr className="border-white/10" />
@@ -317,13 +340,94 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ── MCP Server — killer feature section ── */}
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">DSG MCP Server</p>
+            <h2 className="mt-3 text-2xl font-black">Let Claude gate every action before it ships.</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-400">
+              Connect DSG ONE as an MCP server inside Claude, Cursor, or any MCP-compatible AI tool. Every tool call routes through the policy gate before execution — approval workflow, audit trail, and evidence chain included. No other compliance vendor offers this.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-300">
+              {[
+                'Works with Claude, Cursor, and any MCP client',
+                'Gate blocks high-risk actions before they run',
+                'Every decision logged with cryptographic evidence hash',
+                'Vanta / Sonar don\'t have MCP-native governance',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-0.5 text-emerald-400">✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/api/mcp" className="rounded-xl border border-emerald-400/30 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/10">
+                View MCP endpoint →
+              </Link>
+              <Link href="/signup" className="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-300">
+                Try on Agency plan →
+              </Link>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 font-mono text-sm text-slate-200">
+            <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">MCP server config (claude_desktop_config.json)</p>
+            <pre className="overflow-x-auto whitespace-pre-wrap text-xs">{`{
+  "mcpServers": {
+    "dsg-gate": {
+      "command": "npx",
+      "args": ["-y", "@dsg/mcp-server"],
+      "env": {
+        "DSG_API_KEY": "your-api-key",
+        "DSG_POLICY": "strict"
+      }
+    }
+  }
+}`}</pre>
+          </div>
+        </div>
+      </section>
+
+      <hr className="border-white/10" />
+
+      {/* ── Zenodo DOI trust signal ── */}
+      <section className="mx-auto max-w-6xl px-6 py-12">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 flex flex-col gap-6 md:flex-row md:items-center">
+          <div className="shrink-0 text-center md:text-left">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Academic credibility</p>
+            <p className="mt-2 text-2xl font-black text-white">Zenodo DOI</p>
+            <p className="mt-1 font-mono text-xs text-emerald-400">10.5281/zenodo.18225586</p>
+          </div>
+          <div className="h-px w-full bg-white/10 md:h-24 md:w-px" />
+          <div className="flex-1">
+            <p className="text-sm leading-7 text-slate-300">
+              DSG ONE governance methodology is published on Zenodo — the open-access repository used by CERN and OpenAIRE. Our cryptographic evidence chain and policy engine design are citable as peer-referenced research. This is the kind of academic credibility that Vanta and Sonar can&apos;t claim.
+            </p>
+            <a
+              href="https://doi.org/10.5281/zenodo.18225586"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex text-xs text-emerald-400 hover:underline"
+            >
+              View on Zenodo →
+            </a>
+          </div>
+        </div>
+      </section>
+
       <section id="evidence" className="mx-auto max-w-6xl px-6 pb-16">
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center">
           <h2 className="text-2xl font-black">Evidence-ready governance</h2>
           <p className="mt-3 text-sm text-slate-400">Start with a workspace, then connect billing after your first authenticated environment is created.</p>
-          <Link href="/signup" className="mt-6 inline-flex rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950">
-            Start workspace trial →
-          </Link>
+          <div className="mt-6 flex flex-wrap justify-center gap-4">
+            <Link href="/signup" className="inline-flex rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950">
+              Start workspace trial →
+            </Link>
+            <Link href="/readiness-report" className="inline-flex rounded-xl border border-white/15 px-5 py-3 font-bold text-slate-200 hover:border-emerald-400/40">
+              Free proof check →
+            </Link>
+          </div>
         </div>
       </section>
     </main>
