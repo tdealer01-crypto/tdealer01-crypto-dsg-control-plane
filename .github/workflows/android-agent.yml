@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-debug-apk:
@@ -81,3 +81,12 @@ jobs:
           name: dsg-agent-debug-apk
           path: apps/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Publish APK to android-apk-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload android-apk-latest \
+            apps/android/app/build/outputs/apk/debug/*.apk \
+            --repo ${{ github.repository }} \
+            --clobber
