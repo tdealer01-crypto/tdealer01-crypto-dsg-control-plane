@@ -17,8 +17,11 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
+import java.util.Locale
 import com.dsg.agent.automation.AccessibilityActionBridge
 import com.dsg.agent.automation.AgentCommand
 import com.dsg.agent.automation.AgentCommandStore
@@ -54,24 +57,42 @@ class MainActivity : Activity() {
     private lateinit var dadBotMessageList: LinearLayout
     private lateinit var dadBotStreamView: TextView
     private lateinit var dadBotInput: EditText
+    private var tts: TextToSpeech? = null
+    private var ttsEnabled = false
+    private var ttsReady = false
+    private lateinit var monitorList: LinearLayout
+    private val VOICE_REQUEST_CODE = 101
     private var autonomousModeEnabled: Boolean
         get() = getSharedPreferences("dsg_prefs", MODE_PRIVATE).getBoolean("autonomous_mode", false)
         set(value) { getSharedPreferences("dsg_prefs", MODE_PRIVATE).edit().putBoolean("autonomous_mode", value).apply() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 10)
+        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.RECORD_AUDIO), 10)
         commandStore = AgentCommandStore(this)
         auditLogStore = AuditLogStore(this)
         permissionGate = PermissionGate(this)
         approvalSigner = OwnerApprovalSigner()
         dadBotClient = DadBotClient()
+        tts = TextToSpeech(this) { status ->
+            ttsReady = (status == TextToSpeech.SUCCESS)
+            if (ttsReady) {
+                val thai = Locale("th", "TH")
+                tts?.language = if ((tts?.isLanguageAvailable(thai) ?: -1) >= TextToSpeech.LANG_AVAILABLE) thai else Locale.ENGLISH
+            }
+        }
         render()
     }
 
     override fun onResume() {
         super.onResume()
         if (::statusView.isInitialized) refreshUi("Permission state refreshed")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tts?.stop()
+        tts?.shutdown()
     }
 
     private fun render() {
@@ -83,6 +104,7 @@ class MainActivity : Activity() {
         addHero(root)
         addTabs(root)
         addAutonomousModeCard(root)
+        addMonitorSection(root)
         addDadBotSection(root)
         addNoCodeChat(root)
         addWorkSessionCard(root)
@@ -244,6 +266,16 @@ class MainActivity : Activity() {
             background = rounded(0xFFEEEFFF.toInt(), 10, COLOR_PRIMARY_SOFT, 1)
             setPadding(dp(8), dp(4), dp(8), dp(4))
         })
+        headerRow.addView(TextView(this).apply {
+            text = "🔇"
+            textSize = 18f
+            setPadding(dp(10), dp(2), dp(2), dp(2))
+            setOnClickListener {
+                ttsEnabled = !ttsEnabled
+                text = if (ttsEnabled) "🔊" else "🔇"
+                if (!ttsEnabled) tts?.stop()
+            }
+        })
         box.addView(headerRow)
 
         dadBotMessageList = LinearLayout(this).apply {
@@ -276,6 +308,7 @@ class MainActivity : Activity() {
 
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(compactButton("Send", ButtonTone.PRIMARY) { sendDadBotMessage() })
+        row.addView(compactButton("🎙️", ButtonTone.SECONDARY) { startVoiceInput() })
         row.addView(compactButton("Clear", ButtonTone.SECONDARY) {
             dadBotMessages.clear()
             dadBotMessageList.removeAllViews()
@@ -308,10 +341,12 @@ class MainActivity : Activity() {
                 if (streamBuffer.isNotBlank()) {
                     dadBotMessages.add(DadBotMessage("assistant", streamBuffer))
                     appendDadBotBubble("DadBot", streamBuffer, COLOR_CARD)
+                    if (ttsEnabled && ttsReady) tts?.speak(streamBuffer, TextToSpeech.QUEUE_FLUSH, null, "dadbot")
                 }
                 dadBotStreamView.text = ""
                 dadBotStreamView.visibility = View.GONE
                 dadBotTyping = false
+                if (::monitorList.isInitialized) refreshMonitor()
             }
             override fun onError(message: String) {
                 appendDadBotBubble("Error", message, COLOR_RED_SOFT)
@@ -545,6 +580,7 @@ class MainActivity : Activity() {
         }
         renderCommands()
         renderAuditLog()
+        if (::monitorList.isInitialized) refreshMonitor()
     }
 
     private fun renderCommands() {
@@ -831,6 +867,101 @@ class MainActivity : Activity() {
     private fun buttonBorder(tone: ButtonTone): Int = when (tone) { ButtonTone.PRIMARY -> COLOR_PRIMARY; ButtonTone.SECONDARY -> COLOR_BORDER; ButtonTone.WARNING -> COLOR_WARNING_BORDER; ButtonTone.DANGER -> COLOR_RED_BORDER }
     private fun buttonIcon(tone: ButtonTone): String = when (tone) { ButtonTone.PRIMARY -> "🚀"; ButtonTone.SECONDARY -> "›"; ButtonTone.WARNING -> "⚠️"; ButtonTone.DANGER -> "⛔" }
     private enum class ButtonTone { PRIMARY, SECONDARY, WARNING, DANGER }
+
+    private fun addMonitorSection(root: LinearLayout) {
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("📡 Monitor", "การทำงานแบบ real-time"))
+        monitorList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(monitorList)
+        addWithMargin(root, box, bottom = 12)
+        refreshMonitor()
+    }
+
+    private fun refreshMonitor() {
+        monitorList.removeAllViews()
+        val raw = auditLogStore.tail(8)
+        val entries = raw.split("\n\n").filter { it.isNotBlank() }.reversed()
+        if (entries.isEmpty()) {
+            monitorList.addView(TextView(this).apply {
+                text = "ยังไม่มีกิจกรรม"
+                textSize = 13f
+                setTextColor(COLOR_TEXT_MUTED)
+                setPadding(0, dp(4), 0, 0)
+            })
+            return
+        }
+        entries.take(8).forEach { entry ->
+            val lines = entry.lines()
+            val firstLine = lines.firstOrNull() ?: return@forEach
+            val detail = lines.getOrNull(1) ?: ""
+            val (icon, label) = eventToNaturalLanguage(firstLine, detail)
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(4), 0, dp(4))
+            }
+            row.addView(TextView(this).apply {
+                text = icon
+                textSize = 15f
+                setPadding(0, 0, dp(8), 0)
+            })
+            row.addView(TextView(this).apply {
+                text = label
+                textSize = 12f
+                setTextColor(COLOR_TEXT)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            monitorList.addView(row)
+        }
+    }
+
+    private fun eventToNaturalLanguage(firstLine: String, detail: String): Pair<String, String> {
+        val msg = detail.take(55).ifBlank { firstLine.take(55) }
+        return when {
+            firstLine.startsWith("COMMAND_QUEUED") -> "📋" to "กำลังเตรียมคำสั่ง: $msg"
+            firstLine.startsWith("COMMAND_APPROVED") -> "✅" to "อนุมัติคำสั่งแล้ว"
+            firstLine.startsWith("COMMAND_EXECUTED") -> "⚡" to msg
+            firstLine.startsWith("COMMAND_REJECTED") -> "❌" to "ปฏิเสธคำสั่ง"
+            firstLine.startsWith("COMMAND_BLOCKED") -> "🚫" to "คำสั่งถูกบล็อก: $msg"
+            firstLine.startsWith("FILE_ACTION_QUEUED") -> "📁" to "กำลังเตรียมจัดการไฟล์"
+            firstLine.startsWith("FILE_ACTION_APPROVED") -> "✅" to "อนุมัติการจัดการไฟล์"
+            firstLine.startsWith("FILE_LISTED") -> "📂" to "แสดงรายการไฟล์สำเร็จ"
+            firstLine.startsWith("FILE_ACTION_EXECUTED") -> "✅" to msg
+            firstLine.startsWith("FILE_ACTION_BLOCKED") -> "🚫" to "ไฟล์ถูกบล็อก: $msg"
+            firstLine.startsWith("WORK_SESSION_RUN") -> "🔄" to "Work Session: $msg"
+            firstLine.startsWith("WORK_SESSION_STARTED") -> "▶️" to "Work Session เริ่มทำงาน"
+            firstLine.startsWith("WORK_SESSION_STOPPED") -> "⏹️" to "Work Session หยุดทำงาน"
+            firstLine.startsWith("AUTONOMOUS_MODE_ENABLED") -> "⚡" to "Autonomous Mode เปิดแล้ว"
+            firstLine.startsWith("AUTONOMOUS_MODE_DISABLED") -> "🔒" to "Autonomous Mode ปิดแล้ว"
+            firstLine.startsWith("AUTONOMOUS_AUTO_EXEC") -> "⚡" to "Auto-exec: $msg"
+            else -> "•" to msg
+        }
+    }
+
+    private fun startVoiceInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "th-TH")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "พูดคำสั่งสำหรับ DadBot...")
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, VOICE_REQUEST_CODE)
+        } catch (_: Exception) {
+            dadBotStreamView.text = "ไม่รองรับ Voice Input บนอุปกรณ์นี้"
+            dadBotStreamView.visibility = View.VISIBLE
+        }
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == VOICE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+            val text = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull() ?: return
+            dadBotInput.setText(text)
+            sendDadBotMessage()
+        }
+    }
 
     companion object {
         private const val COLOR_BG = 0xFFF5F6FA.toInt()
