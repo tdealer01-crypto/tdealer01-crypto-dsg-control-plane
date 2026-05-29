@@ -86,7 +86,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Remove any existing APK assets so upload doesn't conflict
+          ASSET_IDS=$(gh api repos/${{ github.repository }}/releases/tags/android-apk-latest \
+            --jq '.assets[] | select(.name | endswith(".apk")) | .id' 2>/dev/null || true)
+          for ID in $ASSET_IDS; do
+            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$ID" && \
+              echo "Removed old APK asset $ID"
+          done
           gh release upload android-apk-latest \
             apps/android/app/build/outputs/apk/debug/*.apk \
-            --repo ${{ github.repository }} \
-            --clobber
+            --repo ${{ github.repository }}
