@@ -187,21 +187,7 @@ Agent autonomous use (rules in AGENTS.md):
 /api/dsg/flow-studio/config
 /dsg/autonomous-level
 /api/dsg/autonomous-level/status
-```
-
-### Template Marketplace — Revenue Flow
-
-```text
-Creator: /dsg/templates/submit → POST /api/dsg/templates/submit
-Buyer:   /dsg/templates → POST /api/dsg/templates/[id]/purchase
-         → Stripe Checkout (paid) or CLEARED instantly (free)
-         → POST /api/webhooks/stripe (checkout.session.completed)
-         → sale status: PENDING → CLEARED
-Creator: /dsg/templates/my-payouts → GET /api/dsg/templates/my/payouts
-         → clearedPayoutTHB (80%), pendingPayoutTHB, totalRevenueTHB
-
-Commission: 20% platform / 80% creator (2000 bps, integer satang)
-Duplicate guard: UNIQUE(template_id, buyer_id) — returns ALREADY_PURCHASED 422
+/dsg/governance                         — CCVS Control Catalog dashboard (8 controls, filter/search)
 ```
 
 ## Production verification
