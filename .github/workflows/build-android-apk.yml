@@ -6,6 +6,7 @@ on:
     branches: [main, claude/evidence-driven-compliance-E9TJR]
     paths:
       - 'apps/android/**'
+      - '.github/workflows/build-android-apk.yml'
 
 permissions:
   contents: write
@@ -26,11 +27,20 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;34.0.0'
+
+      - name: Create local.properties
+        working-directory: apps/android
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
       - name: Build debug APK
         working-directory: apps/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Rename APK
         id: apk
