@@ -37,7 +37,8 @@ const PLANS = [
     yearly: 249,
     executions: 'Unlimited projects',
     featured: true,
-    cta: 'Start Agency trial',
+    cta: 'Get Agency Plan',
+    ctaHref: 'https://buy.stripe.com/fZu00k5La7Pt2fVaak3gk01',
     badge: 'Best for agencies',
     features: [
       'Unlimited proof checks / mo',
@@ -230,6 +231,15 @@ export default function PricingPage() {
                   <Link href={plan.ctaHref!} className="mt-5 rounded-xl border border-emerald-400/40 py-2.5 text-center text-sm font-bold text-emerald-300 hover:bg-emerald-400/10">
                     {plan.cta}
                   </Link>
+                ) : plan.ctaHref ? (
+                  <a
+                    href={plan.ctaHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={['mt-5 block w-full rounded-xl py-2.5 text-center text-sm font-bold transition', plan.featured ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'border border-white/15 text-slate-100 hover:border-emerald-400/40'].join(' ')}
+                  >
+                    {plan.cta}
+                  </a>
                 ) : (
                   <div className="mt-5">
                     <button
