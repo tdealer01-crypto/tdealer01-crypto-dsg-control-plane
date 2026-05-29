@@ -343,6 +343,7 @@ class MainActivity : Activity() {
     }
 
 
+    private fun addWorkSessionCard(root: LinearLayout) {
         val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
         box.addView(sectionHeader("Work Session", "ลดการกดซ้ำ ใช้ manual fallback ได้"))
         box.addView(TextView(this).apply {
