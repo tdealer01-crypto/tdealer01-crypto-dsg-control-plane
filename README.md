@@ -99,6 +99,41 @@ GET /api/ccvs/evidence-chain   # severity table, requirement catalog, drift stat
 
 ---
 
+## 📱 Android Agent App — DSG Agent APK
+
+Native Android companion app for the DSG control plane. Runs on-device and connects to the production backend.
+
+**Download latest debug APK:**
+[releases/tag/android-apk-latest](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/releases/tag/android-apk-latest)
+
+### Features
+
+| Feature | Description |
+|---|---|
+| ⚡ Owner Autonomous Mode | Bypass all approval gates — owner-signed commands execute immediately |
+| 🤖 DadBot AI Chat | Real-time Thai/English assistant powered by Claude Haiku; issues device commands via natural language |
+| 📁 Full File Manager | Read, rename, move, delete files on-device with audit trail |
+| 🔒 Audit Log | Every action timestamped and logged; `AUDIT ON` badge visible in UI |
+| 🔑 Signed Execution | Owner commands signed before dispatch; replay rejection enforced |
+
+### DadBot
+
+DadBot is an AI chat assistant embedded in the Android app. It streams responses in real time and can queue device commands (open apps, navigate, manage files) directly from a Thai or English conversation.
+
+- Model: `claude-haiku-4-5-20251001` via Anthropic API (server-side, no key on device)
+- Transport: SSE streaming from `/api/agent/chat`
+- Commands: `OPEN_APP`, `NAVIGATE`, `STATUS`, and file operations
+
+### Build
+
+```bash
+# CI builds automatically on push to main or the active claude/* branch
+# Workflow: .github/workflows/build-android-apk.yml
+gradle assembleDebug   # AGP 8.7.3 · compileSdk 35 · Gradle 8.10.2
+```
+
+---
+
 ## 📋 Compliance Evidence Pack — 2026-05-25
 
 Pre-formatted evidence report for EU AI Act and ISO 42001 compliance review.
