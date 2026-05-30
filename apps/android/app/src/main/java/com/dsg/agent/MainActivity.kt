@@ -54,6 +54,13 @@ class MainActivity : Activity() {
     private lateinit var filePreviewView: TextView
     private lateinit var chatInput: EditText
 
+    // Navigation
+    private lateinit var outerScroll: ScrollView
+    private var dadBotSectionView: View? = null
+    private var fileSectionView: View? = null
+    private var skillsSectionView: View? = null
+    private var logsSectionView: View? = null
+
     // DadBot chat UI refs
     private lateinit var dadBotScroll: ScrollView
     private lateinit var dadBotMessageList: LinearLayout
@@ -112,10 +119,11 @@ class MainActivity : Activity() {
         addFileManagerCard(root)
         addCommandInbox(root)
         addAuditLog(root)
-        setContentView(ScrollView(this).apply {
+        outerScroll = ScrollView(this).apply {
             setBackgroundColor(COLOR_BG)
             addView(root)
-        })
+        }
+        setContentView(outerScroll)
         refreshUi()
     }
 
@@ -172,11 +180,16 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        row.addView(tab("💬 Chat", true))
-        row.addView(tab("📁 Files", false))
-        row.addView(tab("🛠 Skills", false))
-        row.addView(tab("📋 Logs", false))
+        row.addView(tab("💬 Chat", true) { scrollToView(dadBotSectionView) })
+        row.addView(tab("📁 Files", false) { scrollToView(fileSectionView) })
+        row.addView(tab("🛠 Skills", false) { scrollToView(skillsSectionView) })
+        row.addView(tab("📋 Logs", false) { scrollToView(logsSectionView) })
         addWithMargin(root, row, bottom = 12)
+    }
+
+    private fun scrollToView(v: View?) {
+        v ?: return
+        outerScroll.post { outerScroll.smoothScrollTo(0, v.top) }
     }
 
     private fun addAutonomousModeCard(root: LinearLayout) {
@@ -351,6 +364,7 @@ class MainActivity : Activity() {
         box.addView(promptRow1)
         box.addView(promptRow2)
 
+        dadBotSectionView = box
         addWithMargin(root, box, bottom = 12)
     }
 
@@ -547,6 +561,7 @@ class MainActivity : Activity() {
         dadBotMessageList.addView(botBubbleWrapper, dadBotMessageList.childCount - 1)
 
         dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
+        scrollToView(dadBotSectionView)
 
         dadBotClient.chat(dadBotMessages.toList(), object : DadBotCallback {
             override fun onToken(token: String) {
@@ -708,6 +723,7 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
         addWithMargin(box, filePreviewView, top = 8)
+        fileSectionView = box
         addWithMargin(root, box, bottom = 12)
     }
 
@@ -736,6 +752,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(10), 0, 0)
         }
         box.addView(commandListView)
+        skillsSectionView = box
         addWithMargin(root, box, bottom = 12)
     }
 
@@ -749,6 +766,7 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
         box.addView(auditView)
+        logsSectionView = box
         addWithMargin(root, box)
     }
 
@@ -1105,7 +1123,7 @@ class MainActivity : Activity() {
         layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f).apply { setMargins(0, 0, dp(8), 0) }
     }
 
-    private fun tab(label: String, active: Boolean): TextView = TextView(this).apply {
+    private fun tab(label: String, active: Boolean, onClick: () -> Unit = {}): TextView = TextView(this).apply {
         text = label
         textSize = 13f
         typeface = Typeface.DEFAULT_BOLD
@@ -1113,6 +1131,7 @@ class MainActivity : Activity() {
         setTextColor(if (active) Color.WHITE else COLOR_TEXT_MUTED)
         background = rounded(if (active) COLOR_PRIMARY else COLOR_CARD, 22, if (active) COLOR_PRIMARY else COLOR_BORDER, 1)
         layoutParams = LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(0, 0, dp(8), 0) }
+        setOnClickListener { onClick() }
     }
 
     private fun statusPill(label: String, ok: Boolean): TextView = TextView(this).apply {
