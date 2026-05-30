@@ -56,6 +56,7 @@
     "test:mutation:ci": "npx stryker run --logLevel warn"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.3",
     "@sentry/nextjs": "^10.48.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.99.3",
