@@ -24,6 +24,14 @@ import {
   type LLMRemediationRequest,
 } from "./hermes-llm";
 import { sha256Raw } from "./hash-utils";
+import {
+  saveGrant,
+  getAllActiveGrants,
+} from "./grant-persistence";
+import {
+  saveLease,
+  getAllActiveLeases,
+} from "./lease-persistence";
 
 /**
  * Hermes planning proposal.
@@ -252,11 +260,13 @@ export class HermesPlugin {
   /**
    * Renew execution context grant and leases mid-execution.
    * Useful for long-running tasks to prevent TTL race conditions.
+   * Optionally persist to database for recovery on restart.
    */
-  renewExecutionContext(
+  async renewExecutionContext(
     ctx: ControlledExecutionContext,
-    additionalTtlMs?: number
-  ): ControlledExecutionContext {
+    additionalTtlMs?: number,
+    persist: boolean = false
+  ): Promise<ControlledExecutionContext> {
     const newGrant = renewExecutionGrant(
       ctx.grant,
       ctx.plan,
@@ -270,11 +280,18 @@ export class HermesPlugin {
       unavailable: ctx.credentials.unavailable,
     };
 
-    return {
+    const renewed = {
       ...ctx,
       grant: newGrant,
       credentials: newCredentials,
     };
+
+    // Optionally save to database
+    if (persist) {
+      await this.saveExecutionContext(renewed);
+    }
+
+    return renewed;
   }
 
   /**
@@ -300,6 +317,50 @@ export class HermesPlugin {
     const result = await runner(ctx);
     const report = this.validateExecution(ctx, result);
     return { result, report };
+  }
+
+  /**
+   * Save execution context (grant + leases) to database for recovery on restart.
+   * Only saves if persistence is available.
+   */
+  async saveExecutionContext(ctx: ControlledExecutionContext): Promise<void> {
+    try {
+      // Save grant
+      await saveGrant(ctx.grant);
+
+      // Save all credential leases
+      for (const lease of ctx.credentials.leases) {
+        await saveLease(lease);
+      }
+    } catch (err) {
+      console.error("Failed to save execution context:", err);
+      throw err;
+    }
+  }
+
+  /**
+   * Restore active execution contexts from database.
+   * Called on startup to recover active sessions from previous server instances.
+   * Returns grants and leases that are still valid and not expired.
+   */
+  async restoreActiveContexts(): Promise<{
+    grants: Awaited<ReturnType<typeof getAllActiveGrants>>;
+    leases: Awaited<ReturnType<typeof getAllActiveLeases>>;
+  }> {
+    try {
+      const [grants, leases] = await Promise.all([
+        getAllActiveGrants(),
+        getAllActiveLeases(),
+      ]);
+
+      return {
+        grants,
+        leases,
+      };
+    } catch (err) {
+      console.error("Failed to restore active contexts:", err);
+      throw err;
+    }
   }
 }
 
