@@ -22,6 +22,7 @@ const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60 * 1000;
 const MAX_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 1600;
+const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const DEFAULT_OPENAI_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-4.1-mini';
 const SYSTEM_PROMPT =
@@ -32,7 +33,7 @@ type ChatMessage = {
   content: string;
 };
 
-type Provider = 'openai' | 'openrouter';
+type Provider = 'openai' | 'openrouter' | 'anthropic';
 
 type OpenAITextContent = {
   text?: string;
@@ -146,11 +147,13 @@ function safeModel(value: string | undefined, fallback: string) {
   return value;
 }
 
-function resolveProvider(): Provider | null {
+function resolveProvider(): 'anthropic' | Provider | null {
   const requested = (process.env.PUBLIC_CHAT_PROVIDER || process.env.AI_PROVIDER || '').toLowerCase();
 
+  if (requested === 'anthropic') return 'anthropic';
   if (requested === 'openrouter') return 'openrouter';
   if (requested === 'openai') return 'openai';
+  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
   if (process.env.OPENAI_API_KEY) return 'openai';
   if (process.env.OPENROUTER_API_KEY) return 'openrouter';
   return null;
@@ -210,6 +213,58 @@ function fallbackResult(messages: ChatMessage[], error: string): ChatResult {
     mode: 'fallback_public_chat',
     model: null,
     provider: 'fallback',
+  };
+}
+
+async function callAnthropic(messages: ChatMessage[]): Promise<ChatResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return fallbackResult(messages, 'ANTHROPIC_API_KEY is not configured');
+  }
+
+  const model = safeModel(process.env.ANTHROPIC_MODEL, DEFAULT_ANTHROPIC_MODEL);
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 700,
+      system: SYSTEM_PROMPT,
+      messages: messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as any;
+
+  if (!response.ok) {
+    return {
+      ...fallbackResult(messages, payload.error?.message || 'Anthropic API request failed'),
+      status: response.status,
+      model,
+      provider: 'openai',
+    };
+  }
+
+  const text = payload.content?.[0]?.type === 'text' ? payload.content[0].text : null;
+  if (!text) {
+    return fallbackResult(messages, 'No text content in Anthropic response');
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    answer: text,
+    mode: 'openai_responses_api' as const,
+    model,
+    provider: 'openai',
   };
 }
 
@@ -304,6 +359,7 @@ async function callOpenRouter(messages: ChatMessage[]): Promise<ChatResult> {
 
 async function callModel(messages: ChatMessage[]): Promise<ChatResult> {
   const provider = resolveProvider();
+  if (provider === 'anthropic') return callAnthropic(messages);
   if (provider === 'openrouter') return callOpenRouter(messages);
   if (provider === 'openai') return callOpenAI(messages);
   return fallbackResult(messages, 'No AI provider key is configured');
