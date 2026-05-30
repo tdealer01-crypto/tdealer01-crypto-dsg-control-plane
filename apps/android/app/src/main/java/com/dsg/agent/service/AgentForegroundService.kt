@@ -64,7 +64,7 @@ class AgentForegroundService : Service() {
                 }
                 if (added > 0) {
                     val manager = getSystemService(NotificationManager::class.java)
-                    manager.notify(DsgConfig.NOTIFICATION_ID, buildNotification("$added backend command(s) waiting for owner approval."))
+                    manager?.notify(DsgConfig.NOTIFICATION_ID, buildNotification("$added backend command(s) waiting for owner approval."))
                 }
             }.getOrElse { error ->
                 auditLogStore.append("BACKEND_SYNC_FAILED", "backend", error.message ?: "Backend queue sync failed", "BACKEND_SYNC_FAILED")
@@ -81,7 +81,7 @@ class AgentForegroundService : Service() {
         ).apply {
             description = "Visible status for the DSG owner-device automation agent."
         }
-        manager.createNotificationChannel(channel)
+        manager?.createNotificationChannel(channel)
     }
 
     private fun buildNotification(text: String): Notification {
