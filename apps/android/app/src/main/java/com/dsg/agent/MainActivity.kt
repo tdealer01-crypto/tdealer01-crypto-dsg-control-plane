@@ -1067,7 +1067,7 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
             val dot = if (task.enabled) "●" else "○"
             row.addView(TextView(this).apply {
-                text = "$dot "${task.prompt.take(30)}${if (task.prompt.length > 30) "…" else ""}" every ${task.intervalMinutes}m"
+                text = "$dot \"${task.prompt.take(30)}${if (task.prompt.length > 30) "…" else ""}\" every ${task.intervalMinutes}m"
                 textSize = 11f; setTextColor(if (task.enabled) COLOR_HERMES_CREAM else COLOR_TEXT_MUTED_DARK)
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             row.addView(Button(this).apply {
