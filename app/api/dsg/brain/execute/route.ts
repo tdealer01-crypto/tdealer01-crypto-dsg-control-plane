@@ -14,6 +14,7 @@ import {
   checkConformance,
   PlanAttemptInput,
 } from "@/lib/dsg/brain";
+import { createShellExecutor } from "@/lib/dsg/brain/shell-executor";
 
 interface ExecuteRequest {
   input: string;
@@ -168,36 +169,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
       allowedPaths: allowedPaths || ["/tmp/dsg"],
     });
 
-    // 6. Execute with a runner function
-    const { result, report } = await hermes.executePlan(ctx, async (execCtx) => {
-      // Scaffold runner: simulate successful execution with evidence
-      // In production, this would call OpenHands, shell executor, or custom runner
-
-      const executedCommands = [];
-      const fileChanges = [];
-      const evidence = [];
-
-      // Example: Simulate a command execution
-      executedCommands.push({
-        command: "echo",
-        args: ["DSG Brain scaffold execution"],
-      });
-
-      evidence.push({
-        type: "command" as const,
-        id: `cmd-${Date.now()}`,
-        hash: sha256Hash(executedCommands),
-        timestamp: Date.now(),
-      });
-
-      return {
-        success: true,
-        planHash: execCtx.plan.planHash,
-        executedCommands,
-        fileChanges,
-        evidence,
-      };
-    });
+    // 6. Execute with the real shell executor
+    const shellExecutor = createShellExecutor();
+    const { result, report } = await hermes.executePlan(ctx, shellExecutor);
 
     // 7. Validate conformance
     const conformanceReport = checkConformance(ctx, result);
