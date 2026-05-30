@@ -63,9 +63,9 @@ class TelegramGateway(private val context: Context) {
                     conn.disconnect()
                     Thread.sleep(5_000)
                 }
-            } catch (_: InterruptedException) {
+            } catch (e: InterruptedException) {
                 break
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 if (isRunning) runCatching { Thread.sleep(5_000) }
             }
         }
