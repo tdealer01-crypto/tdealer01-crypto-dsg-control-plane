@@ -3543,6 +3543,60 @@ export type Database = {
           },
         ]
       }
+      guest_access_grants: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by_user_id: string | null
+          org_id: string
+          role: string
+          scope: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          org_id: string
+          role?: string
+          scope?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          org_id?: string
+          role?: string
+          scope?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_access_grants_invited_by_user_id_fkey"
+            columns: ["invited_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_access_grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       github_app_installations: {
         Row: {
           agent_api_key: string
@@ -4290,6 +4344,70 @@ export type Database = {
           },
         ]
       }
+      runtime_effects: {
+        Row: {
+          agent_id: string
+          callback_count: number
+          created_at: string
+          effect_type: string
+          id: string
+          ledger_entry_id: string | null
+          org_id: string
+          payload: Json
+          result_payload: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          callback_count?: number
+          created_at?: string
+          effect_type: string
+          id?: string
+          ledger_entry_id?: string | null
+          org_id: string
+          payload?: Json
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          callback_count?: number
+          created_at?: string
+          effect_type?: string
+          id?: string
+          ledger_entry_id?: string | null
+          org_id?: string
+          payload?: Json
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_effects_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_ledger_entry_id_fkey"
+            columns: ["ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       runtime_ledger_entries: {
         Row: {
           agent_id: string
@@ -4303,6 +4421,7 @@ export type Database = {
           org_id: string
           reason: string | null
           request_id: string | null
+          truth_sequence: number
           truth_state_id: string | null
         }
         Insert: {
@@ -4312,11 +4431,12 @@ export type Database = {
           decision?: string | null
           execution_id?: string | null
           id?: string
-          ledger_sequence: number
+          ledger_sequence?: number
           metadata?: Json
           org_id: string
           reason?: string | null
           request_id?: string | null
+          truth_sequence: number
           truth_state_id?: string | null
         }
         Update: {
@@ -4331,6 +4451,7 @@ export type Database = {
           org_id?: string
           reason?: string | null
           request_id?: string | null
+          truth_sequence?: number
           truth_state_id?: string | null
         }
         Relationships: [
