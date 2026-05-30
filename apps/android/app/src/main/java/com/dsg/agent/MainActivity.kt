@@ -51,6 +51,7 @@ import com.dsg.agent.automation.PermissionGate
 import com.dsg.agent.automation.ScheduledTaskStore
 import com.dsg.agent.automation.SkillStore
 import com.dsg.agent.service.AgentForegroundService
+import com.dsg.agent.service.LocalApiServer
 import com.dsg.agent.service.TelegramGateway
 import java.net.HttpURLConnection
 import java.net.URL
@@ -96,6 +97,7 @@ class MainActivity : Activity() {
     private var cronListView: LinearLayout? = null
     private var statusDot: TextView? = null
     private var gatewayStatusDot: TextView? = null
+    private var localApiStatusDot: TextView? = null
 
     // Domain objects
     private lateinit var commandStore: AgentCommandStore
@@ -107,6 +109,7 @@ class MainActivity : Activity() {
     private lateinit var skillStore: SkillStore
     private lateinit var scheduledTaskStore: ScheduledTaskStore
     private lateinit var telegramGateway: TelegramGateway
+    private lateinit var localApiServer: LocalApiServer
 
     private val dadBotMessages = mutableListOf<DadBotMessage>()
     private var fileListRendered = false
@@ -127,6 +130,7 @@ class MainActivity : Activity() {
         skillStore = SkillStore(this)
         scheduledTaskStore = ScheduledTaskStore(this)
         telegramGateway = TelegramGateway(this)
+        localApiServer = LocalApiServer(this)
         render()
         checkBackendStatus()
         scheduledTaskStore.scheduleAll()
@@ -1128,6 +1132,38 @@ class MainActivity : Activity() {
             gatewayStatusDot?.text = "● Offline"; gatewayStatusDot?.setTextColor(COLOR_RED)
         })
         box.addView(btnRow)
+
+        // Local API subsection — OpenAI + Anthropic compatible HTTP server on port 8642
+        box.addView(TextView(this).apply {
+            text = "──── Local API ────"; textSize = 11f
+            setTextColor(COLOR_HERMES_AMBER); setPadding(0, dp(10), 0, dp(4))
+        })
+        val apiStatusRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(6))
+        }
+        localApiStatusDot = TextView(this).apply { text = "● Offline"; textSize = 12f; setTextColor(COLOR_RED) }
+        apiStatusRow.addView(localApiStatusDot!!, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        box.addView(apiStatusRow)
+        val apiBtnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        apiBtnRow.addView(compactButton("Start Local API", ButtonTone.PRIMARY) {
+            localApiServer.start()
+            val ip = localApiServer.getLocalIp()
+            localApiStatusDot?.text = "● http://$ip:${LocalApiServer.DEFAULT_PORT}"
+            localApiStatusDot?.setTextColor(COLOR_GREEN)
+            auditLogStore.append("LOCAL_API_START", "owner", "Local API started on $ip:${LocalApiServer.DEFAULT_PORT}")
+        })
+        apiBtnRow.addView(compactButton("Stop", ButtonTone.SECONDARY) {
+            localApiServer.stop()
+            localApiStatusDot?.text = "● Offline"
+            localApiStatusDot?.setTextColor(COLOR_RED)
+        })
+        box.addView(apiBtnRow)
+        box.addView(TextView(this).apply {
+            text = "  POST /v1/chat/completions (OpenAI)  ·  POST /v1/messages (Anthropic)"
+            textSize = 10f; setTextColor(COLOR_TEXT_MUTED_DARK); setPadding(0, dp(4), 0, 0)
+        })
+
         box.addView(TextView(this).apply {
             text = "Discord / Slack / WhatsApp — coming soon"; textSize = 11f
             setTextColor(COLOR_TEXT_MUTED_DARK); setPadding(0, dp(8), 0, 0)
