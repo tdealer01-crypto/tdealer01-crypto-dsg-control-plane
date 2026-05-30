@@ -21,7 +21,7 @@ interface DadBotCallback {
 class DadBotClient {
     private val ui = Handler(Looper.getMainLooper())
 
-    fun chat(messages: List<DadBotMessage>, callback: DadBotCallback) {
+    fun chat(messages: List<DadBotMessage>, callback: DadBotCallback, memoryContext: String? = null) {
         Thread {
             var conn: HttpURLConnection? = null
             try {
@@ -35,8 +35,13 @@ class DadBotClient {
                     setRequestProperty("Accept", "text/event-stream")
                 }
 
+                val effectiveMessages = if (!memoryContext.isNullOrBlank() && messages.isNotEmpty()) {
+                    val first = messages[0]
+                    listOf(first.copy(content = "$memoryContext\n\n${first.content}")) + messages.drop(1)
+                } else messages
+
                 val arr = JSONArray().also { a ->
-                    messages.forEach { m -> a.put(JSONObject().put("role", m.role).put("content", m.content)) }
+                    effectiveMessages.forEach { m -> a.put(JSONObject().put("role", m.role).put("content", m.content)) }
                 }
                 OutputStreamWriter(conn.outputStream).use { it.write(JSONObject().put("messages", arr).toString()) }
 
