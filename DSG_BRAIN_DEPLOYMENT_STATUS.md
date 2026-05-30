@@ -262,13 +262,34 @@ After staging passes, required for production:
 
 ## Status Timeline
 
-- **2026-05-30 15:40** ✅ Merged to main, all tests passing
-- **2026-05-30 16:00** ⏳ Staging deployment (awaiting execution)
-- **2026-05-31 16:00** ⏳ Staging verification (24h monitoring)
-- **2026-06-02** ⏳ Production go/no-go decision
+- **2026-05-30 15:40** ✅ Merged to main, all tests passing (923/923 unit tests)
+- **2026-05-30 23:51** ✅ Supabase migration deployed (dsg_secrets, dsg_execution_grants, dsg_credential_leases with RLS)
+- **2026-05-30 23:56** ✅ TypeScript types regenerated (5354 lines from Supabase schema)
+- **2026-05-31 01:22** ✅ Health check verified (GET /api/dsg/brain/execute → configured=true, status=ready)
+- **2026-05-31 01:22** ✅ Smoke test: Conformance validation working (blocked unauthorized command)
+- **2026-05-31 01:25** ✅ Smoke test: Full execution working (plan generation + execution + evidence capture)
+- **2026-05-31 01:25** ⏳ **24-Hour Staging Monitoring Window (live in production)**
+- **2026-06-01 01:25** ⏳ Production readiness decision
+
+---
+
+## Current Production Status
+
+**As of 2026-05-31 01:25 UTC:**
+
+✅ **STAGED AND LIVE**
+- API endpoint: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/brain/execute
+- Configuration: Fully configured with ANTHROPIC_API_KEY in Vercel
+- Health: All systems nominal, ready for requests
+- Monitoring: 24-hour observation window active
+
+⏳ **PENDING**
+- 24-hour clean monitoring (must complete without errors)
+- Security sign-off review
+- Production deployment window planning
 
 ---
 
 **Owner:** DSG Brain Team  
-**Last Updated:** 2026-05-30 15:40 UTC  
-**Next Review:** After staging deployment
+**Last Updated:** 2026-05-31 01:25 UTC (after smoke test)  
+**Next Review:** 24-hour mark (2026-06-01 01:25 UTC) for production go/no-go decision
