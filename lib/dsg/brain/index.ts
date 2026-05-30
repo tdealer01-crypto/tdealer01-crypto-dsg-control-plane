@@ -9,3 +9,4 @@ export * from "./plan-attempt";
 export * from "./controlled-executor";
 export * from "./conformance-gate";
 export * from "./hermes-plugin";
+export * from "./credential-broker";
