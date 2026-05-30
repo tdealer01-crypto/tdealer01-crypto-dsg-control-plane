@@ -17,6 +17,14 @@ import {
   isLeaseValid,
 } from "./controlled-executor";
 import { checkConformance, ConformanceReport } from "./conformance-gate";
+import {
+  saveGrant,
+  getAllActiveGrants,
+} from "./grant-persistence";
+import {
+  saveLease,
+  getAllActiveLeases,
+} from "./lease-persistence";
 
 /**
  * Hermes planning proposal.
@@ -154,11 +162,13 @@ export class HermesPlugin {
   /**
    * Renew execution context grant and leases mid-execution.
    * Useful for long-running tasks to prevent TTL race conditions.
+   * Optionally persists renewed grant and leases to database.
    */
-  renewExecutionContext(
+  async renewExecutionContext(
     ctx: ControlledExecutionContext,
-    additionalTtlMs?: number
-  ): ControlledExecutionContext {
+    additionalTtlMs?: number,
+    persistToDb?: boolean
+  ): Promise<ControlledExecutionContext> {
     const newGrant = renewExecutionGrant(
       ctx.grant,
       ctx.plan,
@@ -172,11 +182,26 @@ export class HermesPlugin {
       unavailable: ctx.credentials.unavailable,
     };
 
-    return {
+    const newCtx = {
       ...ctx,
       grant: newGrant,
       credentials: newCredentials,
     };
+
+    // Persist renewed grant and leases if requested
+    if (persistToDb) {
+      try {
+        await saveGrant(newGrant);
+        for (const lease of newCredentials.leases) {
+          await saveLease(lease);
+        }
+      } catch (err) {
+        // Log error but don't block execution
+        console.error("Failed to persist renewed context:", err);
+      }
+    }
+
+    return newCtx;
   }
 
   /**
@@ -202,6 +227,50 @@ export class HermesPlugin {
     const result = await runner(ctx);
     const report = this.validateExecution(ctx, result);
     return { result, report };
+  }
+
+  /**
+   * Save execution context (grant and leases) to database for persistence across restarts.
+   * This allows active sessions to survive server restarts.
+   */
+  async saveExecutionContext(ctx: ControlledExecutionContext): Promise<void> {
+    try {
+      // Save grant
+      await saveGrant(ctx.grant);
+
+      // Save all credential leases
+      for (const lease of ctx.credentials.leases) {
+        await saveLease(lease);
+      }
+    } catch (err) {
+      console.error("Failed to save execution context:", err);
+      throw err;
+    }
+  }
+
+  /**
+   * Restore active execution contexts from database.
+   * Called on startup to recover active sessions from previous server instances.
+   * Returns grants and leases that are still valid and not expired.
+   */
+  async restoreActiveContexts(): Promise<{
+    grants: ReturnType<typeof getAllActiveGrants> extends Promise<infer T> ? T : never;
+    leases: ReturnType<typeof getAllActiveLeases> extends Promise<infer T> ? T : never;
+  }> {
+    try {
+      const [grants, leases] = await Promise.all([
+        getAllActiveGrants(),
+        getAllActiveLeases(),
+      ]);
+
+      return {
+        grants,
+        leases,
+      };
+    } catch (err) {
+      console.error("Failed to restore active contexts:", err);
+      throw err;
+    }
   }
 }
 
