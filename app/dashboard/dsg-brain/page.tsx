@@ -38,22 +38,6 @@ export default function DsgBrainDashboard() {
 
     const sessionId = `session-${Date.now()}-new`;
     setCurrentSessionId(sessionId);
-
-    // Load execution history from messages
-    const historyFromMessages: ExecutionHistoryEntry[] = [];
-    messages.forEach((msg) => {
-      if (msg.role === 'user' && msg.planHash && msg.status) {
-        historyFromMessages.push({
-          id: msg.id,
-          input: msg.content,
-          planHash: msg.planHash,
-          success: msg.status === 'success',
-          violations: [],
-          timestamp: msg.timestamp,
-        });
-      }
-    });
-    setExecutionHistory(historyFromMessages);
   }, []);
 
   // Update history when messages change
