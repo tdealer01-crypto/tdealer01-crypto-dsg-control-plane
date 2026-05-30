@@ -25,8 +25,10 @@ import android.text.style.TypefaceSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.net.ConnectivityManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -38,13 +40,20 @@ import com.dsg.agent.automation.AgentCommandType
 import com.dsg.agent.automation.AgentErrorCodes
 import com.dsg.agent.automation.AuditLogStore
 import com.dsg.agent.automation.CommandExecutionResult
+import com.dsg.agent.automation.CustomSkill
 import com.dsg.agent.automation.DadBotCallback
 import com.dsg.agent.automation.DadBotClient
 import com.dsg.agent.automation.DadBotMessage
 import com.dsg.agent.automation.FullFileManager
+import com.dsg.agent.automation.MemoryStore
 import com.dsg.agent.automation.OwnerApprovalSigner
 import com.dsg.agent.automation.PermissionGate
+import com.dsg.agent.automation.ScheduledTaskStore
+import com.dsg.agent.automation.SkillStore
 import com.dsg.agent.service.AgentForegroundService
+import com.dsg.agent.service.TelegramGateway
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : Activity() {
     // Standard UI refs
@@ -57,8 +66,12 @@ class MainActivity : Activity() {
     // Navigation
     private lateinit var outerScroll: ScrollView
     private var dadBotSectionView: View? = null
+    private var sessionsSectionView: View? = null
+    private var memorySectionView: View? = null
     private var fileSectionView: View? = null
     private var skillsSectionView: View? = null
+    private var cronSectionView: View? = null
+    private var gatewaySectionView: View? = null
     private var logsSectionView: View? = null
 
     // DadBot chat UI refs
@@ -73,6 +86,16 @@ class MainActivity : Activity() {
     private var liveBotBubble: TextView? = null
     private var liveBotWrapper: LinearLayout? = null
     private var liveBotBuffer = StringBuilder()
+    private var subagentCount = 0
+    private var subagentChip: TextView? = null
+
+    // Dynamic section list views (refreshed without full render)
+    private var sessionsListView: LinearLayout? = null
+    private var memoryListView: LinearLayout? = null
+    private var logsListView: LinearLayout? = null
+    private var cronListView: LinearLayout? = null
+    private var statusDot: TextView? = null
+    private var gatewayStatusDot: TextView? = null
 
     // Domain objects
     private lateinit var commandStore: AgentCommandStore
@@ -80,6 +103,10 @@ class MainActivity : Activity() {
     private lateinit var permissionGate: PermissionGate
     private lateinit var approvalSigner: OwnerApprovalSigner
     private lateinit var dadBotClient: DadBotClient
+    private lateinit var memoryStore: MemoryStore
+    private lateinit var skillStore: SkillStore
+    private lateinit var scheduledTaskStore: ScheduledTaskStore
+    private lateinit var telegramGateway: TelegramGateway
 
     private val dadBotMessages = mutableListOf<DadBotMessage>()
     private var fileListRendered = false
@@ -96,7 +123,13 @@ class MainActivity : Activity() {
         permissionGate = PermissionGate(this)
         approvalSigner = OwnerApprovalSigner()
         dadBotClient = DadBotClient()
+        memoryStore = MemoryStore(this)
+        skillStore = SkillStore(this)
+        scheduledTaskStore = ScheduledTaskStore(this)
+        telegramGateway = TelegramGateway(this)
         render()
+        checkBackendStatus()
+        scheduledTaskStore.scheduleAll()
     }
 
     override fun onResume() {
@@ -114,11 +147,14 @@ class MainActivity : Activity() {
         addTabs(root)
         addAutonomousModeCard(root)
         addDadBotSection(root)
-        addNoCodeChat(root)
+        addSessionsSection(root)
+        addMemorySection(root)
+        addSkillsSection(root)
+        addCronSection(root)
+        addGatewaySection(root)
         addWorkSessionCard(root)
         addFileManagerCard(root)
-        addCommandInbox(root)
-        addAuditLog(root)
+        addLogsSection(root)
         outerScroll = ScrollView(this).apply {
             setBackgroundColor(COLOR_BG)
             addView(root)
@@ -172,19 +208,30 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
         hero.addView(statusView)
+        // Hermes-style backend status strip
+        statusDot = TextView(this).apply {
+            text = "● Checking..."
+            textSize = 11f
+            setTextColor(COLOR_TEXT_MUTED_DARK)
+            setPadding(0, dp(8), 0, 0)
+        }
+        hero.addView(statusDot)
         addWithMargin(root, hero, bottom = 12)
     }
 
     private fun addTabs(root: LinearLayout) {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        row.addView(tab("💬 Chat", true) { scrollToView(dadBotSectionView) })
-        row.addView(tab("📁 Files", false) { scrollToView(fileSectionView) })
-        row.addView(tab("🛠 Skills", false) { scrollToView(skillsSectionView) })
-        row.addView(tab("📋 Logs", false) { scrollToView(logsSectionView) })
-        addWithMargin(root, row, bottom = 12)
+        val scroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        row.addView(tab("💬 Chat", true)     { scrollToView(dadBotSectionView) })
+        row.addView(tab("🗂 Sessions", false) { scrollToView(sessionsSectionView) })
+        row.addView(tab("🧠 Memory", false)  { scrollToView(memorySectionView) })
+        row.addView(tab("🛠 Skills", false)  { scrollToView(skillsSectionView) })
+        row.addView(tab("⏰ Cron", false)    { scrollToView(cronSectionView) })
+        row.addView(tab("🌐 Gateway", false) { scrollToView(gatewaySectionView) })
+        row.addView(tab("📁 Files", false)   { scrollToView(fileSectionView) })
+        row.addView(tab("📋 Logs", false)    { scrollToView(logsSectionView) })
+        scroll.addView(row)
+        addWithMargin(root, scroll, bottom = 12)
     }
 
     private fun scrollToView(v: View?) {
@@ -431,6 +478,50 @@ class MainActivity : Activity() {
         setOnClickListener { onClick(it) }
     }
 
+    private fun makeToolCallCard(type: AgentCommandType, target: String, reason: String): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(COLOR_SURFACE_DARK_2)
+                cornerRadius = dp(10).toFloat()
+                setStroke(dp(2), COLOR_HERMES_AMBER)
+            }
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+        }
+        card.addView(TextView(this).apply {
+            text = "🔧 ${type.name.lowercase()}"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_HERMES_AMBER)
+        })
+        val short = if (target.length > 60) target.take(57) + "..." else target
+        card.addView(TextView(this).apply { text = "  TYPE: ${type.name}"; textSize = 11f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+        card.addView(TextView(this).apply { text = "  TARGET: $short"; textSize = 11f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+        card.addView(TextView(this).apply { text = "  \"$reason\""; textSize = 11f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+        val outerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START
+            setPadding(0, dp(3), 0, dp(3))
+        }
+        outerRow.addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginEnd = (resources.displayMetrics.widthPixels * 0.18).toInt()
+        })
+        return outerRow
+    }
+
+    private fun checkBackendStatus() {
+        Thread {
+            val ok = runCatching {
+                val conn = (URL(DsgConfig.STATUS_URL).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 5_000; readTimeout = 5_000; requestMethod = "GET"
+                }
+                val code = conn.responseCode; conn.disconnect(); code < 400
+            }.getOrDefault(false)
+            runOnUiThread {
+                statusDot?.text = if (ok) "● ${DsgConfig.BASE_URL}" else "● Offline — ${DsgConfig.BASE_URL}"
+                statusDot?.setTextColor(if (ok) COLOR_GREEN else COLOR_RED)
+            }
+        }.start()
+    }
+
     private fun makeWelcomeCard(icon: String, title: String, subtitle: String, onClick: () -> Unit): LinearLayout {
         val cardView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -542,17 +633,21 @@ class MainActivity : Activity() {
         if (text.isBlank()) return
         dadBotInput.setText("")
 
-        // Insert user bubble above typing row, animate it
+        // Subagent detection: @sub1: … @sub2: …
+        val subParts = text.split(Regex("@sub\\d+:")).map { it.trim() }.filter { it.isNotBlank() }
+        if (subParts.size > 1) {
+            subParts.forEachIndexed { i, part -> launchSubagent(i + 1, part) }
+            return
+        }
+
         val userBubble = makeBubble(text, isUser = true)
-        val insertIdx = dadBotMessageList.childCount - 1 // before typing row
+        val insertIdx = dadBotMessageList.childCount - 1
         dadBotMessageList.addView(userBubble, insertIdx)
         UiAnimations.fadeInSlideUp(userBubble)
         dadBotMessages.add(DadBotMessage("user", text))
 
-        // Show typing dots
         showTyping()
 
-        // Live bot bubble — contentWrap is child 0 of outerRow, bubble TextView is child 0 of contentWrap
         val botBubbleWrapper = makeBubble("กำลังคิด...", isUser = false)
         liveBotWrapper = botBubbleWrapper
         val contentWrap = botBubbleWrapper.getChildAt(0) as? LinearLayout
@@ -563,17 +658,20 @@ class MainActivity : Activity() {
         dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
         scrollToView(dadBotSectionView)
 
+        val memCtx = memoryStore.toContextBlock()
+
         dadBotClient.chat(dadBotMessages.toList(), object : DadBotCallback {
             override fun onToken(token: String) {
                 liveBotBuffer.append(token)
-                liveBotBubble?.let {
-                    it.alpha = 1f
-                    it.text = liveBotBuffer.toString() + "▋"  // streaming cursor
-                }
+                liveBotBubble?.let { it.alpha = 1f; it.text = liveBotBuffer.toString() + "▋" }
                 dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
             }
 
             override fun onCommand(type: AgentCommandType, target: String, reason: String) {
+                // Insert Hermes-style tool call card into chat
+                val toolCard = makeToolCallCard(type, target, reason)
+                dadBotMessageList.addView(toolCard, dadBotMessageList.childCount - 1)
+                UiAnimations.fadeInSlideUp(toolCard)
                 val cmd = queueCommand(type, target, reason, "dadbot")
                 if (workSessionEnabled && !autonomousModeEnabled) this@MainActivity.runInSessionIfAllowed(cmd)
             }
@@ -585,6 +683,18 @@ class MainActivity : Activity() {
                     dadBotMessages.add(DadBotMessage("assistant", finalText))
                     liveBotBubble?.setText(renderMarkdown(finalText), TextView.BufferType.SPANNABLE)
                     liveBotWrapper?.let { UiAnimations.fadeInSlideUp(it) }
+                    // Auto-capture memory from bot response
+                    Regex("(?:จำ|จำไว้ว่า|remember):\\s*(.+)", RegexOption.IGNORE_CASE).find(finalText)?.groupValues?.get(1)?.trim()?.let { captured ->
+                        if (captured.length in 3..200) memoryStore.add(captured)
+                    }
+                    // Auto-capture skill definitions
+                    skillStore.parseFromBotResponse(finalText)?.let { newSkill ->
+                        skillStore.add(newSkill)
+                        val confirmBubble = makeBubble("✅ บันทึก skill: ${newSkill.name}", isUser = false)
+                        dadBotMessageList.addView(confirmBubble, dadBotMessageList.childCount - 1)
+                        UiAnimations.fadeInSlideUp(confirmBubble)
+                    }
+                    renderSessionsList()
                 } else {
                     liveBotWrapper?.visibility = View.GONE
                 }
@@ -607,7 +717,58 @@ class MainActivity : Activity() {
                 }
                 liveBotBubble = null; liveBotWrapper = null
             }
+        }, memCtx)
+    }
+
+    private fun launchSubagent(index: Int, prompt: String) {
+        subagentCount++
+        subagentChip?.let { it.text = "🤖 Subagents ($subagentCount running)"; it.visibility = View.VISIBLE }
+
+        val wrapperRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START
+            setPadding(0, dp(3), 0, dp(3))
+        }
+        val bubble = TextView(this).apply {
+            text = "🤖 Sub $index: กำลังคิด..."
+            textSize = 13f
+            setTextColor(COLOR_HERMES_CREAM)
+            background = GradientDrawable().apply {
+                setColor(COLOR_HERMES_TEAL)
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), COLOR_HERMES_AMBER)
+            }
+            setPadding(dp(12), dp(9), dp(12), dp(9))
+            maxWidth = (resources.displayMetrics.widthPixels * 0.78).toInt()
+        }
+        wrapperRow.addView(bubble, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginEnd = (resources.displayMetrics.widthPixels * 0.08).toInt()
         })
+        dadBotMessageList.addView(wrapperRow, dadBotMessageList.childCount - 1)
+        UiAnimations.fadeInSlideUp(wrapperRow)
+
+        val buf = StringBuilder()
+        val memCtx = memoryStore.toContextBlock()
+        dadBotClient.chat(listOf(DadBotMessage("user", prompt)), object : DadBotCallback {
+            override fun onToken(token: String) {
+                buf.append(token)
+                bubble.text = "🤖 Sub $index: ${buf}▋"
+                dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
+            }
+            override fun onCommand(type: AgentCommandType, target: String, reason: String) {
+                queueCommand(type, target, reason, "subagent-$index")
+            }
+            override fun onDone() {
+                bubble.text = "🤖 Sub $index: $buf"
+                subagentCount = maxOf(0, subagentCount - 1)
+                if (subagentCount == 0) subagentChip?.visibility = View.GONE
+            }
+            override fun onError(message: String) {
+                bubble.text = "🤖 Sub $index ⚠️ $message"
+                subagentCount = maxOf(0, subagentCount - 1)
+                if (subagentCount == 0) subagentChip?.visibility = View.GONE
+            }
+        }, memCtx)
     }
 
     private fun showTyping() {
@@ -626,31 +787,352 @@ class MainActivity : Activity() {
         typingDot3.alpha = 0f
     }
 
-    private fun addNoCodeChat(root: LinearLayout) {
-        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        box.addView(sectionHeader("No-code Chat", "พิมพ์งานเดียว แล้วให้ Agent สร้างงานให้"))
-        box.addView(TextView(this).apply {
-            text = "ตัวอย่าง: ตรวจระบบให้ครบ, เปิด status, แสดงไฟล์, ส่งไฟล์ให้ Claw, เปิด settings, back, home, scroll"
-            textSize = 12f
-            setTextColor(COLOR_TEXT_MUTED)
-            setPadding(0, 0, 0, dp(10))
+    private fun addSessionsSection(root: LinearLayout) {
+        val box = card(COLOR_HERMES_TEAL, stroke = COLOR_HERMES_AMBER).apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        val headerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, dp(10)) }
+        headerRow.addView(TextView(this).apply {
+            text = "🗂 Sessions"; textSize = 17f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_HERMES_CREAM)
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        headerRow.addView(compactButton("New Chat", ButtonTone.SECONDARY) {
+            dadBotMessages.clear()
+            // Keep only greeting + typingRow; clear everything else
+            while (dadBotMessageList.childCount > 2) dadBotMessageList.removeViewAt(dadBotMessageList.childCount - 2)
+            renderSessionsList()
+            dadBotScroll.post { dadBotScroll.fullScroll(View.FOCUS_DOWN) }
         })
-        chatInput = EditText(this).apply {
-            hint = "พิมพ์เป้าหมายงาน เช่น ตรวจระบบให้ครบ"
-            textSize = 14f
-            minLines = 3
-            maxLines = 5
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            setTextColor(COLOR_TEXT)
-            setHintTextColor(COLOR_TEXT_MUTED)
-            background = rounded(COLOR_BG, 18, COLOR_BORDER, 1)
-            setPadding(dp(14), dp(12), dp(14), dp(12))
+        box.addView(headerRow)
+        sessionsListView = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(sessionsListView)
+        sessionsSectionView = box
+        addWithMargin(root, box, bottom = 12)
+        renderSessionsList()
+    }
+
+    private fun renderSessionsList() {
+        val list = sessionsListView ?: return
+        list.removeAllViews()
+        if (dadBotMessages.isEmpty()) {
+            list.addView(TextView(this).apply {
+                text = "No sessions yet — start chatting above"; textSize = 12f
+                setTextColor(COLOR_TEXT_MUTED_DARK); setPadding(0, dp(4), 0, 0)
+            })
+            return
         }
-        addWithMargin(box, chatInput, bottom = 10)
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(compactButton("Run", ButtonTone.PRIMARY) { runNoCodePrompt() })
-        row.addView(compactButton("Clear", ButtonTone.SECONDARY) { chatInput.setText("") })
-        box.addView(row)
+        dadBotMessages.forEach { msg ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+            val badge = if (msg.role == "user") "👤" else "🤖"
+            row.addView(TextView(this).apply { text = badge; textSize = 13f; setPadding(0, 0, dp(8), 0) })
+            val preview = msg.content.take(60).replace("\n", " ") + if (msg.content.length > 60) "…" else ""
+            row.addView(TextView(this).apply {
+                text = preview; textSize = 12f; setTextColor(COLOR_TEXT_SOFT_DARK)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            list.addView(row)
+        }
+    }
+
+    private fun addMemorySection(root: LinearLayout) {
+        val box = card(COLOR_HERMES_TEAL, stroke = COLOR_HERMES_AMBER).apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        val headerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, dp(10)) }
+        headerRow.addView(TextView(this).apply {
+            text = "🧠 Memory"; textSize = 17f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_HERMES_CREAM)
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        headerRow.addView(compactButton("Clear All", ButtonTone.DANGER) {
+            memoryStore.clear(); renderMemoryList()
+        })
+        box.addView(headerRow)
+
+        // Inline add row
+        val addRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, dp(8)) }
+        val addInput = EditText(this).apply {
+            hint = "เพิ่มความจำ..."; textSize = 13f; maxLines = 2
+            setTextColor(COLOR_TEXT_SOFT_DARK); setHintTextColor(COLOR_TEXT_MUTED_DARK)
+            background = rounded(COLOR_SURFACE_DARK_2, 12, COLOR_BORDER_DARK, 1)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        addRow.addView(addInput, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(8) })
+        addRow.addView(Button(this).apply {
+            text = "+ Add"; textSize = 12f; isAllCaps = false
+            setTextColor(Color.WHITE); background = rounded(COLOR_PRIMARY, 12)
+            setOnClickListener {
+                val txt = addInput.text.toString().trim()
+                if (txt.isNotBlank()) { memoryStore.add(txt); addInput.setText(""); renderMemoryList() }
+            }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)))
+        box.addView(addRow)
+
+        memoryListView = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(memoryListView)
+        memorySectionView = box
+        addWithMargin(root, box, bottom = 12)
+        renderMemoryList()
+    }
+
+    private fun renderMemoryList() {
+        val list = memoryListView ?: return
+        list.removeAllViews()
+        val entries = memoryStore.list()
+        if (entries.isEmpty()) {
+            list.addView(TextView(this).apply { text = "No memories yet"; textSize = 12f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+            return
+        }
+        entries.forEach { entry ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(3), 0, dp(3)) }
+            row.addView(TextView(this).apply { text = "●"; textSize = 12f; setTextColor(COLOR_HERMES_AMBER); setPadding(0, 0, dp(8), 0) })
+            row.addView(TextView(this).apply {
+                text = entry.content; textSize = 12f; setTextColor(COLOR_TEXT_SOFT_DARK)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(TextView(this).apply {
+                text = "×"; textSize = 16f; setTextColor(COLOR_RED)
+                setPadding(dp(8), 0, 0, 0)
+                setOnClickListener { memoryStore.delete(entry.id); renderMemoryList() }
+            })
+            list.addView(row)
+        }
+    }
+
+    private fun addSkillsSection(root: LinearLayout) {
+        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(sectionHeader("🛠 Skills", "Built-in commands + custom learned skills"))
+
+        // Built-in commands grid by category
+        data class SkillEntry(val icon: String, val label: String, val type: AgentCommandType, val target: String)
+        val categories = mapOf(
+            "Navigation" to listOf(
+                SkillEntry("↩️", "Back", AgentCommandType.BACK, "GLOBAL_BACK"),
+                SkillEntry("🏠", "Home", AgentCommandType.HOME, "GLOBAL_HOME"),
+                SkillEntry("⬇️", "Scroll", AgentCommandType.SCROLL_DOWN, "FOCUSED_OR_ROOT_NODE"),
+                SkillEntry("🔗", "URL...", AgentCommandType.OPEN_URL, DsgConfig.STATUS_URL),
+                SkillEntry("📱", "Settings", AgentCommandType.OPEN_SETTINGS, ""),
+            ),
+            "Files" to listOf(
+                SkillEntry("📁", "List Files", AgentCommandType.FILE_LIST_ROOT, FullFileManager.rootPath().absolutePath),
+                SkillEntry("👁", "Preview", AgentCommandType.FILE_PREVIEW, ""),
+                SkillEntry("📤", "Send→Claw", AgentCommandType.FILE_SEND_TO_CLAW, "selected-files://local"),
+            ),
+            "System" to listOf(
+                SkillEntry("📊", "Status", AgentCommandType.STATUS, ""),
+                SkillEntry("🔔", "Notifs", AgentCommandType.NOTIFICATION_SUMMARY, ""),
+            ),
+        )
+        categories.forEach { (catName, entries) ->
+            box.addView(TextView(this).apply {
+                text = catName; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+                setTextColor(COLOR_HERMES_AMBER); setPadding(0, dp(8), 0, dp(4))
+            })
+            val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            entries.forEachIndexed { i, e ->
+                val targetRow = if (i < 3) row1 else row2
+                val card2 = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    background = GradientDrawable().apply {
+                        setColor(COLOR_SURFACE_DARK_2); cornerRadius = dp(10).toFloat()
+                        setStroke(dp(2), COLOR_HERMES_AMBER)
+                    }
+                    setPadding(dp(8), dp(8), dp(8), dp(8))
+                }
+                card2.addView(TextView(this).apply { text = "${e.icon} ${e.label}"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE) })
+                card2.addView(Button(this).apply {
+                    text = "▶ Queue"; textSize = 10f; isAllCaps = false
+                    setTextColor(COLOR_HERMES_AMBER); background = rounded(COLOR_CARD_ALT, 8)
+                    setPadding(0, dp(2), 0, dp(2))
+                    setOnClickListener {
+                        UiAnimations.buttonPressScale(this)
+                        val cmd = queueCommand(e.type, e.target, "Skill: ${e.label}", "skills-panel")
+                        runInSessionIfAllowed(cmd)
+                    }
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)).apply { topMargin = dp(4) })
+                targetRow.addView(card2, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, dp(6), dp(6)) })
+            }
+            box.addView(row1)
+            if (row2.childCount > 0) box.addView(row2)
+        }
+
+        // Custom skills
+        val customHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(4)) }
+        customHeader.addView(TextView(this).apply {
+            text = "Custom Skills (${skillStore.list().size})"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_HERMES_CREAM)
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        box.addView(customHeader)
+
+        val customList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        skillStore.list().forEach { skill ->
+            val cRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+            cRow.addView(TextView(this).apply {
+                text = "📋 ${skill.name}  (${skill.steps.joinToString("+") { it.name }})"; textSize = 12f; setTextColor(COLOR_TEXT_SOFT_DARK)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            cRow.addView(Button(this).apply {
+                text = "▶"; textSize = 11f; isAllCaps = false
+                setTextColor(COLOR_HERMES_AMBER); background = rounded(COLOR_CARD_ALT, 8)
+                setOnClickListener {
+                    skill.steps.forEachIndexed { i, type ->
+                        val cmd = queueCommand(type, skill.targets.getOrElse(i) { "" }, "Skill: ${skill.name} step ${i + 1}", "custom-skill")
+                        runInSessionIfAllowed(cmd)
+                    }
+                }
+            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(6) })
+            cRow.addView(Button(this).apply {
+                text = "×"; textSize = 14f; isAllCaps = false
+                setTextColor(COLOR_RED); background = rounded(COLOR_CARD_ALT, 8)
+                setOnClickListener { skillStore.delete(skill.id); render() }
+            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(4) })
+            customList.addView(cRow)
+        }
+        if (skillStore.list().isEmpty()) {
+            customList.addView(TextView(this).apply { text = "No custom skills yet. DadBot can create them automatically."; textSize = 12f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+        }
+        box.addView(customList)
+
+        // Kill switch
+        addWithMargin(box, actionButton("Kill Switch: Clear All Pending", "Owner emergency stop", ButtonTone.DANGER) {
+            val count = commandStore.clearPending()
+            auditLogStore.append("KILL_SWITCH_CLEAR_PENDING", "local", "Owner cleared $count pending command(s)")
+            refreshUi("Kill switch cleared $count pending command(s)")
+        }, top = 8)
+
+        commandListView = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(6), 0, 0) }
+        box.addView(commandListView)
+        skillsSectionView = box
+        addWithMargin(root, box, bottom = 12)
+    }
+
+    private fun addCronSection(root: LinearLayout) {
+        val box = card(COLOR_HERMES_TEAL, stroke = COLOR_HERMES_AMBER).apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(TextView(this).apply {
+            text = "⏰ Cron / Scheduler"; textSize = 17f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_HERMES_CREAM); setPadding(0, 0, 0, dp(10))
+        })
+
+        // Add form
+        val promptInput = EditText(this).apply {
+            hint = "Prompt ที่จะส่งให้ DadBot..."; textSize = 13f; maxLines = 2
+            setTextColor(COLOR_TEXT_SOFT_DARK); setHintTextColor(COLOR_TEXT_MUTED_DARK)
+            background = rounded(COLOR_SURFACE_DARK_2, 10, COLOR_BORDER_DARK, 1)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        val intervalInput = EditText(this).apply {
+            hint = "นาที"; textSize = 13f; maxLines = 1
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setTextColor(COLOR_TEXT_SOFT_DARK); setHintTextColor(COLOR_TEXT_MUTED_DARK)
+            background = rounded(COLOR_SURFACE_DARK_2, 10, COLOR_BORDER_DARK, 1)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        addWithMargin(box, promptInput, bottom = 6)
+        val addFormRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        addFormRow.addView(intervalInput, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(8) })
+        addFormRow.addView(Button(this).apply {
+            text = "+ Add"; textSize = 12f; isAllCaps = false
+            setTextColor(Color.WHITE); background = rounded(COLOR_PRIMARY, 12)
+            setOnClickListener {
+                val prompt = promptInput.text.toString().trim()
+                val mins = intervalInput.text.toString().toIntOrNull() ?: 60
+                if (prompt.isNotBlank()) {
+                    val task = com.dsg.agent.automation.ScheduledTask(
+                        id = ScheduledTaskStore.newId(), prompt = prompt,
+                        intervalMinutes = mins, enabled = true,
+                        nextRunAt = System.currentTimeMillis() + mins * 60_000L, lastRunAt = 0L,
+                    )
+                    scheduledTaskStore.add(task)
+                    scheduledTaskStore.scheduleTask(task)
+                    promptInput.setText(""); intervalInput.setText("")
+                    renderCronList()
+                }
+            }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)))
+        addWithMargin(box, addFormRow, bottom = 10)
+
+        cronListView = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(cronListView)
+        cronSectionView = box
+        addWithMargin(root, box, bottom = 12)
+        renderCronList()
+    }
+
+    private fun renderCronList() {
+        val list = cronListView ?: return
+        list.removeAllViews()
+        val tasks = scheduledTaskStore.list()
+        if (tasks.isEmpty()) {
+            list.addView(TextView(this).apply { text = "No scheduled tasks yet"; textSize = 12f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+            return
+        }
+        tasks.forEach { task ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+            val dot = if (task.enabled) "●" else "○"
+            row.addView(TextView(this).apply {
+                text = "$dot "${task.prompt.take(30)}${if (task.prompt.length > 30) "…" else ""}" every ${task.intervalMinutes}m"
+                textSize = 11f; setTextColor(if (task.enabled) COLOR_HERMES_CREAM else COLOR_TEXT_MUTED_DARK)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(Button(this).apply {
+                text = if (task.enabled) "⏸" else "▶"; textSize = 13f; isAllCaps = false
+                setTextColor(COLOR_HERMES_AMBER); background = rounded(COLOR_CARD_ALT, 8)
+                setOnClickListener {
+                    scheduledTaskStore.update(task.id) { it.copy(enabled = !it.enabled) }
+                    renderCronList()
+                }
+            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(6) })
+            row.addView(Button(this).apply {
+                text = "×"; textSize = 14f; isAllCaps = false
+                setTextColor(COLOR_RED); background = rounded(COLOR_CARD_ALT, 8)
+                setOnClickListener { scheduledTaskStore.delete(task.id); renderCronList() }
+            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(4) })
+            list.addView(row)
+        }
+    }
+
+    private fun addGatewaySection(root: LinearLayout) {
+        val box = card(COLOR_HERMES_TEAL, stroke = COLOR_HERMES_AMBER).apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        val headerRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, dp(10)) }
+        gatewayStatusDot = TextView(this).apply { text = "● Offline"; textSize = 12f; setTextColor(COLOR_RED) }
+        headerRow.addView(TextView(this).apply {
+            text = "🌐 Gateway"; textSize = 17f; typeface = Typeface.DEFAULT_BOLD; setTextColor(COLOR_HERMES_CREAM)
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        headerRow.addView(gatewayStatusDot)
+        box.addView(headerRow)
+
+        val telegramPrefs = getSharedPreferences("dsg_telegram_prefs", MODE_PRIVATE)
+        val tokenInput = EditText(this).apply {
+            hint = "Telegram Bot Token"; textSize = 13f; maxLines = 1
+            setText(telegramPrefs.getString("token", ""))
+            setTextColor(COLOR_TEXT_SOFT_DARK); setHintTextColor(COLOR_TEXT_MUTED_DARK)
+            background = rounded(COLOR_SURFACE_DARK_2, 10, COLOR_BORDER_DARK, 1)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        val chatIdInput = EditText(this).apply {
+            hint = "Allowed Chat ID"; textSize = 13f; maxLines = 1
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
+            setText(telegramPrefs.getString("chatId", ""))
+            setTextColor(COLOR_TEXT_SOFT_DARK); setHintTextColor(COLOR_TEXT_MUTED_DARK)
+            background = rounded(COLOR_SURFACE_DARK_2, 10, COLOR_BORDER_DARK, 1)
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+        }
+        addWithMargin(box, tokenInput, bottom = 6)
+        addWithMargin(box, chatIdInput, bottom = 10)
+
+        val btnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        btnRow.addView(compactButton("Start Telegram", ButtonTone.PRIMARY) {
+            val token = tokenInput.text.toString().trim()
+            val chatId = chatIdInput.text.toString().trim()
+            if (token.isNotBlank()) {
+                telegramPrefs.edit().putString("token", token).putString("chatId", chatId).apply()
+                telegramGateway.start(token, chatId)
+                gatewayStatusDot?.text = "● Live"; gatewayStatusDot?.setTextColor(COLOR_GREEN)
+                auditLogStore.append("TELEGRAM_GATEWAY_START", "owner", "Telegram gateway started")
+            }
+        })
+        btnRow.addView(compactButton("Stop", ButtonTone.SECONDARY) {
+            telegramGateway.stop()
+            gatewayStatusDot?.text = "● Offline"; gatewayStatusDot?.setTextColor(COLOR_RED)
+        })
+        box.addView(btnRow)
+        box.addView(TextView(this).apply {
+            text = "Discord / Slack / WhatsApp — coming soon"; textSize = 11f
+            setTextColor(COLOR_TEXT_MUTED_DARK); setPadding(0, dp(8), 0, 0)
+        })
+        gatewaySectionView = box
         addWithMargin(root, box, bottom = 12)
     }
 
@@ -756,18 +1238,53 @@ class MainActivity : Activity() {
         addWithMargin(root, box, bottom = 12)
     }
 
-    private fun addAuditLog(root: LinearLayout) {
-        val box = card().apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
-        box.addView(sectionHeader("Local Audit Log", "Device evidence"))
-        auditView = TextView(this).apply {
-            textSize = 12f
-            setTextColor(COLOR_TEXT_MUTED)
-            background = rounded(COLOR_BG, 16, COLOR_BORDER, 1)
-            setPadding(dp(14), dp(12), dp(14), dp(12))
+    private fun addLogsSection(root: LinearLayout) {
+        val box = card(COLOR_HERMES_TEAL, stroke = COLOR_HERMES_AMBER).apply { setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        box.addView(TextView(this).apply {
+            text = "📋 Logs"; textSize = 17f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(COLOR_HERMES_CREAM); setPadding(0, 0, 0, dp(10))
+        })
+        val logScroll = ScrollView(this).apply {
+            background = rounded(COLOR_SURFACE_DARK_2, 10, COLOR_BORDER_DARK, 1)
         }
+        logsListView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        }
+        logScroll.addView(logsListView)
+        box.addView(logScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(200)))
+        // Keep auditView for backward-compat (used in renderAuditLog)
+        auditView = TextView(this).apply { visibility = View.GONE }
         box.addView(auditView)
         logsSectionView = box
         addWithMargin(root, box)
+    }
+
+    private fun renderLogsList() {
+        val list = logsListView ?: return
+        list.removeAllViews()
+        val raw = auditLogStore.tail(50)
+        if (raw.isBlank()) {
+            list.addView(TextView(this).apply { text = "No audit events yet"; textSize = 11f; setTextColor(COLOR_TEXT_MUTED_DARK) })
+            return
+        }
+        raw.split("\n\n").reversed().forEach { entry ->
+            if (entry.isBlank()) return@forEach
+            val firstLine = entry.lines().firstOrNull() ?: return@forEach
+            val color = when {
+                firstLine.contains("KILL_SWITCH") || firstLine.contains("FAILED") || firstLine.contains("ERROR") -> COLOR_RED
+                firstLine.contains("APPROVED") || firstLine.contains("ENABLED") || firstLine.contains("EXECUTED") || firstLine.contains("STARTED") || firstLine.contains("DONE") -> COLOR_GREEN
+                firstLine.contains("BLOCKED") || firstLine.contains("REJECTED") || firstLine.contains("WAITING") -> COLOR_HERMES_AMBER
+                else -> COLOR_TEXT_MUTED_DARK
+            }
+            val tv = TextView(this).apply {
+                text = "● $firstLine"
+                textSize = 10f
+                setTextColor(color)
+                setPadding(0, dp(2), 0, dp(2))
+            }
+            list.addView(tv)
+        }
     }
 
     private fun runNoCodePrompt() {
@@ -863,7 +1380,8 @@ class MainActivity : Activity() {
             filePreviewView.text = "Full file manager permission enabled. Start Work Session, then ask: แสดงไฟล์"
         }
         renderCommands()
-        renderAuditLog()
+        renderLogsList()
+        renderSessionsList()
     }
 
     private fun renderCommands() {
@@ -1047,7 +1565,7 @@ class MainActivity : Activity() {
     }
 
     private fun renderAuditLog() {
-        auditView.text = auditLogStore.tail(20).ifEmpty { "No audit events yet." }
+        renderLogsList()
     }
 
     private fun buildStatusText(extra: String? = null): String = listOfNotNull(
@@ -1130,7 +1648,8 @@ class MainActivity : Activity() {
         gravity = Gravity.CENTER
         setTextColor(if (active) Color.WHITE else COLOR_TEXT_MUTED)
         background = rounded(if (active) COLOR_PRIMARY else COLOR_CARD, 22, if (active) COLOR_PRIMARY else COLOR_BORDER, 1)
-        layoutParams = LinearLayout.LayoutParams(0, dp(42), 1f).apply { setMargins(0, 0, dp(8), 0) }
+        setPadding(dp(16), 0, dp(16), 0)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(42)).apply { setMargins(0, 0, dp(8), 0) }
         setOnClickListener { onClick() }
     }
 
@@ -1174,7 +1693,7 @@ class MainActivity : Activity() {
     private enum class ButtonTone { PRIMARY, SECONDARY, WARNING, DANGER }
 
     companion object {
-        // Kimi-style dark palette
+        // Kimi dark palette
         private val COLOR_BG = 0xFF0D0D0D.toInt()
         private val COLOR_CARD = 0xFF111111.toInt()
         private val COLOR_CARD_ALT = 0xFF1A1A1A.toInt()
@@ -1198,5 +1717,9 @@ class MainActivity : Activity() {
         private val COLOR_BORDER_DARK = 0xFF2A2A2A.toInt()
         private val COLOR_TEXT_MUTED_DARK = 0xFF888888.toInt()
         private val COLOR_TEXT_SOFT_DARK = 0xFFD0D0D0.toInt()
+        // Hermes Agent palette
+        private val COLOR_HERMES_TEAL  = 0xFF041C1C.toInt()
+        private val COLOR_HERMES_CREAM = 0xFFFFE6CB.toInt()
+        private val COLOR_HERMES_AMBER = 0xFFFFBD38.toInt()
     }
 }
