@@ -13,19 +13,9 @@ import java.io.OutputStream
 import java.net.ServerSocket
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
-/**
- * Minimal HTTP server that exposes the DSG agent on port 8642 via OpenAI-compatible
- * and Anthropic-compatible REST APIs, enabling any LLM client to call the on-device agent.
- *
- * Endpoints:
- *   GET  /v1/models                  — list models
- *   GET  /api/agent/status           — health check
- *   POST /v1/chat/completions        — OpenAI Chat Completions (stream or non-stream)
- *   POST /v1/messages                — Anthropic Messages API (non-stream)
- */
 class LocalApiServer(private val context: Context) {
 
     @Volatile var isRunning = false
@@ -81,15 +71,17 @@ class LocalApiServer(private val context: Context) {
     }
 
     private fun handleClient(socket: java.net.Socket) {
-        runCatching {
+        try {
             socket.use { s ->
                 val reader = s.inputStream.bufferedReader(Charsets.UTF_8)
-                val requestLine = reader.readLine()?.trim() ?: return
+                val requestLine = reader.readLine()?.trim()
+                if (requestLine == null) return@use
                 val headers = mutableMapOf<String, String>()
-                var h: String?
-                while (reader.readLine().also { h = it } != null && h!!.isNotBlank()) {
-                    val c = h!!.indexOf(':')
-                    if (c > 0) headers[h!!.substring(0, c).trim().lowercase()] = h!!.substring(c + 1).trim()
+                var h = reader.readLine()
+                while (h != null && h.isNotBlank()) {
+                    val c = h.indexOf(':')
+                    if (c > 0) headers[h.substring(0, c).trim().lowercase()] = h.substring(c + 1).trim()
+                    h = reader.readLine()
                 }
                 val len = headers["content-length"]?.toIntOrNull() ?: 0
                 val body = if (len > 0) {
@@ -103,9 +95,11 @@ class LocalApiServer(private val context: Context) {
                     String(buf, 0, read)
                 } else ""
                 val parts = requestLine.split(" ")
-                if (parts.size < 2) return
+                if (parts.size < 2) return@use
                 route(parts[0], parts[1].substringBefore("?"), body, s.outputStream)
             }
+        } catch (e: Exception) {
+            // swallow socket errors
         }
     }
 
@@ -145,12 +139,15 @@ class LocalApiServer(private val context: Context) {
     // ── POST /v1/chat/completions ──────────────────────────────────────────────
 
     private fun handleChatCompletions(body: String, out: OutputStream, stream: Boolean) {
-        val json = runCatching { JSONObject(body) }.getOrNull() ?: run {
-            sendJson(out, 400, """{"error":{"message":"Invalid JSON","type":"invalid_request_error"}}"""); return
+        val json = runCatching { JSONObject(body) }.getOrNull()
+        if (json == null) {
+            sendJson(out, 400, """{"error":{"message":"Invalid JSON","type":"invalid_request_error"}}""")
+            return
         }
         val messages = parseOpenAiMessages(json.optJSONArray("messages"))
         if (messages.isEmpty()) {
-            sendJson(out, 400, """{"error":{"message":"messages required","type":"invalid_request_error"}}"""); return
+            sendJson(out, 400, """{"error":{"message":"messages required","type":"invalid_request_error"}}""")
+            return
         }
         val memCtx = MemoryStore(context).toContextBlock()
         val id = "chatcmpl-${UUID.randomUUID().toString().replace("-", "").take(16)}"
@@ -180,19 +177,25 @@ class LocalApiServer(private val context: Context) {
             latch.await(90, TimeUnit.SECONDS)
         } else {
             val buf = StringBuilder()
-            val q = LinkedBlockingQueue<Result<String>>(1)
+            val latch = CountDownLatch(1)
+            val errorRef = AtomicReference<String?>(null)
             DadBotClient().chat(messages, object : DadBotCallback {
                 override fun onToken(t: String) { buf.append(t) }
                 override fun onCommand(type: AgentCommandType, target: String, reason: String) {}
-                override fun onDone() { q.offer(Result.success(buf.toString())) }
-                override fun onError(m: String) { q.offer(Result.failure(Exception(m))) }
+                override fun onDone() { latch.countDown() }
+                override fun onError(m: String) { errorRef.set(m); latch.countDown() }
             }, memCtx)
-            val result = q.poll(90, TimeUnit.SECONDS)
-                ?: run { sendJson(out, 500, """{"error":{"message":"Timeout","type":"api_error"}}"""); return }
-            if (result.isFailure) {
-                sendJson(out, 500, """{"error":{"message":"${result.exceptionOrNull()?.message}","type":"api_error"}}"""); return
+            val completed = latch.await(90, TimeUnit.SECONDS)
+            if (!completed) {
+                sendJson(out, 500, """{"error":{"message":"Timeout","type":"api_error"}}""")
+                return
             }
-            val content = result.getOrDefault("")
+            val err = errorRef.get()
+            if (err != null) {
+                sendJson(out, 500, """{"error":{"message":"$err","type":"api_error"}}""")
+                return
+            }
+            val content = buf.toString()
             sendJson(out, 200, JSONObject().apply {
                 put("id", id); put("object", "chat.completion"); put("model", "dsg-agent")
                 put("choices", JSONArray().put(JSONObject().apply {
@@ -208,29 +211,38 @@ class LocalApiServer(private val context: Context) {
     // ── POST /v1/messages (Anthropic) ─────────────────────────────────────────
 
     private fun handleMessages(body: String, out: OutputStream) {
-        val json = runCatching { JSONObject(body) }.getOrNull() ?: run {
-            sendJson(out, 400, """{"error":{"type":"invalid_request_error","message":"Invalid JSON"}}"""); return
+        val json = runCatching { JSONObject(body) }.getOrNull()
+        if (json == null) {
+            sendJson(out, 400, """{"error":{"type":"invalid_request_error","message":"Invalid JSON"}}""")
+            return
         }
         val messages = parseAnthropicMessages(json.optJSONArray("messages"))
         if (messages.isEmpty()) {
-            sendJson(out, 400, """{"error":{"type":"invalid_request_error","message":"messages required"}}"""); return
+            sendJson(out, 400, """{"error":{"type":"invalid_request_error","message":"messages required"}}""")
+            return
         }
         val memCtx = MemoryStore(context).toContextBlock()
         val id = "msg_${UUID.randomUUID().toString().replace("-", "").take(24)}"
         val buf = StringBuilder()
-        val q = LinkedBlockingQueue<Result<String>>(1)
+        val latch = CountDownLatch(1)
+        val errorRef = AtomicReference<String?>(null)
         DadBotClient().chat(messages, object : DadBotCallback {
             override fun onToken(t: String) { buf.append(t) }
             override fun onCommand(type: AgentCommandType, target: String, reason: String) {}
-            override fun onDone() { q.offer(Result.success(buf.toString())) }
-            override fun onError(m: String) { q.offer(Result.failure(Exception(m))) }
+            override fun onDone() { latch.countDown() }
+            override fun onError(m: String) { errorRef.set(m); latch.countDown() }
         }, memCtx)
-        val result = q.poll(90, TimeUnit.SECONDS)
-            ?: run { sendJson(out, 500, """{"error":{"type":"api_error","message":"Timeout"}}"""); return }
-        if (result.isFailure) {
-            sendJson(out, 500, """{"error":{"type":"api_error","message":"${result.exceptionOrNull()?.message}"}}"""); return
+        val completed = latch.await(90, TimeUnit.SECONDS)
+        if (!completed) {
+            sendJson(out, 500, """{"error":{"type":"api_error","message":"Timeout"}}""")
+            return
         }
-        val content = result.getOrDefault("")
+        val err = errorRef.get()
+        if (err != null) {
+            sendJson(out, 500, """{"error":{"type":"api_error","message":"$err"}}""")
+            return
+        }
+        val content = buf.toString()
         sendJson(out, 200, JSONObject().apply {
             put("id", id); put("type", "message"); put("role", "assistant"); put("model", "dsg-agent")
             put("content", JSONArray().put(JSONObject().put("type", "text").put("text", content)))
@@ -262,7 +274,6 @@ class LocalApiServer(private val context: Context) {
         arr ?: return emptyList()
         return (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            // Anthropic content can be a plain string or an array of content blocks
             val raw = o.opt("content")
             val text = when (raw) {
                 is String -> raw
