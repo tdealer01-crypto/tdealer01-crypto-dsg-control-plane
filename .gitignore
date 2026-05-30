@@ -9,8 +9,9 @@ out/
 .env
 .env.local
 
-# Claude Code local secrets — never commit
+# Claude Code local secrets & worktrees — never commit
 .claude/settings.local.json
+.claude/worktrees/
 .env.*.local
 
 # logs
