@@ -61,7 +61,12 @@ jobs:
             --output ccvs-midmarket-governance-autopilot-evidence.json \
             --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-agent-command-gate-evidence.json'));console.log(e.integrity.chain_hash)")"
       - name: Verify L1 envelopes
-        run: node scripts/verify-evidence-chain.mjs --dir .
+        run: |
+          node scripts/verify-evidence-chain.mjs \
+            ccvs-all-unit-evidence.json \
+            ccvs-spine-pipeline-evidence.json \
+            ccvs-agent-command-gate-evidence.json \
+            ccvs-midmarket-governance-autopilot-evidence.json
       - name: Check OIDC availability
         id: oidc_check
         run: |
@@ -127,7 +132,11 @@ jobs:
             --output ccvs-audit-route-evidence.json \
             --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-audit-evidence-evidence.json'));console.log(e.integrity.chain_hash)")"
       - name: Verify L2 envelopes
-        run: node scripts/verify-evidence-chain.mjs --dir .
+        run: |
+          node scripts/verify-evidence-chain.mjs \
+            ccvs-all-integration-evidence.json \
+            ccvs-audit-evidence-evidence.json \
+            ccvs-audit-route-evidence.json
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
         continue-on-error: true
@@ -176,7 +185,10 @@ jobs:
           HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-replay-matrix-evidence.json'));console.log(e.integrity.chain_hash)")
           echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
       - name: Verify L3 envelopes
-        run: node scripts/verify-evidence-chain.mjs --dir .
+        run: |
+          node scripts/verify-evidence-chain.mjs \
+            ccvs-adversarial-evidence.json \
+            ccvs-replay-matrix-evidence.json
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
         continue-on-error: true
@@ -254,7 +266,7 @@ jobs:
           fi
           SCORE=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.metrics?.mutation_score ?? 0)")
           echo "Mutation score on main: $SCORE%"
-          node -e "const s=parseFloat('$SCORE');if(s<70){console.error('❌ Mutation score '+s+'% < 70% break threshold — claim_pass_eligible blocked');process.exit(1);}else{console.log('✅ Mutation score '+s+'% ≥ 70%');}"
+          node -e "const s=parseFloat('$SCORE');if(s<70){console.error('❌ Mutation score '+s+'% < 70% break threshold — claim_pass_eligible blocked');process.exit(1);}else{console.log('✅ Mutation score '+s+'% ≥70%');}"
       - name: Upload compliance matrix to status endpoint
         if: env.STRYKER_STATUS != 'timeout'
         env:
@@ -278,7 +290,10 @@ jobs:
           HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.integrity.chain_hash)")
           echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
       - name: Verify L4 envelopes
-        run: node scripts/verify-evidence-chain.mjs --dir .
+        run: |
+          node scripts/verify-evidence-chain.mjs \
+            ccvs-billing-invariants-evidence.json \
+            ccvs-mutation-evidence.json
       - name: Check OIDC availability
         id: oidc_check
         run: |
@@ -404,7 +419,7 @@ jobs:
           node -e "
             const m=JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json'));
             const s=m.summary;
-            console.log('── CCVS Compliance Matrix ──────────────────────────────');
+            console.log('── CCVS Compliance Matrix ────────────────────────');
             console.log('  policy_version     : ' + m.policy_version);
             console.log('  PASS               : ' + s.pass + ' / ' + s.total);
             console.log('  FAIL               : ' + s.fail);
