@@ -4,2059 +4,5611 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | { [key: string]: unknown }
-  | Json[];
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
   public: {
     Tables: {
-      organizations: {
-        Row: {
-          id: string;
-          name: string;
-          slug: string;
-          plan: string | null;
-          status: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id: string;
-          org_id?: string | null;
-          name: string;
-          slug?: string;
-          plan?: string | null;
-          status?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          org_id?: string | null;
-          name?: string;
-          slug?: string;
-          plan?: string | null;
-          status?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      trial_signups: {
-        Row: {
-          id: string;
-          email: string;
-          workspace_name: string;
-          full_name: string | null;
-          status: string;
-          created_at: string;
-          completed_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          email: string;
-          workspace_name: string;
-          full_name?: string | null;
-          status?: string;
-          created_at?: string;
-          completed_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          email?: string;
-          workspace_name?: string;
-          full_name?: string | null;
-          status?: string;
-          created_at?: string;
-          completed_at?: string | null;
-        };
-        Relationships: [];
-      };
-      users: {
-        Row: {
-          id: string;
-          auth_user_id: string | null;
-          org_id: string | null;
-          email: string;
-          role: string | null;
-          auth_provider: string | null;
-          is_active: boolean | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          auth_user_id?: string | null;
-          org_id?: string | null;
-          email: string;
-          role?: string | null;
-          auth_provider?: string | null;
-          is_active?: boolean | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          auth_user_id?: string | null;
-          org_id?: string | null;
-          email?: string;
-          role?: string | null;
-          auth_provider?: string | null;
-          is_active?: boolean | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      user_org_roles: {
-        Row: {
-          org_id: string;
-          user_id: string;
-          role: string;
-        };
-        Insert: {
-          org_id: string;
-          user_id: string;
-          role: string;
-        };
-        Update: {
-          org_id?: string;
-          user_id?: string;
-          role?: string;
-        };
-        Relationships: [];
-      };
-      policies: {
-        Row: {
-          id: string;
-          org_id: string | null;
-          name: string;
-          version: string;
-          status: string;
-          description: string | null;
-          config: Json;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          org_id?: string | null;
-          name: string;
-          version?: string;
-          status?: string;
-          description?: string | null;
-          config?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string | null;
-          name?: string;
-          version?: string;
-          status?: string;
-          description?: string | null;
-          config?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      agents: {
-        Row: {
-          id: string;
-          org_id: string;
-          name: string;
-          policy_id: string | null;
-          status: string | null;
-          monthly_limit: number | null;
-          api_key_hash: string;
-          last_used_at: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id: string;
-          org_id: string;
-          name: string;
-          policy_id?: string | null;
-          status?: string | null;
-          monthly_limit?: number | null;
-          api_key_hash: string;
-          last_used_at?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          name?: string;
-          policy_id?: string | null;
-          status?: string | null;
-          monthly_limit?: number | null;
-          api_key_hash?: string;
-          last_used_at?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      executions: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          decision: string;
-          latency_ms: number | null;
-          request_payload: Json | null;
-          context_payload: Json | null;
-          policy_version: string | null;
-          reason: string | null;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          decision: string;
-          latency_ms?: number | null;
-          request_payload?: Json | null;
-          context_payload?: Json | null;
-          policy_version?: string | null;
-          reason?: string | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          decision?: string;
-          latency_ms?: number | null;
-          request_payload?: Json | null;
-          context_payload?: Json | null;
-          policy_version?: string | null;
-          reason?: string | null;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
-      audit_logs: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          execution_id: string | null;
-          policy_version: string | null;
-          decision: string | null;
-          reason: string | null;
-          evidence: Json | null;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          execution_id?: string | null;
-          policy_version?: string | null;
-          decision?: string | null;
-          reason?: string | null;
-          evidence?: Json | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          execution_id?: string | null;
-          policy_version?: string | null;
-          decision?: string | null;
-          reason?: string | null;
-          evidence?: Json | null;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
-      usage_events: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string | null;
-          execution_id: string | null;
-          event_type: string;
-          quantity: number | null;
-          unit: string | null;
-          amount_usd: number | null;
-          metadata: Json | null;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id?: string | null;
-          execution_id?: string | null;
-          event_type: string;
-          quantity?: number | null;
-          unit?: string | null;
-          amount_usd?: number | null;
-          metadata?: Json | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string | null;
-          execution_id?: string | null;
-          event_type?: string;
-          quantity?: number | null;
-          unit?: string | null;
-          amount_usd?: number | null;
-          metadata?: Json | null;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
-      usage_counters: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string | null;
-          billing_period: string;
-          executions: number | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id?: string | null;
-          billing_period: string;
-          executions?: number | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string | null;
-          billing_period?: string;
-          executions?: number | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      billing_customers: {
-        Row: {
-          id: string;
-          stripe_customer_id: string;
-          org_id: string | null;
-          email: string | null;
-          name: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          stripe_customer_id: string;
-          org_id?: string | null;
-          email?: string | null;
-          name?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          stripe_customer_id?: string;
-          org_id?: string | null;
-          email?: string | null;
-          name?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      billing_subscriptions: {
-        Row: {
-          id: string;
-          stripe_subscription_id: string;
-          stripe_customer_id: string | null;
-          org_id: string | null;
-          customer_email: string | null;
-          status: string | null;
-          plan_key: string | null;
-          billing_interval: string | null;
-          price_id: string | null;
-          product_id: string | null;
-          cancel_at_period_end: boolean | null;
-          current_period_start: string | null;
-          current_period_end: string | null;
-          trial_start: string | null;
-          trial_end: string | null;
-          metadata: Json | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          stripe_subscription_id: string;
-          stripe_customer_id?: string | null;
-          org_id?: string | null;
-          customer_email?: string | null;
-          status?: string | null;
-          plan_key?: string | null;
-          billing_interval?: string | null;
-          price_id?: string | null;
-          product_id?: string | null;
-          cancel_at_period_end?: boolean | null;
-          current_period_start?: string | null;
-          current_period_end?: string | null;
-          trial_start?: string | null;
-          trial_end?: string | null;
-          metadata?: Json | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          stripe_subscription_id?: string;
-          stripe_customer_id?: string | null;
-          org_id?: string | null;
-          customer_email?: string | null;
-          status?: string | null;
-          plan_key?: string | null;
-          billing_interval?: string | null;
-          price_id?: string | null;
-          product_id?: string | null;
-          cancel_at_period_end?: boolean | null;
-          current_period_start?: string | null;
-          current_period_end?: string | null;
-          trial_start?: string | null;
-          trial_end?: string | null;
-          metadata?: Json | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      billing_events: {
-        Row: {
-          id: string;
-          stripe_event_id: string;
-          event_type: string;
-          stripe_customer_id: string | null;
-          stripe_subscription_id: string | null;
-          payload: Json | null;
-          processed_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          stripe_event_id: string;
-          event_type: string;
-          stripe_customer_id?: string | null;
-          stripe_subscription_id?: string | null;
-          payload?: Json | null;
-          processed_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          stripe_event_id?: string;
-          event_type?: string;
-          stripe_customer_id?: string | null;
-          stripe_subscription_id?: string | null;
-          payload?: Json | null;
-          processed_at?: string | null;
-        };
-        Relationships: [];
-      };
-      org_sso_configs: {
-        Row: {
-          id: string;
-          org_id: string;
-          provider: string;
-          connection_id: string | null;
-          display_name: string | null;
-          login_hint: string | null;
-          is_enabled: boolean;
-          enforce_sso: boolean;
-          break_glass_email_login_enabled: boolean;
-          metadata: Json;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          provider?: string;
-          connection_id?: string | null;
-          display_name?: string | null;
-          login_hint?: string | null;
-          is_enabled?: boolean;
-          enforce_sso?: boolean;
-          break_glass_email_login_enabled?: boolean;
-          metadata?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          provider?: string;
-          connection_id?: string | null;
-          display_name?: string | null;
-          login_hint?: string | null;
-          is_enabled?: boolean;
-          enforce_sso?: boolean;
-          break_glass_email_login_enabled?: boolean;
-          metadata?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      directory_sync_configs: {
-        Row: {
-          id: string;
-          org_id: string;
-          provider: string;
-          is_enabled: boolean;
-          group_sync_enabled: boolean;
-          metadata: Json;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          provider?: string;
-          is_enabled?: boolean;
-          group_sync_enabled?: boolean;
-          metadata?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          provider?: string;
-          is_enabled?: boolean;
-          group_sync_enabled?: boolean;
-          metadata?: Json;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      directory_group_role_mappings: {
-        Row: {
-          id: string;
-          org_id: string;
-          external_group_id: string;
-          external_group_name: string | null;
-          target_role: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          external_group_id: string;
-          external_group_name?: string | null;
-          target_role: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          external_group_id?: string;
-          external_group_name?: string | null;
-          target_role?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      directory_sync_events: {
-        Row: {
-          id: string;
-          org_id: string;
-          event_type: string;
-          email: string | null;
-          external_user_id: string | null;
-          payload: Json;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          event_type: string;
-          email?: string | null;
-          external_user_id?: string | null;
-          payload?: Json;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          event_type?: string;
-          email?: string | null;
-          external_user_id?: string | null;
-          payload?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      org_billing_policies: {
-        Row: {
-          id: string;
-          org_id: string;
-          seat_activation_policy: string;
-          trial_requires_card: boolean;
-          managed_user_billing_mode: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          seat_activation_policy?: string;
-          trial_requires_card?: boolean;
-          managed_user_billing_mode?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          seat_activation_policy?: string;
-          trial_requires_card?: boolean;
-          managed_user_billing_mode?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      seat_activations: {
-        Row: {
-          id: string;
-          org_id: string;
-          email: string;
-          user_id: string | null;
-          guest_grant_id: string | null;
-          role: string | null;
-          source: string;
-          activated_at: string;
-          billable_from: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          email: string;
-          user_id?: string | null;
-          guest_grant_id?: string | null;
-          role?: string | null;
-          source: string;
-          activated_at: string;
-          billable_from: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          email?: string;
-          user_id?: string | null;
-          guest_grant_id?: string | null;
-          role?: string | null;
-          source?: string;
-          activated_at?: string;
-          billable_from?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      org_onboarding_states: {
-        Row: {
-          id: string;
-          org_id: string;
-          bootstrap_status: string;
-          checklist: Json;
-          bootstrapped_at: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          bootstrap_status?: string;
-          checklist?: Json;
-          bootstrapped_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          bootstrap_status?: string;
-          checklist?: Json;
-          bootstrapped_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      dsg_schema_meta: {
-        Row: {
-          key: string;
-          value: string;
-          updated_at: string;
-        };
-        Insert: {
-          key: string;
-          value: string;
-          updated_at?: string;
-        };
-        Update: {
-          key?: string;
-          value?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      core_monitor_snapshots: {
-        Row: {
-          id: number;
-          org_id: string;
-          snapshot_at: string;
-          window_seconds: number;
-          core_health_ok: boolean;
-          core_metrics_ok: boolean;
-          ledger_ok: boolean;
-          audit_ok: boolean;
-          determinism_ok: boolean;
-          core_url: string | null;
-          health_source_path: string | null;
-          metrics_source_path: string | null;
-          ledger_source_path: string | null;
-          audit_source_path: string | null;
-          determinism_source_path: string | null;
-          latest_sequence: number | null;
-          deterministic: boolean | null;
-          region_count: number | null;
-          unique_state_hashes: number | null;
-          max_entropy: number | null;
-          gate_action: string | null;
-          requests_today: number;
-          allow_count_today: number;
-          block_count_today: number;
-          stabilize_count_today: number;
-          allow_rate: number;
-          block_rate: number;
-          stabilize_rate: number;
-          avg_latency_ms: number;
-          p95_latency_ms: number | null;
-          error_count_today: number;
-          active_agents: number;
-          active_users: number;
-          executions_this_month: number;
-          included_executions: number;
-          overage_executions: number;
-          projected_amount_usd: number;
-          readiness_status: string;
-          readiness_score: number;
-          readiness_reasons: Json;
-          alerts_count: number;
-          alerts: Json;
-          raw_core_metrics: Json | null;
-          raw_health: Json | null;
-          raw_ledger_summary: Json | null;
-          raw_audit_summary: Json | null;
-          raw_determinism: Json | null;
-          created_at: string;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          snapshot_at?: string;
-          window_seconds?: number;
-          core_health_ok?: boolean;
-          core_metrics_ok?: boolean;
-          ledger_ok?: boolean;
-          audit_ok?: boolean;
-          determinism_ok?: boolean;
-          core_url?: string | null;
-          health_source_path?: string | null;
-          metrics_source_path?: string | null;
-          ledger_source_path?: string | null;
-          audit_source_path?: string | null;
-          determinism_source_path?: string | null;
-          latest_sequence?: number | null;
-          deterministic?: boolean | null;
-          region_count?: number | null;
-          unique_state_hashes?: number | null;
-          max_entropy?: number | null;
-          gate_action?: string | null;
-          requests_today?: number;
-          allow_count_today?: number;
-          block_count_today?: number;
-          stabilize_count_today?: number;
-          allow_rate?: number;
-          block_rate?: number;
-          stabilize_rate?: number;
-          avg_latency_ms?: number;
-          p95_latency_ms?: number | null;
-          error_count_today?: number;
-          active_agents?: number;
-          active_users?: number;
-          executions_this_month?: number;
-          included_executions?: number;
-          overage_executions?: number;
-          projected_amount_usd?: number;
-          readiness_status?: string;
-          readiness_score?: number;
-          readiness_reasons?: Json;
-          alerts_count?: number;
-          alerts?: Json;
-          raw_core_metrics?: Json | null;
-          raw_health?: Json | null;
-          raw_ledger_summary?: Json | null;
-          raw_audit_summary?: Json | null;
-          raw_determinism?: Json | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          snapshot_at?: string;
-          window_seconds?: number;
-          core_health_ok?: boolean;
-          core_metrics_ok?: boolean;
-          ledger_ok?: boolean;
-          audit_ok?: boolean;
-          determinism_ok?: boolean;
-          core_url?: string | null;
-          health_source_path?: string | null;
-          metrics_source_path?: string | null;
-          ledger_source_path?: string | null;
-          audit_source_path?: string | null;
-          determinism_source_path?: string | null;
-          latest_sequence?: number | null;
-          deterministic?: boolean | null;
-          region_count?: number | null;
-          unique_state_hashes?: number | null;
-          max_entropy?: number | null;
-          gate_action?: string | null;
-          requests_today?: number;
-          allow_count_today?: number;
-          block_count_today?: number;
-          stabilize_count_today?: number;
-          allow_rate?: number;
-          block_rate?: number;
-          stabilize_rate?: number;
-          avg_latency_ms?: number;
-          p95_latency_ms?: number | null;
-          error_count_today?: number;
-          active_agents?: number;
-          active_users?: number;
-          executions_this_month?: number;
-          included_executions?: number;
-          overage_executions?: number;
-          projected_amount_usd?: number;
-          readiness_status?: string;
-          readiness_score?: number;
-          readiness_reasons?: Json;
-          alerts_count?: number;
-          alerts?: Json;
-          raw_core_metrics?: Json | null;
-          raw_health?: Json | null;
-          raw_ledger_summary?: Json | null;
-          raw_audit_summary?: Json | null;
-          raw_determinism?: Json | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      readiness_history: {
-        Row: {
-          id: number;
-          org_id: string;
-          recorded_at: string;
-          status: string;
-          score: number;
-          core_health_ok: boolean | null;
-          core_metrics_ok: boolean | null;
-          ledger_ok: boolean | null;
-          audit_ok: boolean | null;
-          determinism_ok: boolean | null;
-          db_ok: boolean | null;
-          billing_ok: boolean | null;
-          auth_ok: boolean | null;
-          reason_codes: Json;
-          details: Json;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          recorded_at?: string;
-          status: string;
-          score?: number;
-          core_health_ok?: boolean | null;
-          core_metrics_ok?: boolean | null;
-          ledger_ok?: boolean | null;
-          audit_ok?: boolean | null;
-          determinism_ok?: boolean | null;
-          db_ok?: boolean | null;
-          billing_ok?: boolean | null;
-          auth_ok?: boolean | null;
-          reason_codes?: Json;
-          details?: Json;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          recorded_at?: string;
-          status?: string;
-          score?: number;
-          core_health_ok?: boolean | null;
-          core_metrics_ok?: boolean | null;
-          ledger_ok?: boolean | null;
-          audit_ok?: boolean | null;
-          determinism_ok?: boolean | null;
-          db_ok?: boolean | null;
-          billing_ok?: boolean | null;
-          auth_ok?: boolean | null;
-          reason_codes?: Json;
-          details?: Json;
-        };
-        Relationships: [];
-      };
-      alert_events: {
-        Row: {
-          id: number;
-          org_id: string;
-          level: string;
-          code: string;
-          message: string;
-          source: string;
-          status: string;
-          first_seen_at: string;
-          last_seen_at: string;
-          resolved_at: string | null;
-          occurrence_count: number;
-          severity_score: number;
-          fingerprint: string | null;
-          payload: Json;
-          context: Json;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          level: string;
-          code: string;
-          message: string;
-          source: string;
-          status?: string;
-          first_seen_at?: string;
-          last_seen_at?: string;
-          resolved_at?: string | null;
-          occurrence_count?: number;
-          severity_score?: number;
-          fingerprint?: string | null;
-          payload?: Json;
-          context?: Json;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          level?: string;
-          code?: string;
-          message?: string;
-          source?: string;
-          status?: string;
-          first_seen_at?: string;
-          last_seen_at?: string;
-          resolved_at?: string | null;
-          occurrence_count?: number;
-          severity_score?: number;
-          fingerprint?: string | null;
-          payload?: Json;
-          context?: Json;
-        };
-        Relationships: [];
-      };
-      agent_stats_daily: {
-        Row: {
-          id: number;
-          org_id: string;
-          agent_id: string;
-          stat_date: string;
-          requests_count: number;
-          allow_count: number;
-          block_count: number;
-          stabilize_count: number;
-          allow_rate: number;
-          block_rate: number;
-          stabilize_rate: number;
-          avg_latency_ms: number;
-          p95_latency_ms: number | null;
-          quota_hits: number;
-          error_count: number;
-          last_used_at: string | null;
-          latest_decision: string | null;
-          extra: Json;
-          created_at: string;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          agent_id: string;
-          stat_date: string;
-          requests_count?: number;
-          allow_count?: number;
-          block_count?: number;
-          stabilize_count?: number;
-          allow_rate?: number;
-          block_rate?: number;
-          stabilize_rate?: number;
-          avg_latency_ms?: number;
-          p95_latency_ms?: number | null;
-          quota_hits?: number;
-          error_count?: number;
-          last_used_at?: string | null;
-          latest_decision?: string | null;
-          extra?: Json;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          agent_id?: string;
-          stat_date?: string;
-          requests_count?: number;
-          allow_count?: number;
-          block_count?: number;
-          stabilize_count?: number;
-          allow_rate?: number;
-          block_rate?: number;
-          stabilize_rate?: number;
-          avg_latency_ms?: number;
-          p95_latency_ms?: number | null;
-          quota_hits?: number;
-          error_count?: number;
-          last_used_at?: string | null;
-          latest_decision?: string | null;
-          extra?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      org_stats_hourly: {
-        Row: {
-          id: number;
-          org_id: string;
-          bucket_start: string;
-          requests_count: number;
-          allow_count: number;
-          block_count: number;
-          stabilize_count: number;
-          error_count: number;
-          allow_rate: number;
-          block_rate: number;
-          stabilize_rate: number;
-          avg_latency_ms: number;
-          p95_latency_ms: number | null;
-          active_agents: number;
-          active_users: number;
-          core_ok_ratio: number | null;
-          determinism_ok_ratio: number | null;
-          alerts_count: number;
-          degraded_minutes: number;
-          down_minutes: number;
-          created_at: string;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          bucket_start: string;
-          requests_count?: number;
-          allow_count?: number;
-          block_count?: number;
-          stabilize_count?: number;
-          error_count?: number;
-          allow_rate?: number;
-          block_rate?: number;
-          stabilize_rate?: number;
-          avg_latency_ms?: number;
-          p95_latency_ms?: number | null;
-          active_agents?: number;
-          active_users?: number;
-          core_ok_ratio?: number | null;
-          determinism_ok_ratio?: number | null;
-          alerts_count?: number;
-          degraded_minutes?: number;
-          down_minutes?: number;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          bucket_start?: string;
-          requests_count?: number;
-          allow_count?: number;
-          block_count?: number;
-          stabilize_count?: number;
-          error_count?: number;
-          allow_rate?: number;
-          block_rate?: number;
-          stabilize_rate?: number;
-          avg_latency_ms?: number;
-          p95_latency_ms?: number | null;
-          active_agents?: number;
-          active_users?: number;
-          core_ok_ratio?: number | null;
-          determinism_ok_ratio?: number | null;
-          alerts_count?: number;
-          degraded_minutes?: number;
-          down_minutes?: number;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      core_audit_event_cache: {
-        Row: {
-          id: number;
-          org_id: string;
-          sequence: number;
-          region_id: string | null;
-          gate_result: string | null;
-          state_hash: string | null;
-          entropy: number | null;
-          signature: string | null;
-          created_at_core: string | null;
-          collected_at: string;
-          metadata: Json;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          sequence: number;
-          region_id?: string | null;
-          gate_result?: string | null;
-          state_hash?: string | null;
-          entropy?: number | null;
-          signature?: string | null;
-          created_at_core?: string | null;
-          collected_at?: string;
-          metadata?: Json;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          sequence?: number;
-          region_id?: string | null;
-          gate_result?: string | null;
-          state_hash?: string | null;
-          entropy?: number | null;
-          signature?: string | null;
-          created_at_core?: string | null;
-          collected_at?: string;
-          metadata?: Json;
-        };
-        Relationships: [];
-      };
-      core_ledger_cache: {
-        Row: {
-          id: number;
-          org_id: string;
-          sequence: number | null;
-          region_id: string | null;
-          gate_result: string | null;
-          state_hash: string | null;
-          created_at_core: string | null;
-          collected_at: string;
-          payload: Json;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          sequence?: number | null;
-          region_id?: string | null;
-          gate_result?: string | null;
-          state_hash?: string | null;
-          created_at_core?: string | null;
-          collected_at?: string;
-          payload?: Json;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          sequence?: number | null;
-          region_id?: string | null;
-          gate_result?: string | null;
-          state_hash?: string | null;
-          created_at_core?: string | null;
-          collected_at?: string;
-          payload?: Json;
-        };
-        Relationships: [];
-      };
-      agent_training_events: {
-        Row: {
-          id: number;
-          org_id: string;
-          agent_id: string | null;
-          execution_id: string | null;
-          event_type: string;
-          decision: string | null;
-          readiness_status: string | null;
-          quota_state: string | null;
-          latency_ms: number | null;
-          signal_payload: Json;
-          label_payload: Json;
-          source_snapshot_id: number | null;
-          source_alert_id: number | null;
-          created_at: string;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          agent_id?: string | null;
-          execution_id?: string | null;
-          event_type: string;
-          decision?: string | null;
-          readiness_status?: string | null;
-          quota_state?: string | null;
-          latency_ms?: number | null;
-          signal_payload?: Json;
-          label_payload?: Json;
-          source_snapshot_id?: number | null;
-          source_alert_id?: number | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          agent_id?: string | null;
-          execution_id?: string | null;
-          event_type?: string;
-          decision?: string | null;
-          readiness_status?: string | null;
-          quota_state?: string | null;
-          latency_ms?: number | null;
-          signal_payload?: Json;
-          label_payload?: Json;
-          source_snapshot_id?: number | null;
-          source_alert_id?: number | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      user_readiness_signals: {
-        Row: {
-          id: number;
-          org_id: string;
-          user_ref: string | null;
-          signal_time: string;
-          auth_ok: boolean | null;
-          profile_active: boolean | null;
-          billing_ok: boolean | null;
-          quota_ok: boolean | null;
-          core_ok: boolean | null;
-          signal_code: string;
-          signal_value: number | null;
-          signal_text: string | null;
-          metadata: Json;
-        };
-        Insert: {
-          id: number;
-          org_id: string;
-          user_ref?: string | null;
-          signal_time?: string;
-          auth_ok?: boolean | null;
-          profile_active?: boolean | null;
-          billing_ok?: boolean | null;
-          quota_ok?: boolean | null;
-          core_ok?: boolean | null;
-          signal_code: string;
-          signal_value?: number | null;
-          signal_text?: string | null;
-          metadata?: Json;
-        };
-        Update: {
-          id?: number;
-          org_id?: string;
-          user_ref?: string | null;
-          signal_time?: string;
-          auth_ok?: boolean | null;
-          profile_active?: boolean | null;
-          billing_ok?: boolean | null;
-          quota_ok?: boolean | null;
-          core_ok?: boolean | null;
-          signal_code?: string;
-          signal_value?: number | null;
-          signal_text?: string | null;
-          metadata?: Json;
-        };
-        Relationships: [];
-      };
-      runtime_truth_states: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          canonical_hash: string;
-          canonical_json: Json;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          canonical_hash: string;
-          canonical_json: Json;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          canonical_hash?: string;
-          canonical_json?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_approval_requests: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          approval_key: string;
-          request_payload: Json;
-          status: string;
-          expires_at: string | null;
-          consumed_at: string | null;
-          revoked_at: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          approval_key: string;
-          request_payload: Json;
-          status?: string;
-          expires_at?: string | null;
-          consumed_at?: string | null;
-          revoked_at?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          approval_key?: string;
-          request_payload?: Json;
-          status?: string;
-          expires_at?: string | null;
-          consumed_at?: string | null;
-          revoked_at?: string | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_ledger_entries: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          request_id: string | null;
-          execution_id: string | null;
-          truth_state_id: string | null;
-          decision: string;
-          ledger_sequence: number | null;
-          truth_sequence: number;
-          reason: string | null;
-          metadata: Json;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          request_id?: string | null;
-          execution_id?: string | null;
-          truth_state_id?: string | null;
-          decision: string;
-          ledger_sequence?: number | null;
-          truth_sequence: number;
-          reason?: string | null;
-          metadata?: Json;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          request_id?: string | null;
-          execution_id?: string | null;
-          truth_state_id?: string | null;
-          decision?: string;
-          ledger_sequence?: number | null;
-          truth_sequence?: number;
-          reason?: string | null;
-          metadata?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_effects: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          ledger_entry_id: string | null;
-          effect_type: string;
-          status: string;
-          payload: Json;
-          result_payload: Json | null;
-          callback_count: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          ledger_entry_id?: string | null;
-          effect_type: string;
-          status?: string;
-          payload?: Json;
-          result_payload?: Json | null;
-          callback_count?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          ledger_entry_id?: string | null;
-          effect_type?: string;
-          status?: string;
-          payload?: Json;
-          result_payload?: Json | null;
-          callback_count?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_checkpoints: {
-        Row: {
-          id: string;
-          org_id: string;
-          agent_id: string;
-          truth_state_id: string;
-          latest_ledger_entry_id: string;
-          checkpoint_hash: string;
-          metadata: Json;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          agent_id: string;
-          truth_state_id: string;
-          latest_ledger_entry_id: string;
-          checkpoint_hash: string;
-          metadata?: Json;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          agent_id?: string;
-          truth_state_id?: string;
-          latest_ledger_entry_id?: string;
-          checkpoint_hash?: string;
-          metadata?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      guest_access_grants: {
-        Row: {
-          id: string;
-          org_id: string;
-          email: string;
-          role: string;
-          invited_by_user_id: string | null;
-          scope: Json;
-          expires_at: string | null;
-          status: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          org_id: string;
-          email: string;
-          role?: string;
-          invited_by_user_id?: string | null;
-          scope?: Json;
-          expires_at?: string | null;
-          status?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          org_id?: string;
-          email?: string;
-          role?: string;
-          invited_by_user_id?: string | null;
-          scope?: Json;
-          expires_at?: string | null;
-          status?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       access_requests: {
         Row: {
-          id: string;
-          email: string;
-          email_domain: string;
-          workspace_name: string | null;
-          full_name: string | null;
-          requested_org_hint: string | null;
-          status: string;
-          reviewed_by_user_id: string | null;
-          review_note: string | null;
-          created_at: string;
-          updated_at: string;
-          org_id: string | null;
-        };
+          created_at: string
+          email: string
+          email_domain: string
+          full_name: string | null
+          id: string
+          org_id: string | null
+          requested_org_hint: string | null
+          review_note: string | null
+          reviewed_by_user_id: string | null
+          status: string
+          updated_at: string
+          workspace_name: string | null
+        }
         Insert: {
-          id?: string;
-          email: string;
-          email_domain: string;
-          workspace_name?: string | null;
-          full_name?: string | null;
-          requested_org_hint?: string | null;
-          status?: string;
-          reviewed_by_user_id?: string | null;
-          review_note?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          org_id?: string | null;
-        };
+          created_at?: string
+          email: string
+          email_domain: string
+          full_name?: string | null
+          id?: string
+          org_id?: string | null
+          requested_org_hint?: string | null
+          review_note?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          updated_at?: string
+          workspace_name?: string | null
+        }
         Update: {
-          id?: string;
-          email?: string;
-          email_domain?: string;
-          workspace_name?: string | null;
-          full_name?: string | null;
-          requested_org_hint?: string | null;
-          status?: string;
-          reviewed_by_user_id?: string | null;
-          review_note?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          org_id?: string | null;
-        };
-        Relationships: [];
-      };
-      sign_in_events: {
+          created_at?: string
+          email?: string
+          email_domain?: string
+          full_name?: string | null
+          id?: string
+          org_id?: string | null
+          requested_org_hint?: string | null
+          review_note?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          updated_at?: string
+          workspace_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_requests_reviewed_by_user_id_fkey"
+            columns: ["reviewed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      admin_api_keys: {
         Row: {
-          id: string;
-          email: string;
-          org_id: string | null;
-          auth_user_id: string | null;
-          event_type: string;
-          source: string | null;
-          ip_address: string | null;
-          user_agent: string | null;
-          success: boolean;
-          metadata: Json;
-          created_at: string;
-        };
+          created_at: string
+          id: string
+          is_active: boolean
+          key_hash: string
+          label: string
+        }
         Insert: {
-          id?: string;
-          email: string;
-          org_id?: string | null;
-          auth_user_id?: string | null;
-          event_type: string;
-          source?: string | null;
-          ip_address?: string | null;
-          user_agent?: string | null;
-          success?: boolean;
-          metadata?: Json;
-          created_at?: string;
-        };
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          label: string
+        }
         Update: {
-          id?: string;
-          email?: string;
-          org_id?: string | null;
-          auth_user_id?: string | null;
-          event_type?: string;
-          source?: string | null;
-          ip_address?: string | null;
-          user_agent?: string | null;
-          success?: boolean;
-          metadata?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_roles: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      agent_execution_approvals: {
         Row: {
-          id: string;
-          org_id: string;
-          user_id: string;
-          role: string;
-          created_at: string;
-        };
+          approver: string | null
+          created_at: string | null
+          decision: string | null
+          id: string
+          request_id: string | null
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          user_id: string;
-          role: string;
-          created_at?: string;
-        };
+          approver?: string | null
+          created_at?: string | null
+          decision?: string | null
+          id?: string
+          request_id?: string | null
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          user_id?: string;
-          role?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_policies: {
+          approver?: string | null
+          created_at?: string | null
+          decision?: string | null
+          id?: string
+          request_id?: string | null
+        }
+        Relationships: []
+      }
+      agent_execution_requests: {
         Row: {
-          id: string;
-          org_id: string;
-          name: string;
-          version: string;
-          status: string;
-          thresholds: Json;
-          governance_state: string;
-          created_by: string | null;
-          updated_by: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          agent_id: string | null
+          created_at: string | null
+          id: string
+          org_id: string | null
+          payload: Json | null
+          status: string | null
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          name: string;
-          version: string;
-          status?: string;
-          thresholds?: Json;
-          governance_state?: string;
-          created_by?: string | null;
-          updated_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          agent_id?: string | null
+          created_at?: string | null
+          id?: string
+          org_id?: string | null
+          payload?: Json | null
+          status?: string | null
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          name?: string;
-          version?: string;
-          status?: string;
-          thresholds?: Json;
-          governance_state?: string;
-          created_by?: string | null;
-          updated_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      runtime_policy_governance_events: {
+          agent_id?: string | null
+          created_at?: string | null
+          id?: string
+          org_id?: string | null
+          payload?: Json | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      agent_execution_steps: {
         Row: {
-          id: string;
-          org_id: string;
-          policy_id: string;
-          actor_user_id: string | null;
-          event_type: string;
-          metadata: Json;
-          created_at: string;
-        };
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          request_id: string | null
+          status: string | null
+          step_name: string | null
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          policy_id: string;
-          actor_user_id?: string | null;
-          event_type: string;
-          metadata?: Json;
-          created_at?: string;
-        };
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          request_id?: string | null
+          status?: string | null
+          step_name?: string | null
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          policy_id?: string;
-          actor_user_id?: string | null;
-          event_type?: string;
-          metadata?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          request_id?: string | null
+          status?: string | null
+          step_name?: string | null
+        }
+        Relationships: []
+      }
+      agent_gate_settings: {
+        Row: {
+          created_at: string
+          gate_mode: string
+          id: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gate_mode?: string
+          id?: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gate_mode?: string
+          id?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agent_stats_daily: {
+        Row: {
+          agent_id: string
+          allow_count: number
+          allow_rate: number
+          avg_latency_ms: number
+          block_count: number
+          block_rate: number
+          created_at: string
+          error_count: number
+          extra: Json
+          id: number
+          last_used_at: string | null
+          latest_decision: string | null
+          org_id: string
+          p95_latency_ms: number | null
+          quota_hits: number
+          requests_count: number
+          stabilize_count: number
+          stabilize_rate: number
+          stat_date: string
+        }
+        Insert: {
+          agent_id: string
+          allow_count?: number
+          allow_rate?: number
+          avg_latency_ms?: number
+          block_count?: number
+          block_rate?: number
+          created_at?: string
+          error_count?: number
+          extra?: Json
+          id?: number
+          last_used_at?: string | null
+          latest_decision?: string | null
+          org_id: string
+          p95_latency_ms?: number | null
+          quota_hits?: number
+          requests_count?: number
+          stabilize_count?: number
+          stabilize_rate?: number
+          stat_date: string
+        }
+        Update: {
+          agent_id?: string
+          allow_count?: number
+          allow_rate?: number
+          avg_latency_ms?: number
+          block_count?: number
+          block_rate?: number
+          created_at?: string
+          error_count?: number
+          extra?: Json
+          id?: number
+          last_used_at?: string | null
+          latest_decision?: string | null
+          org_id?: string
+          p95_latency_ms?: number | null
+          quota_hits?: number
+          requests_count?: number
+          stabilize_count?: number
+          stabilize_rate?: number
+          stat_date?: string
+        }
+        Relationships: []
+      }
+      agents: {
+        Row: {
+          api_key_hash: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          metadata: Json
+          monthly_limit: number
+          name: string
+          org_id: string | null
+          owner_user_id: string | null
+          policy_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_hash: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json
+          monthly_limit?: number
+          name: string
+          org_id?: string | null
+          owner_user_id?: string | null
+          policy_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_hash?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json
+          monthly_limit?: number
+          name?: string
+          org_id?: string | null
+          owner_user_id?: string | null
+          policy_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "policy_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "policy_versions"
+            referencedColumns: ["policy_id"]
+          },
+        ]
+      }
+      alert_events: {
+        Row: {
+          code: string
+          context: Json
+          fingerprint: string | null
+          first_seen_at: string
+          id: number
+          last_seen_at: string
+          level: string
+          message: string
+          occurrence_count: number
+          org_id: string
+          payload: Json
+          resolved_at: string | null
+          severity_score: number
+          source: string
+          status: string
+        }
+        Insert: {
+          code: string
+          context?: Json
+          fingerprint?: string | null
+          first_seen_at?: string
+          id?: number
+          last_seen_at?: string
+          level: string
+          message: string
+          occurrence_count?: number
+          org_id: string
+          payload?: Json
+          resolved_at?: string | null
+          severity_score?: number
+          source: string
+          status?: string
+        }
+        Update: {
+          code?: string
+          context?: Json
+          fingerprint?: string | null
+          first_seen_at?: string
+          id?: number
+          last_seen_at?: string
+          level?: string
+          message?: string
+          occurrence_count?: number
+          org_id?: string
+          payload?: Json
+          resolved_at?: string | null
+          severity_score?: number
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
-          id: string;
-          org_id: string;
-          name: string;
-          prefix: string;
-          key_hash: string;
-          scopes: string[];
-          status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
-          expiry: string | null;
-          created_at: string;
-          last_used: string | null;
-          requests_this_month: number;
-        };
+          created_at: string
+          expiry: string | null
+          id: string
+          key_hash: string
+          last_used: string | null
+          name: string
+          org_id: string
+          prefix: string
+          requests_this_month: number
+          scopes: string[]
+          status: string
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          name: string;
-          prefix: string;
-          key_hash: string;
-          scopes?: string[];
-          status?: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
-          expiry?: string | null;
-          created_at?: string;
-          last_used?: string | null;
-          requests_this_month?: number;
-        };
+          created_at?: string
+          expiry?: string | null
+          id?: string
+          key_hash: string
+          last_used?: string | null
+          name: string
+          org_id: string
+          prefix: string
+          requests_this_month?: number
+          scopes?: string[]
+          status?: string
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          name?: string;
-          prefix?: string;
-          key_hash?: string;
-          scopes?: string[];
-          status?: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
-          expiry?: string | null;
-          created_at?: string;
-          last_used?: string | null;
-          requests_this_month?: number;
-        };
-        Relationships: [];
-      };
-      webhook_configs: {
+          created_at?: string
+          expiry?: string | null
+          id?: string
+          key_hash?: string
+          last_used?: string | null
+          name?: string
+          org_id?: string
+          prefix?: string
+          requests_this_month?: number
+          scopes?: string[]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
         Row: {
-          id: string;
-          org_id: string;
-          url: string;
-          secret_hash: string;
-          events: string[];
-          active: boolean;
-          created_at: string;
-        };
+          agent_id: string | null
+          created_at: string
+          decision: string
+          evidence: Json | null
+          execution_id: string | null
+          id: string
+          org_id: string | null
+          policy_version: string
+          reason: string
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          url: string;
-          secret_hash: string;
-          events?: string[];
-          active?: boolean;
-          created_at?: string;
-        };
+          agent_id?: string | null
+          created_at?: string
+          decision: string
+          evidence?: Json | null
+          execution_id?: string | null
+          id?: string
+          org_id?: string | null
+          policy_version: string
+          reason: string
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          url?: string;
-          secret_hash?: string;
-          events?: string[];
-          active?: boolean;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      webhook_deliveries: {
+          agent_id?: string | null
+          created_at?: string
+          decision?: string
+          evidence?: Json | null
+          execution_id?: string | null
+          id?: string
+          org_id?: string | null
+          policy_version?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
         Row: {
-          id: string;
-          webhook_id: string;
-          event: string;
-          status: 'success' | 'failed' | 'pending';
-          response_code: number | null;
-          duration_ms: number | null;
-          created_at: string;
-        };
+          created_at: string
+          event_type: string | null
+          id: string
+          org_id: string | null
+          payload: Json
+          stripe_customer_id: string | null
+          stripe_event_id: string | null
+        }
         Insert: {
-          id?: string;
-          webhook_id: string;
-          event: string;
-          status?: 'success' | 'failed' | 'pending';
-          response_code?: number | null;
-          duration_ms?: number | null;
-          created_at?: string;
-        };
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          org_id?: string | null
+          payload?: Json
+          stripe_customer_id?: string | null
+          stripe_event_id?: string | null
+        }
         Update: {
-          id?: string;
-          webhook_id?: string;
-          event?: string;
-          status?: 'success' | 'failed' | 'pending';
-          response_code?: number | null;
-          duration_ms?: number | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      notifications: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          org_id?: string | null
+          payload?: Json
+          stripe_customer_id?: string | null
+          stripe_event_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      billing_meter_outbox: {
         Row: {
-          id: string;
-          org_id: string;
-          user_id: string | null;
-          type: string;
-          title: string;
-          message: string;
-          read: boolean;
-          created_at: string;
-        };
+          created_at: string
+          error: string | null
+          event_name: string
+          execution_id: string
+          flushed_at: string | null
+          id: string
+          org_id: string
+          quantity: number
+          status: string
+          stripe_customer_id: string
+          stripe_event_id: string | null
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          user_id?: string | null;
-          type: string;
-          title: string;
-          message: string;
-          read?: boolean;
-          created_at?: string;
-        };
+          created_at?: string
+          error?: string | null
+          event_name: string
+          execution_id: string
+          flushed_at?: string | null
+          id?: string
+          org_id: string
+          quantity?: number
+          status?: string
+          stripe_customer_id: string
+          stripe_event_id?: string | null
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          user_id?: string | null;
-          type?: string;
-          title?: string;
-          message?: string;
-          read?: boolean;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      notification_settings: {
+          created_at?: string
+          error?: string | null
+          event_name?: string
+          execution_id?: string
+          flushed_at?: string | null
+          id?: string
+          org_id?: string
+          quantity?: number
+          status?: string
+          stripe_customer_id?: string
+          stripe_event_id?: string | null
+        }
+        Relationships: []
+      }
+      billing_customers: {
         Row: {
-          id: string;
-          org_id: string;
-          user_id: string;
-          email: boolean;
-          slack: boolean;
-          pagerduty: boolean;
-          slack_webhook_url: string | null;
-          pagerduty_key: string | null;
-          updated_at: string;
-        };
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          org_id: string
+          stripe_customer_id: string
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          org_id: string;
-          user_id: string;
-          email?: boolean;
-          slack?: boolean;
-          pagerduty?: boolean;
-          slack_webhook_url?: string | null;
-          pagerduty_key?: string | null;
-          updated_at?: string;
-        };
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          org_id: string
+          stripe_customer_id: string
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          org_id?: string;
-          user_id?: string;
-          email?: boolean;
-          slack?: boolean;
-          pagerduty?: boolean;
-          slack_webhook_url?: string | null;
-          pagerduty_key?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          org_id?: string
+          stripe_customer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      billing_subscriptions: {
+        Row: {
+          billing_interval: string | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          customer_email: string | null
+          id: string
+          org_id: string | null
+          plan_key: string | null
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_interval?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          customer_email?: string | null
+          id?: string
+          org_id?: string | null
+          plan_key?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_interval?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          customer_email?: string | null
+          id?: string
+          org_id?: string | null
+          plan_key?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      compliance_status_reports: {
+        Row: {
+          claim_pass_eligible: boolean | null
+          created_at: string
+          id: string
+          last_ci_run: string | null
+          matrix_json: Json | null
+          mutation_score: number | null
+          requirements_pass: number | null
+          requirements_total: number | null
+          run_id: string
+          updated_at: string
+        }
+        Insert: {
+          claim_pass_eligible?: boolean | null
+          created_at?: string
+          id?: string
+          last_ci_run?: string | null
+          matrix_json?: Json | null
+          mutation_score?: number | null
+          requirements_pass?: number | null
+          requirements_total?: number | null
+          run_id: string
+          updated_at?: string
+        }
+        Update: {
+          claim_pass_eligible?: boolean | null
+          created_at?: string
+          id?: string
+          last_ci_run?: string | null
+          matrix_json?: Json | null
+          mutation_score?: number | null
+          requirements_pass?: number | null
+          requirements_total?: number | null
+          run_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      core_event_ingest: {
+        Row: {
+          created_at: string
+          event_at: string
+          event_type: string
+          id: number
+          metadata: Json
+          org_id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_at?: string
+          event_type: string
+          id?: number
+          metadata?: Json
+          org_id: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_at?: string
+          event_type?: string
+          id?: number
+          metadata?: Json
+          org_id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
+      core_monitor_snapshots: {
+        Row: {
+          active_agents: number
+          active_users: number
+          alerts: Json
+          alerts_count: number
+          allow_count_today: number
+          allow_rate: number
+          audit_ok: boolean
+          audit_source_path: string | null
+          avg_latency_ms: number
+          block_count_today: number
+          block_rate: number
+          core_health_ok: boolean
+          core_metrics_ok: boolean
+          core_url: string | null
+          created_at: string
+          determinism_ok: boolean
+          determinism_source_path: string | null
+          deterministic: boolean | null
+          error_count_today: number
+          executions_this_month: number
+          gate_action: string | null
+          health_source_path: string | null
+          id: number
+          included_executions: number
+          latest_sequence: number | null
+          ledger_ok: boolean
+          ledger_source_path: string | null
+          max_entropy: number | null
+          metrics_source_path: string | null
+          org_id: string
+          overage_executions: number
+          p95_latency_ms: number | null
+          projected_amount_usd: number
+          raw_audit_summary: Json | null
+          raw_core_metrics: Json | null
+          raw_determinism: Json | null
+          raw_health: Json | null
+          raw_ledger_summary: Json | null
+          readiness_reasons: Json
+          readiness_score: number
+          readiness_status: string
+          region_count: number | null
+          requests_today: number
+          snapshot_at: string
+          stabilize_count_today: number
+          stabilize_rate: number
+          unique_state_hashes: number | null
+          window_seconds: number
+        }
+        Insert: {
+          active_agents?: number
+          active_users?: number
+          alerts?: Json
+          alerts_count?: number
+          allow_count_today?: number
+          allow_rate?: number
+          audit_ok?: boolean
+          audit_source_path?: string | null
+          avg_latency_ms?: number
+          block_count_today?: number
+          block_rate?: number
+          core_health_ok?: boolean
+          core_metrics_ok?: boolean
+          core_url?: string | null
+          created_at?: string
+          determinism_ok?: boolean
+          determinism_source_path?: string | null
+          deterministic?: boolean | null
+          error_count_today?: number
+          executions_this_month?: number
+          gate_action?: string | null
+          health_source_path?: string | null
+          id?: number
+          included_executions?: number
+          latest_sequence?: number | null
+          ledger_ok?: boolean
+          ledger_source_path?: string | null
+          max_entropy?: number | null
+          metrics_source_path?: string | null
+          org_id: string
+          overage_executions?: number
+          p95_latency_ms?: number | null
+          projected_amount_usd?: number
+          raw_audit_summary?: Json | null
+          raw_core_metrics?: Json | null
+          raw_determinism?: Json | null
+          raw_health?: Json | null
+          raw_ledger_summary?: Json | null
+          readiness_reasons?: Json
+          readiness_score?: number
+          readiness_status?: string
+          region_count?: number | null
+          requests_today?: number
+          snapshot_at?: string
+          stabilize_count_today?: number
+          stabilize_rate?: number
+          unique_state_hashes?: number | null
+          window_seconds?: number
+        }
+        Update: {
+          active_agents?: number
+          active_users?: number
+          alerts?: Json
+          alerts_count?: number
+          allow_count_today?: number
+          allow_rate?: number
+          audit_ok?: boolean
+          audit_source_path?: string | null
+          avg_latency_ms?: number
+          block_count_today?: number
+          block_rate?: number
+          core_health_ok?: boolean
+          core_metrics_ok?: boolean
+          core_url?: string | null
+          created_at?: string
+          determinism_ok?: boolean
+          determinism_source_path?: string | null
+          deterministic?: boolean | null
+          error_count_today?: number
+          executions_this_month?: number
+          gate_action?: string | null
+          health_source_path?: string | null
+          id?: number
+          included_executions?: number
+          latest_sequence?: number | null
+          ledger_ok?: boolean
+          ledger_source_path?: string | null
+          max_entropy?: number | null
+          metrics_source_path?: string | null
+          org_id?: string
+          overage_executions?: number
+          p95_latency_ms?: number | null
+          projected_amount_usd?: number
+          raw_audit_summary?: Json | null
+          raw_core_metrics?: Json | null
+          raw_determinism?: Json | null
+          raw_health?: Json | null
+          raw_ledger_summary?: Json | null
+          readiness_reasons?: Json
+          readiness_score?: number
+          readiness_status?: string
+          region_count?: number | null
+          requests_today?: number
+          snapshot_at?: string
+          stabilize_count_today?: number
+          stabilize_rate?: number
+          unique_state_hashes?: number | null
+          window_seconds?: number
+        }
+        Relationships: []
+      }
       delivery_proof_reports: {
         Row: {
-          id: string;
-          run_id: string;
-          claim_pass_eligible: boolean;
-          mutation_score: number | null;
-          requirements_pass: number | null;
-          requirements_total: number | null;
-          matrix_json: Record<string, unknown> | null;
-          last_ci_run: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          claim_pass_eligible: boolean
+          created_at: string
+          id: string
+          last_ci_run: string | null
+          matrix_json: Json | null
+          mutation_score: number | null
+          requirements_pass: number | null
+          requirements_total: number | null
+          run_id: string
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          run_id: string;
-          claim_pass_eligible: boolean;
-          mutation_score?: number | null;
-          requirements_pass?: number | null;
-          requirements_total?: number | null;
-          matrix_json?: Record<string, unknown> | null;
-          last_ci_run?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          claim_pass_eligible: boolean
+          created_at?: string
+          id?: string
+          last_ci_run?: string | null
+          matrix_json?: Json | null
+          mutation_score?: number | null
+          requirements_pass?: number | null
+          requirements_total?: number | null
+          run_id: string
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          run_id?: string;
-          claim_pass_eligible?: boolean;
-          mutation_score?: number | null;
-          requirements_pass?: number | null;
-          requirements_total?: number | null;
-          matrix_json?: Record<string, unknown> | null;
-          last_ci_run?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-    };
+          claim_pass_eligible?: boolean
+          created_at?: string
+          id?: string
+          last_ci_run?: string | null
+          matrix_json?: Json | null
+          mutation_score?: number | null
+          requirements_pass?: number | null
+          requirements_total?: number | null
+          run_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      directory_group_role_mappings: {
+        Row: {
+          created_at: string
+          external_group_id: string
+          external_group_name: string | null
+          id: string
+          org_id: string
+          target_role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_group_id: string
+          external_group_name?: string | null
+          id?: string
+          org_id: string
+          target_role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_group_id?: string
+          external_group_name?: string | null
+          id?: string
+          org_id?: string
+          target_role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "directory_group_role_mappings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      directory_sync_configs: {
+        Row: {
+          created_at: string
+          group_sync_enabled: boolean
+          id: string
+          is_enabled: boolean
+          metadata: Json
+          org_id: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          group_sync_enabled?: boolean
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json
+          org_id: string
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          group_sync_enabled?: boolean
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json
+          org_id?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "directory_sync_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      directory_sync_events: {
+        Row: {
+          created_at: string
+          email: string | null
+          event_type: string
+          external_user_id: string | null
+          id: string
+          org_id: string
+          payload: Json
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          event_type: string
+          external_user_id?: string | null
+          id?: string
+          org_id: string
+          payload?: Json
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          event_type?: string
+          external_user_id?: string | null
+          id?: string
+          org_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "directory_sync_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_agent_action_result_receipts: {
+        Row: {
+          accepted: boolean
+          actor_id: string
+          actor_role: string | null
+          agent_id: string
+          command_id: string
+          created_at: string
+          envelope_id: string
+          gate_version: string
+          id: string
+          org_id: string
+          receipt_body: Json
+          receipt_hash: string
+          request_body: Json
+          result_hash: string
+          session_id: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted: boolean
+          actor_id: string
+          actor_role?: string | null
+          agent_id: string
+          command_id: string
+          created_at?: string
+          envelope_id: string
+          gate_version: string
+          id?: string
+          org_id: string
+          receipt_body: Json
+          receipt_hash: string
+          request_body: Json
+          result_hash: string
+          session_id: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          accepted?: boolean
+          actor_id?: string
+          actor_role?: string | null
+          agent_id?: string
+          command_id?: string
+          created_at?: string
+          envelope_id?: string
+          gate_version?: string
+          id?: string
+          org_id?: string
+          receipt_body?: Json
+          receipt_hash?: string
+          request_body?: Json
+          result_hash?: string
+          session_id?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_agent_command_gate_decisions: {
+        Row: {
+          action_envelope: Json | null
+          actor_id: string
+          actor_role: string | null
+          agent_id: string
+          can_agent_execute: boolean
+          command_hash: string
+          command_id: string
+          created_at: string
+          decision: string
+          decision_hash: string
+          gate_version: string
+          id: string
+          invariant_checks: Json
+          org_id: string
+          reasons: Json
+          request_body: Json
+          result_body: Json
+          session_id: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          action_envelope?: Json | null
+          actor_id: string
+          actor_role?: string | null
+          agent_id: string
+          can_agent_execute: boolean
+          command_hash: string
+          command_id: string
+          created_at?: string
+          decision: string
+          decision_hash: string
+          gate_version: string
+          id?: string
+          invariant_checks?: Json
+          org_id: string
+          reasons?: Json
+          request_body: Json
+          result_body: Json
+          session_id: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          action_envelope?: Json | null
+          actor_id?: string
+          actor_role?: string | null
+          agent_id?: string
+          can_agent_execute?: boolean
+          command_hash?: string
+          command_id?: string
+          created_at?: string
+          decision?: string
+          decision_hash?: string
+          gate_version?: string
+          id?: string
+          invariant_checks?: Json
+          org_id?: string
+          reasons?: Json
+          request_body?: Json
+          result_body?: Json
+          session_id?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_agent_ledger: {
+        Row: {
+          action: string
+          agent_id: string | null
+          context: Json
+          created_at: string
+          decision: string
+          entry_hash: string
+          id: number
+          invariant_snapshot: Json | null
+          mode: string
+          org_id: string
+          prev_hash: string | null
+          reason: string | null
+          seq: number
+          session_id: string | null
+          timestamp_ms: number
+        }
+        Insert: {
+          action: string
+          agent_id?: string | null
+          context?: Json
+          created_at?: string
+          decision: string
+          entry_hash: string
+          id?: number
+          invariant_snapshot?: Json | null
+          mode: string
+          org_id: string
+          prev_hash?: string | null
+          reason?: string | null
+          seq: number
+          session_id?: string | null
+          timestamp_ms: number
+        }
+        Update: {
+          action?: string
+          agent_id?: string | null
+          context?: Json
+          created_at?: string
+          decision?: string
+          entry_hash?: string
+          id?: number
+          invariant_snapshot?: Json | null
+          mode?: string
+          org_id?: string
+          prev_hash?: string | null
+          reason?: string | null
+          seq?: number
+          session_id?: string | null
+          timestamp_ms?: number
+        }
+        Relationships: []
+      }
+      dsg_app_builder_approvals: {
+        Row: {
+          app_builder_job_id: string
+          approval_hash: string | null
+          created_at: string
+          decided_by: string
+          decision: string
+          gate_result: Json | null
+          id: string
+          plan_hash: string | null
+          reason: string | null
+          workspace_id: string
+        }
+        Insert: {
+          app_builder_job_id: string
+          approval_hash?: string | null
+          created_at?: string
+          decided_by: string
+          decision: string
+          gate_result?: Json | null
+          id?: string
+          plan_hash?: string | null
+          reason?: string | null
+          workspace_id: string
+        }
+        Update: {
+          app_builder_job_id?: string
+          approval_hash?: string | null
+          created_at?: string
+          decided_by?: string
+          decision?: string
+          gate_result?: Json | null
+          id?: string
+          plan_hash?: string | null
+          reason?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_app_builder_approvals_app_builder_job_id_fkey"
+            columns: ["app_builder_job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_app_builder_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_app_builder_jobs: {
+        Row: {
+          approval_hash: string | null
+          approved_plan: Json | null
+          claim_status: string
+          created_at: string
+          created_by: string
+          gate_result: Json | null
+          goal: Json | null
+          id: string
+          metadata: Json
+          plan_hash: string | null
+          prd: Json | null
+          proposed_plan: Json | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          approval_hash?: string | null
+          approved_plan?: Json | null
+          claim_status?: string
+          created_at?: string
+          created_by: string
+          gate_result?: Json | null
+          goal?: Json | null
+          id?: string
+          metadata?: Json
+          plan_hash?: string | null
+          prd?: Json | null
+          proposed_plan?: Json | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          approval_hash?: string | null
+          approved_plan?: Json | null
+          claim_status?: string
+          created_at?: string
+          created_by?: string
+          gate_result?: Json | null
+          goal?: Json | null
+          id?: string
+          metadata?: Json
+          plan_hash?: string | null
+          prd?: Json | null
+          proposed_plan?: Json | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_app_builder_tool_audits: {
+        Row: {
+          actor_id: string
+          app_builder_job_id: string
+          audit_event: Json
+          created_at: string
+          evidence_refs: Json
+          id: string
+          outcome: string
+          tool_name: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          app_builder_job_id: string
+          audit_event?: Json
+          created_at?: string
+          evidence_refs?: Json
+          id?: string
+          outcome: string
+          tool_name: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          app_builder_job_id?: string
+          audit_event?: Json
+          created_at?: string
+          evidence_refs?: Json
+          id?: string
+          outcome?: string
+          tool_name?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_app_builder_tool_audits_app_builder_job_id_fkey"
+            columns: ["app_builder_job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_app_builder_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_app_builds: {
+        Row: {
+          app_name: string
+          created_at: string
+          deployed_at: string | null
+          description: string | null
+          id: string
+          lines_added: number
+          lines_removed: number
+          status: string
+          template: string | null
+          user_id: string
+        }
+        Insert: {
+          app_name: string
+          created_at?: string
+          deployed_at?: string | null
+          description?: string | null
+          id?: string
+          lines_added?: number
+          lines_removed?: number
+          status?: string
+          template?: string | null
+          user_id: string
+        }
+        Update: {
+          app_name?: string
+          created_at?: string
+          deployed_at?: string | null
+          description?: string | null
+          id?: string
+          lines_added?: number
+          lines_removed?: number
+          status?: string
+          template?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dsg_approvals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string
+          id: string
+          job_id: string
+          reason: string | null
+          requested_by: string
+          step_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          job_id: string
+          reason?: string | null
+          requested_by: string
+          step_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          job_id?: string
+          reason?: string | null
+          requested_by?: string
+          step_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_approvals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_approvals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_audit_exports: {
+        Row: {
+          created_at: string
+          created_by: string
+          export_hash: string
+          id: string
+          job_id: string
+          ledger_entry_ids: string[]
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          export_hash: string
+          id?: string
+          job_id: string
+          ledger_entry_ids?: string[]
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          export_hash?: string
+          id?: string
+          job_id?: string
+          ledger_entry_ids?: string[]
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_audit_exports_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_audit_exports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_audit_ledger: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          current_hash: string
+          decision: string
+          evidence_ids: string[]
+          id: string
+          job_id: string | null
+          payload: Json
+          previous_hash: string | null
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          current_hash: string
+          decision: string
+          evidence_ids?: string[]
+          id?: string
+          job_id?: string | null
+          payload?: Json
+          previous_hash?: string | null
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          current_hash?: string
+          decision?: string
+          evidence_ids?: string[]
+          id?: string
+          job_id?: string | null
+          payload?: Json
+          previous_hash?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_audit_ledger_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_audit_ledger_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_completion_reports: {
+        Row: {
+          audit_export_id: string | null
+          block_reasons: string[]
+          claim_status: string
+          created_at: string
+          created_by: string
+          evidence_manifest_id: string | null
+          id: string
+          job_id: string
+          replay_proof_id: string | null
+          report_hash: string
+          workspace_id: string
+        }
+        Insert: {
+          audit_export_id?: string | null
+          block_reasons?: string[]
+          claim_status: string
+          created_at?: string
+          created_by: string
+          evidence_manifest_id?: string | null
+          id?: string
+          job_id: string
+          replay_proof_id?: string | null
+          report_hash: string
+          workspace_id: string
+        }
+        Update: {
+          audit_export_id?: string | null
+          block_reasons?: string[]
+          claim_status?: string
+          created_at?: string
+          created_by?: string
+          evidence_manifest_id?: string | null
+          id?: string
+          job_id?: string
+          replay_proof_id?: string | null
+          report_hash?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_completion_reports_audit_export_id_fkey"
+            columns: ["audit_export_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_audit_exports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_completion_reports_evidence_manifest_id_fkey"
+            columns: ["evidence_manifest_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_evidence_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_completion_reports_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_completion_reports_replay_proof_id_fkey"
+            columns: ["replay_proof_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_replay_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_completion_reports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_connectors: {
+        Row: {
+          active: boolean
+          auth_type: string
+          config: Json
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          provider: string
+          risk_level: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          active?: boolean
+          auth_type?: string
+          config?: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          provider: string
+          risk_level?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          active?: boolean
+          auth_type?: string
+          config?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          provider?: string
+          risk_level?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_connectors_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_credential_leases: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          lease_id: string
+          max_renewals: number | null
+          redaction_fingerprint: string
+          renewals: number | null
+          secret_name: string
+          valid: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          lease_id: string
+          max_renewals?: number | null
+          redaction_fingerprint: string
+          renewals?: number | null
+          secret_name: string
+          valid?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          lease_id?: string
+          max_renewals?: number | null
+          redaction_fingerprint?: string
+          renewals?: number | null
+          secret_name?: string
+          valid?: boolean | null
+        }
+        Relationships: []
+      }
+      dsg_crud_proof_tasks: {
+        Row: {
+          created_at: string
+          done: boolean
+          id: string
+          metadata: Json
+          org_id: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          metadata?: Json
+          org_id: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          metadata?: Json
+          org_id?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_deployment_proofs: {
+        Row: {
+          checked_by: string
+          created_at: string
+          deployment_url: string
+          details: Json
+          environment: string
+          id: string
+          job_id: string | null
+          proof_hash: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          checked_by: string
+          created_at?: string
+          deployment_url: string
+          details?: Json
+          environment: string
+          id?: string
+          job_id?: string | null
+          proof_hash: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          checked_by?: string
+          created_at?: string
+          deployment_url?: string
+          details?: Json
+          environment?: string
+          id?: string
+          job_id?: string | null
+          proof_hash?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_deployment_proofs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_deployment_proofs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_evidence_items: {
+        Row: {
+          content_hash: string
+          created_at: string
+          created_by: string
+          evidence_type: string
+          id: string
+          job_id: string
+          metadata: Json
+          summary: string
+          uri: string | null
+          workspace_id: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          created_by: string
+          evidence_type: string
+          id?: string
+          job_id: string
+          metadata?: Json
+          summary: string
+          uri?: string | null
+          workspace_id: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          created_by?: string
+          evidence_type?: string
+          id?: string
+          job_id?: string
+          metadata?: Json
+          summary?: string
+          uri?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_evidence_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_evidence_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_evidence_manifests: {
+        Row: {
+          created_at: string
+          created_by: string
+          evidence_ids: string[]
+          id: string
+          job_id: string
+          manifest_hash: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          evidence_ids?: string[]
+          id?: string
+          job_id: string
+          manifest_hash: string
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          evidence_ids?: string[]
+          id?: string
+          job_id?: string
+          manifest_hash?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_evidence_manifests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_evidence_manifests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_execution_grants: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          grant_id: string
+          id: string
+          issued_at: string
+          max_renewals: number | null
+          plan_hash: string
+          renewals: number | null
+          ttl_ms: number
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          grant_id: string
+          id?: string
+          issued_at: string
+          max_renewals?: number | null
+          plan_hash: string
+          renewals?: number | null
+          ttl_ms: number
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          grant_id?: string
+          id?: string
+          issued_at?: string
+          max_renewals?: number | null
+          plan_hash?: string
+          renewals?: number | null
+          ttl_ms?: number
+        }
+        Relationships: []
+      }
+      dsg_graphmap_graphs: {
+        Row: {
+          built_at: string
+          built_by: string
+          created_at: string
+          edge_count: number
+          exclude_patterns: Json
+          graph_data: Json
+          id: string
+          include_patterns: Json
+          node_count: number
+          warnings: string[]
+          workspace_id: string
+        }
+        Insert: {
+          built_at?: string
+          built_by: string
+          created_at?: string
+          edge_count?: number
+          exclude_patterns?: Json
+          graph_data: Json
+          id?: string
+          include_patterns?: Json
+          node_count?: number
+          warnings?: string[]
+          workspace_id: string
+        }
+        Update: {
+          built_at?: string
+          built_by?: string
+          created_at?: string
+          edge_count?: number
+          exclude_patterns?: Json
+          graph_data?: Json
+          id?: string
+          include_patterns?: Json
+          node_count?: number
+          warnings?: string[]
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_input_locks: {
+        Row: {
+          canonical_input: Json
+          created_at: string
+          id: string
+          input_hash: string
+          job_id: string
+          locked_by: string
+          workspace_id: string
+        }
+        Insert: {
+          canonical_input: Json
+          created_at?: string
+          id?: string
+          input_hash: string
+          job_id: string
+          locked_by: string
+          workspace_id: string
+        }
+        Update: {
+          canonical_input?: Json
+          created_at?: string
+          id?: string
+          input_hash?: string
+          job_id?: string
+          locked_by?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_input_locks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_input_locks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_ledger_config: {
+        Row: {
+          audit_enabled: boolean
+          chain_enabled: boolean
+          created_at: string
+          gate_enabled: boolean
+          mode: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          audit_enabled?: boolean
+          chain_enabled?: boolean
+          created_at?: string
+          gate_enabled?: boolean
+          mode?: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          audit_enabled?: boolean
+          chain_enabled?: boolean
+          created_at?: string
+          gate_enabled?: boolean
+          mode?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dsg_mcp_api_keys: {
+        Row: {
+          actor_id: string
+          calls_limit: number
+          created_at: string
+          key_hash: string
+          key_id: string
+          key_prefix: string
+          label: string
+          period_end: string
+          period_start: string
+          plan_id: string
+          revoked_at: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          calls_limit?: number
+          created_at?: string
+          key_hash: string
+          key_id?: string
+          key_prefix: string
+          label?: string
+          period_end?: string
+          period_start?: string
+          plan_id?: string
+          revoked_at?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          calls_limit?: number
+          created_at?: string
+          key_hash?: string
+          key_id?: string
+          key_prefix?: string
+          label?: string
+          period_end?: string
+          period_start?: string
+          plan_id?: string
+          revoked_at?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: []
+      }
+      dsg_mcp_usage: {
+        Row: {
+          actor_id: string
+          called_at: string
+          key_id: string
+          tool_name: string
+          usage_id: string
+        }
+        Insert: {
+          actor_id: string
+          called_at?: string
+          key_id: string
+          tool_name: string
+          usage_id?: string
+        }
+        Update: {
+          actor_id?: string
+          called_at?: string
+          key_id?: string
+          tool_name?: string
+          usage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_mcp_usage_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_mcp_api_keys"
+            referencedColumns: ["key_id"]
+          },
+        ]
+      }
+      dsg_memory_context_packs: {
+        Row: {
+          actor_id: string
+          audit_ids: string[]
+          context_hash: string
+          context_text: string
+          created_at: string
+          evidence_ids: string[]
+          gate_reasons: string[]
+          gate_status: string
+          id: string
+          job_id: string | null
+          memory_ids: string[]
+          purpose: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          audit_ids?: string[]
+          context_hash: string
+          context_text: string
+          created_at?: string
+          evidence_ids?: string[]
+          gate_reasons?: string[]
+          gate_status: string
+          id?: string
+          job_id?: string | null
+          memory_ids: string[]
+          purpose: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          audit_ids?: string[]
+          context_hash?: string
+          context_text?: string
+          created_at?: string
+          evidence_ids?: string[]
+          gate_reasons?: string[]
+          gate_status?: string
+          id?: string
+          job_id?: string | null
+          memory_ids?: string[]
+          purpose?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_memory_edges: {
+        Row: {
+          confidence: number
+          created_at: string
+          edge_type: string
+          from_memory_id: string
+          id: string
+          reason: string | null
+          to_memory_id: string
+          workspace_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          edge_type: string
+          from_memory_id: string
+          id?: string
+          reason?: string | null
+          to_memory_id: string
+          workspace_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          edge_type?: string
+          from_memory_id?: string
+          id?: string
+          reason?: string | null
+          to_memory_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_memory_edges_from_memory_id_fkey"
+            columns: ["from_memory_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_memory_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_memory_edges_to_memory_id_fkey"
+            columns: ["to_memory_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_memory_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_memory_events: {
+        Row: {
+          actor_id: string
+          actor_role: string
+          contains_legal_claim: boolean
+          contains_pii: boolean
+          contains_production_claim: boolean
+          contains_secret: boolean
+          content_hash: string
+          created_at: string
+          id: string
+          job_id: string | null
+          memory_kind: string
+          metadata: Json
+          normalized_summary: string | null
+          raw_text: string
+          source_audit_id: string | null
+          source_evidence_id: string | null
+          source_type: string
+          status: string
+          trust_level: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          actor_role: string
+          contains_legal_claim?: boolean
+          contains_pii?: boolean
+          contains_production_claim?: boolean
+          contains_secret?: boolean
+          content_hash: string
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          memory_kind: string
+          metadata?: Json
+          normalized_summary?: string | null
+          raw_text: string
+          source_audit_id?: string | null
+          source_evidence_id?: string | null
+          source_type: string
+          status?: string
+          trust_level?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          actor_role?: string
+          contains_legal_claim?: boolean
+          contains_pii?: boolean
+          contains_production_claim?: boolean
+          contains_secret?: boolean
+          content_hash?: string
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          memory_kind?: string
+          metadata?: Json
+          normalized_summary?: string | null
+          raw_text?: string
+          source_audit_id?: string | null
+          source_evidence_id?: string | null
+          source_type?: string
+          status?: string
+          trust_level?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_memory_retrievals: {
+        Row: {
+          actor_id: string
+          blocked_memory_ids: string[]
+          context_pack_id: string | null
+          created_at: string
+          gate_reasons: string[]
+          gate_status: string
+          id: string
+          job_id: string | null
+          query_text: string
+          retrieval_scope: Json
+          retrieved_memory_ids: string[]
+          review_memory_ids: string[]
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          blocked_memory_ids?: string[]
+          context_pack_id?: string | null
+          created_at?: string
+          gate_reasons?: string[]
+          gate_status: string
+          id?: string
+          job_id?: string | null
+          query_text: string
+          retrieval_scope?: Json
+          retrieved_memory_ids?: string[]
+          review_memory_ids?: string[]
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          blocked_memory_ids?: string[]
+          context_pack_id?: string | null
+          created_at?: string
+          gate_reasons?: string[]
+          gate_status?: string
+          id?: string
+          job_id?: string | null
+          query_text?: string
+          retrieval_scope?: Json
+          retrieved_memory_ids?: string[]
+          review_memory_ids?: string[]
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      dsg_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dsg_production_flow_proofs: {
+        Row: {
+          checked_by: string
+          created_at: string
+          details: Json
+          flow_name: string
+          id: string
+          job_id: string | null
+          proof_hash: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          checked_by: string
+          created_at?: string
+          details?: Json
+          flow_name: string
+          id?: string
+          job_id?: string | null
+          proof_hash: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          checked_by?: string
+          created_at?: string
+          details?: Json
+          flow_name?: string
+          id?: string
+          job_id?: string | null
+          proof_hash?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_production_flow_proofs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_production_flow_proofs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_replay_proofs: {
+        Row: {
+          checked_by: string
+          created_at: string
+          details: Json
+          id: string
+          job_id: string
+          replay_hash: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          checked_by: string
+          created_at?: string
+          details?: Json
+          id?: string
+          job_id: string
+          replay_hash: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          checked_by?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          job_id?: string
+          replay_hash?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_replay_proofs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_replay_proofs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_runtime_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_type: string
+          id: string
+          job_id: string
+          message: string
+          payload: Json
+          risk_level: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          job_id: string
+          message: string
+          payload?: Json
+          risk_level?: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          job_id?: string
+          message?: string
+          payload?: Json
+          risk_level?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_runtime_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_runtime_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_runtime_jobs: {
+        Row: {
+          completion_report_id: string | null
+          created_at: string
+          created_by: string
+          current_step_id: string | null
+          current_wave_id: string | null
+          goal: string
+          id: string
+          input_lock_id: string | null
+          metadata: Json
+          risk_level: string
+          status: string
+          success_criteria: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          completion_report_id?: string | null
+          created_at?: string
+          created_by: string
+          current_step_id?: string | null
+          current_wave_id?: string | null
+          goal: string
+          id?: string
+          input_lock_id?: string | null
+          metadata?: Json
+          risk_level?: string
+          status?: string
+          success_criteria?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          completion_report_id?: string | null
+          created_at?: string
+          created_by?: string
+          current_step_id?: string | null
+          current_wave_id?: string | null
+          goal?: string
+          id?: string
+          input_lock_id?: string | null
+          metadata?: Json
+          risk_level?: string
+          status?: string
+          success_criteria?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_runtime_jobs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_schema_meta: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      dsg_secrets: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          encryption_algorithm: string | null
+          encryption_key_version: number | null
+          id: string
+          name: string
+          org_id: string | null
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          encryption_algorithm?: string | null
+          encryption_key_version?: number | null
+          id?: string
+          name: string
+          org_id?: string | null
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          encryption_algorithm?: string | null
+          encryption_key_version?: number | null
+          id?: string
+          name?: string
+          org_id?: string | null
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_secrets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_secrets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_task_plans: {
+        Row: {
+          created_at: string
+          created_by: string
+          dependency_edges: Json
+          id: string
+          job_id: string
+          plan_hash: string
+          status: string
+          tasks: Json
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dependency_edges?: Json
+          id?: string
+          job_id: string
+          plan_hash: string
+          status?: string
+          tasks?: Json
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dependency_edges?: Json
+          id?: string
+          job_id?: string
+          plan_hash?: string
+          status?: string
+          tasks?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_task_plans_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_task_plans_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_template_sales: {
+        Row: {
+          buyer_id: string
+          commission_rate_bps: number
+          created_at: string
+          creator_payout_satang: number
+          platform_fee_satang: number
+          price_satang: number
+          sale_id: string
+          seller_id: string
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          template_id: string
+        }
+        Insert: {
+          buyer_id: string
+          commission_rate_bps?: number
+          created_at?: string
+          creator_payout_satang: number
+          platform_fee_satang: number
+          price_satang: number
+          sale_id?: string
+          seller_id: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          template_id: string
+        }
+        Update: {
+          buyer_id?: string
+          commission_rate_bps?: number
+          created_at?: string
+          creator_payout_satang?: number
+          platform_fee_satang?: number
+          price_satang?: number
+          sale_id?: string
+          seller_id?: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_template_sales_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          popular: boolean
+          price_satang: number
+          seller_id: string | null
+          sharing_mode: string
+          slug: string
+          stack: string[]
+          stars: number
+          version: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          name: string
+          popular?: boolean
+          price_satang?: number
+          seller_id?: string | null
+          sharing_mode?: string
+          slug: string
+          stack?: string[]
+          stars?: number
+          version?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          popular?: boolean
+          price_satang?: number
+          seller_id?: string | null
+          sharing_mode?: string
+          slug?: string
+          stack?: string[]
+          stars?: number
+          version?: string
+        }
+        Relationships: []
+      }
+      dsg_tool_registry: {
+        Row: {
+          connector_id: string | null
+          created_at: string
+          description: string
+          id: string
+          method: string | null
+          path: string | null
+          requires_approval: boolean
+          risk_level: string
+          schema: Json
+          tool_name: string
+          workspace_id: string
+        }
+        Insert: {
+          connector_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          method?: string | null
+          path?: string | null
+          requires_approval?: boolean
+          risk_level?: string
+          schema?: Json
+          tool_name: string
+          workspace_id: string
+        }
+        Update: {
+          connector_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          method?: string | null
+          path?: string | null
+          requires_approval?: boolean
+          risk_level?: string
+          schema?: Json
+          tool_name?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_tool_registry_connector_id_fkey"
+            columns: ["connector_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_connectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_tool_registry_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_wave_plans: {
+        Row: {
+          created_at: string
+          current_wave_index: number
+          id: string
+          job_id: string
+          status: string
+          task_plan_id: string
+          wave_hash: string
+          waves: Json
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_wave_index?: number
+          id?: string
+          job_id: string
+          status?: string
+          task_plan_id: string
+          wave_hash: string
+          waves?: Json
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          current_wave_index?: number
+          id?: string
+          job_id?: string
+          status?: string
+          task_plan_id?: string
+          wave_hash?: string
+          waves?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_wave_plans_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_runtime_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_wave_plans_task_plan_id_fkey"
+            columns: ["task_plan_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_task_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsg_wave_plans_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_workspace_members: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          role: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          role: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dsg_workspaces: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          metadata: Json
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          metadata?: Json
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      enterprise_leads: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string | null
+          id: number
+          name: string | null
+          use_case: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: never
+          name?: string | null
+          use_case?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: never
+          name?: string | null
+          use_case?: string | null
+        }
+        Relationships: []
+      }
+      execution_audit: {
+        Row: {
+          action_type: string | null
+          agent: string | null
+          decision: string | null
+          drift: number | null
+          entropy: number | null
+          harmonic_center: number | null
+          hash: string | null
+          hash_prev: string | null
+          id: number
+          next_state: Json | null
+          phase: string | null
+          prev_state: Json | null
+          reason: string | null
+          stability: number | null
+          timestamp: string | null
+        }
+        Insert: {
+          action_type?: string | null
+          agent?: string | null
+          decision?: string | null
+          drift?: number | null
+          entropy?: number | null
+          harmonic_center?: number | null
+          hash?: string | null
+          hash_prev?: string | null
+          id?: never
+          next_state?: Json | null
+          phase?: string | null
+          prev_state?: Json | null
+          reason?: string | null
+          stability?: number | null
+          timestamp?: string | null
+        }
+        Update: {
+          action_type?: string | null
+          agent?: string | null
+          decision?: string | null
+          drift?: number | null
+          entropy?: number | null
+          harmonic_center?: number | null
+          hash?: string | null
+          hash_prev?: string | null
+          id?: never
+          next_state?: Json | null
+          phase?: string | null
+          prev_state?: Json | null
+          reason?: string | null
+          stability?: number | null
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
+      executions: {
+        Row: {
+          agent_id: string
+          context_payload: Json | null
+          created_at: string
+          decision: string
+          id: string
+          latency_ms: number
+          org_id: string | null
+          policy_version: string | null
+          reason: string | null
+          request_payload: Json | null
+        }
+        Insert: {
+          agent_id: string
+          context_payload?: Json | null
+          created_at?: string
+          decision: string
+          id?: string
+          latency_ms?: number
+          org_id?: string | null
+          policy_version?: string | null
+          reason?: string | null
+          request_payload?: Json | null
+        }
+        Update: {
+          agent_id?: string
+          context_payload?: Json | null
+          created_at?: string
+          decision?: string
+          id?: string
+          latency_ms?: number
+          org_id?: string | null
+          policy_version?: string | null
+          reason?: string | null
+          request_payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "executions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "executions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_approval_decisions: {
+        Row: {
+          actor: string
+          approval_request_id: string
+          created_at: string
+          decision: string
+          id: string
+          metadata: Json
+          org_id: string
+          reason: string | null
+        }
+        Insert: {
+          actor?: string
+          approval_request_id: string
+          created_at?: string
+          decision: string
+          id?: string
+          metadata?: Json
+          org_id: string
+          reason?: string | null
+        }
+        Update: {
+          actor?: string
+          approval_request_id?: string
+          created_at?: string
+          decision?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_approval_decisions_approval_request_id_fkey"
+            columns: ["approval_request_id"]
+            isOneToOne: false
+            referencedRelation: "finance_approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_approval_requests: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          org_id: string
+          risk: string
+          status: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          metadata?: Json
+          org_id: string
+          risk?: string
+          status?: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          risk?: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_approval_requests_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_governance_audit_ledger: {
+        Row: {
+          action: string
+          actor: string
+          approval_id: string | null
+          case_id: string | null
+          created_at: string
+          id: string
+          message: string
+          next_status: string
+          org_id: string
+          payload: Json
+          record_hash: string
+          request_hash: string
+          result: string
+          target: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string
+          approval_id?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          next_status: string
+          org_id: string
+          payload?: Json
+          record_hash: string
+          request_hash: string
+          result?: string
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          approval_id?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          next_status?: string
+          org_id?: string
+          payload?: Json
+          record_hash?: string
+          request_hash?: string
+          result?: string
+          target?: string | null
+        }
+        Relationships: []
+      }
+      finance_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          org_id: string
+          status: string
+          updated_at: string
+          vendor: string
+          workflow_case_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id: string
+          metadata?: Json
+          org_id: string
+          status?: string
+          updated_at?: string
+          vendor?: string
+          workflow_case_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          status?: string
+          updated_at?: string
+          vendor?: string
+          workflow_case_id?: string | null
+        }
+        Relationships: []
+      }
+      finance_workflow_action_events: {
+        Row: {
+          action: string
+          actor: string
+          approval_id: string | null
+          case_id: string | null
+          created_at: string
+          id: string
+          message: string
+          next_status: string
+          org_id: string
+          payload: Json
+          result: string
+          target: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string
+          approval_id?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          next_status: string
+          org_id: string
+          payload?: Json
+          result?: string
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          approval_id?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          next_status?: string
+          org_id?: string
+          payload?: Json
+          result?: string
+          target?: string | null
+        }
+        Relationships: []
+      }
+      gateway_connectors: {
+        Row: {
+          connected_at: string | null
+          created_at: string
+          endpoint_url: string
+          id: string
+          metadata: Json
+          name: string
+          org_id: string
+          provider: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          connected_at?: string | null
+          created_at?: string
+          endpoint_url: string
+          id?: string
+          metadata?: Json
+          name?: string
+          org_id: string
+          provider: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          connected_at?: string | null
+          created_at?: string
+          endpoint_url?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          org_id?: string
+          provider?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gateway_monitor_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          audit_token: string | null
+          committed_at: string | null
+          constraints: Json
+          created_at: string
+          decision: string
+          decision_hash: string | null
+          id: string
+          input: Json
+          mode: string
+          org_id: string
+          plan_id: string | null
+          record_hash: string | null
+          request_hash: string
+          result: Json | null
+          risk: string | null
+          status: string
+          tool_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          audit_token?: string | null
+          committed_at?: string | null
+          constraints?: Json
+          created_at?: string
+          decision: string
+          decision_hash?: string | null
+          id?: string
+          input?: Json
+          mode?: string
+          org_id: string
+          plan_id?: string | null
+          record_hash?: string | null
+          request_hash: string
+          result?: Json | null
+          risk?: string | null
+          status?: string
+          tool_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          audit_token?: string | null
+          committed_at?: string | null
+          constraints?: Json
+          created_at?: string
+          decision?: string
+          decision_hash?: string | null
+          id?: string
+          input?: Json
+          mode?: string
+          org_id?: string
+          plan_id?: string | null
+          record_hash?: string | null
+          request_hash?: string
+          result?: Json | null
+          risk?: string | null
+          status?: string
+          tool_name?: string
+        }
+        Relationships: []
+      }
+      gateway_tools: {
+        Row: {
+          action: string
+          connector_id: string
+          created_at: string
+          description: string | null
+          enabled: boolean
+          execution_mode: string
+          id: string
+          metadata: Json
+          name: string
+          org_id: string
+          provider: string
+          requires_approval: boolean
+          risk: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          connector_id: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          execution_mode?: string
+          id?: string
+          metadata?: Json
+          name: string
+          org_id: string
+          provider: string
+          requires_approval?: boolean
+          risk?: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          connector_id?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          execution_mode?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          org_id?: string
+          provider?: string
+          requires_approval?: boolean
+          risk?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gateway_tools_connector_id_fkey"
+            columns: ["connector_id"]
+            isOneToOne: false
+            referencedRelation: "gateway_connectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_access_grants: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by_user_id: string | null
+          org_id: string
+          role: string
+          scope: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          org_id: string
+          role?: string
+          scope?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          org_id?: string
+          role?: string
+          scope?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_access_grants_invited_by_user_id_fkey"
+            columns: ["invited_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_access_grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      github_app_installations: {
+        Row: {
+          agent_api_key: string
+          agent_id: string
+          github_account_login: string | null
+          installation_id: number
+          installed_at: string
+          org_id: string
+        }
+        Insert: {
+          agent_api_key: string
+          agent_id: string
+          github_account_login?: string | null
+          installation_id: number
+          installed_at?: string
+          org_id: string
+        }
+        Update: {
+          agent_api_key?: string
+          agent_id?: string
+          github_account_login?: string | null
+          installation_id?: number
+          installed_at?: string
+          org_id?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          company: string | null
+          converted: boolean
+          created_at: string
+          email: string
+          framework: string | null
+          github_repo: string | null
+          github_stars: number | null
+          id: string
+          intent: string | null
+          intent_score: number | null
+          job_title: string | null
+          last_seen_at: string
+          messages: Json | null
+          org_id: string | null
+          outreach_sent: boolean
+          outreach_sent_at: string | null
+          source: string
+        }
+        Insert: {
+          company?: string | null
+          converted?: boolean
+          created_at?: string
+          email: string
+          framework?: string | null
+          github_repo?: string | null
+          github_stars?: number | null
+          id?: string
+          intent?: string | null
+          intent_score?: number | null
+          job_title?: string | null
+          last_seen_at?: string
+          messages?: Json | null
+          org_id?: string | null
+          outreach_sent?: boolean
+          outreach_sent_at?: string | null
+          source?: string
+        }
+        Update: {
+          company?: string | null
+          converted?: boolean
+          created_at?: string
+          email?: string
+          framework?: string | null
+          github_repo?: string | null
+          github_stars?: number | null
+          id?: string
+          intent?: string | null
+          intent_score?: number | null
+          job_title?: string | null
+          last_seen_at?: string
+          messages?: Json | null
+          org_id?: string | null
+          outreach_sent?: boolean
+          outreach_sent_at?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
+      marketing_agent_runs: {
+        Row: {
+          actions_taken: string[]
+          created_at: string
+          error: string | null
+          id: string
+          run_at: string
+          status: string
+          summary: string
+        }
+        Insert: {
+          actions_taken?: string[]
+          created_at?: string
+          error?: string | null
+          id?: string
+          run_at?: string
+          status?: string
+          summary?: string
+        }
+        Update: {
+          actions_taken?: string[]
+          created_at?: string
+          error?: string | null
+          id?: string
+          run_at?: string
+          status?: string
+          summary?: string
+        }
+        Relationships: []
+      }
+      marketing_content: {
+        Row: {
+          angle: string | null
+          body: string
+          created_at: string
+          id: string
+          keyword: string | null
+          meta_description: string | null
+          slug: string | null
+          status: string
+          title: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          angle?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          keyword?: string | null
+          meta_description?: string | null
+          slug?: string | null
+          status?: string
+          title?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          angle?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          keyword?: string | null
+          meta_description?: string | null
+          slug?: string | null
+          status?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_sends: {
+        Row: {
+          email: string
+          id: number
+          org_id: string
+          send_key: string
+          sent_at: string
+        }
+        Insert: {
+          email: string
+          id?: number
+          org_id: string
+          send_key: string
+          sent_at?: string
+        }
+        Update: {
+          email?: string
+          id?: number
+          org_id?: string
+          send_key?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          email: boolean
+          id: string
+          org_id: string
+          pagerduty: boolean
+          pagerduty_key: string | null
+          slack: boolean
+          slack_webhook_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          email?: boolean
+          id?: string
+          org_id: string
+          pagerduty?: boolean
+          pagerduty_key?: string | null
+          slack?: boolean
+          slack_webhook_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          email?: boolean
+          id?: string
+          org_id?: string
+          pagerduty?: boolean
+          pagerduty_key?: string | null
+          slack?: boolean
+          slack_webhook_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          org_id: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          org_id: string
+          read?: boolean
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          org_id?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_billing_policies: {
+        Row: {
+          created_at: string
+          id: string
+          managed_user_billing_mode: string
+          org_id: string
+          seat_activation_policy: string
+          trial_requires_card: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          managed_user_billing_mode?: string
+          org_id: string
+          seat_activation_policy?: string
+          trial_requires_card?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          managed_user_billing_mode?: string
+          org_id?: string
+          seat_activation_policy?: string
+          trial_requires_card?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_billing_policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_onboarding_states: {
+        Row: {
+          bootstrap_status: string
+          bootstrapped_at: string | null
+          checklist: Json
+          created_at: string
+          id: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          bootstrap_status?: string
+          bootstrapped_at?: string | null
+          checklist?: Json
+          created_at?: string
+          id?: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          bootstrap_status?: string
+          bootstrapped_at?: string | null
+          checklist?: Json
+          created_at?: string
+          id?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_onboarding_states_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_sso_configs: {
+        Row: {
+          break_glass_email_login_enabled: boolean
+          connection_id: string | null
+          created_at: string
+          display_name: string | null
+          enforce_sso: boolean
+          id: string
+          is_enabled: boolean
+          login_hint: string | null
+          metadata: Json
+          org_id: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          break_glass_email_login_enabled?: boolean
+          connection_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          enforce_sso?: boolean
+          id?: string
+          is_enabled?: boolean
+          login_hint?: string | null
+          metadata?: Json
+          org_id: string
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          break_glass_email_login_enabled?: boolean
+          connection_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          enforce_sso?: boolean
+          id?: string
+          is_enabled?: boolean
+          login_hint?: string | null
+          metadata?: Json
+          org_id?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_sso_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_stats_hourly: {
+        Row: {
+          active_agents: number
+          active_users: number
+          alerts_count: number
+          allow_count: number
+          allow_rate: number
+          avg_latency_ms: number
+          block_count: number
+          block_rate: number
+          bucket_start: string
+          core_ok_ratio: number | null
+          created_at: string
+          degraded_minutes: number
+          determinism_ok_ratio: number | null
+          down_minutes: number
+          error_count: number
+          id: number
+          org_id: string
+          p95_latency_ms: number | null
+          requests_count: number
+          stabilize_count: number
+          stabilize_rate: number
+        }
+        Insert: {
+          active_agents?: number
+          active_users?: number
+          alerts_count?: number
+          allow_count?: number
+          allow_rate?: number
+          avg_latency_ms?: number
+          block_count?: number
+          block_rate?: number
+          bucket_start: string
+          core_ok_ratio?: number | null
+          created_at?: string
+          degraded_minutes?: number
+          determinism_ok_ratio?: number | null
+          down_minutes?: number
+          error_count?: number
+          id?: number
+          org_id: string
+          p95_latency_ms?: number | null
+          requests_count?: number
+          stabilize_count?: number
+          stabilize_rate?: number
+        }
+        Update: {
+          active_agents?: number
+          active_users?: number
+          alerts_count?: number
+          allow_count?: number
+          allow_rate?: number
+          avg_latency_ms?: number
+          block_count?: number
+          block_rate?: number
+          bucket_start?: string
+          core_ok_ratio?: number | null
+          created_at?: string
+          degraded_minutes?: number
+          determinism_ok_ratio?: number | null
+          down_minutes?: number
+          error_count?: number
+          id?: number
+          org_id?: string
+          p95_latency_ms?: number | null
+          requests_count?: number
+          stabilize_count?: number
+          stabilize_rate?: number
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          plan: string | null
+          slug: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          plan?: string | null
+          slug?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          plan?: string | null
+          slug?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_total: number | null
+          checkout_session_id: string | null
+          created_at: string | null
+          currency: string | null
+          customer_email: string | null
+          customer_id: string | null
+          id: number
+          payment_status: string | null
+          stripe_event_id: string | null
+        }
+        Insert: {
+          amount_total?: number | null
+          checkout_session_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          id?: never
+          payment_status?: string | null
+          stripe_event_id?: string | null
+        }
+        Update: {
+          amount_total?: number | null
+          checkout_session_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          id?: never
+          payment_status?: string | null
+          stripe_event_id?: string | null
+        }
+        Relationships: []
+      }
+      policies: {
+        Row: {
+          config: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          org_id: string | null
+          rules: Json
+          status: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          org_id?: string | null
+          rules?: Json
+          status?: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          org_id?: string | null
+          rules?: Json
+          status?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      readiness_history: {
+        Row: {
+          audit_ok: boolean | null
+          auth_ok: boolean | null
+          billing_ok: boolean | null
+          core_health_ok: boolean | null
+          core_metrics_ok: boolean | null
+          db_ok: boolean | null
+          details: Json
+          determinism_ok: boolean | null
+          id: number
+          ledger_ok: boolean | null
+          org_id: string
+          reason_codes: Json
+          recorded_at: string
+          score: number
+          status: string
+        }
+        Insert: {
+          audit_ok?: boolean | null
+          auth_ok?: boolean | null
+          billing_ok?: boolean | null
+          core_health_ok?: boolean | null
+          core_metrics_ok?: boolean | null
+          db_ok?: boolean | null
+          details?: Json
+          determinism_ok?: boolean | null
+          id?: number
+          ledger_ok?: boolean | null
+          org_id: string
+          reason_codes?: Json
+          recorded_at?: string
+          score?: number
+          status: string
+        }
+        Update: {
+          audit_ok?: boolean | null
+          auth_ok?: boolean | null
+          billing_ok?: boolean | null
+          core_health_ok?: boolean | null
+          core_metrics_ok?: boolean | null
+          db_ok?: boolean | null
+          details?: Json
+          determinism_ok?: boolean | null
+          id?: number
+          ledger_ok?: boolean | null
+          org_id?: string
+          reason_codes?: Json
+          recorded_at?: string
+          score?: number
+          status?: string
+        }
+        Relationships: []
+      }
+      runtime_approval_requests: {
+        Row: {
+          agent_id: string | null
+          approval_key: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          org_id: string | null
+          request_payload: Json | null
+          status: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          approval_key?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          org_id?: string | null
+          request_payload?: Json | null
+          status?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          approval_key?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          org_id?: string | null
+          request_payload?: Json | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      runtime_checkpoints: {
+        Row: {
+          agent_id: string
+          checkpoint_hash: string
+          created_at: string
+          id: string
+          latest_ledger_entry_id: string | null
+          metadata: Json
+          org_id: string
+          truth_state_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          checkpoint_hash: string
+          created_at?: string
+          id?: string
+          latest_ledger_entry_id?: string | null
+          metadata?: Json
+          org_id: string
+          truth_state_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          checkpoint_hash?: string
+          created_at?: string
+          id?: string
+          latest_ledger_entry_id?: string | null
+          metadata?: Json
+          org_id?: string
+          truth_state_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_checkpoints_latest_ledger_entry_id_fkey"
+            columns: ["latest_ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_checkpoints_truth_state_id_fkey"
+            columns: ["truth_state_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_truth_states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runtime_effects: {
+        Row: {
+          agent_id: string
+          callback_count: number
+          created_at: string
+          effect_type: string
+          id: string
+          ledger_entry_id: string | null
+          org_id: string
+          payload: Json
+          result_payload: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          callback_count?: number
+          created_at?: string
+          effect_type: string
+          id?: string
+          ledger_entry_id?: string | null
+          org_id: string
+          payload?: Json
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          callback_count?: number
+          created_at?: string
+          effect_type?: string
+          id?: string
+          ledger_entry_id?: string | null
+          org_id?: string
+          payload?: Json
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_effects_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_ledger_entry_id_fkey"
+            columns: ["ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      runtime_ledger_entries: {
+        Row: {
+          agent_id: string
+          canonical_hash: string | null
+          created_at: string
+          decision: string | null
+          execution_id: string | null
+          id: string
+          ledger_sequence: number
+          metadata: Json
+          org_id: string
+          reason: string | null
+          request_id: string | null
+          truth_sequence: number
+          truth_state_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          canonical_hash?: string | null
+          created_at?: string
+          decision?: string | null
+          execution_id?: string | null
+          id?: string
+          ledger_sequence?: number
+          metadata?: Json
+          org_id: string
+          reason?: string | null
+          request_id?: string | null
+          truth_sequence: number
+          truth_state_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          canonical_hash?: string | null
+          created_at?: string
+          decision?: string | null
+          execution_id?: string | null
+          id?: string
+          ledger_sequence?: number
+          metadata?: Json
+          org_id?: string
+          reason?: string | null
+          request_id?: string | null
+          truth_sequence?: number
+          truth_state_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_ledger_entries_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_ledger_entries_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_approval_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_ledger_entries_truth_state_id_fkey"
+            columns: ["truth_state_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_truth_states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runtime_policies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          governance_state: string
+          id: string
+          name: string
+          org_id: string
+          status: string
+          thresholds: Json
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          governance_state?: string
+          id?: string
+          name: string
+          org_id: string
+          status?: string
+          thresholds?: Json
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          governance_state?: string
+          id?: string
+          name?: string
+          org_id?: string
+          status?: string
+          thresholds?: Json
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runtime_policy_governance_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          org_id: string
+          policy_id: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          org_id: string
+          policy_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          policy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_policy_governance_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_policy_governance_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_policy_governance_events_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runtime_roles: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_roles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runtime_truth_states: {
+        Row: {
+          agent_id: string
+          canonical_hash: string | null
+          canonical_json: Json
+          created_at: string
+          decision: string | null
+          id: string
+          org_id: string
+          policy_version: string | null
+          reason: string | null
+          request_id: string | null
+          truth_sequence: number
+        }
+        Insert: {
+          agent_id: string
+          canonical_hash?: string | null
+          canonical_json?: Json
+          created_at?: string
+          decision?: string | null
+          id?: string
+          org_id: string
+          policy_version?: string | null
+          reason?: string | null
+          request_id?: string | null
+          truth_sequence: number
+        }
+        Update: {
+          agent_id?: string
+          canonical_hash?: string | null
+          canonical_json?: Json
+          created_at?: string
+          decision?: string | null
+          id?: string
+          org_id?: string
+          policy_version?: string | null
+          reason?: string | null
+          request_id?: string | null
+          truth_sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_truth_states_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seat_activations: {
+        Row: {
+          activated_at: string
+          billable_from: string
+          created_at: string
+          email: string
+          guest_grant_id: string | null
+          id: string
+          org_id: string
+          role: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          activated_at: string
+          billable_from: string
+          created_at?: string
+          email: string
+          guest_grant_id?: string | null
+          id?: string
+          org_id: string
+          role?: string | null
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          activated_at?: string
+          billable_from?: string
+          created_at?: string
+          email?: string
+          guest_grant_id?: string | null
+          id?: string
+          org_id?: string
+          role?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_activations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seat_activations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_in_events: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          email: string
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json
+          org_id: string | null
+          source: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          email: string
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          org_id?: string | null
+          source?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          email?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          org_id?: string | null
+          source?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_in_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          org_id: string | null
+          plan: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          org_id?: string | null
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          org_id?: string | null
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trial_signups: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          ref_code: string | null
+          status: string
+          workspace_name: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          ref_code?: string | null
+          status?: string
+          workspace_name: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          ref_code?: string | null
+          status?: string
+          workspace_name?: string
+        }
+        Relationships: []
+      }
+      usage_counters: {
+        Row: {
+          agent_id: string | null
+          billing_period: string
+          executions: number
+          id: string
+          org_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          billing_period: string
+          executions?: number
+          id?: string
+          org_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          billing_period?: string
+          executions?: number
+          id?: string
+          org_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_counters_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_counters_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usage_events: {
+        Row: {
+          agent_id: string | null
+          amount_usd: number
+          created_at: string
+          event_type: string
+          execution_id: string | null
+          id: string
+          metadata: Json
+          org_id: string | null
+          quantity: number
+          unit: string
+        }
+        Insert: {
+          agent_id?: string | null
+          amount_usd?: number
+          created_at?: string
+          event_type?: string
+          execution_id?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string | null
+          quantity?: number
+          unit?: string
+        }
+        Update: {
+          agent_id?: string | null
+          amount_usd?: number
+          created_at?: string
+          event_type?: string
+          execution_id?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string | null
+          quantity?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_events_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_milestones: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: number
+          metadata: Json
+          milestone: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: number
+          metadata?: Json
+          milestone: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: number
+          metadata?: Json
+          milestone?: string
+          org_id?: string
+        }
+        Relationships: []
+      }
+      user_org_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          org_id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          org_id: string
+          role?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          org_id: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          org_id?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          org_id?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_configs: {
+        Row: {
+          active: boolean
+          created_at: string
+          events: string[]
+          id: string
+          org_id: string
+          secret_hash: string
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          events?: string[]
+          id?: string
+          org_id: string
+          secret_hash: string
+          url: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          events?: string[]
+          id?: string
+          org_id?: string
+          secret_hash?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_deliveries: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          event: string
+          id: string
+          response_code: number | null
+          status: string
+          webhook_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          event: string
+          id?: string
+          response_code?: number | null
+          status?: string
+          webhook_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          event?: string
+          id?: string
+          response_code?: number | null
+          status?: string
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Views: {
-      alert_summary_open: {
+      policy_versions: {
         Row: {
-          org_id: string | null;
-          level: string | null;
-          code: string | null;
-          open_count: number | null;
-          last_seen_at: string | null;
-        };
+          description: string | null
+          id: string | null
+          name: string | null
+          org_id: string | null
+          policy_id: string | null
+          policy_version: string | null
+          version: string | null
+        }
         Insert: {
-          org_id?: string | null;
-          level?: string | null;
-          code?: string | null;
-          open_count?: number | null;
-          last_seen_at?: string | null;
-        };
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          org_id?: string | null
+          policy_id?: string | null
+          policy_version?: string | null
+          version?: string | null
+        }
         Update: {
-          org_id?: string | null;
-          level?: string | null;
-          code?: string | null;
-          open_count?: number | null;
-          last_seen_at?: string | null;
-        };
-        Relationships: [];
-      };
-      org_current_readiness: {
-        Row: {
-          org_id: string | null;
-          snapshot_at: string | null;
-          readiness_status: string | null;
-          readiness_score: number | null;
-          readiness_reasons: Json | null;
-          core_health_ok: boolean | null;
-          core_metrics_ok: boolean | null;
-          ledger_ok: boolean | null;
-          audit_ok: boolean | null;
-          determinism_ok: boolean | null;
-          requests_today: number | null;
-          avg_latency_ms: number | null;
-          active_agents: number | null;
-          executions_this_month: number | null;
-          overage_executions: number | null;
-          alerts_count: number | null;
-        };
-        Insert: {
-          org_id?: string | null;
-          snapshot_at?: string | null;
-          readiness_status?: string | null;
-          readiness_score?: number | null;
-          readiness_reasons?: Json | null;
-          core_health_ok?: boolean | null;
-          core_metrics_ok?: boolean | null;
-          ledger_ok?: boolean | null;
-          audit_ok?: boolean | null;
-          determinism_ok?: boolean | null;
-          requests_today?: number | null;
-          avg_latency_ms?: number | null;
-          active_agents?: number | null;
-          executions_this_month?: number | null;
-          overage_executions?: number | null;
-          alerts_count?: number | null;
-        };
-        Update: {
-          org_id?: string | null;
-          snapshot_at?: string | null;
-          readiness_status?: string | null;
-          readiness_score?: number | null;
-          readiness_reasons?: Json | null;
-          core_health_ok?: boolean | null;
-          core_metrics_ok?: boolean | null;
-          ledger_ok?: boolean | null;
-          audit_ok?: boolean | null;
-          determinism_ok?: boolean | null;
-          requests_today?: number | null;
-          avg_latency_ms?: number | null;
-          active_agents?: number | null;
-          executions_this_month?: number | null;
-          overage_executions?: number | null;
-          alerts_count?: number | null;
-        };
-        Relationships: [];
-      };
-      agent_hotspots_7d: {
-        Row: {
-          org_id: string | null;
-          agent_id: string | null;
-          requests_count_7d: number | null;
-          block_count_7d: number | null;
-          stabilize_count_7d: number | null;
-          avg_latency_ms_7d: number | null;
-          quota_hits_7d: number | null;
-          last_used_at: string | null;
-        };
-        Insert: {
-          org_id?: string | null;
-          agent_id?: string | null;
-          requests_count_7d?: number | null;
-          block_count_7d?: number | null;
-          stabilize_count_7d?: number | null;
-          avg_latency_ms_7d?: number | null;
-          quota_hits_7d?: number | null;
-          last_used_at?: string | null;
-        };
-        Update: {
-          org_id?: string | null;
-          agent_id?: string | null;
-          requests_count_7d?: number | null;
-          block_count_7d?: number | null;
-          stabilize_count_7d?: number | null;
-          avg_latency_ms_7d?: number | null;
-          quota_hits_7d?: number | null;
-          last_used_at?: string | null;
-        };
-        Relationships: [];
-      };
-    };
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          org_id?: string | null
+          policy_id?: string | null
+          policy_version?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Functions: {
+      activate_mcp_subscription: {
+        Args: {
+          p_key_id: string
+          p_period_end: string
+          p_period_start: string
+          p_stripe_customer_id: string
+          p_stripe_subscription_id: string
+        }
+        Returns: undefined
+      }
+      can_use_template: {
+        Args: { p_actor_id: string; p_template_id: string }
+        Returns: {
+          allowed: boolean
+          price_satang: number
+          reason: string
+          sale_status: string
+        }[]
+      }
+      clear_template_sale: {
+        Args: {
+          p_stripe_checkout_session_id: string
+          p_stripe_payment_intent_id: string
+        }
+        Returns: undefined
+      }
+      create_mcp_api_key: {
+        Args: {
+          p_actor_id: string
+          p_key_hash: string
+          p_key_prefix: string
+          p_label: string
+        }
+        Returns: string
+      }
+      current_org_id: { Args: never; Returns: string }
+      current_public_user_id: { Args: never; Returns: string }
+      current_user_is_active: { Args: never; Returns: boolean }
+      current_user_org_id: { Args: never; Returns: string }
+      dsg_claim_gate: {
+        Args: {
+          has_audit_export: boolean
+          has_auth_rbac_proof: boolean
+          has_deployment_proof: boolean
+          has_evidence: boolean
+          has_production_flow_proof: boolean
+          has_replay_proof: boolean
+          is_dev_or_smoke_only: boolean
+          uses_mock_state: boolean
+        }
+        Returns: Json
+      }
+      dsg_compute_audit_hash: {
+        Args: {
+          action: string
+          actor_id: string
+          decision: string
+          payload: Json
+          previous_hash: string
+        }
+        Returns: string
+      }
+      dsg_create_audit_export: {
+        Args: { p_export_hash: string; p_job_id: string }
+        Returns: string
+      }
+      dsg_create_completion_report: {
+        Args: {
+          p_audit_export_id: string
+          p_deployment_proof_id?: string
+          p_evidence_manifest_id: string
+          p_is_dev_or_smoke_only?: boolean
+          p_job_id: string
+          p_production_flow_proof_id?: string
+          p_replay_proof_id: string
+          p_report_hash: string
+          p_uses_mock_state?: boolean
+        }
+        Returns: string
+      }
+      dsg_create_evidence_manifest: {
+        Args: {
+          p_evidence_ids: string[]
+          p_job_id: string
+          p_manifest_hash: string
+        }
+        Returns: string
+      }
+      dsg_create_plan: {
+        Args: {
+          p_dependency_edges: Json
+          p_job_id: string
+          p_plan_hash: string
+          p_tasks: Json
+          p_wave_hash: string
+          p_waves: Json
+        }
+        Returns: Json
+      }
+      dsg_create_runtime_job: {
+        Args: {
+          p_goal: string
+          p_success_criteria?: Json
+          p_workspace_id: string
+        }
+        Returns: string
+      }
+      dsg_create_workspace: {
+        Args: { p_name: string; p_slug: string }
+        Returns: string
+      }
+      dsg_current_actor_id: { Args: never; Returns: string }
+      dsg_has_permission: {
+        Args: { permission: string; target_workspace_id: string }
+        Returns: boolean
+      }
+      dsg_is_workspace_member: {
+        Args: { target_workspace_id: string }
+        Returns: boolean
+      }
+      dsg_ledger_latest_hash: { Args: { p_org_id: string }; Returns: string }
+      dsg_ledger_next_seq: { Args: { p_org_id: string }; Returns: number }
+      dsg_member_role: {
+        Args: { target_workspace_id: string }
+        Returns: string
+      }
+      dsg_record_deployment_proof: {
+        Args: {
+          p_deployment_url: string
+          p_details?: Json
+          p_environment: string
+          p_job_id: string
+          p_proof_hash: string
+          p_status: string
+        }
+        Returns: string
+      }
+      dsg_record_evidence: {
+        Args: {
+          p_content_hash: string
+          p_evidence_type: string
+          p_job_id: string
+          p_metadata?: Json
+          p_summary: string
+          p_uri?: string
+        }
+        Returns: string
+      }
+      dsg_record_production_flow_proof: {
+        Args: {
+          p_details?: Json
+          p_flow_name: string
+          p_job_id: string
+          p_proof_hash: string
+          p_status: string
+        }
+        Returns: string
+      }
+      dsg_record_replay_proof: {
+        Args: {
+          p_details?: Json
+          p_job_id: string
+          p_replay_hash: string
+          p_status: string
+        }
+        Returns: string
+      }
+      get_org_health_summary: { Args: { p_org_id: string }; Returns: Json }
+      is_org_admin: { Args: { target_org_id: string }; Returns: boolean }
+      is_org_member: { Args: { target_org_id: string }; Returns: boolean }
+      normalize_slug: { Args: { input_text: string }; Returns: string }
+      record_mcp_usage: {
+        Args: { p_actor_id: string; p_key_id: string; p_tool_name: string }
+        Returns: undefined
+      }
+      record_template_sale: {
+        Args: {
+          p_buyer_id: string
+          p_commission_rate_bps: number
+          p_creator_payout_satang: number
+          p_platform_fee_satang: number
+          p_price_satang: number
+          p_sale_id: string
+          p_seller_id: string
+          p_status: string
+          p_stripe_checkout_session_id?: string
+          p_template_id: string
+        }
+        Returns: undefined
+      }
+      renew_mcp_subscription_period: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_stripe_subscription_id: string
+        }
+        Returns: undefined
+      }
+      revoke_mcp_api_key: {
+        Args: { p_actor_id: string; p_key_id: string }
+        Returns: undefined
+      }
+      runtime_commit:
+        | {
+            Args: {
+              p_agent_id: string
+              p_canonical_hash: string
+              p_context: Json
+              p_organization_id: string
+              p_policy_id: string
+              p_prompt: string
+              p_request_id: string
+              p_risk_score: number
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_agent_id: string
+              p_decision: string
+              p_latency_ms: number
+              p_organization_id: string
+              p_prompt: string
+              p_proof_hash: string
+              p_requires_approval: boolean
+              p_risk_score: number
+              p_stability_score: number
+              p_user_id: string
+            }
+            Returns: Json
+          }
       runtime_commit_execution: {
         Args: {
-          p_org_id: string;
-          p_agent_id: string;
-          p_request_id: string;
-          p_decision: string;
-          p_reason: string;
-          p_metadata?: Json;
-          p_canonical_hash: string;
-          p_canonical_json: Json;
-          p_latency_ms?: number;
-          p_request_payload?: Json;
-          p_context_payload?: Json;
-          p_policy_version?: string | null;
-          p_audit_evidence?: Json;
-          p_usage_amount_usd?: number;
-          p_created_at?: string;
-          p_agent_monthly_limit?: number;
-          p_org_plan_limit?: number;
-        };
+          p_agent_id: string
+          p_agent_monthly_limit?: number
+          p_audit_evidence?: Json
+          p_canonical_hash?: string
+          p_canonical_json?: Json
+          p_context_payload?: Json
+          p_created_at?: string
+          p_decision: string
+          p_latency_ms?: number
+          p_metadata?: Json
+          p_org_id: string
+          p_org_plan_limit?: number
+          p_policy_version?: string
+          p_reason?: string
+          p_request_id: string
+          p_request_payload?: Json
+          p_usage_amount_usd?: number
+        }
         Returns: {
-          ledger_id: string;
-          execution_id: string;
-          truth_state_id: string;
-          ledger_sequence: number;
-          truth_sequence: number;
-          replayed: boolean;
-        }[];
-      };
-    };
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
+          execution_id: string
+          ledger_id: string
+          ledger_sequence: number
+          replayed: boolean
+          truth_sequence: number
+          truth_state_id: string
+        }[]
+      }
+      submit_template_for_sale: {
+        Args: {
+          p_actor_id: string
+          p_category: string
+          p_description: string
+          p_name: string
+          p_price_satang: number
+          p_slug: string
+          p_stack: string[]
+        }
+        Returns: string
+      }
+      sync_auth_user: { Args: { p_auth_user_id: string }; Returns: undefined }
+      upsert_graphmap_graph: {
+        Args: {
+          p_built_by: string
+          p_edge_count: number
+          p_exclude_patterns: Json
+          p_graph_data: Json
+          p_include_patterns: Json
+          p_node_count: number
+          p_warnings: string[]
+          p_workspace_id: string
+        }
+        Returns: string
+      }
+      validate_mcp_api_key: {
+        Args: { p_key_hash: string }
+        Returns: {
+          actor_id: string
+          calls_limit: number
+          calls_used: number
+          key_id: string
+          plan_id: string
+        }[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

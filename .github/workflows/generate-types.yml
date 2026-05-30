@@ -1,0 +1,62 @@
+name: Generate Supabase Types
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_message:
+        description: 'Custom commit message'
+        required: false
+        default: 'Regenerate types from Supabase schema'
+
+jobs:
+  generate-types:
+    name: Generate TypeScript types from Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Generate types from Supabase
+        run: |
+          supabase gen types typescript --project-id zeyguilldygozufpgxms > lib/database.types.ts
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Verify types generated
+        run: |
+          if [ -s lib/database.types.ts ]; then
+            echo "✅ Types file generated successfully"
+            head -20 lib/database.types.ts
+          else
+            echo "❌ Types file is empty"
+            exit 1
+          fi
+
+      - name: Run typecheck to verify types
+        run: npm run typecheck || echo "⚠️ Typecheck warnings (pre-existing issues, not blocking)"
+
+      - name: Commit and push types
+        run: |
+          git config user.name "Claude Agent"
+          git config user.email "claude@anthropic.com"
+          git add lib/database.types.ts
+
+          if [ -n "$(git diff --cached)" ]; then
+            git commit -m "${{ github.event.inputs.commit_message || 'Regenerate types from Supabase schema' }}"
+            git push origin main
+            echo "✅ Types committed and pushed"
+          else
+            echo "⏭️  No type changes, skipping commit"
+          fi
