@@ -14,7 +14,7 @@ import { getSupabaseAdmin } from "../../../lib/supabase-server";
 export async function saveLease(lease: CredentialLease): Promise<void> {
   const supabase = getSupabaseAdmin();
 
-  const { error } = await supabase.from("dsg_credential_leases").insert({
+  const { error } = await (supabase as any).from("dsg_credential_leases").insert({
     id: lease.leaseId,
     lease_id: lease.leaseId,
     secret_name: lease.secretName,

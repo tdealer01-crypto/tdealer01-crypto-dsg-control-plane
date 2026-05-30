@@ -16,7 +16,7 @@ export async function saveGrant(grant: ExecutionGrant): Promise<void> {
 
   const expiresAt = new Date(grant.issuedAt + grant.ttlMs).toISOString();
 
-  const { error } = await supabase.from("dsg_execution_grants").insert({
+  const { error } = await (supabase as any).from("dsg_execution_grants").insert({
     id: grant.grantId,
     plan_hash: grant.planHash,
     grant_id: grant.grantId,

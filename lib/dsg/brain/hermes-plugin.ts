@@ -32,6 +32,7 @@ import {
   saveLease,
   getAllActiveLeases,
 } from "./lease-persistence";
+import { brokerCredentials as brokerSecretsViaSupabase } from "./credential-broker";
 
 /**
  * Hermes planning proposal.
@@ -230,6 +231,16 @@ export class HermesPlugin {
         changes: conformanceReport.violations.map((v) => `[UNRESOLVED] ${v.message}`),
       };
     }
+  }
+
+  /**
+   * Broker credentials from Supabase secrets table.
+   * Issues credential leases with redaction fingerprints, never raw values.
+   */
+  async brokerCredentials(
+    secretNames: string[]
+  ): Promise<CredentialBrokerResult> {
+    return brokerSecretsViaSupabase(secretNames);
   }
 
   /**
