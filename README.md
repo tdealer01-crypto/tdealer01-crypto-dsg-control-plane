@@ -20,6 +20,52 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 | EU AI Act Annex IV | `GET /api/compliance-evidence-pack/annex4` | 9-item checklist, 7 covered, 2 partial |
 | MCP server marketing | `/pricing`, `/compliance-evidence-pack` | Positioned as differentiator vs Vanta/Sonar |
 | Zenodo DOI trust | `/pricing`, `/compliance-evidence-pack` | doi.org/10.5281/zenodo.18225586 prominently surfaced |
+| Android APK | `apps/android` | Hermes Agent stack — memory, skills, scheduler, Telegram gateway, subagents, Local API :8642 |
+
+---
+
+## 📱 Android Agent APK — Hermes Stack (2026-05-30)
+
+**Download:** [android-apk-latest release](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/releases/tag/android-apk-latest)
+
+DSG Agent Android app — no-code AI work-session agent with a Hermes-inspired self-improvement stack built entirely on Android SDK (no extra Gradle dependencies).
+
+| Feature | Description |
+|---|---|
+| 🧠 Memory | Persistent entries (SharedPreferences JSON) auto-injected as `[ความจำ]` context block into every DadBot message; auto-captured from bot responses |
+| 🛠 Skills | Custom skill sequences; DadBot self-creates them via `[SKILL:name\|DESC:desc\|STEPS:CMD:target]` syntax in responses |
+| ⏰ Scheduler | `AlarmManager` cron tasks that fire DadBot automatically at configured intervals; results logged to audit trail |
+| 🌐 Telegram Gateway | Long-poll Telegram Bot → DadBot → reply; token + allowed chat ID stored in SharedPreferences |
+| 🤖 Subagents | `@sub1: prompt @sub2: prompt` — parallel DadBot instances, each with amber-bordered bubble |
+| 🔧 Tool call cards | Amber-bordered command card inserted into chat on every `onCommand()` event |
+| 🌐 Local API `:8642` | Pure-`ServerSocket` HTTP server — OpenAI `POST /v1/chat/completions` (stream + non-stream) and Anthropic `POST /v1/messages`; CORS enabled |
+| 8-tab nav | Chat · Sessions · Memory · Skills · Cron · Gateway · Files · Logs — horizontally scrollable |
+
+**Connect any OpenAI-compatible client to the on-device agent:**
+
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://<device-ip>:8642/v1", api_key="x")
+resp = client.chat.completions.create(
+    model="dsg-agent",
+    messages=[{"role": "user", "content": "ตรวจระบบ"}],
+    stream=True,
+)
+for chunk in resp:
+    print(chunk.choices[0].delta.content or "", end="", flush=True)
+```
+
+**Or Anthropic SDK:**
+
+```python
+import anthropic
+client = anthropic.Anthropic(base_url="http://<device-ip>:8642", api_key="x")
+msg = client.messages.create(model="dsg-agent", max_tokens=1024,
+    messages=[{"role": "user", "content": "แสดงไฟล์"}])
+print(msg.content[0].text)
+```
+
+---
 
 ## 🟢 GO / NO-GO — 2026-05-28 (CCVS v1.2 + Security Hardening)
 
