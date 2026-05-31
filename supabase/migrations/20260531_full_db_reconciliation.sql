@@ -1,8 +1,11 @@
 -- =====================================================================
 -- 20260531_full_db_reconciliation.sql
--- Full live-DB reconciliation: create the 18 tables the application code
--- requires but that are missing from the live Supabase database, and top
--- up known-missing columns on tables that already exist.
+-- Full live-DB reconciliation: create the 16 enumerated tables the
+-- application code requires but that are missing from the live Supabase
+-- database, and top up known-missing columns on tables that already exist.
+-- (The original analysis tallied "18 missing" but two of those --
+-- org_domains and org_security_settings -- are already applied to the live
+-- DB and are deliberately excluded here, leaving 16 to create.)
 --
 -- IDEMPOTENT: every statement uses "if not exists" / "add column if not
 -- exists" and is safe to run multiple times in the Supabase SQL Editor.
