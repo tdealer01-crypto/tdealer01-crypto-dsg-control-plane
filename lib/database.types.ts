@@ -3810,6 +3810,39 @@ export type Database = {
           },
         ]
       }
+      org_security_settings: {
+        Row: {
+          break_glass_email_enabled: boolean
+          created_at: string
+          id: string
+          org_id: string
+          sso_enabled: boolean
+          sso_enforced: boolean
+          sso_metadata: Json
+          updated_at: string
+        }
+        Insert: {
+          break_glass_email_enabled?: boolean
+          created_at?: string
+          id?: string
+          org_id: string
+          sso_enabled?: boolean
+          sso_enforced?: boolean
+          sso_metadata?: Json
+          updated_at?: string
+        }
+        Update: {
+          break_glass_email_enabled?: boolean
+          created_at?: string
+          id?: string
+          org_id?: string
+          sso_enabled?: boolean
+          sso_enforced?: boolean
+          sso_metadata?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_sso_configs: {
         Row: {
           break_glass_email_login_enabled: boolean
