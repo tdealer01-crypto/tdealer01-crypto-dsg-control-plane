@@ -3689,6 +3689,51 @@ export type Database = {
           },
         ]
       }
+      org_domains: {
+        Row: {
+          auto_join_mode: string
+          claim_mode: string
+          created_at: string
+          domain: string
+          id: string
+          notes: string | null
+          org_id: string
+          status: string
+          updated_at: string
+          verification_method: string | null
+          verification_token: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          auto_join_mode?: string
+          claim_mode?: string
+          created_at?: string
+          domain: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          status?: string
+          updated_at?: string
+          verification_method?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          auto_join_mode?: string
+          claim_mode?: string
+          created_at?: string
+          domain?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          status?: string
+          updated_at?: string
+          verification_method?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       org_billing_policies: {
         Row: {
           created_at: string
