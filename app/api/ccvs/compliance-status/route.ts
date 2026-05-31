@@ -83,7 +83,7 @@ async function saveToSupabase(status: CachedStatus, matrix: ComplianceMatrix): P
         mutation_score: status.mutation_score,
         requirements_pass: status.requirements_pass,
         requirements_total: status.requirements_total,
-        matrix_json: matrix as unknown as Record<string, unknown>,
+        matrix_json: matrix as unknown as import('../../../../lib/database.types').Json,
         last_ci_run: status.last_ci_run,
         updated_at: status.updated_at,
       },
