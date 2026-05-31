@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string
+          email: string
+          email_domain: string
+          full_name: string | null
+          id: string
+          org_id: string | null
+          ref_code: string | null
+          requested_org_hint: string | null
+          review_note: string | null
+          reviewed_by_user_id: string | null
+          status: string
+          updated_at: string
+          workspace_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_domain: string
+          full_name?: string | null
+          id?: string
+          org_id?: string | null
+          ref_code?: string | null
+          requested_org_hint?: string | null
+          review_note?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          updated_at?: string
+          workspace_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_domain?: string
+          full_name?: string | null
+          id?: string
+          org_id?: string | null
+          ref_code?: string | null
+          requested_org_hint?: string | null
+          review_note?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          updated_at?: string
+          workspace_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_requests_reviewed_by_user_id_fkey"
+            columns: ["reviewed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       admin_api_keys: {
         Row: {
           created_at: string
@@ -395,35 +458,38 @@ export type Database = {
         Row: {
           agent_id: string | null
           created_at: string
-          decision: string
-          evidence: Json | null
+          decision: string | null
+          evidence: Json
           execution_id: string | null
           id: string
+          metadata: Json
           org_id: string | null
-          policy_version: string
-          reason: string
+          policy_version: string | null
+          reason: string | null
         }
         Insert: {
           agent_id?: string | null
           created_at?: string
-          decision: string
-          evidence?: Json | null
+          decision?: string | null
+          evidence?: Json
           execution_id?: string | null
           id?: string
+          metadata?: Json
           org_id?: string | null
-          policy_version: string
-          reason: string
+          policy_version?: string | null
+          reason?: string | null
         }
         Update: {
           agent_id?: string | null
           created_at?: string
-          decision?: string
-          evidence?: Json | null
+          decision?: string | null
+          evidence?: Json
           execution_id?: string | null
           id?: string
+          metadata?: Json
           org_id?: string | null
-          policy_version?: string
-          reason?: string
+          policy_version?: string | null
+          reason?: string | null
         }
         Relationships: [
           {
@@ -447,6 +513,88 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      billing_customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          org_id: string | null
+          stripe_customer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          org_id?: string | null
+          stripe_customer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          org_id?: string | null
+          stripe_customer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      billing_events: {
+        Row: {
+          created_at: string
+          event_type: string | null
+          id: string
+          org_id: string | null
+          payload: Json
+          processed_at: string | null
+          stripe_customer_id: string | null
+          stripe_event_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          org_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_event_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          org_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_event_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
         ]
       }
       billing_meter_outbox: {
@@ -504,6 +652,8 @@ export type Database = {
           status: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          trial_end: string | null
+          trial_start: string | null
           updated_at: string | null
         }
         Insert: {
@@ -518,6 +668,8 @@ export type Database = {
           status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -532,6 +684,8 @@ export type Database = {
           status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -3434,6 +3588,60 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_access_grants: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by_user_id: string | null
+          org_id: string
+          role: string
+          scope: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          org_id: string
+          role?: string
+          scope?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string | null
+          org_id?: string
+          role?: string
+          scope?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_access_grants_invited_by_user_id_fkey"
+            columns: ["invited_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_access_grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       leads: {
         Row: {
           company: string | null
@@ -3974,6 +4182,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          plan: string | null
           slug: string | null
           status: string
           updated_at: string
@@ -3983,6 +4192,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          plan?: string | null
           slug?: string | null
           status?: string
           updated_at?: string
@@ -3992,6 +4202,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          plan?: string | null
           slug?: string | null
           status?: string
           updated_at?: string
@@ -4229,6 +4440,80 @@ export type Database = {
           },
         ]
       }
+      runtime_effects: {
+        Row: {
+          agent_id: string
+          callback_count: number
+          created_at: string
+          effect_type: string
+          execution_id: string | null
+          id: string
+          ledger_entry_id: string | null
+          org_id: string
+          payload: Json
+          result_payload: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          callback_count?: number
+          created_at?: string
+          effect_type: string
+          execution_id?: string | null
+          id?: string
+          ledger_entry_id?: string | null
+          org_id: string
+          payload?: Json
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          callback_count?: number
+          created_at?: string
+          effect_type?: string
+          execution_id?: string | null
+          id?: string
+          ledger_entry_id?: string | null
+          org_id?: string
+          payload?: Json
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_effects_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_ledger_entry_id_fkey"
+            columns: ["ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       runtime_ledger_entries: {
         Row: {
           agent_id: string
@@ -4242,6 +4527,7 @@ export type Database = {
           org_id: string
           reason: string | null
           request_id: string | null
+          truth_sequence: number | null
           truth_state_id: string | null
         }
         Insert: {
@@ -4256,6 +4542,7 @@ export type Database = {
           org_id: string
           reason?: string | null
           request_id?: string | null
+          truth_sequence?: number | null
           truth_state_id?: string | null
         }
         Update: {
@@ -4270,6 +4557,7 @@ export type Database = {
           org_id?: string
           reason?: string | null
           request_id?: string | null
+          truth_sequence?: number | null
           truth_state_id?: string | null
         }
         Relationships: [

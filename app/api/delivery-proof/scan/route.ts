@@ -79,7 +79,7 @@ async function saveReport(
         mutation_score: null,
         requirements_pass: pass,
         requirements_total: total,
-        matrix_json: { checks, production_url: productionUrl, generated_at: new Date().toISOString() },
+        matrix_json: { checks, production_url: productionUrl, generated_at: new Date().toISOString() } as unknown as import('../../../../lib/database.types').Json,
         last_ci_run: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
