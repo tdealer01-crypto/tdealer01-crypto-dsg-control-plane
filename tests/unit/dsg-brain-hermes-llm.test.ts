@@ -3,7 +3,7 @@
  * Tests plan generation and remediation with mocked Anthropic API.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { LLMPlanRequest, LLMRemediationRequest } from "../../lib/dsg/brain/hermes-llm";
 import type { ConformanceViolation } from "../../lib/dsg/brain/conformance-gate";
 
@@ -29,6 +29,11 @@ describe("Hermes LLM - Plan Generation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreate.mockReset();
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("generates a plan with valid Anthropic response", async () => {
@@ -227,6 +232,11 @@ describe("Hermes LLM - Plan Remediation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreate.mockReset();
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("remediates a plan with conformance violations", async () => {
@@ -411,6 +421,11 @@ describe("Hermes LLM - Prompt Generation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreate.mockReset();
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("builds comprehensive system prompts for planning", async () => {
