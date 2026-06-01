@@ -59,3 +59,23 @@ export async function updateUserDeposit(walletAddress: string, depositUSD: numbe
     .update({ deposit_usd: depositUSD, share_pct: sharePct })
     .eq('wallet_address', walletAddress.toLowerCase());
 }
+
+/**
+ * Returns the current system-level pool protocol by reading the most recent
+ * completed rebalance txn from defi_txns. Falls back to null if no rebalance
+ * has been recorded yet (first run or table is empty).
+ */
+export async function getLatestPoolProtocol(): Promise<{ protocol: string; depositUSD: number } | null> {
+  const db = getServiceClient();
+  const { data } = await db
+    .from('defi_txns')
+    .select('protocol, amount_usd')
+    .eq('type', 'rebalance')
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data?.protocol || !data?.amount_usd) return null;
+  return { protocol: data.protocol, depositUSD: Number(data.amount_usd) };
+}

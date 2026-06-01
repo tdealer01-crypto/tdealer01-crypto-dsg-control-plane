@@ -80,6 +80,18 @@ jobs:
           fi
           echo "✅ No Thai text in app/ components/ lib/"
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Z3 proof dependencies
+        run: npm run proof:install
+
+      - name: Answer Gate formal proofs
+        run: npm run proof:answer-gate
+
       - name: Build
         run: npm run build
 
