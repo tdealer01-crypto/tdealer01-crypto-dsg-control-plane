@@ -226,6 +226,14 @@ export function evaluateAutomationController(
       productionReadyClaim:
         gate.gateStatus === "PASS" &&
         gate.proof.evidenceBoundary.productionReadyClaim,
+      externalZ3ProductionSolverClaim:
+        gate.proof.evidenceBoundary.externalZ3ProductionSolverClaim,
+      certificationClaim: gate.proof.evidenceBoundary.certificationClaim,
+      independentAuditClaim: gate.proof.evidenceBoundary.independentAuditClaim,
+      wormStorageCertifiedClaim:
+        gate.proof.evidenceBoundary.wormStorageCertifiedClaim,
+      cryptographicSigningCompleteClaim:
+        gate.proof.evidenceBoundary.cryptographicSigningCompleteClaim,
       consumerClaimSafe: true,
     },
   };

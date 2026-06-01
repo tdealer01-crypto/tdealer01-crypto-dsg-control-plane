@@ -103,6 +103,11 @@ export type DsgAutomationControllerResult = {
     source: "repo_gate_scaffold";
     externalSolverInvoked: boolean;
     productionReadyClaim: boolean;
+    externalZ3ProductionSolverClaim: false;
+    certificationClaim: false;
+    independentAuditClaim: false;
+    wormStorageCertifiedClaim: false;
+    cryptographicSigningCompleteClaim: false;
     consumerClaimSafe: true;
   };
 };

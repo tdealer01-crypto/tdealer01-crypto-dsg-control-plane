@@ -1,4 +1,8 @@
 import { evaluateAutomationController } from "../../../lib/dsg/controller/automation-controller";
+import {
+  isProductionReadyDeterministicProof,
+  proveDeterministicPlan,
+} from "../../../lib/dsg/deterministic/proof-engine";
 import type { DsgAutomationControllerRequest } from "../../../lib/dsg/controller/types";
 
 function baseRequest(
@@ -38,6 +42,28 @@ function baseRequest(
     idempotencyKey: "idem-test-001",
     ...overrides,
   };
+}
+
+function fullProof() {
+  return proveDeterministicPlan({
+    planId: "plan-test-001",
+    nonce: "nonce-test-001",
+    idempotencyKey: "idem-test-001",
+    context: {
+      requirement_clear: true,
+      tool_available: true,
+      permission_granted: true,
+      secret_bound: true,
+      dependency_resolved: true,
+      testable: true,
+      deploy_target_ready: true,
+      audit_hook_available: true,
+    },
+  });
+}
+
+function proofWith(overrides: Record<string, unknown>) {
+  return { ...fullProof(), ...overrides } as ReturnType<typeof fullProof>;
 }
 
 describe("DSG automation controller", () => {
@@ -92,6 +118,8 @@ describe("DSG automation controller", () => {
     expect(result.remediation).toContain(
       "attach_human_approval_before_execution",
     );
+    expect(result.gate.proof.evidenceBoundary.productionReadyClaim).toBe(false);
+    expect(result.evidenceBoundary.productionReadyClaim).toBe(false);
   });
 
   it("blocks unsupported evidence from becoming a passing consumer-facing decision", () => {
@@ -115,6 +143,88 @@ describe("DSG automation controller", () => {
     );
     expect(result.remediation).toContain(
       "attach_verified_or_repo_stated_evidence",
+    );
+    expect(result.gate.proof.evidenceBoundary.productionReadyClaim).toBe(false);
+    expect(result.evidenceBoundary.productionReadyClaim).toBe(false);
+  });
+});
+
+describe("production readiness proof boundary", () => {
+  it("sets productionReadyClaim true for a complete PASS proof", () => {
+    const proof = fullProof();
+
+    expect(proof.status).toBe("PASS");
+    expect(proof.evidenceBoundary.productionReadyClaim).toBe(true);
+    expect(isProductionReadyDeterministicProof(proof)).toBe(true);
+  });
+
+  it("keeps productionReadyClaim false when any constraint fails", () => {
+    const proof = proveDeterministicPlan({
+      planId: "plan-test-constraint-fail",
+      nonce: "nonce-test-001",
+      idempotencyKey: "idem-test-001",
+      context: {
+        requirement_clear: true,
+        tool_available: true,
+        permission_granted: true,
+        secret_bound: true,
+        dependency_resolved: true,
+        testable: true,
+        deploy_target_ready: false,
+        audit_hook_available: true,
+      },
+    });
+
+    expect(proof.status).not.toBe("PASS");
+    expect(proof.evidenceBoundary.productionReadyClaim).toBe(false);
+    expect(isProductionReadyDeterministicProof(proof)).toBe(false);
+  });
+
+  it.each([
+    [
+      "missing nonce",
+      { replayProtection: { ...fullProof().replayProtection, nonce: "" } },
+    ],
+    [
+      "missing idempotencyKey",
+      {
+        replayProtection: {
+          ...fullProof().replayProtection,
+          idempotencyKey: "",
+        },
+      },
+    ],
+    ["missing policyVersion", { policyVersion: "" }],
+    ["missing constraintSetHash", { constraintSetHash: "" }],
+    ["missing proofHash", { proofHash: "" }],
+    [
+      "missing solver.version",
+      { solver: { ...fullProof().solver, version: "" } },
+    ],
+    ["empty constraints", { constraints: [] }],
+  ])("returns false for %s", (_name, overrides) => {
+    expect(isProductionReadyDeterministicProof(proofWith(overrides))).toBe(
+      false,
+    );
+  });
+
+  it("keeps disallowed external/compliance boundary claims false", () => {
+    const result = evaluateAutomationController(
+      baseRequest({
+        resource: {
+          type: "workflow",
+          id: "wf-public-001",
+          classification: "public",
+        },
+      }),
+    );
+
+    expect(result.evidenceBoundary.externalZ3ProductionSolverClaim).toBe(false);
+    expect(result.evidenceBoundary.certificationClaim).toBe(false);
+    expect(result.evidenceBoundary.independentAuditClaim).toBe(false);
+    expect(result.evidenceBoundary.wormStorageCertifiedClaim).toBe(false);
+    expect(result.evidenceBoundary.cryptographicSigningCompleteClaim).toBe(
+      false,
     );
   });
 });
