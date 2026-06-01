@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
+type NudgeLevel = "none" | "soft" | "hard" | "blocked";
 
 type QuotaSnapshot = {
   pct: number;
@@ -13,10 +13,6 @@ type QuotaSnapshot = {
   nextPlan?: string | null;
 };
 
-function dismissKey(period: string) {
-  return `nudge-dismissed-${period}`;
-}
-
 function BannerContent({
   snapshot,
   onDismiss,
@@ -26,12 +22,12 @@ function BannerContent({
 }) {
   const { pct, nudge, nextPlan, upgradeUrl } = snapshot;
 
-  if (nudge === 'blocked') {
+  if (nudge === "blocked") {
     return (
       <div className="flex w-full items-center justify-between gap-4 bg-red-950/80 px-5 py-3 text-sm text-red-200 border-b border-red-800">
         <span>
-          <strong>Quota exceeded — executions blocked.</strong>{' '}
-          Upgrade now to resume agent operations.
+          <strong>Quota exceeded — executions blocked.</strong> Upgrade now to
+          resume agent operations.
         </span>
         {upgradeUrl && (
           <a
@@ -45,11 +41,11 @@ function BannerContent({
     );
   }
 
-  if (nudge === 'hard') {
+  if (nudge === "hard") {
     return (
       <div className="flex w-full items-center justify-between gap-4 bg-red-950/60 px-5 py-3 text-sm text-red-300 border-b border-red-900">
         <span>
-          <strong>{pct}% quota used</strong> — executions will stop at 100%.{' '}
+          <strong>{pct}% quota used</strong> — executions will stop at 100%.{" "}
           {nextPlan && `Upgrade to ${nextPlan} to avoid interruption.`}
         </span>
         <div className="flex shrink-0 items-center gap-2">
@@ -66,14 +62,14 @@ function BannerContent({
     );
   }
 
-  if (nudge === 'soft') {
+  if (nudge === "soft") {
     return (
       <div className="flex w-full items-center justify-between gap-4 bg-amber-950/60 px-5 py-3 text-sm text-amber-200 border-b border-amber-900">
         <span>
-          <strong>{pct}% of your monthly quota used.</strong>{' '}
+          <strong>{pct}% of your monthly quota used.</strong>{" "}
           {nextPlan
             ? `Upgrade to ${nextPlan} to avoid interruption.`
-            : 'Consider upgrading before you hit your limit.'}
+            : "Consider upgrading before you hit your limit."}
         </span>
         <div className="flex shrink-0 items-center gap-2">
           {upgradeUrl && (
@@ -106,46 +102,34 @@ export default function NudgeBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    fetch('/api/usage/analytics', { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
+    fetch("/api/usage/analytics", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data?.quota) return;
         const q = data.quota;
-        const period: string = data.period ?? '';
-
-        // Check dismiss state (soft only)
-        if (q.nudge === 'soft' && period) {
-          const key = dismissKey(period);
-          if (localStorage.getItem(key) === '1') {
-            setDismissed(true);
-          }
-        }
-
         setSnapshot({
-          pct:        q.pct,
-          nudge:      q.nudge,
-          used:       q.used,
-          limit:      q.limit,
+          pct: q.pct,
+          nudge: q.nudge,
+          used: q.used,
+          limit: q.limit,
           upgradeUrl: q.upgradeUrl,
-          nextPlan:   q.nextPlan,
+          nextPlan: q.nextPlan,
         });
       })
       .catch(() => null);
   }, []);
 
-  if (!snapshot || snapshot.nudge === 'none') return null;
-  if (dismissed && snapshot.nudge === 'soft') return null;
+  if (!snapshot || snapshot.nudge === "none") return null;
+  if (dismissed && snapshot.nudge === "soft") return null;
 
   function handleDismiss() {
-    const period = new Date().toISOString().slice(0, 7);
-    localStorage.setItem(dismissKey(period), '1');
     setDismissed(true);
   }
 
   return (
     <BannerContent
       snapshot={snapshot}
-      onDismiss={snapshot.nudge === 'soft' ? handleDismiss : undefined}
+      onDismiss={snapshot.nudge === "soft" ? handleDismiss : undefined}
     />
   );
 }
