@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 import { createHash, randomBytes } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -14,12 +15,11 @@ async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>, auth
 }
 
 export async function GET(): Promise<NextResponse> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireOrgPermission('org.manage_webhooks');
+  if (access.ok !== true) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+  const supabase = await createClient();
+  const orgId = access.orgId;
 
   // Fetch webhook configs
   const { data: configs, error } = await supabase
@@ -64,12 +64,11 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireOrgPermission('org.manage_webhooks');
+  if (access.ok !== true) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+  const supabase = await createClient();
+  const orgId = access.orgId;
 
   let body: Record<string, unknown>;
   try {

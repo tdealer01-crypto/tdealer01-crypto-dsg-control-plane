@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 
 export const dynamic = 'force-dynamic';
+
+function maskConfiguredSecret(value: string | null | undefined) {
+  if (!value) return null;
+  const suffix = value.slice(-4);
+  return suffix ? `configured:••••${suffix}` : 'configured';
+}
 
 async function getUserAndOrg(supabase: Awaited<ReturnType<typeof createClient>>, authUserId: string) {
   const { data } = await supabase
@@ -39,11 +46,15 @@ export async function GET(): Promise<NextResponse> {
       connected: settings?.slack ?? false,
       channelId: null as string | null,
       events: ['approval.required', 'agent.failed', 'gate.evaluated'],
-      webhookUrl: settings?.slack_webhook_url ?? null,
+      webhookUrl: null as string | null,
+      secretConfigured: Boolean(settings?.slack_webhook_url),
+      secretPreview: maskConfiguredSecret(settings?.slack_webhook_url),
     },
     pagerduty: {
       connected: settings?.pagerduty ?? false,
-      integrationKey: settings?.pagerduty_key ?? null,
+      integrationKey: null as string | null,
+      secretConfigured: Boolean(settings?.pagerduty_key),
+      secretPreview: maskConfiguredSecret(settings?.pagerduty_key),
       triggerOn: ['agent.failed'],
     },
   };
@@ -52,6 +63,9 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function PUT(req: NextRequest): Promise<NextResponse> {
+  const access = await requireOrgPermission('org.manage_notifications');
+  if (access.ok !== true) return NextResponse.json({ error: access.error }, { status: access.status });
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -123,11 +137,15 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       connected: slackEnabled,
       channelId: null as string | null,
       events: ['approval.required', 'agent.failed', 'gate.evaluated'],
-      webhookUrl: slackWebhookUrl,
+      webhookUrl: null as string | null,
+      secretConfigured: Boolean(slackWebhookUrl),
+      secretPreview: maskConfiguredSecret(slackWebhookUrl),
     },
     pagerduty: {
       connected: pagerdutyEnabled,
-      integrationKey: pagerdutyKey,
+      integrationKey: null as string | null,
+      secretConfigured: Boolean(pagerdutyKey),
+      secretPreview: maskConfiguredSecret(pagerdutyKey),
       triggerOn: ['agent.failed'],
     },
   };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,12 +28,11 @@ export async function DELETE(
     return NextResponse.json(err, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireOrgPermission('org.manage_api_keys');
+  if (access.ok !== true) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+  const supabase = await createClient();
+  const orgId = access.orgId;
 
   // Find the key scoped to this org
   const { data: existing, error: fetchError } = await supabase

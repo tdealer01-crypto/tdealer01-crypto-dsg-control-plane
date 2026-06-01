@@ -10,7 +10,10 @@ export type OrgPermission =
   | 'org.view_reports'
   | 'org.view_evidence'
   | 'org.invite_members'
-  | 'org.invite_guests';
+  | 'org.invite_guests'
+  | 'org.manage_api_keys'
+  | 'org.manage_webhooks'
+  | 'org.manage_notifications';
 
 const ALL_PERMISSIONS: OrgPermission[] = [
   'org.manage_access',
@@ -23,6 +26,9 @@ const ALL_PERMISSIONS: OrgPermission[] = [
   'org.view_evidence',
   'org.invite_members',
   'org.invite_guests',
+  'org.manage_api_keys',
+  'org.manage_webhooks',
+  'org.manage_notifications',
 ];
 
 const ROLE_PERMISSIONS: Record<OrgRole, Set<OrgPermission>> = {
@@ -37,6 +43,9 @@ const ROLE_PERMISSIONS: Record<OrgRole, Set<OrgPermission>> = {
     'org.view_evidence',
     'org.invite_members',
     'org.invite_guests',
+    'org.manage_api_keys',
+    'org.manage_webhooks',
+    'org.manage_notifications',
   ]),
   operator: new Set<OrgPermission>(['org.manage_agents', 'org.execute', 'org.view_reports', 'org.view_evidence']),
   viewer: new Set<OrgPermission>(['org.view_reports', 'org.view_evidence']),

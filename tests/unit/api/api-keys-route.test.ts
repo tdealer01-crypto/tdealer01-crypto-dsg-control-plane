@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../lib/supabase/server', () => ({ createClient: vi.fn() }));
+vi.mock('../../../lib/auth/require-org-permission', () => ({ requireOrgPermission: vi.fn() }));
 
 import { GET, POST } from '../../../app/api/api-keys/route';
 import { createClient } from '../../../lib/supabase/server';
+import { requireOrgPermission } from '../../../lib/auth/require-org-permission';
 import { NextRequest } from 'next/server';
 
 const mockCreateClient = vi.mocked(createClient);
+const mockRequireOrgPermission = vi.mocked(requireOrgPermission);
 
 const ORG_ID = 'org-test-123';
 const AUTH_USER = { id: 'auth-user-1' };
@@ -61,10 +64,19 @@ function makeClient(user: unknown, orgId: string | null, extraFromBehavior?: (ta
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRequireOrgPermission.mockResolvedValue({
+    ok: true,
+    orgId: ORG_ID,
+    userId: 'user-1',
+    authUserId: AUTH_USER.id,
+    email: 'owner@example.com',
+    role: 'owner',
+  });
 });
 
 describe('GET /api/api-keys', () => {
   it('returns 401 when not authenticated', async () => {
+    mockRequireOrgPermission.mockResolvedValueOnce({ ok: false, status: 401, error: 'Unauthorized' });
     mockCreateClient.mockResolvedValue(makeClient(null, null) as any);
     const res = await GET();
     expect(res.status).toBe(401);
@@ -72,10 +84,11 @@ describe('GET /api/api-keys', () => {
     expect(body.error).toMatch(/Unauthorized/);
   });
 
-  it('returns 404 when user has no org', async () => {
+  it('returns 403 when user lacks API key permission', async () => {
+    mockRequireOrgPermission.mockResolvedValueOnce({ ok: false, status: 403, error: 'Insufficient permission' });
     mockCreateClient.mockResolvedValue(makeClient(AUTH_USER, null) as any);
     const res = await GET();
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
   });
 
   it('returns only keys for the authenticated user org (org isolation)', async () => {
@@ -109,6 +122,7 @@ describe('POST /api/api-keys', () => {
   }
 
   it('returns 401 when not authenticated', async () => {
+    mockRequireOrgPermission.mockResolvedValueOnce({ ok: false, status: 401, error: 'Unauthorized' });
     mockCreateClient.mockResolvedValue(makeClient(null, null) as any);
     const res = await POST(makePostRequest({ name: 'Test', scopes: ['read'] }));
     expect(res.status).toBe(401);
