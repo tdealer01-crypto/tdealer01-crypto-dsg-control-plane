@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { handleFinanceGovernanceApiError } from '../../../../lib/finance-governance/api-error';
+import { requireFinanceGovernanceAccess } from '../../../../lib/finance-governance/access-gate';
 import { notifyApprovalStatusChange } from '../../../../lib/finance-governance/notify';
 import { FinanceGovernanceRepository } from '../../../../lib/finance-governance/repository';
 import { getOrg } from '../../../../lib/server/getOrg';
@@ -34,6 +35,8 @@ export async function POST(request: Request) {
     if (!ALLOWED_ACTIONS.has(action as AllowedAction)) {
       return NextResponse.json({ error: 'action must be approve, reject, or escalate' }, { status: 400 });
     }
+
+    requireFinanceGovernanceAccess(request, orgId, action as AllowedAction);
 
     const result = await repository.applyAction(orgId, approvalId, action as AllowedAction);
     void notifyApprovalStatusChange({

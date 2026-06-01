@@ -28,20 +28,37 @@ export function QuickActions() {
     setRunning('test_action');
     setResult(null);
     try {
+      const requestId = crypto.randomUUID();
       const res = await fetch('/api/dsg/v1/gates/evaluate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          action: 'test.ping',
-          context: { source: 'quick_actions_widget', test: true },
+          planId: 'quick_actions_test_ping',
+          riskLevel: 'low',
+          nonce: `qa_nonce_${requestId}`,
+          idempotencyKey: `qa_idem_${requestId}`,
+          context: {
+            source: 'quick_actions_widget',
+            test: true,
+            requirement_clear: true,
+            tool_available: true,
+            // Client-side quick checks cannot prove permission or secret binding.
+            // Keep these false so the gate cannot be mistaken for production audit evidence.
+            permission_granted: false,
+            secret_bound: false,
+            dependency_resolved: true,
+            testable: true,
+            deploy_target_ready: false,
+            audit_hook_available: false,
+          },
         }),
       });
       const json = await res.json().catch(() => ({}));
       setResult({
         id: 'test_action',
-        ok: res.ok,
+        ok: res.ok && json.ok === true,
         message: res.ok
-          ? `Gate result: ${json.decision ?? json.status ?? 'OK'}`
+          ? `Gate result: ${json.gateStatus ?? json.proofStatus ?? 'UNKNOWN'} (client-only check, not audit evidence)`
           : json.error ?? `Error ${res.status}`,
       });
     } catch (err) {
@@ -60,7 +77,7 @@ export function QuickActions() {
       id: 'test_action',
       icon: Zap,
       label: 'Run a test action',
-      description: 'POST a test payload to the gates evaluate endpoint.',
+      description: 'Check the gate contract without claiming production audit evidence.',
       onClick: runTestAction,
     },
     {
