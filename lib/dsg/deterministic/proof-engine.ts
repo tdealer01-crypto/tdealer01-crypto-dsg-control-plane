@@ -4,20 +4,27 @@ import type {
   DeterministicProof,
   DeterministicProofRequest,
   DeterministicProofStatus,
-} from './types';
-import { buildProofHash, hashDeterministicValue } from './proof-hash';
-import { getDeterministicPolicyManifest } from './policy-manifest';
-import { getDeterministicSolverMetadata } from './solver-metadata';
+} from "./types";
+import { buildProofHash, hashDeterministicValue } from "./proof-hash";
+import { getDeterministicPolicyManifest } from "./policy-manifest";
+import { getDeterministicSolverMetadata } from "./solver-metadata";
 
 function boolValue(context: Record<string, unknown>, key: string) {
   return context[key] === true;
 }
 
-function statusFromFailures(failures: DeterministicFailureReason[]): DeterministicProofStatus {
-  if (failures.some((failure) => failure.severity === 'critical')) return 'BLOCK';
-  if (failures.some((failure) => failure.severity === 'high')) return 'REVIEW';
-  if (failures.length > 0) return 'REVIEW';
-  return 'PASS';
+function statusFromFailures(
+  failures: DeterministicFailureReason[],
+): DeterministicProofStatus {
+  if (failures.some((failure) => failure.severity === "critical"))
+    return "BLOCK";
+  if (failures.some((failure) => failure.severity === "high")) return "REVIEW";
+  if (failures.length > 0) return "REVIEW";
+  return "PASS";
+}
+
+function nonceText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function deterministicProofId(inputHash: string) {
@@ -29,20 +36,24 @@ function deterministicProofTimestamp(inputHash: string) {
   return new Date(seconds * 1000).toISOString();
 }
 
-export function proveDeterministicPlan(request: DeterministicProofRequest): DeterministicProof {
+export function proveDeterministicPlan(
+  request: DeterministicProofRequest,
+): DeterministicProof {
   const manifest = getDeterministicPolicyManifest();
   const solver = getDeterministicSolverMetadata();
   const policyRef = request.policyRef ?? manifest.policyRef;
   const policyVersion = request.policyVersion ?? manifest.policyVersion;
   const context = request.context ?? {};
 
-  const constraints: DeterministicConstraintResult[] = manifest.constraints.map((constraint) => {
-    const passed = boolValue(context, constraint.evidenceKey);
-    return {
-      ...constraint,
-      passed,
-    };
-  });
+  const constraints: DeterministicConstraintResult[] = manifest.constraints.map(
+    (constraint) => {
+      const passed = boolValue(context, constraint.evidenceKey);
+      return {
+        ...constraint,
+        passed,
+      };
+    },
+  );
 
   const failureReasons = constraints
     .filter((constraint) => !constraint.passed)
@@ -59,7 +70,7 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     context,
     policyRef,
     policyVersion,
-    riskLevel: request.riskLevel ?? 'medium',
+    riskLevel: request.riskLevel ?? "medium",
     nonce: request.nonce,
     idempotencyKey: request.idempotencyKey,
   });
@@ -71,6 +82,17 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     requestHash: inputHash,
   };
   const constraintSetHash = manifest.constraintSetHash;
+  const productionReadyClaim =
+    status === "PASS" &&
+    constraints.length === manifest.constraints.length &&
+    constraints.every((constraint) => constraint.passed) &&
+    Boolean(nonceText(request.nonce)) &&
+    Boolean(nonceText(request.idempotencyKey)) &&
+    Boolean(policyRef) &&
+    Boolean(policyVersion) &&
+    Boolean(constraintSetHash) &&
+    Boolean(solver.version);
+
   const proofHash = buildProofHash({
     proofId,
     status,
@@ -104,15 +126,15 @@ export function proveDeterministicPlan(request: DeterministicProofRequest): Dete
     replayProtection,
     model: {
       planId: request.planId ?? null,
-      riskLevel: request.riskLevel ?? 'medium',
+      riskLevel: request.riskLevel ?? "medium",
     },
     failureReasons,
     constraints,
     evidenceBoundary: {
       statement:
-        'This DSG-native deterministic proof is a TypeScript static-check adapter mapped from the Z3 module. It does not claim that an external Z3 solver was invoked unless solver metadata says so.',
+        "This DSG-native deterministic proof is evidence-derived from the checked policy constraints, replay-protection inputs, policy reference, constraint-set hash, and solver metadata. It does not claim that an external Z3 solver was invoked unless solver metadata says so.",
       externalSolverInvoked: solver.externalSolverInvoked,
-      productionReadyClaim: false,
+      productionReadyClaim,
     },
   };
 }

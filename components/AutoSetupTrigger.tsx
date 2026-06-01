@@ -1,29 +1,34 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-
-const STORAGE_KEY = 'dsg_auto_setup_triggered_v1';
+import { useEffect } from "react";
 
 export default function AutoSetupTrigger() {
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (localStorage.getItem(STORAGE_KEY)) return;
+    let cancelled = false;
 
-    localStorage.setItem(STORAGE_KEY, '1');
-
-    fetch('/api/setup/auto', { method: 'POST' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.api_key) {
-          // Store one-time API key for the skills page to display
-          sessionStorage.setItem('dsg_new_api_key', data.api_key);
-          sessionStorage.setItem('dsg_new_agent_id', data.agent_id ?? '');
-        }
-      })
-      .catch(() => {
-        // Reset so it retries on next load
-        localStorage.removeItem(STORAGE_KEY);
+    async function runAutoSetupIfNeeded() {
+      const stateResponse = await fetch("/api/onboarding/state", {
+        cache: "no-store",
       });
+      if (!stateResponse.ok) return;
+
+      const state = (await stateResponse.json()) as { is_empty?: boolean };
+      if (cancelled || state.is_empty !== true) return;
+
+      const setupResponse = await fetch("/api/setup/auto", { method: "POST" });
+      const data = await setupResponse.json().catch(() => null);
+      if (!cancelled && data?.api_key) {
+        // One-time reveal bridge only; persistent onboarding source-of-truth remains the org-scoped API/DB state.
+        sessionStorage.setItem("dsg_new_api_key", data.api_key);
+        sessionStorage.setItem("dsg_new_agent_id", data.agent_id ?? "");
+      }
+    }
+
+    void runAutoSetupIfNeeded().catch(() => null);
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return null;

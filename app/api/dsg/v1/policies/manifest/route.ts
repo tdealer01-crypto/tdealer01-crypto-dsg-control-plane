@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { getDeterministicPolicyManifest } from '../../../../../../lib/dsg/deterministic/policy-manifest';
-import { getDeterministicSolverMetadata } from '../../../../../../lib/dsg/deterministic/solver-metadata';
+import { NextResponse } from "next/server";
+import { getDeterministicPolicyManifest } from "../../../../../../lib/dsg/deterministic/policy-manifest";
+import { getDeterministicSolverMetadata } from "../../../../../../lib/dsg/deterministic/solver-metadata";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const manifest = getDeterministicPolicyManifest();
@@ -10,13 +10,20 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    type: 'dsg-deterministic-policy-manifest',
+    type: "dsg-deterministic-policy-manifest",
     manifest,
     solver,
     boundary: {
-      statement: 'Policy version and constraintSetHash are included in every deterministic proof. Solver metadata is resolved from runtime configuration.',
+      statement:
+        "Policy version, constraintSetHash, constraint inventory, and solver metadata are present for deterministic proof generation. This is a manifest readiness claim, not a full marketplace launch claim.",
       externalSolverInvoked: solver.externalSolverInvoked,
-      productionReadyClaim: false,
+      productionReadyClaim: Boolean(
+        manifest.policyRef &&
+        manifest.policyVersion &&
+        manifest.constraintSetHash &&
+        manifest.constraints.length > 0 &&
+        solver.version,
+      ),
     },
   });
 }

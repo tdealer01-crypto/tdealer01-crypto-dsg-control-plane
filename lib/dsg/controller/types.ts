@@ -3,22 +3,33 @@ import type {
   DeterministicGateStatus,
   DeterministicRiskLevel,
   ResourceClassification,
-} from '../deterministic/types';
+} from "../deterministic/types";
 
 export type DsgAutomationActionType =
-  | 'agent_action'
-  | 'connector_call'
-  | 'finance_approval'
-  | 'deployment_action'
-  | 'evidence_export'
-  | 'questionnaire_response'
-  | 'policy_change';
+  | "agent_action"
+  | "connector_call"
+  | "finance_approval"
+  | "deployment_action"
+  | "evidence_export"
+  | "questionnaire_response"
+  | "policy_change";
 
 export type DsgAutomationDecision = DeterministicGateStatus;
 
-export type DsgAutomationProvider = 'webhook' | 'rest' | 'zapier' | 'make' | 'n8n' | 'internal';
+export type DsgAutomationProvider =
+  | "webhook"
+  | "rest"
+  | "zapier"
+  | "make"
+  | "n8n"
+  | "internal";
 
-export type DsgEvidenceState = 'VERIFIED' | 'REPO_STATED' | 'DEMO_ONLY' | 'UNSUPPORTED' | 'BLOCKED';
+export type DsgEvidenceState =
+  | "VERIFIED"
+  | "REPO_STATED"
+  | "DEMO_ONLY"
+  | "UNSUPPORTED"
+  | "BLOCKED";
 
 export type DsgAutomationActor = {
   userId: string;
@@ -78,7 +89,7 @@ export type DsgAutomationAuditPreview = {
 
 export type DsgAutomationControllerResult = {
   ok: boolean;
-  type: 'dsg-automation-controller-decision';
+  type: "dsg-automation-controller-decision";
   decision: DsgAutomationDecision;
   actionType: DsgAutomationActionType;
   riskLevel: DeterministicRiskLevel;
@@ -89,9 +100,9 @@ export type DsgAutomationControllerResult = {
   remediation: string[];
   evidenceBoundary: {
     statement: string;
-    source: 'repo_gate_scaffold';
-    externalSolverInvoked: false;
-    productionReadyClaim: false;
+    source: "repo_gate_scaffold";
+    externalSolverInvoked: boolean;
+    productionReadyClaim: boolean;
     consumerClaimSafe: true;
   };
 };
