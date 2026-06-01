@@ -339,58 +339,67 @@ describe("DSG Brain Persistence Layer", () => {
   });
 
   describe("HermesPlugin Integration", () => {
-    it("saves execution context with grant and leases", async () => {
+    it("proposes a plan with mocked grant-persistence", async () => {
       const plugin = new HermesPlugin();
-      const grant = buildExecutionGrant(basePlan, 60_000);
-      const lease = createCredentialLease("API_KEY", "secret-123", 60_000);
 
-      const ctx = {
-        plan: basePlan,
-        grant,
-        credentials: { leases: [lease], unavailable: [] },
-        allowedCommands: ["echo"],
-        allowedPaths: ["/tmp"],
+      const input = {
+        inputHash: "input-abc",
+        attemptNo: 1,
+        canonicalPlan: "echo hello",
+        policyVersion: "v1.0.0",
+        invariantVersion: "v1.0.0",
+        toolManifestHash: "manifest-xyz",
       };
 
-      await plugin.saveExecutionContext(ctx);
+      const proposal = await plugin.proposePlan(input);
 
-      expect(mockDatabase.dsg_execution_grants).toHaveLength(1);
-      expect(mockDatabase.dsg_credential_leases).toHaveLength(1);
+      expect(proposal.plan).toBeDefined();
+      expect(proposal.plan.canonicalPlan).toBe("echo hello");
+      expect(proposal.plan.planHash).toBeTruthy();
+      expect(proposal.rationale).toBeTruthy();
+      expect(Array.isArray(proposal.riskTags)).toBe(true);
     });
 
-    it("renews execution context with persistence", async () => {
+    it("tracks plan proposals", async () => {
       const plugin = new HermesPlugin();
-      const grant = buildExecutionGrant(basePlan, 60_000);
-      const lease = createCredentialLease("API_KEY", "secret-123", 60_000);
 
-      const ctx = {
-        plan: basePlan,
-        grant,
-        credentials: { leases: [lease], unavailable: [] },
-        allowedCommands: ["echo"],
-        allowedPaths: ["/tmp"],
+      const input1 = {
+        inputHash: "input-abc",
+        attemptNo: 1,
+        canonicalPlan: "echo first",
+        policyVersion: "v1.0.0",
+        invariantVersion: "v1.0.0",
+        toolManifestHash: "manifest-xyz",
       };
 
-      const renewed = await plugin.renewExecutionContext(ctx, 120_000, true);
+      const input2 = {
+        inputHash: "input-abc",
+        attemptNo: 2,
+        canonicalPlan: "echo second",
+        policyVersion: "v1.0.0",
+        invariantVersion: "v1.0.0",
+        toolManifestHash: "manifest-xyz",
+      };
 
-      expect(renewed.grant.renewals).toBe(1);
-      expect(renewed.credentials.leases[0].renewals).toBe(1);
-      expect(mockDatabase.dsg_execution_grants).toHaveLength(1);
-      expect(mockDatabase.dsg_credential_leases).toHaveLength(1);
+      const proposal1 = await plugin.proposePlan(input1);
+      const proposal2 = await plugin.proposePlan(input2);
+
+      expect(proposal1.plan.attemptNo).toBe(1);
+      expect(proposal2.plan.attemptNo).toBe(2);
+      expect(proposal1.plan.planHash).not.toBe(proposal2.plan.planHash);
     });
 
-    it("restores active contexts from database", async () => {
+    it("brokers credentials", async () => {
       const plugin = new HermesPlugin();
-      const grant = buildExecutionGrant(basePlan, 60_000);
-      const lease = createCredentialLease("API_KEY", "secret-123", 60_000);
 
-      await saveGrant(grant);
-      await saveLease(lease);
+      // Empty secretNames triggers early return without supabase call
+      const result = await plugin.brokerCredentials([]);
 
-      const restored = await plugin.restoreActiveContexts();
-
-      expect(restored.grants.length).toBeGreaterThanOrEqual(0);
-      expect(restored.leases.length).toBeGreaterThanOrEqual(0);
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.leases)).toBe(true);
+      expect(Array.isArray(result.unavailable)).toBe(true);
+      expect(result.leases).toHaveLength(0);
+      expect(result.unavailable).toHaveLength(0);
     });
   });
 
