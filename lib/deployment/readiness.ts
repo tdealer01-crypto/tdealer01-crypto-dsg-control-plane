@@ -141,9 +141,14 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
     financeGovernanceBackend,
   };
 
-  // ok reflects config/env checks only — live network probes (supabaseServiceRole,
-  // dsgCoreHealth, financeGovernanceBackend) are informational and may timeout under load.
-  const criticalChecks = { env: envCheck, nextAuthSecret, dsgCoreConfig, financeGovernanceSurface };
+  // Production readiness is fail-closed: a green release gate requires the
+  // environment, service-role DB probe, DSG core, and finance backend to pass.
+  // Local developers can opt out only with READINESS_STRICT=false; production
+  // and preview deploys default to strict checks.
+  const strictReadiness = parseBooleanFlag(process.env.READINESS_STRICT, process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
+  const criticalChecks = strictReadiness
+    ? checks
+    : { env: envCheck, nextAuthSecret, dsgCoreConfig, financeGovernanceSurface };
 
   return {
     ok: Object.values(criticalChecks).every((check) => check.ok),

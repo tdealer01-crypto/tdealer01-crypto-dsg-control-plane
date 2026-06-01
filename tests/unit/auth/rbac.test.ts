@@ -12,6 +12,9 @@ const ALL: OrgPermission[] = [
   'org.view_evidence',
   'org.invite_members',
   'org.invite_guests',
+  'org.manage_api_keys',
+  'org.manage_webhooks',
+  'org.manage_notifications',
 ];
 
 describe('org rbac matrix', () => {
@@ -34,6 +37,9 @@ describe('org rbac matrix', () => {
         'org.view_evidence',
         'org.invite_members',
         'org.invite_guests',
+        'org.manage_api_keys',
+        'org.manage_webhooks',
+        'org.manage_notifications',
       ],
       operator: ['org.manage_agents', 'org.execute', 'org.view_reports', 'org.view_evidence'],
       viewer: ['org.view_reports', 'org.view_evidence'],

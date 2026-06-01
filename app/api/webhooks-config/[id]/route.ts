@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,12 +17,11 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireOrgPermission('org.manage_webhooks');
+  if (access.ok !== true) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const supabase = await createClient();
+  const orgId = access.orgId;
 
   const { id } = await params;
   const { error } = await supabase
@@ -38,12 +38,11 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireOrgPermission('org.manage_webhooks');
+  if (access.ok !== true) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const orgId = await getOrgId(supabase, user.id);
-  if (!orgId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const supabase = await createClient();
+  const orgId = access.orgId;
 
   const { id } = await params;
 

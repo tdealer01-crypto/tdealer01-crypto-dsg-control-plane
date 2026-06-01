@@ -51,6 +51,38 @@ check_endpoint() {
   fi
 }
 
+check_json_ok_endpoint() {
+  local path="$1"
+  local output_file="$2"
+  local url="${BASE_URL%/}${path}"
+  local code
+  code=$(http_code "$url" "$output_file")
+  if ! [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+    echo "❌ ${path} -> HTTP ${code}"
+    if grep -qi "CONNECT tunnel failed" "$output_file" 2>/dev/null; then
+      echo "   Proxy tunnel failure detected. Re-run from GitHub Actions or a direct-network shell."
+    fi
+    failures=$((failures + 1))
+    return
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "❌ ${path} -> cannot verify JSON .ok because jq is not installed"
+    failures=$((failures + 1))
+    return
+  fi
+
+  local ok
+  ok=$(jq -r '.ok // false' "$output_file" 2>/dev/null || echo false)
+  if [[ "$ok" == "true" ]]; then
+    echo "✅ ${path} -> HTTP ${code} ok=true"
+  else
+    echo "❌ ${path} -> HTTP ${code} ok=${ok}"
+    jq -r '.error // .checks // .readiness // empty' "$output_file" 2>/dev/null || true
+    failures=$((failures + 1))
+  fi
+}
+
 echo "== Trust surface checks for ${BASE_URL} =="
 check_endpoint "/terms"
 check_endpoint "/privacy"
@@ -58,23 +90,8 @@ check_endpoint "/security"
 check_endpoint "/support"
 
 echo "== Runtime baseline checks =="
-check_endpoint "/api/health"
-
-readiness_code=$(http_code "${BASE_URL%/}/api/readiness" "$readiness_file")
-if [[ "$readiness_code" =~ ^(2|3)[0-9][0-9]$ ]]; then
-  readiness_status=$(jq -r '.status // .readiness.status // .readiness_status // "ready"' "$readiness_file" 2>/dev/null || echo "ready")
-  echo "✅ /api/readiness -> HTTP ${readiness_code} status=${readiness_status}"
-elif [[ "$readiness_code" == "500" ]]; then
-  echo "❌ /api/readiness -> HTTP 500"
-  echo "   Deployment readiness endpoint returned an internal server error. Inspect Vercel deployment logs before any agent execution."
-  failures=$((failures + 1))
-else
-  echo "❌ /api/readiness -> HTTP ${readiness_code}"
-  if grep -qi "CONNECT tunnel failed" "$readiness_file" 2>/dev/null; then
-    echo "   Proxy tunnel failure detected. Re-run from GitHub Actions or a direct-network shell."
-  fi
-  failures=$((failures + 1))
-fi
+check_json_ok_endpoint "/api/health" "$response_file"
+check_json_ok_endpoint "/api/readiness" "$readiness_file"
 
 # /api/core/monitor is intentionally no longer a release dependency. /api/readiness is the source of truth.
 
