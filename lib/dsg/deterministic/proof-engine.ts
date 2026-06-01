@@ -36,6 +36,25 @@ function deterministicProofTimestamp(inputHash: string) {
   return new Date(seconds * 1000).toISOString();
 }
 
+export function isProductionReadyDeterministicProof(
+  proof: DeterministicProof,
+): boolean {
+  return (
+    proof.status === "PASS" &&
+    proof.constraints.length > 0 &&
+    proof.constraints.every((constraint) => constraint.passed) &&
+    Boolean(nonceText(proof.replayProtection?.nonce)) &&
+    Boolean(nonceText(proof.replayProtection?.idempotencyKey)) &&
+    Boolean(proof.policyRef) &&
+    Boolean(proof.policyVersion) &&
+    Boolean(proof.constraintSetHash) &&
+    Boolean(proof.proofHash) &&
+    Boolean(proof.inputHash) &&
+    Boolean(proof.solver?.name) &&
+    Boolean(proof.solver?.version)
+  );
+}
+
 export function proveDeterministicPlan(
   request: DeterministicProofRequest,
 ): DeterministicProof {
@@ -82,16 +101,6 @@ export function proveDeterministicPlan(
     requestHash: inputHash,
   };
   const constraintSetHash = manifest.constraintSetHash;
-  const productionReadyClaim =
-    status === "PASS" &&
-    constraints.length === manifest.constraints.length &&
-    constraints.every((constraint) => constraint.passed) &&
-    Boolean(nonceText(request.nonce)) &&
-    Boolean(nonceText(request.idempotencyKey)) &&
-    Boolean(policyRef) &&
-    Boolean(policyVersion) &&
-    Boolean(constraintSetHash) &&
-    Boolean(solver.version);
 
   const proofHash = buildProofHash({
     proofId,
@@ -108,7 +117,7 @@ export function proveDeterministicPlan(
     constraints,
   });
 
-  return {
+  const proof: DeterministicProof = {
     proofId,
     status,
     timestamp,
@@ -132,9 +141,19 @@ export function proveDeterministicPlan(
     constraints,
     evidenceBoundary: {
       statement:
-        "This DSG-native deterministic proof is evidence-derived from the checked policy constraints, replay-protection inputs, policy reference, constraint-set hash, and solver metadata. It does not claim that an external Z3 solver was invoked unless solver metadata says so.",
+        "This DSG-native deterministic proof is evidence-derived from the checked policy constraints, replay-protection inputs, policy reference, constraint-set hash, proof hash, input hash, and solver metadata. It does not claim an external Z3 production solver, third-party certification, WORM-certified storage, or cryptographic-signing completion.",
       externalSolverInvoked: solver.externalSolverInvoked,
-      productionReadyClaim,
+      productionReadyClaim: false,
+      externalZ3ProductionSolverClaim: false,
+      certificationClaim: false,
+      independentAuditClaim: false,
+      wormStorageCertifiedClaim: false,
+      cryptographicSigningCompleteClaim: false,
     },
   };
+
+  proof.evidenceBoundary.productionReadyClaim =
+    isProductionReadyDeterministicProof(proof);
+
+  return proof;
 }

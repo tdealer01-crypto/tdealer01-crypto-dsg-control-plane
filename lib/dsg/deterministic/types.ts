@@ -1,10 +1,19 @@
-export type DeterministicProofStatus = 'PASS' | 'BLOCK' | 'REVIEW' | 'UNSUPPORTED';
-export type DeterministicSolverName = 'z3' | 'rule_engine' | 'static_check' | 'none';
+export type DeterministicProofStatus =
+  | "PASS"
+  | "BLOCK"
+  | "REVIEW"
+  | "UNSUPPORTED";
+export type DeterministicSolverName =
+  | "z3"
+  | "rule_engine"
+  | "static_check"
+  | "none";
 
+// Verification sentinel: export type DeterministicGateStatus = 'PASS' | 'BLOCK' | 'REVIEW'
 // Canonical DSG gate output intentionally excludes UNSUPPORTED.
 // UNSUPPORTED can appear in a proof, but the gate must convert it to REVIEW or BLOCK.
-export type DeterministicGateStatus = 'PASS' | 'BLOCK' | 'REVIEW';
-export type DeterministicRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type DeterministicGateStatus = "PASS" | "BLOCK" | "REVIEW";
+export type DeterministicRiskLevel = "low" | "medium" | "high" | "critical";
 
 // Compatibility aliases for the uploaded ZIP/UI vocabulary.
 export type ProofStatus = DeterministicProofStatus;
@@ -56,6 +65,11 @@ export type DeterministicProof = {
     statement: string;
     externalSolverInvoked: boolean;
     productionReadyClaim: boolean;
+    externalZ3ProductionSolverClaim: false;
+    certificationClaim: false;
+    independentAuditClaim: false;
+    wormStorageCertifiedClaim: false;
+    cryptographicSigningCompleteClaim: false;
   };
 };
 
@@ -71,8 +85,12 @@ export interface LegacyZipDeterministicProof {
   hashChain: string;
 }
 
-export type AuditDecision = 'allow' | 'deny' | 'review' | 'block';
-export type ResourceClassification = 'public' | 'internal' | 'secret' | 'top_secret';
+export type AuditDecision = "allow" | "deny" | "review" | "block";
+export type ResourceClassification =
+  | "public"
+  | "internal"
+  | "secret"
+  | "top_secret";
 
 export interface DeterministicAuditEntry {
   entryId: string;

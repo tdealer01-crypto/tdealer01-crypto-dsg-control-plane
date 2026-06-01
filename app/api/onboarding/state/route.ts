@@ -40,6 +40,13 @@ function normalizeCompletedStepIds(value: unknown): string[] {
   ].sort();
 }
 
+function invalidCompletedStepIds(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (step) => typeof step !== "string" || !VALID_WIDGET_STEPS.has(step),
+  );
+}
+
 function widgetStateFromChecklist(checklist: unknown): OnboardingWidgetState {
   const root = objectValue(checklist);
   const widget = objectValue(root[WIDGET_CHECKLIST_KEY]);
@@ -152,6 +159,17 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const invalidSteps = invalidCompletedStepIds(body.completedStepIds);
+    if (invalidSteps.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Invalid onboarding step id",
+          invalidStepIds: invalidSteps,
+        },
+        { status: 400 },
+      );
+    }
+
     const existing = await loadOrgOnboarding(access.orgId);
     const currentWidget = widgetStateFromChecklist(existing?.checklist ?? null);
     const nextWidget: OnboardingWidgetState = {
@@ -170,6 +188,8 @@ export async function PATCH(request: NextRequest) {
       nextWidget,
     ) as any;
     const admin = getSupabaseAdmin();
+
+    const mutation = existing?.id ? "update" : "insert";
 
     if (existing?.id) {
       const updated = await admin
@@ -190,6 +210,27 @@ export async function PATCH(request: NextRequest) {
       });
       if (inserted.error) throw inserted.error;
     }
+
+    const audit = await admin.from("audit_logs").insert({
+      org_id: access.orgId,
+      policy_version: "onboarding-state-v1",
+      decision: "ALLOW",
+      reason: "Onboarding dashboard widget state persisted",
+      metadata: {
+        route: "/api/onboarding/state",
+        mutation,
+        actor_user_id: access.userId,
+        permission: "org.manage_agents",
+        checklist_key: WIDGET_CHECKLIST_KEY,
+      },
+      evidence: {
+        source: "api/onboarding/state",
+        dismissed: nextWidget.dismissed,
+        completed_step_ids: nextWidget.completedStepIds,
+      },
+      created_at: now,
+    });
+    if (audit.error) throw audit.error;
 
     return NextResponse.json(await buildOnboardingResponse(access.orgId));
   } catch (error) {
