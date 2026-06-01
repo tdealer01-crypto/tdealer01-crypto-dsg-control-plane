@@ -8,6 +8,50 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 Test coverage expansion — 2026-06-01
+
+**Branch:** `claude/test-coverage-analysis-M8Gng`
+
+Path-audited coverage gaps filled with 7 new unit test files (50 new tests). All
+previously uncovered decision-point modules now have dedicated unit tests.
+
+### New test files
+
+| File | Tests | Module covered |
+|---|:---:|---|
+| `tests/unit/authz-runtime.test.ts` | 5 | `lib/authz-runtime.ts` — internal service vs user session auth paths |
+| `tests/unit/agent-auth.test.ts` | 4 | `lib/agent-auth.ts` — API key SHA-256 hash lookup |
+| `tests/unit/release-gate/checker.test.ts` | 7 | `lib/release-gate/checker.ts` — GO/NO-GO verdict, network error handling |
+| `tests/unit/release-gate/entitlements.test.ts` | 5 | `lib/release-gate/entitlements.ts` — null guard, DB error, active entitlement |
+| `tests/unit/release-gate/plans.test.ts` | 5 | `lib/release-gate/plans.ts` — static plan shape |
+| `tests/unit/security/api-error.test.ts` | 12 | `lib/security/api-error.ts` — sensitive key redaction, safe response bodies, Sentry |
+| `tests/unit/agent-governance/service.test.ts` | 12 | `lib/agent-governance/service.ts` — execution request creation, tool dispatch routing, proof assembly |
+
+### Verification
+
+```
+./node_modules/.bin/vitest run tests/unit/
+```
+
+```
+ Test Files  108 passed (108)
+      Tests  1027 passed (1027)
+   Start at  2026-06-01
+   Duration  14.11s
+```
+
+- `tests/unit/authz-runtime.test.ts` → 5/5 passed (internal service path, user session path, forbidden path, role forwarding)
+- `tests/unit/agent-auth.test.ts` → 4/4 passed (valid hash lookup, null on error, hash verification)
+- `tests/unit/release-gate/` → 17/17 passed (GO verdict, NO-GO on failure, network error, plan shape)
+- `tests/unit/security/api-error.test.ts` → 12/12 passed (redaction, 5xx/4xx response bodies, headers, Sentry call)
+- `tests/unit/agent-governance/service.test.ts` → 12/12 passed (request insert, explicit plan, tool routing, proof + approval map)
+
+No regressions: pre-existing 977 tests remain green.
+
+**Coverage thresholds remain enforced** (vitest.config.ts): global 60/65/55/60, per-file governance floors unchanged.
+
+---
+
 ## 🟢 GO / NO-GO — 2026-05-29 (CCVS v1.2 + AI Delivery Proof MVP + Agency Pricing)
 
 ### New in this release
@@ -415,7 +459,7 @@ Supabase auth + Postgres (RLS)
 Stripe billing + metered usage
 Upstash Redis rate limiting
 Resend transactional email
-Vitest 998 tests (unit + integration)
+Vitest 1027 tests (unit + integration)
 Playwright E2E
 Z3 SMT Solver — 24 theorems at design time
 GitHub Actions + DSG Secure Deploy Gate
@@ -428,7 +472,7 @@ npm overrides — qs/ws/postcss transitive dep hardening
 
 ```bash
 npm run typecheck          # TypeScript — 0 errors
-npm run test               # 998 tests
+npm run test               # 1027 tests
 npm run verify:policy      # Z3 policy proofs (Python)
 npm run proof:revenue      # Z3 billing proofs (Python)
 npm run go:no-go <url>     # Full production gate
@@ -443,7 +487,7 @@ bash scripts/check-request-body-safety.sh  # request body safety linter
 ```
 ✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions.
 ✓ Runtime readiness is green (HTTP 200, status=ready).
-✓ 998 unit + integration tests pass, 0 failures (133 files, 4 skipped).
+✓ 1027 unit + integration tests pass, 0 failures (108 unit files; +50 new tests covering authz-runtime, agent-auth, release-gate, security/api-error, agent-governance/service).
 ✓ TypeScript compiles with 0 errors.
 ✓ Gateway policy engine formally verified — 8 Z3 theorems, design-time.
 ✓ Billing quota model formally verified — 16 Z3 theorems, design-time.
