@@ -8,6 +8,31 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 Latest merged baseline green — 2026-06-01
+
+The latest local branch state includes the post-merge drift snapshot
+`94b2ae7` and the latest functional merge `7d7b5b2` / PR #646
+(**Harden production auth and readiness gates**). The repository gates checked
+after that merge are green locally:
+
+- `npm run typecheck` → TypeScript passed with `0` reported errors.
+- `npm run test -- tests/unit/api/api-keys-route.test.ts tests/unit/auth/rbac.test.ts` → `20` tests passed.
+- `npm run build` → Next.js production build compiled successfully and generated `118` app routes.
+
+What PR #646 covers in code:
+
+- Server-side auth hardening for agent execution, gateway tool execution, team,
+  API key, webhook, and notification settings routes.
+- RBAC helpers and unit coverage for role checks.
+- Readiness gate updates in `lib/deployment/readiness.ts` and
+  `scripts/go-no-go-gate.sh`.
+- `vercel.json` remains on `npm install`, matching the current dependency state.
+
+**Boundary:** this is a green repository/build baseline, not a blanket claim that
+Marketplace/Enterprise production launch is complete. Launch readiness still
+requires the M1/M2 cutover gates, live DB checks, smoke evidence, and
+marketplace acceptance checks documented under `docs/`.
+
 ## 🟢 Production deploy unblocked — 2026-05-31
 
 Production had frozen behind commit `944ddb4` (#636): Vercel **Require Verified
