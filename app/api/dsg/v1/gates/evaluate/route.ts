@@ -6,6 +6,16 @@ import { readJsonBody } from '../../../../../../lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
+function validationErrorCode(details: { field: string; message: string }[]) {
+  if (details.some((detail) => detail.field === 'nonce' && detail.message === 'required')) {
+    return 'missing_nonce';
+  }
+  if (details.some((detail) => detail.field === 'idempotencyKey' && detail.message === 'required')) {
+    return 'missing_idempotency_key';
+  }
+  return 'validation_failed';
+}
+
 export async function POST(request: Request) {
   const rateLimitResult = await applyRateLimit({
     key: getRateLimitKey(request, 'dsg-gate'),
@@ -31,7 +41,7 @@ export async function POST(request: Request) {
   const validated = validateDeterministicProofRequest(body.value);
   if (!validated.ok) {
     return NextResponse.json(
-      { ok: false, error: validated.error, details: validated.details ?? [] },
+      { ok: false, error: validationErrorCode(validated.details ?? []), details: validated.details ?? [] },
       { status: 400, headers: rateLimitHeaders },
     );
   }
