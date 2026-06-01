@@ -8,6 +8,36 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 Production deploy unblocked — 2026-05-31
+
+Production had frozen behind commit `944ddb4` (#636): Vercel **Require Verified
+Commits** was auto-cancelling unsigned agent commits, and `next build` was
+additionally failing type-checking because the generated `lib/database.types.ts`
+had drifted from the live schema. Both are resolved.
+
+- **Root cause 1 — Vercel Git gate:** "Require Verified Commits" disabled in
+  Vercel → Git; native Git auto-deploy restored. `vercel-prod-cli-bypass.yml`
+  remains as a manual `workflow_dispatch` fallback.
+- **Root cause 2 — build type gate:** `lib/database.types.ts` reconciled with
+  `supabase/schema.sql` (tsc `144 → 0` errors); the temporary `ignoreBuildErrors`
+  escape hatch was removed so type-checking is a real build gate again.
+- **DB reconciliation:** `supabase/migrations/20260531_full_db_reconciliation.sql`
+  creates the 16 tables the code uses that were missing from the live DB
+  (idempotent, FKs omitted) plus column top-ups; applied to production Supabase.
+- **Managed Agents example:** `examples/managed-agent-session/` — minimal
+  `@anthropic-ai/sdk` beta Sessions client (create session → stream → send →
+  print agent text). Outside the Next.js `tsconfig`, so it does not affect the build.
+
+**Verification**
+- [x] `curl /api/agent/status` → `"version":"450f09b…","env":"production","checks":{"db":true}`
+- [x] `npm run build` → `✓ Compiled successfully` with `ignoreBuildErrors` removed (verified locally)
+- [x] Full reconciliation SQL → `Success. No rows returned` in Supabase SQL editor
+
+**Known limits:** Managed Agents example needs a newer `@anthropic-ai/sdk` than the
+repo's pinned `^0.27.3` (the example installs it locally; the repo pin is unchanged).
+
+---
+
 ## 🟢 GO / NO-GO — 2026-05-29 (CCVS v1.2 + AI Delivery Proof MVP + Agency Pricing)
 
 ### New in this release
