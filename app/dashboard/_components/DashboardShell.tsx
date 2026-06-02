@@ -26,6 +26,7 @@ import {
   Settings,
   Menu,
   X,
+  MessageSquare,
 } from 'lucide-react';
 
 type NavItem = {
@@ -45,6 +46,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Monitor',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/dashboard/hermes', label: 'Hermes Agent', icon: MessageSquare },
       { href: '/dashboard/live-control', label: 'Live Control', icon: Activity },
       { href: '/dashboard/executions', label: 'Executions', icon: PlayCircle },
       { href: '/dashboard/agents', label: 'Agents', icon: Bot },
