@@ -18,8 +18,8 @@ export type HermesNousModel =
   | 'NousResearch/Hermes-3-Llama-3.1-70B-FP8'
   | 'NousResearch/Hermes-3-Llama-3.1-405B-FP8'
   | 'NousResearch/Hermes-3-Llama-3.1-8B'
-  | 'nousresearch/hermes-3-llama-3.1-70b'   // OpenRouter ID
-  | 'nousresearch/hermes-3-llama-3.1-405b'; // OpenRouter ID
+  | 'nousresearch/hermes-3-llama-3.1-70b'
+  | 'nousresearch/hermes-3-llama-3.1-405b';
 
 export type HermesNousHosting = 'together' | 'openrouter';
 
