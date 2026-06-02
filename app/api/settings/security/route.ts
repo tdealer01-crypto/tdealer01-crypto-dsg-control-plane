@@ -21,6 +21,6 @@ export async function PATCH(req: NextRequest) {
     .upsert({ org_id: access.orgId, sso_enabled: Boolean(body.sso_enabled), sso_enforced: Boolean(body.sso_enforced), break_glass_email_enabled: body.break_glass_email_enabled !== false, sso_metadata: body.sso_metadata || {}, updated_at: new Date().toISOString() }, { onConflict: 'org_id' })
     .select('*')
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   return NextResponse.json({ item: data });
 }

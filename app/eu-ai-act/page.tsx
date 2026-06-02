@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import LiveStatusBadge from './LiveStatusBadge';
 
 export const metadata: Metadata = {
   title: 'EU AI Act Controls for AI Agents — DSG ONE',
@@ -52,42 +53,62 @@ const FRAMEWORKS = [
     code: `# Works with LangChain, CrewAI, AutoGen, or any agent
 import requests
 
-result = requests.post("https://your-domain/api/try/gate", json={
-    "session_id": "run-001",
+headers = {"Authorization": "Bearer dsg_live_<your-api-key>"}
+result = requests.post("https://your-domain/api/execute", headers=headers, json={
+    "workspace_id": "ws-001",
+    "provider": "openai",
+    "agent_id": "agent-finance",
     "action": "send_payment"
 }).json()
 
-if result["decision"] == "ALLOW":
-    execute_action()  # proceed with stamp`,
+# ok = transport success. Check 'decision' for the gate outcome.
+# BLOCK or REVIEW also return ok=True — only execute on explicit ALLOW.
+if result.get("ok") and result.get("decision") == "ALLOW":
+    execute_action()       # gate returned ALLOW
+elif result.get("decision") == "REVIEW":
+    route_to_human()       # gate requires human oversight before proceeding
+else:
+    log_blocked(result)    # gate returned BLOCK — do NOT execute`,
   },
   {
     name: 'OpenAI Agents SDK',
     code: `import requests
 
-def gate(session_id: str, action: str) -> bool:
-    r = requests.post("/api/try/gate", json={
-        "session_id": session_id,
+HEADERS = {"Authorization": "Bearer dsg_live_<your-api-key>"}
+
+def gate(workspace_id: str, agent_id: str, action: str) -> bool:
+    r = requests.post("/api/execute", headers=HEADERS, json={
+        "workspace_id": workspace_id,
+        "provider": "openai",
+        "agent_id": agent_id,
         "action": action,
     }).json()
-    return r["decision"] == "ALLOW"
+    # Check 'decision' == 'ALLOW' — BLOCK/REVIEW also return ok=True
+    return r.get("ok", False) and r.get("decision") == "ALLOW"
 
 # Before every tool call:
-if gate(run_id, tool_call.name):
-    tool_call.execute()`,
+if gate(ws_id, agent_id, tool_call.name):
+    tool_call.execute()
+# else: gate returned BLOCK or REVIEW — do NOT proceed`,
   },
   {
     name: 'JavaScript / TypeScript',
-    code: `async function gate(sessionId: string, action: string) {
-  const r = await fetch("/api/try/gate", {
+    code: `async function gate(workspaceId: string, agentId: string, action: string) {
+  const r = await fetch("/api/execute", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, action }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": \`Bearer \${process.env.DSG_API_KEY}\`,
+    },
+    body: JSON.stringify({ workspace_id: workspaceId, provider: "openai", agent_id: agentId, action }),
   });
-  return (await r.json()).decision === "ALLOW";
+  const data = await r.json();
+  // Check 'decision' — BLOCK/REVIEW return ok:true but decision !== 'ALLOW'
+  return data.ok === true && data.decision === 'ALLOW';
 }
 
-// Before every agent action:
-if (await gate(runId, action)) execute();`,
+// Before every agent action — only execute if gate explicitly allows:
+if (await gate(workspaceId, agentId, action)) execute();`,
   },
 ];
 
@@ -337,6 +358,7 @@ export default function EUAIActPage() {
           <p className="mt-6 text-sm text-slate-500">
             No credit card · 5-minute setup · No changes to your existing stack
           </p>
+          <LiveStatusBadge />
         </div>
       </section>
 

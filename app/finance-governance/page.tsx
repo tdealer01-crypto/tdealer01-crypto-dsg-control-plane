@@ -84,6 +84,25 @@ export default function FinanceGovernancePage() {
               Read Docs
             </Link>
           </div>
+
+          {/* Quick-access to live app */}
+          <div className="mt-8 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">Already set up? Open the live app</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/finance-governance/live/approvals" className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/60">
+                Approval Queue →
+              </Link>
+              <Link href="/finance-governance/live" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Live Dashboard →
+              </Link>
+              <Link href="/finance-governance/live/onboarding" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Onboarding →
+              </Link>
+              <Link href="/finance-governance/live/workflow" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Workflow →
+              </Link>
+            </div>
+          </div>
         </div>
 
         <div className="mt-12 flex flex-wrap gap-3 text-sm">

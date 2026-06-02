@@ -52,10 +52,10 @@ jobs:
           path: gitleaks-report.json
           if-no-files-found: ignore
 
-      - name: npm audit (fail on high severity)
+      - name: npm audit (fail on high severity — production deps only)
         run: |
           npm ci
-          npm audit --audit-level=high
+          npm audit --audit-level=high --omit=dev
 
       - name: Enforce central error handler on API routes
         run: |

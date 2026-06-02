@@ -108,12 +108,18 @@ export default function FinanceApprovalGatePage() {
                 Pre-audit evidence only. No independent certification claimed.
               </p>
             </div>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/request-access?pilot=finance-approval-gate"
                 className="inline-flex rounded-2xl bg-emerald-300 px-7 py-4 text-base font-bold text-slate-950 transition hover:bg-emerald-200"
               >
                 Request Finance Gate Pilot
+              </Link>
+              <Link
+                href="/finance-governance/live/approvals"
+                className="inline-flex rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-7 py-4 text-base font-bold text-emerald-100 transition hover:border-emerald-300/70"
+              >
+                View Live Approval Queue →
               </Link>
             </div>
           </div>
