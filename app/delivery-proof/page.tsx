@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import ScanForm from './ScanForm';
 
 export const metadata: Metadata = {
   title: 'AI Delivery Proof — DSG ONE',
@@ -118,6 +119,7 @@ export default function DeliveryProofPage() {
           <p className="mt-6 text-xs text-slate-500">
             certificationClaim = false · independentAuditClaim = false · pre-audit evidence mapping only
           </p>
+          <ScanForm />
         </div>
       </section>
 

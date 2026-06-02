@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import SystemStatus from './SystemStatus';
 
 const productFlow = [
   ['Create AI System', 'Register owner, model, impact level, environment, and allowed action boundary.'],
@@ -42,6 +43,7 @@ export default function ProofGatePage() {
               <Link href="/enterprise-ready" className="dsg-btn-blue">View enterprise setup</Link>
               <Link href="/enterprise-proof/demo" className="dsg-btn-red">Run proof demo</Link>
             </div>
+            <SystemStatus />
           </div>
 
           <div className="dsg-card-blue rounded-3xl p-6">

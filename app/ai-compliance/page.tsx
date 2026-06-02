@@ -1,4 +1,7 @@
+'use client';
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 const controls = [
   "Deterministic action gate before AI or workflow execution",
@@ -20,7 +23,48 @@ const routes = [
   { href: "/marketplace/production-evidence", title: "Production Evidence", body: "Gateway benchmark, SMT2 invariant evidence, and public baseline boundary." },
 ];
 
+interface ComplianceStatus {
+  ok: boolean;
+  claim_pass_eligible: boolean | null;
+  run_id: string | null;
+  mutation_score: number | null;
+  requirements_pass: number;
+  requirements_total: number;
+  last_ci_run: string | null;
+  updated_at: string | null;
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-slate-400">{sub}</p>
+    </div>
+  );
+}
+
 export default function AICompliancePage() {
+  const [status, setStatus] = useState<ComplianceStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/ccvs/compliance-status')
+      .then((r) => r.json() as Promise<ComplianceStatus>)
+      .then(setStatus)
+      .catch(() => setStatus(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const reqPass  = status?.requirements_pass  ?? 0;
+  const reqTotal = status?.requirements_total ?? 0;
+  const mutScore = status?.mutation_score != null ? `${status.mutation_score.toFixed(1)}%` : '—';
+  const eligible = status?.claim_pass_eligible;
+  const eligibleBadge =
+    eligible === true  ? { text: 'EVIDENCE COMPLETE', cls: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' } :
+    eligible === false ? { text: 'PRODUCTION BLOCKED', cls: 'border-red-400/30 bg-red-400/10 text-red-200' } :
+    null;
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-slate-100">
       <div className="mx-auto max-w-6xl">
@@ -51,22 +95,45 @@ export default function AICompliancePage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-sm text-slate-400">Production Gateway</p>
-            <p className="mt-2 text-3xl font-bold text-white">6 / 6</p>
-            <p className="mt-2 text-slate-400">latest observed benchmark checks passed</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-sm text-slate-400">SMT2 Runtime Invariants</p>
-            <p className="mt-2 text-3xl font-bold text-white">6 / 6</p>
-            <p className="mt-2 text-slate-400">deterministic invariant cases passed</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-sm text-slate-400">Comparison Rubric</p>
-            <p className="mt-2 text-3xl font-bold text-white">190 / 200</p>
-            <p className="mt-2 text-slate-400">internal public-baseline rubric score</p>
-          </div>
+        {/* Live compliance stats */}
+        <section className="mt-8">
+          {loading ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-900 p-5 h-28" />
+              ))}
+            </div>
+          ) : (
+            <>
+              {eligibleBadge && (
+                <div className={`mb-4 inline-flex items-center rounded-full border px-4 py-1.5 text-xs font-bold uppercase ${eligibleBadge.cls}`}>
+                  {eligibleBadge.text}
+                  {status?.run_id && (
+                    <Link href={`/delivery-proof/report/${status.run_id}`} className="ml-2 underline opacity-70 hover:opacity-100">
+                      view report
+                    </Link>
+                  )}
+                </div>
+              )}
+              <div className="grid gap-4 md:grid-cols-3">
+                <StatCard
+                  label="Compliance Requirements"
+                  value={reqTotal > 0 ? `${reqPass} / ${reqTotal}` : '— / —'}
+                  sub="requirements passed in latest CI run"
+                />
+                <StatCard
+                  label="Mutation Score"
+                  value={mutScore}
+                  sub="Stryker mutation test coverage"
+                />
+                <StatCard
+                  label="Last CI Run"
+                  value={status?.last_ci_run ? new Date(status.last_ci_run).toLocaleDateString() : '—'}
+                  sub={status?.updated_at ? `updated ${new Date(status.updated_at).toLocaleTimeString()}` : 'not yet recorded'}
+                />
+              </div>
+            </>
+          )}
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
