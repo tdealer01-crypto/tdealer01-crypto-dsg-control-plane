@@ -25,8 +25,8 @@ export async function OPTIONS(request: Request) {
  *
  * Creates a Browserbase browser session gated through DSG safety inspection.
  * DSG evaluates the open-URL action before the session is created.
- * Safe URLs: PASS → session created.
- * Risky URLs (data-exfil patterns, blocked domains): BLOCK → 409.
+ * Safe URLs: PASS -> session created.
+ * Risky URLs (data-exfil patterns, blocked domains): BLOCK -> 409.
  *
  * Hermes is the caller. DSG is the inspector. Hermes capability is not reduced
  * except for genuinely dangerous actions.
