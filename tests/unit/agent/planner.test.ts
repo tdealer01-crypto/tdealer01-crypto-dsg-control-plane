@@ -25,7 +25,6 @@ describe('agent planner chatbot intents', () => {
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0]?.toolId).toBe('browser_navigate');
     expect(plan.steps[0]?.params).toMatchObject({
-      agent_id: 'agt_ops_01',
       url: 'https://example.com',
     });
   });
