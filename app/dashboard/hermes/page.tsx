@@ -397,7 +397,12 @@ export default function HermesAgentPage() {
               }
 
               if (event.type === 'assistant_reply' && event.reply) {
-                return { ...m, content: event.reply, model: event.model };
+                return {
+                  ...m,
+                  content: event.reply,
+                  model: event.model,
+                  decision: (event as Record<string, unknown>).gate_decision as Decision | undefined,
+                };
               }
 
               if (event.type === 'plan' && Array.isArray(event.steps)) {
