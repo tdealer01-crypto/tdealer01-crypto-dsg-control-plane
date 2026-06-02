@@ -61,8 +61,14 @@ result = requests.post("https://your-domain/api/execute", headers=headers, json=
     "message": "send_payment"
 }).json()
 
-if result.get("ok"):
-    execute_action()  # proceed — gate approved`,
+# ok = transport success. Always check 'allowed' for the gate decision.
+# BLOCK or REVIEW may return ok=True — do NOT execute unless allowed=True.
+if result.get("ok") and result.get("allowed") is True:
+    execute_action()       # gate explicitly returned ALLOW
+elif result.get("decision") == "REVIEW":
+    route_to_human()       # gate requires human oversight before proceeding
+else:
+    log_blocked(result)    # gate returned BLOCK — do NOT execute`,
   },
   {
     name: 'OpenAI Agents SDK',
@@ -77,11 +83,13 @@ def gate(workspace_id: str, agent_id: str, action: str) -> bool:
         "agent_id": agent_id,
         "message": action,
     }).json()
-    return r.get("ok", False)
+    # Must check 'allowed', not just 'ok' — BLOCK/REVIEW also return ok=True
+    return r.get("ok", False) and r.get("allowed") is True
 
 # Before every tool call:
 if gate(ws_id, agent_id, tool_call.name):
-    tool_call.execute()`,
+    tool_call.execute()
+# else: gate returned BLOCK or REVIEW — do NOT proceed`,
   },
   {
     name: 'JavaScript / TypeScript',
@@ -94,10 +102,12 @@ if gate(ws_id, agent_id, tool_call.name):
     },
     body: JSON.stringify({ workspace_id: workspaceId, provider: "openai", agent_id: agentId, message: action }),
   });
-  return (await r.json()).ok === true;
+  const data = await r.json();
+  // Check 'allowed' — BLOCK/REVIEW return ok:true but allowed:false
+  return data.ok === true && data.allowed === true;
 }
 
-// Before every agent action:
+// Before every agent action — only execute if gate explicitly allows:
 if (await gate(workspaceId, agentId, action)) execute();`,
   },
 ];
