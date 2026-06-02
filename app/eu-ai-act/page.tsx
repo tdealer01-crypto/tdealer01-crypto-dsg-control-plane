@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import LiveStatusBadge from './LiveStatusBadge';
 
 export const metadata: Metadata = {
   title: 'EU AI Act Controls for AI Agents — DSG ONE',
@@ -52,42 +53,52 @@ const FRAMEWORKS = [
     code: `# Works with LangChain, CrewAI, AutoGen, or any agent
 import requests
 
-result = requests.post("https://your-domain/api/try/gate", json={
-    "session_id": "run-001",
-    "action": "send_payment"
+headers = {"Authorization": "Bearer dsg_live_<your-api-key>"}
+result = requests.post("https://your-domain/api/execute", headers=headers, json={
+    "workspace_id": "ws-001",
+    "provider": "openai",
+    "agent_id": "agent-finance",
+    "message": "send_payment"
 }).json()
 
-if result["decision"] == "ALLOW":
-    execute_action()  # proceed with stamp`,
+if result.get("ok"):
+    execute_action()  # proceed — gate approved`,
   },
   {
     name: 'OpenAI Agents SDK',
     code: `import requests
 
-def gate(session_id: str, action: str) -> bool:
-    r = requests.post("/api/try/gate", json={
-        "session_id": session_id,
-        "action": action,
+HEADERS = {"Authorization": "Bearer dsg_live_<your-api-key>"}
+
+def gate(workspace_id: str, agent_id: str, action: str) -> bool:
+    r = requests.post("/api/execute", headers=HEADERS, json={
+        "workspace_id": workspace_id,
+        "provider": "openai",
+        "agent_id": agent_id,
+        "message": action,
     }).json()
-    return r["decision"] == "ALLOW"
+    return r.get("ok", False)
 
 # Before every tool call:
-if gate(run_id, tool_call.name):
+if gate(ws_id, agent_id, tool_call.name):
     tool_call.execute()`,
   },
   {
     name: 'JavaScript / TypeScript',
-    code: `async function gate(sessionId: string, action: string) {
-  const r = await fetch("/api/try/gate", {
+    code: `async function gate(workspaceId: string, agentId: string, action: string) {
+  const r = await fetch("/api/execute", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, action }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": \`Bearer \${process.env.DSG_API_KEY}\`,
+    },
+    body: JSON.stringify({ workspace_id: workspaceId, provider: "openai", agent_id: agentId, message: action }),
   });
-  return (await r.json()).decision === "ALLOW";
+  return (await r.json()).ok === true;
 }
 
 // Before every agent action:
-if (await gate(runId, action)) execute();`,
+if (await gate(workspaceId, agentId, action)) execute();`,
   },
 ];
 
@@ -337,6 +348,7 @@ export default function EUAIActPage() {
           <p className="mt-6 text-sm text-slate-500">
             No credit card · 5-minute setup · No changes to your existing stack
           </p>
+          <LiveStatusBadge />
         </div>
       </section>
 
