@@ -20,6 +20,10 @@ interface ExecuteRequest {
   input: string;
   allowedCommands?: string[];
   allowedPaths?: string[];
+  /** Optional: inline code to write to /tmp/dsg-code/<filename> before execution */
+  code?: string;
+  filename?: string;
+  runtime?: 'node' | 'python3' | 'bash';
 }
 
 interface ExecuteResponse {
@@ -37,8 +41,10 @@ interface ExecuteResponse {
     executedCommands: Array<{ command: string; args: string[] }>;
     fileChanges: Array<{ path: string; operation: string }>;
     evidence: Array<{ type: string; id: string; hash: string; timestamp: number }>;
+    stdout?: string;
   };
   message: string;
+  stdout?: string;
 }
 
 /**
@@ -118,7 +124,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
 
   try {
     const body = (await req.json()) as ExecuteRequest;
-    const { input, allowedCommands, allowedPaths } = body;
+    const { input, allowedCommands, allowedPaths, code, filename, runtime } = body;
 
     if (!input || typeof input !== "string") {
       return NextResponse.json(
@@ -135,20 +141,36 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
     // 2. Initialize Hermes Plugin
     const hermes = createHermesPlugin();
 
-    // 3. Generate plan using Anthropic API
+    // 3. If inline code provided, write to sandbox first and build a run plan
     let canonicalPlan: string;
-    try {
-      canonicalPlan = await generatePlanWithLLM(input, config.model);
-    } catch (err) {
-      return NextResponse.json(
-        {
-          success: false,
-          planHash: "",
-          violations: [],
-          message: `Plan generation failed: ${(err as Error).message}`,
-        } as ExecuteResponse,
-        { status: 500 }
-      );
+    if (code && typeof code === 'string') {
+      const { mkdirSync, writeFileSync } = await import('fs');
+      const { resolve } = await import('path');
+      const ext = runtime === 'python3' ? '.py' : runtime === 'bash' ? '.sh' : '.js';
+      const fname = typeof filename === 'string' && filename ? filename : `task-${Date.now()}${ext}`;
+      const sandboxPath = '/tmp/dsg-code';
+      mkdirSync(sandboxPath, { recursive: true });
+      const filePath = resolve(sandboxPath, fname);
+      writeFileSync(filePath, code, { encoding: 'utf-8', mode: 0o644 });
+      const bin = runtime === 'python3' ? 'python3' : runtime === 'bash' ? 'bash' : 'node';
+      canonicalPlan = JSON.stringify({
+        steps: [{ command: bin, args: [filePath], reason: `Run ${fname}` }],
+      });
+    } else {
+      // 3b. Generate plan using Anthropic API
+      try {
+        canonicalPlan = await generatePlanWithLLM(input, config.model);
+      } catch (err) {
+        return NextResponse.json(
+          {
+            success: false,
+            planHash: "",
+            violations: [],
+            message: `Plan generation failed: ${(err as Error).message}`,
+          } as ExecuteResponse,
+          { status: 500 }
+        );
+      }
     }
 
     // 4. Build plan from input
@@ -165,23 +187,27 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
 
     // 5. Build execution context with whitelists
     const ctx = hermes.buildExecutionContext(proposal.plan, { leases: [], unavailable: [] }, {
-      allowedCommands: allowedCommands || ["echo", "cat", "ls"],
-      allowedPaths: allowedPaths || ["/tmp/dsg"],
+      allowedCommands: allowedCommands || ["echo", "cat", "ls", "find", "grep", "node", "python3", "bash", "printf", "mkdir", "touch", "wc", "head", "tail", "sort", "uniq", "date", "pwd"],
+      allowedPaths: allowedPaths || ["/tmp/dsg", "/tmp/dsg-code"],
     });
 
     // 6. Execute with the real shell executor
     const shellExecutor = createShellExecutor();
-    const { result, report } = await hermes.executePlan(ctx, shellExecutor);
+    const { result } = await hermes.executePlan(ctx, shellExecutor);
+    const extResult = result as typeof result & { stdout?: string };
 
     // 7. Validate conformance
     const conformanceReport = checkConformance(ctx, result);
 
-    // 8. Return result
+    // 8. Return result with stdout surfaced
     return NextResponse.json({
       success: conformanceReport.approved,
       planHash: proposal.plan.planHash,
       violations: conformanceReport.violations,
-      result: conformanceReport.approved ? result : undefined,
+      stdout: extResult.stdout,
+      result: conformanceReport.approved
+        ? { ...result, stdout: extResult.stdout }
+        : undefined,
       message: conformanceReport.approved
         ? "Execution completed within constraints"
         : `Blocked: ${conformanceReport.violations.map((v) => v.message).join("; ")}`,

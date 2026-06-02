@@ -321,8 +321,49 @@ export function validateFileChange(
 }
 
 /**
+ * Parse the canonical plan into executable commands.
+ * Supports JSON steps format and plain-text line format.
+ */
+function parsePlanCommands(canonicalPlan: string): ProposedCommand[] {
+  // Try structured JSON first: { steps: [{command, args}] }
+  try {
+    const parsed = JSON.parse(canonicalPlan) as unknown;
+    if (parsed && typeof parsed === 'object' && 'steps' in parsed) {
+      const steps = (parsed as { steps: unknown[] }).steps;
+      if (Array.isArray(steps)) {
+        return steps
+          .filter((s): s is { command: string; args?: string[] } =>
+            typeof s === 'object' && s !== null && typeof (s as { command?: unknown }).command === 'string'
+          )
+          .map((s) => ({
+            command: s.command.trim().split(/\s+/)[0],
+            args: [
+              ...s.command.trim().split(/\s+/).slice(1),
+              ...(Array.isArray(s.args) ? s.args.map(String) : []),
+            ],
+          }));
+      }
+    }
+  } catch {
+    // Not JSON — fall through to line parser
+  }
+
+  // Plain text: each non-empty line starting with a known command token
+  const lines = canonicalPlan.split('\n');
+  const commands: ProposedCommand[] = [];
+  for (const raw of lines) {
+    const line = raw.trim().replace(/^[$#>]\s*/, ''); // strip shell prompts
+    if (!line || line.startsWith('#')) continue;
+    const parts = line.split(/\s+/);
+    if (parts.length === 0) continue;
+    commands.push({ command: parts[0], args: parts.slice(1) });
+  }
+  return commands;
+}
+
+/**
  * Create a shell execution runner compatible with HermesPlugin.executePlan().
- * Returns a function that can be passed as the runner callback.
+ * Parses the LLM-generated plan and executes each command through the gate.
  */
 export function createShellExecutor() {
   return async (
@@ -330,28 +371,39 @@ export function createShellExecutor() {
   ): Promise<ControlledExecutionResult> => {
     const executedCommands: ProposedCommand[] = [];
     const evidence: ExecutionEvidence[] = [];
-    const fileChanges = [];
+    const fileChanges: Array<{ path: string; operation: string }> = [];
+    const stdout_lines: string[] = [];
 
-    // Example: Execute a simple echo command to demonstrate working execution
-    // In production, this would orchestrate multiple commands from the plan
-    const testCmd: ProposedCommand = {
-      command: "echo",
-      args: ["DSG Brain shell execution active"],
-    };
+    const planCommands = parsePlanCommands(ctx.plan.canonicalPlan);
 
-    const result = await executeCommand(testCmd, ctx);
+    // Fallback: if plan produced no parseable commands, echo a status line
+    const cmdsToRun: ProposedCommand[] =
+      planCommands.length > 0
+        ? planCommands
+        : [{ command: "echo", args: ["[DSG Brain] no executable commands found in plan"] }];
 
-    if (result.success) {
-      executedCommands.push(testCmd);
+    for (const cmd of cmdsToRun) {
+      const result = await executeCommand(cmd, ctx);
+      if (result.blockReason) {
+        // Blocked — record as evidence and stop
+        evidence.push(result.evidence);
+        stdout_lines.push(`BLOCKED: ${result.blockReason}`);
+        break;
+      }
+      executedCommands.push(cmd);
       evidence.push(result.evidence);
+      if (result.stdout) stdout_lines.push(result.stdout.trim());
+      if (!result.success) break; // stop on first failure
     }
 
     return {
-      success: evidence.length > 0,
+      success: evidence.length > 0 && executedCommands.length > 0,
       planHash: ctx.plan.planHash,
       executedCommands,
       fileChanges,
       evidence,
-    };
+      // Attach combined stdout so the API route can surface it
+      ...(stdout_lines.length > 0 ? { stdout: stdout_lines.join('\n') } : {}),
+    } as ControlledExecutionResult & { stdout?: string };
   };
 }
