@@ -69,7 +69,6 @@ const requiredPaths = [
   'app/api/checkpoint',
   'app/api/core-compat',
   'app/api/core',
-  'app/api/demo',
   'app/api/effect-callback',
   'app/api/enterprise-proof',
   'app/api/execute',

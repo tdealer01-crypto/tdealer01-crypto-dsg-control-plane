@@ -208,12 +208,10 @@ Live database and live browser checks require real environment variables and cre
 `vercel.json` currently uses:
 
 ```json
-"installCommand": "npm install"
+"installCommand": "npm ci"
 ```
 
-Do not change it back to `npm ci` without confirming lockfile/dependency compatibility and Vercel build behavior.
-
-GitHub Actions workflows may still use `npm ci` internally. Inspect the exact workflow before describing its behavior.
+GitHub Actions workflows also use `npm ci`. Inspect the exact workflow before describing its behavior.
 
 ---
 
