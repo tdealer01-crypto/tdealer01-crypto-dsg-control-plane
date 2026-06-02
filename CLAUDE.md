@@ -735,7 +735,7 @@ If Vercel cancels a build due unverified commits, follow the documented verified
 - A local Android API server is not automatically internet-safe.
 - `UNSUPPORTED` is never `PASS`.
 - Mock data must never be described as production data.
-- Docs saying “encrypted” are not enough; verify actual encryption implementation and key handling.
+- Docs saying "encrypted" are not enough; verify actual encryption implementation and key handling.
 
 ---
 
