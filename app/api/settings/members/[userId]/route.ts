@@ -22,6 +22,6 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Owner safety check failed.' }, { status: 409 });
   }
   const { data, error } = await admin.from('users').update({ role, updated_at: new Date().toISOString() }).eq('org_id', access.orgId).eq('id', userId).select('id,role').single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   return NextResponse.json({ item: data });
 }
