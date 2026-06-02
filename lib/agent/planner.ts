@@ -73,6 +73,11 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
     return { steps: [nextStep(1, 'readiness', {})] };
   }
 
+  if (/รัน|run code|execute code|python|node\.?js|bash script/.test(lower)) {
+    const runtime = /python/.test(lower) ? 'python3' : /node|javascript/.test(lower) ? 'node' : 'bash';
+    return { steps: [nextStep(1, 'run_code', { runtime, code: '' })] };
+  }
+
   if (/execute|run/.test(lower)) {
     return withAgentId(agentId, (id) => ({
       steps: [
@@ -152,11 +157,6 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
 
   if (/delivery proof|proof scan|scan production/.test(lower)) {
     return { steps: [nextStep(1, 'get_delivery_proof', {})] };
-  }
-
-  if (/รัน|run code|execute code|python|node\.?js|bash script/.test(lower)) {
-    const runtime = /python/.test(lower) ? 'python3' : /node|javascript/.test(lower) ? 'node' : 'bash';
-    return { steps: [nextStep(1, 'run_code', { runtime, code: '' })] };
   }
 
   if (/search|online|web/.test(lower)) {
