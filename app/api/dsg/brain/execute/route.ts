@@ -16,6 +16,8 @@ import {
 } from "@/lib/dsg/brain";
 import { createShellExecutor } from "@/lib/dsg/brain/shell-executor";
 import { evaluateAction } from "@/lib/dsg/evaluate-action";
+import { describeModelConfig } from "@/lib/dsg/brain/model-config";
+import { DSG_HERMES_TOOLS } from "@/lib/dsg/brain/hermes-nous-provider";
 
 interface ExecuteRequest {
   input: string;
@@ -136,7 +138,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
     // 2. Initialize Hermes Plugin
     const hermes = createHermesPlugin();
 
-    // 3. Generate plan using Anthropic API
+    // 3. Generate plan using configured LLM (Anthropic or NousResearch Hermes)
     let canonicalPlan: string;
     try {
       canonicalPlan = await generatePlanWithLLM(input, config.model);
@@ -249,7 +251,10 @@ export async function GET(): Promise<NextResponse> {
     configured: config.configured,
     provider: config.provider,
     model: config.model,
+    hosting: config.nousHosting ?? null,
+    description: describeModelConfig(config),
     status: config.configured ? "ready" : "not-configured",
+    tools: config.provider === "nous-hermes" ? DSG_HERMES_TOOLS.map((t) => t.function.name) : null,
     note: "Production status: NO-GO until live health/readiness evidence verified.",
   });
 }
