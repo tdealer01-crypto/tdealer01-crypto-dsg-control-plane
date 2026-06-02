@@ -3,7 +3,7 @@ import { getAllYields } from './protocols';
 import { executeRebalance } from './on-chain-executor';
 import { REBALANCE_THRESHOLD_PCT, MAX_ALLOCATION_USD } from './config';
 import type { ProtocolYield, OptimizerResult, YieldProtocol } from './types';
-import { getAllDefiAccounts, updateUserDeposit, logDefiTxn } from './supabase-defi';
+import { getAllDefiAccounts, updateUserDeposit, logDefiTxn, getLatestPoolProtocol, getDefiConfig } from './supabase-defi';
 
 const OPTIMIZER_ACTOR = {
   orgId: process.env.YIELD_OPTIMIZER_ORG_ID ?? 'system',
@@ -19,8 +19,15 @@ function pickBest(yields: ProtocolYield[]): ProtocolYield | null {
 }
 
 async function getCurrentProtocol(): Promise<{ protocol: YieldProtocol; usdValue: number } | null> {
-  // TODO: query on-chain positions for each protocol
-  // For now, read from env or Supabase position tracking table
+  // Prefer Supabase position derived from the latest completed rebalance txn.
+  // Falls back to env vars for the first run before any rebalance has been logged.
+  try {
+    const row = await getLatestPoolProtocol();
+    if (row) return { protocol: row.protocol as YieldProtocol, usdValue: row.depositUSD };
+  } catch {
+    // Supabase unavailable — fall through to env fallback
+  }
+
   const protocol = process.env.YIELD_OPTIMIZER_CURRENT_PROTOCOL as YieldProtocol | undefined;
   const usdValue = parseFloat(process.env.YIELD_OPTIMIZER_CURRENT_USD ?? '0');
   if (!protocol || usdValue <= 0) return null;
@@ -30,11 +37,14 @@ async function getCurrentProtocol(): Promise<{ protocol: YieldProtocol; usdValue
 export async function runYieldOptimizer(): Promise<OptimizerResult> {
   const timestamp = new Date().toISOString();
 
-  if (process.env.YIELD_OPTIMIZER_ENABLED !== 'true') {
-    return { action: 'disabled', timestamp };
-  }
+  // Read config from Supabase defi_config table; fall back to env vars.
+  let dbConfig: Record<string, string> = {};
+  try { dbConfig = await getDefiConfig(); } catch { /* env fallback */ }
 
-  const walletAddress = process.env.KUB_WALLET_ADDRESS;
+  const enabled = (dbConfig['YIELD_OPTIMIZER_ENABLED'] ?? process.env.YIELD_OPTIMIZER_ENABLED) === 'true';
+  if (!enabled) return { action: 'disabled', timestamp };
+
+  const walletAddress = dbConfig['KUB_WALLET_ADDRESS'] || process.env.KUB_WALLET_ADDRESS;
   if (!walletAddress) {
     return { action: 'error', reason: 'KUB_WALLET_ADDRESS not configured', timestamp };
   }

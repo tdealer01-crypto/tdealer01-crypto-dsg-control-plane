@@ -3,6 +3,7 @@ import { requireOrgRole } from '../../../lib/authz';
 import { generateRuntimeGovernedModelReply } from '../../../lib/agent-v2/openrouter-provider';
 import type { ChatbotSkillContext } from '../../../lib/agent-v2/skills';
 import { planChatbotSkills } from '../../../lib/agent-v2/skills';
+import { evaluateAnswerGate, detectClaimsInReply } from '../../../lib/dsg/answer-gate';
 
 function sseData(payload: unknown) {
   return `data: ${JSON.stringify(payload)}\n\n`;
@@ -51,15 +52,29 @@ export async function POST(request: Request) {
           modelReply = null;
         }
 
+        const rawReply = modelReply?.reply || 'DSG Agent v2 has created a plan. Please review and approve before execution.';
+        const gateInput = detectClaimsInReply(rawReply, {
+          executedSteps: executeApprovedPlan && hasApprovalToken(approvalToken),
+          hasUserQuestion: true,
+        });
+        const gateResult = evaluateAnswerGate(gateInput);
+        const safeReply = gateResult.final_decision === 'BLOCK_UNSUPPORTED_CLAIM'
+          ? `[DSG Answer Gate: claim blocked — ${Object.entries(gateResult.decisions ?? {}).filter(([, v]) => v).map(([k]) => k).join(', ')}. Provide verified evidence before asserting this claim.]`
+          : rawReply;
+
         controller.enqueue(
           encoder.encode(
             sseData({
               type: 'assistant_reply',
-              reply: modelReply?.reply || 'DSG Agent v2 has created a plan. Please review and approve before execution.',
+              reply: safeReply,
               model: modelReply?.modelUsed || 'skills-v2',
               provider: modelReply?.provider || 'internal-skills',
               providerSource: modelReply?.providerSource || 'runtime',
               runtimeGoverned: true,
+              answerGate: {
+                decision: gateResult.final_decision,
+                allowed: gateResult.allowed,
+              },
               approval: { required_for_execution: true, runtime_gate: true },
             }),
           ),

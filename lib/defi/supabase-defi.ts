@@ -59,3 +59,33 @@ export async function updateUserDeposit(walletAddress: string, depositUSD: numbe
     .update({ deposit_usd: depositUSD, share_pct: sharePct })
     .eq('wallet_address', walletAddress.toLowerCase());
 }
+
+export async function getLatestPoolProtocol(): Promise<{ protocol: string; depositUSD: number } | null> {
+  const db = getServiceClient();
+  const { data } = await db
+    .from('defi_txns')
+    .select('protocol, amount_usd')
+    .eq('type', 'rebalance')
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data?.protocol || !data?.amount_usd) return null;
+  return { protocol: data.protocol, depositUSD: Number(data.amount_usd) };
+}
+
+export type DefiConfigMap = Record<string, string>;
+
+export async function getDefiConfig(): Promise<DefiConfigMap> {
+  const db = getServiceClient();
+  const { data } = await db.from('defi_config').select('key, value');
+  if (!data) return {};
+  return Object.fromEntries(data.map((r) => [r.key, r.value]));
+}
+
+export async function upsertDefiConfig(entries: DefiConfigMap): Promise<void> {
+  const db = getServiceClient();
+  const rows = Object.entries(entries).map(([key, value]) => ({ key, value }));
+  await db.from('defi_config').upsert(rows, { onConflict: 'key' });
+}

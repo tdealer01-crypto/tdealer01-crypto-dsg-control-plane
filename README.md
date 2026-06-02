@@ -8,6 +8,61 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 DSG Answer Gate + DeFi Config UI — 2026-06-02
+
+**Branch:** `claude/dsg-answer-gate-z3-VZtbQ` | **Tests:** 1,245 passed · 0 failed | **Typecheck:** 0 errors
+
+### Answer Gate (Z3 → TypeScript)
+
+AI response governance layer — blocks AI replies that assert unverified claims before they reach users.
+
+| File | Description |
+|---|---|
+| `tools/proofs/dsg_answer_gate.py` | Z3 SAT encoding — 6 decision types, 3 Buddhist-mark constraints |
+| `tools/proofs/prove_answer_gate.py` | 22 deterministic invariant proofs across all decision paths |
+| `lib/dsg/answer-gate/answer-gate-evaluator.ts` | TypeScript port — same logic, no external solver at runtime |
+| `lib/dsg/answer-gate/claim-detector.ts` | Regex claim scanner for AI reply text |
+| `app/api/dsg/v1/gates/answer-evaluate/route.ts` | `POST /api/dsg/v1/gates/answer-evaluate` — external gate endpoint |
+| `app/api/agent-chat-v2/route.ts` | Gate wired in — `BLOCK_UNSUPPORTED_CLAIM` replaces reply with governance notice |
+
+**Decision boundary (highest priority wins):**
+```
+BLOCK_UNSUPPORTED_CLAIM → NEED_TOOL_VERIFICATION → SPLIT_VERIFIED_AND_INFERRED
+→ ANSWER_VERIFIED → ANSWER_WITH_LIMITS → NEED_REVIEW
+```
+
+### DeFi Yield Optimizer — Bitkub Chain
+
+| File | Description |
+|---|---|
+| `supabase/migrations/20260602_defi_config.sql` | `defi_config` table — stores contract addresses + enabled flag |
+| `app/api/defi/config/route.ts` | `GET/PUT /api/defi/config` — org_admin only |
+| `app/dashboard/settings/defi/page.tsx` | Settings UI — toggle + 6 address fields; private key stays in Vercel env |
+| `lib/defi/yield-optimizer.ts` | Reads config from Supabase first, env fallback |
+| `lib/defi/supabase-defi.ts` | `getLatestPoolProtocol()` — pool position from `defi_txns`; `getDefiConfig/upsertDefiConfig` |
+
+**Configure at:** `/dashboard/settings/defi` — no redeployment needed
+
+### Production status — 2026-06-02
+
+| Check | Result |
+|---|---|
+| `GET /api/health` | ✅ 200 `rateLimiter.ok:true` (Upstash Redis active) |
+| `POST /api/execute` | ✅ 401 (auth gate — not 429) |
+| `GET /api/readiness` | ✅ 200 |
+| go-no-go gate | ✅ PASS |
+| E2E credentials | ✅ provisioned in GitHub Secrets |
+
+### Verification
+
+```
+npm run typecheck   # 0 errors
+npm run test        # 1245 passed, 0 failed
+npm run proof:answer-gate  # 22 proofs PASS (requires: npm run proof:install)
+```
+
+---
+
 ## 🟢 Test coverage expansion — 2026-06-01
 
 **Branch:** `claude/test-coverage-analysis-M8Gng`
