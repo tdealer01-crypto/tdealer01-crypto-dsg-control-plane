@@ -8,6 +8,61 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 Hermes Agent Control Center — 2026-06-02
+
+**Branch:** `claude/hermes-agent-v2-fixes` | **Typecheck:** 0 errors
+
+Chat-based AI agent that governs and controls the entire DSG ONE system via natural language (Thai/English).
+
+### What works (verified from code)
+
+| ความสามารถ | Tool | สถานะ |
+|---|---|---|
+| ตรวจสถานะระบบ | `readiness` | ✅ |
+| ดูรายการ Agent | `list_agents` | ✅ |
+| สร้าง Agent | `create_agent` | ✅ |
+| จัดการ Agent (detail/update/rotate/delete) | `get_agent_detail` ・ `update_agent` ・ `rotate_agent_key` ・ `delete_agent` | ✅ |
+| ดู Policy | `list_policies` | ✅ |
+| ดู Execution + Proof | `list_executions` ・ `get_execution_proof` ・ `list_proofs` | ✅ |
+| ดู Audit Log | `get_audit` | ✅ |
+| ดู Usage / Billing | `get_usage` ・ `capacity` | ✅ |
+| ดู Ledger | `get_ledger` | ✅ |
+| CCVS Compliance Status | `get_compliance_status` | ✅ |
+| Delivery Proof Scan | `get_delivery_proof` | ✅ |
+| ดึงข้อมูล URL (HTTP) | `fetch_url` | ✅ |
+| เปิด Browser (Browserbase cloud) | `browser_navigate` | ✅ (ต้องตั้ง env vars) |
+| เขียน Code ไฟล์ | `write_code_file` | ✅ |
+| รัน Code (node/python3/bash) | `run_code` | ✅ (ผ่าน Hermes Brain) |
+| ค้นหาเว็บ | `realtime_web_search` | ✅ |
+| ส่ง Telegram | `telegram_send` | ✅ |
+| Auto Setup | `auto_setup` | ✅ |
+
+### Model & Gate
+
+- **Model:** `claude-haiku-4-5-20251001` (synthesis ทุก reply)
+- **DSG Answer Gate:** Pure deterministic Boolean logic (zero LLM) — ตรวจทุก reply ก่อนส่งออก บล็อกอัตโนมัติถ้าอ้าง production-ready / deployed / tests passed โดยไม่มีหลักฐาน
+
+### Environment variables required
+
+| Var | Required for |
+|---|---|
+| `ANTHROPIC_API_KEY` | AI synthesis + `run_code` (Hermes Brain) |
+| `BROWSERBASE_API_KEY` | Cloud browser sessions (optional — falls back to HTTP) |
+| `BROWSERBASE_PROJECT_ID` | Cloud browser sessions (optional) |
+
+### Architecture
+
+```
+User → /dashboard/hermes (SSE stream)
+     → /api/agent-chat (planGoal regex → tool selection)
+     → DSG_TOOLS (execute each tool against real API routes)
+     → synthesizeWithClaude (Haiku 4.5)
+     → DSG Answer Gate (pure logic check)
+     → reply streamed to UI
+```
+
+---
+
 ## 🟢 DSG Answer Gate + DeFi Config UI — 2026-06-02
 
 **Branch:** `claude/dsg-answer-gate-z3-VZtbQ` | **Tests:** 1,245 passed · 0 failed | **Typecheck:** 0 errors
