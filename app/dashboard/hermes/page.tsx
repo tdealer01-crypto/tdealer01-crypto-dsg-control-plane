@@ -60,11 +60,14 @@ const TOOL_LABELS: Record<string, string> = {
   auto_setup: 'Auto Setup',
   realtime_web_search: 'ค้นหาเว็บ',
   telegram_send: 'ส่ง Telegram',
-  browser_navigate: 'เปิด URL',
+  browser_navigate: 'เปิด Browser (Browserbase)',
   list_proofs: 'ดู Proof ทั้งหมด',
   get_ledger: 'ดู Ledger',
   get_integration: 'ดู Integration',
   reconcile_effect: 'Reconcile Effect',
+  write_code_file: 'เขียน Code ไฟล์',
+  run_code: 'รัน Code',
+  fetch_url: 'ดึงข้อมูล URL',
 };
 
 const QUICK_COMMANDS = [
@@ -74,6 +77,9 @@ const QUICK_COMMANDS = [
   { label: 'ดู Execution', cmd: 'แสดง execution ล่าสุด 10 รายการ' },
   { label: 'ดู Audit', cmd: 'แสดง audit log ล่าสุด' },
   { label: 'ดู Usage', cmd: 'แสดงสถิติการใช้งานและ billing' },
+  { label: 'เขียน Python', cmd: 'เขียน python script คำนวณ fibonacci(20) แล้วรันให้ดูผลลัพธ์' },
+  { label: 'รัน Node.js', cmd: 'เขียน node.js script แสดงวันที่และเวลาปัจจุบัน แล้วรัน' },
+  { label: 'ดึง URL', cmd: 'ดึงข้อมูลจาก https://httpbin.org/json แล้วแสดงผล' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -242,7 +248,9 @@ function CapabilityList() {
     { label: 'จัดการ Agent', tools: ['create_agent', 'get_agent_detail', 'update_agent', 'rotate_agent_key', 'delete_agent'] },
     { label: 'Execute & Gate', tools: ['execute_action', 'checkpoint', 'recovery_validate'] },
     { label: 'หลักฐาน', tools: ['get_execution_proof', 'list_proofs', 'get_enterprise_proof', 'get_ledger', 'audit_summary'] },
-    { label: 'อื่นๆ', tools: ['auto_setup', 'realtime_web_search', 'telegram_send', 'browser_navigate'] },
+    { label: 'Code (ใหม่)', tools: ['write_code_file', 'run_code'] },
+    { label: 'Web / Browser (ใหม่)', tools: ['fetch_url', 'browser_navigate', 'realtime_web_search'] },
+    { label: 'อื่นๆ', tools: ['auto_setup', 'telegram_send'] },
   ];
 
   return (

@@ -450,4 +450,67 @@ export const DSG_TOOLS: AgentTool[] = [
         method: 'POST',
       }),
   },
+
+  // ── Code execution tools ──────────────────────────────────────────────────
+  {
+    id: 'write_code_file',
+    name: 'Write Code File',
+    description: 'Write a code file into the sandbox (/tmp/dsg-code/). Supports any language. Secret injection is blocked.',
+    parameters: {
+      filename: { type: 'string', required: true, description: 'Filename (e.g. script.py, index.js)' },
+      content: { type: 'string', required: true, description: 'File content' },
+      language: { type: 'string', required: false, description: 'Language hint (node | python3 | bash)' },
+    },
+    riskLevel: 'write',
+    requiredRole: 'operator',
+    execute: async (params, context) =>
+      callJson(context, '/api/dsg/code/write', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+  },
+  {
+    id: 'run_code',
+    name: 'Run Code',
+    description: 'Execute a file or inline snippet in the sandbox. Supports node, python3, bash. 15s timeout, no secrets in env.',
+    parameters: {
+      runtime: { type: 'string', required: true, description: 'node | python3 | bash' },
+      code: { type: 'string', required: false, description: 'Inline code snippet to run' },
+      file: { type: 'string', required: false, description: 'Filename in sandbox to run (use after write_code_file)' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'org_admin',
+    execute: async (params, context) =>
+      callJson(context, '/api/dsg/code/run', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+  },
+
+  // ── Web / browser tools ───────────────────────────────────────────────────
+  {
+    id: 'fetch_url',
+    name: 'Fetch URL',
+    description: 'Fetch a public URL and return its text content (lightweight, no JavaScript rendering). Use for reading docs, APIs, and pages.',
+    parameters: {
+      url: { type: 'string', required: true, description: 'HTTPS URL to fetch' },
+      selector: { type: 'string', required: false, description: 'Optional: keyword to search in the response text' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params) => {
+      const url = String(params.url ?? '');
+      if (!url.startsWith('https://')) return { ok: false, error: 'only https:// URLs allowed' };
+      try {
+        const r = await fetch(url, { headers: { 'user-agent': 'DSG-Agent/1.0' }, signal: AbortSignal.timeout(10_000) });
+        const text = await r.text();
+        const trimmed = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4000);
+        const selector = typeof params.selector === 'string' ? params.selector : '';
+        const found = selector ? trimmed.toLowerCase().includes(selector.toLowerCase()) : null;
+        return { ok: r.ok, status: r.status, content: trimmed, found, url };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'fetch failed' };
+      }
+    },
+  },
 ];
