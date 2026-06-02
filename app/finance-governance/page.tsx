@@ -92,8 +92,8 @@ export default function FinanceGovernancePage() {
               <Link href="/finance-governance/live/approvals" className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/60">
                 Approval Queue →
               </Link>
-              <Link href="/finance-governance/live/cases" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
-                Case List →
+              <Link href="/finance-governance/live" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Live Dashboard →
               </Link>
               <Link href="/finance-governance/live/onboarding" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
                 Onboarding →

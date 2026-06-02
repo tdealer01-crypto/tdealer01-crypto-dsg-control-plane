@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 interface CheckItem { name: string; status: 'pass' | 'fail' | 'skip'; detail: string; }
-interface ScanResult { ok: boolean; run_id?: string; claim_pass_eligible?: boolean | null; checks?: CheckItem[]; error?: string; }
+interface ScanResult { ok: boolean; run_id?: string; claim_result?: string; checks?: CheckItem[]; error?: string; }
 
 const STATUS_CLS: Record<string, string> = {
   pass: 'border-emerald-400/20 bg-emerald-400/5 text-emerald-100',
@@ -37,13 +37,11 @@ export default function ScanForm() {
     }
   }
 
-  const eligible = result?.claim_pass_eligible;
+  const claimResult = result?.claim_result ?? '';
   const claimCls =
-    eligible === true  ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200' :
-    eligible === false ? 'border-red-400/40 bg-red-400/10 text-red-200' : '';
-  const claimText =
-    eligible === true  ? 'EVIDENCE COMPLETE' :
-    eligible === false ? 'PRODUCTION BLOCKED' : '';
+    claimResult === 'EVIDENCE COMPLETE' ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200' :
+    claimResult === 'PRODUCTION BLOCKED' ? 'border-red-400/40 bg-red-400/10 text-red-200' : '';
+  const claimText = claimResult;
 
   return (
     <div className="mt-10 rounded-3xl border border-white/15 bg-white/[0.04] p-6 md:p-8">
