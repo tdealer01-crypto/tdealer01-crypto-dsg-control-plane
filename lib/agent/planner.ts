@@ -139,15 +139,9 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
   }
 
   if (/browser|navigate|open url/.test(lower)) {
-    return withAgentId(agentId, (id) => ({
-      steps: [
-        nextStep(1, 'browser_navigate', {
-          agent_id: id,
-          url: extractUrl(text),
-          extract: '',
-        }),
-      ],
-    }));
+    return {
+      steps: [nextStep(1, 'browser_navigate', { url: extractUrl(text), extract: '' })],
+    };
   }
 
   if (/search|online|web/.test(lower)) {
@@ -196,6 +190,29 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
 
   if (/delete agent|disable agent/.test(lower)) {
     return withAgentId(agentId, (id) => ({ steps: [nextStep(1, 'delete_agent', { agent_id: id })] }));
+  }
+
+  if (/compliance|ccvs|mutation score|claim gate/.test(lower)) {
+    return { steps: [nextStep(1, 'get_compliance_status', {})] };
+  }
+
+  if (/delivery proof|proof scan|scan production|สแกน|ดีลิเวอรี่/.test(lower)) {
+    return { steps: [nextStep(1, 'get_delivery_proof', {})] };
+  }
+
+  if (/รัน|run code|execute code|python|node\.?js|bash script/.test(lower)) {
+    const isNode = /node|javascript|js/.test(lower);
+    const isPython = /python/.test(lower);
+    const runtime = isPython ? 'python3' : isNode ? 'node' : 'bash';
+    return {
+      steps: [nextStep(1, 'run_code', { runtime, code: '' })],
+    };
+  }
+
+  if (/fetch|ดึงข้อมูล url|ดึง url|อ่าน url/.test(lower)) {
+    return {
+      steps: [nextStep(1, 'fetch_url', { url: extractUrl(text) })],
+    };
   }
 
   if (/chatbot|chat bot/.test(lower)) {

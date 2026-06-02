@@ -66,8 +66,10 @@ const TOOL_LABELS: Record<string, string> = {
   get_integration: 'ดู Integration',
   reconcile_effect: 'Reconcile Effect',
   write_code_file: 'เขียน Code ไฟล์',
-  run_code: 'รัน Code',
+  run_code: 'รัน Code (Hermes Brain)',
   fetch_url: 'ดึงข้อมูล URL',
+  get_compliance_status: 'CCVS Compliance Status',
+  get_delivery_proof: 'Delivery Proof Scan',
 };
 
 const QUICK_COMMANDS = [
@@ -248,8 +250,9 @@ function CapabilityList() {
     { label: 'จัดการ Agent', tools: ['create_agent', 'get_agent_detail', 'update_agent', 'rotate_agent_key', 'delete_agent'] },
     { label: 'Execute & Gate', tools: ['execute_action', 'checkpoint', 'recovery_validate'] },
     { label: 'หลักฐาน', tools: ['get_execution_proof', 'list_proofs', 'get_enterprise_proof', 'get_ledger', 'audit_summary'] },
-    { label: 'Code (ใหม่)', tools: ['write_code_file', 'run_code'] },
-    { label: 'Web / Browser (ใหม่)', tools: ['fetch_url', 'browser_navigate', 'realtime_web_search'] },
+    { label: 'Code', tools: ['write_code_file', 'run_code'] },
+    { label: 'Web / Browser', tools: ['fetch_url', 'browser_navigate', 'realtime_web_search'] },
+    { label: 'Compliance / Proof', tools: ['get_compliance_status', 'get_delivery_proof'] },
     { label: 'อื่นๆ', tools: ['auto_setup', 'telegram_send'] },
   ];
 
