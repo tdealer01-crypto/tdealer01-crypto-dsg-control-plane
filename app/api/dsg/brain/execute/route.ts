@@ -15,6 +15,7 @@ import {
   PlanAttemptInput,
 } from "@/lib/dsg/brain";
 import { createShellExecutor } from "@/lib/dsg/brain/shell-executor";
+import { evaluateAction } from "@/lib/dsg/evaluate-action";
 
 interface ExecuteRequest {
   input: string;
@@ -169,7 +170,40 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
       allowedPaths: allowedPaths || ["/tmp/dsg"],
     });
 
-    // 6. Execute with the real shell executor
+    // 6. DSG Gate: inspect plan before execution.
+    // Gate is the safety inspector — not a blocker of normal work.
+    // Read/observe commands pass immediately. Risky/dangerous actions may BLOCK.
+    const commandSummary = allowedCommands?.join(',') ?? 'default';
+    const gateResult = evaluateAction({
+      workspaceId: process.env.DSG_WORKSPACE_ID ?? 'dsg-brain-default',
+      agentId: 'hermes',
+      sessionId: planInput.inputHash.slice(0, 16),
+      action: 'brain.execute',
+      actionType: 'write',
+      targetSystemId: 'shell',
+      riskLevel: 'medium',
+      actorId: 'hermes-runtime',
+      actorRole: 'operator',
+      payload: { input, commandSummary },
+      idempotencyKey: planInput.inputHash,
+      rollbackPlanId: proposal.plan.planHash,
+    });
+
+    if (gateResult.decision === 'BLOCK') {
+      return NextResponse.json(
+        {
+          success: false,
+          planHash: proposal.plan.planHash,
+          violations: [],
+          gateDecision: gateResult.decision,
+          gateReasons: gateResult.reasons,
+          message: `DSG Gate blocked execution: ${gateResult.reasons.join('; ')}`,
+        } as ExecuteResponse & { gateDecision: string; gateReasons: string[] },
+        { status: 409 },
+      );
+    }
+
+    // Execute with the real shell executor
     const shellExecutor = createShellExecutor();
     const { result, report } = await hermes.executePlan(ctx, shellExecutor);
 
@@ -182,6 +216,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
       planHash: proposal.plan.planHash,
       violations: conformanceReport.violations,
       result: conformanceReport.approved ? result : undefined,
+      gateDecision: gateResult.decision,
+      gateDecisionHash: gateResult.decisionHash,
       message: conformanceReport.approved
         ? "Execution completed within constraints"
         : `Blocked: ${conformanceReport.violations.map((v) => v.message).join("; ")}`,

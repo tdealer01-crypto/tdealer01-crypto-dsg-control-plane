@@ -1,4 +1,9 @@
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import {
+  buildEvidenceEnvelope,
+  buildRunContextFromEnv,
+  buildOIDCFromEnv,
+} from '@/lib/ccvs/evidence-collector';
 import type {
   AgentActionResultRequest,
   AgentActionResultReceipt,
@@ -44,6 +49,49 @@ export async function recordAgentCommandGateDecision(input: {
   if (error) {
     throw new Error(`failed_to_record_agent_command_gate_decision:${error.message}`);
   }
+
+  // Emit CCVS oversight evidence for every gate decision (L4 oversight level).
+  // Fire-and-forget — do not let evidence emission block or fail the gate response.
+  emitGateEvidenceEnvelope({ actor, request, result }).catch(() => undefined);
+}
+
+async function emitGateEvidenceEnvelope(input: {
+  actor: ActorContext;
+  request: AgentCommandGateRequest;
+  result: AgentCommandGateResult;
+}) {
+  const { actor, request, result } = input;
+  const envelope = buildEvidenceEnvelope({
+    evidenceType: 'oversight',
+    subjects: [
+      {
+        name: `agent-command-gate:${request.command.commandId}`,
+        digest: {
+          'sha256-command': result.commandHash,
+          'sha256-decision': result.decisionHash,
+        },
+      },
+    ],
+    run: buildRunContextFromEnv(),
+    oidc: buildOIDCFromEnv('dsg-gate-evidence'),
+    metrics: {
+      tests_total: result.invariantChecks.length,
+      pass: result.invariantChecks.filter((c) => c.status === 'PASS').length as unknown as number,
+    },
+    policyVersion: result.gateVersion,
+  });
+
+  const supabase = getSupabaseAdmin() as any;
+  await supabase.from('dsg_ccvs_evidence').insert({
+    org_id: actor.orgId,
+    workspace_id: request.workspaceId,
+    command_id: request.command.commandId,
+    decision: result.decision,
+    evidence_type: envelope.evidence_type,
+    severity_level: envelope.severity_level,
+    chain_hash: envelope.integrity.chain_hash,
+    envelope,
+  });
 }
 
 export async function recordAgentActionResultReceipt(input: {
