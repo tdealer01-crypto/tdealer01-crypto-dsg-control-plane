@@ -61,9 +61,11 @@ const TOOL_LABELS: Record<string, string> = {
   get_ledger: 'Ledger',
   get_integration: 'Integration status',
   reconcile_effect: 'Reconcile effect',
-  write_code_file: 'Write code file',
-  run_code: 'Run code',
-  fetch_url: 'Fetch URL',
+  write_code_file: 'เขียน Code ไฟล์',
+  run_code: 'รัน Code (Hermes Brain)',
+  fetch_url: 'ดึงข้อมูล URL',
+  get_compliance_status: 'CCVS Compliance',
+  get_delivery_proof: 'Delivery Proof Scan',
 };
 
 const QUICK_COMMANDS = [
@@ -241,7 +243,8 @@ function CapabilityList() {
     { label: 'Execution and gate', tools: ['execute_action', 'checkpoint', 'recovery_validate'] },
     { label: 'Evidence', tools: ['get_execution_proof', 'list_proofs', 'get_enterprise_proof', 'get_ledger', 'audit_summary'] },
     { label: 'Code', tools: ['write_code_file', 'run_code'] },
-    { label: 'Web', tools: ['fetch_url', 'browser_navigate', 'realtime_web_search'] },
+    { label: 'Web / Browser', tools: ['fetch_url', 'browser_navigate', 'realtime_web_search'] },
+    { label: 'Compliance', tools: ['get_compliance_status', 'get_delivery_proof'] },
     { label: 'Other', tools: ['auto_setup', 'telegram_send'] },
   ];
 

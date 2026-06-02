@@ -91,28 +91,52 @@ export const DSG_TOOLS: AgentTool[] = [
   },
   {
     id: 'browser_navigate',
-    name: 'Browser Navigate & Extract',
-    description: 'Navigate to a target URL through Browserbase executor.',
+    name: 'Browser Navigate (Browserbase)',
+    description: 'Open a URL in a Browserbase cloud browser with full JS rendering. Returns session live-view URL + HTTP-fetched text content.',
     parameters: {
-      agent_id: { type: 'string', required: true, description: 'Target agent ID' },
-      url: { type: 'string', required: true, description: 'Target URL to open' },
-      extract: { type: 'string', required: false, description: 'Extraction instruction or selector' },
+      url: { type: 'string', required: true, description: 'HTTPS URL to open' },
+      extract: { type: 'string', required: false, description: 'What to extract or look for on the page' },
     },
-    riskLevel: 'critical',
-    requiredRole: 'execute',
-    execute: async (params, context) =>
-      callJson(context, '/api/mcp/call', {
-        method: 'POST',
-        body: JSON.stringify({
-          agent_id: requiredAgentId(params),
-          action: 'browser.navigate',
-          payload: {
-            url: params.url,
-            extract: params.extract,
-          },
-          tool_name: 'browser_navigate',
-        }),
-      }),
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params) => {
+      const url = String(params.url ?? '');
+      if (!url.startsWith('https://')) return { ok: false, error: 'only https:// URLs allowed' };
+
+      let httpContent = '';
+      try {
+        const r = await fetch(url, { headers: { 'user-agent': 'DSG-Agent/1.0' }, signal: AbortSignal.timeout(10_000) });
+        const raw = await r.text();
+        httpContent = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+      } catch {
+        httpContent = '(HTTP fetch failed)';
+      }
+
+      const apiKey = process.env.BROWSERBASE_API_KEY;
+      const projectId = process.env.BROWSERBASE_PROJECT_ID;
+      if (!apiKey || !projectId) {
+        return { ok: true, provider: 'http-fallback', url, content: httpContent, note: 'Browserbase not configured — returned HTTP fetch result' };
+      }
+
+      try {
+        const res = await fetch('https://api.browserbase.com/v1/sessions', {
+          method: 'POST',
+          headers: { 'x-bb-api-key': apiKey, 'content-type': 'application/json' },
+          body: JSON.stringify({ projectId, startUrl: url, keepAlive: false }),
+        });
+        const session = await res.json() as { id?: string; liveUrl?: string };
+        return {
+          ok: true,
+          provider: 'browserbase',
+          sessionId: session.id,
+          liveUrl: session.liveUrl ?? `https://www.browserbase.com/sessions/${session.id}`,
+          httpContent,
+          note: 'Cloud browser session created. liveUrl for live view. httpContent is HTTP-fetched text.',
+        };
+      } catch (err) {
+        return { ok: true, provider: 'http-fallback', url, content: httpContent, error: err instanceof Error ? err.message : 'browserbase failed' };
+      }
+    },
   },
   {
     id: 'telegram_send',
@@ -449,5 +473,110 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/setup/auto', {
         method: 'POST',
       }),
+  },
+
+  // ── Code execution (via Hermes Brain) ─────────────────────────────────────
+  {
+    id: 'write_code_file',
+    name: 'Write Code File',
+    description: 'Write a code file into the sandbox (/tmp/dsg-code/). Secret injection is blocked.',
+    parameters: {
+      filename: { type: 'string', required: true, description: 'Filename (e.g. script.py, index.js)' },
+      content: { type: 'string', required: true, description: 'File content' },
+      language: { type: 'string', required: false, description: 'Language hint (node | python3 | bash)' },
+    },
+    riskLevel: 'write',
+    requiredRole: 'operator',
+    execute: async (params, context) =>
+      callJson(context, '/api/dsg/code/write', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+  },
+  {
+    id: 'run_code',
+    name: 'Run Code (Hermes Brain)',
+    description: 'Execute inline code or a sandbox file through the Hermes Brain governance gate. Supports node, python3, bash. Returns stdout.',
+    parameters: {
+      runtime: { type: 'string', required: true, description: 'node | python3 | bash' },
+      code: { type: 'string', required: false, description: 'Inline code to run' },
+      file: { type: 'string', required: false, description: 'Filename already in /tmp/dsg-code/ to run' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'org_admin',
+    execute: async (params, context) => {
+      const runtime = String(params.runtime ?? 'node') as 'node' | 'python3' | 'bash';
+      const code = typeof params.code === 'string' ? params.code : undefined;
+      const file = typeof params.file === 'string' ? params.file : undefined;
+      const input = code
+        ? `Run this ${runtime} code: ${code.slice(0, 200)}`
+        : `Run file ${file ?? '(unknown)'} with ${runtime}`;
+      return callJson(context, '/api/dsg/brain/execute', {
+        method: 'POST',
+        body: JSON.stringify({ input, code, filename: file, runtime }),
+      });
+    },
+  },
+
+  // ── Compliance & delivery proof ───────────────────────────────────────────
+  {
+    id: 'get_compliance_status',
+    name: 'CCVS Compliance Status',
+    description: 'Get live CCVS compliance status — mutation score, claim gates, evidence chain.',
+    parameters: {
+      run_id: { type: 'string', required: false, description: 'Optional CI run ID for a specific report' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) => {
+      const qs = params.run_id ? `?run_id=${encodeURIComponent(String(params.run_id))}` : '';
+      return callJson(context, `/api/ccvs/compliance-status${qs}`);
+    },
+  },
+  {
+    id: 'get_delivery_proof',
+    name: 'Delivery Proof Scan',
+    description: 'Run a live Delivery Proof scan — checks readiness, health, auth gates on production.',
+    parameters: {
+      production_url: { type: 'string', required: false, description: 'Production URL to scan (defaults to this deployment)' },
+      readiness_path: { type: 'string', required: false, description: 'Readiness path (default: /api/readiness)' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, '/api/delivery-proof/scan', {
+        method: 'POST',
+        body: JSON.stringify({
+          production_url: params.production_url ?? context.origin,
+          readiness_path: params.readiness_path ?? '/api/readiness',
+        }),
+      }),
+  },
+
+  // ── Web fetch ─────────────────────────────────────────────────────────────
+  {
+    id: 'fetch_url',
+    name: 'Fetch URL',
+    description: 'Fetch a public HTTPS URL and return text content (no JS rendering). Fast and lightweight.',
+    parameters: {
+      url: { type: 'string', required: true, description: 'HTTPS URL to fetch' },
+      selector: { type: 'string', required: false, description: 'Optional keyword to search in the response' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params) => {
+      const url = String(params.url ?? '');
+      if (!url.startsWith('https://')) return { ok: false, error: 'only https:// URLs allowed' };
+      try {
+        const r = await fetch(url, { headers: { 'user-agent': 'DSG-Agent/1.0' }, signal: AbortSignal.timeout(10_000) });
+        const text = await r.text();
+        const trimmed = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4000);
+        const selector = typeof params.selector === 'string' ? params.selector : '';
+        const found = selector ? trimmed.toLowerCase().includes(selector.toLowerCase()) : null;
+        return { ok: r.ok, status: r.status, content: trimmed, found, url };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'fetch failed' };
+      }
+    },
   },
 ];
