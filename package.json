@@ -49,6 +49,7 @@
     "proof:install": "python -m pip install -r tools/proofs/requirements.txt",
     "proof:revenue": "python tools/proofs/prove_revenue_ready.py",
     "proof:answer-gate": "python tools/proofs/prove_answer_gate.py",
+    "provision:e2e-keys": "node scripts/provision-e2e-keys.mjs",
     "ccvs:emit": "node scripts/emit-test-evidence.mjs",
     "ccvs:matrix": "node scripts/generate-compliance-matrix.mjs",
     "ccvs:verify": "node scripts/verify-evidence-chain.mjs",
