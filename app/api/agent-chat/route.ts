@@ -8,6 +8,45 @@ import { addToolResultToMemory, routeToModel } from '../../../lib/agent/llm-rout
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 import { agentPreflight } from '../../../lib/agent/preflight';
 
+async function synthesizeWithClaude(userMessage: string, toolResults: Array<{ toolId: string; result: unknown }>): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return '';
+
+  const toolSummary = toolResults
+    .map((r) => `[${r.toolId}]: ${JSON.stringify(r.result, null, 2).slice(0, 1500)}`)
+    .join('\n\n');
+
+  const systemPrompt = `คุณคือ Hermes Agent ผู้ช่วย AI สำหรับ DSG ONE Control Plane
+ตอบเป็นภาษาไทยหรืออังกฤษตามที่ผู้ใช้ถาม
+สรุปผลลัพธ์จาก tool ให้เข้าใจง่าย กระชับ มีประโยชน์
+ห้ามพิมพ์ JSON ดิบทั้งก้อน ให้สรุปเป็นภาษาธรรมชาติ
+ถ้าข้อมูลมีปัญหา ให้บอกตรงๆ`;
+
+  const userContent = `คำถาม: ${userMessage}\n\nผลลัพธ์จาก tools:\n${toolSummary}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    });
+    if (!res.ok) return '';
+    const data = await res.json() as { content: Array<{ type: string; text?: string }> };
+    return data.content?.[0]?.text ?? '';
+  } catch {
+    return '';
+  }
+}
+
 function sseData(payload: unknown) {
   return `data: ${JSON.stringify(payload)}\n\n`;
 }
@@ -96,6 +135,8 @@ export async function POST(request: Request) {
 
         controller.enqueue(encoder.encode(sseData({ type: 'plan', steps: plan.steps })));
 
+        const collectedResults: Array<{ toolId: string; result: unknown }> = [];
+
         for (const step of plan.steps) {
           const tool = DSG_TOOLS.find((candidate) => candidate.id === step.toolId);
           if (!tool) {
@@ -109,6 +150,7 @@ export async function POST(request: Request) {
             const result = await executeToolSafely(tool, step.params, context);
             controller.enqueue(encoder.encode(sseData({ type: 'step_result', step: step.id, result })));
             addToolResultToMemory(sessionKey, step.toolId, result);
+            collectedResults.push({ toolId: step.toolId, result });
           } catch (error) {
             logApiError('api/agent-chat', error, { stage: 'tool-execution', step: step.id, toolId: step.toolId });
             controller.enqueue(
@@ -120,6 +162,14 @@ export async function POST(request: Request) {
                 }),
               ),
             );
+          }
+        }
+
+        // Synthesize a natural-language reply from tool results using Claude
+        if (!reply && collectedResults.length > 0) {
+          const synthesis = await synthesizeWithClaude(message, collectedResults);
+          if (synthesis) {
+            controller.enqueue(encoder.encode(sseData({ type: 'assistant_reply', reply: synthesis, model: 'claude-sonnet-4-6' })));
           }
         }
 
