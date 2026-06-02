@@ -60,11 +60,6 @@ export async function updateUserDeposit(walletAddress: string, depositUSD: numbe
     .eq('wallet_address', walletAddress.toLowerCase());
 }
 
-/**
- * Returns the current system-level pool protocol by reading the most recent
- * completed rebalance txn from defi_txns. Falls back to null if no rebalance
- * has been recorded yet (first run or table is empty).
- */
 export async function getLatestPoolProtocol(): Promise<{ protocol: string; depositUSD: number } | null> {
   const db = getServiceClient();
   const { data } = await db
@@ -78,4 +73,19 @@ export async function getLatestPoolProtocol(): Promise<{ protocol: string; depos
 
   if (!data?.protocol || !data?.amount_usd) return null;
   return { protocol: data.protocol, depositUSD: Number(data.amount_usd) };
+}
+
+export type DefiConfigMap = Record<string, string>;
+
+export async function getDefiConfig(): Promise<DefiConfigMap> {
+  const db = getServiceClient();
+  const { data } = await db.from('defi_config').select('key, value');
+  if (!data) return {};
+  return Object.fromEntries(data.map((r) => [r.key, r.value]));
+}
+
+export async function upsertDefiConfig(entries: DefiConfigMap): Promise<void> {
+  const db = getServiceClient();
+  const rows = Object.entries(entries).map(([key, value]) => ({ key, value }));
+  await db.from('defi_config').upsert(rows, { onConflict: 'key' });
 }
