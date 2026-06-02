@@ -80,7 +80,9 @@ export async function executeToolSafely(
     };
   }
 
-  const agentId = String(params.agent_id || '').trim();
+  // For system tools that operate on sandboxed resources (code write/run) rather than
+  // a specific agent, fall back to the org ID so the Hermes gate can still run.
+  const agentId = String(params.agent_id || context.orgId || '').trim();
   if (!agentId) {
     return {
       blocked: true,

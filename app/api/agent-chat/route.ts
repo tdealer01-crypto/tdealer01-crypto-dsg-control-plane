@@ -135,12 +135,20 @@ export async function POST(request: Request) {
         }
 
         if (reply) {
+          // DSG Answer Gate applies to every reply regardless of model source
+          const routerFacts = detectClaimsInReply(reply, { executedSteps: false, hasUserQuestion: true });
+          const routerGate = evaluateAnswerGate(routerFacts);
+          const gatedReply = !routerGate.allowed
+            ? `⚠️ [DSG Gate: ${routerGate.final_decision}]\n\n${reply}`
+            : reply;
           controller.enqueue(
             encoder.encode(
               sseData({
                 type: 'assistant_reply',
-                reply,
+                reply: gatedReply,
                 model: modelUsed,
+                gate_decision: routerGate.final_decision,
+                gate_allowed: routerGate.allowed,
               }),
             ),
           );

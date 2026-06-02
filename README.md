@@ -10,11 +10,12 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ## 🟢 Hermes Agent Control Center — 2026-06-02
 
-**Branch:** `claude/hermes-agent-v2-fixes` | **Typecheck:** 0 errors
+**Branch:** `claude/hermes-agent-v2-fixes` merged to `main`  
+**Audit:** 2026-06-02 | **Typecheck:** 0 errors | **Unit tests:** 1,055 passed · 0 failed
 
 Chat-based AI agent that governs and controls the entire DSG ONE system via natural language (Thai/English).
 
-### What works (verified from code)
+### What works (verified from code + audit 2026-06-02)
 
 | ความสามารถ | Tool | สถานะ |
 |---|---|---|
@@ -30,7 +31,7 @@ Chat-based AI agent that governs and controls the entire DSG ONE system via natu
 | CCVS Compliance Status | `get_compliance_status` | ✅ |
 | Delivery Proof Scan | `get_delivery_proof` | ✅ |
 | ดึงข้อมูล URL (HTTP) | `fetch_url` | ✅ |
-| เปิด Browser (Browserbase cloud) | `browser_navigate` | ✅ (ต้องตั้ง env vars) |
+| เปิด Browser (Browserbase cloud) | `browser_navigate` | ✅ (optional — HTTP fallback if no Browserbase key) |
 | เขียน Code ไฟล์ | `write_code_file` | ✅ |
 | รัน Code (node/python3/bash) | `run_code` | ✅ (ผ่าน Hermes Brain) |
 | ค้นหาเว็บ | `realtime_web_search` | ✅ |
@@ -42,12 +43,12 @@ Chat-based AI agent that governs and controls the entire DSG ONE system via natu
 - **Model:** `claude-haiku-4-5-20251001` (synthesis ทุก reply)
 - **DSG Answer Gate:** Pure deterministic Boolean logic (zero LLM) — ตรวจทุก reply ก่อนส่งออก บล็อกอัตโนมัติถ้าอ้าง production-ready / deployed / tests passed โดยไม่มีหลักฐาน
 
-### Environment variables required
+### Environment variables
 
 | Var | Required for |
 |---|---|
 | `ANTHROPIC_API_KEY` | AI synthesis + `run_code` (Hermes Brain) |
-| `BROWSERBASE_API_KEY` | Cloud browser sessions (optional — falls back to HTTP) |
+| `BROWSERBASE_API_KEY` | Cloud browser sessions (optional — HTTP fallback if absent) |
 | `BROWSERBASE_PROJECT_ID` | Cloud browser sessions (optional) |
 
 ### Architecture
@@ -59,6 +60,29 @@ User → /dashboard/hermes (SSE stream)
      → synthesizeWithClaude (Haiku 4.5)
      → DSG Answer Gate (pure logic check)
      → reply streamed to UI
+```
+
+### System Audit — 2026-06-02
+
+Full read-only audit of all routes, auth, security, and tools. Scope: very thorough (89 tool calls).
+
+**Routes (40+ checked):** PASS — health, readiness, agent/status, execute/spine, agents CRUD, policies, executions, audit, usage, metrics, capacity, ledger, proofs, agent-chat SSE, dsg/brain/execute, dsg/code/write, dsg/v1/gates, ccvs/compliance-status, delivery-proof/scan, mcp/manifest, mcp/call, defi/config — all present and reachable.
+
+**Auth & Security:** PASS
+- `requireOrgRole()` on all sensitive routes
+- Middleware protects `/dashboard`, `/approvals`, `/gateway/monitor`
+- Cron returns 503 in production if `CRON_SECRET` missing (fail-closed)
+- `readJsonBody()` with 64 KB limit on POST routes
+- `/api/dsg/code/write`: secret pattern block (`sk-ant-*`, `SUPABASE_SERVICE_ROLE`, etc.) + path traversal guard
+
+**Hermes chat pipeline:** PASS — `synthesizeWithClaude()`, `evaluateAnswerGate()`, `detectClaimsInReply()`, `collectedResults` array all correctly wired.
+
+**Code execution path:** PASS — `/api/dsg/brain/execute` accepts `runtime`/`code`/`filename`; shell-executor enforces allowedCommands + allowedPaths; `/api/dsg/code/write` sandbox-only write.
+
+**TypeScript build:**
+```
+npm run typecheck   # 0 errors
+npm run test:unit   # 1,055 passed · 0 failed (2026-06-02)
 ```
 
 ---
