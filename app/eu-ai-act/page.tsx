@@ -58,13 +58,13 @@ result = requests.post("https://your-domain/api/execute", headers=headers, json=
     "workspace_id": "ws-001",
     "provider": "openai",
     "agent_id": "agent-finance",
-    "message": "send_payment"
+    "action": "send_payment"
 }).json()
 
-# ok = transport success. Always check 'allowed' for the gate decision.
-# BLOCK or REVIEW may return ok=True — do NOT execute unless allowed=True.
-if result.get("ok") and result.get("allowed") is True:
-    execute_action()       # gate explicitly returned ALLOW
+# ok = transport success. Check 'decision' for the gate outcome.
+# BLOCK or REVIEW also return ok=True — only execute on explicit ALLOW.
+if result.get("ok") and result.get("decision") == "ALLOW":
+    execute_action()       # gate returned ALLOW
 elif result.get("decision") == "REVIEW":
     route_to_human()       # gate requires human oversight before proceeding
 else:
@@ -81,10 +81,10 @@ def gate(workspace_id: str, agent_id: str, action: str) -> bool:
         "workspace_id": workspace_id,
         "provider": "openai",
         "agent_id": agent_id,
-        "message": action,
+        "action": action,
     }).json()
-    # Must check 'allowed', not just 'ok' — BLOCK/REVIEW also return ok=True
-    return r.get("ok", False) and r.get("allowed") is True
+    # Check 'decision' == 'ALLOW' — BLOCK/REVIEW also return ok=True
+    return r.get("ok", False) and r.get("decision") == "ALLOW"
 
 # Before every tool call:
 if gate(ws_id, agent_id, tool_call.name):
@@ -100,11 +100,11 @@ if gate(ws_id, agent_id, tool_call.name):
       "Content-Type": "application/json",
       "Authorization": \`Bearer \${process.env.DSG_API_KEY}\`,
     },
-    body: JSON.stringify({ workspace_id: workspaceId, provider: "openai", agent_id: agentId, message: action }),
+    body: JSON.stringify({ workspace_id: workspaceId, provider: "openai", agent_id: agentId, action }),
   });
   const data = await r.json();
-  // Check 'allowed' — BLOCK/REVIEW return ok:true but allowed:false
-  return data.ok === true && data.allowed === true;
+  // Check 'decision' — BLOCK/REVIEW return ok:true but decision !== 'ALLOW'
+  return data.ok === true && data.decision === 'ALLOW';
 }
 
 // Before every agent action — only execute if gate explicitly allows:
