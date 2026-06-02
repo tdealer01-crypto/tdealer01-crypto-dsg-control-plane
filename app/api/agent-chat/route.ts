@@ -7,6 +7,58 @@ import { DSG_TOOLS } from '../../../lib/agent/tools';
 import { addToolResultToMemory, routeToModel } from '../../../lib/agent/llm-router';
 import { internalErrorMessage, logApiError } from '../../../lib/security/api-error';
 import { agentPreflight } from '../../../lib/agent/preflight';
+import { evaluateAnswerGate, detectClaimsInReply } from '../../../lib/dsg/answer-gate';
+
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+
+async function synthesizeWithClaude(
+  userMessage: string,
+  toolResults: Array<{ toolId: string; result: unknown }>,
+): Promise<{ reply: string; gateDecision: string; gateAllowed: boolean }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return { reply: '', gateDecision: 'NO_API_KEY', gateAllowed: true };
+
+  const toolSummary = toolResults
+    .map((r) => `[${r.toolId}]: ${JSON.stringify(r.result, null, 2).slice(0, 1500)}`)
+    .join('\n\n');
+
+  const systemPrompt = `คุณคือ Hermes Agent ผู้ช่วย AI สำหรับ DSG ONE Control Plane
+ตอบเป็นภาษาไทยหรืออังกฤษตามที่ผู้ใช้ถาม
+สรุปผลลัพธ์จาก tool ให้เข้าใจง่าย กระชับ มีประโยชน์
+ห้ามพิมพ์ JSON ดิบทั้งก้อน ให้สรุปเป็นภาษาธรรมชาติ
+ถ้าข้อมูลมีปัญหา ให้บอกตรงๆ
+ห้ามอ้างว่าระบบ production-ready, deployed, หรือ tests passed ถ้าไม่มีหลักฐานจาก tool`;
+
+  let reply = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: HAIKU_MODEL,
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `คำถาม: ${userMessage}\n\nผลลัพธ์จาก tools:\n${toolSummary}` }],
+      }),
+    });
+    if (!res.ok) return { reply: '', gateDecision: 'API_ERROR', gateAllowed: true };
+    const data = await res.json() as { content: Array<{ type: string; text?: string }> };
+    reply = data.content?.[0]?.text ?? '';
+  } catch {
+    return { reply: '', gateDecision: 'FETCH_ERROR', gateAllowed: true };
+  }
+
+  // DSG Answer Gate — pure deterministic Boolean logic, zero LLM
+  const facts = detectClaimsInReply(reply, { executedSteps: toolResults.length > 0, hasUserQuestion: true });
+  const gate = evaluateAnswerGate(facts);
+  const finalReply = !gate.allowed ? `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${reply}` : reply;
+
+  return { reply: finalReply, gateDecision: gate.final_decision, gateAllowed: gate.allowed };
+}
 
 function sseData(payload: unknown) {
   return `data: ${JSON.stringify(payload)}\n\n`;
@@ -96,6 +148,8 @@ export async function POST(request: Request) {
 
         controller.enqueue(encoder.encode(sseData({ type: 'plan', steps: plan.steps })));
 
+        const collectedResults: Array<{ toolId: string; result: unknown }> = [];
+
         for (const step of plan.steps) {
           const tool = DSG_TOOLS.find((candidate) => candidate.id === step.toolId);
           if (!tool) {
@@ -109,6 +163,7 @@ export async function POST(request: Request) {
             const result = await executeToolSafely(tool, step.params, context);
             controller.enqueue(encoder.encode(sseData({ type: 'step_result', step: step.id, result })));
             addToolResultToMemory(sessionKey, step.toolId, result);
+            collectedResults.push({ toolId: step.toolId, result });
           } catch (error) {
             logApiError('api/agent-chat', error, { stage: 'tool-execution', step: step.id, toolId: step.toolId });
             controller.enqueue(
@@ -120,6 +175,20 @@ export async function POST(request: Request) {
                 }),
               ),
             );
+          }
+        }
+
+        // Synthesize reply via Haiku 4.5 + run through DSG Answer Gate (pure logic)
+        if (!reply && collectedResults.length > 0) {
+          const { reply: synthesis, gateDecision, gateAllowed } = await synthesizeWithClaude(message, collectedResults);
+          if (synthesis) {
+            controller.enqueue(encoder.encode(sseData({
+              type: 'assistant_reply',
+              reply: synthesis,
+              model: HAIKU_MODEL,
+              gate_decision: gateDecision,
+              gate_allowed: gateAllowed,
+            })));
           }
         }
 
