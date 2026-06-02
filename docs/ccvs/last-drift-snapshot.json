@@ -1,7 +1,7 @@
 {
   "policy_version": "v1",
   "hash_algorithm": "sha256",
-  "deployment_config_hash": "sha256:bdf7938a53c7f8254b715fc184f5223dfc9e4c060b09943c189c410a3d53624b",
+  "deployment_config_hash": "sha256:673c4491e45f6a6e75f9e873bc260bc3d6abb881e92eb51fbe644234ec79ec58",
   "schema_version": "1.0.0",
-  "captured_at": "2026-06-02T04:21:47.555Z"
+  "captured_at": "2026-06-02T07:10:02.876Z"
 }
