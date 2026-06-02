@@ -53,6 +53,21 @@ function buildScriptSrc() {
 
 const nextConfig = {
 
+  async redirects() {
+    return [
+      {
+        source: '/finance-governance/live/server-store',
+        destination: '/finance-governance/live/workspace',
+        permanent: true,
+      },
+      {
+        source: '/finance-governance/live/server-store/:path*',
+        destination: '/finance-governance/live/workspace/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     const remoteApiOrigin = resolveRemoteApiOrigin();
     if (!remoteApiOrigin) return [];
