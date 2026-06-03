@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import ScanForm from './ScanForm';
+import AgentChatWidget from '../../components/AgentChatWidget';
 
 export const metadata: Metadata = {
   title: 'AI Delivery Proof — DSG ONE',
@@ -85,6 +86,7 @@ const colorMap: Record<string, string> = {
 
 export default function DeliveryProofPage() {
   return (
+    <>
     <main className="min-h-screen bg-[#07080a] text-white">
 
       {/* Hero */}
@@ -273,5 +275,7 @@ export default function DeliveryProofPage() {
       </section>
 
     </main>
+    <AgentChatWidget />
+    </>
   );
 }

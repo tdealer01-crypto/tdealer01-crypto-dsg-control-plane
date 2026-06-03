@@ -30,19 +30,164 @@ const AGENT_CHAT_ENDPOINT = "/api/agent-chat-v2";
 const CODEX_ENDPOINT = "/api/dsg-bridge/codex";
 
 const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
-  "/dashboard": [{ label: "Check readiness", prompt: "check readiness" }],
+  // Overview
+  "/dashboard": [
+    { label: "Check readiness", prompt: "check readiness" },
+    { label: "Run auto-setup", prompt: "run auto_setup" },
+    { label: "System status", prompt: "show system status" },
+  ],
+  // Agents
   "/dashboard/agents": [
     { label: "Create agent", prompt: "create agent" },
     { label: "List agents", prompt: "list agents" },
     { label: "Create chatbot", prompt: 'create chatbot "Support Bot"' },
   ],
-  "/dashboard/policies": [{ label: "List policies", prompt: "list policies" }],
-  "/dashboard/executions": [{ label: "Check audit", prompt: "audit lineage" }],
-  "/dashboard/billing": [{ label: "Check capacity", prompt: "check capacity" }],
-  "/dashboard/capacity": [{ label: "Check quota", prompt: "check capacity" }],
-  "/dashboard/skills": [{ label: "Run auto-setup", prompt: "run auto_setup" }],
+  // Executions
+  "/dashboard/executions": [
+    { label: "Recent executions", prompt: "show recent executions" },
+    { label: "Check audit", prompt: "audit lineage" },
+  ],
+  // Approvals
+  "/approvals": [
+    { label: "Pending approvals", prompt: "show pending approvals" },
+    { label: "Approval stats", prompt: "show approval statistics" },
+  ],
+  // Audit
+  "/dashboard/audit": [
+    { label: "Recent logs", prompt: "show audit logs" },
+    { label: "Search audit", prompt: "search audit for approval" },
+  ],
+  // Billing
+  "/dashboard/billing": [
+    { label: "Check capacity", prompt: "check capacity" },
+    { label: "View usage", prompt: "show usage this month" },
+  ],
+  "/dashboard/capacity": [
+    { label: "Check quota", prompt: "check capacity" },
+    { label: "Upgrade plan", prompt: "how do I upgrade my plan?" },
+  ],
+  // Policies
+  "/dashboard/policies": [
+    { label: "List policies", prompt: "list policies" },
+    { label: "Create policy", prompt: "create policy" },
+  ],
+  // Proofs
+  "/dashboard/proofs": [
+    { label: "View proofs", prompt: "show recent proofs" },
+    { label: "Generate proof", prompt: "generate proof" },
+  ],
+  // Verification
+  "/dashboard/verification": [
+    { label: "Run verification", prompt: "run verification check" },
+    { label: "Evidence chain", prompt: "show evidence chain" },
+  ],
+  // Ledger
+  "/dashboard/ledger": [
+    { label: "View ledger", prompt: "show ledger entries" },
+    { label: "Check lineage", prompt: "audit lineage" },
+  ],
+  // Live Control
+  "/dashboard/live-control": [
+    { label: "Live status", prompt: "check live status" },
+    { label: "Monitor agents", prompt: "list active agents" },
+  ],
+  // Command Center
+  "/dashboard/command-center": [
+    { label: "System status", prompt: "check readiness" },
+    { label: "All agents", prompt: "list agents" },
+  ],
+  // Operations
   "/dashboard/operations": [
     { label: "Audit lineage", prompt: "audit lineage" },
+    { label: "System health", prompt: "check readiness" },
+  ],
+  // Integration / Webhooks
+  "/dashboard/integration": [
+    { label: "Setup integration", prompt: "ตั้งค่า integration กับ core banking" },
+    { label: "List connections", prompt: "show integrations" },
+    { label: "Add webhook", prompt: "สร้าง webhook ใหม่" },
+  ],
+  "/dashboard/integrations": [
+    { label: "Add integration", prompt: "ตั้งค่า integration ใหม่" },
+    { label: "List connections", prompt: "show integrations" },
+  ],
+  "/dashboard/webhooks": [
+    { label: "Add webhook", prompt: "สร้าง webhook สำหรับ finance approval" },
+    { label: "List webhooks", prompt: "show my webhooks" },
+    { label: "Test delivery", prompt: "test webhook delivery" },
+  ],
+  // API Keys
+  "/dashboard/api-keys": [
+    { label: "Create API key", prompt: "create API key" },
+    { label: "List API keys", prompt: "list API keys" },
+  ],
+  // Team / Access
+  "/dashboard/team": [
+    { label: "Invite member", prompt: "invite team member" },
+    { label: "List team", prompt: "show team members" },
+  ],
+  "/dashboard/settings/access": [
+    { label: "Manage access", prompt: "show access settings" },
+    { label: "Add role", prompt: "add user role" },
+  ],
+  "/dashboard/settings/security": [
+    { label: "Security check", prompt: "check security settings" },
+  ],
+  // Skills / Setup
+  "/dashboard/skills": [
+    { label: "Run auto-setup", prompt: "run auto_setup" },
+    { label: "List skills", prompt: "list skills" },
+  ],
+  // Breach Signal
+  "/dashboard/breach-signal": [
+    { label: "Evaluate breach", prompt: "evaluate breach signal for domain example.com" },
+    { label: "View history", prompt: "show breach signal history" },
+  ],
+  // DSG Brain / Hermes
+  "/dashboard/dsg-brain": [
+    { label: "Brain status", prompt: "show DSG Brain status" },
+    { label: "Run plan", prompt: "propose execution plan" },
+  ],
+  "/dashboard/hermes": [
+    { label: "Brain status", prompt: "show Hermes status" },
+    { label: "Controlled execution", prompt: "propose execution plan" },
+  ],
+  // Finance Governance
+  "/finance-governance/live": [
+    { label: "Submit case", prompt: "สร้าง approval case ใหม่" },
+    { label: "View queue", prompt: "แสดง approval queue" },
+    { label: "Setup webhook", prompt: "ตั้งค่า webhook สำหรับ finance approval" },
+  ],
+  "/finance-governance/live/approvals": [
+    { label: "Pending approvals", prompt: "แสดง approval ที่รอ" },
+    { label: "Escalate case", prompt: "escalate approval case" },
+  ],
+  "/finance-governance/live/cases": [
+    { label: "Active cases", prompt: "แสดง cases ที่เปิดอยู่" },
+    { label: "Submit case", prompt: "สร้าง case ใหม่" },
+  ],
+  "/finance-governance/live/onboarding": [
+    { label: "Auto-setup", prompt: "run auto_setup" },
+    { label: "Configure webhook", prompt: "ตั้งค่า webhook สำหรับ core banking" },
+    { label: "Get API key", prompt: "create API key for core banking integration" },
+  ],
+  "/finance-governance/live/workflow": [
+    { label: "Workflow status", prompt: "show workflow status" },
+    { label: "Setup rules", prompt: "ตั้งค่า workflow rules" },
+  ],
+  // Delivery Proof
+  "/delivery-proof": [
+    { label: "Scan URL", prompt: "scan https://my-app.vercel.app" },
+    { label: "Generate report", prompt: "สร้าง delivery proof report" },
+  ],
+  // Referrals / Missions
+  "/dashboard/referrals": [
+    { label: "My referrals", prompt: "show referral status" },
+    { label: "Referral link", prompt: "get my referral link" },
+  ],
+  "/dashboard/missions": [
+    { label: "Active missions", prompt: "show active missions" },
+    { label: "Complete mission", prompt: "what missions can I complete?" },
   ],
 };
 
