@@ -5,15 +5,11 @@ import {
   type AgentCommandGateRequest,
 } from "@/lib/dsg/agent-command-gate";
 import { recordAgentCommandGateDecision } from "@/lib/dsg/agent-command-gate-repository";
-import type { HermesPlanScopeContract } from "@/lib/dsg/plan-scope-contract";
+import { lookupPlanContract } from "@/lib/dsg/plan-contract-repository";
 
 export const dynamic = "force-dynamic";
 
 type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
-
-type AgentCommandGateBody = AgentCommandGateRequest & {
-  planScopeContract?: HermesPlanScopeContract;
-};
 
 export async function POST(request: NextRequest) {
   const auth = await requireOrgPermission("org.execute");
@@ -24,7 +20,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as AgentCommandGateBody;
+    const body = (await request.json()) as AgentCommandGateRequest;
 
     if (body.workspaceId !== auth.orgId) {
       return NextResponse.json(
@@ -37,25 +33,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // When planHash is provided, it must be backed by a planScopeContract.
-    // The contract is verified at this trust boundary — gate itself is stateless.
-    // Without contract verification, planHash is stripped so the gate enforces
-    // explicit idempotency/rollback/audit/evidence bindings instead.
+    // When planHash is provided, verify it against the server-side plan contract store.
+    // A client-supplied contract is never trusted — the record must exist in DB,
+    // and its stored hash fields must match the contract's recomputed values.
     let verifiedPlanHash: string | undefined;
     let planContractVerified = false;
 
     if (body.command.planHash) {
-      const contract = body.planScopeContract;
-      if (
-        contract &&
-        contract.workspaceId === auth.orgId &&
-        contract.planHash === body.command.planHash &&
-        contract.agentId === body.runtime.agentId
-      ) {
+      const contract = await lookupPlanContract(body.command.planHash, auth.orgId);
+      if (contract && contract.agentId === body.runtime.agentId) {
         verifiedPlanHash = body.command.planHash;
         planContractVerified = true;
       }
-      // If contract absent or mismatched: planHash is stripped — gate falls back to explicit bindings
+      // If plan not found or agent mismatch: planHash is stripped — gate requires explicit bindings
     }
 
     const gateRequest: AgentCommandGateRequest = {
@@ -86,7 +76,7 @@ export async function POST(request: NextRequest) {
           planHash: verifiedPlanHash ?? null,
           scopeHash: body.command.scopeHash ?? null,
           planAuthorized: planContractVerified,
-          contractProvided: Boolean(body.planScopeContract),
+          contractProvided: Boolean(body.command.planHash),
         },
         actor: {
           userId: auth.userId,
