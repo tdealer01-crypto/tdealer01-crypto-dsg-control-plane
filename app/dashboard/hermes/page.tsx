@@ -548,7 +548,7 @@ export default function HermesAgentPage() {
       setBusy(true);
 
       try {
-        const res = await fetch('/api/agent-chat', {
+        const res = await fetch('/api/dsg/hermes/execute', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ message: trimmed }),
