@@ -29,6 +29,8 @@ export interface AgentCommandProposal {
   expectedResultHash?: string;
   /** Approved plan hash — when present, satisfies idempotency, rollback, audit, and evidence binding requirements */
   planHash?: string;
+  /** Scope hash from HermesPlanScopeContract — narrows which subset of the plan this command operates within */
+  scopeHash?: string;
 }
 
 export interface AgentCommandRbacProof {
@@ -115,6 +117,10 @@ export interface AgentActionResultRequest {
   targetSystemReceiptId?: string;
   errorClass?: string;
   errorMessage?: string;
+  /** Plan hash bound at command time — carried through to receipt for audit chain */
+  planHash?: string;
+  /** Scope hash from HermesPlanScopeContract — narrows audit scope */
+  scopeHash?: string;
 }
 
 export interface AgentActionResultReceipt {
@@ -129,6 +135,8 @@ export interface AgentActionResultReceipt {
   receiptHash: string;
   reasons: string[];
   recordedAt: string;
+  planHash?: string;
+  scopeHash?: string;
 }
 
 export const AGENT_COMMAND_GATE_VERSION = "dsg-agent-command-gate-v1.0";
@@ -222,6 +230,8 @@ export function buildAgentActionResultReceipt(
       ? ["agent_result_record_accepted"]
       : [`missing_or_invalid:${missing.concat(input.evidenceItemIds.length ? [] : ["evidenceItemIds"]).join(",")}`],
     recordedAt,
+    planHash: input.planHash,
+    scopeHash: input.scopeHash,
   };
 }
 
