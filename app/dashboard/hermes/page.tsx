@@ -433,7 +433,6 @@ export default function HermesAgentPage() {
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const cameraCanvasRef = useRef<HTMLCanvasElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -663,18 +662,15 @@ export default function HermesAgentPage() {
 
   // ── voice input (single utterance) ────────────────────────────────────────
   const toggleVoice = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = typeof window !== 'undefined' ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) : null;
     if (!SR) { alert('Speech Recognition is not supported in this browser.'); return; }
     if (voiceActive) { recognitionRef.current?.stop(); setVoiceActive(false); return; }
     const rec = new SR() as {
       lang: string; continuous: boolean; interimResults: boolean;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onresult: ((e: any) => void) | null; onend: (() => void) | null; onerror: (() => void) | null;
       start(): void; stop(): void;
     };
     rec.lang = 'th-TH'; rec.interimResults = true; rec.continuous = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => setInput(Array.from(e.results as any[]).map((r: any) => r[0].transcript).join(''));
     rec.onend = () => setVoiceActive(false);
     rec.onerror = () => setVoiceActive(false);
@@ -684,22 +680,18 @@ export default function HermesAgentPage() {
 
   // ── live mode (continuous auto-send) ─────────────────────────────────────
   const toggleLive = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = typeof window !== 'undefined' ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) : null;
     if (!SR) { alert('Speech Recognition is not supported in this browser.'); return; }
     if (liveMode) { recognitionRef.current?.stop(); setLiveMode(false); return; }
     const rec = new SR() as {
       lang: string; continuous: boolean; interimResults: boolean;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onresult: ((e: any) => void) | null; onend: (() => void) | null; onerror: (() => void) | null;
       start(): void; stop(): void;
     };
     rec.lang = 'th-TH'; rec.interimResults = true; rec.continuous = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
       let final = ''; let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const r = (e.results as any)[i];
         if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
       }
