@@ -1,11 +1,23 @@
 /**
  * Hermes LLM Integration for DSG Brain.
- * Uses Anthropic API to generate and remediate plans.
- * API key is server-side only, never exposed to client.
+ *
+ * Supports two backends:
+ *   - Anthropic (ANTHROPIC_API_KEY)
+ *   - NousResearch Hermes (TOGETHER_API_KEY or OPENROUTER_API_KEY)
+ *
+ * Set DSG_BRAIN_PROVIDER=nous-hermes to use Hermes models.
+ * API keys are server-side only, never exposed to client.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ConformanceViolation } from "./conformance-gate";
+import {
+  generatePlanViaNousHermes,
+  remediatePlanViaNousHermes,
+  detectNousHosting,
+  type HermesNousModel,
+} from "./hermes-nous-provider";
+import { buildDsgBrainModelConfig } from "./model-config";
 
 /**
  * LLM plan generation request.
@@ -206,110 +218,85 @@ function parsePlanResponse(content: string): {
 }
 
 /**
- * Generate a plan using the Anthropic API.
- * This is the main entry point for plan generation.
- * IMPORTANT: API key must be loaded from environment only, server-side.
+ * Generate a plan — dispatches to NousResearch Hermes or Anthropic based on config.
+ * IMPORTANT: API keys are loaded from environment only, server-side.
  */
 export async function generatePlanViaLLM(
   request: LLMPlanRequest,
-  apiKey?: string
+  apiKey?: string,
 ): Promise<LLMPlanResponse> {
-  const key = apiKey || process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    throw new Error(
-      "ANTHROPIC_API_KEY not set. Cannot generate plans without API key."
-    );
+  const config = buildDsgBrainModelConfig();
+
+  if (config.provider === 'nous-hermes') {
+    const hosting = detectNousHosting();
+    if (!hosting) throw new Error('TOGETHER_API_KEY or OPENROUTER_API_KEY not set for Hermes provider');
+    return generatePlanViaNousHermes(request, config.model as HermesNousModel, hosting);
   }
+
+  // Anthropic path
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('ANTHROPIC_API_KEY not set. Cannot generate plans without API key.');
 
   const client = new Anthropic({ apiKey: key });
 
   try {
     const response = await client.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: config.model || 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
       system: buildPlanSystemPrompt(),
-      messages: [
-        {
-          role: "user",
-          content: buildPlanUserPrompt(request),
-        },
-      ],
+      messages: [{ role: 'user', content: buildPlanUserPrompt(request) }],
     });
 
-    // Extract text content from response
-    const textContent = response.content.find((block) => block.type === "text");
-    if (!textContent || textContent.type !== "text") {
-      throw new Error("No text content in LLM response");
-    }
+    const textContent = response.content.find((block) => block.type === 'text');
+    if (!textContent || textContent.type !== 'text') throw new Error('No text content in LLM response');
 
     const { plan, summary } = parsePlanResponse(textContent.text);
-
-    // Determine risk tags based on the response and request
     const riskTags: string[] = [];
-    if (request.allowedCommands.length === 0) {
-      riskTags.push("no-commands");
-    }
-    if (request.allowedPaths.length === 0) {
-      riskTags.push("no-paths");
-    }
-    if (plan.includes("TODO") || plan.includes("pending")) {
-      riskTags.push("incomplete");
-    }
+    if (request.allowedCommands.length === 0) riskTags.push('no-commands');
+    if (request.allowedPaths.length === 0) riskTags.push('no-paths');
+    if (plan.includes('TODO') || plan.includes('pending')) riskTags.push('incomplete');
 
-    return {
-      canonicalPlan: plan,
-      rationale: summary,
-      riskTags,
-    };
+    return { canonicalPlan: plan, rationale: summary, riskTags };
   } catch (err) {
-    const errorMessage = (err as Error).message;
-    throw new Error(`LLM plan generation failed: ${errorMessage}`);
+    throw new Error(`LLM plan generation failed: ${(err as Error).message}`);
   }
 }
 
 /**
- * Generate a remediated plan using the Anthropic API.
+ * Generate a remediated plan — dispatches to NousResearch Hermes or Anthropic based on config.
  */
 export async function remediatePlanViaLLM(
   request: LLMRemediationRequest,
-  apiKey?: string
+  apiKey?: string,
 ): Promise<LLMRemediationResponse> {
-  const key = apiKey || process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    throw new Error(
-      "ANTHROPIC_API_KEY not set. Cannot remediate plans without API key."
-    );
+  const config = buildDsgBrainModelConfig();
+
+  if (config.provider === 'nous-hermes') {
+    const hosting = detectNousHosting();
+    if (!hosting) throw new Error('TOGETHER_API_KEY or OPENROUTER_API_KEY not set for Hermes provider');
+    return remediatePlanViaNousHermes(request, config.model as HermesNousModel, hosting);
   }
+
+  // Anthropic path
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('ANTHROPIC_API_KEY not set. Cannot remediate plans without API key.');
 
   const client = new Anthropic({ apiKey: key });
 
   try {
     const response = await client.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: config.model || 'claude-haiku-4-5-20251001',
       max_tokens: 2048,
       system: buildRemediationSystemPrompt(),
-      messages: [
-        {
-          role: "user",
-          content: buildRemediationUserPrompt(request),
-        },
-      ],
+      messages: [{ role: 'user', content: buildRemediationUserPrompt(request) }],
     });
 
-    // Extract text content from response
-    const textContent = response.content.find((block) => block.type === "text");
-    if (!textContent || textContent.type !== "text") {
-      throw new Error("No text content in LLM response");
-    }
+    const textContent = response.content.find((block) => block.type === 'text');
+    if (!textContent || textContent.type !== 'text') throw new Error('No text content in LLM response');
 
     const { plan, summary } = parsePlanResponse(textContent.text);
-
-    return {
-      remediatedPlan: plan,
-      changeDescription: summary,
-    };
+    return { remediatedPlan: plan, changeDescription: summary };
   } catch (err) {
-    const errorMessage = (err as Error).message;
-    throw new Error(`LLM remediation failed: ${errorMessage}`);
+    throw new Error(`LLM remediation failed: ${(err as Error).message}`);
   }
 }
