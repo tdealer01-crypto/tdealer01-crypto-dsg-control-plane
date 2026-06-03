@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 import { recordGovernanceDecisionEvent } from '@/lib/governance/decision-recorder';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { fireWebhook } from '@/lib/webhooks/deliver';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,13 @@ export async function POST(request: NextRequest) {
     if (!recorded) {
       return NextResponse.json({ ok: false, error: 'failed_to_record_rollback_event' }, { status: 500 });
     }
+
+    void fireWebhook(auth.orgId, 'governance.decision_rollback', {
+      decision_id: decisionId,
+      rolled_back_at: rolledBackAt,
+      actor_role: auth.role,
+      compensation_plan_id: body.compensationPlanId.trim(),
+    });
 
     return NextResponse.json({
       ok: true,

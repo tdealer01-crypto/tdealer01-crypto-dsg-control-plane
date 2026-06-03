@@ -7,6 +7,7 @@ import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
 import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { fireWebhook } from '../../../lib/webhooks/deliver';
 
 export const dynamic = 'force-dynamic';
 
@@ -226,6 +227,12 @@ export async function POST(request: Request) {
       logServerError(error, 'agents-post');
       return serverErrorResponse({ headers });
     }
+
+    void fireWebhook(orgId, 'agent.created', {
+      agent_id: inserted.id,
+      name: inserted.name,
+      policy_id: inserted.policy_id,
+    });
 
     return NextResponse.json({
       agent_id: inserted.id,

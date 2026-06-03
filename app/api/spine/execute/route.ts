@@ -6,6 +6,7 @@ import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/securi
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
+import { fireWebhook } from '../../../../lib/webhooks/deliver';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,6 +131,10 @@ export async function POST(request: Request) {
     // Count executions only on success (2xx)
     if (result.status >= 200 && result.status < 300) {
       void incrementQuota(orgId, agentId);
+      void fireWebhook(orgId, 'execution.completed', {
+        agent_id: agentId,
+        decision: (result.body as Record<string, unknown>)?.decision ?? null,
+      });
     }
 
     return NextResponse.json(result.body, {
