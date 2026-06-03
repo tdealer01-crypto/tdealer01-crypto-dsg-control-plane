@@ -27,17 +27,29 @@ type Webhook = {
 };
 
 const ALL_EVENTS = [
+  // Finance Governance
   'finance.approval.approved',
   'finance.approval.rejected',
   'finance.approval.escalated',
   'finance.case.submitted',
+  // ProofGate / Spine
+  'execution.completed',
+  'execution.initiated',
   'gate.evaluated',
+  // Delivery Proof
+  'proof.scan_completed',
   'proof.created',
+  // Automation / Governance
+  'governance.decision_rollback',
   'action.approved',
   'action.blocked',
   'action.reviewed',
+  // Agents
+  'agent.created',
   'agent.started',
   'agent.completed',
+  // Setup
+  'setup.completed',
 ];
 
 const INITIAL_WEBHOOKS: Webhook[] = [

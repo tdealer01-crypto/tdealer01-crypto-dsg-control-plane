@@ -10,6 +10,8 @@
 import { NextResponse } from 'next/server';
 import { readJsonBody } from '../../../../lib/security/request-json';
 import { createClient } from '../../../../lib/supabase/server';
+import { fireWebhook } from '../../../../lib/webhooks/deliver';
+import { requireActiveProfile } from '../../../../lib/auth/require-active-profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,6 +142,23 @@ export async function POST(request: Request) {
 
   const runId = generateRunId();
   await saveReport(runId, checks, eligible, base);
+
+  // Fire webhook if caller is authenticated (best-effort).
+  void (async () => {
+    try {
+      const profile = await requireActiveProfile();
+      if (profile.ok) {
+        await fireWebhook(profile.orgId, 'proof.scan_completed', {
+          run_id: runId,
+          production_url: base,
+          claim_result: eligible ? 'EVIDENCE COMPLETE' : 'PRODUCTION BLOCKED',
+          pass: checks.filter((c) => c.status === 'pass').length,
+        });
+      }
+    } catch {
+      // non-fatal
+    }
+  })();
 
   const shareUrl = (() => {
     const appBase =

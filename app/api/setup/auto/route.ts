@@ -8,6 +8,7 @@ import { buildCheckpointHash } from '../../../../lib/runtime/checkpoint';
 import { invokeRuntimeCommitRpc } from '../../../../lib/runtime/commit-rpc';
 import { handleApiError } from '../../../../lib/security/api-error';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { fireWebhook } from '../../../../lib/webhooks/deliver';
 
 export const dynamic = 'force-dynamic';
 type SetupStatus = 'OK' | 'CREATED' | 'EXISTS' | 'FAIL' | 'WARN';
@@ -510,6 +511,11 @@ export async function POST(_request: Request) {
       agent_id: results.agent_id ?? null,
       api_key_issued: Boolean(results.api_key),
       steps: results.steps,
+    });
+
+    void fireWebhook(orgId, 'setup.completed', {
+      agent_id: results.agent_id ?? null,
+      first_run_complete: results.first_run_complete,
     });
 
     return NextResponse.json(results, { status: 200 });

@@ -6,6 +6,7 @@ import {
 import type { AgentExecuteBody } from '../../../lib/agent-governance/types';
 import { readJsonBody } from '../../../lib/security/request-json';
 import { requireOrgPermission } from '../../../lib/auth/require-org-permission';
+import { fireWebhook } from '../../../lib/webhooks/deliver';
 
 export async function POST(req: NextRequest) {
   const access = await requireOrgPermission('org.execute');
@@ -28,6 +29,12 @@ export async function POST(req: NextRequest) {
 
   const steps = body.plan?.length ? body.plan : await planExecution(body.message ?? '');
   const created = await createExecutionRequest({ ...body, org_id: access.orgId, plan: steps });
+
+  void fireWebhook(access.orgId, 'execution.initiated', {
+    execution_id: created.id,
+    agent_id: body.agent_id,
+    workspace_id: body.workspace_id,
+  });
 
   return NextResponse.json({ ok: true, execution_id: created.id, steps: created.steps }, { status: 201 });
 }
