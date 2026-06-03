@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import ScanForm from './ScanForm';
 import AgentChatWidget from '../../components/AgentChatWidget';
+import HermesControlLink from '../../components/HermesControlLink';
 
 export const metadata: Metadata = {
   title: 'AI Delivery Proof — DSG ONE',
@@ -275,6 +276,7 @@ export default function DeliveryProofPage() {
       </section>
 
     </main>
+    <HermesControlLink />
     <AgentChatWidget />
     </>
   );
