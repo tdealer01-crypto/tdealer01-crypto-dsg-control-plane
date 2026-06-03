@@ -2,7 +2,7 @@
 
 > **Block before the AI agent acts — not after the damage is done.**
 
-DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gate every action before execution, and keep a cryptographic audit trail for regulated AI-agent operations.
+DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gate every action before execution, and keep a verifiable audit trail with deterministic evidence lineage for regulated AI-agent operations.
 
 **Production URL:** `https://tdealer01-crypto-dsg-control-plane.vercel.app`
 
@@ -382,9 +382,9 @@ GET  /api/compliance-evidence-pack/annex4?format=html  # styled HTML checklist
 
 Pre-formatted evidence report for EU AI Act and ISO 42001 compliance review.
 
-- **24 Z3 theorems** — 8 policy + 16 billing, UNSAT proof for each
+- **24 Z3 theorems** — 8 policy + 16 billing, design-time formal proofs (TypeScript static checks at runtime)
 - **998 test assertions** — 133 test files, 0 failures
-- **WORM hash chain** — SHA-256 `requestHash → decisionHash → recordHash → bundleHash`
+- **Verifiable hash lineage** — SHA-256 `requestHash → decisionHash → recordHash → bundleHash` stored in auditable DB; integrity verifiable, not WORM-certified storage
 - **EU AI Act Art. 12/14** — Record keeping and human oversight control mapping
 - **ISO/IEC 42001** — A.6, A.9, A.10 AI management system controls
 
@@ -506,7 +506,9 @@ CI enforcement: `npm audit --audit-level=high` in `ci-security.yml` — 0 high/c
 
 ---
 
-## 🔐 Z3 Formal Verification
+## 🔐 Z3 Formal Verification (Design-Time Proofs)
+
+**Note:** Z3 proofs are design-time verification tools used in CI. At runtime, DSG gates use TypeScript static checks, not external Z3 solver invocation. These proofs verify the correctness of the gate logic itself.
 
 ### Policy Engine — 8 theorems (Python Z3)
 
@@ -520,7 +522,7 @@ npm run verify:policy
 ✓ PROVED  [amount_bound]           DeFi amount ≤ $1,000 and daily ≤ $10,000
 ✓ PROVED  [slippage_bound]         slippage ≤ 50 bps
 ✓ PROVED  [constraint_consistency] DeFi constraint set is satisfiable
-Policy theorems: 8 proved, 0 failed
+Policy theorems: 8 proved, 0 failed (design-time verification)
 ```
 
 ### Billing & Quota — 16 theorems (TypeScript z3-solver WASM)
@@ -535,7 +537,7 @@ Rate-limit conservation: remaining + used = limit (always)
 No-bypass theorem:       cannot be allowed AND blocked simultaneously
 Stripe pricing:          yearly = 9×monthly exactly (25% discount proven)
 Quota gate:              post-increment used ≤ limit (single-threaded)
-VERDICT: FORMAL PROOF PASS — 16 theorems, 0 failed
+VERDICT: FORMAL PROOF PASS — 16 theorems, 0 failed (design-time verification)
 ```
 
 **Method:** prove theorem P by asserting ¬P and checking UNSAT. If Z3 finds no countermodel, P holds for every possible input.
@@ -616,15 +618,29 @@ bash scripts/check-request-body-safety.sh  # request body safety linter
 
 ---
 
+## Production Status — 2026-06-03
+
+✅ **Production-connected** (live and responding)
+- REST API live: health ✅, readiness ✅, agent-status ✅
+- Database connected ✅
+- Rate limiter (Upstash Redis) active ✅
+- All core routes responding with correct decision logic ✅
+
+⚠️ **Not "production-ready"** (per CLAUDE.md evidence-first policy):
+- "Production-ready" claim blocked unless fresh full verification evidence
+- Safe claims: "production-connected", "audit-ready", "evidence-ready"
+
+---
+
 ## Supported claims — verified evidence only
 
 ```
-✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions.
-✓ Runtime readiness is green (HTTP 200, status=ready).
+✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions (verified 2026-06-03).
+✓ Runtime readiness is green (HTTP 200, status=ready, verified 2026-06-03).
 ✓ 1027 unit + integration tests pass, 0 failures (108 unit files; +50 new tests covering authz-runtime, agent-auth, release-gate, security/api-error, agent-governance/service).
 ✓ TypeScript compiles with 0 errors.
-✓ Gateway policy engine formally verified — 8 Z3 theorems, design-time.
-✓ Billing quota model formally verified — 16 Z3 theorems, design-time.
+✓ Gateway policy engine formally verified — 8 Z3 theorems, design-time CI verification.
+✓ Billing quota model formally verified — 16 Z3 theorems, design-time CI verification (runtime uses TypeScript static checks, not external solver).
 ✓ DeFi transaction bounds mathematically proven (amount ≤ $1k, slippage ≤ 50bps).
 ✓ Stripe metered billing idempotent — per-execution key, no same-second dedup.
 ✓ Billing outbox — no silent loss on Stripe outage, hourly retry.
@@ -637,14 +653,16 @@ bash scripts/check-request-body-safety.sh  # request body safety linter
 ✓ npm dependency hardening — qs/ws/postcss overrides, 15 → 6 moderate vulns, 0 high/critical.
 ✓ Request body safety — 5 critical routes use readJsonBody with explicit size limits (4–256 KB).
 ✓ CI body-safety linter — scripts/check-request-body-safety.sh flags raw request.json() regressions.
+✓ Hash lineage verifiable — SHA-256 `requestHash → decisionHash → recordHash → bundleHash` stored in auditable DB with integrity verification.
 ```
 
 Not claimed:
 
 ```
 ✗ Independent third-party audit or certification.
-✗ WORM-certified audit storage.
+✗ WORM-certified or tamper-proof audit storage (hash lineage is DB-backed and auditable, not cryptographically tamper-proof storage).
 ✗ Published public npm/PyPI SDK.
+✗ External Z3 solver invocation at runtime (design-time proofs only; runtime gates use TypeScript static checks).
 ```
 
 ---
