@@ -185,7 +185,7 @@ function handleRecordEvidence(args: Record<string, unknown>): DsgToolResult {
     subjects: [{ name: url || `evidence:${kind}`, digest: { sha256: hash } }],
     run: {
       repo: String(metadata.repo ?? 'mcp:unknown'),
-      commit: String(metadata.commit ?? hash.slice(0, 16) || 'unknown'),
+      commit: String((metadata.commit ?? hash.slice(0, 16)) || 'unknown'),
       workflow_run_id: `mcp-${Date.now()}`,
       builder_id: 'mcp:dsg.recordEvidence',
       invocation_id: randomToken(16),
