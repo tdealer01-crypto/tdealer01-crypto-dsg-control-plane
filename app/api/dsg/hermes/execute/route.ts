@@ -29,6 +29,9 @@ import type { EvidenceItem } from "@/lib/hermes/evidence-reporter";
 import { DSG_TOOLS } from "@/lib/agent/tools";
 import { executeToolSafely } from "@/lib/agent/executor";
 import type { AgentContext } from "@/lib/agent/context";
+import { addToolResultToMemory, routeToModel } from "@/lib/agent/llm-router";
+import { planGoal } from "@/lib/agent/planner";
+import { agentPreflight } from "@/lib/agent/preflight";
 import { evaluateAnswerGate, detectClaimsInReply } from "@/lib/dsg/answer-gate";
 import { randomUUID } from "crypto";
 
@@ -198,8 +201,25 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
       try {
-        // 1. LLM creates plan
-        send({ type: "preflight", decision: "PLAN_MATCHED_ALLOW_AUDIT", reason: "Hermes planning..." });
+        // 1. Preflight + plan
+        const actionType = /deploy|push|release|ship/i.test(message) ? "deploy"
+          : /edit|fix|change|refactor|update|add.*file|create.*file/i.test(message) ? "edit_code"
+          : /test|typecheck|lint|verify/i.test(message) ? "run_test"
+          : "answer";
+        const preflight = await agentPreflight({
+          userGoal: message,
+          requestedAction: actionType,
+          repoContext: [],
+          orgPlan: undefined,
+          actorRole: agentCtx.role,
+        });
+        if (preflight.decision === "block") {
+          send({ type: "assistant_reply", reply: `Blocked: ${preflight.reason}`, model: "hermes-preflight" });
+          send({ type: "done" });
+          controller.close();
+          return;
+        }
+        send({ type: "preflight", decision: "PLAN_MATCHED_ALLOW_AUDIT", reason: "Hermes planning...", ...preflight });
 
         const { reply: planReply, steps } = await callLLMForPlan(message);
 
@@ -214,7 +234,54 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // No steps from Hermes planner → fall back to existing routeToModel (handles
+        // product Q&A, Thai language, and tool-based answers via the rich system prompt)
         if (steps.length === 0) {
+          const sessionKey = `${access.orgId}:${sessionId}`;
+          let fallbackReply = planReply;
+
+          if (!fallbackReply) {
+            try {
+              if (process.env.OPENROUTER_API_KEY) {
+                const llm = await routeToModel(sessionKey, message, "hermes");
+                // Execute any tools the LLM picked
+                for (const step of llm.plan.steps) {
+                  const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
+                  if (!tool) continue;
+                  send({ type: "step_start", step: step.id, tool: tool.name });
+                  try {
+                    const result = await executeToolSafely(tool, step.params, agentCtx);
+                    send({ type: "step_result", step: step.id, result });
+                    addToolResultToMemory(sessionKey, step.toolId, result);
+                  } catch { /* non-fatal */ }
+                }
+                fallbackReply = llm.reply;
+              } else {
+                const fallbackPlan = planGoal(message, "hermes");
+                for (const step of fallbackPlan.steps) {
+                  const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
+                  if (!tool) continue;
+                  send({ type: "step_start", step: step.id, tool: tool.name });
+                  try {
+                    const result = await executeToolSafely(tool, step.params, agentCtx);
+                    send({ type: "step_result", step: step.id, result });
+                  } catch { /* non-fatal */ }
+                }
+              }
+            } catch { /* non-fatal */ }
+          }
+
+          if (fallbackReply) {
+            const facts = detectClaimsInReply(fallbackReply, { executedSteps: false, hasUserQuestion: true });
+            const gate = evaluateAnswerGate(facts);
+            send({
+              type: "assistant_reply",
+              reply: gate.allowed ? fallbackReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${fallbackReply}`,
+              model: "hermes-fallback",
+            });
+          } else {
+            send({ type: "assistant_reply", reply: "ขอโทษ — ไม่สามารถสร้างแผนได้ กรุณาตั้งค่า OPENROUTER_API_KEY หรือลองใหม่อีกครั้ง", model: "hermes-fallback" });
+          }
           send({ type: "done" });
           controller.close();
           return;
@@ -283,19 +350,31 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Synthesize + DSG Answer Gate
-        const synthesis = await synthesize(message, toolResults);
-        if (synthesis) {
-          const facts = detectClaimsInReply(synthesis, { executedSteps: toolResults.length > 0, hasUserQuestion: true });
-          const gate = evaluateAnswerGate(facts);
-          send({
-            type: "assistant_reply",
-            reply: gate.allowed ? synthesis : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${synthesis}`,
-            model: HAIKU,
-            planHash,
-            claimBoundary: contractBase.claimBoundary,
-            evidenceCount: allEvidence.length,
-          });
-        }
+        // Run synthesis regardless of whether steps succeeded or failed — pass ALL outcomes
+        const allOutcomes = toolResults.length > 0
+          ? toolResults
+          : plan.steps.map((s) => ({ toolId: String(s.params?.toolId ?? s.worker), result: { note: "step attempted, see trace" } }));
+        const synthesis = await synthesize(message, allOutcomes);
+
+        // Guarantee a final reply — if synthesis empty, produce a useful summary
+        const finalReply = synthesis || planReply || (() => {
+          const succeeded = toolResults.length;
+          const total = plan.steps.length;
+          return succeeded > 0
+            ? `ดำเนินการเสร็จแล้ว ${succeeded}/${total} steps — ตรวจสอบ trace ด้านล่าง`
+            : `ไม่สามารถ execute ได้ — plan ถูก gate แล้ว (${plan.steps.length} steps) ตรวจสอบ trace สำหรับรายละเอียด`;
+        })();
+
+        const facts = detectClaimsInReply(finalReply, { executedSteps: toolResults.length > 0, hasUserQuestion: true });
+        const gate = evaluateAnswerGate(facts);
+        send({
+          type: "assistant_reply",
+          reply: gate.allowed ? finalReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${finalReply}`,
+          model: synthesis ? HAIKU : "hermes-summary",
+          planHash,
+          claimBoundary: contractBase.claimBoundary,
+          evidenceCount: allEvidence.length,
+        });
 
         send({ type: "done" });
       } catch (err) {
