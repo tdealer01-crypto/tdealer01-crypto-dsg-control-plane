@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCommandEnvelope } from '@/lib/commands/normalize';
 import { TOOL_POLICY } from '@/lib/commands/schema';
+import { DSG_TOOL_SCHEMAS, DSG_TOOL_NAMES } from '@/lib/mcp/schemas';
+import type { DsgToolName } from '@/lib/mcp/schemas';
+import { callDsgTool } from '@/lib/mcp/dsg-tools';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +26,7 @@ function rpcError(id: JsonRpcRequest['id'], code: number, message: string) {
   return NextResponse.json({ jsonrpc: '2.0', id: id ?? null, error: { code, message } }, { status: code === -32601 ? 404 : 400 });
 }
 
-function toolList() {
+function androidToolList() {
   return Object.entries(TOOL_POLICY).map(([name, policy]) => ({
     name,
     description: `Queue ${name} for Android owner-agent review. Class=${policy.class}; owner approval is always required before device execution.`,
@@ -52,6 +55,17 @@ function toolList() {
   }));
 }
 
+function dsgToolList() {
+  return DSG_TOOL_NAMES.map((name) => ({
+    name,
+    ...DSG_TOOL_SCHEMAS[name],
+  }));
+}
+
+function toolList() {
+  return [...androidToolList(), ...dsgToolList()];
+}
+
 export async function GET() {
   return NextResponse.json({ ok: true, tools: toolList(), note: 'Use POST JSON-RPC tools/list or tools/call.' });
 }
@@ -67,8 +81,18 @@ export async function POST(request: NextRequest) {
   if (rpc.method === 'tools/call') {
     const name = rpc.params?.name;
     if (!name) return rpcError(rpc.id, -32602, 'Missing tool name');
+
+    const args = rpc.params?.arguments ?? {};
+
+    // Route DSG tools to the DSG tool handler
+    if ((DSG_TOOL_NAMES as readonly string[]).includes(name)) {
+      const dsgResult = await callDsgTool(name as DsgToolName, args);
+      if (!dsgResult.ok) return rpcError(rpc.id, dsgResult.code, dsgResult.message);
+      return rpcResult(rpc.id, dsgResult.result);
+    }
+
+    // Route Android tools to the command envelope builder
     try {
-      const args = rpc.params?.arguments ?? {};
       const command = buildCommandEnvelope({
         sourceKind: 'mcp',
         actorType: 'user',
