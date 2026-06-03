@@ -2659,6 +2659,63 @@ export type Database = {
         }
         Relationships: []
       }
+      breach_signal_evaluations: {
+        Row: {
+          id: string
+          source_url: string | null
+          owner: string | null
+          legal_purpose: string | null
+          decision: string
+          evidence_level: string
+          severity: string
+          reasons: unknown
+          allowed_actions: unknown
+          blocked_actions: unknown
+          hibp_checked: boolean
+          hibp_breach_count: number | null
+          hibp_breaches: unknown | null
+          hibp_elevated_evidence: boolean
+          raw_data_stored: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          source_url?: string | null
+          owner?: string | null
+          legal_purpose?: string | null
+          decision: string
+          evidence_level: string
+          severity: string
+          reasons?: unknown
+          allowed_actions?: unknown
+          blocked_actions?: unknown
+          hibp_checked?: boolean
+          hibp_breach_count?: number | null
+          hibp_breaches?: unknown | null
+          hibp_elevated_evidence?: boolean
+          raw_data_stored?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          source_url?: string | null
+          owner?: string | null
+          legal_purpose?: string | null
+          decision?: string
+          evidence_level?: string
+          severity?: string
+          reasons?: unknown
+          allowed_actions?: unknown
+          blocked_actions?: unknown
+          hibp_checked?: boolean
+          hibp_breach_count?: number | null
+          hibp_breaches?: unknown | null
+          hibp_elevated_evidence?: boolean
+          raw_data_stored?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       dsg_secrets: {
         Row: {
           created_at: string | null
