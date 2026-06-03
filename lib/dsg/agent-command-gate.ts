@@ -241,7 +241,9 @@ function evaluateInvariants(input: AgentCommandGateRequest): AgentCommandInvaria
   const requiredPermission = RISK_EXECUTION_PERMISSION[input.command.riskLevel];
   const hasRequiredPermission = input.rbac.permissions.includes(requiredPermission);
   const requiresApproval = highRisk || ["delete", "payment", "deploy", "admin"].includes(input.command.actionType);
-  const planAuthorized = Boolean(input.command.planHash);
+  const PLAN_HASH_RE = /^[0-9a-f]{64}$/i;
+  const planHashValid = Boolean(input.command.planHash) && PLAN_HASH_RE.test(input.command.planHash!);
+  const planAuthorized = planHashValid;
 
   return [
     {
@@ -331,6 +333,16 @@ function evaluateInvariants(input: AgentCommandGateRequest): AgentCommandInvaria
       reason: planAuthorized && !(input.evidence.evidenceManifestId && input.evidence.policySnapshotHash)
         ? "plan-authorized action: plan hash anchors the evidence manifest"
         : "DSG must bind evidence manifest and policy snapshot before returning an action envelope",
+    },
+    {
+      name: "plan_hash_format",
+      status: !input.command.planHash || planHashValid ? "PASS" : "BLOCK",
+      severity: "HARD",
+      reason: !input.command.planHash
+        ? "no plan hash provided — format check not applicable"
+        : planHashValid
+          ? "plan hash is a valid 64-character hex string"
+          : "plan hash must be a 64-character SHA-256 hex string; arbitrary strings are not accepted",
     },
     {
       name: "plan_authorization",

@@ -43,12 +43,15 @@ export function evaluatePlanAlignment(
   const actionAllowed = contract.allowedActionTypes.includes(event.actionType);
   const targetAllowed = contract.allowedTargetSystems.includes(event.targetSystemId);
   const riskAllowed = !riskExceeds(event.riskLevel, contract.maxRiskLevel);
+  const operationAllowed =
+    contract.allowedOperations.length === 0 || contract.allowedOperations.includes(event.operationName);
 
   if (!actionAllowed) reasons.push(`action_type_not_in_plan:${event.actionType}`);
   if (!targetAllowed) reasons.push(`target_system_not_in_plan:${event.targetSystemId}`);
   if (!riskAllowed) reasons.push(`risk_level_exceeds_plan:${event.riskLevel}_max_${contract.maxRiskLevel}`);
+  if (!operationAllowed) reasons.push(`operation_not_in_plan:${event.operationName}`);
 
-  if (!actionAllowed || !targetAllowed || !riskAllowed) {
+  if (!actionAllowed || !targetAllowed || !riskAllowed || !operationAllowed) {
     return seal("OUT_OF_PLAN_DENY", contract, event, reasons, false, decidedAt);
   }
 

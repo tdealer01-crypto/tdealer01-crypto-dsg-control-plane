@@ -6,8 +6,8 @@ const fixedNow = new Date("2026-05-06T00:00:00.000Z");
 
 const baseContract: HermesPlanScopeContract = {
   planId: "plan-001",
-  planHash: "approved-plan-hash-abc123",
-  scopeHash: "scope-hash-xyz",
+  planHash: "a4b02438ca02875a0e272e4698409a9009c543be56878336482415ee1240a124",
+  scopeHash: "6ec14cf125c89756fe8532726b34a5d73511ddd14b9ec57c1614304c4471392f",
   workspaceId: "ws-001",
   agentId: "agent-001",
   approvedBy: "operator-1",
@@ -30,7 +30,7 @@ function baseEvent(): HermesActionEvent {
   return {
     eventId: "event-001",
     planId: "plan-001",
-    planHash: "approved-plan-hash-abc123",
+    planHash: "a4b02438ca02875a0e272e4698409a9009c543be56878336482415ee1240a124",
     workspaceId: "ws-001",
     agentId: "agent-001",
     sessionId: "session-001",
@@ -53,8 +53,8 @@ describe("evaluatePlanAlignment", () => {
     expect(result.canProceed).toBe(true);
     expect(result.claimAllowed).toBe(true);
     expect(result.requiresReplan).toBe(false);
-    expect(result.planHash).toBe("approved-plan-hash-abc123");
-    expect(result.scopeHash).toBe("scope-hash-xyz");
+    expect(result.planHash).toBe("a4b02438ca02875a0e272e4698409a9009c543be56878336482415ee1240a124");
+    expect(result.scopeHash).toBe("6ec14cf125c89756fe8532726b34a5d73511ddd14b9ec57c1614304c4471392f");
     expect(result.decisionHash).toBeTruthy();
   });
 
@@ -83,6 +83,24 @@ describe("evaluatePlanAlignment", () => {
 
     expect(result.decision).toBe("OUT_OF_PLAN_DENY");
     expect(result.reasons.some((r) => r.includes("risk_level_exceeds_plan"))).toBe(true);
+  });
+
+  it("OUT_OF_PLAN_DENY when operation is not in allowedOperations (P2 — enforce operations)", () => {
+    const event = { ...baseEvent(), operationName: "unauthorized_operation" };
+    const result = evaluatePlanAlignment(baseContract, event, fixedNow);
+
+    expect(result.decision).toBe("OUT_OF_PLAN_DENY");
+    expect(result.canProceed).toBe(false);
+    expect(result.reasons.some((r) => r.includes("operation_not_in_plan"))).toBe(true);
+  });
+
+  it("PLAN_MATCHED when allowedOperations is empty (wildcard — all operations allowed)", () => {
+    const contract: HermesPlanScopeContract = { ...baseContract, allowedOperations: [] };
+    const event = { ...baseEvent(), operationName: "any_operation_not_listed" };
+    const result = evaluatePlanAlignment(contract, event, fixedNow);
+
+    expect(result.decision).toBe("PLAN_MATCHED_ALLOW_AUDIT");
+    expect(result.canProceed).toBe(true);
   });
 
   it("OUT_OF_PLAN_DENY when workspace does not match contract", () => {
@@ -181,8 +199,8 @@ describe("buildHermesEvidenceReceipt", () => {
     );
 
     expect(receipt.decision).toBe("PLAN_MATCHED_ALLOW_AUDIT");
-    expect(receipt.planHash).toBe("approved-plan-hash-abc123");
-    expect(receipt.scopeHash).toBe("scope-hash-xyz");
+    expect(receipt.planHash).toBe("a4b02438ca02875a0e272e4698409a9009c543be56878336482415ee1240a124");
+    expect(receipt.scopeHash).toBe("6ec14cf125c89756fe8532726b34a5d73511ddd14b9ec57c1614304c4471392f");
     expect(receipt.claimVerified).toBe(true);
     expect(receipt.actionStatus).toBe("SUCCESS");
     expect(receipt.receiptHash).toBeTruthy();
