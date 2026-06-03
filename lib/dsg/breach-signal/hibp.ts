@@ -18,53 +18,58 @@ export type HibpResult = {
   skipReason?: string;
 };
 
-const HIBP_TIMEOUT_MS = 4_000;
+const HIBP_ALL_BREACHES_URL = "https://haveibeenpwned.com/api/v3/breaches";
+const HIBP_TIMEOUT_MS = 8_000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-export async function checkHibpDomain(domain: string): Promise<HibpResult> {
-  const apiKey = process.env.HIBP_API_KEY;
-  if (!apiKey) {
-    return { checked: false, breaches: [], breachCount: 0, elevatesEvidence: false, skipReason: "HIBP_API_KEY_NOT_CONFIGURED" };
+type Cache = { breaches: HibpBreach[]; fetchedAt: number };
+let cache: Cache | null = null;
+
+async function fetchAllBreaches(): Promise<HibpBreach[] | null> {
+  if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
+    return cache.breaches;
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HIBP_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(HIBP_ALL_BREACHES_URL, {
+      headers: { "user-agent": "dsg-control-plane/1.0" },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as HibpBreach[];
+    cache = { breaches: data, fetchedAt: Date.now() };
+    return data;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function checkHibpDomain(domain: string): Promise<HibpResult> {
   const clean = domain.trim().toLowerCase().replace(/^www\./, "");
   if (!clean || clean.endsWith(".onion")) {
     return { checked: false, breaches: [], breachCount: 0, elevatesEvidence: false, skipReason: "DOMAIN_NOT_QUERYABLE" };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HIBP_TIMEOUT_MS);
-
-  try {
-    const url = `https://haveibeenpwned.com/api/v3/breaches?domain=${encodeURIComponent(clean)}`;
-    const res = await fetch(url, {
-      headers: {
-        "hibp-api-key": apiKey,
-        "user-agent": "dsg-control-plane/1.0",
-      },
-      signal: controller.signal,
-    });
-
-    if (res.status === 404) {
-      return { checked: true, breaches: [], breachCount: 0, elevatesEvidence: false };
-    }
-
-    if (!res.ok) {
-      return { checked: false, breaches: [], breachCount: 0, elevatesEvidence: false, skipReason: `HIBP_HTTP_${res.status}` };
-    }
-
-    const data = await res.json() as HibpBreach[];
-    const verified = data.filter((b) => b.IsVerified && !b.IsFabricated);
-
-    return {
-      checked: true,
-      breaches: verified,
-      breachCount: verified.length,
-      elevatesEvidence: verified.length > 0,
-    };
-  } catch (err: unknown) {
-    const reason = err instanceof Error && err.name === "AbortError" ? "HIBP_TIMEOUT" : "HIBP_FETCH_ERROR";
-    return { checked: false, breaches: [], breachCount: 0, elevatesEvidence: false, skipReason: reason };
-  } finally {
-    clearTimeout(timeout);
+  const all = await fetchAllBreaches();
+  if (!all) {
+    return { checked: false, breaches: [], breachCount: 0, elevatesEvidence: false, skipReason: "HIBP_FETCH_ERROR" };
   }
+
+  const matched = all.filter(
+    (b) => b.IsVerified && !b.IsFabricated && b.Domain.toLowerCase() === clean,
+  );
+
+  return {
+    checked: true,
+    breaches: matched,
+    breachCount: matched.length,
+    elevatesEvidence: matched.length > 0,
+  };
 }
