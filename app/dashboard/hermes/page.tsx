@@ -33,6 +33,13 @@ type SystemStatus = {
   timestamp?: string;
 };
 
+type AttachedFile = {
+  id: string;
+  name: string;
+  content: string;
+  isImage: boolean;
+};
+
 type HermesRuntimeStatus = {
   ok: boolean;
   runtime: string;
@@ -415,8 +422,19 @@ export default function HermesAgentPage() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [hermesStatus, setHermesStatus] = useState<HermesRuntimeStatus | null>(null);
   const [sidebarTab, setSidebarTab] = useState<'system' | 'runtime'>('system');
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [cameraCaptures, setCameraCaptures] = useState<string[]>([]);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [liveMode, setLiveMode] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -611,12 +629,162 @@ export default function HermesAgentPage() {
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      sendMessage(input);
+      handleSend();
     }
   };
 
+  // ── keep a stable ref to sendMessage so live-mode closure stays fresh ─────
+  const sendMsgRef = useRef(sendMessage);
+  useEffect(() => { sendMsgRef.current = sendMessage; }, [sendMessage]);
+
+  // ── file attachment ────────────────────────────────────────────────────────
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      if (file.type.startsWith('image/')) {
+        reader.onload = () => setCameraCaptures((prev) => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+      } else {
+        reader.onload = () =>
+          setAttachedFiles((prev) => [
+            ...prev,
+            {
+              id: `f-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              name: file.name,
+              content: (reader.result as string).slice(0, 8000),
+              isImage: false,
+            },
+          ]);
+        reader.readAsText(file);
+      }
+    });
+  }, []);
+
+  // ── voice input (single utterance) ────────────────────────────────────────
+  const toggleVoice = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = typeof window !== 'undefined' ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) : null;
+    if (!SR) { alert('Speech Recognition is not supported in this browser.'); return; }
+    if (voiceActive) { recognitionRef.current?.stop(); setVoiceActive(false); return; }
+    const rec = new SR() as {
+      lang: string; continuous: boolean; interimResults: boolean;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onresult: ((e: any) => void) | null; onend: (() => void) | null; onerror: (() => void) | null;
+      start(): void; stop(): void;
+    };
+    rec.lang = 'th-TH'; rec.interimResults = true; rec.continuous = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => setInput(Array.from(e.results as any[]).map((r: any) => r[0].transcript).join(''));
+    rec.onend = () => setVoiceActive(false);
+    rec.onerror = () => setVoiceActive(false);
+    recognitionRef.current = rec;
+    rec.start(); setVoiceActive(true);
+  }, [voiceActive]);
+
+  // ── live mode (continuous auto-send) ─────────────────────────────────────
+  const toggleLive = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = typeof window !== 'undefined' ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) : null;
+    if (!SR) { alert('Speech Recognition is not supported in this browser.'); return; }
+    if (liveMode) { recognitionRef.current?.stop(); setLiveMode(false); return; }
+    const rec = new SR() as {
+      lang: string; continuous: boolean; interimResults: boolean;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onresult: ((e: any) => void) | null; onend: (() => void) | null; onerror: (() => void) | null;
+      start(): void; stop(): void;
+    };
+    rec.lang = 'th-TH'; rec.interimResults = true; rec.continuous = true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      let final = ''; let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = (e.results as any)[i];
+        if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
+      }
+      setInput(final || interim);
+      if (final) setTimeout(() => { setInput(''); sendMsgRef.current(final); }, 300);
+    };
+    rec.onerror = () => setLiveMode(false);
+    recognitionRef.current = rec;
+    rec.start(); setLiveMode(true);
+  }, [liveMode]);
+
+  // ── camera ────────────────────────────────────────────────────────────────
+  const openCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraStreamRef.current = stream;
+      setCameraOpen(true);
+      requestAnimationFrame(() => {
+        if (cameraVideoRef.current) cameraVideoRef.current.srcObject = stream;
+      });
+    } catch { alert('Camera access denied or not available.'); }
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    const video = cameraVideoRef.current;
+    const canvas = cameraCanvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    setCameraCaptures((prev) => [...prev, canvas.toDataURL('image/jpeg', 0.8)]);
+    cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+    setCameraOpen(false);
+  }, []);
+
+  const closeCamera = useCallback(() => {
+    cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+    setCameraOpen(false);
+  }, []);
+
+  // ── send with attachments ─────────────────────────────────────────────────
+  const handleSend = useCallback(() => {
+    let text = input;
+    if (attachedFiles.length > 0) {
+      text = attachedFiles.map((f) => `[File: ${f.name}]\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n') + (text ? `\n\n${text}` : '');
+    }
+    if (cameraCaptures.length > 0) {
+      text = `${text}${text ? '\n\n' : ''}[${cameraCaptures.length} image attachment(s) — describe what you see or help me with this visual context]`;
+    }
+    if (!text.trim()) return;
+    setAttachedFiles([]);
+    setCameraCaptures([]);
+    sendMessage(text.trim());
+  }, [input, attachedFiles, cameraCaptures, sendMessage]);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      {/* hidden inputs */}
+      <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.ts,.tsx,.js,.json,.py,.yaml,.yml,.csv,.sh,.sql,.env.example" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+      <canvas ref={cameraCanvasRef} className="hidden" />
+
+      {/* camera modal */}
+      {cameraOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+            <p className="text-sm font-semibold text-white">Camera capture</p>
+            <video ref={cameraVideoRef} autoPlay playsInline className="h-60 w-80 rounded-xl object-cover bg-slate-800" />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={capturePhoto}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl text-black shadow-lg transition hover:scale-105"
+              >
+                📸
+              </button>
+              <button
+                type="button"
+                onClick={closeCamera}
+                className="rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-300 hover:border-white/40"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-7 w-7 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/20 text-xs font-bold text-violet-300">
@@ -667,27 +835,100 @@ export default function HermesAgentPage() {
           </div>
 
           <div className="shrink-0 border-t border-white/10 px-4 py-3">
+            {/* attachment previews */}
+            {(attachedFiles.length > 0 || cameraCaptures.length > 0) && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {attachedFiles.map((f) => (
+                  <div key={f.id} className="flex items-center gap-1.5 rounded-lg border border-blue-400/30 bg-blue-400/10 px-2 py-1 text-xs text-blue-300">
+                    <span>📄</span>
+                    <span className="max-w-[120px] truncate">{f.name}</span>
+                    <button type="button" onClick={() => setAttachedFiles((prev) => prev.filter((x) => x.id !== f.id))} className="ml-1 text-blue-500 hover:text-blue-300">✕</button>
+                  </div>
+                ))}
+                {cameraCaptures.map((url, i) => (
+                  <div key={i} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-violet-400/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="capture" className="h-full w-full object-cover" />
+                    <button type="button" onClick={() => setCameraCaptures((prev) => prev.filter((_, j) => j !== i))} className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-bl bg-black/60 text-[9px] text-white">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* live mode indicator */}
+            {liveMode && (
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs text-red-300">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+                Live voice — กำลังฟัง... พูดได้เลย (พูดหยุด = ส่งอัตโนมัติ)
+                <button type="button" onClick={toggleLive} className="ml-auto text-red-400 hover:text-red-200">หยุด</button>
+              </div>
+            )}
+
+            {/* main input box */}
             <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 focus-within:border-violet-400/40">
+              {/* toolbar buttons */}
+              <div className="mb-0.5 flex shrink-0 items-center gap-1">
+                {/* attach file */}
+                <button
+                  type="button"
+                  title="แนบไฟล์"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/10 hover:text-slate-200"
+                >
+                  📎
+                </button>
+                {/* voice */}
+                <button
+                  type="button"
+                  title={voiceActive ? 'หยุดฟัง' : 'สนทนาเสียง (ภาษาไทย)'}
+                  onClick={toggleVoice}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm transition ${voiceActive ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/50' : 'text-slate-500 hover:bg-white/10 hover:text-slate-200'}`}
+                >
+                  🎤
+                </button>
+                {/* camera */}
+                <button
+                  type="button"
+                  title="ถ่ายภาพ"
+                  onClick={openCamera}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/10 hover:text-slate-200"
+                >
+                  📷
+                </button>
+                {/* live */}
+                <button
+                  type="button"
+                  title={liveMode ? 'หยุด Live' : 'เปิด Live voice (พูดต่อเนื่อง ส่งอัตโนมัติ)'}
+                  onClick={toggleLive}
+                  className={`flex h-7 items-center gap-1 rounded-lg px-1.5 text-xs font-bold transition ${liveMode ? 'bg-red-500/20 text-red-300 ring-1 ring-red-400/50' : 'text-slate-500 hover:bg-white/10 hover:text-slate-200'}`}
+                >
+                  {liveMode ? <><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />LIVE</> : '🔴 LIVE'}
+                </button>
+              </div>
+
+              {/* divider */}
+              <div className="mb-1 h-5 w-px shrink-0 bg-white/10" />
+
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a command or ask a question. Enter sends, Shift+Enter inserts a new line."
+                placeholder={voiceActive ? 'กำลังฟังเสียง...' : liveMode ? 'Live mode — พูดได้เลย' : 'พิมพ์คำสั่งหรือถามคำถาม — Enter ส่ง, Shift+Enter ขึ้นบรรทัด'}
                 rows={1}
                 className="flex-1 resize-none bg-transparent text-sm leading-6 text-slate-100 placeholder-slate-600 focus:outline-none"
                 style={{ maxHeight: '120px' }}
                 onInput={(event) => {
-                  const element = event.currentTarget;
-                  element.style.height = 'auto';
-                  element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
+                  const el = event.currentTarget;
+                  el.style.height = 'auto';
+                  el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
                 }}
                 disabled={busy}
               />
               <button
                 type="button"
-                onClick={() => sendMessage(input)}
-                disabled={busy || !input.trim()}
+                onClick={handleSend}
+                disabled={busy || (!input.trim() && attachedFiles.length === 0 && cameraCaptures.length === 0)}
                 className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-40"
               >
                 {busy ? '...' : 'Send'}
