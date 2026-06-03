@@ -6,19 +6,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type Agent = {
   agent_id: string;
   name: string;
-  policy_id?: string;
   status: string;
   monthly_limit: number;
   usage_this_month: number;
-  api_key_preview: string;
 };
 
 type Execution = {
   id: string;
-  agent_id: string;
   decision: "ALLOW" | "STABILIZE" | "BLOCK";
   latency_ms: number;
-  policy_version: string | null;
   reason: string | null;
   created_at: string;
 };
@@ -27,583 +23,434 @@ type UsageSummary = {
   plan: string;
   subscription_status?: string;
   billing_period: string;
-  current_period_start?: string | null;
-  current_period_end?: string | null;
-  trial_end?: string | null;
   executions: number;
   included_executions: number;
-  overage_executions: number;
   projected_amount_usd: number;
-};
-
-type OnboardingStatePayload = {
-  org_id?: string;
-  onboarding?: {
-    bootstrap_status?: string;
-    checklist?: {
-      steps?: string[];
-      next_action?: string;
-    };
-    bootstrapped_at?: string | null;
-  } | null;
-  is_empty?: boolean;
-  has_agent?: boolean;
-  has_first_execution?: boolean;
-  first_run_complete?: boolean;
-  next_action?: string;
 };
 
 type HealthPayload = {
   ok: boolean;
-  service: string;
-  timestamp: string;
   core_ok?: boolean;
-  core?: {
-    ok?: boolean;
-    url?: string;
-    error?: string;
-    version?: string;
-    status?: string;
-  };
+  core?: { version?: string };
+  timestamp?: string;
 };
 
-type AuditEvent = {
-  id?: number;
-  epoch: string;
-  sequence: number;
-  region_id: string;
-  state_hash: string;
-  entropy: number;
-  gate_result: string;
-  z3_proof_hash?: string | null;
-  signature?: string | null;
-  created_at: string;
+type HermesHealth = {
+  configured: boolean;
+  provider: string;
+  model: string;
+  status: string;
 };
 
-type DeterminismResult = {
-  sequence: number;
-  ok: boolean;
-  data: null | {
-    sequence: number;
-    region_count: number;
-    unique_state_hashes: number;
-    max_entropy: number;
-    deterministic: boolean;
-    gate_action: string;
-  };
-  error: string | null;
+type OnboardingState = {
+  has_agent?: boolean;
+  first_run_complete?: boolean;
+  next_action?: string;
 };
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-white/10 ${className}`} />;
+  return <div className={`animate-pulse rounded bg-white/8 ${className}`} />;
 }
 
-function formatSubscriptionStatus(status: string | undefined): string {
-  if (!status) return "Not set";
-  const normalized = status.trim().toLowerCase();
-  const known: Record<string, string> = {
-    active: "Active", trialing: "Trialing", past_due: "Past due",
-    unpaid: "Unpaid", canceled: "Canceled", cancelled: "Canceled",
-    pastdue: "Past due", in_trial: "Trialing", incomplete: "Incomplete",
-    incomplete_expired: "Incomplete expired",
-  };
-  return known[normalized] ?? normalized.split(/[\s_-]+/).filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(" ");
+function dot(ok: boolean | null) {
+  if (ok === null) return "bg-slate-600";
+  return ok ? "bg-emerald-400" : "bg-red-400";
 }
 
-function normalizeAgent(input: unknown): Agent | null {
-  if (!input || typeof input !== "object") return null;
-  const row = input as Record<string, unknown>;
-  if (typeof row.agent_id !== "string" || typeof row.name !== "string") return null;
-  if (typeof row.status !== "string" || typeof row.monthly_limit !== "number") return null;
-  return {
-    agent_id: row.agent_id, name: row.name,
-    policy_id: typeof row.policy_id === "string" ? row.policy_id : undefined,
-    status: row.status, monthly_limit: row.monthly_limit,
-    usage_this_month: typeof row.usage_this_month === "number" ? row.usage_this_month : 0,
-    api_key_preview: typeof row.api_key_preview === "string" ? row.api_key_preview : "n/a",
-  };
+function decisionBadge(d: string) {
+  if (d === "BLOCK") return "border-red-400/30 bg-red-500/10 text-red-200";
+  if (d === "STABILIZE") return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+  return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
 }
 
-function normalizeUsageSummary(input: unknown): UsageSummary | null {
-  if (!input || typeof input !== "object") return null;
-  const row = input as Record<string, unknown>;
-  if (
-    typeof row.plan !== "string" || typeof row.billing_period !== "string" ||
-    typeof row.executions !== "number" || typeof row.included_executions !== "number" ||
-    typeof row.overage_executions !== "number" || typeof row.projected_amount_usd !== "number"
-  ) return null;
-  return {
-    plan: row.plan, subscription_status: typeof row.subscription_status === "string" ? row.subscription_status : undefined,
-    billing_period: row.billing_period,
-    current_period_start: typeof row.current_period_start === "string" ? row.current_period_start : null,
-    current_period_end: typeof row.current_period_end === "string" ? row.current_period_end : null,
-    trial_end: typeof row.trial_end === "string" ? row.trial_end : null,
-    executions: row.executions, included_executions: row.included_executions,
-    overage_executions: row.overage_executions, projected_amount_usd: row.projected_amount_usd,
-  };
+function ago(iso: string) {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-  try { return new Date(value).toLocaleString(); } catch { return value; }
-}
+const PRODUCTS = [
+  { href: "/delivery-proof",       label: "Delivery Proof",       sub: "AI code proof report",           icon: "📄", color: "amber" },
+  { href: "/proofgate",            label: "ProofGate",            sub: "Runtime control layer",           icon: "🛡", color: "emerald" },
+  { href: "/enterprise-ready",     label: "Enterprise Ready",     sub: "No-migration enterprise setup",   icon: "🏢", color: "blue" },
+  { href: "/finance-governance/live", label: "Finance Governance",sub: "Payment & finance controls",      icon: "💰", color: "amber" },
+  { href: "/finance-approval-gate",label: "Finance Approval Gate",sub: "AI payment approval pilot",       icon: "✅", color: "emerald" },
+  { href: "/automation",           label: "Automation",           sub: "Webhook & workflow automation",   icon: "⚡", color: "violet" },
+  { href: "/ai-compliance",        label: "AI Compliance",        sub: "ISO 42001, NIST AI RMF",          icon: "🔒", color: "blue" },
+  { href: "/eu-ai-act",            label: "EU AI Act",            sub: "Block before damage, not after",  icon: "🇪🇺", color: "red" },
+];
 
-function decisionColor(value?: string | null) {
-  const v = (value || "").toUpperCase();
-  if (v === "BLOCK" || v === "FREEZE") return "border-red-400/25 bg-red-500/10 text-red-100";
-  if (v === "STABILIZE" || v === "WARN") return "border-amber-300/25 bg-amber-300/10 text-amber-100";
-  return "border-emerald-400/25 bg-emerald-400/10 text-emerald-100";
-}
-
-// ── skeleton rows ─────────────────────────────────────────────────────────────
-
-function AgentSkeletonRows() {
-  return (
-    <>
-      {[1, 2, 3].map((n) => (
-        <div key={n} className="border border-white/10 bg-black/20 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-3 w-52" />
-            </div>
-            <Skeleton className="h-6 w-16 rounded-full" />
-          </div>
-          <div className="mt-4 grid gap-2 md:grid-cols-2">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
-
-function ExecutionSkeletonRows() {
-  return (
-    <>
-      {[1, 2, 3].map((n) => (
-        <div key={n} className="border border-white/10 bg-black/20 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-3 w-48" />
-            </div>
-            <Skeleton className="h-6 w-16 rounded-full" />
-          </div>
-          <div className="mt-4 space-y-2">
-            <Skeleton className="h-3 w-32" />
-            <Skeleton className="h-3 w-44" />
-            <Skeleton className="h-3 w-36" />
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
-
-// ── page ──────────────────────────────────────────────────────────────────────
+const COLOR_MAP: Record<string, string> = {
+  amber:   "border-amber-400/20  bg-amber-400/8  hover:border-amber-400/40",
+  emerald: "border-emerald-400/20 bg-emerald-400/8 hover:border-emerald-400/40",
+  blue:    "border-blue-400/20   bg-blue-400/8   hover:border-blue-400/40",
+  violet:  "border-violet-400/20 bg-violet-400/8 hover:border-violet-400/40",
+  red:     "border-red-400/20    bg-red-400/8    hover:border-red-400/40",
+};
 
 export default function DashboardPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [executions, setExecutions] = useState<Execution[]>([]);
-  const [summary, setSummary] = useState<UsageSummary | null>(null);
-  const [health, setHealth] = useState<HealthPayload | null>(null);
-  const [auditItems, setAuditItems] = useState<AuditEvent[]>([]);
-  const [determinism, setDeterminism] = useState<DeterminismResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
-  const [auditError, setAuditError] = useState<string>("");
-  const [onboardingState, setOnboardingState] = useState<OnboardingStatePayload | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [agents,    setAgents]    = useState<Agent[]>([]);
+  const [execs,     setExecs]     = useState<Execution[]>([]);
+  const [summary,   setSummary]   = useState<UsageSummary | null>(null);
+  const [health,    setHealth]    = useState<HealthPayload | null>(null);
+  const [hermes,    setHermes]    = useState<HermesHealth | null>(null);
+  const [onboarding,setOnboarding]= useState<OnboardingState | null>(null);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    setAuditError("");
-
     try {
       const results = await Promise.allSettled([
-        fetch("/api/agents", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
-        fetch("/api/executions?limit=10", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
-        fetch("/api/usage", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
-        fetch("/api/health", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
-        fetch("/api/audit?limit=20", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
-        fetch("/api/onboarding/state", { cache: "no-store" }).then(async (r) => ({ ok: r.ok, json: await r.json() })),
+        fetch("/api/agents",               { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/executions?limit=8",   { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/usage",                { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/health",               { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/dsg/brain/execute",    { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/onboarding/state",     { cache: "no-store" }).then(r => r.json()),
       ]);
 
-      const warnings: string[] = [];
-      const [agentsResult, executionsResult, usageResult, healthResult, auditResult, onboardingResult] = results;
-
-      if (agentsResult.status === "fulfilled" && agentsResult.value.ok) {
-        const normalized = Array.isArray(agentsResult.value.json?.items)
-          ? agentsResult.value.json.items.map(normalizeAgent).filter((a: Agent | null): a is Agent => a !== null)
-          : [];
-        setAgents(normalized);
-      } else {
-        warnings.push("Agents failed to load");
-      }
-
-      if (executionsResult.status === "fulfilled" && executionsResult.value.ok) {
-        setExecutions(executionsResult.value.json.executions || []);
-      } else {
-        warnings.push("Executions failed to load");
-      }
-
-      if (usageResult.status === "fulfilled" && usageResult.value.ok) {
-        const payload = usageResult.value.json?.summary ?? usageResult.value.json;
-        setSummary(normalizeUsageSummary(payload));
-      } else {
-        warnings.push("Usage data failed to load");
-      }
-
-      if (healthResult.status === "fulfilled" && healthResult.value.ok) {
-        setHealth(healthResult.value.json || null);
-      } else {
-        warnings.push("Health check failed to load");
-      }
-
-      if (auditResult.status === "fulfilled" && auditResult.value.ok) {
-        setAuditItems(auditResult.value.json.items || []);
-        setDeterminism(auditResult.value.json.determinism || []);
-        if (auditResult.value.json.error) setAuditError(auditResult.value.json.error);
-      } else {
-        setAuditItems([]);
-        setDeterminism([]);
-        setAuditError("Audit data unavailable — some metrics may be stale");
-      }
-
-      if (onboardingResult.status === "fulfilled" && onboardingResult.value.ok) {
-        setOnboardingState(onboardingResult.value.json as OnboardingStatePayload);
-      } else {
-        warnings.push("Setup progress unavailable");
-      }
-
-      if (warnings.length > 0) setError(warnings.join(" · "));
+      const [a, e, u, h, hm, ob] = results;
+      if (a.status  === "fulfilled") setAgents((a.value?.items ?? []).slice(0, 5));
+      if (e.status  === "fulfilled") setExecs(e.value?.executions ?? []);
+      if (u.status  === "fulfilled") setSummary(u.value?.summary ?? u.value ?? null);
+      if (h.status  === "fulfilled") setHealth(h.value);
+      if (hm.status === "fulfilled") setHermes(hm.value);
+      if (ob.status === "fulfilled") setOnboarding(ob.value);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard");
+      setError(err instanceof Error ? err.message : "Load failed");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load, retryCount]);
+  useEffect(() => { void load(); }, [load]);
 
-  const overview = useMemo(() => [
-    { label: "Active agents", value: String(agents.length), helper: "Governed operator endpoints", href: "/dashboard/agents" },
-    { label: "Executions this period", value: String(summary?.executions ?? executions.length), helper: summary?.billing_period || "Current billing period", href: "/dashboard/executions" },
-    { label: "Projected spend", value: `$${(summary?.projected_amount_usd ?? 0).toFixed(2)}`, helper: summary?.plan || "No plan", href: "/dashboard/billing" },
-    { label: "Runtime health", value: loading ? "" : (health?.core_ok ? "Online" : "Degraded"), helper: health?.core?.version || "—", href: undefined },
-  ], [agents.length, executions.length, health?.core?.version, health?.core_ok, loading, summary?.billing_period, summary?.executions, summary?.plan, summary?.projected_amount_usd]);
+  const kpis = useMemo(() => [
+    {
+      label: "Agents",
+      value: loading ? null : String(agents.length),
+      sub:   "active",
+      href:  "/dashboard/agents",
+      color: "emerald",
+    },
+    {
+      label: "Executions",
+      value: loading ? null : String(summary?.executions ?? execs.length),
+      sub:   summary?.billing_period ?? "this period",
+      href:  "/dashboard/executions",
+      color: "blue",
+    },
+    {
+      label: "Plan",
+      value: loading ? null : (summary?.plan ?? "—"),
+      sub:   summary?.subscription_status ?? "",
+      href:  "/dashboard/billing",
+      color: "amber",
+    },
+    {
+      label: "Spend",
+      value: loading ? null : `$${(summary?.projected_amount_usd ?? 0).toFixed(2)}`,
+      sub:   "projected",
+      href:  "/dashboard/billing",
+      color: "slate",
+    },
+  ], [agents.length, execs.length, loading, summary]);
 
-  const deterministicCount = useMemo(() => determinism.filter((d) => d.ok && d.data?.deterministic).length, [determinism]);
-  const freezeCount = useMemo(() => determinism.filter((d) => d.ok && (d.data?.gate_action || "").toUpperCase() === "FREEZE").length, [determinism]);
+  const systemRows = [
+    { label: "DSG Core",    ok: health  ? (health.core_ok ?? health.ok) : null,                href: "/api/health" },
+    { label: "Hermes AI",   ok: hermes  ? hermes.configured && hermes.status === "ready" : null, href: "/dashboard/hermes" },
+    { label: "Runtime DB",  ok: health  ? (health.core_ok ?? null) : null,                     href: "/dashboard/executions" },
+    { label: "Agent live",  ok: agents.length > 0 ? agents.some(a => a.status === "active") : null, href: "/dashboard/agents" },
+  ];
 
-  const onboardingProgress = useMemo(() => {
-    const completed = [
-      Boolean(onboardingState?.org_id),
-      Boolean(onboardingState?.has_agent),
-      Boolean(onboardingState?.first_run_complete),
-    ].filter(Boolean).length;
-    return { completed, total: 3, percent: Math.round((completed / 3) * 100) };
-  }, [onboardingState]);
+  const onboardingSteps = [
+    { label: "Org created",        done: true },
+    { label: "Agent connected",    done: Boolean(onboarding?.has_agent) },
+    { label: "First execution run", done: Boolean(onboarding?.first_run_complete) },
+  ];
+  const doneCount = onboardingSteps.filter(s => s.done).length;
 
   return (
-    <main className="min-h-screen bg-[#090a0d] text-slate-100">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+    <main className="min-h-screen bg-[#07080b] text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
 
-        {/* Hero */}
-        <section className="relative overflow-hidden border border-white/10 bg-[linear-gradient(135deg,rgba(126,16,24,0.22),rgba(9,10,13,0.88)_32%,rgba(245,197,92,0.08)_120%)] p-8">
-          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="text-[11px] uppercase tracking-[0.32em] text-slate-400">DSG Control Plane</p>
-              <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">
-                Operational clarity for governed approvals, runtime health, and audit evidence.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-                Current system posture, queues, evidence, and actions your operators need to move safely.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard/command-center" className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950">
-                Open command center
-              </Link>
-              <Link href="/dashboard/agents" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
-                Agents
-              </Link>
-              <Link href="/dashboard/audit" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
-                Audit
-              </Link>
-            </div>
+        {/* ── Header ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">DSG Control Plane</p>
+            <h1 className="mt-1 text-2xl font-semibold text-white md:text-3xl">Command Center</h1>
           </div>
-        </section>
-
-        {/* Error banner with retry */}
-        {error ? (
-          <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-amber-400/25 bg-amber-400/10 px-5 py-4">
-            <p className="text-sm text-amber-100">{error}</p>
-            <button
-              onClick={() => setRetryCount((c) => c + 1)}
-              className="shrink-0 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-300/10"
-            >
-              Retry
+          <div className="flex gap-2">
+            <Link href="/dashboard/command-center"
+              className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amber-200 transition-colors">
+              Command Center
+            </Link>
+            <button onClick={() => void load()}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 hover:border-white/20 transition-colors">
+              Refresh
             </button>
           </div>
-        ) : null}
+        </div>
 
-        {/* KPI cards */}
-        <section className="mt-6 grid gap-4 md:grid-cols-4">
-          {overview.map((item) => (
-            <div key={item.label} className="border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
-              <div className="mt-4">
-                {loading ? (
-                  <Skeleton className="h-8 w-20" />
-                ) : item.href ? (
-                  <Link href={item.href} className="text-3xl font-semibold text-white hover:text-amber-200 transition-colors">
-                    {item.value}
-                  </Link>
-                ) : (
-                  <p className={`text-3xl font-semibold ${item.value === "Degraded" ? "text-red-300" : "text-white"}`}>
-                    {item.value}
-                  </p>
-                )}
-              </div>
-              <p className="mt-2 text-sm text-slate-500">{item.helper}</p>
-            </div>
+        {error && (
+          <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-sm text-amber-200">
+            {error}
+          </div>
+        )}
+
+        {/* ── System status bar ───────────────────────────────────────── */}
+        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-white/8 bg-white/[0.02] px-5 py-3">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">System</p>
+          {systemRows.map(row => (
+            <Link key={row.label} href={row.href}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
+              <span className={`h-2 w-2 rounded-full ${loading ? "bg-slate-600 animate-pulse" : dot(row.ok)}`} />
+              {row.label}
+            </Link>
           ))}
-        </section>
+          {!loading && hermes && (
+            <span className="ml-auto text-[10px] text-slate-600">
+              {hermes.provider === "nous-hermes" ? `Hermes ${hermes.model.split("/").pop()?.split("-").slice(0,3).join("-")}` : hermes.model}
+            </span>
+          )}
+        </div>
 
-        {/* Onboarding + audit counts */}
-        <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="border border-emerald-400/20 bg-emerald-400/10 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/80">Setup progress</p>
-                <h2 className="mt-2 text-xl font-semibold text-emerald-50">
-                  {loading ? <Skeleton className="h-6 w-44" /> : `${onboardingProgress.completed}/${onboardingProgress.total} steps complete`}
-                </h2>
+        {/* ── KPI row ─────────────────────────────────────────────────── */}
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {kpis.map(k => (
+            <Link key={k.label} href={k.href}
+              className="group rounded-2xl border border-white/8 bg-white/[0.025] p-5 hover:border-white/15 transition-colors">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{k.label}</p>
+              <div className="mt-3">
+                {k.value === null
+                  ? <Skeleton className="h-8 w-16" />
+                  : <p className="text-3xl font-semibold text-white group-hover:text-amber-200 transition-colors">{k.value}</p>
+                }
               </div>
-              {!loading && (
-                <Link
-                  href={onboardingState?.first_run_complete ? "/dashboard/executions" : "/dashboard/skills"}
-                  className="rounded-xl border border-emerald-200/30 px-4 py-2 text-sm font-semibold text-emerald-100"
-                >
-                  {onboardingState?.first_run_complete ? "View executions" : "Continue setup"}
+              <p className="mt-1 text-xs text-slate-600">{k.sub}</p>
+            </Link>
+          ))}
+        </div>
+
+        {/* ── Products grid ───────────────────────────────────────────── */}
+        <div className="mt-6">
+          <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-slate-500">Products</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {PRODUCTS.map(p => (
+              <Link key={p.href} href={p.href}
+                className={`rounded-2xl border p-4 transition-all ${COLOR_MAP[p.color] ?? COLOR_MAP.amber}`}>
+                <span className="text-xl">{p.icon}</span>
+                <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug">{p.label}</p>
+                <p className="mt-0.5 text-[11px] text-slate-500 leading-snug">{p.sub}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Middle row: onboarding + recent executions ──────────────── */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-[340px_1fr]">
+
+          {/* Onboarding */}
+          <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.04] p-5">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-emerald-300/60">Setup</p>
+            <p className="mt-1 text-lg font-semibold text-emerald-50">{doneCount}/3 complete</p>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/30">
+              <div className="h-1.5 rounded-full bg-emerald-300 transition-all duration-500"
+                style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
+            </div>
+            <ul className="mt-4 space-y-2">
+              {onboardingSteps.map(s => (
+                <li key={s.label} className="flex items-center gap-2.5 text-sm">
+                  <span className={`h-4 w-4 rounded-full border text-[9px] flex items-center justify-center font-bold ${s.done ? "border-emerald-400/50 bg-emerald-400/20 text-emerald-300" : "border-white/15 text-transparent"}`}>
+                    {s.done ? "✓" : ""}
+                  </span>
+                  <span className={s.done ? "text-emerald-100" : "text-slate-500"}>{s.label}</span>
+                </li>
+              ))}
+            </ul>
+            {!loading && onboarding?.next_action && (
+              <p className="mt-4 text-xs text-emerald-300/60">Next: {onboarding.next_action}</p>
+            )}
+            <Link href={doneCount < 3 ? "/dashboard/skills" : "/dashboard/executions"}
+              className="mt-4 inline-block rounded-xl border border-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-400/10 transition-colors">
+              {doneCount < 3 ? "Continue setup →" : "View executions →"}
+            </Link>
+          </div>
+
+          {/* Recent executions */}
+          <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Recent decisions</p>
+              <Link href="/dashboard/executions" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                View all →
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="mt-4 space-y-2">
+                {[1,2,3,4].map(n => <Skeleton key={n} className="h-12 w-full" />)}
+              </div>
+            ) : execs.length === 0 ? (
+              <div className="mt-6 rounded-xl border border-white/8 px-5 py-8 text-center">
+                <p className="text-sm font-semibold text-slate-300">No executions yet</p>
+                <p className="mt-1 text-xs text-slate-500">Run your first governed action to see decisions here.</p>
+                <Link href="/dashboard/integrations"
+                  className="mt-3 inline-block rounded-lg border border-emerald-400/20 px-4 py-2 text-xs font-bold text-emerald-300">
+                  Set up integration
                 </Link>
-              )}
-            </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-black/30">
-              {loading ? (
-                <div className="h-2 w-1/3 animate-pulse rounded-full bg-emerald-400/40" />
-              ) : (
-                <div className="h-2 rounded-full bg-emerald-300 transition-all" style={{ width: `${onboardingProgress.percent}%` }} />
-              )}
-            </div>
-            {!loading && onboardingState?.next_action ? (
-              <p className="mt-4 text-sm text-emerald-100/80">Next: {onboardingState.next_action}</p>
-            ) : null}
+              </div>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {execs.map(ex => (
+                  <div key={ex.id} className="flex items-center gap-3 rounded-xl border border-white/6 bg-black/20 px-4 py-3">
+                    <span className={`rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${decisionBadge(ex.decision)}`}>
+                      {ex.decision}
+                    </span>
+                    <span className="flex-1 truncate font-mono text-xs text-slate-500">{ex.id.slice(0, 20)}…</span>
+                    {ex.reason && <span className="hidden truncate text-xs text-slate-500 sm:block max-w-[140px]">{ex.reason}</span>}
+                    <span className="shrink-0 text-xs text-slate-600">{ex.latency_ms}ms</span>
+                    <span className="shrink-0 text-[10px] text-slate-700">{ago(ex.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Audit events</p>
-              <p className="mt-1 text-xs text-slate-600">Last 20 recorded</p>
-              <div className="mt-3">
-                {loading ? <Skeleton className="h-8 w-12" /> : <p className="text-3xl font-semibold text-white">{auditItems.length}</p>}
-              </div>
-            </div>
-            <div className="border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Gate checks</p>
-              <p className="mt-1 text-xs text-slate-600">Deterministic decisions</p>
-              <div className="mt-3">
-                {loading ? <Skeleton className="h-8 w-12" /> : <p className="text-3xl font-semibold text-white">{deterministicCount}</p>}
-              </div>
-            </div>
-            <div className="border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Freeze alerts</p>
-              <p className="mt-1 text-xs text-slate-600">Actions flagged to freeze</p>
-              <div className="mt-3">
-                {loading ? <Skeleton className="h-8 w-12" /> : (
-                  <p className={`text-3xl font-semibold ${freezeCount > 0 ? "text-amber-300" : "text-white"}`}>
-                    {freezeCount}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* ── Bottom row: agents + hermes ─────────────────────────────── */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
 
-        {/* Core status */}
-        <section className="mt-6 border border-white/10 bg-[#0d0f12] p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Runtime status</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">DSG core connection</h2>
+          {/* Agents */}
+          <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">Active agents</p>
+              <Link href="/dashboard/agents"
+                className="rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors">
+                + New agent
+              </Link>
             </div>
             {loading ? (
-              <Skeleton className="h-7 w-20 rounded-full" />
+              <div className="mt-4 space-y-2">
+                {[1,2].map(n => <Skeleton key={n} className="h-14 w-full" />)}
+              </div>
+            ) : agents.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-white/8 px-4 py-6 text-center">
+                <p className="text-sm text-slate-400">No agents — create one to start governing actions</p>
+                <Link href="/dashboard/agents"
+                  className="mt-3 inline-block rounded-lg bg-amber-300 px-4 py-1.5 text-xs font-bold text-slate-950">
+                  Create agent
+                </Link>
+              </div>
             ) : (
-              <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.22em] ${health?.core_ok ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "border-red-400/25 bg-red-500/10 text-red-100"}`}>
-                {health?.core_ok ? "online" : "offline"}
-              </span>
+              <div className="mt-3 space-y-2">
+                {agents.map(a => {
+                  const pct = Math.min(100, Math.round((a.usage_this_month / (a.monthly_limit || 1)) * 100));
+                  return (
+                    <div key={a.agent_id} className="rounded-xl border border-white/6 bg-black/20 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{a.name}</p>
+                          <p className="font-mono text-[10px] text-slate-600">{a.agent_id.slice(0, 16)}…</p>
+                        </div>
+                        <span className={`rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-wide ${
+                          a.status === "active" ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200" : "border-slate-600 text-slate-400"
+                        }`}>{a.status}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/8">
+                          <div className={`h-1 rounded-full transition-all ${pct > 80 ? "bg-amber-400" : "bg-emerald-400"}`}
+                            style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-slate-600">{a.usage_this_month.toLocaleString()} / {a.monthly_limit.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {[
-              { label: "Service", value: health?.service },
-              { label: "Last checked", value: formatDate(health?.timestamp) },
-              { label: "Core version", value: health?.core?.version },
-              { label: "Core URL", value: health?.core?.url, wide: true },
-              { label: "Status note", value: health?.core?.error || health?.core?.status },
-            ].map(({ label, value, wide }) => (
-              <div key={label} className={`border-l border-amber-300/35 bg-white/[0.03] p-4 ${wide ? "md:col-span-2" : ""}`}>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-                <div className="mt-3">
-                  {loading ? <Skeleton className="h-4 w-32" /> : <p className="break-all text-sm text-slate-200">{value || "—"}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Agents + Executions */}
-        <section className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div className="border border-white/10 bg-white/[0.03] p-6">
+          {/* Hermes AI status */}
+          <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.03] p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Your agents</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Active agents</h2>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-violet-300/50">Hermes AI</p>
+                <p className="mt-1 text-lg font-semibold text-violet-50">Brain Runtime</p>
               </div>
-              {!loading && (
-                <span className="text-sm text-slate-500">{agents.length} {agents.length === 1 ? "agent" : "agents"}</span>
+              {!loading && hermes && (
+                <span className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                  hermes.status === "ready" ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                                           : "border-red-400/25 bg-red-400/10 text-red-200"
+                }`}>
+                  {hermes.status}
+                </span>
               )}
             </div>
 
-            <div className="mt-5 space-y-3">
-              {loading ? <AgentSkeletonRows /> : agents.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-black/20 px-5 py-8 text-center">
-                  <p className="font-semibold text-slate-200">No agents yet</p>
-                  <p className="mt-1 text-sm text-slate-500">Create your first agent to start governing actions.</p>
-                  <Link href="/dashboard/agents" className="mt-4 inline-block rounded-lg bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950">
-                    Create agent
-                  </Link>
-                </div>
-              ) : (
-                agents.map((agent) => (
-                  <div key={agent.agent_id} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-white">{agent.name}</p>
-                        <p className="mt-1 font-mono text-xs text-slate-500">{agent.agent_id}</p>
-                      </div>
-                      <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${agent.status === "active" ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100" : "border-slate-600 bg-slate-800/60 text-slate-300"}`}>
-                        {agent.status}
-                      </span>
-                    </div>
-                    <div className="mt-4 grid gap-2 text-sm text-slate-400 md:grid-cols-2">
-                      <p>Limit: {agent.monthly_limit.toLocaleString()} / mo</p>
-                      <p>Used: {agent.usage_this_month.toLocaleString()}</p>
-                      <p>Policy: {agent.policy_id || "auto"}</p>
-                      <p className="font-mono">Key: {agent.api_key_preview || "—"}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="border border-white/10 bg-white/[0.03] p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Recent decisions</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Last 10 executions</h2>
+            {loading ? (
+              <div className="mt-4 space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-56" />
               </div>
-              {!loading && (
-                <Link href="/dashboard/executions" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
-                  View all →
-                </Link>
-              )}
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {loading ? <ExecutionSkeletonRows /> : executions.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-black/20 px-5 py-8 text-center">
-                  <p className="font-semibold text-slate-200">No executions yet</p>
-                  <p className="mt-1 text-sm text-slate-500">Run your first governed action to see decisions here.</p>
-                  <Link href="/dashboard/integrations" className="mt-4 inline-block rounded-lg bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-300 ring-1 ring-emerald-400/20">
-                    Set up integration
-                  </Link>
+            ) : hermes ? (
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex justify-between rounded-xl border border-white/6 bg-black/20 px-3 py-2">
+                  <span className="text-slate-500">Provider</span>
+                  <span className="font-mono text-xs text-violet-200">{hermes.provider}</span>
                 </div>
-              ) : (
-                executions.map((execution) => (
-                  <div key={execution.id} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-white">{execution.decision}</p>
-                        <p className="mt-1 font-mono text-xs text-slate-500">{execution.id}</p>
-                      </div>
-                      <span className={`rounded-full border px-3 py-1 text-xs ${decisionColor(execution.decision)}`}>
-                        {execution.latency_ms} ms
-                      </span>
-                    </div>
-                    <div className="mt-3 grid gap-1 text-sm text-slate-400">
-                      <p>Policy: {execution.policy_version || "—"}</p>
-                      {execution.reason ? <p>Reason: {execution.reason}</p> : null}
-                      <p>{formatDate(execution.created_at)}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </section>
+                <div className="flex justify-between rounded-xl border border-white/6 bg-black/20 px-3 py-2">
+                  <span className="text-slate-500">Model</span>
+                  <span className="font-mono text-[10px] text-violet-200 max-w-[200px] truncate text-right">
+                    {hermes.model}
+                  </span>
+                </div>
+                <div className="flex justify-between rounded-xl border border-white/6 bg-black/20 px-3 py-2">
+                  <span className="text-slate-500">Configured</span>
+                  <span className={`text-xs font-bold ${hermes.configured ? "text-emerald-300" : "text-red-300"}`}>
+                    {hermes.configured ? "Yes" : "No — set API key"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">Brain status unavailable</p>
+            )}
 
-        {/* Billing */}
-        <section className="mt-6 border border-white/10 bg-[#0d0f12] p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Current plan</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Billing & usage</h2>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard/billing" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
-                Manage billing
+            <div className="mt-4 flex gap-2">
+              <Link href="/dashboard/hermes"
+                className="rounded-xl border border-violet-400/20 bg-violet-400/8 px-3 py-1.5 text-xs font-semibold text-violet-200 hover:bg-violet-400/15 transition-colors">
+                Open Hermes →
               </Link>
-              <Link href="/dashboard/audit/matrix" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
-                Audit matrix
+              <Link href="/dashboard/dsg-brain"
+                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors">
+                Brain config
               </Link>
             </div>
           </div>
 
-          {auditError ? (
-            <div className="mt-5 rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-              {auditError}
-            </div>
-          ) : null}
+        </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Billing period", value: summary?.billing_period },
-              { label: "Plan", value: summary?.plan },
-              { label: "Subscription", value: formatSubscriptionStatus(summary?.subscription_status) },
-              { label: "Period ends", value: formatDate(summary?.current_period_end) },
-            ].map(({ label, value }) => (
-              <div key={label} className="border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-                <div className="mt-3">
-                  {loading ? <Skeleton className="h-4 w-24" /> : <p className="text-sm font-medium text-slate-200">{value || "—"}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* ── Quick links footer ──────────────────────────────────────── */}
+        <div className="mt-6 flex flex-wrap gap-2">
+          {[
+            { href: "/dashboard/audit",       label: "Audit log" },
+            { href: "/dashboard/webhooks",    label: "Webhooks" },
+            { href: "/dashboard/policies",    label: "Policies" },
+            { href: "/dashboard/billing",     label: "Billing" },
+            { href: "/dashboard/team",        label: "Team" },
+            { href: "/dashboard/breach-signal", label: "Breach Signal" },
+            { href: "/dashboard/ledger",      label: "Ledger" },
+            { href: "/dashboard/verification",label: "Verification" },
+          ].map(l => (
+            <Link key={l.href} href={l.href}
+              className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-1.5 text-xs text-slate-400 hover:border-white/15 hover:text-slate-200 transition-colors">
+              {l.label}
+            </Link>
+          ))}
+        </div>
 
       </div>
     </main>
