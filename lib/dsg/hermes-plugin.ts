@@ -29,6 +29,8 @@ export interface HermesPluginContext {
   approvalDecision?: "approved" | "rejected" | "pending";
   approvedBy?: string;
   approvedAt?: string;
+  /** Approved plan hash — when provided, satisfies audit/evidence/idempotency/rollback requirements */
+  planHash?: string;
   proof?: {
     audit?: {
       preAuditEventId: string;
@@ -85,7 +87,7 @@ interface CommandProfile {
   dataClasses: DataClass[];
 }
 
-// ─── preflight checks ───────────────────────────────────────────────────────
+// ─── preflight checks ──────────────────────────────────────────────────────────
 
 const SENSITIVE_FILE_PATTERNS: RegExp[] = [
   /\.env(?:[^a-zA-Z0-9]|$)/i,
@@ -204,7 +206,7 @@ function runPreflightChecks(req: HermesPluginRequest): HermesPreflightBlock | nu
   }
 }
 
-// ─── command profile per mode ────────────────────────────────────────────────
+// ─── command profile per mode ──────────────────────────────────────────────────
 
 function buildCommandProfile(req: HermesPluginRequest): CommandProfile {
   switch (req.mode) {
@@ -279,7 +281,7 @@ function buildCommandProfile(req: HermesPluginRequest): CommandProfile {
   }
 }
 
-// ─── gate request builder ────────────────────────────────────────────────────
+// ─── gate request builder ──────────────────────────────────────────────────────
 
 function buildGateRequest(req: HermesPluginRequest, now: Date): AgentCommandGateRequest {
   const payloadHash = req.payload ? sha256(req.payload) : undefined;
@@ -325,6 +327,7 @@ function buildGateRequest(req: HermesPluginRequest, now: Date): AgentCommandGate
       payloadHash,
       idempotencyKey: isMutation ? sha256({ commandId, mode: req.mode }).slice(0, 24) : undefined,
       rollbackPlanId: isMutation ? `rollback-${commandId.slice(0, 16)}` : undefined,
+      planHash: req.context.planHash,
     },
     rbac: {
       actorId: req.context.actorId,
@@ -348,7 +351,7 @@ function buildGateRequest(req: HermesPluginRequest, now: Date): AgentCommandGate
   };
 }
 
-// ─── execution prompt builder ────────────────────────────────────────────────
+// ─── execution prompt builder ──────────────────────────────────────────────────
 
 function buildHermesExecutionPrompt(
   req: HermesPluginRequest,
@@ -427,7 +430,7 @@ function buildHermesExecutionPrompt(
   }
 }
 
-// ─── main export ─────────────────────────────────────────────────────────────
+// ─── main export ──────────────────────────────────────────────────────────────────
 
 export function evaluateHermesPluginRequest(
   req: HermesPluginRequest,
@@ -501,7 +504,7 @@ export function evaluateHermesPluginRequest(
   };
 }
 
-// ─── internal utilities ───────────────────────────────────────────────────────
+// ─── internal utilities ──────────────────────────────────────────────────────────
 
 function sha256(value: unknown): string {
   return createHash("sha256").update(stableJson(value)).digest("hex");

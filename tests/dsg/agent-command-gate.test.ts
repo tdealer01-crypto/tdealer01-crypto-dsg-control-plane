@@ -7,6 +7,9 @@ import {
 
 const fixedNow = new Date("2026-05-06T00:00:00.000Z");
 
+// Valid 64-char SHA-256 hex string required by plan_hash_format invariant
+const VALID_PLAN_HASH = "a4b02438ca02875a0e272e4698409a9009c543be56878336482415ee1240a124";
+
 function baseRequest(): AgentCommandGateRequest {
   return {
     workspaceId: "workspace-1",
@@ -81,6 +84,74 @@ describe("agent command gate", () => {
 
     expect(result.decision).toBe("BLOCK");
     expect(result.invariantChecks.find((check) => check.name === "idempotency_for_mutation")?.status).toBe("BLOCK");
+  });
+
+  it("PASS for plan-authorized mutation without idempotencyKey, rollbackPlanId, audit, or evidence bindings", () => {
+    const request = baseRequest();
+    request.command.idempotencyKey = undefined;
+    request.command.rollbackPlanId = undefined;
+    request.command.planHash = VALID_PLAN_HASH;
+    request.audit = { preAuditEventId: "", ledgerId: "", chainHeadHash: "" };
+    request.evidence = { evidenceManifestId: "", policySnapshotHash: "" };
+
+    const result = evaluateAgentCommandGate(request, fixedNow);
+
+    expect(result.decision).toBe("PASS");
+    expect(result.canAgentExecute).toBe(true);
+    expect(result.invariantChecks.find((c) => c.name === "idempotency_for_mutation")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "rollback_for_mutation")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "audit_hook_bound")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "evidence_hook_bound")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "plan_authorization")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "plan_hash_format")?.status).toBe("PASS");
+  });
+
+  it("plan-authorized action still requires approved approval proof for high-risk commands", () => {
+    const request = baseRequest();
+    request.command.planHash = VALID_PLAN_HASH;
+    request.rbac.approvalDecision = "pending";
+
+    const result = evaluateAgentCommandGate(request, fixedNow);
+
+    expect(result.decision).toBe("BLOCK");
+    expect(result.invariantChecks.find((c) => c.name === "approval_for_high_risk_or_sensitive_action")?.status).toBe("BLOCK");
+  });
+
+  it("plan_authorization invariant always reports PASS status (informational)", () => {
+    const request = baseRequest();
+    const resultWithPlan = evaluateAgentCommandGate({ ...request, command: { ...request.command, planHash: VALID_PLAN_HASH } }, fixedNow);
+    const resultWithoutPlan = evaluateAgentCommandGate(request, fixedNow);
+
+    const withPlanCheck = resultWithPlan.invariantChecks.find((c) => c.name === "plan_authorization");
+    const withoutPlanCheck = resultWithoutPlan.invariantChecks.find((c) => c.name === "plan_authorization");
+
+    expect(withPlanCheck?.status).toBe("PASS");
+    expect(withoutPlanCheck?.status).toBe("PASS");
+    expect(withPlanCheck?.reason).toContain("plan-authorized");
+    expect(withoutPlanCheck?.reason).toContain("RBAC");
+  });
+
+  it("BLOCK when planHash is an arbitrary short string (P1 — plan_hash_format)", () => {
+    const request = baseRequest();
+    request.command.idempotencyKey = undefined;
+    request.command.rollbackPlanId = undefined;
+    request.command.planHash = "x";
+    request.audit = { preAuditEventId: "", ledgerId: "", chainHeadHash: "" };
+    request.evidence = { evidenceManifestId: "", policySnapshotHash: "" };
+
+    const result = evaluateAgentCommandGate(request, fixedNow);
+
+    expect(result.decision).toBe("BLOCK");
+    expect(result.invariantChecks.find((c) => c.name === "plan_hash_format")?.status).toBe("BLOCK");
+    expect(result.invariantChecks.find((c) => c.name === "plan_hash_format")?.reason).toContain("64-character");
+  });
+
+  it("BLOCK when planHash is non-hex string (P1 — plan_hash_format)", () => {
+    const request = baseRequest();
+    request.command.planHash = "not-a-hex-string-but-long-enough-to-be-64-chars-padded-with-xxxxx!";
+    const result = evaluateAgentCommandGate(request, fixedNow);
+
+    expect(result.invariantChecks.find((c) => c.name === "plan_hash_format")?.status).toBe("BLOCK");
   });
 
   it("builds a receipt when agent returns observed result and evidence ids", () => {

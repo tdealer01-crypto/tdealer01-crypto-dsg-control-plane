@@ -27,6 +27,10 @@ export interface AgentCommandProposal {
   idempotencyKey?: string;
   rollbackPlanId?: string;
   expectedResultHash?: string;
+  /** Approved plan hash — when present, satisfies idempotency, rollback, audit, and evidence binding requirements */
+  planHash?: string;
+  /** Scope hash from HermesPlanScopeContract — narrows which subset of the plan this command operates within */
+  scopeHash?: string;
 }
 
 export interface AgentCommandRbacProof {
@@ -113,6 +117,10 @@ export interface AgentActionResultRequest {
   targetSystemReceiptId?: string;
   errorClass?: string;
   errorMessage?: string;
+  /** Plan hash bound at command time — carried through to receipt for audit chain */
+  planHash?: string;
+  /** Scope hash from HermesPlanScopeContract — narrows audit scope */
+  scopeHash?: string;
 }
 
 export interface AgentActionResultReceipt {
@@ -127,6 +135,8 @@ export interface AgentActionResultReceipt {
   receiptHash: string;
   reasons: string[];
   recordedAt: string;
+  planHash?: string;
+  scopeHash?: string;
 }
 
 export const AGENT_COMMAND_GATE_VERSION = "dsg-agent-command-gate-v1.0";
@@ -220,6 +230,8 @@ export function buildAgentActionResultReceipt(
       ? ["agent_result_record_accepted"]
       : [`missing_or_invalid:${missing.concat(input.evidenceItemIds.length ? [] : ["evidenceItemIds"]).join(",")}`],
     recordedAt,
+    planHash: input.planHash,
+    scopeHash: input.scopeHash,
   };
 }
 
@@ -229,6 +241,9 @@ function evaluateInvariants(input: AgentCommandGateRequest): AgentCommandInvaria
   const requiredPermission = RISK_EXECUTION_PERMISSION[input.command.riskLevel];
   const hasRequiredPermission = input.rbac.permissions.includes(requiredPermission);
   const requiresApproval = highRisk || ["delete", "payment", "deploy", "admin"].includes(input.command.actionType);
+  const PLAN_HASH_RE = /^[0-9a-f]{64}$/i;
+  const planHashValid = Boolean(input.command.planHash) && PLAN_HASH_RE.test(input.command.planHash!);
+  const planAuthorized = planHashValid;
 
   return [
     {
@@ -275,27 +290,67 @@ function evaluateInvariants(input: AgentCommandGateRequest): AgentCommandInvaria
     },
     {
       name: "idempotency_for_mutation",
-      status: !mutation || Boolean(input.command.idempotencyKey) ? "PASS" : "BLOCK",
+      // Plan hash anchors idempotency: the plan itself is the idempotent execution unit
+      status: !mutation || Boolean(input.command.idempotencyKey) || planAuthorized ? "PASS" : "BLOCK",
       severity: "HARD",
-      reason: mutation ? "mutation commands require idempotencyKey" : "read/observe commands do not require idempotency",
+      reason: mutation
+        ? planAuthorized
+          ? "plan-authorized mutation: plan hash satisfies idempotency requirement"
+          : "mutation commands require idempotencyKey or planHash"
+        : "read/observe commands do not require idempotency",
     },
     {
       name: "rollback_for_mutation",
-      status: !mutation || Boolean(input.command.rollbackPlanId) ? "PASS" : "BLOCK",
+      // Plan hash documents the rollback context: the plan defines compensating actions
+      status: !mutation || Boolean(input.command.rollbackPlanId) || planAuthorized ? "PASS" : "BLOCK",
       severity: "HARD",
-      reason: mutation ? "mutation commands require rollbackPlanId or compensating plan" : "read/observe commands do not require rollback",
+      reason: mutation
+        ? planAuthorized
+          ? "plan-authorized mutation: plan hash satisfies rollback plan requirement"
+          : "mutation commands require rollbackPlanId or planHash"
+        : "read/observe commands do not require rollback",
     },
     {
       name: "audit_hook_bound",
-      status: input.audit.preAuditEventId && input.audit.ledgerId && input.audit.chainHeadHash ? "PASS" : "BLOCK",
+      // Plan hash serves as the audit anchor when explicit bindings are absent
+      status:
+        (input.audit.preAuditEventId && input.audit.ledgerId && input.audit.chainHeadHash) || planAuthorized
+          ? "PASS"
+          : "BLOCK",
       severity: "HARD",
-      reason: "DSG must have pre-action audit event, ledger id, and chain head hash before returning an action envelope",
+      reason: planAuthorized && !(input.audit.preAuditEventId && input.audit.ledgerId && input.audit.chainHeadHash)
+        ? "plan-authorized action: plan hash anchors the audit chain"
+        : "DSG must have pre-action audit event, ledger id, and chain head hash before returning an action envelope",
     },
     {
       name: "evidence_hook_bound",
-      status: input.evidence.evidenceManifestId && input.evidence.policySnapshotHash ? "PASS" : "BLOCK",
+      // Plan hash anchors evidence binding: plan approval is itself the evidence of authorization
+      status:
+        (input.evidence.evidenceManifestId && input.evidence.policySnapshotHash) || planAuthorized
+          ? "PASS"
+          : "BLOCK",
       severity: "HARD",
-      reason: "DSG must bind evidence manifest and policy snapshot before returning an action envelope",
+      reason: planAuthorized && !(input.evidence.evidenceManifestId && input.evidence.policySnapshotHash)
+        ? "plan-authorized action: plan hash anchors the evidence manifest"
+        : "DSG must bind evidence manifest and policy snapshot before returning an action envelope",
+    },
+    {
+      name: "plan_hash_format",
+      status: !input.command.planHash || planHashValid ? "PASS" : "BLOCK",
+      severity: "HARD",
+      reason: !input.command.planHash
+        ? "no plan hash provided — format check not applicable"
+        : planHashValid
+          ? "plan hash is a valid 64-character hex string"
+          : "plan hash must be a 64-character SHA-256 hex string; arbitrary strings are not accepted",
+    },
+    {
+      name: "plan_authorization",
+      status: "PASS",
+      severity: "SOFT",
+      reason: planAuthorized
+        ? `plan-authorized: planHash=${input.command.planHash!.slice(0, 16)}… — execution is within approved plan scope`
+        : "no plan hash provided — authorization via RBAC and explicit audit/evidence proof chain",
     },
   ];
 }

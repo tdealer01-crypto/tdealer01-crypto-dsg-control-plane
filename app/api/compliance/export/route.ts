@@ -118,6 +118,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(bundle[key], { headers: corsHeaders });
 
   } catch (err) {
-    return handleApiError(err);
+    return handleApiError('GET /api/compliance/export', err);
   }
 }

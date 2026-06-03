@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       { headers: buildCorsHeaders(request) },
     );
   } catch (err) {
-    return handleApiError(err);
+    return handleApiError('POST /api/browser/open', err);
   }
 }
 
