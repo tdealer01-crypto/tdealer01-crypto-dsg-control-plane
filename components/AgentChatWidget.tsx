@@ -189,6 +189,42 @@ const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
     { label: "Active missions", prompt: "show active missions" },
     { label: "Complete mission", prompt: "what missions can I complete?" },
   ],
+  // ProofGate
+  "/proofgate": [
+    { label: "Evaluate gate", prompt: "evaluate my first gate" },
+    { label: "Connect system", prompt: "how do I connect my system to ProofGate?" },
+    { label: "Get API key", prompt: "create API key" },
+  ],
+  // Enterprise Ready
+  "/enterprise-ready": [
+    { label: "Run auto-setup", prompt: "run auto_setup" },
+    { label: "Connect to DSG", prompt: "how do I connect my system to DSG?" },
+    { label: "Check readiness", prompt: "check readiness" },
+  ],
+  // Finance Approval Gate
+  "/finance-approval-gate": [
+    { label: "Submit approval", prompt: "สร้าง approval case สำหรับการโอนเงิน" },
+    { label: "View queue", prompt: "แสดง approval queue" },
+    { label: "Setup webhook", prompt: "ตั้งค่า webhook สำหรับ finance approval" },
+  ],
+  // Automation
+  "/automation": [
+    { label: "Add webhook", prompt: "สร้าง webhook ใหม่" },
+    { label: "List automations", prompt: "show my webhooks" },
+    { label: "Test delivery", prompt: "test webhook delivery" },
+  ],
+  // AI Compliance
+  "/ai-compliance": [
+    { label: "Compliance status", prompt: "show compliance status" },
+    { label: "ISO 42001 check", prompt: "check ISO 42001 compliance" },
+    { label: "Export evidence", prompt: "export compliance evidence" },
+  ],
+  // EU AI Act
+  "/eu-ai-act": [
+    { label: "EU AI Act status", prompt: "check EU AI Act compliance status" },
+    { label: "Risk assessment", prompt: "run AI risk assessment" },
+    { label: "Export report", prompt: "export EU AI Act evidence report" },
+  ],
 };
 
 function makeLine(role: ChatLine["role"], content: string): ChatLine {
