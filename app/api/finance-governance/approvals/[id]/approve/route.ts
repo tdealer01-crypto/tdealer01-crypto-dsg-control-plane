@@ -3,6 +3,7 @@ import { handleFinanceGovernanceApiError } from '../../../../../../lib/finance-g
 import { requireFinanceGovernanceAccess } from '../../../../../../lib/finance-governance/access-gate';
 import { FinanceGovernanceRepository } from '../../../../../../lib/finance-governance/repository';
 import { resolveOrgId } from '../../../../../../lib/finance-governance/org-scope';
+import { fireFinanceWebhook } from '../../../../../../lib/finance-governance/webhook-delivery';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,10 @@ export async function POST(request: Request, context: RouteContext) {
     requireFinanceGovernanceAccess(request, orgId, 'approve');
     const { id } = await context.params;
     const result = await repository.applyAction(orgId, id, 'approve');
+    void fireFinanceWebhook(orgId, 'finance.approval.approved', {
+      approval_id: id,
+      next_status: typeof result === 'object' && result !== null && 'nextStatus' in result ? String((result as Record<string, unknown>).nextStatus) : 'approved',
+    });
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     return handleFinanceGovernanceApiError('api/finance-governance', error);

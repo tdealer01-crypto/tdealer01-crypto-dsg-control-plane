@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 type WebhookStatus = 'ACTIVE' | 'DISABLED' | 'FAILING';
@@ -27,6 +27,10 @@ type Webhook = {
 };
 
 const ALL_EVENTS = [
+  'finance.approval.approved',
+  'finance.approval.rejected',
+  'finance.approval.escalated',
+  'finance.case.submitted',
   'gate.evaluated',
   'proof.created',
   'action.approved',
@@ -112,7 +116,9 @@ function httpStatusBadge(code: number) {
 }
 
 export default function WebhooksPage() {
-  const [webhooks, setWebhooks] = useState<Webhook[]>(INITIAL_WEBHOOKS);
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [listError, setListError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
   const [expandedPayloads, setExpandedPayloads] = useState<Record<string, boolean>>({});
@@ -122,10 +128,30 @@ export default function WebhooksPage() {
     url: '',
     description: '',
     events: [] as string[],
-    secret: 'whsec_' + Math.random().toString(36).slice(2, 14),
   });
   const [formError, setFormError] = useState('');
+  const [newSecret, setNewSecret] = useState('');
   const [secretRevealed, setSecretRevealed] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/webhooks-config', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) { setListError(data.error ?? `HTTP ${res.status}`); return; }
+        setWebhooks((data.webhooks ?? []).map((w: Omit<Webhook, 'description' | 'secret' | 'deliveryLogs'> & { createdAt: string }) => ({
+          ...w,
+          description: '',
+          secret: '••••••••••••••••••••',
+          deliveryLogs: [],
+        })));
+      } catch (err) {
+        setListError(String(err));
+      } finally {
+        setLoadingList(false);
+      }
+    })();
+  }, []);
 
   function toggleLog(id: string) {
     setExpandedLogs((p) => ({ ...p, [id]: !p[id] }));
@@ -142,7 +168,7 @@ export default function WebhooksPage() {
     }));
   }
 
-  function handleRegister() {
+  async function handleRegister() {
     if (!formData.url.startsWith('https://')) {
       setFormError('Endpoint URL must start with https://');
       return;
@@ -151,40 +177,54 @@ export default function WebhooksPage() {
       setFormError('Select at least one event type.');
       return;
     }
-    const newHook: Webhook = {
-      id: 'wh_' + Date.now(),
-      url: formData.url,
-      description: formData.description,
-      events: formData.events,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString().slice(0, 10),
-      secret: formData.secret,
-      deliveryLogs: [],
-    };
-    setWebhooks((p) => [newHook, ...p]);
-    setShowForm(false);
-    setFormError('');
-    setSecretRevealed(true);
-    setFormData({
-      url: '',
-      description: '',
-      events: [],
-      secret: 'whsec_' + Math.random().toString(36).slice(2, 14),
-    });
+    try {
+      const res = await fetch('/api/webhooks-config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: formData.url, events: formData.events }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError(data.error ?? `HTTP ${res.status}`); return; }
+      const created: Webhook = {
+        id: data.webhook.id,
+        url: data.webhook.url,
+        description: '',
+        events: data.webhook.events,
+        status: 'ACTIVE',
+        createdAt: data.webhook.createdAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+        secret: data.secret ?? '••••••••••••••••••••',
+        deliveryLogs: [],
+      };
+      setWebhooks((p) => [created, ...p]);
+      setNewSecret(data.secret ?? '');
+      setShowForm(false);
+      setFormError('');
+      setSecretRevealed(true);
+      setFormData({ url: '', description: '', events: [] });
+    } catch (err) {
+      setFormError(String(err));
+    }
   }
 
-  function handleToggle(id: string) {
-    setWebhooks((p) =>
-      p.map((wh) =>
-        wh.id === id
-          ? { ...wh, status: wh.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE' }
-          : wh,
-      ),
-    );
+  async function handleToggle(id: string) {
+    const wh = webhooks.find((w) => w.id === id);
+    if (!wh) return;
+    const newActive = wh.status !== 'ACTIVE';
+    try {
+      await fetch(`/api/webhooks-config/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ active: newActive }),
+      });
+      setWebhooks((p) => p.map((w) => w.id === id ? { ...w, status: newActive ? 'ACTIVE' : 'DISABLED' } : w));
+    } catch { /* ignore */ }
   }
 
-  function handleDelete(id: string) {
-    setWebhooks((p) => p.filter((wh) => wh.id !== id));
+  async function handleDelete(id: string) {
+    try {
+      await fetch(`/api/webhooks-config/${id}`, { method: 'DELETE' });
+      setWebhooks((p) => p.filter((wh) => wh.id !== id));
+    } catch { /* ignore */ }
     setDeleteConfirm(null);
   }
 
@@ -238,6 +278,19 @@ export default function WebhooksPage() {
             </div>
           </div>
         </section>
+
+        {/* New secret banner — shown once after register */}
+        {secretRevealed && newSecret && (
+          <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-300">Signing secret — copy now, shown once</p>
+            <code className="mt-2 block break-all font-mono text-sm text-emerald-200">{newSecret}</code>
+            <button onClick={() => { setSecretRevealed(false); setNewSecret(''); }} className="mt-2 text-xs text-slate-400 underline">Dismiss</button>
+          </div>
+        )}
+
+        {/* Loading / error */}
+        {loadingList && <p className="mt-6 text-sm text-slate-400">Loading webhooks…</p>}
+        {listError && <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{listError}</p>}
 
         {/* Security note */}
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/8 px-5 py-4">
@@ -294,20 +347,8 @@ export default function WebhooksPage() {
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">Signing secret (shown once)</label>
-                <div className="flex items-center gap-3">
-                  <code className="flex-1 rounded-2xl border border-amber-300/25 bg-amber-300/8 px-4 py-3 text-sm font-mono text-amber-200">
-                    {formData.secret}
-                  </code>
-                  <button
-                    onClick={() => setFormData((p) => ({ ...p, secret: 'whsec_' + Math.random().toString(36).slice(2, 14) }))}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 hover:border-amber-300/30"
-                  >
-                    Regenerate
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">Copy now — it will not be shown again after registration.</p>
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-300/8 px-4 py-3">
+                <p className="text-xs text-amber-200">A signing secret will be generated and shown once after registration.</p>
               </div>
             </div>
             <div className="mt-5 flex gap-3">
