@@ -33,6 +33,27 @@ type SystemStatus = {
   timestamp?: string;
 };
 
+type HermesRuntimeStatus = {
+  ok: boolean;
+  runtime: string;
+  status: string;
+  philosophy: Record<string, string>;
+  modules: Record<string, string>;
+  workers: string[];
+  dsgGate: {
+    planEndpoint: string;
+    actionEndpoint: string;
+    evidenceEndpoint: string;
+    decisionModel: Record<string, string>;
+  };
+  memory: {
+    layers: string[];
+    claimRule: string;
+  };
+  skillLifecycle: string[];
+  adaptiveExecution: Record<string, boolean>;
+};
+
 const TOOL_LABELS: Record<string, string> = {
   readiness: 'System readiness',
   execute_action: 'Governed action',
@@ -76,6 +97,8 @@ const QUICK_COMMANDS = [
   { label: 'Audit', cmd: 'Show the latest audit log.' },
   { label: 'Usage', cmd: 'Show current usage and billing posture.' },
   { label: 'Proofs', cmd: 'List the latest proof artifacts and evidence status.' },
+  { label: 'Hermes runtime', cmd: 'Describe the Hermes Full Option Runtime: workers, memory layers, adaptive execution, and DSG gate decision model.' },
+  { label: 'Lock plan', cmd: 'Walk me through locking a plan with DSG. I need to specify a goal, agent ID, and allowed action types.' },
 ];
 
 function decisionColor(decision?: Decision | string) {
@@ -267,6 +290,116 @@ function CapabilityList() {
   );
 }
 
+function HermesRuntimePanel({ data }: { data: HermesRuntimeStatus | null }) {
+  if (!data) {
+    return (
+      <div className="space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Hermes Runtime</p>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-slate-600" />
+          Loading runtime...
+        </div>
+      </div>
+    );
+  }
+
+  const workerColors: Record<string, string> = {
+    file: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+    terminal: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+    browser: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300',
+    api: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
+    db: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
+    deploy: 'border-red-400/30 bg-red-400/10 text-red-300',
+    skill: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+    subagent: 'border-pink-400/30 bg-pink-400/10 text-pink-300',
+    research: 'border-slate-400/30 bg-slate-400/10 text-slate-300',
+  };
+
+  const decisionColors: Record<string, string> = {
+    PLAN_MATCHED_ALLOW_AUDIT: 'text-emerald-300',
+    PLAN_RELATED_REPLAN: 'text-amber-300',
+    OUT_OF_PLAN_DENY: 'text-red-300',
+    CLAIM_EVIDENCE_DENY: 'text-orange-300',
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* header */}
+      <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Hermes Runtime</p>
+          <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${data.status === 'ready' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-slate-700 bg-slate-800 text-slate-400'}`}>
+            {data.status}
+          </span>
+        </div>
+        <p className="mt-1 font-mono text-[10px] text-slate-500">{data.runtime}</p>
+      </div>
+
+      {/* workers */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">Workers ({data.workers.length})</p>
+        <div className="flex flex-wrap gap-1.5">
+          {data.workers.map((w) => (
+            <span key={w} className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${workerColors[w] ?? 'border-white/10 bg-white/5 text-slate-400'}`}>{w}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* memory layers */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">Memory ({data.memory.layers.length} layers)</p>
+        <div className="space-y-1">
+          {data.memory.layers.map((layer, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs text-slate-400">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-slate-800 font-mono text-[10px] text-slate-500">{i + 1}</span>
+              <span>{layer}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[10px] italic text-slate-600">{data.memory.claimRule}</p>
+      </div>
+
+      {/* DSG gate decisions */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">Gate decisions</p>
+        <div className="space-y-1.5">
+          {Object.entries(data.dsgGate.decisionModel).map(([key, desc]) => (
+            <div key={key} className="text-xs">
+              <span className={`font-bold ${decisionColors[key] ?? 'text-slate-300'}`}>{key}</span>
+              <span className="ml-1 text-slate-600">— {desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* adaptive execution */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">Adaptive execution</p>
+        <div className="space-y-1">
+          {Object.entries(data.adaptiveExecution).map(([key, val]) => (
+            <div key={key} className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+              <span className={val ? 'font-bold text-emerald-300' : 'text-red-300'}>{val ? 'YES' : 'NO'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* philosophy */}
+      <div className="rounded-xl border border-violet-400/10 bg-violet-500/5 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">Philosophy</p>
+        <div className="space-y-1">
+          {Object.entries(data.philosophy).map(([key, val]) => (
+            <p key={key} className="text-xs text-slate-400">
+              <span className="font-semibold capitalize text-violet-300">{key}:</span> {val}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HermesAgentPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -280,6 +413,8 @@ export default function HermesAgentPage() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [hermesStatus, setHermesStatus] = useState<HermesRuntimeStatus | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<'system' | 'runtime'>('system');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -300,11 +435,28 @@ export default function HermesAgentPage() {
     }
   }, []);
 
+  const fetchHermesStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/dsg/hermes/status');
+      if (!response.ok) return;
+      const data = await response.json();
+      setHermesStatus(data as HermesRuntimeStatus);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     const id = setInterval(fetchStatus, 30_000);
     return () => clearInterval(id);
   }, [fetchStatus]);
+
+  useEffect(() => {
+    fetchHermesStatus();
+    const id = setInterval(fetchHermesStatus, 60_000);
+    return () => clearInterval(id);
+  }, [fetchHermesStatus]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -547,22 +699,44 @@ export default function HermesAgentPage() {
           </div>
         </div>
 
-        <aside className="hidden w-72 shrink-0 flex-col space-y-4 overflow-y-auto border-l border-white/10 px-4 py-4 lg:flex">
-          <StatusPanel status={systemStatus} />
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Gate decisions</p>
-            <div className="space-y-1.5">
-              {(['ALLOW', 'BLOCK', 'REVIEW'] as Decision[]).map((decision) => (
-                <div key={decision} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${decisionColor(decision)}`}>
-                  <span className="font-bold">{decision}</span>
-                  <span className="text-xs text-slate-500">
-                    {decision === 'ALLOW' ? 'execute' : decision === 'BLOCK' ? 'stop' : 'human review'}
-                  </span>
-                </div>
-              ))}
-            </div>
+        <aside className="hidden w-72 shrink-0 flex-col border-l border-white/10 lg:flex">
+          {/* tab switcher */}
+          <div className="flex shrink-0 border-b border-white/10">
+            {(['system', 'runtime'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setSidebarTab(tab)}
+                className={`flex-1 py-2.5 text-xs font-semibold transition ${sidebarTab === tab ? 'border-b-2 border-violet-400 text-violet-300' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {tab === 'system' ? 'System' : 'Hermes Runtime'}
+              </button>
+            ))}
           </div>
-          <CapabilityList />
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+            {sidebarTab === 'system' ? (
+              <>
+                <StatusPanel status={systemStatus} />
+                <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Gate decisions</p>
+                  <div className="space-y-1.5">
+                    {(['ALLOW', 'BLOCK', 'REVIEW'] as Decision[]).map((decision) => (
+                      <div key={decision} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${decisionColor(decision)}`}>
+                        <span className="font-bold">{decision}</span>
+                        <span className="text-xs text-slate-500">
+                          {decision === 'ALLOW' ? 'execute' : decision === 'BLOCK' ? 'stop' : 'human review'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <CapabilityList />
+              </>
+            ) : (
+              <HermesRuntimePanel data={hermesStatus} />
+            )}
+          </div>
         </aside>
       </div>
     </div>
