@@ -6,6 +6,8 @@ import {
 } from "@/lib/dsg/agent-command-gate";
 import { recordAgentCommandGateDecision } from "@/lib/dsg/agent-command-gate-repository";
 import { lookupPlanContract } from "@/lib/dsg/plan-contract-repository";
+import { evaluatePlanAlignment } from "@/lib/dsg/plan-alignment-gate";
+import type { HermesActionEvent } from "@/lib/dsg/plan-scope-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -33,19 +35,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // When planHash is provided, verify it against the server-side plan contract store.
-    // A client-supplied contract is never trusted — the record must exist in DB,
-    // and its stored hash fields must match the contract's recomputed values.
+    // When planHash is provided, verify it against the server-side plan contract store
+    // and confirm the command falls within the contract's approved scope (action type,
+    // target system, operation, risk level, expiry). Only then is the plan treated as
+    // authorized, allowing evaluateAgentCommandGate to waive explicit evidence bindings.
     let verifiedPlanHash: string | undefined;
     let planContractVerified = false;
+    let verifiedScopeHash: string | undefined;
+    let planAlignmentDecision: string | null = null;
+    const now = new Date();
 
     if (body.command.planHash) {
       const contract = await lookupPlanContract(body.command.planHash, auth.orgId);
       if (contract && contract.agentId === body.runtime.agentId) {
-        verifiedPlanHash = body.command.planHash;
-        planContractVerified = true;
+        // Build a minimal action event for scope-only alignment check.
+        // Evidence requirement checks are intentionally zeroed out here —
+        // those are enforced by evaluateAgentCommandGate once plan authorization is decided.
+        const scopeEvent: HermesActionEvent = {
+          eventId: body.command.commandId,
+          planId: contract.planId,
+          planHash: contract.planHash,
+          workspaceId: auth.orgId,
+          agentId: body.runtime.agentId,
+          sessionId: body.runtime.sessionId,
+          actionType: body.command.actionType,
+          targetSystemId: body.command.targetSystemId,
+          operationName: body.command.operationName,
+          riskLevel: body.command.riskLevel,
+          payloadHash: body.command.payloadHash,
+          requestedAt: now.toISOString(),
+        };
+
+        const scopeOnlyContract = {
+          ...contract,
+          evidenceRequirements: { requireIdempotency: false, requireRollback: false, requireAudit: false, requireEvidence: false },
+        };
+
+        const scopeCheck = evaluatePlanAlignment(scopeOnlyContract, scopeEvent, now);
+        planAlignmentDecision = scopeCheck.decision;
+
+        if (scopeCheck.decision === "PLAN_MATCHED_ALLOW_AUDIT") {
+          verifiedPlanHash = body.command.planHash;
+          verifiedScopeHash = contract.scopeHash;
+          planContractVerified = true;
+        }
+        // If scope check fails (expired, wrong action type, wrong target, etc.):
+        // planHash is stripped — gate requires explicit evidence bindings
       }
-      // If plan not found or agent mismatch: planHash is stripped — gate requires explicit bindings
     }
 
     const gateRequest: AgentCommandGateRequest = {
@@ -74,9 +110,10 @@ export async function POST(request: NextRequest) {
         result,
         planScope: {
           planHash: verifiedPlanHash ?? null,
-          scopeHash: body.command.scopeHash ?? null,
+          scopeHash: verifiedScopeHash ?? null,
           planAuthorized: planContractVerified,
           contractProvided: Boolean(body.command.planHash),
+          alignmentDecision: planAlignmentDecision,
         },
         actor: {
           userId: auth.userId,

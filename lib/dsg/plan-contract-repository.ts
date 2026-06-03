@@ -37,7 +37,7 @@ export async function lookupPlanContract(
       agentId: row.agent_id as string,
       approvedBy: row.approved_by as string,
       approvedAt: row.approved_at as string,
-      expiresAt: row.expires_at as string | undefined,
+      expiresAt: row.expires_at != null ? (row.expires_at as string) : undefined,
       allowedActionTypes: row.allowed_action_types as HermesPlanScopeContract["allowedActionTypes"],
       allowedTargetSystems: row.allowed_target_systems as string[],
       allowedOperations: row.allowed_operations as string[],
