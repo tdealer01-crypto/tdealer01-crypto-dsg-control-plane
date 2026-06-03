@@ -29,14 +29,15 @@ const commandLinks = [
 export default function PublicChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [lines, setLines] = useState<ChatLine[]>(() => [
+    makeLine('system', 'Ask DSG before logging in: connect existing systems, monitor, commands, pricing, demo — public mode does not execute actions'),
+  ]);
+
   if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/app-shell') || pathname?.startsWith('/approvals')) {
     return null;
   }
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'Ask DSG before logging in: connect existing systems, monitor, commands, pricing, demo — public mode does not execute actions'),
-  ]);
 
   async function submit(message: string) {
     const text = message.trim();
@@ -122,36 +123,34 @@ export default function PublicChatWidget() {
             key={item}
             onClick={() => submit(item)}
             disabled={busy}
-            className="rounded-full border border-slate-700 px-2.5 py-1 text-[11px] text-slate-300 hover:border-amber-300 disabled:opacity-50"
+            className="rounded-full border border-slate-700 px-3 py-1 text-[11px] font-bold text-slate-200 hover:border-amber-300/50 hover:text-amber-100 disabled:opacity-50"
           >
             {item}
           </button>
         ))}
       </div>
 
-      <div className="border-t border-amber-300/15 p-3">
-        <div className="flex gap-2">
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                void submit(draft);
-              }
-            }}
-            placeholder="Ask or command, e.g. how to connect ERP..."
-            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-300"
-          />
-          <button
-            onClick={() => submit(draft)}
-            disabled={busy}
-            className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-black text-black disabled:bg-slate-700 disabled:text-slate-400"
-          >
-            {busy ? '...' : 'Send'}
-          </button>
-        </div>
-      </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit(draft);
+        }}
+        className="flex gap-2 border-t border-amber-300/15 p-3"
+      >
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Ask what to do next..."
+          className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/60"
+        />
+        <button
+          type="submit"
+          disabled={busy || !draft.trim()}
+          className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-black disabled:opacity-50"
+        >
+          {busy ? '...' : 'Send'}
+        </button>
+      </form>
     </div>
   );
 }
