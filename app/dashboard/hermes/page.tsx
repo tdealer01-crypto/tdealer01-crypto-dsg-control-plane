@@ -412,8 +412,51 @@ export default function HermesAgentPage() {
     {
       id: 'welcome',
       role: 'agent',
-      content:
-        'Hello. I am Hermes Agent for DSG ONE. I can inspect system status, list agents and policies, review executions, read audit logs, and route actions through the governance gate before execution.',
+      content: `สวัสดี — ฉันคือ Hermes Agent สำหรับ DSG ONE Control Plane
+
+ฉันมี 25 tools พร้อมใช้ทันที:
+
+📊 สถานะระบบ
+  • "system status" — readiness ทั้งระบบ
+  • "usage" — quota ที่ใช้ไป
+  • "capacity" — quota คงเหลือ
+  • "metrics" — performance วันนี้
+
+🤖 จัดการ Agents
+  • "list agents" — ดู agents ทั้งหมด
+  • "create agent ชื่อ X" — สร้าง agent + ได้ API key
+  • "detail agent [ID]" — ดูรายละเอียด
+  • "rotate key agent [ID]" — เปลี่ยน API key
+  • "disable agent [ID]" — ปิด agent
+
+📋 Policies & Executions
+  • "list policies" — ดู policies
+  • "executions" — 10 executions ล่าสุด
+  • "proof [execution ID]" — หลักฐาน execution
+
+🔍 Audit & Compliance
+  • "audit log" — audit events
+  • "compliance status" — CCVS + mutation score
+  • "enterprise proof" — attestation report
+
+💻 Code Execution (Hermes Brain)
+  • "run python: print('hello')" — รัน python inline
+  • "run bash: ls -la" — รัน bash command
+  • "write file script.py: [content]" — เขียนไฟล์
+
+🌐 Web & Research
+  • "fetch https://..." — ดึงข้อมูล URL
+  • "search [คำค้นหา]" — ค้นหา online
+  • "browse https://..." — เปิด cloud browser
+
+🏗️ Setup & Gate
+  • "auto setup" — ตั้งค่า org อัตโนมัติ
+  • "execute action X for agent Y" — ผ่าน DSG gate
+
+💡 Tips:
+  • แนบไฟล์ (📎) → ฉันอ่าน content แล้วช่วยวิเคราะห์
+  • พูด (🎤) หรือเปิด LIVE mode แทนพิมพ์ได้
+  • ถ้าต้องการ agent_id บอกชื่อ agent มาก็พอ ฉัน list ให้ก่อนได้`,
       ts: Date.now(),
     },
   ]);
