@@ -234,30 +234,38 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // No steps from Hermes planner → fall back to existing routeToModel (handles
-        // product Q&A, Thai language, and tool-based answers via the rich system prompt)
+        // No steps from Hermes planner → fall back to routeToModel
+        // (supports OpenRouter → Together AI → deterministic keyword plan)
         if (steps.length === 0) {
           const sessionKey = `${access.orgId}:${sessionId}`;
           let fallbackReply = planReply;
 
           if (!fallbackReply) {
             try {
-              if (process.env.OPENROUTER_API_KEY) {
-                const llm = await routeToModel(sessionKey, message, "hermes");
-                // Execute any tools the LLM picked
-                for (const step of llm.plan.steps) {
-                  const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
-                  if (!tool) continue;
-                  send({ type: "step_start", step: step.id, tool: tool.name });
-                  try {
-                    const result = await executeToolSafely(tool, step.params, agentCtx);
-                    send({ type: "step_result", step: step.id, result });
-                    addToolResultToMemory(sessionKey, step.toolId, result);
-                  } catch { /* non-fatal */ }
-                }
-                fallbackReply = llm.reply;
-              } else {
+              const llm = await routeToModel(sessionKey, message, "hermes");
+              // Execute any tools the LLM picked
+              const planSteps = llm.plan.steps;
+              if (planSteps.length > 0) {
+                send({ type: "plan", steps: planSteps.map((s) => ({ id: s.id, toolId: s.toolId, goal: s.toolId })) });
+              }
+              for (const step of planSteps) {
+                const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
+                if (!tool) continue;
+                send({ type: "step_start", step: step.id, tool: tool.name });
+                try {
+                  const result = await executeToolSafely(tool, step.params, agentCtx);
+                  send({ type: "step_result", step: step.id, result });
+                  addToolResultToMemory(sessionKey, step.toolId, result);
+                } catch { /* non-fatal */ }
+              }
+              fallbackReply = llm.reply;
+            } catch {
+              // All LLM providers failed — try deterministic keyword plan
+              try {
                 const fallbackPlan = planGoal(message, "hermes");
+                if (fallbackPlan.steps.length > 0) {
+                  send({ type: "plan", steps: fallbackPlan.steps.map((s) => ({ id: s.id, toolId: s.toolId, goal: s.toolId })) });
+                }
                 for (const step of fallbackPlan.steps) {
                   const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
                   if (!tool) continue;
@@ -267,21 +275,18 @@ export async function POST(req: NextRequest) {
                     send({ type: "step_result", step: step.id, result });
                   } catch { /* non-fatal */ }
                 }
-              }
-            } catch { /* non-fatal */ }
+              } catch { /* non-fatal */ }
+            }
           }
 
-          if (fallbackReply) {
-            const facts = detectClaimsInReply(fallbackReply, { executedSteps: false, hasUserQuestion: true });
-            const gate = evaluateAnswerGate(facts);
-            send({
-              type: "assistant_reply",
-              reply: gate.allowed ? fallbackReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${fallbackReply}`,
-              model: "hermes-fallback",
-            });
-          } else {
-            send({ type: "assistant_reply", reply: "ขอโทษ — ไม่สามารถสร้างแผนได้ กรุณาตั้งค่า OPENROUTER_API_KEY หรือลองใหม่อีกครั้ง", model: "hermes-fallback" });
-          }
+          const replyText = fallbackReply || "ขอโทษ — ไม่สามารถเชื่อมต่อ LLM ได้ กรุณาตั้งค่า ANTHROPIC_API_KEY หรือ TOGETHER_API_KEY ใน Vercel แล้ว redeploy";
+          const facts = detectClaimsInReply(replyText, { executedSteps: false, hasUserQuestion: true });
+          const gate = evaluateAnswerGate(facts);
+          send({
+            type: "assistant_reply",
+            reply: gate.allowed ? replyText : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${replyText}`,
+            model: "hermes-fallback",
+          });
           send({ type: "done" });
           controller.close();
           return;

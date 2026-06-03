@@ -341,40 +341,34 @@ function toPlanSteps(value: unknown): AgentPlanStep[] {
   });
 }
 
-async function callOpenRouter(
-  model: ModelSpec,
+async function callChatEndpoint(
+  endpoint: string,
+  modelId: string,
+  headers: Record<string, string>,
   messages: Array<{ role: string; content: string }>,
+  maxTokens: number,
+  label: string,
 ): Promise<{ reply: string; plan: AgentPlan }> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY not set');
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   let response: Response;
   try {
-    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    response = await fetch(endpoint, {
       method: 'POST',
       signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.APP_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
-        'X-Title': 'DSG Control Plane',
-      },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify({
-        model: model.openRouterId,
+        model: modelId,
         messages,
-        max_tokens: model.maxTokens,
+        max_tokens: maxTokens,
         temperature: 0.3,
         response_format: { type: 'json_object' },
       }),
     });
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      throw new Error(`OpenRouter ${model.id} timeout after 15000ms`);
+      throw new Error(`${label} timeout after 15000ms`);
     }
     throw error;
   } finally {
@@ -383,7 +377,7 @@ async function callOpenRouter(
 
   if (!response.ok) {
     const err = await response.text().catch(() => '');
-    throw new Error(`OpenRouter ${model.id} error: ${response.status} ${err}`);
+    throw new Error(`${label} error: ${response.status} ${err}`);
   }
 
   const json = (await response.json()) as {
@@ -396,16 +390,49 @@ async function callOpenRouter(
       reply?: unknown;
       plan?: { steps?: unknown };
     };
-
     return {
       reply: String(parsed.reply || ''),
-      plan: {
-        steps: toPlanSteps(parsed.plan?.steps),
-      },
+      plan: { steps: toPlanSteps(parsed.plan?.steps) },
     };
   } catch {
     return { reply: content, plan: { steps: [] } };
   }
+}
+
+async function callOpenRouter(
+  model: ModelSpec,
+  messages: Array<{ role: string; content: string }>,
+): Promise<{ reply: string; plan: AgentPlan }> {
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const togetherKey = process.env.TOGETHER_API_KEY;
+
+  if (openRouterKey) {
+    return callChatEndpoint(
+      'https://openrouter.ai/api/v1/chat/completions',
+      model.openRouterId,
+      {
+        Authorization: `Bearer ${openRouterKey}`,
+        'HTTP-Referer': process.env.APP_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+        'X-Title': 'DSG Control Plane',
+      },
+      messages,
+      model.maxTokens,
+      `OpenRouter ${model.id}`,
+    );
+  }
+
+  if (togetherKey) {
+    return callChatEndpoint(
+      'https://api.together.xyz/v1/chat/completions',
+      'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      { Authorization: `Bearer ${togetherKey}` },
+      messages,
+      model.maxTokens,
+      `Together AI ${model.id}`,
+    );
+  }
+
+  throw new Error('No LLM provider key set (OPENROUTER_API_KEY or TOGETHER_API_KEY)');
 }
 
 export async function routeToModel(

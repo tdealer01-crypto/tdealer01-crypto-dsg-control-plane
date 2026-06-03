@@ -23,6 +23,7 @@ type Message = {
   steps?: ToolStep[];
   model?: string;
   preflight?: { decision: string; reason?: string };
+  collapsible?: boolean;
 };
 
 type SystemStatus = {
@@ -180,6 +181,29 @@ function StepTrace({ steps }: { steps: ToolStep[] }) {
   );
 }
 
+function CollapsibleContent({ content }: { content: string }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const lines = content.split('\n');
+  const preview = lines.slice(0, 3).join('\n');
+  const isLong = lines.length > 4;
+  return (
+    <div>
+      <div className="whitespace-pre-wrap text-sm leading-7 text-slate-100">
+        {collapsed && isLong ? preview + '\n...' : content}
+      </div>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          className="mt-2 text-xs font-semibold text-violet-400 hover:text-violet-200"
+        >
+          {collapsed ? '▶ แสดงทั้งหมด' : '▲ ย่อ'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   if (msg.role === 'user') {
     return (
@@ -213,8 +237,12 @@ function MessageBubble({ msg }: { msg: Message }) {
           {msg.preflight && <DecisionBadge decision={msg.preflight.decision} />}
           {msg.decision && !msg.preflight && <DecisionBadge decision={msg.decision} />}
         </div>
-        <div className="whitespace-pre-wrap rounded-2xl rounded-tl-sm border border-white/10 bg-slate-800/60 px-4 py-3 text-sm leading-7 text-slate-100">
-          {msg.content || <span className="italic text-slate-600">Thinking...</span>}
+        <div className="rounded-2xl rounded-tl-sm border border-white/10 bg-slate-800/60 px-4 py-3">
+          {msg.content
+            ? msg.collapsible
+              ? <CollapsibleContent content={msg.content} />
+              : <p className="whitespace-pre-wrap text-sm leading-7 text-slate-100">{msg.content}</p>
+            : <span className="italic text-slate-600 text-sm">Thinking...</span>}
         </div>
         {msg.steps && <StepTrace steps={msg.steps} />}
         <p className="mt-1 text-xs text-slate-700">
@@ -458,6 +486,7 @@ export default function HermesAgentPage() {
   • พูด (🎤) หรือเปิด LIVE mode แทนพิมพ์ได้
   • ถ้าต้องการ agent_id บอกชื่อ agent มาก็พอ ฉัน list ให้ก่อนได้`,
       ts: Date.now(),
+      collapsible: true,
     },
   ]);
   const [input, setInput] = useState('');

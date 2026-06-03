@@ -70,43 +70,9 @@ function toWorkerType(w: unknown): WorkerType {
   return VALID_WORKERS.includes(s as WorkerType) ? (s as WorkerType) : "api";
 }
 
-export async function callLLMForPlan(
-  userGoal: string,
-): Promise<{ reply: string; steps: PlanStepInput[] }> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return { reply: "", steps: [] };
-  }
-
+function parsePlanResponse(content: string): { reply: string; steps: PlanStepInput[] } {
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.APP_URL ?? "https://tdealer01-crypto-dsg-control-plane.vercel.app",
-        "X-Title": "DSG Hermes Planner",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-haiku-4-5",
-        messages: [
-          { role: "system", content: PLANNER_SYSTEM },
-          { role: "user", content: userGoal },
-        ],
-        max_tokens: 1024,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-      }),
-      signal: AbortSignal.timeout(12_000),
-    });
-
-    if (!res.ok) return { reply: "", steps: [] };
-
-    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = json.choices?.[0]?.message?.content ?? "{}";
-
     const parsed = JSON.parse(content) as { reply?: unknown; steps?: unknown[] };
-
     const steps: PlanStepInput[] = ((parsed.steps ?? []) as RawStep[]).map((s) => ({
       goal: String(s.goal ?? ""),
       worker: toWorkerType(s.worker),
@@ -115,9 +81,115 @@ export async function callLLMForPlan(
         ? (s.expectedEvidence as unknown[]).map(String)
         : undefined,
     }));
-
     return { reply: String(parsed.reply ?? ""), steps };
   } catch {
     return { reply: "", steps: [] };
   }
+}
+
+async function callAnthropic(userGoal: string): Promise<{ reply: string; steps: PlanStepInput[] }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("no ANTHROPIC_API_KEY");
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      system: PLANNER_SYSTEM,
+      messages: [{ role: "user", content: userGoal }],
+    }),
+    signal: AbortSignal.timeout(12_000),
+  });
+
+  if (!res.ok) throw new Error(`Anthropic ${res.status}`);
+  const json = await res.json() as { content?: Array<{ type: string; text?: string }> };
+  const text = json.content?.find((b) => b.type === "text")?.text ?? "{}";
+  return parsePlanResponse(text);
+}
+
+async function callTogetherAI(userGoal: string): Promise<{ reply: string; steps: PlanStepInput[] }> {
+  const apiKey = process.env.TOGETHER_API_KEY;
+  if (!apiKey) throw new Error("no TOGETHER_API_KEY");
+
+  const res = await fetch("https://api.together.xyz/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      messages: [
+        { role: "system", content: PLANNER_SYSTEM },
+        { role: "user", content: userGoal },
+      ],
+      max_tokens: 1024,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    }),
+    signal: AbortSignal.timeout(12_000),
+  });
+
+  if (!res.ok) throw new Error(`Together AI ${res.status}`);
+  const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const content = json.choices?.[0]?.message?.content ?? "{}";
+  return parsePlanResponse(content);
+}
+
+async function callOpenRouter(userGoal: string): Promise<{ reply: string; steps: PlanStepInput[] }> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("no OPENROUTER_API_KEY");
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.APP_URL ?? "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+      "X-Title": "DSG Hermes Planner",
+    },
+    body: JSON.stringify({
+      model: "anthropic/claude-haiku-4-5",
+      messages: [
+        { role: "system", content: PLANNER_SYSTEM },
+        { role: "user", content: userGoal },
+      ],
+      max_tokens: 1024,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    }),
+    signal: AbortSignal.timeout(12_000),
+  });
+
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}`);
+  const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const content = json.choices?.[0]?.message?.content ?? "{}";
+  return parsePlanResponse(content);
+}
+
+export async function callLLMForPlan(
+  userGoal: string,
+): Promise<{ reply: string; steps: PlanStepInput[] }> {
+  const providers: Array<() => Promise<{ reply: string; steps: PlanStepInput[] }>> = [
+    () => callAnthropic(userGoal),
+    () => callTogetherAI(userGoal),
+    () => callOpenRouter(userGoal),
+  ];
+
+  for (const provider of providers) {
+    try {
+      const result = await provider();
+      return result;
+    } catch {
+      // try next provider
+    }
+  }
+
+  return { reply: "", steps: [] };
 }
