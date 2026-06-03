@@ -24,12 +24,11 @@ export async function GET(request: Request) {
       .limit(limit);
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "query_failed" }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, items: data ?? [], total: data?.length ?? 0 });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "internal_error";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500 });
   }
 }
