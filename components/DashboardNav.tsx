@@ -29,6 +29,7 @@ const MORE = [
   { href: '/dashboard/integration', label: 'Integrations' },
   { href: '/dashboard/missions', label: 'Mission' },
   { href: '/dashboard/skills', label: 'Skills' },
+  { href: '/dashboard/breach-signal', label: 'Breach Signal' },
   { href: '/marketplace/skills', label: 'Skills Marketplace' },
   { href: '/dashboard/referrals', label: 'Referrals' },
   { href: '/app-shell', label: 'App Shell' },
