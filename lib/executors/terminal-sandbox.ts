@@ -109,14 +109,14 @@ export function runInSandbox(
   try {
     const result = spawnSync(command, args, {
       cwd,
-      env: safeEnv,
+      env: safeEnv as NodeJS.ProcessEnv,
       timeout: timeoutMs,
       maxBuffer: maxOutputBytes,
       encoding: 'utf8',
     });
 
-    const stdout = typeof result.stdout === 'string' ? result.stdout.slice(0, maxOutputBytes) : '';
-    const stderr = typeof result.stderr === 'string' ? result.stderr.slice(0, maxOutputBytes) : '';
+    const stdout = String(result.stdout ?? '').slice(0, maxOutputBytes);
+    const stderr = String(result.stderr ?? '').slice(0, maxOutputBytes);
     const timedOut = result.signal === 'SIGTERM';
 
     return {

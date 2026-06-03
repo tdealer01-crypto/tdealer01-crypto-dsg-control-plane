@@ -87,7 +87,9 @@ export async function POST(request: NextRequest) {
     // Route DSG tools to the DSG tool handler
     if ((DSG_TOOL_NAMES as readonly string[]).includes(name)) {
       const dsgResult = await callDsgTool(name as DsgToolName, args);
-      if (!dsgResult.ok) return rpcError(rpc.id, dsgResult.code, dsgResult.message);
+      if (dsgResult.ok === false) {
+        return rpcError(rpc.id, dsgResult.code, dsgResult.message);
+      }
       return rpcResult(rpc.id, dsgResult.result);
     }
 
