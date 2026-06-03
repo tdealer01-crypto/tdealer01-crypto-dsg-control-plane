@@ -34,6 +34,8 @@ export interface EvaluateActionInput {
   preAuditEventId?: string;
   ledgerId?: string;
   chainHeadHash?: string;
+  /** Approved plan hash — satisfies idempotency, rollback, audit, and evidence binding when present */
+  planHash?: string;
 }
 
 export interface EvaluateActionResult {
@@ -97,6 +99,7 @@ export function evaluateAction(input: EvaluateActionInput): EvaluateActionResult
       payloadHash: input.payload ? sha256(input.payload) : undefined,
       idempotencyKey: input.idempotencyKey,
       rollbackPlanId: input.rollbackPlanId,
+      planHash: input.planHash,
     },
     rbac: {
       actorId: input.actorId,

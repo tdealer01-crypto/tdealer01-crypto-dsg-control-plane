@@ -83,6 +83,50 @@ describe("agent command gate", () => {
     expect(result.invariantChecks.find((check) => check.name === "idempotency_for_mutation")?.status).toBe("BLOCK");
   });
 
+  it("PASS for plan-authorized mutation without idempotencyKey, rollbackPlanId, audit, or evidence bindings", () => {
+    const request = baseRequest();
+    request.command.idempotencyKey = undefined;
+    request.command.rollbackPlanId = undefined;
+    request.command.planHash = "approved-plan-hash-abc123";
+    request.audit = { preAuditEventId: "", ledgerId: "", chainHeadHash: "" };
+    request.evidence = { evidenceManifestId: "", policySnapshotHash: "" };
+
+    const result = evaluateAgentCommandGate(request, fixedNow);
+
+    expect(result.decision).toBe("PASS");
+    expect(result.canAgentExecute).toBe(true);
+    expect(result.invariantChecks.find((c) => c.name === "idempotency_for_mutation")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "rollback_for_mutation")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "audit_hook_bound")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "evidence_hook_bound")?.status).toBe("PASS");
+    expect(result.invariantChecks.find((c) => c.name === "plan_authorization")?.status).toBe("PASS");
+  });
+
+  it("plan-authorized action still requires approved approval proof for high-risk commands", () => {
+    const request = baseRequest();
+    request.command.planHash = "approved-plan-hash-abc123";
+    request.rbac.approvalDecision = "pending";
+
+    const result = evaluateAgentCommandGate(request, fixedNow);
+
+    expect(result.decision).toBe("BLOCK");
+    expect(result.invariantChecks.find((c) => c.name === "approval_for_high_risk_or_sensitive_action")?.status).toBe("BLOCK");
+  });
+
+  it("plan_authorization invariant always reports PASS status (informational)", () => {
+    const request = baseRequest();
+    const resultWithPlan = evaluateAgentCommandGate({ ...request, command: { ...request.command, planHash: "some-hash" } }, fixedNow);
+    const resultWithoutPlan = evaluateAgentCommandGate(request, fixedNow);
+
+    const withPlanCheck = resultWithPlan.invariantChecks.find((c) => c.name === "plan_authorization");
+    const withoutPlanCheck = resultWithoutPlan.invariantChecks.find((c) => c.name === "plan_authorization");
+
+    expect(withPlanCheck?.status).toBe("PASS");
+    expect(withoutPlanCheck?.status).toBe("PASS");
+    expect(withPlanCheck?.reason).toContain("plan-authorized");
+    expect(withoutPlanCheck?.reason).toContain("RBAC");
+  });
+
   it("builds a receipt when agent returns observed result and evidence ids", () => {
     const gate = evaluateAgentCommandGate(baseRequest(), fixedNow);
     const receipt = buildAgentActionResultReceipt(

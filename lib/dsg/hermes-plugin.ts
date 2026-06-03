@@ -29,6 +29,8 @@ export interface HermesPluginContext {
   approvalDecision?: "approved" | "rejected" | "pending";
   approvedBy?: string;
   approvedAt?: string;
+  /** Approved plan hash — when provided, satisfies audit/evidence/idempotency/rollback requirements */
+  planHash?: string;
   proof?: {
     audit?: {
       preAuditEventId: string;
@@ -325,6 +327,7 @@ function buildGateRequest(req: HermesPluginRequest, now: Date): AgentCommandGate
       payloadHash,
       idempotencyKey: isMutation ? sha256({ commandId, mode: req.mode }).slice(0, 24) : undefined,
       rollbackPlanId: isMutation ? `rollback-${commandId.slice(0, 16)}` : undefined,
+      planHash: req.context.planHash,
     },
     rbac: {
       actorId: req.context.actorId,
