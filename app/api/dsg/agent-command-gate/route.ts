@@ -51,6 +51,11 @@ export async function POST(request: NextRequest) {
         ok: result.canAgentExecute,
         persisted: true,
         result,
+        planScope: {
+          planHash: body.command.planHash ?? null,
+          scopeHash: body.command.scopeHash ?? null,
+          planAuthorized: Boolean(body.command.planHash),
+        },
         actor: {
           userId: auth.userId,
           role: auth.role,
