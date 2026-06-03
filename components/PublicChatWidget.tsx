@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 type ChatLine = {
   id: string;
@@ -26,7 +27,11 @@ const commandLinks = [
 ];
 
 export default function PublicChatWidget() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/app-shell') || pathname?.startsWith('/approvals')) {
+    return null;
+  }
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [lines, setLines] = useState<ChatLine[]>([
