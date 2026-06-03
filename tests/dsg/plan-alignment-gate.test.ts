@@ -41,6 +41,9 @@ function baseEvent(): HermesActionEvent {
     idempotencyKey: "idem-001",
     evidenceManifestId: "manifest-001",
     policySnapshotHash: "policy-snap-001",
+    preAuditEventId: "audit-event-001",
+    ledgerId: "ledger-001",
+    chainHeadHash: "chain-head-001",
     requestedAt: "2026-05-06T00:00:00.000Z",
   };
 }
@@ -147,6 +150,27 @@ describe("evaluatePlanAlignment", () => {
 
     expect(result.decision).toBe("CLAIM_EVIDENCE_DENY");
     expect(result.reasons).toContain("evidence_manifest_missing");
+  });
+
+  it("CLAIM_EVIDENCE_DENY when requireAudit is true and audit fields are missing (P2 — enforce audit binding)", () => {
+    const event = { ...baseEvent(), preAuditEventId: undefined, ledgerId: undefined, chainHeadHash: undefined };
+    const result = evaluatePlanAlignment(baseContract, event, fixedNow);
+
+    expect(result.decision).toBe("CLAIM_EVIDENCE_DENY");
+    expect(result.canProceed).toBe(false);
+    expect(result.reasons).toContain("audit_binding_missing");
+  });
+
+  it("PLAN_MATCHED when requireAudit is false even without audit fields", () => {
+    const contract: HermesPlanScopeContract = {
+      ...baseContract,
+      evidenceRequirements: { ...baseContract.evidenceRequirements, requireAudit: false },
+    };
+    const event = { ...baseEvent(), preAuditEventId: undefined, ledgerId: undefined, chainHeadHash: undefined };
+    const result = evaluatePlanAlignment(contract, event, fixedNow);
+
+    expect(result.decision).toBe("PLAN_MATCHED_ALLOW_AUDIT");
+    expect(result.canProceed).toBe(true);
   });
 
   it("PLAN_MATCHED when evidence requirements are not required by contract", () => {

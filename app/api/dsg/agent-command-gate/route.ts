@@ -5,10 +5,15 @@ import {
   type AgentCommandGateRequest,
 } from "@/lib/dsg/agent-command-gate";
 import { recordAgentCommandGateDecision } from "@/lib/dsg/agent-command-gate-repository";
+import type { HermesPlanScopeContract } from "@/lib/dsg/plan-scope-contract";
 
 export const dynamic = "force-dynamic";
 
 type DeniedAuth = { ok: false; error: string; status: 401 | 403 };
+
+type AgentCommandGateBody = AgentCommandGateRequest & {
+  planScopeContract?: HermesPlanScopeContract;
+};
 
 export async function POST(request: NextRequest) {
   const auth = await requireOrgPermission("org.execute");
@@ -19,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as AgentCommandGateRequest;
+    const body = (await request.json()) as AgentCommandGateBody;
 
     if (body.workspaceId !== auth.orgId) {
       return NextResponse.json(
@@ -32,7 +37,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = evaluateAgentCommandGate(body);
+    // When planHash is provided, it must be backed by a planScopeContract.
+    // The contract is verified at this trust boundary — gate itself is stateless.
+    // Without contract verification, planHash is stripped so the gate enforces
+    // explicit idempotency/rollback/audit/evidence bindings instead.
+    let verifiedPlanHash: string | undefined;
+    let planContractVerified = false;
+
+    if (body.command.planHash) {
+      const contract = body.planScopeContract;
+      if (
+        contract &&
+        contract.workspaceId === auth.orgId &&
+        contract.planHash === body.command.planHash &&
+        contract.agentId === body.runtime.agentId
+      ) {
+        verifiedPlanHash = body.command.planHash;
+        planContractVerified = true;
+      }
+      // If contract absent or mismatched: planHash is stripped — gate falls back to explicit bindings
+    }
+
+    const gateRequest: AgentCommandGateRequest = {
+      ...body,
+      command: { ...body.command, planHash: verifiedPlanHash },
+    };
+
+    const result = evaluateAgentCommandGate(gateRequest);
 
     await recordAgentCommandGateDecision({
       actor: {
@@ -40,7 +71,7 @@ export async function POST(request: NextRequest) {
         actorId: auth.userId,
         actorRole: auth.role,
       },
-      request: body,
+      request: gateRequest,
       result,
     });
 
@@ -52,9 +83,10 @@ export async function POST(request: NextRequest) {
         persisted: true,
         result,
         planScope: {
-          planHash: body.command.planHash ?? null,
+          planHash: verifiedPlanHash ?? null,
           scopeHash: body.command.scopeHash ?? null,
-          planAuthorized: Boolean(body.command.planHash),
+          planAuthorized: planContractVerified,
+          contractProvided: Boolean(body.planScopeContract),
         },
         actor: {
           userId: auth.userId,

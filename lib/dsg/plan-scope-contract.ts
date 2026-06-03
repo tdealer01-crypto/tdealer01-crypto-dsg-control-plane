@@ -46,6 +46,9 @@ export interface HermesActionEvent {
   rollbackPlanId?: string;
   evidenceManifestId?: string;
   policySnapshotHash?: string;
+  preAuditEventId?: string;
+  ledgerId?: string;
+  chainHeadHash?: string;
   claimedOutcome?: string;
   requestedAt: string;
 }

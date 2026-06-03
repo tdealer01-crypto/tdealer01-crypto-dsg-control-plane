@@ -66,6 +66,9 @@ export function evaluatePlanAlignment(
   if (req.requireRollback && !event.rollbackPlanId) evidenceGaps.push("rollback_plan_missing");
   if (req.requireEvidence && !event.evidenceManifestId) evidenceGaps.push("evidence_manifest_missing");
   if (req.requireEvidence && !event.policySnapshotHash) evidenceGaps.push("policy_snapshot_missing");
+  if (req.requireAudit && !(event.preAuditEventId && event.ledgerId && event.chainHeadHash)) {
+    evidenceGaps.push("audit_binding_missing");
+  }
 
   if (evidenceGaps.length > 0) {
     evidenceGaps.forEach((g) => reasons.push(g));
