@@ -37,6 +37,14 @@
     {
       "path": "/api/cron/agent-health-check",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/health-check-cron",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/week3-campaign-pulse",
+      "schedule": "0 9 * * *"
     }
   ]
 }

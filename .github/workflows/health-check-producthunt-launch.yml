@@ -1,0 +1,130 @@
+name: 🚀 ProductHunt Launch - Health Check (Every 6 Hours)
+
+on:
+  schedule:
+    # Run every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: health-check
+  cancel-in-progress: false
+
+jobs:
+  health-check:
+    name: API Health Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📍 Determine Environment
+        id: env
+        run: |
+          # Target production API
+          echo "api_url=https://tdealer01-crypto-dsg-control-plane.vercel.app" >> $GITHUB_OUTPUT
+          echo "launch_date=2026-06-10T00:00:00Z" >> $GITHUB_OUTPUT
+
+      - name: 🏥 Check /api/health Endpoint
+        id: health
+        continue-on-error: true
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "User-Agent: GitHub-Actions-Health-Check" \
+            "${{ steps.env.outputs.api_url }}/api/health")
+
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n1)
+
+          echo "status_code=$status_code" >> $GITHUB_OUTPUT
+          echo "body=$body" >> $GITHUB_OUTPUT
+
+          if [ "$status_code" = "200" ]; then
+            echo "✅ Health check passed (HTTP $status_code)"
+          else
+            echo "❌ Health check failed (HTTP $status_code)"
+            echo "$body" | jq . 2>/dev/null || echo "$body"
+            exit 1
+          fi
+
+      - name: 🚀 Check /api/readiness Endpoint
+        id: readiness
+        continue-on-error: true
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "User-Agent: GitHub-Actions-Health-Check" \
+            "${{ steps.env.outputs.api_url }}/api/readiness")
+
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n1)
+
+          echo "status_code=$status_code" >> $GITHUB_OUTPUT
+          echo "body=$body" >> $GITHUB_OUTPUT
+
+          if [ "$status_code" = "200" ]; then
+            echo "✅ Readiness check passed (HTTP $status_code)"
+          else
+            echo "❌ Readiness check failed (HTTP $status_code)"
+            echo "$body" | jq . 2>/dev/null || echo "$body"
+            exit 1
+          fi
+
+      - name: 📊 Check /api/agent/status Endpoint
+        id: agent_status
+        continue-on-error: true
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "User-Agent: GitHub-Actions-Health-Check" \
+            "${{ steps.env.outputs.api_url }}/api/agent/status")
+
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n1)
+
+          echo "status_code=$status_code" >> $GITHUB_OUTPUT
+          echo "body=$body" >> $GITHUB_OUTPUT
+
+          if [ "$status_code" = "200" ]; then
+            echo "✅ Agent status check passed (HTTP $status_code)"
+          else
+            echo "⚠️ Agent status check returned HTTP $status_code"
+          fi
+
+      - name: 🎯 Summarize Check Results
+        if: always()
+        run: |
+          echo "## 🚀 ProductHunt Launch - API Health Check"
+          echo ""
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "**Target:** ${{ steps.env.outputs.api_url }}"
+          echo "**Launch Date:** ${{ steps.env.outputs.launch_date }}"
+          echo ""
+          echo "### Endpoint Status"
+          echo ""
+          echo "| Endpoint | Status | HTTP Code |"
+          echo "|----------|--------|-----------|"
+          echo "| `/api/health` | ${{ steps.health.outcome == 'success' && '✅ Pass' || '❌ Fail' }} | ${{ steps.health.outputs.status_code }} |"
+          echo "| `/api/readiness` | ${{ steps.readiness.outcome == 'success' && '✅ Pass' || '❌ Fail' }} | ${{ steps.readiness.outputs.status_code }} |"
+          echo "| `/api/agent/status` | ${{ steps.agent_status.outcome == 'success' && '✅ Pass' || '⚠️ Check' }} | ${{ steps.agent_status.outputs.status_code }} |"
+          echo ""
+
+      - name: 🚨 Alert on Critical Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const timestamp = new Date().toISOString();
+
+            // Create GitHub issue for critical failures
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 CRITICAL: ProductHunt Launch Window - API Health Check Failed (${timestamp})`,
+              body: `## ⚠️ ProductHunt Launch Health Check Failure\n\n**Time:** ${timestamp}\n**Target:** https://tdealer01-crypto-dsg-control-plane.vercel.app\n\n### Failed Endpoints:\n- Health Check: ${{ steps.health.outcome }}\n- Readiness Check: ${{ steps.readiness.outcome }}\n\n### Action Required:\n1. Check Vercel deployment status\n2. Review recent commits\n3. Check database/API connectivity\n4. Review Sentry for error patterns\n\n**Launch Date:** 2026-06-10T00:00:00Z`,
+              labels: ['🚨 critical', '🚀 launch', 'ops']
+            });
+
+      - name: ✅ Success - API Ready for Launch
+        if: success()
+        run: |
+          echo "✅ All health checks passed!"
+          echo "API is ready for ProductHunt launch window."
