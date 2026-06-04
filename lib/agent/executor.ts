@@ -70,11 +70,19 @@ export async function executeToolSafely(
     return tool.execute(params, context);
   }
 
-  if (!hasExplicitApproval(context)) {
+  // org_admin can execute write tools without an explicit approval token.
+  // Critical tools (key rotation, delete, execute_action) still require it.
+  const isOrgAdmin = context.role === 'org_admin';
+  const isCritical = tool.riskLevel === 'critical';
+  const needsToken = isCritical || !isOrgAdmin;
+
+  if (needsToken && !hasExplicitApproval(context)) {
     return {
       requiresApproval: true,
       blocked: true,
-      reason: 'Plan generated. User approval is required before write or critical agent execution.',
+      reason: isCritical
+        ? `Tool "${tool.id}" is critical — explicit approvalToken required regardless of role.`
+        : 'Plan generated. User approval is required before write or critical agent execution.',
       tool: tool.id,
       params,
     };

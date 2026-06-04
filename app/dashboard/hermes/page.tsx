@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseSseData, type AgentChatEvent } from '@/lib/agent/chat-event';
 
@@ -481,10 +482,16 @@ export default function HermesAgentPage() {
   • "auto setup" — ตั้งค่า org อัตโนมัติ
   • "execute action X for agent Y" — ผ่าน DSG gate
 
+🎯 Skills Hub
+  • กด "Skills Hub" ด้านบน หรือไปที่ /dashboard/hermes/skills
+  • 89,000+ skills จาก 12 registries (Built-in, ClawHub, skills.sh, ...)
+  • "install skill [name]" — ติดตั้ง skill ใหม่
+
 💡 Tips:
   • แนบไฟล์ (📎) → ฉันอ่าน content แล้วช่วยวิเคราะห์
   • พูด (🎤) หรือเปิด LIVE mode แทนพิมพ์ได้
-  • ถ้าต้องการ agent_id บอกชื่อ agent มาก็พอ ฉัน list ให้ก่อนได้`,
+  • ถ้าต้องการ agent_id บอกชื่อ agent มาก็พอ ฉัน list ให้ก่อนได้
+  • /llms.txt และ /llms-full.txt — machine-readable docs สำหรับ LLM`,
       ts: Date.now(),
       collapsible: true,
     },
@@ -616,6 +623,24 @@ export default function HermesAgentPage() {
               allowed_tools?: string[];
             };
             if (!event) continue;
+
+            // startup_context event → show as a system message (not in agent bubble)
+            if (event.type === 'startup_context' && (event as any).files?.length > 0) {
+              setMessages((prev) => {
+                const already = prev.some((m) => m.id === `startup-${agentMsgId}`);
+                if (already) return prev;
+                const sysMsg: Message = {
+                  id: `startup-${agentMsgId}`,
+                  role: 'system',
+                  content: `📖 อ่าน ${(event as any).files.join(' + ')} แล้ว — Hermes ปฏิบัติตาม operating rules สำหรับ session นี้`,
+                  ts: Date.now(),
+                };
+                const agentIdx = prev.findIndex((m) => m.id === agentMsgId);
+                if (agentIdx === -1) return [...prev, sysMsg];
+                return [...prev.slice(0, agentIdx), sysMsg, ...prev.slice(agentIdx)];
+              });
+              continue;
+            }
 
             setMessages((prev) =>
               prev.map((item) => {
@@ -859,10 +884,18 @@ export default function HermesAgentPage() {
             <p className="text-xs text-slate-500">DSG ONE Control Plane - Governed execution</p>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${systemStatus?.ok ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : systemStatus === null ? 'border-slate-700 bg-slate-800 text-slate-500' : 'border-red-400/30 bg-red-400/10 text-red-300'}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${systemStatus?.ok ? 'bg-emerald-400' : systemStatus === null ? 'animate-pulse bg-slate-600' : 'bg-red-400'}`} />
-          {systemStatus === null ? 'Connecting...' : systemStatus.ok ? 'Online' : 'Degraded'}
-        </span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/hermes/skills"
+            className="rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300 transition hover:bg-violet-500/20"
+          >
+            🎯 Skills Hub
+          </Link>
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${systemStatus?.ok ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : systemStatus === null ? 'border-slate-700 bg-slate-800 text-slate-500' : 'border-red-400/30 bg-red-400/10 text-red-300'}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${systemStatus?.ok ? 'bg-emerald-400' : systemStatus === null ? 'animate-pulse bg-slate-600' : 'bg-red-400'}`} />
+            {systemStatus === null ? 'Connecting...' : systemStatus.ok ? 'Online' : 'Degraded'}
+          </span>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

@@ -6,8 +6,9 @@
  */
 
 import type { PlanStepInput, WorkerType } from "./planner";
+import { buildStartupBlock } from "./startup-context";
 
-const PLANNER_SYSTEM = `You are the Hermes Brain Planner for DSG ONE Control Plane.
+const PLANNER_BASE = `You are the Hermes Brain Planner for DSG ONE Control Plane.
 Your job: convert a user goal into a structured execution plan.
 
 Available workers + toolIds:
@@ -52,7 +53,14 @@ Rules:
 - max 5 steps
 - If question needs no action → steps: []
 - Every "api" step MUST have params.toolId
-- Match user language in reply`;
+- Match user language in reply
+- Always follow the operating rules from CLAUDE.md and AGENTS.md above`;
+
+function buildPlannerSystem(): string {
+  const startup = buildStartupBlock();
+  if (!startup) return PLANNER_BASE;
+  return `${startup}\n\n${PLANNER_BASE}`;
+}
 
 type RawStep = {
   goal?: unknown;
@@ -101,7 +109,7 @@ async function callAnthropic(userGoal: string): Promise<{ reply: string; steps: 
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      system: PLANNER_SYSTEM,
+      system: buildPlannerSystem(),
       messages: [{ role: "user", content: userGoal }],
     }),
     signal: AbortSignal.timeout(12_000),
@@ -126,7 +134,7 @@ async function callTogetherAI(userGoal: string): Promise<{ reply: string; steps:
     body: JSON.stringify({
       model: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
       messages: [
-        { role: "system", content: PLANNER_SYSTEM },
+        { role: "system", content: buildPlannerSystem() },
         { role: "user", content: userGoal },
       ],
       max_tokens: 1024,
@@ -157,7 +165,7 @@ async function callOpenRouter(userGoal: string): Promise<{ reply: string; steps:
     body: JSON.stringify({
       model: "anthropic/claude-haiku-4-5",
       messages: [
-        { role: "system", content: PLANNER_SYSTEM },
+        { role: "system", content: buildPlannerSystem() },
         { role: "user", content: userGoal },
       ],
       max_tokens: 1024,

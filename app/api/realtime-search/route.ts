@@ -4,10 +4,59 @@ import { RuntimeRouteRoles } from '../../../lib/runtime/permissions';
 import { handleApiError } from '../../../lib/security/api-error';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 const SEARCH_RATE_LIMIT = 20;
 const SEARCH_WINDOW_MS = 60_000;
-const MAX_QUERY_LENGTH = 180;
+const MAX_QUERY_LENGTH = 500;
 
+type SearchResult = { title: string; url: string; snippet?: string };
+
+// ── Tavily search (rich results, best quality) ─────────────────────────────
+async function searchTavily(q: string): Promise<{ heading: string; abstract: string; abstract_url: string; results: SearchResult[]; provider: string } | null> {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, query: q, search_depth: 'basic', max_results: 8 }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { results?: Array<{ title?: string; url?: string; content?: string }>; answer?: string };
+    return {
+      provider: 'tavily',
+      heading: q,
+      abstract: body.answer ?? '',
+      abstract_url: '',
+      results: (body.results ?? []).map((r) => ({ title: r.title ?? '', url: r.url ?? '', snippet: r.content?.slice(0, 200) })),
+    };
+  } catch { return null; }
+}
+
+// ── Brave search (alternative, no quota issues) ────────────────────────────
+async function searchBrave(q: string): Promise<{ heading: string; abstract: string; abstract_url: string; results: SearchResult[]; provider: string } | null> {
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=8`, {
+      headers: { Accept: 'application/json', 'Accept-Encoding': 'gzip', 'X-Subscription-Token': apiKey },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { web?: { results?: Array<{ title?: string; url?: string; description?: string }> }; query?: { description?: string } };
+    return {
+      provider: 'brave',
+      heading: q,
+      abstract: body.query?.description ?? '',
+      abstract_url: '',
+      results: (body.web?.results ?? []).map((r) => ({ title: r.title ?? '', url: r.url ?? '', snippet: r.description?.slice(0, 200) })),
+    };
+  } catch { return null; }
+}
+
+// ── DuckDuckGo instant answer (free fallback) ──────────────────────────────
 type DuckInstantTopic = {
   Text?: string;
   FirstURL?: string;
@@ -66,14 +115,27 @@ export async function GET(request: Request) {
       );
     }
 
+    // Provider cascade: Tavily → Brave → DuckDuckGo
+    const tavily = await searchTavily(q);
+    if (tavily) {
+      return NextResponse.json(
+        { query: q, ...tavily },
+        { headers: buildRateLimitHeaders(rateLimit, SEARCH_RATE_LIMIT) },
+      );
+    }
+
+    const brave = await searchBrave(q);
+    if (brave) {
+      return NextResponse.json(
+        { query: q, ...brave },
+        { headers: buildRateLimitHeaders(rateLimit, SEARCH_RATE_LIMIT) },
+      );
+    }
+
+    // DuckDuckGo fallback (free, no API key)
     const remote = await fetch(
       `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_redirect=1&no_html=1`,
-      {
-        headers: {
-          accept: 'application/json',
-        },
-        cache: 'no-store',
-      },
+      { headers: { accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(8_000) },
     );
 
     if (!remote.ok) {
@@ -89,7 +151,7 @@ export async function GET(request: Request) {
       Heading?: string;
       RelatedTopics?: unknown[];
     };
-    const related = normalizeTopics(Array.isArray(body.RelatedTopics) ? body.RelatedTopics : []).slice(0, 5);
+    const related = normalizeTopics(Array.isArray(body.RelatedTopics) ? body.RelatedTopics : []).slice(0, 8);
 
     return NextResponse.json(
       {
@@ -98,10 +160,7 @@ export async function GET(request: Request) {
         heading: body.Heading || '',
         abstract: body.AbstractText || '',
         abstract_url: body.AbstractURL || '',
-        results: related.map((item) => ({
-          title: item.Text || '',
-          url: item.FirstURL || '',
-        })),
+        results: related.map((item) => ({ title: item.Text || '', url: item.FirstURL || '' })),
       },
       { headers: buildRateLimitHeaders(rateLimit, SEARCH_RATE_LIMIT) },
     );

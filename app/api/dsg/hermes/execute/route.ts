@@ -34,6 +34,7 @@ import { planGoal } from "@/lib/agent/planner";
 import { agentPreflight } from "@/lib/agent/preflight";
 import { evaluateAnswerGate, detectClaimsInReply } from "@/lib/dsg/answer-gate";
 import { randomUUID } from "crypto";
+import { loadStartupContext } from "@/lib/hermes/startup-context";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,12 @@ async function synthesize(
   const summary = toolResults
     .map((r) => `[${r.toolId}]: ${JSON.stringify(r.result, null, 2).slice(0, 1500)}`)
     .join("\n\n");
+
+  const ctx = loadStartupContext();
+  const contextNote = ctx.files.length > 0
+    ? `\n\n[Startup context loaded: ${ctx.files.join(', ')} at ${ctx.loadedAt}]`
+    : "";
+
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -65,7 +72,8 @@ async function synthesize(
         system: `คุณคือ Hermes Agent สำหรับ DSG ONE Control Plane
 ตอบเป็นภาษาไทยหรืออังกฤษตามที่ผู้ใช้ถาม
 สรุปผลลัพธ์จาก tool ให้กระชับ อ่านง่าย มีประโยชน์ ห้ามพิมพ์ JSON ดิบ
-ห้าม claim เกินหลักฐาน`,
+ห้าม claim เกินหลักฐาน
+ปฏิบัติตาม CLAUDE.md และ AGENTS.md ที่โหลดมาแล้วสำหรับ session นี้${contextNote}`,
         messages: [{ role: "user", content: `คำถาม: ${userGoal}\n\nผล:\n${summary}` }],
       }),
       signal: AbortSignal.timeout(15_000),
@@ -201,6 +209,17 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
       try {
+        // 0. Load startup context (CLAUDE.md + AGENTS.md) — runs before every task
+        const startup = loadStartupContext();
+        send({
+          type: "startup_context",
+          files: startup.files,
+          loadedAt: startup.loadedAt,
+          note: startup.files.length > 0
+            ? `Hermes อ่าน ${startup.files.join(' + ')} แล้ว — ปฏิบัติตาม operating rules สำหรับ session นี้`
+            : "startup context not available",
+        });
+
         // 1. Preflight + plan
         const actionType = /deploy|push|release|ship/i.test(message) ? "deploy"
           : /edit|fix|change|refactor|update|add.*file|create.*file/i.test(message) ? "edit_code"
