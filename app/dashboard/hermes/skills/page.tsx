@@ -12,6 +12,8 @@ type SkillEntry = {
   platforms: string[];
   isBuiltIn?: boolean;
   isOptional?: boolean;
+  installCmd?: string;
+  tags?: string[];
 };
 
 type Registry = {
@@ -77,7 +79,7 @@ function RegistryBadge({ registry }: { registry: string }) {
   );
 }
 
-function SkillCard({ skill }: { skill: SkillEntry }) {
+function SkillCard({ skill, onInstall }: { skill: SkillEntry; onInstall?: (cmd: string) => void }) {
   return (
     <div className="group flex flex-col gap-2 rounded-xl border border-white/[0.07] bg-slate-900/60 p-4 transition hover:border-white/15 hover:bg-slate-800/60">
       <div className="flex items-start justify-between gap-2">
@@ -85,13 +87,31 @@ function SkillCard({ skill }: { skill: SkillEntry }) {
         <RegistryBadge registry={skill.registry} />
       </div>
       <p className="line-clamp-2 text-xs leading-5 text-slate-400">{skill.description}</p>
+      {skill.tags && skill.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {skill.tags.slice(0, 3).map((t) => (
+            <span key={t} className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-slate-500">{t}</span>
+          ))}
+        </div>
+      )}
       <div className="mt-auto flex items-center justify-between pt-1">
         <span className={`rounded border px-2 py-0.5 text-[10px] font-semibold ${categoryColor(skill.category)}`}>
           {skill.category}
         </span>
-        <span className="text-[10px] text-slate-600">
-          {skill.platforms.map((p) => PLATFORM_ICON[p] ?? p).join(' ')}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-600">
+            {skill.platforms.map((p) => PLATFORM_ICON[p] ?? p).join(' ')}
+          </span>
+          {skill.installCmd && onInstall && (
+            <button
+              type="button"
+              onClick={() => onInstall(skill.installCmd!)}
+              className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300 transition hover:bg-violet-500/20"
+            >
+              Install
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -104,12 +124,26 @@ export default function SkillsHubPage() {
   const [search, setSearch] = useState('');
   const [activeRegistry, setActiveRegistry] = useState('All');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [_installingId, setInstallingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/dsg/hermes/skills')
       .then((r) => r.json())
       .then((d: SkillsData) => setData(d))
       .catch(() => {});
+  }, []);
+
+  const handleInstall = useCallback(async (cmd: string) => {
+    setInstallingId(cmd);
+    try {
+      await fetch('/api/dsg/hermes/execute', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: cmd }),
+      });
+    } finally {
+      setInstallingId(null);
+    }
   }, []);
 
   const filtered = (data?.skills ?? []).filter((s) => {
@@ -287,7 +321,11 @@ export default function SkillsHubPage() {
             {filtered.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {filtered.map((skill) => (
-                  <SkillCard key={skill.id} skill={skill} />
+                  <SkillCard
+                    key={skill.id}
+                    skill={skill}
+                    onInstall={skill.installCmd ? handleInstall : undefined}
+                  />
                 ))}
               </div>
             ) : !data ? (
