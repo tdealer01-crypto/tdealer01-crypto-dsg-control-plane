@@ -624,6 +624,24 @@ export default function HermesAgentPage() {
             };
             if (!event) continue;
 
+            // startup_context event → show as a system message (not in agent bubble)
+            if (event.type === 'startup_context' && (event as any).files?.length > 0) {
+              setMessages((prev) => {
+                const already = prev.some((m) => m.id === `startup-${agentMsgId}`);
+                if (already) return prev;
+                const sysMsg: Message = {
+                  id: `startup-${agentMsgId}`,
+                  role: 'system',
+                  content: `📖 อ่าน ${(event as any).files.join(' + ')} แล้ว — Hermes ปฏิบัติตาม operating rules สำหรับ session นี้`,
+                  ts: Date.now(),
+                };
+                const agentIdx = prev.findIndex((m) => m.id === agentMsgId);
+                if (agentIdx === -1) return [...prev, sysMsg];
+                return [...prev.slice(0, agentIdx), sysMsg, ...prev.slice(agentIdx)];
+              });
+              continue;
+            }
+
             setMessages((prev) =>
               prev.map((item) => {
                 if (item.id !== agentMsgId) return item;
