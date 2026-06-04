@@ -37,9 +37,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
+  let patchUrl: string | undefined;
+  if (body.url != null) {
+    patchUrl = String(body.url);
+    try {
+      const parsed = new URL(patchUrl);
+      if (parsed.protocol !== 'https:') throw new Error('not https');
+    } catch {
+      return NextResponse.json({ error: 'url must be a valid https:// URL' }, { status: 400 });
+    }
+  }
+
   try {
     const updated = await updateWebhook(access.orgId, id, {
-      url: body.url != null ? String(body.url) : undefined,
+      url: patchUrl,
       events: Array.isArray(body.events) ? (body.events as any) : undefined,
       metadata: typeof body.metadata === 'object' && body.metadata ? (body.metadata as Record<string, unknown>) : undefined,
     });
