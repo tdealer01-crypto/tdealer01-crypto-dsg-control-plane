@@ -155,7 +155,7 @@ export default function ReadinessGatePage() {
             <div className="pb-8">
               <h3 className="text-2xl font-bold mb-2">Post Check Result</h3>
               <p className="text-gray-600">
-                GitHub check shows "ready", "review required", or "blocked". Blocking checks prevent merge. Blocking checks prevent merge.
+                GitHub check shows &quot;ready&quot;, &quot;review required&quot;, or &quot;blocked&quot;. Blocking checks prevent merge.
               </p>
             </div>
           </div>
@@ -169,7 +169,7 @@ export default function ReadinessGatePage() {
             <div>
               <h3 className="text-2xl font-bold mb-2">Auto-merge or Manual Deploy</h3>
               <p className="text-gray-600">
-                If enabled: auto-merge when ready. Otherwise: show "Ready to Deploy" button. All decisions logged with timestamps.
+                If enabled: auto-merge when ready. Otherwise: show &quot;Ready to Deploy&quot; button. All decisions logged with timestamps.
               </p>
             </div>
           </div>
