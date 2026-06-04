@@ -65,6 +65,16 @@ const nextConfig = {
         destination: '/finance-governance/live/workspace/:path*',
         permanent: true,
       },
+      {
+        source: '/docs/llms.txt',
+        destination: '/llms.txt',
+        permanent: false,
+      },
+      {
+        source: '/docs/llms-full.txt',
+        destination: '/llms-full.txt',
+        permanent: false,
+      },
     ];
   },
 
