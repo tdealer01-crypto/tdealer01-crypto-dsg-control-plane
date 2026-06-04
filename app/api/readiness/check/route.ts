@@ -1,50 +1,120 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { evaluateReadiness, getDefaultConfig } from '@/lib/readiness/check-engine';
+import { validateReadinessCheckRequest } from '@/lib/validation/readiness-validation';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { repoUrl, coveragePercent = 82, approvalCount = 1 } = body;
+  const startTime = Date.now();
+  const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
 
-    if (!repoUrl) {
+  try {
+    // Parse JSON with error handling
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('[readiness-check] JSON parse error:', {
+        ip: clientIp,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        duration: Date.now() - startTime,
+      });
+
       return NextResponse.json(
-        { error: 'repoUrl is required' },
+        {
+          error: 'Invalid JSON in request body',
+          code: 'INVALID_JSON',
+        },
         { status: 400 }
       );
     }
 
-    // For MVP: use default config. Production would query org-specific config from Supabase
+    // Validate request
+    const validation = validateReadinessCheckRequest(body);
+    if (!validation.valid) {
+      console.warn('[readiness-check] Validation failed:', {
+        ip: clientIp,
+        errors: validation.errors,
+        duration: Date.now() - startTime,
+      });
+
+      return NextResponse.json(
+        {
+          error: 'Request validation failed',
+          code: 'VALIDATION_ERROR',
+          details: validation.errors.map(e => ({
+            field: e.field,
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { repoUrl, coveragePercent, approvalCount } = validation.data!;
+
+    // Get org-specific config (for MVP: default)
+    // In production: query from readiness_configs table based on org_id
     const config = getDefaultConfig();
 
+    // Evaluate readiness
+    const evalStartTime = Date.now();
     const result = await evaluateReadiness(repoUrl, config, coveragePercent, approvalCount);
+    const evalDuration = Date.now() - evalStartTime;
 
-    // In production: save check result to readiness_checks table
-    // await supabase
-    //   .from('readiness_checks')
-    //   .insert({
-    //     org_id: orgId,
-    //     check_type: 'full_scan',
-    //     status: result.overallStatus,
-    //     details: result,
-    //     created_at: new Date().toISOString(),
-    //   });
+    // In production:
+    // 1. Get org_id from auth context
+    // 2. Save check result to readiness_checks table with RLS enforcement
+    // 3. Add to event log for compliance audit
+    // 4. If overall status is 'blocked', trigger alert/webhook
+    // 5. Track metrics (check count, result distribution)
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-      metadata: {
-        repoUrl,
-        checkedAt: new Date().toISOString(),
-        nextCheckRecommended: new Date(Date.now() + 3600000).toISOString(),
-      },
+    console.log('[readiness-check] Evaluated', {
+      overallStatus: result.overallStatus,
+      blockers: result.blockerCount,
+      reviews: result.reviewCount,
+      passes: result.passCount,
+      checkDuration: evalDuration,
+      totalDuration: Date.now() - startTime,
     });
-  } catch (error) {
-    console.error('Readiness check error:', error);
+
     return NextResponse.json(
-      { error: 'Failed to evaluate readiness' },
+      {
+        success: true,
+        data: result,
+        metadata: {
+          repoUrl,
+          checkedAt: new Date().toISOString(),
+          evaluationDurationMs: evalDuration,
+          nextCheckRecommendedAt: new Date(Date.now() + 3600000).toISOString(),
+          config: {
+            minTestCoveragePercent: config.minTestCoveragePercent,
+            requireNApprovals: config.requireNApprovals,
+            blockOnSecrets: config.blockOnSecrets,
+            blockOnFailedCI: config.blockOnFailedCI,
+          },
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
+    console.error('[readiness-check] Unexpected error:', {
+      ip: clientIp,
+      error: errorMsg,
+      duration,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    return NextResponse.json(
+      {
+        error: 'Failed to evaluate readiness',
+        code: 'EVALUATION_ERROR',
+        requestId: `err_${Date.now()}`,
+      },
       { status: 500 }
     );
   }

@@ -1,77 +1,112 @@
-/**
- * POST /api/approval-queue/request
- * Create an approval request for agent action
- */
-
 import { NextRequest, NextResponse } from 'next/server';
+import { validateApprovalRequest } from '@/lib/validation/approval-validation';
 
 export const dynamic = 'force-dynamic';
 
-interface ApprovalRequestBody {
-  agentId: string;
-  orgId: string;
-  action: string; // What the agent wants to do (e.g., "deploy to production")
-  input?: Record<string, unknown>; // Action parameters
-  expiresInHours?: number; // Default: 24h
-  priority?: 'low' | 'medium' | 'high'; // Urgency
-  notifyEmails?: string[]; // Who to notify
-}
-
-interface ApprovalRequestResponse {
-  requestId: string;
-  agentId: string;
-  action: string;
-  status: 'pending';
-  expiresAt: string;
-  createdAt: string;
-  createdBy?: string;
-}
-
 export async function POST(request: NextRequest) {
-  try {
-    const body = (await request.json()) as ApprovalRequestBody;
+  const startTime = Date.now();
+  const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
 
-    // Validate required fields
-    if (!body.agentId || !body.orgId || !body.action) {
+  try {
+    // Parse JSON with error handling
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('[approval-request] JSON parse error:', {
+        ip: clientIp,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        duration: Date.now() - startTime,
+      });
+
       return NextResponse.json(
-        { error: 'agentId, orgId, and action are required' },
-        { status: 400 },
+        {
+          error: 'Invalid JSON in request body',
+          code: 'INVALID_JSON',
+        },
+        { status: 400 }
       );
     }
 
-    // Generate request ID
-    const requestId = `areq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const expiresInHours = body.expiresInHours || 24;
-    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString();
-    const createdAt = new Date().toISOString();
+    // Comprehensive validation
+    const validation = validateApprovalRequest(body);
+    if (!validation.valid) {
+      console.warn('[approval-request] Validation failed:', {
+        ip: clientIp,
+        errors: validation.errors,
+        duration: Date.now() - startTime,
+      });
 
-    // In production: save to Supabase
-    console.log('[Approval Request Created]', {
-      requestId,
-      agentId: body.agentId,
-      orgId: body.orgId,
-      action: body.action,
-      expiresAt,
-      createdAt,
-    });
-
-    // Send notifications (in production)
-    if (body.notifyEmails && body.notifyEmails.length > 0) {
-      console.log(`[Notify] Send approval request to: ${body.notifyEmails.join(', ')}`);
+      return NextResponse.json(
+        {
+          error: 'Request validation failed',
+          code: 'VALIDATION_ERROR',
+          details: validation.errors.map(e => ({
+            field: e.field,
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({
+    const { agentId, orgId, action, input, expiresInHours, priority } = validation.data!;
+
+    // Generate request ID and expiry
+    const requestId = `areq_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const expiresAt = new Date(Date.now() + expiresInHours * 3600000).toISOString();
+    const createdAt = new Date().toISOString();
+
+    // In production:
+    // 1. Check org quota (free: 100/month, pro: unlimited)
+    // 2. Verify orgId matches auth context
+    // 3. Insert into approval_requests table with RLS policy enforcement
+    // 4. Trigger Slack/email notification webhook
+    // 5. Add to Sentry transaction for monitoring
+
+    console.log('[approval-request] Created successfully', {
       requestId,
-      agentId: body.agentId,
-      action: body.action,
-      status: 'pending',
-      expiresAt,
-      createdAt,
-    } as ApprovalRequestResponse);
-  } catch (error) {
+      agentId,
+      orgId,
+      priority,
+      expiresInHours,
+      duration: Date.now() - startTime,
+    });
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Request creation failed' },
-      { status: 500 },
+      {
+        success: true,
+        data: {
+          requestId,
+          agentId,
+          action,
+          status: 'pending',
+          priority,
+          expiresAt,
+          createdAt,
+          timeoutInHours: expiresInHours,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
+    console.error('[approval-request] Unexpected error:', {
+      ip: clientIp,
+      error: errorMsg,
+      duration,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+        requestId: `err_${Date.now()}`,
+      },
+      { status: 500 }
     );
   }
 }
