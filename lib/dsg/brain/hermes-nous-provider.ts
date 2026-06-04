@@ -31,6 +31,7 @@ export type HermesNousHosting = 'together' | 'openrouter';
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
+  tool_calls?: OpenAIToolCall[];
   tool_call_id?: string;
   name?: string;
 }
@@ -505,10 +506,28 @@ export async function generatePlanViaNousHermes(
       return { canonicalPlan, rationale: scratchPad?.reflection ?? summary, riskTags: finalRiskTags };
     }
 
-    // Continue loop: append assistant message + stub tool responses
-    messages.push({ role: 'assistant', content: choice.message.content ?? '' });
-    for (const call of calls) {
-      messages.push(buildToolResponseMessage(call.name, { status: 'ok', note: `stub response for ${call.name}` }));
+    // Continue loop: append assistant + stub tool responses.
+    // For OpenAI tool_calls format, carry through tool_calls/tool_call_id so
+    // OpenAI-compatible endpoints don't reject the message history next turn.
+    if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
+      messages.push({
+        role: 'assistant',
+        content: choice.message.content ?? '',
+        tool_calls: choice.message.tool_calls,
+      });
+      for (const tc of choice.message.tool_calls) {
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify({ status: 'ok', note: `stub response for ${tc.function.name}` }),
+        });
+      }
+    } else {
+      // XML <tool_call> format — use existing XML tool_response wrapper
+      messages.push({ role: 'assistant', content: choice.message.content ?? '' });
+      for (const call of calls) {
+        messages.push(buildToolResponseMessage(call.name, { status: 'ok', note: `stub response for ${call.name}` }));
+      }
     }
   }
 

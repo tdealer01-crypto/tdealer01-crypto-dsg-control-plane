@@ -6,7 +6,19 @@ export const dynamic = 'force-dynamic';
 
 const POLL_INTERVAL_MS = 1_000;
 const MAX_DURATION_MS = 25_000;
-const TERMINAL_TYPES = new Set(['session.status_idle', 'session.error']);
+
+function isTerminalEvent(event: { type: string; stop_reason?: unknown }): boolean {
+  if (event.type === 'session.error') return true;
+  if (event.type === 'session.status_idle') {
+    // requires_action is non-terminal — stream must stay open for tool confirmations
+    const sr = event.stop_reason;
+    if (typeof sr === 'object' && sr !== null && (sr as Record<string, unknown>).type === 'requires_action') {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
 
 export async function GET(
   _req: NextRequest,
@@ -40,7 +52,7 @@ export async function GET(
         for (const evt of page.data) {
           send(evt.event);
           lastCreatedAt = evt.created_at;
-          if (TERMINAL_TYPES.has(evt.event.type)) terminated = true;
+          if (isTerminalEvent(evt.event)) terminated = true;
         }
 
         // Keep polling for new events until terminal event or timeout
@@ -56,7 +68,7 @@ export async function GET(
           for (const evt of newPage.data) {
             send(evt.event);
             lastCreatedAt = evt.created_at;
-            if (TERMINAL_TYPES.has(evt.event.type)) terminated = true;
+            if (isTerminalEvent(evt.event)) terminated = true;
           }
         }
       } catch {
