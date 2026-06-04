@@ -8,6 +8,81 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 Hermes Managed Agents API + Security Hardening — 2026-06-04
+
+**Commit:** `c44e4a240` merged to `main` | **Deployed:** production live | **Typecheck:** 0 errors
+
+PR #673 — consolidated fixes across Hermes chat UX, security, and the full Managed Agents API surface.
+
+### What's new
+
+#### Hermes chat — UI fixes
+
+| Fix | Before | After |
+|---|---|---|
+| Tool count display | "25 tools" | "33 tools" (dynamic from `DSG_TOOLS.length`) |
+| SSE event names | `agent.message` / `session.status_idle` etc. | `assistant_reply` / `done` / `step_start` / `step_result` / `step_error` — aligned to dashboard renderer |
+| Stuck "Thinking..." | Tool steps stayed as WAIT forever | Steps render correctly; replies stream to UI |
+| Synthesis fallback | Silent empty reply if `ANTHROPIC_API_KEY` missing | Error text delivered as `assistant_reply` |
+| `tool_calls` continuation | OpenAI tool_calls/tool_call_id dropped on loop | Preserved across every continuation turn |
+
+#### Security hardening (MCP route)
+
+| Finding | Fix |
+|---|---|
+| Hermes tools dispatched unauthenticated | `requireOrgRole(['operator','org_admin'])` gate added before any Hermes tool call |
+| `orgId` read from caller-supplied args | Now uses `access.orgId` from `requireOrgRole` (server-verified) |
+| `role` escalation via JSON-RPC args | `role` hardcoded to `'operator'` in `buildAgentContext`; never read from args |
+| Webhook SSRF via `http://` URLs | POST/PATCH `/api/hermes/webhooks` enforce `https://` — non-HTTPS returns 400 |
+
+#### Managed Agents REST API
+
+Full Anthropic-spec Managed Agents surface — 26 route handlers under `/api/hermes/`:
+
+| Resource | Routes |
+|---|---|
+| Agents | CRUD + archive |
+| Sessions | CRUD + archive + events (GET/POST) + event stream (SSE) + threads |
+| Memory stores | CRUD + archive |
+| Memories | CRUD |
+| Vaults | CRUD + archive |
+| Skills | CRUD |
+| Environments | CRUD + archive |
+| User profiles | CRUD + enrollment-url |
+| Webhooks | CRUD |
+
+**Key endpoint fixes:**
+- `GET /api/hermes/enroll?token=...` — enrollment token validation (was 404)
+- `GET /api/hermes/sessions/:id/events/stream` — polls for live events up to 25 s (was closing immediately)
+- `session.status_idle` with `stop_reason.type === requires_action` kept open (non-terminal)
+- `POST /api/hermes/sessions/:id/events` — validates session exists before inserting
+- `listSessionEvents` — `event_types` filter pushed to DB query (accurate pagination)
+
+**Supabase migration:** `supabase/migrations/20260604_hermes_managed_agents.sql` — 11 tables with RLS and org isolation.
+
+### MCP tool surface
+
+`POST /api/mcp` now exposes **33 Hermes tools** (`hermes.*`) alongside DSG and Android tools.
+
+```bash
+curl -X POST /api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+# returns Android tools + 10 DSG tools + 33 hermes.* tools
+```
+
+Auth required for all `hermes.*` calls (`operator` or `org_admin` session).
+
+### Verification — 2026-06-04
+
+```
+npm run typecheck   # 0 errors (pre-merge)
+production version  # c44e4a240687b911854c482a02c14c94dbdec3ad ✅
+GET /api/agent/status → {"ok":true,"checks":{"db":true}} ✅
+```
+
+---
+
 ## 🟢 Hermes Agent Control Center — 2026-06-02
 
 **Branch:** `claude/hermes-agent-v2-fixes` merged to `main`  
@@ -618,13 +693,16 @@ bash scripts/check-request-body-safety.sh  # request body safety linter
 
 ---
 
-## Production Status — 2026-06-03
+## Production Status — 2026-06-04
 
-✅ **Production-connected** (live and responding)
+✅ **Production-connected** (live and responding) — commit `c44e4a240`
 - REST API live: health ✅, readiness ✅, agent-status ✅
 - Database connected ✅
 - Rate limiter (Upstash Redis) active ✅
-- All core routes responding with correct decision logic ✅
+- Hermes Managed Agents API surface live (26 routes) ✅
+- MCP `tools/list` returns 33 Hermes tools + DSG + Android tools ✅
+- Hermes chat replies correctly (no "Thinking..." stuck state) ✅
+- MCP Hermes tools auth-gated (`requireOrgRole`) ✅
 
 ⚠️ **Not "production-ready"** (per CLAUDE.md evidence-first policy):
 - "Production-ready" claim blocked unless fresh full verification evidence
@@ -635,6 +713,12 @@ bash scripts/check-request-body-safety.sh  # request body safety linter
 ## Supported claims — verified evidence only
 
 ```
+✓ Hermes Managed Agents REST API live — 26 routes under /api/hermes/ (verified 2026-06-04).
+✓ MCP server exposes 33 Hermes tools (hermes.*) + DSG + Android tools, auth-gated (verified 2026-06-04).
+✓ MCP Hermes tools require requireOrgRole — unauthenticated access blocked (verified 2026-06-04).
+✓ Hermes chat SSE emits correct event names — dashboard renders replies, no stuck "Thinking..." (verified 2026-06-04).
+✓ Webhook POST/PATCH enforce https:// only — SSRF via http:// blocked with 400 (verified 2026-06-04).
+✓ GET /api/hermes/enroll validates enrollment token (was 404, now live — verified 2026-06-04).
 ✓ REST API gate endpoint is live and returns correct ALLOW/BLOCK decisions (verified 2026-06-03).
 ✓ Runtime readiness is green (HTTP 200, status=ready, verified 2026-06-03).
 ✓ 1027 unit + integration tests pass, 0 failures (108 unit files; +50 new tests covering authz-runtime, agent-auth, release-gate, security/api-error, agent-governance/service).
