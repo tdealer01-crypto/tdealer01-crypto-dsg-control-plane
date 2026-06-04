@@ -87,9 +87,10 @@ export async function GET(request: NextRequest) {
       offset,
       approvals: paginated,
     });
-  } catch (error) {
+  } catch (caught) {
+    console.error('[approval-pending] Unexpected error:', caught);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch approvals' },
+      { error: 'Failed to fetch approvals' },
       { status: 500 },
     );
   }

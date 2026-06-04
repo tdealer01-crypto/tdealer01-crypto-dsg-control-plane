@@ -148,8 +148,8 @@ async function runStep(
       if (r.blocked === true) {
         errorMessage = String(r.reason ?? "blocked");
       }
-    } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
+    } catch (caught) {
+      errorMessage = caught instanceof Error ? caught.message : String(caught);
       success = false;
     }
   }
@@ -401,10 +401,10 @@ export async function POST(req: NextRequest) {
         });
 
         send({ type: "done" });
-      } catch (err) {
+      } catch (caught) {
         send({
           type: "assistant_reply",
-          reply: err instanceof Error ? err.message : "Hermes execution failed",
+          reply: caught instanceof Error ? caught.message : "Hermes execution failed",
           model: "hermes-runtime-v1",
         });
         send({ type: "done" });
