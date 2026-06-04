@@ -41,6 +41,20 @@ export const dynamic = "force-dynamic";
 // ── constants ─────────────────────────────────────────────────────────────────
 const HAIKU = "claude-haiku-4-5-20251001";
 const MAX_RETRIES = 2;
+// Vercel Hobby plan hard-caps serverless functions at 10 s.
+// Per-tool timeout leaves room for synthesis; handler deadline triggers early exit.
+const TOOL_TIMEOUT_MS = 4_500;
+const HANDLER_DEADLINE_MS = 8_000;
+
+function raceTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(`tool timed out after ${ms}ms`)), ms);
+    promise.then(
+      (v) => { clearTimeout(id); resolve(v); },
+      (e) => { clearTimeout(id); reject(e); },
+    );
+  });
+}
 
 // ── synthesis ──────────────────────────────────────────────────────────────────
 async function synthesize(
@@ -141,7 +155,7 @@ async function runStep(
     success = true;
   } else {
     try {
-      const result = await executeToolSafely(tool, step.params ?? {}, agentCtx);
+      const result = await raceTimeout(executeToolSafely(tool, step.params ?? {}, agentCtx), TOOL_TIMEOUT_MS);
       output = JSON.stringify(result).slice(0, 2000);
       const r = result as Record<string, unknown>;
       success = !(r.blocked === true);
@@ -273,7 +287,7 @@ export async function POST(req: NextRequest) {
                 if (!tool) continue;
                 send({ type: "step_start", step: step.id, tool: step.toolId });
                 try {
-                  const result = await executeToolSafely(tool, step.params, agentCtx);
+                  const result = await raceTimeout(executeToolSafely(tool, step.params, agentCtx), TOOL_TIMEOUT_MS);
                   send({ type: "step_result", step: step.id, result });
                   addToolResultToMemory(sessionKey, step.toolId, result);
                 } catch { /* non-fatal */ }
@@ -291,7 +305,7 @@ export async function POST(req: NextRequest) {
                   if (!tool) continue;
                   send({ type: "step_start", step: step.id, tool: step.toolId });
                   try {
-                    const result = await executeToolSafely(tool, step.params, agentCtx);
+                    const result = await raceTimeout(executeToolSafely(tool, step.params, agentCtx), TOOL_TIMEOUT_MS);
                     send({ type: "step_result", step: step.id, result });
                   } catch { /* non-fatal */ }
                 }
@@ -346,8 +360,13 @@ export async function POST(req: NextRequest) {
         // 4. Execute each step with gate + evidence (streaming)
         const toolResults: Array<{ toolId: string; result: unknown }> = [];
         const allEvidence: EvidenceItem[] = [];
+        const deadline = Date.now() + HANDLER_DEADLINE_MS;
 
         for (const step of plan.steps) {
+          if (Date.now() > deadline) {
+            send({ type: "step_error", step: step.stepId, error: "deadline exceeded — skipping remaining steps to stay within function timeout" });
+            break;
+          }
           send({ type: "step_start", step: step.stepId, tool: step.worker });
 
           let outcome = await runStep(step, plan, contract, agentCtx, access.orgId, sessionId);
