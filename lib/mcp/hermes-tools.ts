@@ -7,14 +7,14 @@ export type HermesToolResult =
   | { ok: true; result: unknown }
   | { ok: false; code: number; message: string };
 
-function buildAgentContext(request: NextRequest, args: Record<string, unknown>): AgentContext {
+function buildAgentContext(request: NextRequest, orgId: string, args: Record<string, unknown>): AgentContext {
   const authHeader = request.headers.get('authorization') ?? '';
   const cookieHeader = request.headers.get('cookie') ?? '';
   const origin = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
 
-  const orgId = String(args.org_id ?? args.orgId ?? 'mcp:default').trim();
-  const rawRole = String(args.role ?? 'operator');
-  const role: AgentContext['role'] = rawRole === 'org_admin' ? 'org_admin' : 'operator';
+  // Role is always 'operator' for MCP callers — never trust caller-supplied role.
+  // Elevated privileges require server-side session auth via requireOrgRole.
+  const role: AgentContext['role'] = 'operator';
   const approvalToken = typeof args.approvalToken === 'string' ? args.approvalToken : undefined;
 
   return { orgId, role, origin, authHeader, cookieHeader, approvalToken };
@@ -24,6 +24,7 @@ export async function callHermesTool(
   name: string,
   args: Record<string, unknown>,
   request: NextRequest,
+  orgId: string,
 ): Promise<HermesToolResult> {
   const toolId = name.replace(/^hermes\./, '');
   const tool = DSG_TOOLS.find((t) => t.id === toolId);
@@ -33,7 +34,7 @@ export async function callHermesTool(
   }
 
   try {
-    const context = buildAgentContext(request, args);
+    const context = buildAgentContext(request, orgId, args);
     const result = await executeToolSafely(tool, args, context);
     return { ok: true, result };
   } catch (caught) {

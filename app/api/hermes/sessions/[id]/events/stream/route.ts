@@ -4,6 +4,22 @@ import { getSession, listSessionEvents } from '@/lib/hermes/managed-agents/store
 
 export const dynamic = 'force-dynamic';
 
+const POLL_INTERVAL_MS = 1_000;
+const MAX_DURATION_MS = 25_000;
+
+function isTerminalEvent(event: { type: string; stop_reason?: unknown }): boolean {
+  if (event.type === 'session.error') return true;
+  if (event.type === 'session.status_idle') {
+    // requires_action is non-terminal — stream must stay open for tool confirmations
+    const sr = event.stop_reason;
+    if (typeof sr === 'object' && sr !== null && (sr as Record<string, unknown>).type === 'requires_action') {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -26,12 +42,35 @@ export async function GET(
       const send = (payload: unknown) =>
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
+      let lastCreatedAt: string | undefined;
+      let terminated = false;
+      const deadline = Date.now() + MAX_DURATION_MS;
+
       try {
+        // Emit all existing events
         const page = await listSessionEvents(access.orgId, id, { order: 'asc', limit: 500 });
         for (const evt of page.data) {
           send(evt.event);
+          lastCreatedAt = evt.created_at;
+          if (isTerminalEvent(evt.event)) terminated = true;
         }
-        send({ type: 'session.status_idle', stop_reason: 'end_turn' });
+
+        // Keep polling for new events until terminal event or timeout
+        while (!terminated && Date.now() < deadline) {
+          await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+          if (Date.now() >= deadline) break;
+
+          const newPage = await listSessionEvents(access.orgId, id, {
+            order: 'asc',
+            limit: 100,
+            after: lastCreatedAt,
+          });
+          for (const evt of newPage.data) {
+            send(evt.event);
+            lastCreatedAt = evt.created_at;
+            if (isTerminalEvent(evt.event)) terminated = true;
+          }
+        }
       } catch {
         send({ type: 'session.error', error: 'Stream failed', code: 'STREAM_ERROR' });
       } finally {

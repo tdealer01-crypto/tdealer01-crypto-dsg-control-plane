@@ -189,15 +189,20 @@ export async function POST(request: Request) {
         // Synthesize reply via Haiku 4.5 + run through DSG Answer Gate (pure logic)
         if (!reply && collectedResults.length > 0) {
           const { reply: synthesis, gateDecision, gateAllowed } = await synthesizeWithClaude(message, collectedResults);
-          if (synthesis) {
-            controller.enqueue(encoder.encode(sseData({
-              type: 'assistant_reply',
-              reply: synthesis,
-              model: HAIKU_MODEL,
-              gate_decision: gateDecision,
-              gate_allowed: gateAllowed,
-            })));
-          }
+          const finalReply = synthesis || collectedResults
+            .map((r) => {
+              const data = r.result as Record<string, unknown>;
+              if (data?.success === false) return `❌ ${r.toolId}: ${data?.error ?? 'error'}`;
+              return `✅ ${r.toolId}: เสร็จสิ้น`;
+            })
+            .join('\n');
+          controller.enqueue(encoder.encode(sseData({
+            type: 'assistant_reply',
+            reply: finalReply,
+            model: synthesis ? HAIKU_MODEL : 'fallback',
+            gate_decision: gateDecision,
+            gate_allowed: gateAllowed,
+          })));
         }
 
         controller.enqueue(encoder.encode(sseData({ type: 'done' })));

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgRole } from '@/lib/authz';
-import { listSessionEvents, appendUserEvent, dispatchWebhookEvent } from '@/lib/hermes/managed-agents/store';
+import { getSession, listSessionEvents, appendUserEvent, dispatchWebhookEvent } from '@/lib/hermes/managed-agents/store';
 import type { UserSentEvent } from '@/lib/hermes/managed-agents/types';
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +55,13 @@ export async function POST(
     if (!validTypes.has(evt.type)) {
       return NextResponse.json({ error: `Invalid event type: ${evt.type}` }, { status: 400 });
     }
+  }
+
+  try {
+    const session = await getSession(access.orgId, id);
+    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  } catch {
+    return NextResponse.json({ error: 'Failed to verify session' }, { status: 500 });
   }
 
   try {

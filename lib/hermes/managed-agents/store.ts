@@ -293,14 +293,16 @@ export async function listSessionEvents(
     .order('created_at', { ascending: order === 'asc' })
     .limit(limit + 1);
   if (opts.after) q = order === 'asc' ? q.gt('created_at', opts.after) : q.lt('created_at', opts.after);
+  // Apply event_types as a DB-side JSONB predicate so pagination is accurate.
+  if (opts.event_types?.length) {
+    const inList = opts.event_types.map((t) => `"${t}"`).join(',');
+    q = q.filter('event->>type', 'in', `(${inList})`);
+  }
   const { data, error } = await q;
   if (error) throw new Error('Failed to list session events');
   const rows: HermesSessionEvent[] = data ?? [];
-  const filteredRows = opts.event_types?.length
-    ? rows.filter((r) => opts.event_types!.includes(r.event.type))
-    : rows;
-  const has_more = filteredRows.length > limit;
-  const items = has_more ? filteredRows.slice(0, limit) : filteredRows;
+  const has_more = rows.length > limit;
+  const items = has_more ? rows.slice(0, limit) : rows;
   return { data: items, has_more, first_id: items[0]?.id, last_id: items[items.length - 1]?.id };
 }
 

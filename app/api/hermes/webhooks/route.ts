@@ -36,9 +36,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'url and events are required' }, { status: 400 });
   }
 
+  const rawUrl = String(body.url);
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:') throw new Error('not https');
+  } catch {
+    return NextResponse.json({ error: 'url must be a valid https:// URL' }, { status: 400 });
+  }
+
   try {
     const webhook = await createWebhook(access.orgId, {
-      url: String(body.url),
+      url: rawUrl,
       events: body.events as any,
       metadata: typeof body.metadata === 'object' && body.metadata ? (body.metadata as Record<string, unknown>) : undefined,
     });

@@ -7,6 +7,7 @@ import type { DsgToolName } from '@/lib/mcp/schemas';
 import { callDsgTool } from '@/lib/mcp/dsg-tools';
 import { HERMES_TOOL_SCHEMAS, HERMES_TOOL_NAMES } from '@/lib/mcp/hermes-tool-schemas';
 import { callHermesTool } from '@/lib/mcp/hermes-tools';
+import { requireOrgRole } from '@/lib/authz';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,9 +100,13 @@ export async function POST(request: NextRequest) {
       return rpcResult(rpc.id, dsgResult.result);
     }
 
-    // Route Hermes agent tools to the Hermes tool handler
+    // Route Hermes agent tools to the Hermes tool handler — requires auth
     if ((HERMES_TOOL_NAMES as string[]).includes(name)) {
-      const hermesResult = await callHermesTool(name, args, request);
+      const access = await requireOrgRole(['operator', 'org_admin']);
+      if (!access.ok) {
+        return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
+      }
+      const hermesResult = await callHermesTool(name, args, request, access.orgId);
       if (hermesResult.ok === false) {
         return rpcError(rpc.id, hermesResult.code, hermesResult.message);
       }
