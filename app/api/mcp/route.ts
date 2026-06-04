@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       if (!access.ok) {
         return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
       }
-      const hermesResult = await callHermesTool(name, args, request);
+      const hermesResult = await callHermesTool(name, args, request, access.orgId);
       if (hermesResult.ok === false) {
         return rpcError(rpc.id, hermesResult.code, hermesResult.message);
       }
