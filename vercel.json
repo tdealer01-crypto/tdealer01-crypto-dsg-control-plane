@@ -40,7 +40,7 @@
     },
     {
       "path": "/api/health-check-cron",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/week3-campaign-pulse",

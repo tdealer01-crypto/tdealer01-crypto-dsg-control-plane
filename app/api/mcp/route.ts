@@ -5,6 +5,8 @@ import { TOOL_POLICY } from '@/lib/commands/schema';
 import { DSG_TOOL_SCHEMAS, DSG_TOOL_NAMES } from '@/lib/mcp/schemas';
 import type { DsgToolName } from '@/lib/mcp/schemas';
 import { callDsgTool } from '@/lib/mcp/dsg-tools';
+import { HERMES_TOOL_SCHEMAS, HERMES_TOOL_NAMES } from '@/lib/mcp/hermes-tool-schemas';
+import { callHermesTool } from '@/lib/mcp/hermes-tools';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,8 +64,12 @@ function dsgToolList() {
   }));
 }
 
+function hermesToolList() {
+  return HERMES_TOOL_SCHEMAS;
+}
+
 function toolList() {
-  return [...androidToolList(), ...dsgToolList()];
+  return [...androidToolList(), ...dsgToolList(), ...hermesToolList()];
 }
 
 export async function GET() {
@@ -91,6 +97,15 @@ export async function POST(request: NextRequest) {
         return rpcError(rpc.id, dsgResult.code, dsgResult.message);
       }
       return rpcResult(rpc.id, dsgResult.result);
+    }
+
+    // Route Hermes agent tools to the Hermes tool handler
+    if ((HERMES_TOOL_NAMES as string[]).includes(name)) {
+      const hermesResult = await callHermesTool(name, args, request);
+      if (hermesResult.ok === false) {
+        return rpcError(rpc.id, hermesResult.code, hermesResult.message);
+      }
+      return rpcResult(rpc.id, hermesResult.result);
     }
 
     // Route Android tools to the command envelope builder

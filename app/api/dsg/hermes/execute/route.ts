@@ -233,11 +233,12 @@ export async function POST(req: NextRequest) {
           actorRole: agentCtx.role,
         });
         if (preflight.decision === "block") {
-          send({ type: "assistant_reply", reply: `Blocked: ${preflight.reason}`, model: "hermes-preflight" });
-          send({ type: "done" });
+          send({ type: "agent.message", content: `Blocked: ${preflight.reason}`, model: "hermes-preflight" });
+          send({ type: "session.status_idle", stop_reason: "requires_action" });
           controller.close();
           return;
         }
+        send({ type: "session.status_running" });
         send({ type: "preflight", decision: "PLAN_MATCHED_ALLOW_AUDIT", reason: "Hermes planning...", ...preflight });
 
         const { reply: planReply, steps } = await callLLMForPlan(message);
@@ -247,8 +248,8 @@ export async function POST(req: NextRequest) {
           const facts = detectClaimsInReply(planReply, { executedSteps: false, hasUserQuestion: true });
           const gate = evaluateAnswerGate(facts);
           send({
-            type: "assistant_reply",
-            reply: gate.allowed ? planReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${planReply}`,
+            type: "agent.message",
+            content: gate.allowed ? planReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${planReply}`,
             model: "hermes-planner",
           });
         }
@@ -270,10 +271,10 @@ export async function POST(req: NextRequest) {
               for (const step of planSteps) {
                 const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
                 if (!tool) continue;
-                send({ type: "step_start", step: step.id, tool: tool.name });
+                send({ type: "span.model_request_start", span_id: step.id });
                 try {
                   const result = await executeToolSafely(tool, step.params, agentCtx);
-                  send({ type: "step_result", step: step.id, result });
+                  send({ type: "agent.tool_result", tool_use_id: step.id, result });
                   addToolResultToMemory(sessionKey, step.toolId, result);
                 } catch { /* non-fatal */ }
               }
@@ -288,10 +289,10 @@ export async function POST(req: NextRequest) {
                 for (const step of fallbackPlan.steps) {
                   const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
                   if (!tool) continue;
-                  send({ type: "step_start", step: step.id, tool: tool.name });
+                  send({ type: "span.model_request_start", span_id: step.id });
                   try {
                     const result = await executeToolSafely(tool, step.params, agentCtx);
-                    send({ type: "step_result", step: step.id, result });
+                    send({ type: "agent.tool_result", tool_use_id: step.id, result });
                   } catch { /* non-fatal */ }
                 }
               } catch { /* non-fatal */ }
@@ -302,11 +303,11 @@ export async function POST(req: NextRequest) {
           const facts = detectClaimsInReply(replyText, { executedSteps: false, hasUserQuestion: true });
           const gate = evaluateAnswerGate(facts);
           send({
-            type: "assistant_reply",
-            reply: gate.allowed ? replyText : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${replyText}`,
+            type: "agent.message",
+            content: gate.allowed ? replyText : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${replyText}`,
             model: "hermes-fallback",
           });
-          send({ type: "done" });
+          send({ type: "session.status_idle", stop_reason: "end_turn" });
           controller.close();
           return;
         }
@@ -347,7 +348,7 @@ export async function POST(req: NextRequest) {
         const allEvidence: EvidenceItem[] = [];
 
         for (const step of plan.steps) {
-          send({ type: "step_start", step: step.stepId, tool: step.worker });
+          send({ type: "span.model_request_start", span_id: step.stepId, model: step.worker });
 
           let outcome = await runStep(step, plan, contract, agentCtx, access.orgId, sessionId);
 
@@ -367,9 +368,10 @@ export async function POST(req: NextRequest) {
 
           if (outcome.success) {
             toolResults.push({ toolId: step.params?.toolId ? String(step.params.toolId) : step.worker, result: { output: outcome.output, decision: outcome.decision } });
-            send({ type: "step_result", step: step.stepId, result: { output: outcome.output, decision: outcome.decision, receiptHash: outcome.receiptHash } });
+            send({ type: "agent.tool_result", tool_use_id: step.stepId, result: { output: outcome.output, decision: outcome.decision, receiptHash: outcome.receiptHash } });
+            send({ type: "span.model_request_end", span_id: step.stepId });
           } else {
-            send({ type: "step_error", step: step.stepId, error: outcome.errorMessage ?? "step failed" });
+            send({ type: "session.error", error: outcome.errorMessage ?? "step failed", code: "STEP_ERROR" });
           }
         }
 
@@ -392,22 +394,22 @@ export async function POST(req: NextRequest) {
         const facts = detectClaimsInReply(finalReply, { executedSteps: toolResults.length > 0, hasUserQuestion: true });
         const gate = evaluateAnswerGate(facts);
         send({
-          type: "assistant_reply",
-          reply: gate.allowed ? finalReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${finalReply}`,
+          type: "agent.message",
+          content: gate.allowed ? finalReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${finalReply}`,
           model: synthesis ? HAIKU : "hermes-summary",
           planHash,
           claimBoundary: contractBase.claimBoundary,
           evidenceCount: allEvidence.length,
         });
 
-        send({ type: "done" });
+        send({ type: "session.status_idle", stop_reason: "end_turn" });
       } catch (caught) {
         send({
-          type: "assistant_reply",
-          reply: caught instanceof Error ? caught.message : "Hermes execution failed",
-          model: "hermes-runtime-v1",
+          type: "session.error",
+          error: "Hermes execution failed",
+          code: "RUNTIME_ERROR",
         });
-        send({ type: "done" });
+        send({ type: "session.status_idle", stop_reason: "retries_exhausted" });
       } finally {
         controller.close();
       }
