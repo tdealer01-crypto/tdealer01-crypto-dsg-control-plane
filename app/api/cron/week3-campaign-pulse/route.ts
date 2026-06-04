@@ -92,20 +92,19 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(campaignStatus, { status: 200 });
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
+  } catch (caught) {
+    const errorMsg = caught instanceof Error ? caught.message : String(caught);
 
     console.error('[DSG-CAMPAIGN-ERROR]', {
       timestamp: new Date().toISOString(),
       error: errorMsg,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: caught instanceof Error ? caught.stack : undefined,
     });
 
     return NextResponse.json(
       {
         timestamp: new Date().toISOString(),
         error: 'Campaign pulse check failed',
-        message: errorMsg,
       },
       { status: 500 }
     );

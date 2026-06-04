@@ -98,15 +98,15 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (caught) {
     const duration = Date.now() - startTime;
-    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorMsg = caught instanceof Error ? caught.message : String(caught);
 
     console.error('[readiness-check] Unexpected error:', {
       ip: clientIp,
       error: errorMsg,
       duration,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: caught instanceof Error ? caught.stack : undefined,
     });
 
     return NextResponse.json(

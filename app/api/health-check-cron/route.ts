@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Cron health check handler for ProductHunt launch monitoring
- * Runs every 6 hours: 0 */6 * * * (UTC)
+ * Runs every 6 hours (cron schedule: 0-23/6, UTC)
  * Verifies API health and readiness before June 10 launch
  */
 export async function GET(request: NextRequest) {
@@ -72,13 +72,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(logEntry, { status: healthOk && readinessOk ? 200 : 503 });
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
+  } catch (caught) {
+    const errorMsg = caught instanceof Error ? caught.message : String(caught);
 
     console.error('[DSG-HEALTH-ERROR]', {
       timestamp,
       error: errorMsg,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: caught instanceof Error ? caught.stack : undefined,
     });
 
     return NextResponse.json(
@@ -86,7 +86,6 @@ export async function GET(request: NextRequest) {
         timestamp,
         status: 'error',
         error: 'Health check failed',
-        message: errorMsg,
       },
       { status: 500 }
     );

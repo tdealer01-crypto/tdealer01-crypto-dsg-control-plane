@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
       createdAt: new Date(Date.now() - 604800000).toISOString(),
       updatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
+  } catch (caught) {
+    const errorMsg = caught instanceof Error ? caught.message : String(caught);
     console.error('[readiness-config] Fetch error:', {
       error: errorMsg,
       duration: Date.now() - startTime,
@@ -119,14 +119,14 @@ export async function PATCH(request: NextRequest) {
       changedFields,
       updatedAt: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (caught) {
     const duration = Date.now() - startTime;
-    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorMsg = caught instanceof Error ? caught.message : String(caught);
 
     console.error('[readiness-config] Unexpected error:', {
       error: errorMsg,
       duration,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: caught instanceof Error ? caught.stack : undefined,
     });
 
     return NextResponse.json(
