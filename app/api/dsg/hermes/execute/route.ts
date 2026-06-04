@@ -233,8 +233,8 @@ export async function POST(req: NextRequest) {
           actorRole: agentCtx.role,
         });
         if (preflight.decision === "block") {
-          send({ type: "agent.message", content: `Blocked: ${preflight.reason}`, model: "hermes-preflight" });
-          send({ type: "session.status_idle", stop_reason: "requires_action" });
+          send({ type: "assistant_reply", reply: `Blocked: ${preflight.reason}`, model: "hermes-preflight" });
+          send({ type: "done" });
           controller.close();
           return;
         }
@@ -248,8 +248,8 @@ export async function POST(req: NextRequest) {
           const facts = detectClaimsInReply(planReply, { executedSteps: false, hasUserQuestion: true });
           const gate = evaluateAnswerGate(facts);
           send({
-            type: "agent.message",
-            content: gate.allowed ? planReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${planReply}`,
+            type: "assistant_reply",
+            reply: gate.allowed ? planReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${planReply}`,
             model: "hermes-planner",
           });
         }
@@ -271,10 +271,10 @@ export async function POST(req: NextRequest) {
               for (const step of planSteps) {
                 const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
                 if (!tool) continue;
-                send({ type: "span.model_request_start", span_id: step.id });
+                send({ type: "step_start", step: step.id, tool: step.toolId });
                 try {
                   const result = await executeToolSafely(tool, step.params, agentCtx);
-                  send({ type: "agent.tool_result", tool_use_id: step.id, result });
+                  send({ type: "step_result", step: step.id, result });
                   addToolResultToMemory(sessionKey, step.toolId, result);
                 } catch { /* non-fatal */ }
               }
@@ -289,10 +289,10 @@ export async function POST(req: NextRequest) {
                 for (const step of fallbackPlan.steps) {
                   const tool = DSG_TOOLS.find((t) => t.id === step.toolId);
                   if (!tool) continue;
-                  send({ type: "span.model_request_start", span_id: step.id });
+                  send({ type: "step_start", step: step.id, tool: step.toolId });
                   try {
                     const result = await executeToolSafely(tool, step.params, agentCtx);
-                    send({ type: "agent.tool_result", tool_use_id: step.id, result });
+                    send({ type: "step_result", step: step.id, result });
                   } catch { /* non-fatal */ }
                 }
               } catch { /* non-fatal */ }
@@ -303,11 +303,11 @@ export async function POST(req: NextRequest) {
           const facts = detectClaimsInReply(replyText, { executedSteps: false, hasUserQuestion: true });
           const gate = evaluateAnswerGate(facts);
           send({
-            type: "agent.message",
-            content: gate.allowed ? replyText : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${replyText}`,
+            type: "assistant_reply",
+            reply: gate.allowed ? replyText : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${replyText}`,
             model: "hermes-fallback",
           });
-          send({ type: "session.status_idle", stop_reason: "end_turn" });
+          send({ type: "done" });
           controller.close();
           return;
         }
@@ -348,7 +348,7 @@ export async function POST(req: NextRequest) {
         const allEvidence: EvidenceItem[] = [];
 
         for (const step of plan.steps) {
-          send({ type: "span.model_request_start", span_id: step.stepId, model: step.worker });
+          send({ type: "step_start", step: step.stepId, tool: step.worker });
 
           let outcome = await runStep(step, plan, contract, agentCtx, access.orgId, sessionId);
 
@@ -368,10 +368,9 @@ export async function POST(req: NextRequest) {
 
           if (outcome.success) {
             toolResults.push({ toolId: step.params?.toolId ? String(step.params.toolId) : step.worker, result: { output: outcome.output, decision: outcome.decision } });
-            send({ type: "agent.tool_result", tool_use_id: step.stepId, result: { output: outcome.output, decision: outcome.decision, receiptHash: outcome.receiptHash } });
-            send({ type: "span.model_request_end", span_id: step.stepId });
+            send({ type: "step_result", step: step.stepId, result: { output: outcome.output, decision: outcome.decision, receiptHash: outcome.receiptHash } });
           } else {
-            send({ type: "session.error", error: outcome.errorMessage ?? "step failed", code: "STEP_ERROR" });
+            send({ type: "step_error", step: step.stepId, error: outcome.errorMessage ?? "step failed" });
           }
         }
 
@@ -394,22 +393,18 @@ export async function POST(req: NextRequest) {
         const facts = detectClaimsInReply(finalReply, { executedSteps: toolResults.length > 0, hasUserQuestion: true });
         const gate = evaluateAnswerGate(facts);
         send({
-          type: "agent.message",
-          content: gate.allowed ? finalReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${finalReply}`,
+          type: "assistant_reply",
+          reply: gate.allowed ? finalReply : `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${finalReply}`,
           model: synthesis ? HAIKU : "hermes-summary",
           planHash,
           claimBoundary: contractBase.claimBoundary,
           evidenceCount: allEvidence.length,
         });
 
-        send({ type: "session.status_idle", stop_reason: "end_turn" });
+        send({ type: "done" });
       } catch (caught) {
-        send({
-          type: "session.error",
-          error: "Hermes execution failed",
-          code: "RUNTIME_ERROR",
-        });
-        send({ type: "session.status_idle", stop_reason: "retries_exhausted" });
+        send({ type: "step_error", step: "hermes", error: "Hermes execution failed" });
+        send({ type: "done" });
       } finally {
         controller.close();
       }

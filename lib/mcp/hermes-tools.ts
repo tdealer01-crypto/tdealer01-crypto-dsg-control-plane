@@ -13,8 +13,9 @@ function buildAgentContext(request: NextRequest, args: Record<string, unknown>):
   const origin = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
 
   const orgId = String(args.org_id ?? args.orgId ?? 'mcp:default').trim();
-  const rawRole = String(args.role ?? 'operator');
-  const role: AgentContext['role'] = rawRole === 'org_admin' ? 'org_admin' : 'operator';
+  // Role is always 'operator' for MCP callers — never trust caller-supplied role.
+  // Elevated privileges require server-side session auth via requireOrgRole.
+  const role: AgentContext['role'] = 'operator';
   const approvalToken = typeof args.approvalToken === 'string' ? args.approvalToken : undefined;
 
   return { orgId, role, origin, authHeader, cookieHeader, approvalToken };
