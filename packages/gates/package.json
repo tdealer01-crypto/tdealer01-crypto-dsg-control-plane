@@ -1,0 +1,83 @@
+{
+  "name": "@dsg-platform/gates",
+  "version": "1.0.0",
+  "description": "Deterministic policy gates for AI agents and workflows. Control execution before actions happen.",
+  "license": "MIT",
+  "author": "DSG ONE",
+  "homepage": "https://dsg-platform.com/docs/gates",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+    "directory": "packages/gates"
+  },
+  "keywords": [
+    "ai",
+    "governance",
+    "gates",
+    "policy",
+    "control-plane",
+    "agent",
+    "approval",
+    "workflow",
+    "deterministic",
+    "audit"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "require": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client.js",
+      "require": "./dist/client.js",
+      "types": "./dist/client.d.ts"
+    },
+    "./policy-utils": {
+      "import": "./dist/policy-utils.js",
+      "require": "./dist/policy-utils.js",
+      "types": "./dist/policy-utils.d.ts"
+    },
+    "./examples": {
+      "import": "./dist/examples/index.js",
+      "require": "./dist/examples/index.js",
+      "types": "./dist/examples/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
