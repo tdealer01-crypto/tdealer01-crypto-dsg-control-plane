@@ -101,7 +101,7 @@ export function parseScratchPad(text: string): {
   const match = /<scratch_pad>([\s\S]*?)<\/scratch_pad>/i.exec(text);
   if (!match) return null;
   const body = match[1];
-  const goal = /Goal:\s*(.*?)(?=\n[A-Z]|$)/is.exec(body)?.[1]?.trim();
+  const goal = /Goal:\s*([\s\S]*?)(?=\n[A-Z]|$)/i.exec(body)?.[1]?.trim();
   const actions = /Actions:\s*([\s\S]*?)(?=\nObservation:|$)/i.exec(body)?.[1]?.trim();
   const observation = /Observation:\s*([\s\S]*?)(?=\nReflection:|$)/i.exec(body)?.[1]?.trim();
   const reflection = /Reflection:\s*([\s\S]*?)$/i.exec(body)?.[1]?.trim();
