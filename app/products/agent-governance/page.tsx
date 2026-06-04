@@ -336,7 +336,7 @@ export default function AgentGovernancePage() {
           <div>
             <h3 className="text-xl font-bold mb-2">How do I install the GitHub App?</h3>
             <p className="text-gray-600">
-              Click the "Install" button, authorize the app in your GitHub account, and select which
+              Click the &quot;Install&quot; button, authorize the app in your GitHub account, and select which
               repositories to protect. Setup takes 30 seconds.
             </p>
           </div>
@@ -350,7 +350,7 @@ export default function AgentGovernancePage() {
           </div>
 
           <div>
-            <h3 className="text-xl font-bold mb-2">What's the difference between Freemium and Pro?</h3>
+            <h3 className="text-xl font-bold mb-2">What&apos;s the difference between Freemium and Pro?</h3>
             <p className="text-gray-600">
               Freemium is 10 gate decisions/month (perfect for trying it out). Pro is unlimited decisions,
               approval workflows, notifications, and support.

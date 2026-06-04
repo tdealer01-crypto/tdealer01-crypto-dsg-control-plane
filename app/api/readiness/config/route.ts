@@ -103,8 +103,9 @@ export async function PATCH(request: NextRequest) {
     // 4. Log change to audit trail
     // 5. Notify org members of config change
 
-    const changedFields = Object.keys(validation.data || {}).filter(
-      key => (currentConfig as Record<string, unknown>)[key] !== (validation.data as Record<string, unknown>)[key]
+    const configPatch = validation.data ?? {};
+    const changedFields = (Object.keys(configPatch) as Array<keyof ReadinessConfig>).filter(
+      key => currentConfig[key] !== configPatch[key]
     );
 
     console.log('[readiness-config] Updated', {

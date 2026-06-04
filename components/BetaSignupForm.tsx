@@ -66,9 +66,9 @@ export default function BetaSignupForm({
     return (
       <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 text-center">
         <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-green-900 mb-2">You're in!</h3>
+        <h3 className="text-xl font-bold text-green-900 mb-2">You&apos;re in!</h3>
         <p className="text-green-700 mb-4">
-          Check your email for next steps. We'll be in touch within 24 hours.
+          Check your email for next steps. We&apos;ll be in touch within 24 hours.
         </p>
         {promoCode && (
           <div className="bg-white border-2 border-green-600 rounded p-4 inline-block">
@@ -148,7 +148,7 @@ export default function BetaSignupForm({
       </div>
 
       <p className="text-xs text-gray-600 mt-4 text-center">
-        No spam, no credit card. We'll email you when it's your turn.
+        No spam, no credit card. We&apos;ll email you when it&apos;s your turn.
       </p>
     </form>
   );

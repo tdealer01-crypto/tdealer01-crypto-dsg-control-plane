@@ -1,7 +1,5 @@
-import type { Database } from '@/lib/database.types';
-
 export type CheckType = 'ci_status' | 'migrations' | 'secrets' | 'coverage' | 'reviews';
-export type CheckStatus = 'pass' | 'fail' | 'pending' | 'blocked';
+export type CheckStatus = 'pass' | 'fail' | 'pending' | 'blocked' | 'review_required';
 
 export interface ReadinessCheck {
   type: CheckType;

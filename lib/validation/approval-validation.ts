@@ -1,5 +1,3 @@
-import type { Database } from '@/lib/database.types';
-
 export interface ApprovalValidationError {
   field: string;
   message: string;
@@ -195,7 +193,7 @@ export function validatePaginationParams(
 
   if (offset !== undefined) {
     const num = typeof offset === 'string' ? parseInt(offset, 10) : offset;
-    if (!Number.isInteger(num) || num < 0) {
+    if (typeof num !== 'number' || !Number.isInteger(num) || num < 0) {
       errors.push({
         field: 'offset',
         message: 'offset must be a non-negative integer',
@@ -214,7 +212,7 @@ export function validatePaginationParams(
 
   if (limit !== undefined) {
     const num = typeof limit === 'string' ? parseInt(limit, 10) : limit;
-    if (!Number.isInteger(num) || num < 1) {
+    if (typeof num !== 'number' || !Number.isInteger(num) || num < 1) {
       errors.push({
         field: 'limit',
         message: 'limit must be a positive integer',

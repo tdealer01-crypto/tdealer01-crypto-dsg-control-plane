@@ -1,7 +1,7 @@
 import { spawnSync } from 'child_process';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { createHash } from 'crypto';
 
 export interface TerminalSandboxOptions {
@@ -96,7 +96,7 @@ export function runInSandbox(
   }
 
   const safeEnv: Record<string, string> = {
-    PATH: '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin',
+    PATH: `${dirname(process.execPath)}:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin`,
     HOME: cwd,
     TMPDIR: cwd,
     ...Object.fromEntries(
@@ -116,7 +116,7 @@ export function runInSandbox(
     });
 
     const stdout = String(result.stdout ?? '').slice(0, maxOutputBytes);
-    const stderr = String(result.stderr ?? '').slice(0, maxOutputBytes);
+    const stderr = String(result.stderr ?? result.error?.message ?? '').slice(0, maxOutputBytes);
     const timedOut = result.signal === 'SIGTERM';
 
     return {
