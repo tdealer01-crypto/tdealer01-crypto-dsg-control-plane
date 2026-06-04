@@ -403,7 +403,8 @@ export async function POST(req: NextRequest) {
 
         send({ type: "done" });
       } catch (caught) {
-        send({ type: "step_error", step: "hermes", error: "Hermes execution failed" });
+        const errMsg = caught instanceof Error ? caught.message : "Hermes execution failed";
+        send({ type: "assistant_reply", reply: `❌ Hermes ไม่สามารถดำเนินการได้: ${errMsg}`, model: "hermes-error" });
         send({ type: "done" });
       } finally {
         controller.close();
