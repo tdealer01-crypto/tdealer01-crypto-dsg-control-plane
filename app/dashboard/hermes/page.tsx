@@ -443,7 +443,7 @@ export default function HermesAgentPage() {
       role: 'agent',
       content: `สวัสดี — ฉันคือ Hermes Agent สำหรับ DSG ONE Control Plane
 
-ฉันมี 25 tools พร้อมใช้ทันที:
+ฉันมี 33 tools พร้อมใช้ทันที:
 
 📊 สถานะระบบ
   • "system status" — readiness ทั้งระบบ

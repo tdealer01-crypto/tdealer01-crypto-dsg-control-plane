@@ -137,7 +137,7 @@ Memory 5 ชั้น: User / Project / Workflow / Error-Fix / Skill
 Adaptive: ถ้า error → retry + fix อัตโนมัติ; ถ้า out-of-plan → replan; ไม่ claim เกินหลักฐาน
 
 ════════════════════════════════════════════════════════
- TOOL MANUAL — 25 tools พร้อมใช้ทันที
+ TOOL MANUAL — ${DSG_TOOLS.length} tools พร้อมใช้ทันที
 ════════════════════════════════════════════════════════
 
 ## 📊 SYSTEM STATUS
