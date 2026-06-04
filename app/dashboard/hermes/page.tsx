@@ -436,6 +436,19 @@ function HermesRuntimePanel({ data }: { data: HermesRuntimeStatus | null }) {
   );
 }
 
+const HISTORY_KEY = 'hermes-chat-history';
+const HISTORY_MAX = 120;
+
+function loadHistory(): Message[] | null {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Message[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed;
+  } catch { return null; }
+}
+
 export default function HermesAgentPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -513,6 +526,20 @@ export default function HermesAgentPage() {
   const cameraCanvasRef = useRef<HTMLCanvasElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Restore chat history from localStorage on first mount
+  useEffect(() => {
+    const saved = loadHistory();
+    if (saved) setMessages(saved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist chat history to localStorage on every change (capped at HISTORY_MAX)
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-HISTORY_MAX)));
+    } catch { /* storage full — ignore */ }
+  }, [messages]);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -885,6 +912,22 @@ export default function HermesAgentPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              try { localStorage.removeItem(HISTORY_KEY); } catch { /* ignore */ }
+              setMessages([{
+                id: 'welcome',
+                role: 'agent',
+                content: 'สวัสดี — ประวัติถูกล้างแล้ว พิมพ์คำถามได้เลย',
+                ts: Date.now(),
+              }]);
+            }}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            title="ล้างประวัติ"
+          >
+            ล้างประวัติ
+          </button>
           <Link
             href="/dashboard/hermes/skills"
             className="rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300 transition hover:bg-violet-500/20"
