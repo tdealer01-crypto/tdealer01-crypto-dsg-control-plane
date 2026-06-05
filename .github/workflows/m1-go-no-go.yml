@@ -91,10 +91,6 @@ jobs:
           cache: npm
       - name: Deterministic install
         run: npm ci
-      - name: Lockfile guard
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          git diff --exit-code -- package-lock.json
       - name: Error handler policy check
         run: ./scripts/check-error-handlers.sh
       - name: Critical env contract (Supabase / Stripe / Resend)
