@@ -3,48 +3,28 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { parseSseData, formatAgentEventMessage } from '../../../lib/agent/chat-event';
+import { usePageMemory } from '../../../hooks/usePageMemory';
 
 type GateStatus = 'PASS' | 'BLOCK' | 'REVIEW' | 'UNSUPPORTED';
-type EvidenceState = 'present' | 'missing' | 'planned' | 'unsupported';
-type RuntimeStatus =
-  | 'GOAL_LOCKED'
-  | 'INSPECTING'
-  | 'GRAPH_BUILDING'
-  | 'GRAPH_READY'
-  | 'PLANNING'
-  | 'WAITING_APPROVAL'
-  | 'RUNNING'
-  | 'VERIFYING'
-  | 'BLOCKED'
-  | 'COMPLETED'
-  | 'RESET'
-  | 'CHECKING'
-  | 'DEGRADED';
-type ClaimStatus = 'BUILDABLE' | 'IMPLEMENTED' | 'VERIFIED' | 'DEPLOYABLE' | 'PRODUCTION' | 'BLOCKED' | 'REVIEW' | 'UNSUPPORTED';
+type RuntimeStatus = 'CHECKING' | 'GRAPH_READY' | 'DEGRADED' | 'RUNNING' | 'BLOCKED';
+type ClaimStatus = 'REVIEW' | 'BLOCKED';
 
 type HealthPayload = {
   service?: string;
   timestamp?: string;
   core_ok?: boolean;
-  core?: {
-    status?: string;
-    version?: string;
-    error?: string;
-  };
+  core?: { status?: string; version?: string; error?: string };
 };
 
 type CapacityPayload = {
   ok?: boolean;
   plan_key?: string;
-  billing_interval?: string;
   subscription_status?: string;
-  billing_period?: string;
-  executions: number;
+  executions?: number;
   included_executions?: number;
-  remaining_executions: number;
-  utilization: number;
-  overage_executions?: number;
-  projected_amount_usd: number;
+  remaining_executions?: number;
+  utilization?: number;
+  projected_amount_usd?: number;
 };
 
 type UsagePayload = {
@@ -53,7 +33,6 @@ type UsagePayload = {
   billing_period?: string;
   executions?: number;
   included_executions?: number;
-  overage_executions?: number;
   projected_amount_usd?: number;
 };
 
@@ -69,51 +48,18 @@ type AuditPayload = {
   }>;
 };
 
-type Blocker = {
-  status: GateStatus;
-  reason: string;
-  affected: string;
-  nextAction: string;
-  evidenceRequired: string;
+type CommandCenterMemory = {
+  command: string;
+  chatOutput: string[];
+  error: string;
 };
 
-type TimelineAction = {
-  name: string;
-  status: RuntimeStatus | GateStatus;
-  actor: string;
-  risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  evidence: string;
-};
+const PAGE_KEY = '/dashboard/command-center';
 
-type EvidenceItem = {
-  label: string;
-  state: EvidenceState;
-  detail: string;
-  source: string;
-};
-
-type ClaimRow = {
-  claim: ClaimStatus;
-  status: GateStatus;
-  reason: string;
-  evidencePresent: string;
-  evidenceRequired: string;
-};
-
-type ApprovalItem = {
-  id: string;
-  requestedAction: string;
-  risk: 'HIGH' | 'CRITICAL';
-  approverRole: string;
-  reason: string;
-  evidence: string;
-  routeStatus: 'wired' | 'not_wired';
-};
-
-type OperatorControl = {
-  label: string;
-  status: 'wired' | 'not_wired';
-  reason: string;
+const INITIAL_MEMORY: CommandCenterMemory = {
+  command: '',
+  chatOutput: [],
+  error: '',
 };
 
 function formatDate(value?: string) {
@@ -125,22 +71,15 @@ function formatDate(value?: string) {
   }
 }
 
-function resultTone(result?: string) {
-  const normalized = (result || '').toUpperCase();
-  if (normalized.includes('BLOCK') || normalized.includes('FREEZE')) return 'border-red-400/25 bg-red-500/10 text-red-100';
-  if (normalized.includes('WARN') || normalized.includes('STABILIZE') || normalized.includes('REVIEW')) return 'border-amber-300/25 bg-amber-300/10 text-amber-100';
-  return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100';
-}
-
-function statusTone(status: GateStatus | RuntimeStatus | ClaimStatus | EvidenceState) {
+function statusTone(status: GateStatus | RuntimeStatus | ClaimStatus) {
   const normalized = status.toUpperCase();
-  if (['PASS', 'PRESENT', 'GRAPH_READY', 'COMPLETED', 'VERIFIED', 'IMPLEMENTED', 'BUILDABLE'].includes(normalized)) return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100';
-  if (['BLOCK', 'BLOCKED', 'MISSING', 'DEGRADED'].includes(normalized)) return 'border-red-400/30 bg-red-500/10 text-red-100';
-  if (['REVIEW', 'PLANNED', 'WAITING_APPROVAL', 'VERIFYING', 'PLANNING', 'GRAPH_BUILDING', 'CHECKING'].includes(normalized)) return 'border-amber-300/30 bg-amber-300/10 text-amber-100';
+  if (['PASS', 'GRAPH_READY'].includes(normalized)) return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100';
+  if (['BLOCK', 'BLOCKED', 'DEGRADED'].includes(normalized)) return 'border-red-400/30 bg-red-500/10 text-red-100';
+  if (['REVIEW', 'CHECKING', 'RUNNING'].includes(normalized)) return 'border-amber-300/30 bg-amber-300/10 text-amber-100';
   return 'border-slate-500/30 bg-slate-800/70 text-slate-200';
 }
 
-function StatusPill({ status }: { status: GateStatus | RuntimeStatus | ClaimStatus | EvidenceState }) {
+function StatusPill({ status }: { status: GateStatus | RuntimeStatus | ClaimStatus }) {
   return <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusTone(status)}`}>{status}</span>;
 }
 
@@ -154,99 +93,20 @@ function Panel({ eyebrow, title, children }: { eyebrow: string; title: string; c
   );
 }
 
-const sampleBlockers: Blocker[] = [
-  {
-    status: 'BLOCK',
-    reason: 'Production claim is blocked because production flow proof is not present on this page.',
-    affected: 'production-claim-gate',
-    nextAction: 'Run and attach production flow proof before claiming PRODUCTION.',
-    evidenceRequired: 'deployment proof + production flow proof + auth/RBAC proof + audit/replay proof',
-  },
-  {
-    status: 'REVIEW',
-    reason: 'High-risk runtime actions require explicit human approval before execution.',
-    affected: 'approval-gate',
-    nextAction: 'Open approval queue and approve/reject with rationale.',
-    evidenceRequired: 'approval record with actor, decision, reason, and approvalHash',
-  },
-  {
-    status: 'UNSUPPORTED',
-    reason: 'Context graph build route is a proposed route unless backend API is verified.',
-    affected: 'context-graph-gate',
-    nextAction: 'Implement or connect context graph API before treating graph output as live state.',
-    evidenceRequired: 'graph.json + GRAPH_REPORT.md + graph hash + secret/privacy gate record',
-  },
-];
-
-const graphWorkflow: TimelineAction[] = [
-  { name: 'Goal lock', status: 'GOAL_LOCKED', actor: 'operator', risk: 'LOW', evidence: 'User goal frozen before planning.' },
-  { name: 'Repository inspection', status: 'INSPECTING', actor: 'context agent', risk: 'MEDIUM', evidence: 'Read repo files before planning.' },
-  { name: 'Privacy + secret gate', status: 'REVIEW', actor: 'policy gate', risk: 'HIGH', evidence: 'No external extraction without decision.' },
-  { name: 'Context graph build', status: 'GRAPH_BUILDING', actor: 'Graphify context layer', risk: 'MEDIUM', evidence: 'graph.json / GRAPH_REPORT.md required.' },
-  { name: 'Plan gate', status: 'PLANNING', actor: 'DSG planner', risk: 'HIGH', evidence: 'Plan must use graph-backed context only.' },
-  { name: 'Approval gate', status: 'WAITING_APPROVAL', actor: 'approver', risk: 'HIGH', evidence: 'Approval required before runtime handoff.' },
-  { name: 'Execution handoff', status: 'BLOCKED', actor: 'controlled executor', risk: 'CRITICAL', evidence: 'Blocked until Step 16 runtime evidence exists.' },
-];
-
-const proofFields: EvidenceItem[] = [
-  { label: 'policyVersion', state: 'present', detail: 'Observed scaffold field: 1.0.', source: 'live deterministic gate scaffold evidence' },
-  { label: 'inputHash', state: 'present', detail: 'Hash field present in scaffold response.', source: 'proof/gate scaffold' },
-  { label: 'constraintSetHash', state: 'present', detail: 'Constraint set hash field present.', source: 'proof/gate scaffold' },
-  { label: 'proofHash', state: 'present', detail: 'Proof hash field present.', source: 'proof/gate scaffold' },
-  { label: 'structured constraint results', state: 'present', detail: 'Per-constraint result shape is present.', source: 'proof/gate scaffold' },
-  { label: 'replayProtection.nonce', state: 'present', detail: 'Replay nonce field present.', source: 'replay-protection evidence' },
-  { label: 'replayProtection.idempotencyKey', state: 'present', detail: 'Idempotency key field present.', source: 'replay-protection evidence' },
-  { label: 'replayProtection.requestHash', state: 'present', detail: 'Request hash field present.', source: 'replay-protection evidence' },
-  { label: 'external Z3 production invocation', state: 'unsupported', detail: 'Not claimed. Current solver boundary is static_check.', source: 'truth boundary' },
-];
-
-const claimRows: ClaimRow[] = [
-  { claim: 'BUILDABLE', status: 'PASS', reason: 'Command Center and Graphify workflow are defined as an operator surface.', evidencePresent: 'route + UI contract', evidenceRequired: 'repo inspection and implementation plan' },
-  { claim: 'IMPLEMENTED', status: 'PASS', reason: 'This route exists in code and renders live health/capacity/audit surfaces.', evidencePresent: 'app/dashboard/command-center/page.tsx', evidenceRequired: 'merged code' },
-  { claim: 'VERIFIED', status: 'REVIEW', reason: 'Verification depends on test/build output and evidence manifests.', evidencePresent: 'deterministic scaffold fields are disclosed', evidenceRequired: 'test output + evidence manifest + replay proof' },
-  { claim: 'DEPLOYABLE', status: 'BLOCK', reason: 'Deployment proof is not shown as present on this page.', evidencePresent: 'none on this surface', evidenceRequired: 'Vercel ready state + deployment proof + build pass' },
-  { claim: 'PRODUCTION', status: 'BLOCK', reason: 'Production user-flow proof is missing.', evidencePresent: 'none on this surface', evidenceRequired: 'production flow proof + auth/RBAC proof + audit/replay/evidence proof' },
-];
-
-const approvalItems: ApprovalItem[] = [
-  {
-    id: 'sample-high-risk-approval',
-    requestedAction: 'Runtime handoff for graph-backed implementation plan',
-    risk: 'HIGH',
-    approverRole: 'approver / owner',
-    reason: 'High-risk code/runtime changes require human approval before controlled execution.',
-    evidence: 'graph report + plan gate result + approval record required',
-    routeStatus: 'not_wired',
-  },
-  {
-    id: 'sample-production-claim-review',
-    requestedAction: 'Upgrade claim from REVIEW to PRODUCTION',
-    risk: 'CRITICAL',
-    approverRole: 'owner + compliance reviewer',
-    reason: 'Production claim requires real production-flow proof and cannot be auto-approved.',
-    evidence: 'deployment proof + production flow proof + audit/replay/evidence proof required',
-    routeStatus: 'not_wired',
-  },
-];
-
-const operatorControls: OperatorControl[] = [
-  { label: 'Pause runtime', status: 'not_wired', reason: 'Runtime control route not wired on this page.' },
-  { label: 'Resume runtime', status: 'not_wired', reason: 'Runtime control route not wired on this page.' },
-  { label: 'Kill runtime', status: 'not_wired', reason: 'Runtime control route not wired on this page.' },
-  { label: 'Approve action', status: 'not_wired', reason: 'Approval mutation route is not invoked from this surface.' },
-  { label: 'Reject action', status: 'not_wired', reason: 'Approval mutation route is not invoked from this surface.' },
-  { label: 'Request changes', status: 'not_wired', reason: 'Reviewer feedback route is not wired on this page.' },
-];
-
 export default function CommandCenterPage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [capacity, setCapacity] = useState<CapacityPayload | null>(null);
   const [usage, setUsage] = useState<UsagePayload | null>(null);
   const [audit, setAudit] = useState<AuditPayload | null>(null);
-  const [command, setCommand] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
-  const [chatOutput, setChatOutput] = useState<string[]>([]);
-  const [error, setError] = useState('');
+
+  const {
+    value: memory,
+    setValue: setMemory,
+    loaded: memoryLoaded,
+    error: memoryError,
+    reset: resetMemory,
+  } = usePageMemory(PAGE_KEY, INITIAL_MEMORY);
 
   useEffect(() => {
     let alive = true;
@@ -255,29 +115,28 @@ export default function CommandCenterPage() {
       fetch('/api/health', { cache: 'no-store' }).then(async (response) => {
         const json = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(json.error || 'Failed to load health');
-        return json;
+        return json as HealthPayload;
       }),
       fetch('/api/capacity', { cache: 'no-store' }).then(async (response) => {
         const json = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(json.error || 'Failed to load capacity');
-        return json;
+        return json as CapacityPayload;
       }),
       fetch('/api/usage', { cache: 'no-store' }).then(async (response) => {
         const json = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(json.error || 'Failed to load usage');
-        return json;
+        return json as UsagePayload;
       }),
       fetch('/api/audit?limit=8', { cache: 'no-store' }).then(async (response) => {
         const json = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(json.error || 'Failed to load audit');
-        return json;
+        return json as AuditPayload;
       }),
     ])
       .then(([healthRes, capacityRes, usageRes, auditRes]) => {
         if (!alive) return;
 
         const errors: string[] = [];
-
         if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
         else errors.push(healthRes.reason?.message || 'Failed to load health');
 
@@ -290,17 +149,17 @@ export default function CommandCenterPage() {
         if (auditRes.status === 'fulfilled') setAudit(auditRes.value);
         else errors.push(auditRes.reason?.message || 'Failed to load audit');
 
-        if (errors.length > 0) setError(errors.join(' • '));
+        setMemory((prev) => ({ ...prev, error: errors.join(' • ') }));
       })
       .catch((err) => {
         if (!alive) return;
-        setError(err instanceof Error ? err.message : 'Failed to load command center');
+        setMemory((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to load command center' }));
       });
 
     return () => {
       alive = false;
     };
-  }, []);
+  }, [setMemory]);
 
   const overallStatus = useMemo<RuntimeStatus>(() => {
     if (!health) return 'CHECKING';
@@ -312,58 +171,34 @@ export default function CommandCenterPage() {
     return events.filter((item) => ['BLOCK', 'FREEZE'].includes((item.gate_result || '').toUpperCase()));
   }, [audit]);
 
-  const evidenceItems = useMemo<EvidenceItem[]>(
-    () => [
-      { label: 'Context graph JSON', state: 'planned', detail: 'Required by Graphify skill. Not treated as live until generated.', source: 'proposed /api/dsg/context-graph/build' },
-      { label: 'GRAPH_REPORT.md', state: 'planned', detail: 'Must list inspected files, inferred edges, missing evidence, and risks.', source: 'Graphify context evidence layer' },
-      { label: 'Evidence manifest', state: 'missing', detail: 'Required before upgrading claim beyond review surface.', source: 'evidence gate' },
-      { label: 'Audit ledger entries', state: audit?.items?.length ? 'present' : 'missing', detail: audit?.items?.length ? `${audit.items.length} latest audit item(s) loaded.` : 'No audit items loaded for this page.', source: '/api/audit?limit=8' },
-      { label: 'Replay proof', state: 'missing', detail: 'Required for VERIFIED/DEPLOYABLE claim upgrades.', source: 'replay gate' },
-      { label: 'Deployment proof', state: 'missing', detail: 'Required before DEPLOYABLE claim.', source: 'deployment gate' },
-      { label: 'Production flow proof', state: 'missing', detail: 'Required before PRODUCTION claim.', source: 'production claim gate' },
-    ],
-    [audit?.items],
-  );
-
-  const auditUnavailableInInternalMode = useMemo(() => {
-    const message = (audit?.error || '').toLowerCase();
-    return message.includes('internal dsg core mode');
-  }, [audit?.error]);
-
-  const suggestedActions = useMemo(() => {
-    const actions: string[] = [];
-    if (!health?.core_ok) actions.push('Verify DSG core connectivity and runtime credentials.');
-    if ((capacity?.utilization ?? 0) > 0.8) actions.push('Reduce execution load or expand plan capacity before quota pressure becomes operational risk.');
-    if (alerts.length > 0) actions.push('Review the latest BLOCK or FREEZE events before releasing more approvals.');
-    actions.push('Build or attach a context graph before planning risky repository changes.');
-    actions.push('Keep production claim BLOCKED until deployment and production-flow proofs exist.');
-    return actions;
-  }, [alerts.length, capacity?.utilization, health?.core_ok]);
-
   const metrics = useMemo(
     () => [
       { label: 'Runtime status', value: overallStatus, helper: health?.core?.version || 'Graph-backed review surface' },
       { label: 'Current claim', value: 'REVIEW', helper: 'Verification evidence still required' },
-      { label: 'Production claim', value: 'BLOCKED', helper: 'No production flow proof on this surface' },
-      { label: 'Active blockers', value: String(sampleBlockers.length + alerts.length), helper: `${alerts.length} live audit alert(s)` },
+      { label: 'Production claim', value: 'BLOCKED', helper: 'Production-flow proof required' },
+      { label: 'Active audit alerts', value: String(alerts.length), helper: `${audit?.items?.length ?? 0} latest audit item(s)` },
     ],
-    [alerts.length, health?.core?.version, overallStatus],
+    [alerts.length, audit?.items?.length, health?.core?.version, overallStatus],
   );
 
-  const hasNoRuntimeJobs = !audit?.items?.length && (capacity?.executions ?? 0) === 0;
+  function appendChatOutput(line: string) {
+    setMemory((prev) => ({ ...prev, chatOutput: [...prev.chatOutput, line].slice(-160) }));
+  }
 
   async function submitCommand() {
-    const value = command.trim();
+    const value = memory.command.trim();
     if (!value || chatBusy) return;
+
     setChatBusy(true);
-    setChatOutput((prev) => [...prev, `> ${value}`]);
+    appendChatOutput(`> ${value}`);
 
     try {
       const res = await fetch('/api/agent-chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: value }),
+        body: JSON.stringify({ message: value, pageContext: 'command-center', sessionId: PAGE_KEY }),
       });
+
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || 'Agent chat failed');
@@ -374,6 +209,8 @@ export default function CommandCenterPage() {
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let sawFinalEvent = false;
+
       while (true) {
         const { done, value: chunk } = await reader.read();
         if (done) break;
@@ -385,15 +222,19 @@ export default function CommandCenterPage() {
           if (!raw.startsWith('data: ')) continue;
           const event = parseSseData(raw);
           if (!event) continue;
+          if (event.type === 'done') sawFinalEvent = true;
           const message = formatAgentEventMessage(event);
           if (!message) continue;
-          setChatOutput((prev) => [...prev, message]);
+          appendChatOutput(message);
         }
       }
 
-      setCommand('');
+      if (!sawFinalEvent) appendChatOutput('⚠️ Stream ended before final done event. Inspect runtime logs before claiming completion.');
+      setMemory((prev) => ({ ...prev, command: '' }));
     } catch (err) {
-      setChatOutput((prev) => [...prev, err instanceof Error ? err.message : 'Agent chat failed']);
+      const message = err instanceof Error ? err.message : 'Agent chat failed';
+      appendChatOutput(message);
+      setMemory((prev) => ({ ...prev, error: message }));
     } finally {
       setChatBusy(false);
     }
@@ -406,9 +247,9 @@ export default function CommandCenterPage() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <p className="text-[11px] uppercase tracking-[0.32em] text-slate-500">DSG ONE Command Center</p>
-              <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">Runtime control surface with Graphify context evidence.</h1>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight text-white md:text-5xl">Runtime control surface with refresh-safe page memory.</h1>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                Command Center shows what DSG ONE is doing, what it blocked, what needs approval, and what evidence supports each claim. The Graphify context layer reduces blind code navigation by requiring repo inspection, privacy gates, extracted/inferred edge labels, graph evidence, and claim gates before runtime execution.
+                Command Center shows what DSG ONE is doing, what it blocked, what needs approval, and what evidence supports each claim. Operator console state now restores from `/api/ui-memory` after refresh instead of disappearing with client-only state.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -418,6 +259,13 @@ export default function CommandCenterPage() {
             </div>
           </div>
         </section>
+
+        {(memory.error || memoryError) ? (
+          <section className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+            <p className="font-semibold">Persistence / data notice</p>
+            <p className="mt-1 text-amber-50/80">{memoryError || memory.error}</p>
+          </section>
+        ) : null}
 
         <section className="grid gap-4 md:grid-cols-4">
           {metrics.map((item) => (
@@ -429,179 +277,106 @@ export default function CommandCenterPage() {
           ))}
         </section>
 
-        {hasNoRuntimeJobs ? (
-          <Panel eyebrow="Empty state" title="No active runtime job found">
-            <p className="text-sm leading-7 text-slate-300">No live job or audit stream is available on this page yet. Start from a safe planning surface or inspect public evidence before claiming runtime completion.</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950" href="/automation">Create governed draft in Auto Mode</Link>
-              <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/enterprise-proof/demo">View live gate evidence</Link>
-              <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/evidence-pack">Open evidence pack</Link>
+        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <Panel eyebrow="Chat / Agent Console" title="Refresh-safe command console">
+            <div className="rounded-xl border border-slate-800 bg-black/30 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                <span>{memoryLoaded ? 'Memory loaded from /api/ui-memory' : 'Loading page memory...'}</span>
+                <button
+                  type="button"
+                  onClick={resetMemory}
+                  disabled={chatBusy}
+                  className="rounded-lg border border-slate-700 px-3 py-1 text-slate-300 transition hover:border-amber-300/60 disabled:opacity-50"
+                >
+                  Reset saved console
+                </button>
+              </div>
+              <div className="min-h-64 max-h-96 overflow-y-auto rounded-lg border border-white/10 bg-[#050609] p-4 font-mono text-xs leading-6 text-slate-200">
+                {memory.chatOutput.length === 0 ? (
+                  <p className="text-slate-600">No command output yet. Submit a safe command; refresh will preserve this panel after persistence is active.</p>
+                ) : (
+                  memory.chatOutput.map((line, index) => <p key={`${index}-${line.slice(0, 16)}`} className="whitespace-pre-wrap break-words">{line}</p>)
+                )}
+              </div>
+              <div className="mt-4 flex flex-col gap-3 md:flex-row">
+                <textarea
+                  value={memory.command}
+                  onChange={(event) => setMemory((prev) => ({ ...prev, command: event.target.value }))}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      submitCommand();
+                    }
+                  }}
+                  disabled={chatBusy}
+                  rows={2}
+                  className="min-h-14 flex-1 resize-none rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition focus:border-amber-300/50"
+                  placeholder="Ask DSG to inspect status, list blockers, or explain the next safe action..."
+                />
+                <button
+                  type="button"
+                  onClick={submitCommand}
+                  disabled={chatBusy || !memory.command.trim()}
+                  className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {chatBusy ? 'Running...' : 'Run in Agent Chat'}
+                </button>
+              </div>
             </div>
           </Panel>
-        ) : null}
 
-        <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-          <div className="space-y-6">
-            <Panel eyebrow="Claim gate summary" title="What can be claimed now">
-              <div className="space-y-3">
-                <div className="border border-amber-300/20 bg-amber-300/10 p-4">
-                  <div className="flex items-center justify-between gap-3"><span className="font-semibold text-amber-100">Current Claim</span><StatusPill status="REVIEW" /></div>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Runtime UI and deterministic scaffold evidence exist, but VERIFIED requires current test/build evidence, evidence manifest, and replay proof.</p>
+          <Panel eyebrow="Monitor / Control Panel" title="Live evidence and blockers">
+            <div className="space-y-4 text-sm text-slate-300">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-white">System health</span>
+                  <StatusPill status={overallStatus} />
                 </div>
-                <div className="border border-red-400/20 bg-red-500/10 p-4">
-                  <div className="flex items-center justify-between gap-3"><span className="font-semibold text-red-100">Production Claim</span><StatusPill status="BLOCKED" /></div>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Production claim is blocked until real production user-flow proof, deployment proof, auth/RBAC proof, audit proof, evidence proof, and replay proof are present.</p>
+                <p className="mt-2 text-xs text-slate-500">Service: {health?.service ?? 'not loaded'} · Timestamp: {formatDate(health?.timestamp)}</p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-white">Capacity</span>
+                  <span className="font-mono text-amber-100">{Math.round((capacity?.utilization ?? 0) * 100)}%</span>
                 </div>
+                <p className="mt-2 text-xs text-slate-500">Executions: {capacity?.executions ?? usage?.executions ?? 0} · Remaining: {capacity?.remaining_executions ?? '-'} · Plan: {capacity?.plan_key ?? usage?.plan ?? '-'}</p>
               </div>
-            </Panel>
 
-            <Panel eyebrow="Gate & blockers" title="Why execution/claims are stopped">
-              <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs leading-5 text-slate-400">Sample blocker model — replace with live job blockers when backend data is available. Sample state is not production truth.</div>
-              <div className="space-y-3">
-                {sampleBlockers.map((blocker) => (
-                  <article key={blocker.affected} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="font-semibold text-white">{blocker.affected}</h3><StatusPill status={blocker.status} /></div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{blocker.reason}</p>
-                    <p className="mt-2 text-xs text-amber-100">Next action: {blocker.nextAction}</p>
-                    <p className="mt-1 text-xs text-slate-500">Evidence required: {blocker.evidenceRequired}</p>
-                  </article>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Approval queue" title="High-risk actions need human review">
-              <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs leading-5 text-slate-400">Sample approval queue — buttons stay disabled until approval routes are wired into this page.</div>
-              <div className="space-y-3">
-                {approvalItems.map((item) => (
-                  <article key={item.id} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="font-semibold text-white">{item.requestedAction}</h3><StatusPill status="REVIEW" /></div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.reason}</p>
-                    <p className="mt-2 text-xs text-slate-500">Risk: {item.risk} · Required role: {item.approverRole}</p>
-                    <p className="mt-1 text-xs text-slate-500">Evidence: {item.evidence}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {['Approve', 'Reject', 'Request changes'].map((label) => (
-                        <button key={label} type="button" disabled className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-400 disabled:cursor-not-allowed disabled:opacity-60">{label} — route not wired</button>
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Runtime controls" title="Control routes are explicit">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {operatorControls.map((control) => (
-                  <button key={control.label} type="button" disabled className="rounded-xl border border-slate-700 bg-black/20 p-4 text-left disabled:cursor-not-allowed disabled:opacity-70">
-                    <span className="block text-sm font-semibold text-slate-200">{control.label}</span>
-                    <span className="mt-2 block text-xs leading-5 text-slate-500">{control.reason}</span>
-                  </button>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Operator next actions" title="Do the next useful thing">
-              <div className="grid gap-3">
-                <Link className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950" href="/automation">Open Auto Mode</Link>
-                <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/evidence-pack">Export evidence pack</Link>
-                <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/docs">Read deterministic gate docs</Link>
-                <Link className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-slate-100" href="/dashboard/policies">Review policies</Link>
-              </div>
-            </Panel>
-          </div>
-
-          <div className="grid gap-6">
-            <Panel eyebrow="Graphify context evidence layer" title="Inspect → graph → plan → gate">
-              <div className="grid gap-3 md:grid-cols-2">
-                {graphWorkflow.map((step, index) => (
-                  <div key={step.name} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-3"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Step {index + 1}</p><StatusPill status={step.status} /></div>
-                    <h3 className="mt-3 font-semibold text-white">{step.name}</h3>
-                    <p className="mt-2 text-xs text-slate-400">Actor: {step.actor} · Risk: {step.risk}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{step.evidence}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-50">
-                Graphify-style context graphs are a context evidence layer. They do not replace tests, audits, permissions, deployment proof, or production flow proof.
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Evidence / audit / replay" title="Evidence availability">
-              <div className="grid gap-3 md:grid-cols-2">
-                {evidenceItems.map((item) => (
-                  <div key={item.label} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="font-semibold text-white">{item.label}</h3><StatusPill status={item.state} /></div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.detail}</p>
-                    <p className="mt-2 text-xs text-slate-500">Source: {item.source}</p>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Deterministic proof / gate" title="Verified scaffold fields">
-              <div className="grid gap-3 md:grid-cols-3">
-                {proofFields.map((item) => (
-                  <div key={item.label} className="border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="text-sm font-semibold text-white">{item.label}</h3><StatusPill status={item.state} /></div>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm leading-6 text-slate-300">Boundary: this is a deterministic TypeScript static_check scaffold. This page does not claim external Z3 production invocation.</p>
-            </Panel>
-
-            <Panel eyebrow="Live action monitor" title="Monitor / Control Panel">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-white">Chat / Agent Console</h3>
-                    <button type="button" onClick={submitCommand} disabled={chatBusy} className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300">{chatBusy ? 'Running…' : 'Run'}</button>
-                  </div>
-                  <textarea value={command} onChange={(e) => setCommand(e.target.value)} placeholder="Ask readiness, audit, graph, capacity, or recovery questions..." className="mt-4 h-32 w-full border border-white/10 bg-black/30 p-4 text-sm text-slate-100 outline-none transition focus:border-amber-300/40" />
-                  {error ? <p className="mt-3 text-sm text-red-200">{error}</p> : null}
-                  <div className="mt-4 max-h-64 space-y-3 overflow-y-auto pr-1">
-                    {chatOutput.length === 0 ? <p className="text-sm text-slate-500">No output yet.</p> : null}
-                    {chatOutput.map((line, index) => (<pre key={`${index}-${line.slice(0, 8)}`} className="overflow-x-auto border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{line}</pre>))}
-                  </div>
+              <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-red-100">Production claim</span>
+                  <StatusPill status="BLOCKED" />
                 </div>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Keep production claim blocked until deployment proof, production-flow proof, auth/RBAC proof, audit proof, evidence proof, and replay proof are present.</p>
+              </div>
 
-                <div>
-                  <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">Latest audit</h3><span className="text-xs text-slate-500">{formatDate(health?.timestamp)}</span></div>
-                  <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
-                    {(audit?.items || []).map((item) => (
-                      <div key={`${item.id}-${item.created_at}`} className={`border p-4 ${resultTone(item.gate_result)}`}>
-                        <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold uppercase tracking-[0.18em]">{item.gate_result || '-'}</p><p className="text-xs text-slate-400">{formatDate(item.created_at)}</p></div>
-                        <p className="mt-3 text-xs text-slate-300">Entropy: {typeof item.entropy === 'number' ? item.entropy.toFixed(4) : '-'}</p>
-                        <p className="mt-2 break-all text-xs text-slate-500">State hash: {item.state_hash || '-'}</p>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                <p className="font-semibold text-white">Latest audit items</p>
+                <div className="mt-3 space-y-2">
+                  {(audit?.items ?? []).length === 0 ? (
+                    <p className="text-xs text-slate-500">No audit items loaded for this page.</p>
+                  ) : (
+                    (audit?.items ?? []).map((item) => (
+                      <div key={item.id ?? item.state_hash} className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-200">{item.gate_result ?? 'unknown'}</span>
+                          <span className="text-slate-500">{formatDate(item.created_at)}</span>
+                        </div>
+                        <p className="mt-1 font-mono text-[11px] text-slate-500">{item.state_hash ?? 'no state hash'}</p>
                       </div>
-                    ))}
-                    {auditUnavailableInInternalMode ? <p className="text-sm text-slate-500">Audit unavailable in internal mode.</p> : null}
-                    {!auditUnavailableInInternalMode && audit?.items?.length === 0 ? <p className="text-sm text-slate-500">No audit events found.</p> : null}
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
-            </Panel>
-
-            <Panel eyebrow="Claim gate matrix" title="Allowed claim status">
-              <div className="overflow-x-auto">
-                <div className="min-w-[760px] divide-y divide-white/10 border border-white/10">
-                  {claimRows.map((row) => (
-                    <div key={row.claim} className="grid grid-cols-[140px_130px_1fr_1fr] gap-3 p-4 text-sm">
-                      <div className="font-semibold text-white">{row.claim}</div>
-                      <div><StatusPill status={row.status} /></div>
-                      <div className="text-slate-300">{row.reason}</div>
-                      <div className="text-slate-400">Need: {row.evidenceRequired}<br />Have: {row.evidencePresent}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Panel>
-          </div>
+            </div>
+          </Panel>
         </section>
 
-        <section className="border border-amber-300/25 bg-amber-300/10 p-5 text-sm leading-7 text-amber-50">
-          <p className="font-semibold">Command Center boundary</p>
-          <p className="mt-2">Command Center is an operator review surface. It shows live state when backend data is available and clearly labeled sample/planned state otherwise. It does not execute production actions by itself and does not prove production readiness without deployment and production-flow evidence.</p>
+        <section className="flex flex-wrap gap-3 text-sm">
+          <Link className="rounded-xl border border-white/15 px-4 py-3 font-semibold text-slate-100" href="/enterprise-proof/demo">View live gate evidence</Link>
+          <Link className="rounded-xl border border-white/15 px-4 py-3 font-semibold text-slate-100" href="/evidence-pack">Open evidence pack</Link>
+          <Link className="rounded-xl border border-white/15 px-4 py-3 font-semibold text-slate-100" href="/dashboard/hermes">Open Hermes Agent</Link>
         </section>
       </div>
     </main>
