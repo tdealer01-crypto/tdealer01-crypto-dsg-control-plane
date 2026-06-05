@@ -2,14 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type JsonObject = Record<string, unknown>;
-
 type UsePageMemoryOptions = {
   debounceMs?: number;
   enabled?: boolean;
 };
 
-export function usePageMemory<T extends JsonObject>(
+export function usePageMemory<T extends object>(
   pageKey: string,
   initialValue: T,
   memoryKey = 'default',
