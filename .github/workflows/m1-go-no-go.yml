@@ -96,8 +96,8 @@ jobs:
       - name: Critical env contract (Supabase / Stripe / Resend)
         run: |
           required=(
-            "SUPABASE_URL:${{ secrets.SUPABASE_URL }}"
-            "SUPABASE_KEY:${{ secrets.SUPABASE_KEY }}"
+            "NEXT_PUBLIC_SUPABASE_URL:${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}"
+            "SUPABASE_SERVICE_ROLE_KEY:${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
             "STRIPE_SECRET_KEY:${{ secrets.STRIPE_SECRET_KEY }}"
             "STRIPE_WEBHOOK_SECRET:${{ secrets.STRIPE_WEBHOOK_SECRET }}"
             "RESEND_API_KEY:${{ secrets.RESEND_API_KEY }}"
