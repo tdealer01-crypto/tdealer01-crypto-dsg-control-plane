@@ -9,6 +9,13 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/onboarding/seed
  *
+ * @deprecated Superseded by POST /api/setup/auto, which is the wired,
+ * production onboarding path (creates policy + agent + first execution +
+ * runtime commit + billing + onboarding state). This seed route has no UI
+ * caller and overlaps with setup/auto. It is now gated to non-production
+ * (or an explicit ALLOW_ONBOARDING_SEED=true opt-in) and is slated for
+ * removal in a follow-up change.
+ *
  * Seeds starter data for a new organization so the dashboard is not empty
  * on first login. Requires a valid authenticated session — the org_id is
  * derived from the caller's profile, not the request body.
@@ -18,6 +25,23 @@ export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
+    // Deprecation gate: keep this usable for local/dev seeding only. In
+    // production, callers must use POST /api/setup/auto instead.
+    const seedEnabled =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.ALLOW_ONBOARDING_SEED === 'true';
+    if (!seedEnabled) {
+      return NextResponse.json(
+        {
+          ok: false,
+          deprecated: true,
+          error:
+            'POST /api/onboarding/seed is deprecated. Use POST /api/setup/auto for onboarding.',
+        },
+        { status: 410 },
+      );
+    }
+
     const access = await requireActiveProfile();
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });

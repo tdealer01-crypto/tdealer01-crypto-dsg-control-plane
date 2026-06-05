@@ -5,6 +5,11 @@ import { getSupabaseAdmin } from "../../../../lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
+// @deprecated Manual, self-attested checklist model. Onboarding progress is now
+// evidence-derived from real workspace state (see the `progress` object returned
+// by GET below). The `completedStepIds` PATCH path is retained only for backward
+// compatibility and no longer drives any UI; it is slated for removal in a
+// follow-up change. `dismissed` remains the only actively-used widget field.
 const WIDGET_CHECKLIST_KEY = "dashboard_widget_v1";
 const VALID_WIDGET_STEPS = new Set([
   "connect_integration",
