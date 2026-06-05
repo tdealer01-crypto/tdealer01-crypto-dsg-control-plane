@@ -12,6 +12,7 @@ import {
   Plug,
   Zap,
 } from "lucide-react";
+import OnboardingMascot, { type MascotPose } from "./OnboardingMascot";
 
 // Evidence-based onboarding steps.
 //
@@ -138,6 +139,11 @@ export function OnboardingChecklist() {
   const done = STEPS.filter((s) => progressDone(progress, s.id)).length;
   const percent = Math.round((done / total) * 100);
 
+  // Decorative guide. Mirrors the real step state; never the source of truth.
+  const nextStep = STEPS.find((s) => !progressDone(progress, s.id));
+  const mascotPose: MascotPose =
+    done === total ? "waving" : nextStep ? "pointing" : "idle";
+
   return (
     <div className="fixed bottom-6 right-6 z-50 w-80 rounded-3xl border border-white/10 bg-[#0b0d10] shadow-2xl shadow-black/70">
       {error ? (
@@ -242,10 +248,28 @@ export function OnboardingChecklist() {
         </div>
       )}
 
+      {/* Guide mascot — decorative, sits below the steps so it never covers
+          them. Points at the next step, or waves when everything is done. */}
+      {!collapsed && done < total && (
+        <div className="flex items-center gap-3 border-t border-white/[0.06] px-4 py-3">
+          <OnboardingMascot pose={mascotPose} size={40} />
+          <p className="text-xs leading-snug text-slate-400">
+            {nextStep ? (
+              <>
+                Next: <span className="font-semibold text-slate-200">{nextStep.title}</span>
+              </>
+            ) : (
+              "Keep going — you're almost set."
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Footer when all done */}
       {!collapsed && done === total && (
-        <div className="px-4 pb-4 pt-2 text-center">
-          <p className="text-xs font-semibold text-emerald-400">
+        <div className="flex flex-col items-center px-4 pb-4 pt-3 text-center">
+          <OnboardingMascot pose="waving" size={44} />
+          <p className="mt-1 text-xs font-semibold text-emerald-400">
             All steps complete — your workspace is ready.
           </p>
           <button

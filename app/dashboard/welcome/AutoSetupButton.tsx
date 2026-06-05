@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import OnboardingMascot from '../../../components/OnboardingMascot';
 
 type SetupState = 'idle' | 'running' | 'done' | 'error';
 type Lang = 'python' | 'javascript' | 'curl';
@@ -12,7 +13,19 @@ type SetupResult = {
   agent_id?: string;
   execution_id?: string;
   error?: string;
+  // Per-step statuses returned by POST /api/setup/auto, used to drive the
+  // evidence-true onboarding stepper. Optional — older responses may omit them.
+  policy?: string;
+  agent?: string;
+  checkpoint?: string;
+  rpc_commit?: string;
+  first_run_complete?: boolean;
 };
+
+// Map a raw setup/auto step status string to a simple boolean "passed".
+function stepPassed(status: string | undefined, okValues: string[]): boolean {
+  return typeof status === 'string' && okValues.includes(status);
+}
 
 function codeSnippet(lang: Lang, apiKey: string) {
   if (lang === 'python') return `import requests
@@ -101,7 +114,7 @@ export default function AutoSetupButton() {
       <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
-            <span className="text-3xl">⚡</span>
+            <OnboardingMascot pose="waving" size={56} />
             <div>
               <h2 className="text-lg font-bold text-white">Quick Setup — ติดตั้งอัตโนมัติ</h2>
               <p className="mt-1 max-w-lg text-sm text-slate-400">
@@ -125,6 +138,7 @@ export default function AutoSetupButton() {
     return (
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6">
         <div className="flex items-center gap-4">
+          <OnboardingMascot pose="walking" size={48} />
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
           <div>
             <p className="font-bold text-white">กำลังติดตั้ง...</p>
@@ -136,14 +150,42 @@ export default function AutoSetupButton() {
   }
 
   if (state === 'done' && result) {
+    // Evidence-true step states derived from the real setup/auto response.
+    const onboardingFlowSteps = [
+      { label: 'Policy พร้อม', done: stepPassed(result.policy, ['OK']) },
+      { label: 'Agent เชื่อมต่อ', done: stepPassed(result.agent, ['CREATED', 'EXISTS']) },
+      { label: 'Evidence แรกถูกบันทึก', done: Boolean(result.execution_id) },
+    ];
+
     return (
       <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">✅</span>
-          <div>
-            <h2 className="font-bold text-white">ติดตั้งเสร็จแล้ว — พร้อมใช้งาน</h2>
-            <p className="text-sm text-slate-400">Agent, policy และ audit trail ถูกสร้างแล้ว</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <h2 className="font-bold text-white">ติดตั้งเสร็จแล้ว — พร้อมใช้งาน</h2>
+              <p className="text-sm text-slate-400">Agent, policy และ audit trail ถูกสร้างแล้ว</p>
+            </div>
           </div>
+          <OnboardingMascot pose="waving" size={56} message="พร้อมแล้ว!" />
+        </div>
+
+        {/* Onboarding step trail — the mascot "walked" through these. The check
+            states come from the real setup response, not the mascot. */}
+        <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+            ขั้นตอน onboarding
+          </p>
+          <ol className="space-y-1.5">
+            {onboardingFlowSteps.map((s) => (
+              <li key={s.label} className="flex items-center gap-2 text-sm">
+                <span className={s.done ? 'text-emerald-400' : 'text-slate-500'}>
+                  {s.done ? '✓' : '○'}
+                </span>
+                <span className={s.done ? 'text-slate-200' : 'text-slate-500'}>{s.label}</span>
+              </li>
+            ))}
+          </ol>
         </div>
 
         {/* Default safety posture — what the starter policy enforces */}
@@ -289,7 +331,7 @@ export default function AutoSetupButton() {
   return (
     <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
       <div className="flex items-start gap-3">
-        <span className="text-xl">⚠️</span>
+        <OnboardingMascot pose="blocked" size={52} />
         <div className="flex-1">
           <p className="font-bold text-white">Setup ไม่สำเร็จ</p>
           <p className="mt-1 text-sm text-slate-400">{result?.error ?? 'เกิดข้อผิดพลาด — ลองใหม่อีกครั้ง'}</p>

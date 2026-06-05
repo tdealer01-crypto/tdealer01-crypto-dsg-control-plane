@@ -303,3 +303,43 @@ a.rounded-full:hover {
   .lg\:grid-cols-\[1\.15fr_0\.85fr\] { grid-template-columns: 1.15fr 0.85fr; }
   .lg\:items-center { align-items: center; }
 }
+
+/* ───────────────────────────────────────────────────────────────
+   Onboarding mascot (decorative guide).
+   Purely visual; respects prefers-reduced-motion via the global rule
+   above, which neutralizes animation-duration. Never gates any action.
+   ─────────────────────────────────────────────────────────────── */
+@keyframes dsg-mascot-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes dsg-mascot-walk {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50%      { transform: translateY(-2px) rotate(1.5deg); }
+}
+@keyframes dsg-mascot-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes dsg-mascot-wave {
+  0%, 100% { transform: rotate(8deg); }
+  50%      { transform: rotate(-22deg); }
+}
+@keyframes dsg-mascot-point {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(3px); }
+}
+@keyframes dsg-mascot-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-2px); }
+  75%      { transform: translateX(2px); }
+}
+
+.dsg-mascot { animation: dsg-mascot-pop 360ms ease-out both; }
+.dsg-mascot[data-pose="idle"]     { animation: dsg-mascot-bob 3.2s ease-in-out infinite; }
+.dsg-mascot[data-pose="walking"]  { animation: dsg-mascot-walk 0.6s ease-in-out infinite; }
+.dsg-mascot[data-pose="blocked"]  { animation: dsg-mascot-shake 0.5s ease-in-out 2; }
+.dsg-mascot[data-pose="pointing"] { animation: dsg-mascot-point 1.1s ease-in-out infinite; }
+.dsg-mascot[data-pose="thumbsUp"] { animation: dsg-mascot-bob 1.4s ease-in-out infinite; }
+.dsg-mascot__arm-wave { transform-origin: 70% 30%; animation: dsg-mascot-wave 0.7s ease-in-out infinite; }

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { OnboardingChecklist } from '../../../components/OnboardingChecklist';
 import AutoSetupButton from './AutoSetupButton';
 
 export const dynamic = 'force-dynamic';
@@ -175,6 +176,9 @@ export default async function WelcomePage() {
         </div>
 
       </div>
+
+      {/* Evidence-based onboarding guide with mascot (floating, dismissible) */}
+      <OnboardingChecklist />
     </main>
   );
 }
