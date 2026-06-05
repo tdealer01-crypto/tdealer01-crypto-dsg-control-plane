@@ -43,3 +43,7 @@ Priority pages:
 - Authenticated operator/admin can save and reload JSON object page memory.
 - Anonymous callers do not get memory access.
 - No production claim can be made until CI passes and the Supabase migration is applied in the target environment.
+
+## Verification note
+
+This document update is intentionally small so PR checks can run again on the clean `fix/server-backed-ui-memory-v2` branch without changing runtime behavior.
