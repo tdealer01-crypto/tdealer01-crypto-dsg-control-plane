@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { parseSseData, type AgentChatEvent } from '@/lib/agent/chat-event';
 import { usePageMemory } from '../../../hooks/usePageMemory';
 
@@ -25,7 +25,6 @@ type Message = {
   steps?: ToolStep[];
   model?: string;
   preflight?: { decision: string; reason?: string };
-  collapsible?: boolean;
 };
 
 type SystemStatus = {
@@ -34,6 +33,12 @@ type SystemStatus = {
   env?: string;
   commit?: string;
   timestamp?: string;
+};
+
+type AttachedFile = {
+  id: string;
+  name: string;
+  content: string;
 };
 
 type HermesRuntimeStatus = {
@@ -65,6 +70,7 @@ type HermesPageMemory = Record<string, unknown> & {
 
 const PAGE_KEY = '/dashboard/hermes';
 const HISTORY_MAX = 120;
+const ATTACHMENT_MAX_CHARS = 8_000;
 
 const TOOL_LABELS: Record<string, string> = {
   readiness: 'System readiness',
@@ -121,17 +127,10 @@ function welcomeMessage(): Message {
 
 หน้านี้ใช้ server-backed page memory ผ่าน /api/ui-memory แล้ว ดังนั้น refresh หน้าแล้ว chat history จะกลับมาได้เมื่อ migration dsg_ui_memory ถูก apply แล้ว
 
-คำสั่งที่ใช้ได้:
-• system status — readiness ทั้งระบบ
-• usage / capacity — quota และ billing posture
-• list agents — ดู agents ทั้งหมด
-• executions — executions ล่าสุด
-• audit log — audit events
-• proofs — proof artifacts
-• search [คำค้นหา] — ค้นหา online ผ่าน governed tool
-• run python: print('hello') — รัน code ผ่าน Hermes Brain
-
-ทุก action ต้องผ่าน DSG gate และหลักฐานจริงก่อน claim`,
+ฟีเจอร์ที่เปิดใช้:
+• chat history + input draft จำผ่าน server-backed memory
+• file attachment / camera capture / voice input ใช้เป็น ephemeral session data ไม่เขียนลง DB
+• ทุก action ต้องผ่าน DSG gate และหลักฐานจริงก่อน claim`,
     ts: Date.now(),
   };
 }
@@ -308,8 +307,19 @@ export default function HermesAgentPage() {
   const [busy, setBusy] = useState(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [hermesStatus, setHermesStatus] = useState<HermesRuntimeStatus | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [cameraCaptures, setCameraCaptures] = useState<string[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [liveMode, setLiveMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const sendMsgRef = useRef<(text: string) => void>(() => undefined);
 
   const { value: memory, setValue: setMemory, loaded: memoryLoaded, error: memoryError, reset: resetMemory } = usePageMemory<HermesPageMemory>(PAGE_KEY, INITIAL_MEMORY);
   const messages = Array.isArray(memory.messages) && memory.messages.length > 0 ? memory.messages : INITIAL_MEMORY.messages;
@@ -317,24 +327,20 @@ export default function HermesAgentPage() {
   const memoryBanner = useMemo(() => {
     if (memoryError) return memoryError;
     if (!memoryLoaded) return 'Loading server-backed page memory...';
+    if (attachedFiles.length > 0 || cameraCaptures.length > 0) return 'Attachments and camera captures are session-only for privacy; chat/input are server-backed.';
     return '';
-  }, [memoryError, memoryLoaded]);
+  }, [attachedFiles.length, cameraCaptures.length, memoryError, memoryLoaded]);
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/agent/status')
-      .then(async (response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (!alive || !data) return;
-        setSystemStatus({ ok: data.ok ?? data.status === 'ok', db: data.db ?? data.db_check, env: data.env ?? data.environment, commit: data.commit ?? data.git_sha, timestamp: data.timestamp });
-      })
-      .catch(() => { if (alive) setSystemStatus({ ok: false }); });
-    const id = setInterval(() => {
+    const load = () => {
       fetch('/api/agent/status')
         .then(async (response) => response.ok ? response.json() : null)
         .then((data) => { if (alive && data) setSystemStatus({ ok: data.ok ?? data.status === 'ok', db: data.db ?? data.db_check, env: data.env ?? data.environment, commit: data.commit ?? data.git_sha, timestamp: data.timestamp }); })
         .catch(() => { if (alive) setSystemStatus({ ok: false }); });
-    }, 30_000);
+    };
+    load();
+    const id = setInterval(load, 30_000);
     return () => { alive = false; clearInterval(id); };
   }, []);
 
@@ -354,6 +360,13 @@ export default function HermesAgentPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      recognitionRef.current?.stop?.();
+    };
+  }, []);
 
   function setMessages(updater: (previous: Message[]) => Message[]) {
     setMemory((previous) => ({ ...previous, messages: updater(previous.messages || []).slice(-HISTORY_MAX) }));
@@ -423,10 +436,7 @@ export default function HermesAgentPage() {
           updateAgentMessage(agentMsgId, (item) => {
             if (event.type === 'preflight') return { ...item, preflight: { decision: event.decision ?? 'ALLOW', reason: event.reason } };
             if (event.type === 'assistant_reply' && event.reply) return { ...item, content: event.reply, model: event.model };
-            if (event.type === 'plan' && Array.isArray(event.steps)) {
-              const steps: ToolStep[] = event.steps.map((step) => ({ id: step.id ?? '', toolId: step.toolId ?? '', status: 'pending' }));
-              return { ...item, steps };
-            }
+            if (event.type === 'plan' && Array.isArray(event.steps)) return { ...item, steps: event.steps.map((step) => ({ id: step.id ?? '', toolId: step.toolId ?? '', status: 'pending' })) };
             if (event.type === 'step_start') return { ...item, steps: (item.steps ?? []).map((step) => step.id === event.step ? { ...step, tool: event.tool, status: 'running' } : step) };
             if (event.type === 'step_result') return { ...item, steps: (item.steps ?? []).map((step) => step.id === event.step ? { ...step, status: 'done', result: event.result } : step) };
             if (event.type === 'step_error') return { ...item, steps: (item.steps ?? []).map((step) => step.id === event.step ? { ...step, status: 'error', error: event.error } : step) };
@@ -440,9 +450,7 @@ export default function HermesAgentPage() {
         }
       }
 
-      if (!sawDone) {
-        updateAgentMessage(agentMsgId, (item) => ({ ...item, content: item.content || '⚠️ Stream ended before final done event. Inspect runtime logs before claiming completion.' }));
-      }
+      if (!sawDone) updateAgentMessage(agentMsgId, (item) => ({ ...item, content: item.content || '⚠️ Stream ended before final done event. Inspect runtime logs before claiming completion.' }));
     } catch (error) {
       updateAgentMessage(agentMsgId, (item) => ({ ...item, content: error instanceof Error ? error.message : 'Request failed.', decision: 'BLOCK' }));
     } finally {
@@ -451,23 +459,179 @@ export default function HermesAgentPage() {
     }
   }
 
+  useEffect(() => {
+    sendMsgRef.current = sendMessage;
+  });
+
+  function handleFiles(files: FileList | null) {
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (file.type.startsWith('image/')) {
+          const dataUrl = String(reader.result || '');
+          if (dataUrl) setCameraCaptures((previous) => [...previous, dataUrl]);
+          return;
+        }
+        setAttachedFiles((previous) => [
+          ...previous,
+          {
+            id: `f-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            name: file.name,
+            content: String(reader.result || '').slice(0, ATTACHMENT_MAX_CHARS),
+          },
+        ]);
+      };
+      if (file.type.startsWith('image/')) reader.readAsDataURL(file);
+      else reader.readAsText(file);
+    });
+  }
+
+  function toggleVoice() {
+    const SpeechRecognition = typeof window !== 'undefined' ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) : null;
+    if (!SpeechRecognition) {
+      setMemory((previous) => ({ ...previous, notice: 'Speech Recognition is not supported in this browser.' }));
+      return;
+    }
+    if (voiceActive) {
+      recognitionRef.current?.stop?.();
+      setVoiceActive(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'th-TH';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results as any[]).map((result: any) => result[0].transcript).join('');
+      setMemory((previous) => ({ ...previous, input: transcript }));
+    };
+    recognition.onend = () => setVoiceActive(false);
+    recognition.onerror = () => setVoiceActive(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setVoiceActive(true);
+  }
+
+  function toggleLive() {
+    const SpeechRecognition = typeof window !== 'undefined' ? ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition) : null;
+    if (!SpeechRecognition) {
+      setMemory((previous) => ({ ...previous, notice: 'Speech Recognition is not supported in this browser.' }));
+      return;
+    }
+    if (liveMode) {
+      recognitionRef.current?.stop?.();
+      setLiveMode(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'th-TH';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.onresult = (event: any) => {
+      let finalText = '';
+      let interimText = '';
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result.isFinal) finalText += result[0].transcript;
+        else interimText += result[0].transcript;
+      }
+      setMemory((previous) => ({ ...previous, input: finalText || interimText }));
+      if (finalText.trim()) {
+        setTimeout(() => {
+          setMemory((previous) => ({ ...previous, input: '' }));
+          sendMsgRef.current(finalText.trim());
+        }, 300);
+      }
+    };
+    recognition.onerror = () => setLiveMode(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setLiveMode(true);
+  }
+
+  async function openCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraStreamRef.current = stream;
+      setCameraOpen(true);
+      requestAnimationFrame(() => {
+        if (cameraVideoRef.current) cameraVideoRef.current.srcObject = stream;
+      });
+    } catch {
+      setMemory((previous) => ({ ...previous, notice: 'Camera access denied or not available.' }));
+    }
+  }
+
+  function closeCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraOpen(false);
+  }
+
+  function capturePhoto() {
+    const video = cameraVideoRef.current;
+    const canvas = cameraCanvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    setCameraCaptures((previous) => [...previous, canvas.toDataURL('image/jpeg', 0.8)]);
+    closeCamera();
+  }
+
   function handleSend() {
-    sendMessage(memory.input);
+    let text = memory.input || '';
+    if (attachedFiles.length > 0) {
+      text = `${attachedFiles.map((file) => `[File: ${file.name}]\n\`\`\`\n${file.content}\n\`\`\``).join('\n\n')}${text ? `\n\n${text}` : ''}`;
+    }
+    if (cameraCaptures.length > 0) {
+      text = `${text}${text ? '\n\n' : ''}[${cameraCaptures.length} image attachment(s) captured in browser session — describe or use this visual context if the runtime supports image handling]`;
+    }
+    if (!text.trim()) return;
+    setAttachedFiles([]);
+    setCameraCaptures([]);
+    sendMessage(text.trim());
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
   }
 
   function handleReset() {
     resetMemory();
+    setAttachedFiles([]);
+    setCameraCaptures([]);
     setMemory({ ...INITIAL_MEMORY, messages: [{ ...welcomeMessage(), content: 'สวัสดี — ประวัติถูกล้างแล้ว พิมพ์คำถามได้เลย' }] });
   }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.ts,.tsx,.js,.json,.py,.yaml,.yml,.csv,.sh,.sql,.env.example,image/*" className="hidden" onChange={(event) => handleFiles(event.target.files)} />
+      <canvas ref={cameraCanvasRef} className="hidden" />
+
+      {cameraOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+            <p className="text-sm font-semibold text-white">Camera capture</p>
+            <video ref={cameraVideoRef} autoPlay playsInline className="h-60 w-80 rounded-xl object-cover bg-slate-800" />
+            <div className="flex gap-3">
+              <button type="button" onClick={capturePhoto} className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl text-black shadow-lg transition hover:scale-105">📸</button>
+              <button type="button" onClick={closeCamera} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-300 hover:border-white/40">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-7 w-7 items-center justify-center rounded-full border border-violet-400/30 bg-violet-500/20 text-xs font-bold text-violet-300">H</div>
           <div>
             <p className="text-sm font-bold text-white">Hermes Agent</p>
-            <p className="text-xs text-slate-500">DSG ONE Control Plane - server-backed memory</p>
+            <p className="text-xs text-slate-500">DSG ONE Control Plane - server-backed memory + multimodal input</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -480,7 +644,8 @@ export default function HermesAgentPage() {
         </div>
       </header>
 
-      {memoryBanner ? <div className="border-b border-amber-300/20 bg-amber-300/10 px-6 py-2 text-xs text-amber-100">{memoryBanner}</div> : null}
+      {memoryBanner || memory.notice ? <div className="border-b border-amber-300/20 bg-amber-300/10 px-6 py-2 text-xs text-amber-100">{memoryBanner || memory.notice}</div> : null}
+      {liveMode && <div className="border-b border-red-400/20 bg-red-400/10 px-6 py-2 text-xs text-red-200">Live voice is listening. Stop live mode before sharing sensitive information nearby.</div>}
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -495,11 +660,34 @@ export default function HermesAgentPage() {
           </div>
 
           <div className="shrink-0 border-t border-white/10 px-4 py-3">
-            <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 focus-within:border-violet-400/40">
-              <textarea ref={inputRef} value={memory.input} onChange={(event) => setMemory((previous) => ({ ...previous, input: event.target.value }))} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleSend(); } }} placeholder="พิมพ์คำสั่งหรือถามคำถาม — Enter ส่ง, Shift+Enter ขึ้นบรรทัด" rows={1} className="flex-1 resize-none bg-transparent text-sm leading-6 text-slate-100 placeholder-slate-600 focus:outline-none" style={{ maxHeight: '120px' }} disabled={busy} />
-              <button type="button" onClick={handleSend} disabled={busy || !memory.input.trim()} className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-40">{busy ? '...' : 'Send'}</button>
+            {(attachedFiles.length > 0 || cameraCaptures.length > 0) && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {attachedFiles.map((file) => (
+                  <div key={file.id} className="flex items-center gap-1.5 rounded-lg border border-blue-400/30 bg-blue-400/10 px-2 py-1 text-xs text-blue-300">
+                    <span>📄</span>
+                    <span className="max-w-[140px] truncate">{file.name}</span>
+                    <button type="button" onClick={() => setAttachedFiles((previous) => previous.filter((item) => item.id !== file.id))} className="ml-1 text-blue-500 hover:text-blue-300">✕</button>
+                  </div>
+                ))}
+                {cameraCaptures.map((url, index) => (
+                  <div key={`${index}-${url.slice(0, 24)}`} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-violet-400/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="capture" className="h-full w-full object-cover" />
+                    <button type="button" onClick={() => setCameraCaptures((previous) => previous.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-bl bg-black/60 text-[9px] text-white">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-3 focus-within:border-violet-400/40">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-400 transition hover:text-slate-200 disabled:opacity-40" title="Attach file">📎</button>
+              <button type="button" onClick={openCamera} disabled={busy} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-400 transition hover:text-slate-200 disabled:opacity-40" title="Camera">📷</button>
+              <button type="button" onClick={toggleVoice} disabled={busy} className={`rounded-lg border px-3 py-2 text-sm transition disabled:opacity-40 ${voiceActive ? 'border-red-400/40 bg-red-400/10 text-red-300' : 'border-white/10 text-slate-400 hover:text-slate-200'}`} title="Voice input">🎙️</button>
+              <button type="button" onClick={toggleLive} disabled={busy} className={`rounded-lg border px-3 py-2 text-sm transition disabled:opacity-40 ${liveMode ? 'border-red-400/40 bg-red-400/10 text-red-300' : 'border-white/10 text-slate-400 hover:text-slate-200'}`} title="Live voice">🔴</button>
+              <textarea ref={inputRef} value={memory.input} onChange={(event) => setMemory((previous) => ({ ...previous, input: event.target.value }))} onKeyDown={handleKeyDown} placeholder="พิมพ์คำสั่งหรือถามคำถาม — Enter ส่ง, Shift+Enter ขึ้นบรรทัด" rows={1} className="flex-1 resize-none bg-transparent text-sm leading-6 text-slate-100 placeholder-slate-600 focus:outline-none" style={{ maxHeight: '120px' }} disabled={busy} />
+              <button type="button" onClick={handleSend} disabled={busy || (!memory.input.trim() && attachedFiles.length === 0 && cameraCaptures.length === 0)} className="shrink-0 rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-40">{busy ? '...' : 'Send'}</button>
             </div>
-            <p className="mt-1.5 text-center text-xs text-slate-700">Every action is routed through ProofGate before execution. Chat history is restored from server-backed page memory.</p>
+            <p className="mt-1.5 text-center text-xs text-slate-700">Every action is routed through ProofGate before execution. Chat history/input persist server-side; files, camera, and live voice stay session-only.</p>
           </div>
         </div>
 
