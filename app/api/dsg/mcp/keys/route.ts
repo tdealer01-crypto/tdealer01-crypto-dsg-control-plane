@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 import { NextRequest, NextResponse } from 'next/server';
 import { requireVerifiedDsgActor } from '@/lib/dsg/server/context';
 import { getDsgSupabaseRpcConfig, readDsgRest, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';

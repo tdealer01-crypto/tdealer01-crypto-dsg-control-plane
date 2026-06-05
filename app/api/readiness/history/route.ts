@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';

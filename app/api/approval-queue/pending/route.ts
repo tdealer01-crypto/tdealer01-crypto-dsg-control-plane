@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 /**
  * GET /api/approval-queue/pending
  * List pending approval requests for an organization

@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 import { NextResponse } from 'next/server';
 import { createDsgAuditPacket } from '@/lib/dsg/marketplace/audit-packet';
 import { validateApiKeyFromHeaders, recordApiKeyUsage } from '@/lib/dsg/mcp/validate-api-key';
