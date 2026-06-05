@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.dsg_ui_memory (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL,
-  user_id uuid NULL,
+  user_id uuid NOT NULL,
   page_key text NOT NULL,
   memory_key text NOT NULL DEFAULT 'default',
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.dsg_ui_memory (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS dsg_ui_memory_org_user_page_key_idx
-  ON public.dsg_ui_memory (org_id, coalesce(user_id, '00000000-0000-0000-0000-000000000000'::uuid), page_key, memory_key);
+  ON public.dsg_ui_memory (org_id, user_id, page_key, memory_key);
 
 CREATE INDEX IF NOT EXISTS dsg_ui_memory_org_updated_idx
   ON public.dsg_ui_memory (org_id, updated_at DESC);
