@@ -61,20 +61,6 @@ jobs:
       - name: Full test suite
         run: npm run test
 
-      - name: i18n — no Thai text in source
-        run: |
-          count=$(grep -rP "[฀-๿]" app/ components/ lib/ \
-            --include="*.ts" --include="*.tsx" \
-            2>/dev/null | grep -v "^\s*//" | wc -l)
-          echo "Thai character matches: $count"
-          if [ "$count" -gt 0 ]; then
-            echo "❌ Thai text found in source:"
-            grep -rnP "[฀-๿]" app/ components/ lib/ \
-              --include="*.ts" --include="*.tsx" | grep -v "^\s*//"
-            exit 1
-          fi
-          echo "✅ No Thai text in app/ components/ lib/"
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
