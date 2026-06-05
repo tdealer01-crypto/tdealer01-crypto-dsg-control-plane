@@ -80,9 +80,7 @@ jobs:
         run: npm run verify:production-manifest
 
       - name: Live DB tests
-        if: >
-          env.NEXT_PUBLIC_SUPABASE_URL != 'https://example.supabase.co' &&
-          env.SUPABASE_SERVICE_ROLE_KEY != ''
+        if: ${{ vars.CI_RUN_LIVE_DB_TESTS == 'true' }}
         run: npm run test:live:db:required
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
