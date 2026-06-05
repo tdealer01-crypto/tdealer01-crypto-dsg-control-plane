@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   }
 
   if (event.type === 'invoice.paid') {
-    const invoice = event.data.object as Stripe.Invoice;
+    const invoice = event.data.object as Stripe.Invoice & { parent?: { subscription_details?: { subscription?: string | { id: string } } } };
     const subRaw = invoice.parent?.subscription_details?.subscription;
     const subscriptionId = subRaw
       ? (typeof subRaw === 'string' ? subRaw : subRaw.id)

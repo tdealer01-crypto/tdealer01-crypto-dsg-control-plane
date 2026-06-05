@@ -4,6 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +16,24 @@ interface PendingApprovalsQuery {
   sort?: 'created_at' | 'expires_at' | 'priority';
   limit?: number;
   offset?: number;
+}
+
+type ApprovalRow = Database['public']['Tables']['runtime_approval_requests']['Row'];
+
+function mapRowToApproval(row: ApprovalRow) {
+  const payload = row.request_payload as Record<string, unknown> | null;
+  return {
+    id: row.id,
+    agentId: row.agent_id,
+    orgId: row.org_id,
+    action: (payload?.action as string) || 'unknown action',
+    input: (payload?.input as Record<string, unknown>) || {},
+    status: row.status || 'pending',
+    priority: (payload?.priority as string) || 'medium',
+    requestedBy: (payload?.requestedBy as string) || 'system',
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -32,60 +52,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Mock data (in production: query Supabase)
-    const mockApprovals = [
-      {
-        id: 'areq_001',
-        agentId: 'agent_claude_001',
-        orgId,
-        action: 'deploy to production',
-        input: { environment: 'production', services: ['api', 'web'] },
-        status: 'pending',
-        priority: 'high',
-        requestedBy: 'system',
-        createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 min ago
-        expiresAt: new Date(Date.now() + 23.5 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'areq_002',
-        agentId: 'agent_openai_001',
-        orgId,
-        action: 'modify database migration',
-        input: { migrationFile: 'migrations/20260604_add_users_table.sql' },
-        status: 'pending',
-        priority: 'medium',
-        requestedBy: 'system',
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-        expiresAt: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
+    const supabase = getSupabaseAdmin();
 
-    // Filter by status
-    const filtered = status === 'pending'
-      ? mockApprovals.filter((a) => a.status === 'pending')
-      : mockApprovals;
+    let query = supabase
+      .from('runtime_approval_requests')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
 
-    // Filter by agentId if provided
-    const result = agentId
-      ? filtered.filter((a) => a.agentId === agentId)
-      : filtered;
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
 
-    // Sort
-    const sorted = result.sort((a, b) => {
-      if (sort === 'expires_at') {
-        return new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime();
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    if (agentId) {
+      query = query.eq('agent_id', agentId);
+    }
 
-    // Paginate
-    const paginated = sorted.slice(offset, offset + limit);
+    const { data, error, count } = await query.range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('[approval-pending] Supabase error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch approvals', detail: error.message },
+        { status: 500 },
+      );
+    }
+
+    const approvals = (data || []).map(mapRowToApproval);
+
+    // If sort is not created_at, we need to sort in memory (or add more query options)
+    let sorted = approvals;
+    if (sort === 'expires_at') {
+      sorted = [...approvals].sort(
+        (a, b) => new Date(a.expiresAt || 0).getTime() - new Date(b.expiresAt || 0).getTime(),
+      );
+    }
 
     return NextResponse.json({
-      total: sorted.length,
+      total: count ?? sorted.length,
       limit,
       offset,
-      approvals: paginated,
+      approvals: sorted,
     });
   } catch (caught) {
     console.error('[approval-pending] Unexpected error:', caught);

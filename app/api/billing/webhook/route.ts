@@ -110,7 +110,7 @@ async function getBillingCustomer(supabase: SupabaseAdmin, stripeCustomerId: str
 }
 
 async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
-  const object = event.data.object as Record<string, unknown>;
+  const object = event.data.object as unknown as Record<string, unknown>;
 
   const stripeCustomerId =
     typeof object?.customer === 'string' ? object.customer : null;
