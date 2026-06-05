@@ -1,0 +1,51 @@
+name: SkillGate CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'lib/agent-skills/**'
+      - 'app/api/agent-skills/**'
+      - 'tests/dsg/agent-skills-*.test.ts'
+      - 'docs/openapi-agent-skills.yaml'
+      - 'docs/skillgate-evidence.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/agent-skills/**'
+      - 'app/api/agent-skills/**'
+      - 'tests/dsg/agent-skills-*.test.ts'
+
+jobs:
+  skillgate-tests:
+    name: SkillGate — typecheck + 5 suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: buildSkillDraft (8 tests)
+        run: npx vitest run tests/dsg/agent-skills-build-draft.test.ts
+
+      - name: verifySkill (8 tests)
+        run: npx vitest run tests/dsg/agent-skills-verify.test.ts
+
+      - name: lockSkill (16 tests — real temp dirs)
+        run: npx vitest run tests/dsg/agent-skills-lock.test.ts
+
+      - name: runSkillAction — gate enforcement (7 tests)
+        run: npx vitest run tests/dsg/agent-skills-run.test.ts
+
+      - name: Pipeline — offline end-to-end (5 tests)
+        run: npx vitest run tests/dsg/agent-skills-pipeline.test.ts
