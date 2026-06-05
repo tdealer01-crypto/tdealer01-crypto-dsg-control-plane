@@ -5,26 +5,16 @@ import { getSupabaseAdmin } from "../../../../lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-// @deprecated Manual, self-attested checklist model. Onboarding progress is now
-// evidence-derived from real workspace state (see the `progress` object returned
-// by GET below). The `completedStepIds` PATCH path is retained only for backward
-// compatibility and no longer drives any UI; it is slated for removal in a
-// follow-up change. `dismissed` remains the only actively-used widget field.
+// Onboarding progress is evidence-derived from real workspace state (see the
+// `progress` object returned by GET). The dashboard widget persists only a
+// `dismissed` preference; the previous manual, self-attested `completedStepIds`
+// model was removed in favour of the evidence-based flow.
 const WIDGET_CHECKLIST_KEY = "dashboard_widget_v1";
-const VALID_WIDGET_STEPS = new Set([
-  "connect_integration",
-  "run_governed_action",
-  "review_evidence",
-  "setup_team",
-  "configure_approval",
-  "export_audit_pack",
-]);
 
 type JsonObject = Record<string, unknown>;
 
 type OnboardingWidgetState = {
   dismissed: boolean;
-  completedStepIds: string[];
 };
 
 function objectValue(value: unknown): JsonObject {
@@ -33,31 +23,11 @@ function objectValue(value: unknown): JsonObject {
     : {};
 }
 
-function normalizeCompletedStepIds(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return [
-    ...new Set(
-      value.filter(
-        (step): step is string =>
-          typeof step === "string" && VALID_WIDGET_STEPS.has(step),
-      ),
-    ),
-  ].sort();
-}
-
-function invalidCompletedStepIds(value: unknown): unknown[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (step) => typeof step !== "string" || !VALID_WIDGET_STEPS.has(step),
-  );
-}
-
 function widgetStateFromChecklist(checklist: unknown): OnboardingWidgetState {
   const root = objectValue(checklist);
   const widget = objectValue(root[WIDGET_CHECKLIST_KEY]);
   return {
     dismissed: widget.dismissed === true,
-    completedStepIds: normalizeCompletedStepIds(widget.completedStepIds),
   };
 }
 
@@ -68,7 +38,6 @@ function mergeWidgetState(
   const root = { ...objectValue(checklist) };
   root[WIDGET_CHECKLIST_KEY] = {
     dismissed: nextWidget.dismissed,
-    completedStepIds: nextWidget.completedStepIds,
   };
   return root;
 }
@@ -164,17 +133,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const invalidSteps = invalidCompletedStepIds(body.completedStepIds);
-    if (invalidSteps.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Invalid onboarding step id",
-          invalidStepIds: invalidSteps,
-        },
-        { status: 400 },
-      );
-    }
-
     const existing = await loadOrgOnboarding(access.orgId);
     const currentWidget = widgetStateFromChecklist(existing?.checklist ?? null);
     const nextWidget: OnboardingWidgetState = {
@@ -182,9 +140,6 @@ export async function PATCH(request: NextRequest) {
         typeof body.dismissed === "boolean"
           ? body.dismissed
           : currentWidget.dismissed,
-      completedStepIds: Array.isArray(body.completedStepIds)
-        ? normalizeCompletedStepIds(body.completedStepIds)
-        : currentWidget.completedStepIds,
     };
 
     const now = new Date().toISOString();
@@ -231,7 +186,6 @@ export async function PATCH(request: NextRequest) {
       evidence: {
         source: "api/onboarding/state",
         dismissed: nextWidget.dismissed,
-        completed_step_ids: nextWidget.completedStepIds,
       },
       created_at: now,
     });

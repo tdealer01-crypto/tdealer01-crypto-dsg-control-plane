@@ -29,7 +29,7 @@ function makeAdmin() {
       id: "onboarding-1",
       bootstrap_status: "pending",
       checklist: {
-        dashboard_widget_v1: { dismissed: false, completedStepIds: [] },
+        dashboard_widget_v1: { dismissed: false },
       },
       bootstrapped_at: null,
     },
@@ -37,10 +37,7 @@ function makeAdmin() {
       id: "onboarding-1",
       bootstrap_status: "pending",
       checklist: {
-        dashboard_widget_v1: {
-          dismissed: false,
-          completedStepIds: ["connect_integration"],
-        },
+        dashboard_widget_v1: { dismissed: false },
       },
       bootstrapped_at: null,
     },
@@ -149,9 +146,11 @@ describe("/api/onboarding/state", () => {
     // next_action must guide users to the real Quick Setup location.
     expect(body.next_action).toMatch(/Quick Setup/);
     expect(body.next_action).not.toMatch(/Skills/);
+    // Widget persists only the dismissed preference now.
+    expect(body.widget).toEqual({ dismissed: false });
   });
 
-  it("rejects invalid normalized checklist step ids before persistence", async () => {
+  it("persists only the dismissed preference and never the removed step ids", async () => {
     mockRequireOrgPermission.mockResolvedValueOnce({
       ok: true,
       orgId: "org-1",
@@ -160,16 +159,40 @@ describe("/api/onboarding/state", () => {
       email: "operator@example.com",
       role: "operator",
     });
-    mockGetSupabaseAdmin.mockReturnValue(makeAdmin() as any);
+    const admin = makeAdmin();
+    mockGetSupabaseAdmin.mockReturnValue(admin as any);
 
-    const res = await PATCH(jsonPatch({ completedStepIds: ["not_a_step"] }));
-    const body = await res.json();
+    const res = await PATCH(jsonPatch({ dismissed: true }));
 
-    expect(res.status).toBe(400);
-    expect(body.error).toBe("Invalid onboarding step id");
+    expect(res.status).toBe(200);
+    expect(mockRequireOrgPermission).toHaveBeenCalledWith("org.manage_agents");
+    expect(admin.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checklist: expect.objectContaining({
+          dashboard_widget_v1: { dismissed: true },
+        }),
+      }),
+    );
+    expect(admin.auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        org_id: "org-1",
+        policy_version: "onboarding-state-v1",
+        decision: "ALLOW",
+        evidence: expect.objectContaining({
+          source: "api/onboarding/state",
+          dismissed: true,
+        }),
+      }),
+    );
+    // The removed manual model must not leak back into persisted evidence.
+    const auditArg = admin.auditInsert.mock.calls[0][0] as {
+      evidence: Record<string, unknown>;
+      checklist?: unknown;
+    };
+    expect(auditArg.evidence).not.toHaveProperty("completed_step_ids");
   });
 
-  it("persists valid org-scoped widget state and writes an audit row", async () => {
+  it("ignores unknown fields like completedStepIds without error", async () => {
     mockRequireOrgPermission.mockResolvedValueOnce({
       ok: true,
       orgId: "org-1",
@@ -182,37 +205,17 @@ describe("/api/onboarding/state", () => {
     mockGetSupabaseAdmin.mockReturnValue(admin as any);
 
     const res = await PATCH(
-      jsonPatch({
-        dismissed: false,
-        completedStepIds: ["connect_integration"],
-      }),
+      jsonPatch({ dismissed: false, completedStepIds: ["anything"] }),
     );
-    const body = await res.json();
 
+    // No 400 for the removed field; it is simply ignored.
     expect(res.status).toBe(200);
-    expect(mockRequireOrgPermission).toHaveBeenCalledWith("org.manage_agents");
     expect(admin.update).toHaveBeenCalledWith(
       expect.objectContaining({
         checklist: expect.objectContaining({
-          dashboard_widget_v1: {
-            dismissed: false,
-            completedStepIds: ["connect_integration"],
-          },
+          dashboard_widget_v1: { dismissed: false },
         }),
       }),
     );
-    expect(admin.auditInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        org_id: "org-1",
-        policy_version: "onboarding-state-v1",
-        decision: "ALLOW",
-        metadata: expect.objectContaining({ permission: "org.manage_agents" }),
-        evidence: expect.objectContaining({
-          source: "api/onboarding/state",
-          completed_step_ids: ["connect_integration"],
-        }),
-      }),
-    );
-    expect(body.widget.completedStepIds).toEqual(["connect_integration"]);
   });
 });

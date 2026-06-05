@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
+import DecisionExplainer from '../../../components/DecisionExplainer';
 
 type Execution = {
   id: string;
@@ -198,6 +199,12 @@ export default function ExecutionsPage() {
           <WorkflowPanel eyebrow="Selected trace" title={selectedExecution ? selectedExecution.id : 'No trace selected'}>
             {selectedExecution ? (
               <div className="space-y-3">
+                <DecisionExplainer
+                  decision={selectedExecution.decision}
+                  reason={selectedExecution.reason}
+                  policyVersion={selectedExecution.policy_version}
+                  riskScore={relatedLedger?.stability_score ?? null}
+                />
                 <EvidenceRow label="Decision" value={selectedExecution.decision} tone={decisionTone(selectedExecution.decision)} />
                 <EvidenceRow label="Agent" value={selectedExecution.agent_id} />
                 <EvidenceRow label="Latency" value={`${selectedExecution.latency_ms} ms`} tone="blue" />

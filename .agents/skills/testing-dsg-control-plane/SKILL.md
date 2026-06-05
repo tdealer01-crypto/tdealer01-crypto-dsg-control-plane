@@ -27,7 +27,7 @@
 - Onboarding banner appears when agents.length === 0 && executions.length === 0 (emerald-colored).
 
 ## API Endpoint Testing
-- **POST /api/onboarding/seed** — requires authentication via `requireActiveProfile()`. Returns 401 without valid session.
+- **POST /api/setup/auto** — wired onboarding path. Requires authentication via `requireActiveProfile()`. Returns 401 without valid session. (Replaces the removed `/api/onboarding/seed`.)
 - **GET /api/health** — returns 200 with service status (no auth required).
 - API routes under `/api/` are NOT protected by middleware — they handle their own auth.
 
@@ -42,7 +42,7 @@
 - `lib/resend.ts` — Email service wrapper (check RESEND_API_KEY env var).
 - `lib/stripe-products.ts` — Stripe plan catalogue.
 - `scripts/stripe-setup.ts` — Creates Stripe products/prices.
-- `app/api/onboarding/seed/route.ts` — Demo data seeding endpoint.
+- `app/api/setup/auto/route.ts` — Onboarding bootstrap endpoint (policy + agent + first execution + billing).
 - `supabase/schema.sql` — Full database schema.
 - `supabase/migrations/` — Migration files.
 
