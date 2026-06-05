@@ -45,6 +45,8 @@ import com.dsg.agent.automation.DadBotCallback
 import com.dsg.agent.automation.DadBotClient
 import com.dsg.agent.automation.DadBotMessage
 import com.dsg.agent.automation.FullFileManager
+import com.dsg.agent.automation.HermesHealth
+import com.dsg.agent.automation.HermesRuntimeClient
 import com.dsg.agent.automation.MemoryStore
 import com.dsg.agent.automation.OwnerApprovalSigner
 import com.dsg.agent.automation.PermissionGate
@@ -73,6 +75,7 @@ class MainActivity : Activity() {
     private var skillsSectionView: View? = null
     private var cronSectionView: View? = null
     private var gatewaySectionView: View? = null
+    private var hermesSectionView: View? = null
     private var logsSectionView: View? = null
 
     // DadBot chat UI refs
@@ -99,6 +102,14 @@ class MainActivity : Activity() {
     private var gatewayStatusDot: TextView? = null
     private var localApiStatusDot: TextView? = null
 
+    // Hermes runtime (backend-connected) refs + step state
+    private var hermesStatusView: TextView? = null
+    private var hermesHealth: HermesHealth? = null
+    private var hermesInstalled = false
+    private var hermesStarted = false
+    private var hermesNousConnected = false
+    private var hermesTestResult: String? = null
+
     // Domain objects
     private lateinit var commandStore: AgentCommandStore
     private lateinit var auditLogStore: AuditLogStore
@@ -110,6 +121,7 @@ class MainActivity : Activity() {
     private lateinit var scheduledTaskStore: ScheduledTaskStore
     private lateinit var telegramGateway: TelegramGateway
     private lateinit var localApiServer: LocalApiServer
+    private lateinit var hermesRuntimeClient: HermesRuntimeClient
 
     private val dadBotMessages = mutableListOf<DadBotMessage>()
     private var fileListRendered = false
@@ -131,6 +143,7 @@ class MainActivity : Activity() {
         scheduledTaskStore = ScheduledTaskStore(this)
         telegramGateway = TelegramGateway(this)
         localApiServer = LocalApiServer(this)
+        hermesRuntimeClient = HermesRuntimeClient()
         render()
         checkBackendStatus()
         scheduledTaskStore.scheduleAll()
@@ -156,6 +169,7 @@ class MainActivity : Activity() {
         addSkillsSection(root)
         addCronSection(root)
         addGatewaySection(root)
+        addHermesRuntimeSection(root)
         addWorkSessionCard(root)
         addFileManagerCard(root)
         addLogsSection(root)
@@ -232,6 +246,7 @@ class MainActivity : Activity() {
         row.addView(tab("🛠 Skills", false)  { scrollToView(skillsSectionView) })
         row.addView(tab("⏰ Cron", false)    { scrollToView(cronSectionView) })
         row.addView(tab("🌐 Gateway", false) { scrollToView(gatewaySectionView) })
+        row.addView(tab("⚙ Hermes", false)  { scrollToView(hermesSectionView) })
         row.addView(tab("📁 Files", false)   { scrollToView(fileSectionView) })
         row.addView(tab("📋 Logs", false)    { scrollToView(logsSectionView) })
         scroll.addView(row)
@@ -1170,6 +1185,180 @@ class MainActivity : Activity() {
         })
         gatewaySectionView = box
         addWithMargin(root, box, bottom = 12)
+    }
+
+    // ── Hermes Runtime (backend-connected) ──────────────────────────────
+    // The APK is a thin client over the control-plane Hermes + Nous pipeline.
+    // No on-device model. Flow: Install → Start → Connect Nous → Test reply.
+    private fun addHermesRuntimeSection(root: LinearLayout) {
+        val box = card(COLOR_SURFACE_DARK, stroke = COLOR_BORDER_DARK).apply {
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+        }
+
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(12))
+        }
+        headerRow.addView(TextView(this).apply {
+            text = "⚙"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = rounded(COLOR_PRIMARY, 10)
+        }, LinearLayout.LayoutParams(dp(36), dp(36)))
+        headerRow.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+            addView(TextView(this@MainActivity).apply {
+                text = "Hermes Runtime"
+                textSize = 17f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "APK + Nous + DSG · backend-connected runtime"
+                textSize = 11f
+                setTextColor(COLOR_TEXT_MUTED_DARK)
+            })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        box.addView(headerRow)
+
+        hermesStatusView = TextView(this).apply {
+            textSize = 12f
+            setTextColor(COLOR_TEXT_SOFT_DARK)
+            background = rounded(COLOR_SURFACE_DARK_2, 14, COLOR_BORDER_DARK, 1)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+        }
+        box.addView(hermesStatusView)
+
+        val row1 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(12), 0, 0)
+        }
+        row1.addView(compactButton("① Install Runtime", ButtonTone.PRIMARY) { onInstallHermes() })
+        row1.addView(compactButton("② Start Hermes", ButtonTone.SECONDARY) { onStartHermes() })
+        box.addView(row1)
+
+        val row2 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(8), 0, 0)
+        }
+        row2.addView(compactButton("③ Connect Nous", ButtonTone.SECONDARY) { onConnectNous() })
+        row2.addView(compactButton("④ Test reply", ButtonTone.SECONDARY) { onTestHermesReply() })
+        box.addView(row2)
+
+        hermesSectionView = box
+        addWithMargin(root, box, bottom = 12)
+        updateHermesStatus()
+    }
+
+    private fun hermesStatusSummary(): String {
+        val h = hermesHealth
+        val sb = StringBuilder()
+        sb.append(if (hermesInstalled) "✅" else "○").append(" ① Install runtime")
+        if (hermesInstalled && h != null) {
+            sb.append("  —  ").append(h.description.ifBlank { "${h.provider} / ${h.model}" })
+        }
+        sb.append("\n")
+        sb.append(if (hermesStarted) "✅" else "○").append(" ② Start Hermes")
+        if (h != null) sb.append("  —  status=").append(h.status)
+        sb.append("\n")
+        sb.append(if (hermesNousConnected) "✅" else "○").append(" ③ Connect Nous")
+        when {
+            hermesNousConnected && h != null ->
+                sb.append("  —  ").append(h.hosting ?: "nous").append(" / ").append(h.model)
+            hermesStarted && h != null && h.provider != "nous-hermes" ->
+                sb.append("  —  provider=").append(h.provider).append(" (Nous not set on backend)")
+        }
+        sb.append("\n")
+        sb.append(hermesTestResult ?: "○ ④ Test reply  —  expect \"ok\"")
+        return sb.toString()
+    }
+
+    private fun updateHermesStatus() {
+        hermesStatusView?.text = hermesStatusSummary()
+    }
+
+    private fun hermesHint(msg: String) {
+        hermesStatusView?.text = "${hermesStatusSummary()}\n\n⚠ $msg"
+    }
+
+    private fun onInstallHermes() {
+        hermesStatusView?.text = "⏳ Installing Hermes runtime… (checking backend)"
+        auditLogStore.append("HERMES_INSTALL", "owner", "Owner requested Hermes runtime install (backend health check)")
+        hermesRuntimeClient.health { health ->
+            hermesHealth = health
+            hermesStarted = false
+            hermesNousConnected = false
+            hermesTestResult = null
+            if (health.reachable) {
+                hermesInstalled = true
+                auditLogStore.append(
+                    "HERMES_INSTALLED", "system",
+                    "Backend reachable: provider=${health.provider} model=${health.model} status=${health.status}",
+                )
+            } else {
+                hermesInstalled = false
+                auditLogStore.append("HERMES_INSTALL_FAILED", "system", "Backend unreachable: ${health.error ?: "unknown"}")
+            }
+            updateHermesStatus()
+        }
+    }
+
+    private fun onStartHermes() {
+        if (!hermesInstalled) { hermesHint("Install the Hermes runtime first."); return }
+        val h = hermesHealth
+        hermesNousConnected = false
+        hermesTestResult = null
+        if (h != null && h.configured && h.status == "ready") {
+            hermesStarted = true
+            auditLogStore.append("HERMES_STARTED", "owner", "Hermes runtime started (status=ready, provider=${h.provider})")
+            updateHermesStatus()
+        } else {
+            hermesStarted = false
+            auditLogStore.append(
+                "HERMES_START_BLOCKED", "system",
+                "Backend not ready: status=${h?.status ?: "unknown"} configured=${h?.configured ?: false}",
+            )
+            hermesHint("Backend not ready (status=${h?.status ?: "unknown"}). Server-side keys may be missing.")
+        }
+    }
+
+    private fun onConnectNous() {
+        if (!hermesStarted) { hermesHint("Start Hermes first."); return }
+        hermesStatusView?.text = "${hermesStatusSummary()}\n\n⏳ Connecting Nous… (re-checking provider)"
+        hermesRuntimeClient.health { health ->
+            hermesHealth = health
+            hermesNousConnected = health.provider == "nous-hermes"
+            if (hermesNousConnected) {
+                auditLogStore.append("HERMES_NOUS_CONNECTED", "system", "Connected to Nous via ${health.hosting ?: "unknown"} (${health.model})")
+                updateHermesStatus()
+            } else {
+                auditLogStore.append(
+                    "HERMES_NOUS_UNAVAILABLE", "system",
+                    "Backend provider=${health.provider}; Nous not configured server-side (needs TOGETHER_API_KEY/OPENROUTER_API_KEY)",
+                )
+                hermesHint("Nous not configured on backend (provider=${health.provider}). Test reply still works via ${health.provider}.")
+            }
+        }
+    }
+
+    private fun onTestHermesReply() {
+        if (!hermesStarted) { hermesHint("Start Hermes first."); return }
+        hermesTestResult = "⏳ ④ Test reply: sending…"
+        updateHermesStatus()
+        auditLogStore.append("HERMES_TEST_REPLY", "owner", "Owner ran Hermes test reply")
+        hermesRuntimeClient.testReply("Reply with exactly one word: ok") { ok, reply ->
+            val provider = hermesHealth?.provider ?: "backend"
+            if (ok) {
+                auditLogStore.append("HERMES_TEST_REPLY_OK", "system", "Reply via $provider: ${reply.take(80)}")
+            } else {
+                auditLogStore.append("HERMES_TEST_REPLY_FAIL", "system", "Test reply failed: ${reply.take(120)}")
+            }
+            hermesTestResult = "${if (ok) "✅" else "❌"} ④ Test reply: $reply"
+            updateHermesStatus()
+        }
     }
 
     private fun addWorkSessionCard(root: LinearLayout) {
