@@ -106,6 +106,53 @@ Coverage currently expected:
 
 ---
 
+## DSG GraphMap Plugin — กฎการใช้งานสำหรับ agent (2026-05-26)
+
+### ใช้เมื่อไหร่
+
+ก่อนตอบคำถามเกี่ยวกับโครงสร้าง repo ต้อง query GraphMap ก่อนเสมอ ตัวอย่างคำถามที่ต้อง query ก่อน:
+
+- "route ไหนแตะ table ไหน"
+- "policy / gate ไหนคุม API ไหน"
+- "test ไหนควรเกี่ยวกับไฟล์นี้"
+- "ไฟล์นี้ import จากที่ไหนบ้าง"
+- "อะไรอยู่ใน directory เดียวกันกับไฟล์นี้"
+
+### วิธีใช้
+
+```
+GET  /api/plugins/graphmap/status
+  → ถ้า status=EMPTY หรือ isStale=true → POST /api/plugins/graphmap/build ก่อน
+
+POST /api/plugins/graphmap/build
+  body: {} (ใช้ default include/exclude patterns)
+  → รอ ok: true, nodeCount > 0
+
+POST /api/plugins/graphmap/query
+  body: { "question": "<คำถามเกี่ยวกับ repo>", "max_depth": 2 }
+  → อ่าน decision + evidence ก่อนตอบ
+```
+
+### กฎการตีความ decision
+
+| decision | ความหมาย | สิ่งที่ agent ควรทำ |
+|---|---|---|
+| `ALLOW` | หลักฐาน EXTRACTED ≥3 ชิ้น graph ไม่เก่า | ตอบได้โดยอ้างอิง evidence |
+| `REVIEW` | มี INFERRED หรือ graph เก่ากว่า 24h | ตอบแบบ "น่าจะ" บอก confidence ด้วย |
+| `BLOCK` | ไม่มี evidence | ห้ามเดา — บอก user ว่าต้อง build graph ก่อน |
+
+### ห้ามทำ
+
+- ห้ามตอบคำถาม repo structure โดยไม่ query GraphMap ก่อน
+- ห้าม claim ว่า "route X แตะ table Y" ถ้า decision เป็น BLOCK หรือ REVIEW + confidence INFERRED
+- ห้าม build graph ถ้า status=READY และ isStale=false (ใช้ของเดิมได้)
+
+### Auth
+
+ทุก endpoint ต้องส่ง `Authorization: Bearer <supabase_jwt>` — ดึง token จาก user session ที่ login อยู่
+
+---
+
 ## งานที่ทำไปแล้ว (2026-05-16) — branch `claude/analyze-files-RHRKg` → merged to `main`
 
 ### Security fixes
