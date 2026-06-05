@@ -123,6 +123,34 @@ describe("/api/onboarding/state", () => {
     expect(mockRequireOrgPermission).toHaveBeenCalledWith("org.view_reports");
   });
 
+  it("returns evidence-derived progress and points next_action at Quick Setup, not Skills", async () => {
+    mockRequireOrgPermission.mockResolvedValueOnce({
+      ok: true,
+      orgId: "org-1",
+      userId: "user-1",
+      authUserId: "auth-1",
+      email: "operator@example.com",
+      role: "operator",
+    });
+    mockGetSupabaseAdmin.mockReturnValue(makeAdmin() as any);
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(mockRequireOrgPermission).toHaveBeenCalledWith("org.view_reports");
+    // Progress is derived from real agent/execution counts, not a manual checkbox.
+    expect(body.progress).toEqual({
+      workspace_ready: true,
+      agent_ready: true,
+      first_execution_ready: false,
+    });
+    expect(body.has_agent).toBe(true);
+    // next_action must guide users to the real Quick Setup location.
+    expect(body.next_action).toMatch(/Quick Setup/);
+    expect(body.next_action).not.toMatch(/Skills/);
+  });
+
   it("rejects invalid normalized checklist step ids before persistence", async () => {
     mockRequireOrgPermission.mockResolvedValueOnce({
       ok: true,
