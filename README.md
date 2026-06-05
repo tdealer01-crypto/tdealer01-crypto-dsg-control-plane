@@ -8,6 +8,51 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
+## 🟢 Guided Onboarding UX + Decision Explainer — 2026-06-05
+
+**PRs #676 · #677 · #678 merged to `main` | Deployed:** production live (`GET /api/agent/status` → `version: 98069ae…`, `db:true`) | **Typecheck:** 0 errors | **Build:** `next build` success
+
+Making governed AI usable for real operators, not only developers — one onboarding path, plain-language decisions, and progress backed by real evidence.
+
+### What's new
+
+#### Onboarding (PR #676)
+
+| Area | Change |
+|---|---|
+| Single path | `/api/onboarding/state` `next_action` now points to Quick Setup on the Welcome page (was the stale "Skills" location) |
+| Generated code | Copyable `dsg_gate.py` / `dsg_gate.js` and the inline Python/JS/cURL snippets are English-only — no Thai comments in code users paste into their own repos |
+| Evidence-based progress | The dashboard onboarding checklist derives completion from real workspace state (`progress` from `/api/onboarding/state`) instead of manual self-attested checkboxes |
+| Default safety posture | The Auto-Setup success screen explains what the starter policy enforces: BLOCK ≥ 0.80, STABILIZE ≥ 0.40, ALLOW < 0.40 (no threshold change) |
+| Mascot guide | A decorative, `aria-hidden`, reduced-motion-aware SVG guide reacts to real flow state (walking / thumbs-up / blocked / pointing / waving); it never gates a decision |
+
+#### Plain-language decision explainer (PR #677 · #678)
+
+`components/DecisionExplainer.tsx` turns a raw `ALLOW` / `STABILIZE` / `BLOCK` decision into a clear what / why / next-action summary with fix links (Adjust policy · Review approvals · Open audit). Evidence-first: it renders only data actually present (decision, reason, policy version, optional risk score) and invents nothing.
+
+- Wired into `/dashboard/executions` (above the raw evidence rows + JSON) and the gateway monitor's "Latest visible proof" card.
+- Recognizes gateway decision synonyms: `pass`/`allowed` → ALLOW, `review`/`needs_review`/`manual_review` → review, `deny`/`denied`/`blocked` → BLOCK.
+
+#### Cleanup (PR #677)
+
+- Removed `POST /api/onboarding/seed` (no UI caller; superseded by `POST /api/setup/auto`).
+- Removed the manual `completedStepIds` checklist model from `/api/onboarding/state` — the widget now persists only the `dismissed` preference.
+
+### Verification — 2026-06-05
+
+```
+npm run typecheck             # 0 errors (only 2 pre-existing tsconfig deprecations)
+npm run build                 # success — 124 pages
+vitest onboarding-state-route # 4 passed
+vitest decision-explainer     # 13 passed (render test — PR #680)
+GET /api/agent/status         # version 98069ae…, env production, db:true ✅
+POST /api/gateway/plan-check   → decision "block" + request/decision/record hashes ✅ (live)
+```
+
+Live check: a real `ALLOW` execution and live `block` gateway decisions were rendered through `DecisionExplainer`, producing the correct plain-language output for each. The `/gateway/monitor` page itself is auth-gated (Supabase operator session required), so its rendered HTML is not fetched anonymously.
+
+---
+
 ## 🟢 Hermes Managed Agents API + Security Hardening — 2026-06-04
 
 **Commit:** `c44e4a240` merged to `main` | **Deployed:** production live | **Typecheck:** 0 errors
