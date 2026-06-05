@@ -26,9 +26,11 @@ type Props = {
 
 function classify(decision?: string | null): DecisionKind {
   const d = String(decision || "").toUpperCase();
-  if (d === "ALLOW") return "ALLOW";
-  if (d === "STABILIZE") return "STABILIZE";
-  if (d === "BLOCK" || d === "FREEZE") return "BLOCK";
+  if (["ALLOW", "PASS", "ALLOWED"].includes(d)) return "ALLOW";
+  if (["STABILIZE", "REVIEW", "NEEDS_REVIEW", "MANUAL_REVIEW"].includes(d))
+    return "STABILIZE";
+  if (["BLOCK", "FREEZE", "BLOCKED", "DENY", "DENIED"].includes(d))
+    return "BLOCK";
   return "UNKNOWN";
 }
 

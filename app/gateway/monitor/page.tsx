@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import DecisionExplainer from '../../../components/DecisionExplainer';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,13 +173,20 @@ export default async function GatewayMonitorPage({ searchParams }: { searchParam
           <div className="dsg-card rounded-[1.5rem] p-6">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-amber-200">Latest visible proof</p>
             {latest ? (
-              <dl className="mt-5 space-y-4 text-sm">
+              <>
+              <DecisionExplainer
+                decision={latest.decision}
+                reason={`${latest.tool_name} / ${latest.action}`}
+                className="mt-5"
+              />
+              <dl className="mt-4 space-y-4 text-sm">
                 <div><dt className="text-slate-400">Action</dt><dd className="mt-1 font-bold text-white">{latest.tool_name} / {latest.action}</dd></div>
                 <div><dt className="text-slate-400">Decision</dt><dd className="mt-1"><span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${decisionClass(latest.decision)}`}>{latest.decision}</span></dd></div>
                 <div><dt className="text-slate-400">Risk</dt><dd className="mt-1 font-mono text-slate-200">{latest.risk ?? 'unclassified'}</dd></div>
                 <div><dt className="text-slate-400">Request hash</dt><dd className="mt-1 font-mono text-xs text-blue-200">{shortHash(latest.request_hash)}</dd></div>
                 <div><dt className="text-slate-400">Record hash</dt><dd className="mt-1 font-mono text-xs text-amber-200">{shortHash(latest.record_hash)}</dd></div>
               </dl>
+              </>
             ) : (
               <p className="mt-5 text-sm leading-7 text-slate-300">No proof event yet. Use command 1 below to create the first visible event, then refresh this page.</p>
             )}
