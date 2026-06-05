@@ -1,0 +1,62 @@
+export const DSG_GOVERNANCE_DB_PROMPT = [
+  'DSG Governance Database Schema Reference:',
+  '',
+  'Use this reference when the user asks about agent memory, governance state, jobs, planning, approval, execution steps, audit logs, evidence refs, or claim status.',
+  '',
+  'Known governance tables from migration 0001_long_vertigo.sql:',
+  '',
+  '1. agent_jobs',
+  '- Stores the governed app-builder / agent job lifecycle.',
+  '- Important fields: workspace_id, actor_id, goal, success_criteria, constraints, goal_hash, goal_locked_at, prd_summary, proposed_plan, plan_hash, gate_result, gate_status, approval_hash, approval_decision, runtime_status, runtime_handoff, job_status, claim_status.',
+  '- Main meaning: this table is the job memory and state machine anchor for goal lock, PRD, plan, gate, approval, runtime handoff, and claim boundary.',
+  '- Job status values: CREATED, PLANNING, AWAITING_APPROVAL, READY_FOR_RUNTIME, EXECUTING, COMPLETED, FAILED, REJECTED.',
+  '- Claim status values: NO_CLAIM, APPROVED_ONLY, EXECUTION_STARTED, EXECUTION_COMPLETE.',
+  '',
+  '2. approval_requests',
+  '- Stores approval checkpoints for plans, steps, and execution.',
+  '- Important fields: job_id, step_id, request_type, risk_level_approval, blocked_reasons, approval_status, approver_id, approval_reason, approved_at, notification_sent.',
+  '- Request types: PLAN_APPROVAL, STEP_APPROVAL, EXECUTION_APPROVAL.',
+  '- Approval status values: PENDING, APPROVED, REJECTED.',
+  '- Main meaning: this table supports explicit user/operator approval before risky or governed actions.',
+  '',
+  '3. execution_steps',
+  '- Stores per-step controlled tool/adapter execution.',
+  '- Important fields: job_id, step_index, adapter_name, tool_name, step_input, step_output, execution_decision_frame, adapter_step_trace, audit_event, evidence_refs, step_status, risk_level, requires_approval.',
+  '- Step status values: PENDING, EXECUTING, COMPLETED, FAILED, BLOCKED.',
+  '- Risk values: LOW, MEDIUM, HIGH, CRITICAL.',
+  '- Main meaning: this is the evidence-backed execution timeline for agent tool use.',
+  '',
+  '4. governance_audit_logs',
+  '- Stores governance audit events linked to jobs and steps.',
+  '- Important fields: job_id, step_id, event_type, event_payload, decision_frame_state, actor_id_audit, actor_role, event_hash, previous_hash, created_at.',
+  '- event_hash is unique. previous_hash supports chained audit history.',
+  '- Main meaning: this is the governance audit ledger for replay and non-repudiation style evidence.',
+  '',
+  'How the agent should use this schema:',
+  '- Treat agent_jobs as durable job memory/state, not conversational memory alone.',
+  '- Treat approval_requests as the source of approval truth.',
+  '- Treat execution_steps as the source of step-level execution evidence.',
+  '- Treat governance_audit_logs as the source of audit chain evidence.',
+  '- Do not claim a step, approval, or execution exists unless these rows are queried or visible evidence is provided.',
+  '- If database access is not available in the current request, say DB lookup is pending_verification.',
+  '',
+  'Safe claim boundary:',
+  '- goal locked: only after agent_jobs.goal_hash / goal_locked_at exists or was produced in current flow.',
+  '- plan generated: only after agent_jobs.proposed_plan / plan_hash exists or was produced in current flow.',
+  '- approved: only after agent_jobs.approval_decision=APPROVE or approval_requests.approval_status=APPROVED.',
+  '- execution started: only after execution_steps row exists or agent_jobs.claim_status=EXECUTION_STARTED.',
+  '- execution complete: only after execution_steps completed evidence exists and agent_jobs.claim_status=EXECUTION_COMPLETE or equivalent evidence exists.',
+  '- audit proof: only after governance_audit_logs event_hash exists for the relevant event.',
+].join('\n');
+
+export function shouldUseGovernanceDb(message: string) {
+  return /memory|เมโมรี|database|db|schema|sql|agent_jobs|approval_requests|execution_steps|governance_audit_logs|approval|อนุมัติ|audit|ledger|event_hash|previous_hash|claim_status|job_status|runtime_handoff|evidence_refs|decision_frame|goal_hash|plan_hash/i.test(message);
+}
+
+export function buildGovernanceDbInstruction(userMessage: string) {
+  return [
+    'Apply the DSG Governance Database Schema Reference if the user asks about durable memory, job state, approval, execution, audit, evidence refs, claim status, or SQL schema.',
+    'If no live database query was performed, do not claim rows exist. Say pending_verification and identify the row/table that must be checked.',
+    `Current user message: ${userMessage}`,
+  ].join('\n');
+}
