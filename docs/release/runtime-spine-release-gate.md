@@ -17,7 +17,7 @@
 - [ ] `GET /api/health` returns 200.
 - [ ] `GET /login` and `GET /pricing` return 200.
 - [ ] `GET /dashboard` redirects to `/login` when unauthenticated.
-- [ ] `POST /api/onboarding/seed` returns 401 unauthenticated.
+- [ ] `POST /api/setup/auto` returns 401 unauthenticated.
 - [ ] `GET /api/core/monitor` returns structured readiness payload for authenticated users.
 
 ## Rollback criteria
