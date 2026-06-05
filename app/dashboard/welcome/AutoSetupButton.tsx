@@ -27,11 +27,11 @@ def gate(session_id: str, action: str) -> str:
     }, headers={"Authorization": f"Bearer {DSG_API_KEY}"})
     return r.json().get("decision", "BLOCK")
 
-# ใส่ก่อนทุก action ที่ agent จะทำ
+# Call gate() before every action your agent performs
 if gate("run-001", "send email to customer") == "ALLOW":
-    send_email()   # ✅ ผ่าน gate แล้ว ทำได้
+    send_email()   # passed the gate - safe to run
 else:
-    pass           # 🚫 BLOCK — หยุด`;
+    pass           # BLOCK - stop, do not run`;
 
   if (lang === 'javascript') return `const DSG_API_KEY = "${apiKey}";
 const BASE_URL = "https://tdealer01-crypto-dsg-control-plane.vercel.app";
@@ -49,10 +49,10 @@ async function gate(sessionId, action) {
   return data.decision; // "ALLOW" | "BLOCK"
 }
 
-// ใส่ก่อนทุก action ที่ agent จะทำ
+// Call gate() before every action your agent performs
 const decision = await gate("run-001", "send email to customer");
 if (decision === "ALLOW") {
-  await sendEmail(); // ✅ ผ่าน gate
+  await sendEmail(); // passed the gate
 }`;
 
   return `curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/execute \\
@@ -65,7 +65,7 @@ if (decision === "ALLOW") {
 
 # Response:
 # { "decision": "ALLOW", "stamp": "DSG-A4B2" }
-# หรือ
+# or
 # { "decision": "BLOCK", "reason": "action not declared" }`;
 }
 
@@ -144,6 +144,21 @@ export default function AutoSetupButton() {
             <h2 className="font-bold text-white">ติดตั้งเสร็จแล้ว — พร้อมใช้งาน</h2>
             <p className="text-sm text-slate-400">Agent, policy และ audit trail ถูกสร้างแล้ว</p>
           </div>
+        </div>
+
+        {/* Default safety posture — what the starter policy enforces */}
+        <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+            Default safe policy · นโยบายความปลอดภัยเริ่มต้น
+          </p>
+          <ul className="mt-2 space-y-1 text-sm text-slate-300">
+            <li><span className="font-mono text-red-300">BLOCK</span> — action ที่ risk ≥ 0.80 ถูกหยุดก่อนทำงาน</li>
+            <li><span className="font-mono text-amber-300">STABILIZE</span> — risk ≥ 0.40 ถูกตั้งให้รอ review/approval</li>
+            <li><span className="font-mono text-emerald-300">ALLOW</span> — risk &lt; 0.40 ผ่าน gate ได้</li>
+          </ul>
+          <p className="mt-2 text-xs text-slate-500">
+            ทุก decision มี evidence stamp ตรวจสอบย้อนหลังได้ใน Audit log
+          </p>
         </div>
 
         {result.api_key && (

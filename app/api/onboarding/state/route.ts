@@ -105,8 +105,8 @@ async function buildOnboardingResponse(orgId: string) {
   const nextAction = firstRunComplete
     ? "Open executions dashboard"
     : hasAgent
-      ? "Complete Auto-Setup in Skills to create your first execution"
-      : "Complete Auto-Setup in Skills to create your first agent and first execution";
+      ? "Run your first governed action with Quick Setup on the Welcome page"
+      : "Create your first agent with Quick Setup on the Welcome page";
 
   return {
     org_id: orgId,

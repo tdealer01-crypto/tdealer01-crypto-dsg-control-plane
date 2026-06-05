@@ -12,19 +12,19 @@ const RATE_WINDOW_MS = 60 * 1000;
 
 function pythonFile(baseUrl: string, apiKey: string, agentId: string): string {
   return `"""
-dsg_gate.py — DSG ONE gate helper
-วางไฟล์นี้ในโฟลเดอร์เดียวกับ agent ของคุณ แล้ว import ใช้ได้เลย
+dsg_gate.py - DSG ONE gate helper
+Drop this file next to your agent code, then import and use it.
 
-ติดตั้ง dependency:
+Install dependency:
   pip install requests
 
-วิธีใช้:
+Usage:
   from dsg_gate import gate
 
-  # ก่อนทุก action ที่ agent จะทำ
+  # Call before every action your agent performs
   if gate("my-session-01", "send_email") == "ALLOW":
       send_email(...)
-  # ถ้า BLOCK — หยุด ไม่ทำ
+  # If BLOCK - stop, do not run the action
 """
 
 import requests
@@ -42,15 +42,15 @@ Decision = Literal["ALLOW", "BLOCK", "STABILIZE"]
 
 def gate(session_id: str, action: str) -> Decision:
     """
-    ถาม DSG gate ก่อนทุก action
+    Ask the DSG gate before every action.
     Return: "ALLOW" | "BLOCK" | "STABILIZE"
 
-    ตัวอย่างชื่อ action:
-      "send_email"         — ส่ง email
-      "delete_file"        — ลบไฟล์
-      "call_payment_api"   — เรียก payment API
-      "update_database"    — แก้ไข database
-      "fetch_user_data"    — ดึงข้อมูล user
+    Example action names:
+      "send_email"         - send an email
+      "delete_file"        - delete a file
+      "call_payment_api"   - call a payment API
+      "update_database"    - modify the database
+      "fetch_user_data"    - read user data
     """
     try:
         resp = requests.post(
@@ -78,8 +78,8 @@ def gate(session_id: str, action: str) -> Decision:
 
 def require_allow(session_id: str, action: str) -> None:
     """
-    เหมือน gate() แต่ throw exception ถ้า BLOCK
-    ใช้ได้ใน try/except block
+    Same as gate() but raises an exception when the decision is not ALLOW.
+    Use it inside a try/except block.
     """
     decision = gate(session_id, action)
     if decision != "ALLOW":
@@ -89,16 +89,16 @@ def require_allow(session_id: str, action: str) -> None:
 
 function javascriptFile(baseUrl: string, apiKey: string, agentId: string): string {
   return `/**
- * dsg_gate.js — DSG ONE gate helper
- * วางไฟล์นี้ในโฟลเดอร์เดียวกับ agent ของคุณ แล้ว import ใช้ได้เลย
+ * dsg_gate.js - DSG ONE gate helper
+ * Drop this file next to your agent code, then import and use it.
  *
- * วิธีใช้ (CommonJS):
+ * Usage (CommonJS):
  *   const { gate } = require('./dsg_gate');
  *
- * วิธีใช้ (ESM):
+ * Usage (ESM):
  *   import { gate } from './dsg_gate.js';
  *
- * ก่อนทุก action ที่ agent จะทำ:
+ * Call before every action your agent performs:
  *   const decision = await gate("my-session-01", "send_email");
  *   if (decision === "ALLOW") { sendEmail(...); }
  */
@@ -108,15 +108,15 @@ const DSG_API_KEY  = "${apiKey}";
 const DSG_AGENT_ID = "${agentId}";
 
 /**
- * ถาม DSG gate ก่อนทุก action
+ * Ask the DSG gate before every action.
  * @returns "ALLOW" | "BLOCK" | "STABILIZE"
  *
- * ตัวอย่างชื่อ action:
- *   "send_email"         — ส่ง email
- *   "delete_file"        — ลบไฟล์
- *   "call_payment_api"   — เรียก payment API
- *   "update_database"    — แก้ไข database
- *   "fetch_user_data"    — ดึงข้อมูล user
+ * Example action names:
+ *   "send_email"         - send an email
+ *   "delete_file"        - delete a file
+ *   "call_payment_api"   - call a payment API
+ *   "update_database"    - modify the database
+ *   "fetch_user_data"    - read user data
  */
 async function gate(sessionId, action) {
   try {
@@ -144,7 +144,7 @@ async function gate(sessionId, action) {
 }
 
 /**
- * เหมือน gate() แต่ throw error ถ้า BLOCK
+ * Same as gate() but throws an error when the decision is not ALLOW.
  */
 async function requireAllow(sessionId, action) {
   const decision = await gate(sessionId, action);
