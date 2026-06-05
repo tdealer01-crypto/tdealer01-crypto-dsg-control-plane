@@ -796,6 +796,30 @@ Not claimed:
 
 ---
 
+## GraphMap Plugin (spec — 2026-05-26)
+
+```
+GET  /api/plugins/graphmap/status  — EMPTY | READY, isStale boolean
+POST /api/plugins/graphmap/build   — scan repo → build graph → Supabase
+POST /api/plugins/graphmap/query   — keyword BFS → evidence + gate
+```
+
+Edge confidence:
+- import / link   → EXTRACTED (direct parse evidence)
+- co-located      → INFERRED  (same-directory heuristic)
+
+Gate:
+- ALLOW  — ≥3 EXTRACTED evidence + graph age < 24h
+- REVIEW — any INFERRED, stale, or < 3 EXTRACTED
+- BLOCK  — no evidence or all AMBIGUOUS
+
+Plugin manifest: `plugins/graphmap/plugin.json`
+- `read_repo: true` | `write_repo: false` | `call_dsg_gate: true`
+
+Agent usage rules in `AGENTS.md` — agents MUST query GraphMap before answering repo structure questions.
+
+---
+
 ## Formal verification artifact
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18225586.svg)](https://doi.org/10.5281/zenodo.18225586)
