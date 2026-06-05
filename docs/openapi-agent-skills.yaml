@@ -1,0 +1,662 @@
+openapi: "3.1.0"
+info:
+  title: DSG SkillGate — Agent Skills API
+  version: "1.0.0"
+  description: |
+    Open-source GitHub skill discovery, inspection, verification, locking, and gated execution.
+
+    Pipeline: Search → Inspect → Build Draft → Verify Gate → Lock Registry → Run via Gate
+
+    **Safety invariants (enforced at runtime):**
+    - Read-only GitHub metadata access — no code is cloned, installed, or executed
+    - `blocked` skills cannot be registered without `forceRegister: true`
+    - `needs_approval` / `needs_review` skills are denied at the run gate
+    - All execute actions pass through `prepareGovernedToolRequest()` for audit
+  contact:
+    name: DSG ONE
+    url: https://dsg.pics
+
+servers:
+  - url: /api/agent-skills
+    description: Next.js App Router (same origin)
+
+security:
+  - BearerAuth: []
+  - WorkspaceHeader: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Supabase user access token
+    WorkspaceHeader:
+      type: apiKey
+      in: header
+      name: x-dsg-workspace-id
+
+  schemas:
+    SkillRiskLevel:
+      type: string
+      enum: [low, medium, high, critical]
+
+    SkillStatus:
+      type: string
+      enum: [discovered, draft, needs_review, needs_approval, verified, blocked]
+
+    SkillPermissions:
+      type: object
+      properties:
+        network:
+          type: boolean
+        filesystem:
+          type: string
+          enum: [none, read, write]
+        secrets:
+          type: boolean
+        codeExecution:
+          type: boolean
+        externalWrite:
+          type: boolean
+      required: [network, filesystem, secrets, codeExecution, externalWrite]
+
+    GitHubSkillSource:
+      type: object
+      properties:
+        owner:
+          type: string
+          example: anthropics
+        repo:
+          type: string
+          example: claude-code
+        fullName:
+          type: string
+          example: anthropics/claude-code
+        url:
+          type: string
+          format: uri
+        description:
+          type: [string, "null"]
+        stars:
+          type: integer
+        license:
+          type: [string, "null"]
+          example: MIT
+        language:
+          type: [string, "null"]
+        topics:
+          type: array
+          items:
+            type: string
+        lastCommit:
+          type: [string, "null"]
+          format: date-time
+
+    SkillDraft:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Slugified identifier from owner/repo
+          example: anthropics-claude-code
+        name:
+          type: string
+        sourceType:
+          type: string
+          enum: [github, npm, local]
+        sourceUrl:
+          type: string
+          format: uri
+        sourceOwner:
+          type: string
+        sourceRepo:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft]
+        riskLevel:
+          $ref: "#/components/schemas/SkillRiskLevel"
+        permissions:
+          $ref: "#/components/schemas/SkillPermissions"
+        draftedAt:
+          type: string
+          format: date-time
+
+    SkillVerificationResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [verified, needs_review, needs_approval, blocked]
+        reasons:
+          type: array
+          items:
+            type: string
+          description: |
+            Flags explaining the status. Possible values:
+            MISSING_README, MISSING_LICENSE, NO_TESTS_FOUND,
+            HARDCODED_SECRET_DETECTED, EXTERNAL_WRITE_CAPABILITY,
+            CODE_EXECUTION_CAPABILITY
+        checks:
+          type: object
+          properties:
+            hasReadme:
+              type: boolean
+            hasLicense:
+              type: boolean
+            hasTests:
+              type: boolean
+            noHardcodedSecrets:
+              type: boolean
+            noExternalWrite:
+              type: boolean
+            noCodeExecution:
+              type: boolean
+            riskLevel:
+              $ref: "#/components/schemas/SkillRiskLevel"
+
+    SkillLockEntry:
+      type: object
+      properties:
+        source:
+          type: string
+          example: anthropics/claude-code
+        sourceType:
+          type: string
+          enum: [github, npm, local]
+        sourceUrl:
+          type: string
+          format: uri
+        sourceCommit:
+          type: [string, "null"]
+          description: Pinned commit SHA
+        computedHash:
+          type: string
+          description: SHA-256 of (sourceUrl + sourceCommit + riskLevel + permissions)
+        status:
+          type: string
+          enum: [needs_review, needs_approval, verified, blocked]
+        riskLevel:
+          $ref: "#/components/schemas/SkillRiskLevel"
+        permissions:
+          $ref: "#/components/schemas/SkillPermissions"
+        registeredAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+
+paths:
+  /search:
+    get:
+      summary: Search GitHub for open-source skills
+      description: |
+        Read-only GitHub REST API search. Returns repo metadata only.
+        No code is cloned, installed, or executed.
+      operationId: searchSkills
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (appended with "skill agent in:name,description,readme")
+          schema:
+            type: string
+            example: github repo auditor
+        - name: limit
+          in: query
+          required: false
+          description: Maximum results (1–30, default 10)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+            default: 10
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      query:
+                        type: string
+                      count:
+                        type: integer
+                      results:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: "#/components/schemas/GitHubSkillSource"
+                            - type: object
+                              properties:
+                                status:
+                                  type: string
+                                  enum: [discovered]
+                      note:
+                        type: string
+        "400":
+          description: Missing query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Authentication required (skill:read)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: GitHub API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inspect:
+    post:
+      summary: Inspect a GitHub repo's skill metadata
+      description: |
+        Fetches README, LICENSE, package.json, and checks for:
+        hardcoded secrets, external write capability, code execution patterns.
+        No code is installed or executed.
+      operationId: inspectSkill
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner, repo]
+              properties:
+                owner:
+                  type: string
+                  example: anthropics
+                repo:
+                  type: string
+                  example: claude-code
+      responses:
+        "200":
+          description: Inspection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      source:
+                        $ref: "#/components/schemas/GitHubSkillSource"
+                      hasReadme:
+                        type: boolean
+                      hasLicense:
+                        type: boolean
+                      hasTests:
+                        type: boolean
+                      hasSchemaOrTypes:
+                        type: boolean
+                      hasSecretHardcoded:
+                        type: boolean
+                      hasExternalWrite:
+                        type: boolean
+                      hasCodeExecution:
+                        type: boolean
+                      securityPolicy:
+                        type: boolean
+                      dependencyCount:
+                        type: integer
+                      note:
+                        type: string
+        "400":
+          description: Missing owner or repo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Authentication required (skill:read)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Repository not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /build:
+    post:
+      summary: Build a skill draft with risk assessment
+      operationId: buildSkillDraft
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner, repo]
+              properties:
+                owner:
+                  type: string
+                repo:
+                  type: string
+      responses:
+        "200":
+          description: Skill draft with risk and permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      draft:
+                        $ref: "#/components/schemas/SkillDraft"
+                      inspectionSummary:
+                        type: object
+                      nextStep:
+                        type: string
+        "403":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /verify:
+    post:
+      summary: Run verification gate on a skill draft
+      description: |
+        Accepts either a pre-built draft (from /build) or owner+repo to build+verify inline.
+        Returns one of: verified | needs_review | needs_approval | blocked
+      operationId: verifySkill
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [draft]
+                  properties:
+                    draft:
+                      $ref: "#/components/schemas/SkillDraft"
+                - type: object
+                  required: [owner, repo]
+                  properties:
+                    owner:
+                      type: string
+                    repo:
+                      type: string
+      responses:
+        "200":
+          description: Verification decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      skillId:
+                        type: string
+                      verification:
+                        $ref: "#/components/schemas/SkillVerificationResult"
+                      draft:
+                        $ref: "#/components/schemas/SkillDraft"
+                      nextStep:
+                        type: string
+        "403":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /register:
+    post:
+      summary: Lock a verified skill into skills-lock.json
+      description: |
+        Requires skill:execute permission.
+        Blocked skills cannot be registered unless forceRegister is true.
+        Returns the updated skills-lock.json — commit this file to persist the registration.
+      operationId: registerSkill
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                draft:
+                  $ref: "#/components/schemas/SkillDraft"
+                verification:
+                  $ref: "#/components/schemas/SkillVerificationResult"
+                sourceCommit:
+                  type: string
+                  description: Git commit SHA to pin
+                owner:
+                  type: string
+                  description: Alternative to draft+verification
+                repo:
+                  type: string
+                forceRegister:
+                  type: boolean
+                  description: Allow registering blocked skills (for audit)
+                  default: false
+      responses:
+        "200":
+          description: Skill registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      skillId:
+                        type: string
+                      status:
+                        $ref: "#/components/schemas/SkillStatus"
+                      riskLevel:
+                        $ref: "#/components/schemas/SkillRiskLevel"
+                      entry:
+                        $ref: "#/components/schemas/SkillLockEntry"
+                      lockUpdatedAt:
+                        type: string
+                        format: date-time
+                      skillsCount:
+                        type: integer
+                      note:
+                        type: string
+                      skillsLock:
+                        type: object
+        "403":
+          description: Authentication required (skill:execute)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Skill is blocked and cannot be registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /run:
+    get:
+      summary: List all locked skills
+      operationId: listLockedSkills
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      responses:
+        "200":
+          description: Locked skill registry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      version:
+                        type: integer
+                      updatedAt:
+                        type: string
+                        format: date-time
+                      skills:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            source:
+                              type: string
+                            status:
+                              $ref: "#/components/schemas/SkillStatus"
+                            riskLevel:
+                              $ref: "#/components/schemas/SkillRiskLevel"
+                            description:
+                              type: string
+                            registeredAt:
+                              type: string
+                              format: date-time
+    post:
+      summary: Gate and execute a skill action
+      description: |
+        Requires skill:execute permission.
+        Checks the lock registry, then gates the action through prepareGovernedToolRequest().
+        Execution is currently simulated — live execution requires a connected runtime sandbox.
+      operationId: runSkillAction
+      security:
+        - BearerAuth: []
+          WorkspaceHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skillId, goal]
+              properties:
+                skillId:
+                  type: string
+                  example: anthropics-claude-code
+                goal:
+                  type: string
+                  example: Summarize recent commits in this repository
+                args:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Gate allowed — simulated execution
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      skillId:
+                        type: string
+                      gateStatus:
+                        type: string
+                        enum: [ready]
+                      auditId:
+                        type: string
+                      simulated:
+                        type: boolean
+                        enum: [true]
+                      note:
+                        type: string
+        "403":
+          description: Gate blocked or auth required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [false]
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                  data:
+                    type: object
+                    properties:
+                      auditId:
+                        type: string
+                      gateStatus:
+                        type: string
+                        enum: [blocked, review]
+                      simulated:
+                        type: boolean
