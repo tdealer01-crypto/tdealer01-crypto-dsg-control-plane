@@ -100,8 +100,8 @@ jobs:
 
       - name: Live DB tests
         if: >
-          secrets.NEXT_PUBLIC_SUPABASE_URL != '' &&
-          secrets.SUPABASE_SERVICE_ROLE_KEY != ''
+          env.NEXT_PUBLIC_SUPABASE_URL != 'https://example.supabase.co' &&
+          env.SUPABASE_SERVICE_ROLE_KEY != ''
         run: npm run test:live:db:required
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
