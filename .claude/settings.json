@@ -1,77 +1,18 @@
 {
   "mcpServers": {
-    "dsg-control-plane": {
-      "type": "http",
-      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server",
-      "headers": {
-        "Authorization": "Bearer ${DSG_ACCESS_TOKEN}"
-      }
-    },
     "dsg-one-v1": {
       "type": "http",
       "url": "https://dsg-one-v1.vercel.app/api/mcp-server",
       "headers": {
         "Authorization": "Bearer ${DSG_ACCESS_TOKEN}"
       }
+    },
+    "dsg-control-plane": {
+      "type": "http",
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server",
+      "headers": {
+        "Authorization": "Bearer ${DSG_ACCESS_TOKEN}"
+      }
     }
-  },
-  "enableAllProjectMcpServers": true,
-  "permissions": {
-    "allow": [
-      "Bash",
-      "Read",
-      "Write",
-      "Edit",
-      "WebFetch",
-      "WebSearch",
-      "Skill",
-      "Agent"
-    ]
-  },
-  "env": {
-    "DSG_PRODUCTHUNT_TRACKING": "enabled",
-    "DSG_EMAIL_CAMPAIGN_WEEK3": "active",
-    "DSG_LAUNCH_DATE": "2026-06-10T00:00:00Z"
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash(git push*)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npm run typecheck && npm run test:unit 2>&1 || (echo '❌ TypeScript errors or failing unit tests detected. Push blocked.' && exit 1)",
-            "timeout": 120,
-            "statusMessage": "Running typecheck + 45+ unit tests before push..."
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash(npm run start)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"systemMessage\":\"✅ Production server started. Monitor API health: curl -s https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health | jq . Check Sentry for error spikes (5+ errors/min window).\"}' && true",
-            "timeout": 5,
-            "statusMessage": "Production environment initialized"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -n --arg ctx \"$(cat CLAUDE.md AGENTS.md docs/agents/CLAUDE_TOOL_API_CONTRACT.md 2>/dev/null | head -400)\" '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":$ctx}}' 2>/dev/null || true",
-            "timeout": 15,
-            "statusMessage": "Loading project rules..."
-          }
-        ]
-      }
-    ]
   }
 }

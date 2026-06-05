@@ -1,81 +1,71 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { readJsonBody } from '@/lib/security/request-json';
 
 // ERROR_HANDLER_EXEMPT: MCP JSON-RPC protocol requires structured error responses
 export const dynamic = 'force-dynamic';
 
 const TOOLS = [
   {
-    name: 'create_dsg_job',
-    description: 'Create a new DSG job with a goal and optional success criteria.',
+    name: 'get_proof',
+    description: 'Generate a DSG audit+evidence proof for a build goal. Required before Hermes will allow write operations.',
     inputSchema: {
       type: 'object',
       properties: {
-        goal: { type: 'string', description: 'The goal for the DSG job.' },
-        successCriteria: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Optional list of success criteria.',
-        },
+        goal: { type: 'string', description: 'Build goal to bind the proof to (min 8 chars).' },
       },
       required: ['goal'],
     },
   },
   {
-    name: 'list_templates',
-    description: 'List available DSG templates, optionally filtered by category or search term.',
+    name: 'list_app_builder_jobs',
+    description: 'List all App Builder jobs in the current DSG workspace.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'create_app_builder_job',
+    description: 'Create a new App Builder job with a locked goal.',
     inputSchema: {
       type: 'object',
       properties: {
-        category: { type: 'string', description: 'Filter templates by category.' },
-        search: { type: 'string', description: 'Search templates by keyword.' },
+        goal: { type: 'string', description: 'The build goal for this job.' },
+        successCriteria: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional list of measurable success criteria.',
+        },
+        designStyle: { type: 'string', description: 'Optional UI design style (e.g. minimal, dashboard).' },
+        targetUsers: { type: 'string', description: 'Optional description of the target users.' },
       },
+      required: ['goal'],
     },
   },
   {
-    name: 'get_job_status',
-    description: 'Get the current status of a DSG job by its ID.',
+    name: 'create_job_plan',
+    description: 'Generate a deterministic build plan for an existing App Builder job.',
     inputSchema: {
       type: 'object',
       properties: {
-        jobId: { type: 'string', description: 'The ID of the DSG job.' },
+        jobId: { type: 'string', description: 'App Builder job ID.' },
       },
       required: ['jobId'],
     },
   },
   {
-    name: 'list_jobs',
-    description: 'List all DSG jobs for the current workspace.',
+    name: 'route_agent_command',
+    description: 'Route a natural language agent command through the DSG agent-runtime and get back a structured action.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'Natural language command (e.g. "deploy the app", "run QA on /dashboard").' },
+        context: { type: 'string', description: 'Optional page or session context.' },
+        userBenefit: { type: 'string', description: 'Optional user-visible benefit of this command.' },
+      },
+      required: ['command'],
+    },
+  },
+  {
+    name: 'get_autonomous_level',
+    description: 'Get the current DSG autonomous-level gate status — shows which capability tiers are unlocked.',
     inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'export_to_github',
-    description: 'Export a completed DSG job as a Next.js scaffold to a new GitHub repository.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        jobId: { type: 'string', description: 'The DSG job ID to export.' },
-        repoName: { type: 'string', description: 'GitHub repository name (auto-generated if omitted).' },
-        githubToken: { type: 'string', description: 'GitHub personal access token with repo scope.' },
-        private: { type: 'boolean', description: 'Create a private repo (default: false).' },
-      },
-      required: ['jobId', 'githubToken'],
-    },
-  },
-  {
-    name: 'deploy_app',
-    description: 'Export a DSG job to GitHub and return a one-click Vercel deploy URL.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        jobId: { type: 'string', description: 'The DSG job ID to deploy.' },
-        repoName: { type: 'string', description: 'GitHub repository name (auto-generated if omitted).' },
-        githubToken: { type: 'string', description: 'GitHub personal access token with repo scope.' },
-        private: { type: 'boolean', description: 'Create a private repo (default: false).' },
-      },
-      required: ['jobId', 'githubToken'],
-    },
   },
 ];
 
@@ -83,22 +73,15 @@ function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.APP_URL ??
-    'https://tdealer01-crypto-dsg-control-plane.vercel.app'
+    'https://dsg-one-v1.vercel.app'
   );
 }
 
-async function getAuthHeader(incomingRequest: Request): Promise<string | null> {
+function getAuthHeader(incomingRequest: Request): string | null {
   const incoming = incomingRequest.headers.get('authorization');
   if (incoming) return incoming;
   const serviceToken = process.env.INTERNAL_SERVICE_TOKEN;
   if (serviceToken) return `Bearer ${serviceToken}`;
-  try {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) return `Bearer ${session.access_token}`;
-  } catch {
-    // no session available
-  }
   return null;
 }
 
@@ -106,61 +89,63 @@ async function callTool(
   toolName: string,
   toolInput: Record<string, unknown>,
   authHeader: string | null,
+  incomingRequest: Request,
 ): Promise<unknown> {
   const base = getBaseUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authHeader) headers['Authorization'] = authHeader;
+  const cookie = incomingRequest.headers.get('cookie');
+  if (cookie) headers['Cookie'] = cookie;
 
   switch (toolName) {
-    case 'create_dsg_job': {
-      const res = await fetch(`${base}/api/dsg-bridge/jobs`, {
+    case 'get_proof': {
+      const res = await fetch(`${base}/api/dsg/app-builder/proof`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ goal: toolInput.goal, successCriteria: toolInput.successCriteria ?? [] }),
+        body: JSON.stringify({ goal: toolInput.goal }),
       });
       return res.json();
     }
-    case 'list_templates': {
-      const params = new URLSearchParams();
-      if (typeof toolInput.category === 'string') params.set('category', toolInput.category);
-      if (typeof toolInput.search === 'string') params.set('search', toolInput.search);
-      const qs = params.toString();
-      const res = await fetch(`${base}/api/dsg-bridge/templates${qs ? `?${qs}` : ''}`, { headers });
+    case 'list_app_builder_jobs': {
+      const res = await fetch(`${base}/api/dsg/app-builder/jobs`, { headers });
       return res.json();
     }
-    case 'get_job_status': {
-      const { jobId } = toolInput as { jobId: string };
-      const res = await fetch(`${base}/api/dsg-bridge/jobs/${encodeURIComponent(jobId)}`, { headers });
-      return res.json();
-    }
-    case 'list_jobs': {
-      const res = await fetch(`${base}/api/dsg-bridge/jobs`, { headers });
-      return res.json();
-    }
-    case 'export_to_github': {
-      const res = await fetch(`${base}/api/dsg-bridge/github-export`, {
+    case 'create_app_builder_job': {
+      const res = await fetch(`${base}/api/dsg/app-builder/jobs`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          jobId: toolInput.jobId,
-          repoName: toolInput.repoName,
-          githubToken: toolInput.githubToken,
-          private: toolInput.private ?? false,
+          goal: toolInput.goal,
+          successCriteria: toolInput.successCriteria ?? [],
+          designStyle: toolInput.designStyle,
+          targetUsers: toolInput.targetUsers,
         }),
       });
       return res.json();
     }
-    case 'deploy_app': {
-      const res = await fetch(`${base}/api/dsg-bridge/deploy`, {
+    case 'create_job_plan': {
+      const jobId = String(toolInput.jobId ?? '');
+      const res = await fetch(`${base}/api/dsg/app-builder/jobs/${encodeURIComponent(jobId)}/plan`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+      });
+      return res.json();
+    }
+    case 'route_agent_command': {
+      const res = await fetch(`${base}/api/dsg/agent-runtime/commands`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          jobId: toolInput.jobId,
-          repoName: toolInput.repoName,
-          githubToken: toolInput.githubToken,
-          private: toolInput.private ?? false,
+          command: toolInput.command,
+          context: toolInput.context,
+          userBenefit: toolInput.userBenefit,
         }),
       });
+      return res.json();
+    }
+    case 'get_autonomous_level': {
+      const res = await fetch(`${base}/api/dsg/autonomous-level/status`, { headers });
       return res.json();
     }
     default:
@@ -171,16 +156,13 @@ async function callTool(
 export async function POST(request: Request) {
   let id: string | number | null = null;
   try {
-    const parsed = await readJsonBody<{ method: string; params?: Record<string, unknown>; id?: string | number }>(
-      request,
-      { maxBytes: 65_536 },
-    );
-    if (!parsed.ok) {
-      return Response.json({ jsonrpc: '2.0', id, error: { code: -32700, message: parsed.error } }, { status: parsed.status });
-    }
-    const body = parsed.value!;
+    const body = await request.json();
     id = body.id ?? null;
-    const { method, params } = body;
+    const { method, params } = body as {
+      method: string;
+      params?: Record<string, unknown>;
+      id?: string | number;
+    };
 
     if (method === 'initialize') {
       return Response.json({
@@ -188,7 +170,7 @@ export async function POST(request: Request) {
         result: {
           protocolVersion: '2024-11-05',
           capabilities: { tools: {} },
-          serverInfo: { name: 'dsg-one-mcp', version: '1.0.0' },
+          serverInfo: { name: 'dsg-one-v1-mcp', version: '1.0.0' },
         },
       });
     }
@@ -203,8 +185,8 @@ export async function POST(request: Request) {
       if (!toolName) {
         return Response.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'Invalid params: name is required' } });
       }
-      const authHeader = await getAuthHeader(request);
-      const result = await callTool(toolName, toolInput, authHeader);
+      const authHeader = getAuthHeader(request);
+      const result = await callTool(toolName, toolInput, authHeader, request);
       return Response.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } });
     }
 
@@ -215,5 +197,5 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  return NextResponse.json({ name: 'dsg-one-mcp', version: '1.0.0', tools: TOOLS.length });
+  return NextResponse.json({ name: 'dsg-one-v1-mcp', version: '1.0.0', tools: TOOLS.length });
 }
