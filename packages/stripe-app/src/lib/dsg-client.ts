@@ -21,6 +21,27 @@ export interface StripeOperationDecision {
   approval_url?: string;
 }
 
+export interface GatewayRequest {
+  action: string;
+  operation_type: string;
+  context: {
+    stripe_account_id: string;
+    stripe_event_id: string;
+    object_type: string;
+    object_id: string;
+    amount_cents: number;
+    currency: string;
+    customer_id?: string;
+    metadata?: Record<string, string>;
+  };
+}
+
+export interface GatewayResponse {
+  decision: 'ALLOW' | 'BLOCK' | 'REVIEW';
+  reason?: string;
+  proof?: string;
+}
+
 /**
  * Initialize DSG client with API key.
  * Called once at app startup.
@@ -90,6 +111,89 @@ export async function recordStripeDecision(
 export async function getFailSafeMode(stripeAccountId: string): Promise<'open' | 'closed'> {
   // TODO: Query stripe_app_accounts for fail_safe_mode
   return 'open'; // default
+}
+
+/**
+ * Evaluate a gateway request against DSG policies.
+ * Includes timeout handling and fail-safe defaults.
+ *
+ * @param request - Gateway request with Stripe operation context
+ * @param apiBase - DSG API base URL
+ * @returns Gateway decision (ALLOW/BLOCK/REVIEW)
+ */
+export async function evaluateGateway(
+  request: GatewayRequest,
+  apiBase: string
+): Promise<GatewayResponse> {
+  const startTime = Date.now();
+
+  try {
+    const response = await fetch(`${apiBase}/api/stripe-app/gateway/evaluate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(2000), // 2 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gateway evaluation failed: ${response.statusText}`);
+    }
+
+    const decision = await response.json();
+    const duration = Date.now() - startTime;
+
+    console.log(
+      `[Gateway] Decision for ${request.action}: ${decision.decision} (${duration}ms)`
+    );
+
+    return decision;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(
+      `[Gateway] Evaluation error after ${duration}ms:`,
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+
+    // Fail-safe: default to REVIEW (safest default for governance)
+    return {
+      decision: 'REVIEW',
+      reason: `Gateway evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+}
+
+/**
+ * Record a gateway decision to the audit trail.
+ *
+ * @param decision - Gateway decision
+ * @param stripeEventId - Stripe event ID
+ * @param apiBase - DSG API base URL
+ */
+export async function recordAudit(
+  decision: GatewayResponse,
+  stripeEventId: string,
+  apiBase: string
+): Promise<void> {
+  try {
+    await fetch(`${apiBase}/api/stripe-app/audit/record`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        stripe_event_id: stripeEventId,
+        decision,
+      }),
+    });
+  } catch (error) {
+    console.error(
+      '[Audit] Failed to record decision:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    // Don't throw - audit failure shouldn't block main flow
+  }
 }
 
 export const dsgClient = initDsgClient();
