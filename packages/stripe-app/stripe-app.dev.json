@@ -1,21 +1,16 @@
 {
-  "app_id": "com.governance.dsg",
-  "name": "DSG Governance Gate",
-  "description": "Pre-execution governance gates for Stripe operations with deterministic audit trails and approval workflows",
+  "app_id": "com.governance.dsg.dev",
+  "name": "DSG Governance Gate (Local Dev)",
+  "description": "Pre-execution governance gates for Stripe operations - LOCAL DEVELOPMENT",
   "version": "1.0.0",
-  "homepage": "https://dsg.pics",
+  "homepage": "http://localhost:3000",
   "support_email": "t.dealer01@dsg.pics",
-  "icons": {
-    "square_64": "./docs/assets/icon-64x64.png",
-    "square_128": "./docs/assets/icon-128x128.png",
-    "square_256": "./docs/assets/icon-256x256.png"
-  },
   "distribution_type": "public",
   "sandbox_install_compatible": true,
   "stripe_api_access_type": "oauth",
   "allowed_redirect_uris": [
-    "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/oauth/callback",
-    "https://dsg-stripe-app.vercel.app/api/stripe-app/oauth/callback"
+    "http://localhost:3000/stripe/oauth/callback",
+    "http://localhost:3001/api/stripe-app/oauth/callback"
   ],
   "permissions": [
     {
@@ -56,18 +51,18 @@
     ],
     "content_security_policy": {
       "connect-src": [
-        "https://tdealer01-crypto-dsg-control-plane.vercel.app/",
-        "https://dsg-stripe-app.vercel.app/",
-        "https://api.dsg.pics/"
+        "http://localhost:3000/",
+        "http://localhost:3001/",
+        "http://localhost:8642/"
       ],
       "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
     }
   },
   "post_install_action": {
     "type": "external",
-    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/onboarding"
+    "url": "http://localhost:3000/stripe/onboarding"
   },
   "constants": {
-    "DSG_API_BASE": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+    "DSG_API_BASE": "http://localhost:3000"
   }
 }
