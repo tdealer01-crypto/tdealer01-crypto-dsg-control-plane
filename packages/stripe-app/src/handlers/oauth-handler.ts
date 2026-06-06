@@ -91,6 +91,6 @@ export class OAuthHandler {
 
   validateToken(accessToken: string): boolean {
     // Basic validation - in production, verify with Stripe
-    return accessToken && accessToken.length > 0;
+    return !!(accessToken && accessToken.length > 0);
   }
 }
