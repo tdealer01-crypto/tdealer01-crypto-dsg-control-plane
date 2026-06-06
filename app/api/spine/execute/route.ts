@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         decision: (result.body as Record<string, unknown>)?.decision ?? null,
       });
       const executionId =
-        (result.body as Record<string, unknown>)?.execution_id ??
+        ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
         randomUUID();
       void meterExecution(orgId, 1, executionId);
     }
