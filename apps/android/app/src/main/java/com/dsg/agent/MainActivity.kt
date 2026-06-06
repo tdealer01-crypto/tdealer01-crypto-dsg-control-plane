@@ -37,6 +37,7 @@ import com.dsg.agent.automation.AccessibilityActionBridge
 import com.dsg.agent.automation.AgentCommand
 import com.dsg.agent.automation.AgentCommandStore
 import com.dsg.agent.automation.AgentCommandType
+import com.dsg.agent.automation.AutonomyDial
 import com.dsg.agent.automation.AgentErrorCodes
 import com.dsg.agent.automation.AuditLogStore
 import com.dsg.agent.automation.CommandExecutionResult
@@ -129,6 +130,9 @@ class MainActivity : Activity() {
     private var autonomousModeEnabled: Boolean
         get() = getSharedPreferences("dsg_prefs", MODE_PRIVATE).getBoolean("autonomous_mode", false)
         set(value) { getSharedPreferences("dsg_prefs", MODE_PRIVATE).edit().putBoolean("autonomous_mode", value).apply() }
+    private var autonomyLevel: Int
+        get() = getSharedPreferences("dsg_prefs", MODE_PRIVATE).getInt("autonomy_level", 0)
+        set(value) { getSharedPreferences("dsg_prefs", MODE_PRIVATE).edit().putInt("autonomy_level", value.coerceIn(0, 3)).apply() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -259,43 +263,48 @@ class MainActivity : Activity() {
     }
 
     private fun addAutonomousModeCard(root: LinearLayout) {
-        val cardBg = if (autonomousModeEnabled) Color.parseColor("#1a2e1a") else COLOR_CARD_ALT
-        val cardStroke = if (autonomousModeEnabled) Color.parseColor("#4ade80") else COLOR_BORDER
+        val level = autonomyLevel
+        val info = AutonomyDial.info(level)
+        val on = level >= 2
+        val cardBg = if (on) Color.parseColor("#1a2e1a") else COLOR_CARD_ALT
+        val cardStroke = if (on) Color.parseColor("#4ade80") else COLOR_BORDER
         val modeCard = card(cardBg, stroke = cardStroke).apply {
             setPadding(dp(16), dp(14), dp(16), dp(14))
         }
         modeCard.addView(TextView(this).apply {
-            text = if (autonomousModeEnabled) "⚡ AUTONOMOUS MODE — ON" else "🔒 Autonomous Mode — Off"
+            text = "🎚 Autonomy Dial — ${info.name}"
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (autonomousModeEnabled) Color.parseColor("#4ade80") else COLOR_TEXT_MUTED)
+            setTextColor(if (on) Color.parseColor("#4ade80") else COLOR_TEXT)
         })
         modeCard.addView(TextView(this).apply {
-            text = if (autonomousModeEnabled)
-                "All commands execute instantly. No approval dialog. No file blocks. Permission gates bypassed."
-            else
-                "Enable to run all commands without approval popups, remove file restrictions, and bypass permission gates."
+            text = info.desc
             textSize = 12f
             setTextColor(COLOR_TEXT_MUTED)
-            setPadding(0, dp(4), 0, dp(10))
+            setPadding(0, dp(4), 0, dp(8))
         })
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        if (autonomousModeEnabled) {
-            row.addView(compactButton("Disable Autonomous Mode", ButtonTone.SECONDARY) {
+        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, 0) }
+        AutonomyDial.LEVELS.forEach { lv ->
+            val tone = if (lv.level == level) ButtonTone.PRIMARY else ButtonTone.SECONDARY
+            val btn = compactButton("L${lv.level}", tone) {
                 UiAnimations.buttonPressScale(modeCard)
-                autonomousModeEnabled = false
-                auditLogStore.append("AUTONOMOUS_MODE_DISABLED", "owner", "Owner disabled autonomous mode")
+                autonomyLevel = lv.level
+                workSessionEnabled = lv.level >= 1
+                autonomousModeEnabled = lv.level >= 3
+                auditLogStore.append("AUTONOMY_LEVEL_SET", "owner", "Owner set autonomy ${lv.name} (workSession=${lv.level >= 1}, autonomous=${lv.level >= 3})")
                 render()
-            })
-        } else {
-            row.addView(compactButton("Enable Autonomous Mode", ButtonTone.PRIMARY) {
-                UiAnimations.buttonPressScale(modeCard)
-                autonomousModeEnabled = true
-                auditLogStore.append("AUTONOMOUS_MODE_ENABLED", "owner", "Owner enabled autonomous mode — all gates bypassed")
-                render()
-            })
+            }
+            (if (lv.level <= 1) row1 else row2).addView(btn)
         }
-        modeCard.addView(row)
+        modeCard.addView(row1)
+        modeCard.addView(row2)
+        modeCard.addView(TextView(this).apply {
+            text = "พื้นความปลอดภัยคงอยู่ทุกระดับ: คำสั่งลบ/ย้ายไฟล์ (Tier 2) ยังผ่าน permission gate + sensitive-file block + ลายเซ็นเจ้าของ + audit แม้ที่ L3"
+            textSize = 11f
+            setTextColor(COLOR_TEXT_MUTED)
+            setPadding(0, dp(10), 0, 0)
+        })
         addWithMargin(root, modeCard, bottom = 12)
     }
 
@@ -1580,23 +1589,8 @@ class MainActivity : Activity() {
 
     private fun sessionCanRun(command: AgentCommand): Boolean {
         if (autonomousModeEnabled) return true
-        return when (command.type) {
-            AgentCommandType.STATUS,
-            AgentCommandType.OPEN_URL,
-            AgentCommandType.OPEN_SETTINGS,
-            AgentCommandType.OPEN_APP,
-            AgentCommandType.BACK,
-            AgentCommandType.HOME,
-            AgentCommandType.SCROLL_DOWN,
-            AgentCommandType.FILE_LIST_ROOT,
-            AgentCommandType.FILE_SEND_TO_CLAW -> true
-            AgentCommandType.NOTIFICATION_SUMMARY,
-            AgentCommandType.FILE_PREVIEW,
-            AgentCommandType.FILE_SELECT,
-            AgentCommandType.FILE_RENAME,
-            AgentCommandType.FILE_MOVE,
-            AgentCommandType.FILE_DELETE -> false
-        }
+        val effLevel = maxOf(autonomyLevel, if (workSessionEnabled) 1 else 0)
+        return AutonomyDial.decide(effLevel, AutonomyDial.tierOf(command.type)) == AutonomyDial.Decision.AUTO
     }
 
     private fun refreshUi(extra: String? = null) {
@@ -1649,7 +1643,9 @@ class MainActivity : Activity() {
     }
 
     private fun approveCommand(command: AgentCommand) {
-        if (!autonomousModeEnabled) {
+        // Safety floor: irreversible/destructive (Tier 2) actions always run the
+        // sensitive-file block even at L3 autonomous.
+        if (!autonomousModeEnabled || AutonomyDial.isFloorProtected(command.type)) {
             val blockMessage = filePolicyBlock(command)
             if (blockMessage != null) {
                 commandStore.markBlocked(command.commandId, blockMessage)
@@ -1658,7 +1654,8 @@ class MainActivity : Activity() {
                 return
             }
         }
-        val gate = permissionGate.evaluate(command, autonomousModeEnabled)
+        // Safety floor: Tier-2 actions never bypass the permission gate, even at L3.
+        val gate = permissionGate.evaluate(command, autonomousModeEnabled && !AutonomyDial.isFloorProtected(command.type))
         if (!gate.allowed) {
             if (gate.errorCode == AgentErrorCodes.PERMISSION_REQUIRED) {
                 commandStore.markWaitingPermission(command.commandId, gate.message)
