@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
+import { StructuredLogger, createLogger } from './structured-logger';
 
 const INTERNAL_SERVER_ERROR = 'Internal server error';
 const SENSITIVE_KEY_PATTERN = /(authorization|cookie|token|secret|password|api[-_]?key|session|email)/i;
@@ -57,10 +58,8 @@ export function toSafeErrorResponse(status = 500) {
 }
 
 export function logApiError(route: string, error: unknown, details?: Record<string, unknown>) {
-  console.error(`[${route}]`, {
-    error: redactSensitive(error),
-    ...(details ? redactSensitive(details) as Record<string, unknown> : {}),
-  });
+  const logger = createLogger({ endpoint: route });
+  logger.error(`API error in ${route}`, error, details);
 
   if (error instanceof Error) {
     Sentry.captureException(error, { tags: { route }, extra: details });
@@ -74,12 +73,23 @@ export function handleApiError(
     details?: Record<string, unknown>;
     status?: number;
     headers?: HeadersInit;
+    requestId?: string;
   },
 ) {
   const status = options?.status ?? 500;
-  logApiError(route, error, options?.details);
+  const logger = createLogger({
+    endpoint: route,
+    requestId: options?.requestId,
+    statusCode: status,
+  });
+
+  logger.error(`API error in ${route}`, error, options?.details);
+
   return NextResponse.json(toSafeErrorResponse(status), {
     status,
-    headers: options?.headers,
+    headers: {
+      ...options?.headers,
+      'X-Request-ID': options?.requestId ?? '',
+    },
   });
 }

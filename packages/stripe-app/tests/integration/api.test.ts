@@ -1,297 +1,491 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import crypto from 'crypto';
+
+// Test constants
+const BASE_URL = process.env.TEST_API_URL || 'http://localhost:3001';
+const TEST_BEARER_TOKEN = 'test_bearer_token_' + crypto.randomBytes(16).toString('hex');
+const TEST_STRIPE_ACCOUNT_ID = 'acct_1234567890abcdef';
+
+// Helper functions
+const makeRequest = async (
+  method: string,
+  path: string,
+  body?: any,
+  headers?: Record<string, string>
+) => {
+  const url = `${BASE_URL}${path}`;
+  const defaultHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...headers,
+  };
+
+  const response = await fetch(url, {
+    method,
+    headers: defaultHeaders,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await response.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (e) {
+    data = text;
+  }
+
+  return {
+    status: response.status,
+    headers: response.headers,
+    data,
+  };
+};
+
+// Test fixtures
+const createTestEvaluationRequest = (overrides?: any) => ({
+  action: 'evaluate_policy',
+  operation_type: 'charge',
+  stripe_account_id: TEST_STRIPE_ACCOUNT_ID,
+  amount_cents: 10000,
+  currency: 'usd',
+  ...overrides,
+});
+
+const createTestAuditRecord = (overrides?: any) => ({
+  stripe_account_id: TEST_STRIPE_ACCOUNT_ID,
+  operation_id: 'op_' + crypto.randomBytes(8).toString('hex'),
+  operation_type: 'charge',
+  decision: 'ALLOW',
+  reason: 'Charge within policy limits',
+  policy_version: 'v1.0.0',
+  ...overrides,
+});
 
 describe('Stripe App API Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('POST /stripe-app/gateway/evaluate', () => {
     it('should evaluate charge policy', async () => {
-      // TODO: Implement real API test with fetch
-      // Expected flow:
-      // 1. Send POST request to gateway/evaluate
-      // 2. Receive response with decision (ALLOW/BLOCK/REVIEW)
-      // 3. Verify decision reason is present
-      expect(true).toBe(true);
+      const startTime = Date.now();
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        createTestEvaluationRequest({ operation_type: 'charge', amount_cents: 5000 }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+      const duration = Date.now() - startTime;
+
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('decision');
+      expect(['ALLOW', 'BLOCK', 'REVIEW']).toContain(response.data.decision);
+      expect(response.data).toHaveProperty('reason');
+      expect(duration).toBeLessThan(2000);
     });
 
     it('should evaluate payment intent policy', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Send POST request with payment intent context
-      // 2. Verify decision response structure
-      // 3. Check policy version in response
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        createTestEvaluationRequest({ operation_type: 'payment_intent' }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('decision');
+      expect(response.data).toHaveProperty('policy_version');
+      expect(typeof response.data.policy_version).toBe('string');
     });
 
     it('should evaluate payout policy', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Send POST request with payout context
-      // 2. Verify decision is returned
-      // 3. Check reason includes payout-specific validation
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        createTestEvaluationRequest({ operation_type: 'payout', amount_cents: 100000 }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('decision');
+      expect(response.data).toHaveProperty('reason');
+      expect(response.data.reason).toMatch(/payout|validation|policy/i);
     });
 
     it('should complete evaluation within 2 seconds', async () => {
-      // TODO: Implement performance test
-      // Expected flow:
-      // 1. Measure request start time
-      // 2. Send evaluation request
-      // 3. Verify completion within 2s threshold
-      // 4. Log response time
-      expect(true).toBe(true);
+      const measurements: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const startTime = Date.now();
+        await makeRequest('POST', '/gateway/evaluate',
+          createTestEvaluationRequest(),
+          { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+        );
+        measurements.push(Date.now() - startTime);
+      }
+
+      const avgTime = measurements.reduce((a, b) => a + b) / measurements.length;
+      expect(avgTime).toBeLessThan(2000);
     });
 
     it('should return proper error for invalid request', async () => {
-      // TODO: Implement validation test
-      // Expected flow:
-      // 1. Send malformed request body
-      // 2. Verify 400 error response
-      // 3. Check error message is descriptive
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        { /* missing required fields */ },
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.data).toHaveProperty('error');
     });
   });
 
   describe('POST /stripe-app/audit/record', () => {
     it('should record audit trail for operation', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Send POST to audit/record endpoint
-      // 2. Verify 200/201 response
-      // 3. Check audit entry is persisted to database
-      // 4. Verify all required fields are recorded
-      expect(true).toBe(true);
+      const auditRecord = createTestAuditRecord();
+      const response = await makeRequest('POST', '/audit/record',
+        auditRecord,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect([200, 201]).toContain(response.status);
+      expect(response.data).toHaveProperty('id');
+      expect(response.data).toHaveProperty('created_at');
     });
 
     it('should store decision reason', async () => {
-      // TODO: Implement database verification
-      // Expected flow:
-      // 1. Send audit record request
-      // 2. Query database for recorded entry
-      // 3. Verify reason field matches request
-      expect(true).toBe(true);
+      const reason = 'Test reason for decision ' + Date.now();
+      const response = await makeRequest('POST', '/audit/record',
+        createTestAuditRecord({ reason }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBeGreaterThanOrEqual(200);
+      expect(response.status).toBeLessThan(300);
+      expect(response.data).toHaveProperty('id');
     });
 
     it('should handle concurrent audit requests', async () => {
-      // TODO: Implement concurrency test
-      // Expected flow:
-      // 1. Send multiple parallel audit requests
-      // 2. Verify all complete successfully
-      // 3. Check no data loss or conflicts
-      expect(true).toBe(true);
+      const promises = [];
+      for (let i = 0; i < 5; i++) {
+        promises.push(
+          makeRequest('POST', '/audit/record',
+            createTestAuditRecord({ operation_id: `op_${i}_${Date.now()}` }),
+            { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+          )
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const successCount = results.filter(r => r.status >= 200 && r.status < 300).length;
+      expect(successCount).toBe(5);
     });
 
     it('should record audit in <500ms', async () => {
-      // TODO: Implement performance test
-      // Expected flow:
-      // 1. Measure request duration
-      // 2. Send audit record request
-      // 3. Verify completion within 500ms threshold
-      expect(true).toBe(true);
+      const measurements: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const startTime = Date.now();
+        await makeRequest('POST', '/audit/record',
+          createTestAuditRecord({ operation_id: `op_${i}_${Date.now()}` }),
+          { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+        );
+        measurements.push(Date.now() - startTime);
+      }
+
+      const avgTime = measurements.reduce((a, b) => a + b) / measurements.length;
+      expect(avgTime).toBeLessThan(500);
     });
   });
 
   describe('GET /stripe-app/audit/operations', () => {
     it('should retrieve audit operations list', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Send GET request to audit/operations
-      // 2. Verify 200 response
-      // 3. Check response is array of audit entries
-      // 4. Verify pagination if applicable
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/audit/operations',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.data.operations) || Array.isArray(response.data)).toBe(true);
     });
 
     it('should fetch audit entries in <1s', async () => {
-      // TODO: Implement performance test
-      // Expected flow:
-      // 1. Measure fetch start time
-      // 2. Send GET audit/operations request
-      // 3. Verify completion within 1s threshold
-      expect(true).toBe(true);
+      const startTime = Date.now();
+      await makeRequest('GET', '/audit/operations',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+      const duration = Date.now() - startTime;
+
+      expect(duration).toBeLessThan(1000);
     });
 
     it('should support filtering by stripe account', async () => {
-      // TODO: Implement filter test
-      // Expected flow:
-      // 1. Send GET with stripe_account_id query param
-      // 2. Verify only matching entries returned
-      // 3. Check no cross-account data leakage
-      expect(true).toBe(true);
+      const response = await makeRequest('GET',
+        `/audit/operations?stripe_account_id=${TEST_STRIPE_ACCOUNT_ID}`,
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      const operations = Array.isArray(response.data) ? response.data : response.data.operations;
+      if (operations && operations.length > 0) {
+        operations.forEach(op => {
+          expect(op.stripe_account_id).toBe(TEST_STRIPE_ACCOUNT_ID);
+        });
+      }
     });
 
     it('should support pagination', async () => {
-      // TODO: Implement pagination test
-      // Expected flow:
-      // 1. Send GET with page/limit parameters
-      // 2. Verify correct subset returned
-      // 3. Check pagination metadata in response
-      expect(true).toBe(true);
+      const response = await makeRequest('GET',
+        '/audit/operations?limit=10&offset=0',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data).toBeDefined();
     });
   });
 
   describe('POST /stripe-app/approvals/{id}/approve', () => {
     it('should approve pending operation', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Create pending operation with REVIEW decision
-      // 2. Send POST to approvals/{id}/approve
-      // 3. Verify 200 response
-      // 4. Check operation status changed to approved
-      expect(true).toBe(true);
+      // First create an audit record with REVIEW decision
+      const auditResponse = await makeRequest('POST', '/audit/record',
+        createTestAuditRecord({ decision: 'REVIEW' }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      if (auditResponse.status >= 200 && auditResponse.status < 300 && auditResponse.data?.id) {
+        const auditId = auditResponse.data.id;
+        const approveResponse = await makeRequest('POST',
+          `/approvals/${auditId}/approve`,
+          { approver_notes: 'Approved' },
+          { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+        );
+
+        expect(approveResponse.status).toBe(200);
+        expect(approveResponse.data).toHaveProperty('status');
+      }
     });
 
     it('should reject already approved operations', async () => {
-      // TODO: Implement validation test
-      // Expected flow:
-      // 1. Try to approve already-approved operation
-      // 2. Verify 400 or 409 error
-      // 3. Check error message explains conflict
-      expect(true).toBe(true);
+      const auditRecord = createTestAuditRecord({ decision: 'ALLOW' });
+      const auditResponse = await makeRequest('POST', '/audit/record',
+        auditRecord,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      if (auditResponse.data?.id) {
+        const approveResponse = await makeRequest('POST',
+          `/approvals/${auditResponse.data.id}/approve`,
+          { approver_notes: 'Approve again' },
+          { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+        );
+
+        // Already approved operations should return 400 or 409
+        expect([400, 409, 200]).toContain(approveResponse.status);
+      }
     });
 
     it('should require authorization header', async () => {
-      // TODO: Implement auth test
-      // Expected flow:
-      // 1. Send approval request without auth
-      // 2. Verify 401 response
-      // 3. Send with invalid token, verify 403
-      expect(true).toBe(true);
+      const response = await makeRequest('POST',
+        '/approvals/test_id/approve',
+        { approver_notes: 'Test' }
+      );
+
+      expect([401, 403]).toContain(response.status);
     });
 
     it('should track approval timestamp', async () => {
-      // TODO: Implement audit test
-      // Expected flow:
-      // 1. Approve operation
-      // 2. Query database for updated record
-      // 3. Verify approval_timestamp is recent
-      // 4. Verify approver identity is recorded
-      expect(true).toBe(true);
+      const auditRecord = createTestAuditRecord({ decision: 'REVIEW' });
+      const auditResponse = await makeRequest('POST', '/audit/record',
+        auditRecord,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      if (auditResponse.data?.id) {
+        const approveResponse = await makeRequest('POST',
+          `/approvals/${auditResponse.data.id}/approve`,
+          { approver_notes: 'Timestamp test' },
+          { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+        );
+
+        if (approveResponse.status === 200) {
+          expect(approveResponse.data).toHaveProperty('approval_timestamp');
+          const timestamp = new Date(approveResponse.data.approval_timestamp);
+          expect(timestamp.getTime()).toBeGreaterThan(Date.now() - 5000);
+        }
+      }
     });
   });
 
   describe('GET /stripe-app/policies', () => {
     it('should list policies for account', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Send GET to /stripe-app/policies
-      // 2. Verify 200 response
-      // 3. Check response is array of policy objects
-      // 4. Verify required policy fields present
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/policies',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      const policies = Array.isArray(response.data) ? response.data : response.data?.policies;
+      expect(Array.isArray(policies)).toBe(true);
     });
 
     it('should require authentication', async () => {
-      // TODO: Implement auth test
-      // Expected flow:
-      // 1. Send request without auth
-      // 2. Verify 401 response
-      // 3. Send with valid auth, verify success
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/policies');
+
+      expect([401, 403]).toContain(response.status);
     });
 
     it('should enforce org/account scoping', async () => {
-      // TODO: Implement access control test
-      // Expected flow:
-      // 1. Authenticate as org A
-      // 2. Query policies, verify only org A policies returned
-      // 3. Authenticate as org B, verify isolation
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/policies',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      const policies = Array.isArray(response.data) ? response.data : response.data?.policies;
+      if (policies && policies.length > 0) {
+        policies.forEach(policy => {
+          expect(policy).toHaveProperty('stripe_account_id');
+        });
+      }
     });
 
     it('should include policy version hash', async () => {
-      // TODO: Implement response structure test
-      // Expected flow:
-      // 1. Fetch policies list
-      // 2. Verify each policy includes version_hash
-      // 3. Verify hash is deterministic/reproducible
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/policies',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(200);
+      const policies = Array.isArray(response.data) ? response.data : response.data?.policies;
+      if (policies && policies.length > 0) {
+        policies.forEach(policy => {
+          expect(policy).toHaveProperty('version_hash');
+          expect(typeof policy.version_hash).toBe('string');
+        });
+      }
     });
   });
 
   describe('POST /stripe-app/oauth/authorize', () => {
     it('should return OAuth authorization URL', async () => {
-      // TODO: Implement real API test
-      // Expected flow:
-      // 1. Send GET to oauth/authorize
-      // 2. Verify 200 response
-      // 3. Check response includes url field with stripe.com/oauth
-      // 4. Verify state parameter is present for CSRF protection
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/oauth/authorize?stripe_account_id=' + TEST_STRIPE_ACCOUNT_ID);
+
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('url');
+      expect(response.data.url).toMatch(/stripe\.com|oauth/i);
+      expect(response.data).toHaveProperty('state');
     });
 
     it('should generate unique state tokens', async () => {
-      // TODO: Implement uniqueness test
-      // Expected flow:
-      // 1. Call authorize endpoint twice
-      // 2. Verify different state tokens returned
-      // 3. Check state is cryptographically random
-      expect(true).toBe(true);
+      const response1 = await makeRequest('GET', '/oauth/authorize?stripe_account_id=' + TEST_STRIPE_ACCOUNT_ID);
+      const response2 = await makeRequest('GET', '/oauth/authorize?stripe_account_id=' + TEST_STRIPE_ACCOUNT_ID);
+
+      if (response1.status === 200 && response2.status === 200) {
+        expect(response1.data.state).not.toBe(response2.data.state);
+      }
     });
 
     it('should include correct scopes in URL', async () => {
-      // TODO: Implement URL validation test
-      // Expected flow:
-      // 1. Get authorization URL
-      // 2. Parse query parameters
-      // 3. Verify required Stripe scopes present
-      // 4. Check no extra unnecessary scopes
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/oauth/authorize?stripe_account_id=' + TEST_STRIPE_ACCOUNT_ID);
+
+      expect(response.status).toBe(200);
+      if (response.data.url) {
+        const urlObj = new URL(response.data.url);
+        const scopes = urlObj.searchParams.get('scopes') || '';
+        expect(scopes.length).toBeGreaterThan(0);
+      }
     });
 
     it('should handle state parameter validation', async () => {
-      // TODO: Implement state validation test
-      // Expected flow:
-      // 1. Get authorization URL with state
-      // 2. Callback with mismatched state
-      // 3. Verify request rejected
-      // 4. Callback with matching state, verify acceptance
-      expect(true).toBe(true);
+      const authorizeResponse = await makeRequest('GET', '/oauth/authorize?stripe_account_id=' + TEST_STRIPE_ACCOUNT_ID);
+
+      if (authorizeResponse.status === 200 && authorizeResponse.data.state) {
+        // Callback with matching state should succeed
+        const callbackResponse = await makeRequest('POST', '/oauth/callback',
+          { state: authorizeResponse.data.state, code: 'test_code' }
+        );
+        expect([200, 400, 401]).toContain(callbackResponse.status);
+      }
     });
   });
 
   describe('Error Handling', () => {
     it('should return 400 for malformed JSON', async () => {
-      // TODO: Implement validation test
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        undefined,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}`, 'Content-Type': 'application/json' }
+      );
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
     });
 
     it('should return 401 for missing authentication', async () => {
-      // TODO: Implement auth test
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/policies');
+
+      expect([401, 403]).toContain(response.status);
     });
 
     it('should return 500 with descriptive error message', async () => {
-      // TODO: Implement error message test
-      expect(true).toBe(true);
+      // This might not trigger a 500 in all cases, but we verify error handling exists
+      const response = await makeRequest('POST', '/nonexistent',
+        {},
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      if (response.status >= 500) {
+        expect(response.data).toHaveProperty('error');
+      }
     });
 
     it('should not expose sensitive data in error responses', async () => {
-      // TODO: Implement security test
-      expect(true).toBe(true);
+      const response = await makeRequest('GET', '/policies');
+
+      if (response.status >= 400) {
+        const errorStr = JSON.stringify(response.data);
+        expect(errorStr).not.toMatch(/secret|key|password|token/i);
+      }
     });
   });
 
   describe('Request Validation', () => {
     it('should validate required fields in evaluate request', async () => {
-      // TODO: Implement field validation test
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        { /* missing required fields */ },
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(400);
     });
 
     it('should validate stripe_account_id format', async () => {
-      // TODO: Implement format validation test
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        createTestEvaluationRequest({ stripe_account_id: 'invalid_format' }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      if (response.status === 400) {
+        expect(response.data).toHaveProperty('error');
+      }
     });
 
     it('should reject invalid operation types', async () => {
-      // TODO: Implement enum validation test
-      expect(true).toBe(true);
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        createTestEvaluationRequest({ operation_type: 'invalid_operation' }),
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect(response.status).toBe(400);
     });
 
     it('should enforce maximum payload size', async () => {
-      // TODO: Implement size limit test
-      expect(true).toBe(true);
+      const largePayload = createTestEvaluationRequest({
+        metadata: 'x'.repeat(10000000), // 10MB string
+      });
+
+      const response = await makeRequest('POST', '/gateway/evaluate',
+        largePayload,
+        { 'Authorization': `Bearer ${TEST_BEARER_TOKEN}` }
+      );
+
+      expect([400, 413]).toContain(response.status);
     });
   });
 });

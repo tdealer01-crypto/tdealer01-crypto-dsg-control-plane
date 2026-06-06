@@ -128,6 +128,10 @@ export async function evaluateGateway(
   const startTime = Date.now();
 
   try {
+    if (!apiBase) {
+      throw new Error('DSG API base URL not configured');
+    }
+
     const response = await fetch(`${apiBase}/api/stripe-app/gateway/evaluate`, {
       method: 'POST',
       headers: {
@@ -137,29 +141,69 @@ export async function evaluateGateway(
       signal: AbortSignal.timeout(2000), // 2 second timeout
     });
 
-    if (!response.ok) {
-      throw new Error(`Gateway evaluation failed: ${response.statusText}`);
-    }
-
-    const decision = await response.json();
     const duration = Date.now() - startTime;
 
+    if (!response.ok) {
+      throw new Error(
+        `Gateway evaluation failed with status ${response.status}: ${response.statusText}`
+      );
+    }
+
+    const decision = await response.json() as GatewayResponse;
+
     console.log(
-      `[Gateway] Decision for ${request.action}: ${decision.decision} (${duration}ms)`
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: 'Gateway decision',
+        action: request.action,
+        decision: decision.decision,
+        latencyMs: duration,
+      })
     );
 
     return decision;
   } catch (error) {
     const duration = Date.now() - startTime;
+
+    let errorMessage = 'Unknown error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      // Check for timeout
+      if (error.name === 'AbortError' || errorMessage.includes('timeout')) {
+        console.error(
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: 'warn',
+            message: 'Gateway evaluation timeout',
+            action: request.action,
+            latencyMs: duration,
+            errorMessage: 'Request timed out',
+          })
+        );
+        // Timeout: default to REVIEW (safest for governance)
+        return {
+          decision: 'REVIEW',
+          reason: 'Gateway evaluation timed out - defaulting to review for safety',
+        };
+      }
+    }
+
     console.error(
-      `[Gateway] Evaluation error after ${duration}ms:`,
-      error instanceof Error ? error.message : 'Unknown error'
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        message: 'Gateway evaluation failed',
+        action: request.action,
+        latencyMs: duration,
+        errorMessage,
+      })
     );
 
     // Fail-safe: default to REVIEW (safest default for governance)
     return {
       decision: 'REVIEW',
-      reason: `Gateway evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      reason: `Gateway evaluation failed: ${errorMessage}`,
     };
   }
 }
@@ -176,8 +220,18 @@ export async function recordAudit(
   stripeEventId: string,
   apiBase: string
 ): Promise<void> {
+  const startTime = Date.now();
+
   try {
-    await fetch(`${apiBase}/api/stripe-app/audit/record`, {
+    if (!apiBase) {
+      throw new Error('DSG API base URL not configured');
+    }
+
+    if (!stripeEventId) {
+      throw new Error('Stripe event ID is required for audit record');
+    }
+
+    const response = await fetch(`${apiBase}/api/stripe-app/audit/record`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -186,11 +240,46 @@ export async function recordAudit(
         stripe_event_id: stripeEventId,
         decision,
       }),
+      signal: AbortSignal.timeout(5000), // 5 second timeout for audit
     });
+
+    const duration = Date.now() - startTime;
+
+    if (!response.ok) {
+      console.warn(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: 'warn',
+          message: 'Audit record failed',
+          stripeEventId,
+          statusCode: response.status,
+          latencyMs: duration,
+        })
+      );
+      return;
+    }
+
+    console.log(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: 'Audit record saved',
+        stripeEventId,
+        decision: decision.decision,
+        latencyMs: duration,
+      })
+    );
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error(
-      '[Audit] Failed to record decision:',
-      error instanceof Error ? error.message : 'Unknown error'
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        message: 'Failed to record audit decision',
+        stripeEventId,
+        latencyMs: duration,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      })
     );
     // Don't throw - audit failure shouldn't block main flow
   }
