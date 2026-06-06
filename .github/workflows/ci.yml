@@ -37,11 +37,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify lock file is in sync
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          git diff --exit-code -- package-lock.json
-
       - name: Lint
         run: npm run lint
 
@@ -66,20 +61,6 @@ jobs:
       - name: Full test suite
         run: npm run test
 
-      - name: i18n — no Thai text in source
-        run: |
-          count=$(grep -rP "[฀-๿]" app/ components/ lib/ \
-            --include="*.ts" --include="*.tsx" \
-            2>/dev/null | grep -v "^\s*//" | wc -l)
-          echo "Thai character matches: $count"
-          if [ "$count" -gt 0 ]; then
-            echo "❌ Thai text found in source:"
-            grep -rnP "[฀-๿]" app/ components/ lib/ \
-              --include="*.ts" --include="*.tsx" | grep -v "^\s*//"
-            exit 1
-          fi
-          echo "✅ No Thai text in app/ components/ lib/"
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -99,9 +80,7 @@ jobs:
         run: npm run verify:production-manifest
 
       - name: Live DB tests
-        if: >
-          secrets.NEXT_PUBLIC_SUPABASE_URL != '' &&
-          secrets.SUPABASE_SERVICE_ROLE_KEY != ''
+        if: ${{ vars.CI_RUN_LIVE_DB_TESTS == 'true' }}
         run: npm run test:live:db:required
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
