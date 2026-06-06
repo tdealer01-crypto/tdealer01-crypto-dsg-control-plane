@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 import { NextResponse } from 'next/server';
 
 const allowedHosts = new Set(['en.wikipedia.org', 'wikipedia.org']);

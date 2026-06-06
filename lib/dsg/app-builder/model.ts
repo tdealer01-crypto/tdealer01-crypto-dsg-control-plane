@@ -1,8 +1,18 @@
 import type {
+  AppBuilderApprovalDecision,
   AppBuilderClaimStatus,
+  AppBuilderGateStatus,
   AppBuilderJobStatus,
   AppBuilderRiskLevel,
 } from './status';
+
+export type {
+  AppBuilderApprovalDecision,
+  AppBuilderClaimStatus,
+  AppBuilderGateStatus,
+  AppBuilderJobStatus,
+  AppBuilderRiskLevel,
+};
 
 export type AppBuilderTargetStack = {
   frontend?: 'nextjs' | 'react' | 'vue' | 'svelte' | 'other';
@@ -43,10 +53,23 @@ export type AppBuilderPrd = {
   acceptanceCriteria: string[];
 };
 
+export type AppBuilderPlanPhase =
+  | 'INSPECT'
+  | 'DESIGN'
+  | 'IMPLEMENT_FRONTEND'
+  | 'IMPLEMENT_BACKEND'
+  | 'DATABASE'
+  | 'AUTH'
+  | 'TEST'
+  | 'BUILD'
+  | 'DEPLOY'
+  | 'VERIFY';
+
 export type AppBuilderPlanStep = {
   id: string;
   title: string;
-  phase: string;
+  description: string;
+  phase: AppBuilderPlanPhase;
   riskLevel: AppBuilderRiskLevel;
   requiresApproval: boolean;
   allowedPaths: string[];
@@ -74,7 +97,7 @@ export type AppBuilderGateIssue = {
 };
 
 export type AppBuilderGateResult = {
-  status: 'PASS' | 'REVIEW' | 'BLOCK';
+  status: AppBuilderGateStatus;
   riskLevel: AppBuilderRiskLevel;
   approvalRequired: boolean;
   issues: AppBuilderGateIssue[];
@@ -87,7 +110,7 @@ export type AppBuilderApprovedPlan = {
   approvalHash: string;
   approvedBy: string;
   approvedAt: string;
-  decision: 'APPROVE';
+  decision: Extract<AppBuilderApprovalDecision, 'APPROVE'>;
 };
 
 export type AppBuilderJob = {

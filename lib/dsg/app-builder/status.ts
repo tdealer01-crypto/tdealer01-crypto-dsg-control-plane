@@ -1,40 +1,30 @@
-export const appBuilderStatuses = [
-  'DRAFT',
-  'GOAL_LOCKED',
-  'PRD_READY',
-  'PLAN_READY',
-  'WAITING_APPROVAL',
-  'APPROVED',
-  'READY_FOR_RUNTIME',
-  'REJECTED',
-  'BLOCKED',
-  'FAILED',
-  'COMPLETED',
-] as const;
+export type AppBuilderJobStatus =
+  | 'DRAFT'
+  | 'GOAL_LOCKED'
+  | 'PRD_READY'
+  | 'PLAN_READY'
+  | 'WAITING_APPROVAL'
+  | 'APPROVED'
+  | 'READY_FOR_RUNTIME'
+  | 'ENVIRONMENT_READY'
+  | 'EXECUTING'
+  | 'PR_CREATED'
+  | 'REJECTED'
+  | 'BLOCKED'
+  | 'FAILED'
+  | 'COMPLETED';
 
-export type AppBuilderJobStatus = (typeof appBuilderStatuses)[number];
+export type AppBuilderClaimStatus =
+  | 'NOT_STARTED'
+  | 'PLANNED_ONLY'
+  | 'APPROVED_ONLY'
+  | 'ENVIRONMENT_READY'
+  | 'IMPLEMENTED_UNVERIFIED'
+  | 'PREVIEW_READY'
+  | 'DEPLOYABLE'
+  | 'PRODUCTION_BLOCKED'
+  | 'PRODUCTION_VERIFIED';
 
-export const appBuilderClaimStatuses = [
-  'NOT_STARTED',
-  'PLANNED_ONLY',
-  'APPROVED_ONLY',
-  'PREVIEW_READY',
-  'DEPLOYABLE',
-  'PRODUCTION_BLOCKED',
-  'PRODUCTION_VERIFIED',
-] as const;
-
-export type AppBuilderClaimStatus = (typeof appBuilderClaimStatuses)[number];
-
-export const appBuilderRiskLevels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
-
-export type AppBuilderRiskLevel = (typeof appBuilderRiskLevels)[number];
-
-export const appBuilderApprovalDecisions = [
-  'APPROVE',
-  'REJECT',
-  'REQUEST_CHANGES',
-] as const;
-
-export type AppBuilderApprovalDecision =
-  (typeof appBuilderApprovalDecisions)[number];
+export type AppBuilderRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type AppBuilderApprovalDecision = 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES';
+export type AppBuilderGateStatus = 'PASS' | 'REVIEW' | 'BLOCK';

@@ -104,5 +104,33 @@ export async function setupStripeProducts(
     envVars[`STRIPE_PRICE_${upperKey}_YEARLY`] = yearlyPrice.id;
   }
 
+  // Create metered price for execution overage billing
+  // Uses STRIPE_METER_ID from environment (created in Stripe Dashboard or via API)
+  const meterId = process.env.STRIPE_METER_ID;
+  if (meterId) {
+    const overageProduct = await stripe.products.create({
+      name: 'DSG Execution Overage',
+      description: 'Per-execution overage charges beyond plan quota',
+      metadata: {
+        plan_key: 'overage',
+        source: 'dsg-control-plane-setup',
+        meter_id: meterId,
+      },
+    });
+
+    const overagePrice = await stripe.prices.create({
+      product: overageProduct.id,
+      currency: 'usd',
+      unit_amount: 100, // $1.00 per execution — adjust as needed
+      recurring: { interval: 'month', usage_type: 'metered' },
+      metadata: { plan_key: 'overage', billing_interval: 'monthly' },
+    });
+
+    envVars['STRIPE_PRICE_OVERAGE_MONTHLY'] = overagePrice.id;
+    console.log('[setup] Created metered overage price:', overagePrice.id, 'linked to meter:', meterId);
+  } else {
+    console.warn('[setup] STRIPE_METER_ID not set — skipping metered overage price creation');
+  }
+
   return envVars;
 }

@@ -1,3 +1,4 @@
+// ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 import { NextResponse } from 'next/server';
 import { resolveAgentCapabilityGap } from '@/lib/dsg/agent-runtime/capability-gap-resolver';
 

@@ -1,9 +1,4 @@
-import type {
-  AppBuilderPlanStep,
-  AppBuilderPrd,
-  AppBuilderProposedPlan,
-  LockedAppBuilderGoal,
-} from './model';
+import type { AppBuilderPlanStep, AppBuilderPrd, AppBuilderProposedPlan, LockedAppBuilderGoal } from './model';
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
@@ -13,24 +8,27 @@ export function createAppBuilderProposedPlan(input: {
   goal: LockedAppBuilderGoal;
   prd: AppBuilderPrd;
 }): AppBuilderProposedPlan {
-  const needsDb = input.goal.targetStack.database !== 'none';
+  const needsData = input.goal.targetStack.database !== 'none';
   const needsAuth = input.goal.targetStack.auth !== 'none';
+  const needsDeploy = input.goal.targetStack.deploy !== 'none';
 
   const steps: AppBuilderPlanStep[] = [
     {
       id: 'inspect-repo',
       title: 'Inspect repository',
+      description: 'Inspect routes, scripts, and existing project structure.',
       phase: 'INSPECT',
       riskLevel: 'LOW',
       requiresApproval: false,
-      allowedPaths: ['package.json', 'app/**', 'components/**', 'lib/**', 'docs/**'],
-      allowedCommands: ['npm run typecheck', 'npm run lint'],
+      allowedPaths: ['app/**', 'components/**', 'lib/**', 'docs/**', 'package.json'],
+      allowedCommands: ['npm run dsg:typecheck', 'npm run lint'],
       requiredSecrets: [],
-      expectedEvidence: ['repo-inspection-report'],
+      expectedEvidence: ['inspection-report'],
     },
     {
-      id: 'design-app-structure',
-      title: 'Design app structure',
+      id: 'design-plan',
+      title: 'Design implementation plan',
+      description: 'Design the app structure from the approved PRD.',
       phase: 'DESIGN',
       riskLevel: 'MEDIUM',
       requiresApproval: true,
@@ -40,70 +38,90 @@ export function createAppBuilderProposedPlan(input: {
       expectedEvidence: ['design-plan'],
     },
     {
-      id: 'implement-frontend',
-      title: 'Implement frontend',
+      id: 'launch-agent-runtime',
+      title: 'Launch App Builder agent runtime',
+      description: 'After plan gate and approval, call the App Builder orchestration tool to prepare runtime environment, action-layer tools, audit, and notification payload.',
+      phase: 'DESIGN',
+      riskLevel: 'HIGH',
+      requiresApproval: true,
+      allowedPaths: ['docs/**', 'app/**', 'components/**', 'lib/**', 'supabase/migrations/**'],
+      allowedCommands: [],
+      requiredSecrets: ['GITHUB_TOKEN'],
+      expectedEvidence: ['runtime-environment-manifest', 'action-layer-contract', 'audit-event', 'notification-payload'],
+    },
+    {
+      id: 'implement-app',
+      title: 'Implement app surface',
+      description: 'Implement frontend and backend surfaces through the approved App Builder runtime tool.',
       phase: 'IMPLEMENT_FRONTEND',
       riskLevel: 'MEDIUM',
       requiresApproval: true,
       allowedPaths: ['app/**', 'components/**', 'lib/**'],
-      allowedCommands: ['npm run typecheck', 'npm run lint'],
+      allowedCommands: ['npm run dsg:typecheck', 'npm run lint'],
       requiredSecrets: [],
-      expectedEvidence: ['frontend-diff', 'typecheck-output'],
+      expectedEvidence: ['app-diff', 'typecheck-output'],
     },
     {
-      id: 'implement-backend',
-      title: 'Implement backend',
-      phase: 'IMPLEMENT_BACKEND',
-      riskLevel: 'HIGH',
-      requiresApproval: true,
-      allowedPaths: ['app/api/**', 'lib/**'],
-      allowedCommands: ['npm run typecheck', 'npm run lint'],
+      id: 'data-auth-plan',
+      title: 'Prepare data and auth plan',
+      description: 'Prepare data/auth work only when the locked stack requires it.',
+      phase: needsAuth ? 'AUTH' : needsData ? 'DATABASE' : 'DESIGN',
+      riskLevel: needsAuth || needsData ? 'HIGH' : 'LOW',
+      requiresApproval: needsAuth || needsData,
+      allowedPaths: ['lib/**', 'docs/**', 'supabase/migrations/**'],
+      allowedCommands: ['npm run dsg:typecheck'],
       requiredSecrets: [],
-      expectedEvidence: ['backend-diff', 'typecheck-output'],
+      expectedEvidence: ['data-auth-plan'],
     },
     {
-      id: 'database-schema',
-      title: 'Prepare database schema',
-      phase: 'DATABASE',
-      riskLevel: needsDb ? 'HIGH' : 'LOW',
-      requiresApproval: needsDb,
-      allowedPaths: ['supabase/migrations/**', 'lib/**'],
-      allowedCommands: ['npm run typecheck'],
-      requiredSecrets: needsDb ? ['SUPABASE_DATABASE_URL_RESOLVED', 'SUPABASE_SERVICE_ROLE_KEY'] : [],
-      expectedEvidence: ['migration-file', 'migration-check-output'],
-    },
-    {
-      id: 'auth-rbac',
-      title: 'Prepare auth and RBAC',
-      phase: 'AUTH',
-      riskLevel: needsAuth ? 'HIGH' : 'LOW',
-      requiresApproval: needsAuth,
-      allowedPaths: ['app/**', 'lib/**', 'supabase/migrations/**'],
-      allowedCommands: ['npm run typecheck', 'npm run lint'],
-      requiredSecrets: needsAuth ? ['SUPABASE_DATABASE_URL_RESOLVED', 'SUPABASE_SERVICE_ROLE_KEY'] : [],
-      expectedEvidence: ['auth-rbac-diff', 'auth-check-output'],
-    },
-    {
-      id: 'verify-claim',
-      title: 'Verify claim boundary',
+      id: 'test-build-verify',
+      title: 'Test and verify',
+      description: 'Run checks and collect evidence before any completion claim.',
       phase: 'VERIFY',
-      riskLevel: 'HIGH',
+      riskLevel: 'MEDIUM',
       requiresApproval: true,
-      allowedPaths: ['docs/**', 'lib/dsg/**'],
-      allowedCommands: ['npm run typecheck', 'npm run test'],
+      allowedPaths: ['app/**', 'components/**', 'lib/**', 'docs/**', 'package.json'],
+      allowedCommands: ['npm run dsg:verify', 'npm run dsg:typecheck', 'npm run lint', 'npm run build'],
       requiredSecrets: [],
-      expectedEvidence: ['audit-export', 'evidence-manifest', 'replay-proof'],
+      expectedEvidence: ['verify-output', 'claim-gate-result'],
     },
   ];
+
+  if (needsDeploy) {
+    steps.push({
+      id: 'deploy-preview-plan',
+      title: 'Plan preview deployment',
+      description: 'Prepare preview deployment only after Step 16 runtime approval.',
+      phase: 'DEPLOY',
+      riskLevel: 'HIGH',
+      requiresApproval: true,
+      allowedPaths: ['app/**', 'components/**', 'lib/**', 'docs/**', 'package.json'],
+      allowedCommands: [],
+      requiredSecrets: ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID'],
+      expectedEvidence: ['deployment-plan'],
+    });
+  }
 
   return {
     title: input.prd.title,
     summary: input.prd.summary,
     steps,
-    allowedTools: ['file.read', 'file.write', 'file.patch', 'shell.run', 'claim.verify'],
+    allowedTools: [
+      'dsg.app_builder.launch_agent_runtime',
+      'dsg.app_builder.generate_fullstack_pr',
+      'dsg.environment.provision',
+      'github.branch.create',
+      'file.read',
+      'file.write',
+      'file.patch',
+      'shell.run',
+      'claim.verify',
+      'audit.write',
+      'notification.emit',
+    ],
     allowedPaths: unique(steps.flatMap((step) => step.allowedPaths)),
     allowedCommands: unique(steps.flatMap((step) => step.allowedCommands)),
     requiredSecrets: unique(steps.flatMap((step) => step.requiredSecrets)),
-    estimatedRiskLevel: 'HIGH',
+    estimatedRiskLevel: steps.some((step) => step.riskLevel === 'HIGH') ? 'HIGH' : 'MEDIUM',
   };
 }
