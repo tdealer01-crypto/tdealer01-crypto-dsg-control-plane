@@ -213,6 +213,66 @@ async function upsertBillingSubscription(supabase: SupabaseAdmin, payload: Billi
   });
 }
 
+async function handleInvoiceEvent(
+  supabase: SupabaseAdmin,
+  event: Stripe.Event,
+  stripe: Stripe
+): Promise<void> {
+  const invoice = event.data.object as Stripe.Invoice;
+  const stripeCustomerId =
+    typeof invoice.customer === 'string' ? invoice.customer : null;
+
+  if (!stripeCustomerId) return;
+
+  // Find the org associated with this customer
+  const { data: billingCustomer } = await supabase
+    .from('billing_customers')
+    .select('org_id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .maybeSingle();
+
+  const orgId = billingCustomer?.org_id ?? null;
+
+  switch (event.type) {
+    case 'invoice.payment_succeeded': {
+      console.log('[billing] invoice.payment_succeeded', {
+        invoiceId: invoice.id,
+        orgId,
+        amountPaid: invoice.amount_paid,
+        periodStart: invoice.period_start,
+        periodEnd: invoice.period_end,
+      });
+      // Metered usage charges are included in this invoice payment
+      // Subscription status is already synced via customer.subscription.updated
+      break;
+    }
+    case 'invoice.payment_failed': {
+      console.warn('[billing] invoice.payment_failed', {
+        invoiceId: invoice.id,
+        orgId,
+        amountDue: invoice.amount_due,
+        attemptCount: invoice.attempt_count,
+        nextPaymentAttempt: invoice.next_payment_attempt,
+      });
+      // Could trigger dunning webhook or alert here
+      break;
+    }
+    case 'invoice.finalized': {
+      console.log('[billing] invoice.finalized', {
+        invoiceId: invoice.id,
+        orgId,
+        amountDue: invoice.amount_due,
+        autoAdvance: invoice.auto_advance,
+      });
+      // Invoice is finalized and ready for payment
+      // This is where metered usage from the billing period is locked in
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const stripe = getStripeClient();
@@ -365,6 +425,11 @@ export async function POST(request: Request) {
 
       default:
         break;
+    }
+
+    // Handle invoice events for metered billing
+    if (event.type.startsWith('invoice.')) {
+      await handleInvoiceEvent(supabase, event, stripe);
     }
 
     return NextResponse.json({ received: true, type: event.type });
