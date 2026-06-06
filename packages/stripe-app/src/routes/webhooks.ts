@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import { json } from 'hono/utils/body';
 import Stripe from 'stripe';
 
 const router = new Hono();
