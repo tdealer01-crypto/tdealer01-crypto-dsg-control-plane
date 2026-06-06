@@ -6,236 +6,227 @@
 > **ขอบเขตความจริง (truth boundary):**
 > - เอกสารนี้อธิบาย *รูปแบบลูป (loop pattern)* ของ agent โดย map แต่ละ stage เข้ากับ component ที่มีจริงในรีโพ (route / lib) เพื่อให้ implement ต่อได้ตรงของจริง
 > - ชื่อไฟล์/route ที่อ้างถึงคือสิ่งที่ตรวจพบในโค้ด แต่เอกสารนี้ **ไม่ใช่** หลักฐานว่าทุก stage ถูกเดินครบใน production — เป็นพิมพ์เขียว ไม่ใช่ readiness claim
-> - คงหลักการ governance-first ของรีโพ: **gate ก่อน execute, เก็บ evidence หลัง execute, `UNSUPPORTED`/ไม่พร้อม → review/block ไม่เคย auto-pass**
+> - คงหลักการ governance-first: **gate ก่อน execute, เก็บ evidence หลัง execute** แต่ใช้แบบ **ตามความเสี่ยง (risk-proportional)** เพื่อให้เร็วสุดเท่าที่ปลอดภัย
 
 ---
 
 ## 0. หลักการ (Philosophy)
 
-Master Agent Loop คือวงจรควบคุมที่รับ "เป้าหมาย" แล้วเดินผ่าน plan → gate → execute → verify → learn จนกว่าจะถึงเงื่อนไขจบ โดย **ทุกการกระทำที่เปลี่ยนสถานะภายนอกต้องผ่าน gate ก่อน และต้องทิ้ง evidence ที่ตรวจสอบได้หลังทำ**
+Master Agent Loop รับ "เป้าหมาย" แล้วเดิน plan → gate → execute → verify → learn จนถึงเงื่อนไขจบ
 
-แตกต่างจาก agent loop ทั่วไปตรงที่ DSG ไม่ใช่ "คิดแล้วทำเลย" แต่เป็น **"คิด → เสนอแผนที่ล็อกด้วย hash → ตรวจก่อนทำ → ทำในกรอบที่อนุมัติ → พิสูจน์ว่าทำตรงแผน → บันทึก lineage"**
+**หลักสำคัญ (ปรับใหม่):** ประสิทธิภาพไม่ได้มาจากการ "ถอด gate" แต่มาจากการ **ไม่เอาความเข้มสูงสุดไปใช้เท่ากันทุก step** — ใช้ความเข้ม *ตามความเสี่ยงของ action* แล้วเพิ่ม parallel / batch / cache
+
+- งาน **อ่าน/สังเกต ความเสี่ยงต่ำ** → วิ่ง **fast lane** (heuristic gate, ไม่เรียก LLM, audit เบา, auto-allow)
+- งาน **เขียนที่ย้อนได้ ความเสี่ยงกลาง** → gate เต็มแต่ conformance เบา + เตรียม rollback
+- งาน **ย้อนไม่ได้ / production / การเงิน ความเสี่ยงสูง** → gate เต็ม + STABILIZE/approval + conformance + evidence เต็ม
+
+> สโลแกน: **"fast where safe, strict where it matters."** ความเร็วมาจาก fast lane + ขนาน + cache ไม่ใช่จากการลด "พื้นความปลอดภัยที่ห้ามลด" (§6)
 
 7 stage ตามที่ร้องขอ map ดังนี้:
 
 | # | Stage (ไทย) | Stage (EN) | แกนหน้าที่ |
 |---|---|---|---|
-| 1 | รับเป้าหมาย | Receive Goal | intake + normalize intent |
-| 2 | วิเคราะห์ | Analyze / Plan | สร้างแผน immutable + `planHash` |
-| 3 | เลือก tool | Select Tool | เลือกเครื่องมือ + ผ่าน governance gate |
-| 4 | รัน tool | Run Tool | execute ในกรอบ grant/lease + DSG gate |
-| 5 | อ่านผล | Read Result | เก็บผลเป็น evidence + conformance check |
-| 6 | ปรับ context | Adjust Context | อัปเดต memory / remediate / replan |
+| 1 | รับเป้าหมาย | Receive Goal | intake + normalize + จัด risk tier |
+| 2 | วิเคราะห์ | Analyze / Plan | สร้างแผน (DAG) immutable + `planHash` |
+| 3 | เลือก tool | Select Tool | routing ตามความเสี่ยง + gate |
+| 4 | รัน tool | Run Tool | execute (ขนานได้) ในกรอบ grant/lease |
+| 5 | อ่านผล | Read Result | evidence + conformance (เบา/เต็มตามชั้น) |
+| 6 | ปรับ context | Adjust Context | memory / remediate / replan |
 | 7 | ทำต่อจนจบ | Continue Until Done | loop control + commit lineage/audit |
 
 ---
 
-## 1. แผนภาพลูป (Loop Diagram)
+## 1. แผนภาพลูป (Loop Diagram — risk-routed, parallel)
 
 ```
-                 ┌──────────────────────────────────────────────┐
-                 │                MASTER AGENT LOOP               │
-                 └──────────────────────────────────────────────┘
-
-   (1) Receive Goal ──▶ (2) Analyze/Plan ──▶ (3) Select Tool ──▶ (4) Run Tool
-        intent.intake        planHash locked      governed gate        DSG gate
-                                                  (ready/review/block) (ALLOW/STABILIZE/BLOCK)
-                                                                            │
-                                                                            ▼
-                 ┌──────────────── (6) Adjust Context ◀── (5) Read Result ─┘
-                 │                  memory + remediate     evidence + conformance
-                 │                          │
-                 ▼                          ▼
-       (7) Continue Until Done  ──┐   replan? ──▶ back to (2)
-        terminate / commit        │
-        lineage + audit + truth   └──▶ next step ──▶ back to (3)
+ (1) Receive Goal ─▶ (2) Analyze/Plan (DAG)
+       risk tag           planHash locked
+                               │
+                               ▼
+                   (3) Select Tool + ROUTE by risk
+                      │                         │
+        ┌─────────────┴──────────┐     ┌────────┴─────────────┐
+        ▼  FAST LANE (read/low)   ▼     ▼  FULL LANE (write/high)
+   heuristic gate, no-LLM      DSG gate ALLOW/STABILIZE/BLOCK
+   auto-allow, light audit     (+approval if Tier 2)
+        │                         │
+        ▼                         ▼
+   (4) Run Tool  ◀── parallel pool (independent steps run concurrently) ──▶ (4) Run Tool
+        │                         │
+        ▼                         ▼
+   (5) light conformance     (5) full conformance + evidence
+        └───────────┬─────────────┘
+                    ▼
+        (6) Adjust Context (memory / remediate)
+                    │  violation? ─▶ replan ─▶ (2)
+                    ▼
+        (7) more steps ─▶ (3) | done ─▶ commit lineage/audit/truth
 ```
-
-หลักการ flow:
-- **gate อยู่ "ก่อน" execute เสมอ** (stage 3 governance gate, stage 4 DSG action gate)
-- **verify อยู่ "หลัง" execute เสมอ** (stage 5 conformance + evidence)
-- **violation → ไม่ commit** แต่เข้า remediation (stage 6) แล้ว replan (กลับ stage 2) หรือ block
 
 ---
 
-## 2. รายละเอียดแต่ละ Stage
+## 2. รายละเอียดแต่ละ Stage (เน้นจุดที่เพิ่มประสิทธิภาพ)
 
 ### Stage 1 — รับเป้าหมาย (Receive Goal)
-
-**หน้าที่:** รับ intent จากภายนอก, ตรวจสิทธิ์/quota, normalize เป็น input ที่ deterministic
-
-- **Entry points (verified):** `POST /api/intent`, `POST /api/spine/execute`, `POST /api/execute`
-- **Auth/quota:** resolve agent จาก Bearer token + `agent_id` (`lib/agent-auth.ts`), เช็ค quota ก่อน (`lib/usage/quota.ts` → 402 เมื่อเกิน), เช็ค org/agent status active
-- **Output:** `PlanAttemptInput` — `inputHash`, `attemptNo`, `policyVersion`, `invariantVersion`, `toolManifestHash` (ดู `lib/dsg/brain/plan-attempt.ts`)
-- **Guardrail:** ถ้า quota เกิน / agent ไม่ active / token ผิด → หยุดที่ stage นี้ (fail closed) ไม่เข้าลูป
+- **Entry (verified):** `POST /api/intent`, `/api/spine/execute`, `/api/execute`; auth `lib/agent-auth.ts`; quota `lib/usage/quota.ts` (402 เมื่อเกิน)
+- **เพิ่ม:** ติด **risk tier** ให้เป้าหมาย/แต่ละ step ตั้งแต่ต้น (read=0 / reversible-write=1 / irreversible|prod|finance=2) เพื่อใช้ route ใน stage 3
+- **Output:** `PlanAttemptInput` (`lib/dsg/brain/plan-attempt.ts`)
 
 ### Stage 2 — วิเคราะห์ (Analyze / Plan)
+- **Components:** `buildPlanAttempt` + `generatePlanViaLLM` (`hermes-llm.ts`, provider จาก `model-config.ts`)
+- **เพิ่มประสิทธิภาพ:**
+  - **วางแผนเป็น DAG** (ระบุ dependency) ไม่ใช่ลิสต์เชิงเส้น → step ที่ไม่ขึ้นต่อกันรันขนานได้ (stage 4)
+  - **Batch planning:** วางหลาย step ครั้งเดียว ลดจำนวนการเรียก LLM
+  - **Model tiering:** งานวางแผนง่าย/ความเสี่ยงต่ำใช้โมเดลเร็ว (Haiku) หรือ heuristic; เก็บโมเดลใหญ่ไว้กับงานซับซ้อน/เสี่ยงสูง
+  - **Plan cache:** key ด้วย `inputHash` — เป้าหมายเดิม/เหมือนเดิม reuse แผนเดิม
+- **Guardrail:** `planHash` ล็อกหลังอนุมัติ; ทุก step ระบุ tool + path/command ให้ stage 3/5 ตรวจได้
 
-**หน้าที่:** แปลงเป้าหมายเป็นแผนปฏิบัติที่ **immutable และล็อกด้วย `planHash`**
+### Stage 3 — เลือก tool (Select Tool) + **Risk Routing**
+- **Router:** ดู risk tier ของ step แล้วเลือกเลน
+  - **Fast lane (Tier 0):** heuristic gate (whitelist + read-only check) **ไม่เรียก LLM/ไม่ replan** → auto-allow, audit เบา
+  - **Full lane (Tier 1–2):** `prepareGovernedToolRequest(...)` (`lib/dsg/tools/governed-tools.ts`) → `ready|review|blocked`; Tier 2 ต้องผ่าน approval/STABILIZE เพิ่ม
+- **Gate cache:** memoize ผล gate ด้วย `requestHash`/`decisionHash` — request เหมือนเดิม reuse ผล (ไม่ตัดสินซ้ำ)
+- **กติกาคงเดิม:** write-class ต้องมี evidence; whitelist command/path (`controlled-executor.ts`)
 
-- **Components:** `buildPlanAttempt(...)` → snapshot ที่ hash ได้ (`lib/dsg/brain/plan-attempt.ts`); LLM planning ผ่าน `generatePlanViaLLM(...)` (`lib/dsg/brain/hermes-llm.ts`) ซึ่งเลือก provider จาก env (`lib/dsg/brain/model-config.ts` → Anthropic หรือ NousResearch Hermes ผ่าน `hermes-nous-provider.ts`)
-- **Output:** `HermesPlanProposal { plan, rationale, riskTags }` พร้อม `plan.planHash`
-- **Truth boundary:** `proposePlan()` ใน `hermes-plugin.ts` ปัจจุบันเป็น scaffold ที่ build แผน deterministic — การเรียก LLM จริงอยู่ที่ `generatePlanViaLLM`; อย่าอ้างว่าเป็น autonomous planning เต็มรูปถ้าใช้ path scaffold
-- **Guardrail:** ทุก step ในแผนต้องระบุ tool + เป้า path/command ที่จะใช้ เพื่อให้ stage 3/5 ตรวจได้; `planHash` ห้ามเปลี่ยนหลังอนุมัติ
+### Stage 4 — รัน tool (Run Tool) — **Parallel**
+- **Pre-exec gate:** `evaluateAction(...)` (`lib/dsg/evaluate-action.ts`) → `ALLOW|STABILIZE|BLOCK` (BLOCK หยุด)
+- **Execute:** `executeCommand` (`shell-executor.ts`, blacklist+TTL) ผ่าน worker ใน `executeHermesPlan` (`lib/hermes/runtime.ts`)
+- **เพิ่มประสิทธิภาพ:**
+  - **Parallel pool:** step อิสระใน DAG รันพร้อมกัน (จำกัดด้วย `maxConcurrency`)
+  - **Speculative + rollback:** action ที่ย้อนได้ (Tier 1) execute แบบ optimistic ขณะ conformance รัน async; commit เมื่อผ่าน, rollback เมื่อไม่ผ่าน — ไม่ block ลูปรอ commit ทุก step
+- **Guardrail:** secret redacted (credential lease); ไม่มี production mutation นอก controlled execution
 
-### Stage 3 — เลือก tool (Select Tool)
-
-**หน้าที่:** เลือกเครื่องมือสำหรับ step ปัจจุบัน แล้วผ่าน **governance gate ก่อน** ลงมือ
-
-- **Components:** governed tool gate `prepareGovernedToolRequest(...)` (`lib/dsg/tools/governed-tools.ts`) → คืน `{ ok, status: 'ready'|'review'|'blocked', requestHash, audit }`
-- **กติกา (verified pattern):**
-  - write-class action (`create/update/delete/execute`) **ต้องมี evidence** มิฉะนั้น `blocked`
-  - read-class action ที่ไม่มี evidence → `review` (ไม่ auto-pass)
-  - whitelist: command ต้องอยู่ใน `allowedCommands`, path ต้องอยู่ใต้ `allowedPaths` (เตรียมที่ `buildControlledExecutionContext` ใน `controlled-executor.ts`)
-- **Output:** tool ที่เลือก + execution grant/lease (`buildExecutionGrant`, credential lease จาก `credential-broker.ts` แบบ redacted)
-- **Guardrail:** `status !== 'ready'` → ไม่เข้า stage 4 (เข้า review หรือ block); ไม่มี tool ที่อยู่นอก manifest
-
-### Stage 4 — รัน tool (Run Tool)
-
-**หน้าที่:** execute เครื่องมือ **ภายในกรอบที่อนุมัติ** โดยมี DSG action gate ตรวจอีกชั้นก่อนยิงจริง
-
-- **Pre-exec gate (verified):** `evaluateAction(...)` (`lib/dsg/evaluate-action.ts`) → `ALLOW | STABILIZE | BLOCK` พร้อม `decisionHash`/`reasons`; **`BLOCK` → หยุด (เช่น 409)** ไม่ execute
-- **Execution:** `executeCommand(cmd, ctx)` (`lib/dsg/brain/shell-executor.ts`) — มี blacklist คำสั่งอันตราย (`rm -rf`, `dd`, `mkfs`…), เช็ค grant ยังไม่หมดอายุ (TTL), timeout + max buffer
-- **Worker abstraction:** `executeHermesPlan(...)` (`lib/hermes/runtime.ts`) เดิน step ผ่าน worker (terminal/file/browser/db/deploy/skill/subagent/research)
-- **Guardrail:** secret ไม่เข้า context/log (credential lease redacted); ไม่มี production mutation นอก controlled execution
-
-### Stage 5 — อ่านผล (Read Result)
-
-**หน้าที่:** เก็บผลลัพธ์เป็น **evidence ที่ hash ได้** แล้ว **พิสูจน์ว่าทำตรงแผน**
-
-- **Conformance (verified):** `checkConformance(ctx, result)` (`lib/dsg/brain/conformance-gate.ts`) ตรวจ:
-  1. `planHash` ที่ทำจริงต้องตรงกับที่อนุมัติ
-  2. ทุก command ที่รันต้องอยู่ใน `allowedCommands`
-  3. ทุก path ที่เปลี่ยนต้องอยู่ใต้ `allowedPaths` (canonical)
-  4. ต้องมี evidence (ไม่มี evidence = block)
-- **Evidence:** ผลถูก hash เป็น SHA-256 lineage (`requestHash → decisionHash → recordHash → bundleHash`, ดู `lib/gateway/evidence-bundle.ts`)
-- **Output:** `ConformanceReport { approved, planHash, violations[] }`
-- **Guardrail:** `approved === false` → **ไม่ commit ผล**, ส่ง violations ไป stage 6
+### Stage 5 — อ่านผล (Read Result) — **conformance ตามชั้น**
+- **Conformance:** `checkConformance(...)` (`conformance-gate.ts`) — planHash ตรง, command/path ใน allowlist, มี evidence
+- **เพิ่มประสิทธิภาพ:** **conformance เบาสำหรับ Tier 0** (เช็ค read-only + ไม่มี side-effect ก็พอ); **เต็มสำหรับ Tier 1–2** (planHash + path + evidence ครบ)
+- **Evidence:** hash lineage `requestHash→decisionHash→recordHash→bundleHash` (`evidence-bundle.ts`); **dedup ด้วย contentHash** กันทำซ้ำ
 
 ### Stage 6 — ปรับ context (Adjust Context)
-
-**หน้าที่:** เรียนรู้จากผล/ความผิดพลาด แล้วปรับ "บริบท" ของลูปสำหรับรอบถัดไป
-
-- **Memory (verified):** บันทึกบทสนทนา/ผลเป็น memory event (`persistAgentChatTurn`, `loadPersistentAgentMemory` ใน `lib/dsg/agent-runtime/persistent-chat-memory.ts`; repo/gate ที่ `lib/dsg/server/memory/*`)
-  - **boundary สำคัญ:** memory เป็น *context ไม่ใช่ evidence* — ห้าม override user input ปัจจุบัน, verified evidence, database truth, permission gate, runtime observation
-- **Remediation:** ถ้ามี violation → `remediatePlanViaNousHermes(...)` / remediation hook ใน `hermes-plugin.ts` สร้างแผนแก้ (กลับไป stage 2 ด้วย `attemptNo + 1`)
-- **Context pack:** ประกอบ context ใหม่ (memory gate + ผลล่าสุด + เหตุผล gate) ป้อนเข้ารอบถัดไป
-- **Guardrail:** unverified legal/production claim ใน memory ต้องถูก gate (ดู `evaluateMemoryGate`); ไม่นำ memory ที่ contains_secret เข้า context
+- **Memory:** `persistAgentChatTurn`/`loadPersistentAgentMemory` (`persistent-chat-memory.ts`) — *memory เป็น context ไม่ใช่ evidence*
+- **เพิ่มประสิทธิภาพ:** เขียน memory/commit แบบ **async/batched** ไม่ block step ถัดไป; remediation เฉพาะ step ที่ fail (ไม่ replan ทั้งแผน)
+- **Replan:** `remediatePlanViaNousHermes` / hook ใน `hermes-plugin.ts` (`attemptNo+1`)
 
 ### Stage 7 — ทำต่อจนจบ (Continue Until Done)
-
-**หน้าที่:** ตัดสินใจว่า loop, replan, หรือ terminate — แล้ว **commit lineage/audit/truth**
-
-- **Loop control:** ยังมี step เหลือ → กลับ stage 3; มี violation ที่แก้ได้ → replan (stage 2); จบ/ติด BLOCK → terminate
-- **Termination conditions (ต้องกำหนดชัด):**
-  - แผนครบทุก step + conformance approved → **success**
-  - `BLOCK` ที่แก้ไม่ได้ หรือ evidence หาย → **halt (fail closed)**
-  - เกิน `maxDepth`/`maxAttempts`/budget/quota → **halt with reason** (กัน loop ไม่รู้จบ)
-- **Commit (verified path):** เขียน lineage/audit/truth ผ่าน runtime commit RPC (`runtime_commit_execution`); ถ้า error เรื่อง RPC/schema cache ให้ตาม `docs/RUNBOOK_DEPLOY.md` ไม่เดาแก้
-- **Output:** decision, policyVersion, proof/proofHash, pipeline trace, ledger/truth sequence, usage
+- **Loop control:** ยังมี node ที่ ready → ส่งเข้า pool (stage 3/4) ต่อ; จบ/BLOCK → terminate
+- **Termination:** สำเร็จ / halt(fail closed) / เกิน `maxDepth·maxAttempts·budget·quota`
+- **Commit:** lineage/audit/truth ผ่าน `runtime_commit_execution` (มีปัญหา RPC → ตาม `docs/RUNBOOK_DEPLOY.md`)
 
 ---
 
-## 3. State Model (บริบทที่ถือข้ามรอบ)
+## 3. Autonomy Dial — ปรับระดับความเป็นอิสระ (กลไกหลักของ "เต็มประสิทธิภาพ")
 
-ตัวแปร context ที่ลูปพกและ "ปรับ" ในแต่ละรอบ (stage 6):
+ปุ่มหมุนเดียวที่กำหนดว่า agent หยุดถามมนุษย์เมื่อไร — ยิ่งสูงยิ่งเร็ว แต่ **พื้นความปลอดภัย §6 คงอยู่ทุกระดับ**
+
+| ระดับ | พฤติกรรม | หยุดถามมนุษย์เมื่อ | เทียบของจริงในรีโพ |
+|---|---|---|---|
+| **L0 Manual** | อนุมัติทุก action | ทุก action | per-command approval |
+| **L1 Work Session** | auto งาน Tier 0–1 | เจอ Tier 2 / สิทธิ์ใหม่ | Android "Work Session" |
+| **L2 Supervised** | auto ถึง Tier 1, แจ้งแบบ async | เฉพาะ Tier 2 | — |
+| **L3 Autonomous** | auto ทุกชั้นในกรอบ budget/policy | ไม่หยุด (policy gate แทนคน) | Android "Autonomous Mode" |
+
+**สำคัญ:** L3 = ข้ามการ "ป๊อปอัปถามคน" เท่านั้น — **ไม่ข้าม** policy gate, evidence, audit, หรือพื้นความปลอดภัย (เหมือน Autonomous Mode ของ Android ที่ยังบันทึก audit ทุก step) ระดับสูงควรผูกกับ **budget cap** ที่เข้มขึ้น เพื่อให้ "เร็วและคุมได้"
+
+---
+
+## 4. State Model (รองรับ parallel + risk)
 
 ```ts
 type LoopState = {
-  goal: string;                 // เป้าหมายต้นทาง (stage 1)
-  inputHash: string;            // identity ของ intent
-  plan: PlanAttempt;            // แผน immutable + planHash (stage 2)
-  attemptNo: number;            // รอบ replan
-  cursor: number;               // step index ปัจจุบัน
-  allowedCommands: string[];    // whitelist (stage 3)
-  allowedPaths: string[];       // whitelist (stage 3)
-  grant: ExecutionGrant;        // TTL + renewals (stage 3/4)
-  evidence: EvidenceRef[];      // สะสมจาก stage 5
-  violations: Violation[];      // จาก conformance (stage 5)
-  memoryContext: string;        // context pack (stage 6) — ไม่ใช่ evidence
-  budget: { maxAttempts; maxDepth; quotaUsed }; // กัน loop ไม่จบ
+  goal: string;
+  inputHash: string;
+  plan: PlanDag;                 // DAG ของ step + dependency (stage 2)
+  planHash: string;              // ล็อกต่อหนึ่งแผน
+  attemptNo: number;
+  frontier: StepId[];            // step ที่ ready (no pending deps) -> รันขนานได้
+  riskTier: Map<StepId, 0|1|2>;  // ชั้นความเสี่ยงต่อ step (stage 1/3)
+  grant: ExecutionGrant;         // TTL + renewals
+  evidence: EvidenceRef[];
+  violations: Violation[];
+  memoryContext: string;         // context, ไม่ใช่ evidence
+  autonomy: 0|1|2|3;             // Autonomy Dial (§3)
+  budget: { maxAttempts; maxDepth; maxConcurrency; quotaUsed; deadline };
+  caches: { plan; gate; evidence };
   status: 'running'|'review'|'blocked'|'done'|'halted';
 };
 ```
 
-**กฎ:** `plan.planHash` เปลี่ยนได้เฉพาะตอน replan (สร้าง PlanAttempt ใหม่ + `attemptNo+1`) เท่านั้น; ระหว่าง execute หนึ่งแผน `planHash` ต้องคงที่
-
 ---
 
-## 4. Pseudocode (state machine)
+## 5. Pseudocode (risk-routed, parallel, budget-bounded)
 
 ```text
-state = receiveGoal(request)            # stage 1 (auth, quota, normalize)
+state = receiveGoal(request)              # stage 1 (auth, quota, risk-tag)
 if not state.admitted: return FAIL_CLOSED
+state.plan = analyze(state)               # stage 2 (DAG, planHash locked)
 
-loop:
-  if state.cursor == 0 or state.needReplan:
-    state.plan = analyze(state)         # stage 2 (planHash locked)
+while state.frontier not empty and within(budget):
+  batch = take(state.frontier, state.budget.maxConcurrency)
 
-  tool = selectTool(state)              # stage 3
-  gate = prepareGovernedToolRequest(tool)
-  if gate.status != 'ready':
-    state = adjustContext(state, gate)  # stage 6 (review/block path)
-    if gate.status == 'blocked': break
-    continue
+  results = parallelMap(batch, step => {
+    tier = state.riskTier[step]
+    gate = (tier == 0)
+              ? heuristicGate(step)        # stage 3 FAST LANE (no LLM)
+              : cachedOr(prepareGovernedToolRequest, step)
+    if gate.status != 'ready':
+      if needsHuman(gate, state.autonomy): return PAUSE(step, gate)
+      if gate.status == 'blocked': return BLOCKED(step)
 
-  decision = evaluateAction(tool)       # stage 4 pre-exec DSG gate
-  if decision == 'BLOCK': break
-  result = runTool(tool, state.grant)   # stage 4 execute (whitelisted, TTL)
+    if tier >= 1 and evaluateAction(step) == 'BLOCK': return BLOCKED(step)
+    out = runTool(step, state.grant)        # stage 4 (speculative if tier<=1)
+    rep = checkConformance(state, out, level = tier==0 ? 'light' : 'full')  # stage 5
+    return rep.approved ? OK(step, out) : VIOLATION(step, rep)
+  })
 
-  report = checkConformance(state, result)  # stage 5 (planHash + paths + evidence)
-  state.evidence += result.evidence
+  for r in results:                         # stage 6
+    if r.ok: state.evidence += r.evidence; advanceDag(state, r.step)
+    elif r.violation: state = remediate(state, r)   # replan only failed branch
+    elif r.blocked: haltBranch(state, r.step)
+    elif r.pause: awaitHuman(state, r)
 
-  if not report.approved:               # stage 6
-    state = remediate(state, report.violations)
-    if exceeded(state.budget): break
-    continue
+  asyncCommit(state)                        # stage 6/7 non-blocking lineage write
 
-  state.memoryContext = updateMemory(state, result)  # stage 6
-
-  if moreSteps(state): state.cursor += 1; continue    # stage 7 -> loop
-  else: break
-
-commitLineage(state)                    # stage 7 (runtime_commit_execution)
-return summarize(state)                 # decision, proof, trace, usage
+return summarize(commitLineage(state))      # stage 7 (runtime_commit_execution)
 ```
 
 ---
 
-## 5. Safety & Termination Invariants
+## 6. พื้นความปลอดภัยที่ "ห้ามลด" (Non-negotiable Floor)
 
-ค่าคงที่ที่ลูป **ต้อง** รักษา (สอดคล้อง CLAUDE.md):
+ต่อให้หมุน Autonomy Dial ไป L3 หรือเร่งความเร็วสุด ข้อเหล่านี้ **ห้ามปิด** (ตาม CLAUDE.md):
 
-1. **Gate-before-execute:** ไม่มี execute ใดเกิดก่อน governance gate (stage 3) + action gate (stage 4)
-2. **Evidence-after-execute:** ทุก execute ต้องมี evidence; ไม่มี evidence → conformance block
-3. **planHash integrity:** ผลที่ commit ต้องตรง `planHash` ที่อนุมัติ
-4. **Whitelist only:** command/path นอก allowlist = violation
-5. **`UNSUPPORTED`/ไม่พร้อม ≠ PASS:** map เป็น review/block เสมอ
-6. **Fail closed:** auth/quota/secret/RPC ผิดพลาด → หยุด ไม่ใช่เดินต่อแบบ degrade เงียบ
-7. **Bounded loop:** มี `maxAttempts/maxDepth/budget` กัน loop ไม่รู้จบ
-8. **No raw secret in context/log:** ใช้ credential lease redacted เท่านั้น
+1. **Tier 2 ห้าม fast-lane** — action ย้อนไม่ได้ / production / การเงิน / ลบข้อมูล ต้องผ่าน full gate เสมอ
+2. **Evidence-for-write** — write ต้องมี evidence; ไม่มี → block
+3. **planHash integrity** — ผลที่ commit ต้องตรงแผนที่อนุมัติ
+4. **Whitelist only** — command/path นอก allowlist = violation
+5. **`UNSUPPORTED`/ไม่พร้อม ≠ PASS** → review/block เสมอ
+6. **Fail closed** — auth/quota/secret/RPC ผิด → หยุด ไม่ degrade เงียบ
+7. **Bounded** — มี budget/deadline/maxDepth เสมอ (กัน loop และ cost ระเบิด)
+8. **No raw secret** ใน context/log — lease redacted เท่านั้น
+9. **Audit always-on** — แม้ L3 ก็บันทึก audit/lineage ครบ
+
+> เส้นแบ่ง: **ที่ปรับได้** = ความถี่ในการถามคน, การเรียก LLM, ความเข้มของ conformance สำหรับงานความเสี่ยงต่ำ, การขนาน/แคช · **ที่ปรับไม่ได้** = 9 ข้อข้างบน
 
 ---
 
-## 6. Mapping Table (stage → ไฟล์จริงในรีโพ)
+## 7. Mapping Table (stage → ไฟล์จริงในรีโพ)
 
 | Stage | Component (path) | บทบาท |
 |---|---|---|
-| 1 | `app/api/intent`, `app/api/spine/execute`, `lib/agent-auth.ts`, `lib/usage/quota.ts` | intake + auth + quota |
-| 2 | `lib/dsg/brain/plan-attempt.ts`, `lib/dsg/brain/hermes-llm.ts`, `lib/dsg/brain/model-config.ts`, `lib/dsg/brain/hermes-nous-provider.ts` | plan + planHash + LLM |
-| 3 | `lib/dsg/tools/governed-tools.ts`, `lib/dsg/brain/controlled-executor.ts`, `lib/dsg/brain/credential-broker.ts` | tool gate + grant/lease |
-| 4 | `lib/dsg/evaluate-action.ts`, `lib/dsg/brain/shell-executor.ts`, `lib/hermes/runtime.ts` | action gate + execute |
-| 5 | `lib/dsg/brain/conformance-gate.ts`, `lib/gateway/evidence-bundle.ts` | conformance + evidence hash |
-| 6 | `lib/dsg/agent-runtime/persistent-chat-memory.ts`, `lib/dsg/server/memory/*`, `hermes-plugin.ts` (remediation) | memory + remediate/replan |
-| 7 | runtime commit RPC `runtime_commit_execution`, `docs/RUNBOOK_DEPLOY.md` | lineage/audit/truth + recovery |
+| 1 | `app/api/intent`, `app/api/spine/execute`, `lib/agent-auth.ts`, `lib/usage/quota.ts` | intake + auth + quota + risk-tag |
+| 2 | `lib/dsg/brain/plan-attempt.ts`, `lib/dsg/brain/hermes-llm.ts`, `model-config.ts`, `hermes-nous-provider.ts` | plan(DAG) + planHash + model tiering |
+| 3 | `lib/dsg/tools/governed-tools.ts`, `controlled-executor.ts`, `credential-broker.ts` | risk routing + gate + grant/lease |
+| 4 | `lib/dsg/evaluate-action.ts`, `shell-executor.ts`, `lib/hermes/runtime.ts` | action gate + parallel execute |
+| 5 | `lib/dsg/brain/conformance-gate.ts`, `lib/gateway/evidence-bundle.ts` | conformance(tiered) + evidence hash |
+| 6 | `persistent-chat-memory.ts`, `lib/dsg/server/memory/*`, `hermes-plugin.ts` | memory + remediate/replan |
+| 7 | `runtime_commit_execution` RPC, `docs/RUNBOOK_DEPLOY.md` | lineage/audit/truth + recovery |
 
 ---
 
-## 7. สิ่งที่ยังไม่ครอบคลุม (Next Steps)
+## 8. สิ่งที่ยังไม่ครอบคลุม (Next Steps)
 
-- ตัวควบคุม budget/maxDepth กลางที่ใช้ร่วมทุก worker (ปัจจุบันกระจายอยู่หลายจุด)
-- มาตรฐาน evidence schema เดียวข้ามทุก stage (รวม shell/file/browser/db worker)
-- การ resume loop ที่ค้าง (checkpoint) จาก state ที่ commit ไว้
-- ทดสอบ end-to-end ของลูปเต็ม 7 stage บน environment จริง (เอกสารนี้เป็นพิมพ์เขียว ยังไม่ใช่ proof ว่าเดินครบใน production)
+- ตัวจัดตาราง DAG + worker pool กลาง พร้อม `maxConcurrency`/deadline ที่ปรับได้ต่อ org
+- นิยาม risk-tier policy ที่ตรวจสอบได้ (อะไรคือ Tier 2) แบบ config ไม่ใช่ hardcode
+- กลไก rollback มาตรฐานสำหรับ speculative execution (Tier 1)
+- ทดสอบ end-to-end ลูปเต็มทั้ง fast/full lane + parallel บน environment จริง (เอกสารนี้เป็นพิมพ์เขียว ยังไม่ใช่ proof ว่าเดินครบใน production)
 
 > หมายเหตุ: เอกสารนี้เป็น design artifact ช่วยให้ implement/รีวิวลูปได้ตรงสถาปัตยกรรมจริง ไม่เปลี่ยนสถานะ production readiness และไม่ใช่หลักฐาน compliance
