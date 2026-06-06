@@ -1,0 +1,52 @@
+{
+  "app_id": "ca_dsg_governance_prod",
+  "name": "DSG Governance Gate",
+  "description": "Pre-execution governance gates for Stripe operations with compliance evidence and approval workflows",
+  "version": "0.1.0",
+  "homepage": "https://dsg.pics",
+  "support_email": "t.dealer01@dsg.pics",
+  "icons": {
+    "square_64": "./docs/assets/icon-64x64.png",
+    "square_128": "./docs/assets/icon-128x128.png",
+    "square_256": "./docs/assets/icon-256x256.png"
+  },
+  "dashboard_request_url": "https://dsg-stripe-app.vercel.app/stripe/webhook/events",
+  "account_link_url": "https://app.dsg.pics/stripe/oauth/connect",
+  "uninstall_url": "https://dsg-stripe-app.vercel.app/stripe/webhook/uninstall",
+  "oauth": {
+    "enabled": true,
+    "client_id": "ca_oauth_dsg_stripe_prod",
+    "scopes": ["read", "write"]
+  },
+  "webhooks": [
+    {
+      "api_version": "2024-04-10",
+      "url": "https://dsg-stripe-app.vercel.app/stripe/webhook/events",
+      "enabled_events": [
+        "charge.created",
+        "charge.updated",
+        "charge.dispute.created",
+        "customer.created",
+        "customer.updated",
+        "payment_intent.created",
+        "payment_intent.payment_failed",
+        "payment_intent.succeeded",
+        "payout.created",
+        "payout.updated",
+        "payout.failed",
+        "refund.created",
+        "refund.updated",
+        "account.updated"
+      ]
+    }
+  ],
+  "backend": {
+    "runtime": "node",
+    "version": "20",
+    "handler": "dist/index.js"
+  },
+  "permissions": {
+    "required": ["read_charge", "write_charge", "read_payout", "write_payout", "read_refund", "write_refund"],
+    "recommended": ["read_customer", "read_payment_intent"]
+  }
+}
