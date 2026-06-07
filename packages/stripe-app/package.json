@@ -15,9 +15,8 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@dsg-platform/sdk": "workspace:*",
     "@supabase/supabase-js": "^2.38.0",
-    "@stripe/ui-extension-sdk": "^1.15.0",
+    "@stripe/ui-extension-sdk": "^9.1.0",
     "hono": "^4.0.0",
     "react": "17.0.2",
     "react-dom": "17.0.2",
@@ -37,7 +36,7 @@
     "eslint": "^8.54.0",
     "typescript": "^5.3.3",
     "vitest": "^1.0.4",
-    "stripe-cli": "^1.18.0"
+    "@stripe/cli": "latest"
   },
   "keywords": [
     "stripe",
