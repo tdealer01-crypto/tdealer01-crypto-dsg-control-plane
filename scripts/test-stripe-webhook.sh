@@ -375,7 +375,7 @@ compute_signature() {
 
   # Compute HMAC-SHA256
   local signature
-  signature=$(echo -n "$signed_content" | openssl dgst -sha256 -mac HMAC -macopt "key=${secret}" | sed 's/^.* //')
+  signature=$(echo -n "$signed_content" | openssl dgst -sha256 -hmac "$secret" | sed 's/^.* //')
 
   echo "$signature"
 }
