@@ -28,26 +28,34 @@ const KNOWN_CREDENTIALS = [
   "GITHUB_TOKEN",
 ];
 
+type RedactedCredentialLease = {
+  secretName: string;
+  fingerprint: string;
+  expiresAt: number;
+  ttlMs: number;
+};
+
 export async function GET() {
   const auth = await requireOrgPermission("org.view_reports");
-  if (!auth.ok) {
+  if (auth.ok === false) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
   // Authority: Nango when configured, otherwise the DSG broker (Supabase dsg_secrets).
   const authority = process.env.NANGO_SECRET_KEY ? "nango" : "dsg-broker";
 
-  let leases: Array<{ secretName: string; fingerprint: string; expiresAt: number; ttlMs: number }> = [];
+  let leases: RedactedCredentialLease[] = [];
   let unavailable: string[] = [...KNOWN_CREDENTIALS];
   let error: string | null = null;
 
   try {
     const result = await brokerCredentials(KNOWN_CREDENTIALS);
-    leases = result.leases.map((l) => ({
-      secretName: l.secretName,
-      fingerprint: String(l.fingerprint).slice(0, 12), // redacted: short hash prefix only
-      expiresAt: l.expiresAt,
-      ttlMs: l.ttlMs,
+    const now = Date.now();
+    leases = result.leases.map((lease) => ({
+      secretName: lease.secretName,
+      fingerprint: lease.redactionFingerprint.slice(0, 12), // redacted: short hash prefix only
+      expiresAt: lease.expiresAt,
+      ttlMs: Math.max(0, lease.expiresAt - now),
     }));
     unavailable = result.unavailable;
   } catch (e) {
@@ -56,7 +64,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    ok: true,
+    ok: error === null,
     authority,
     leases, // name + short fingerprint + ttl only; never raw secret values
     unavailable,
