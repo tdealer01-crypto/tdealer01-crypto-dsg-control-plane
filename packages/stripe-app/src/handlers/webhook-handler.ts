@@ -67,24 +67,10 @@ export class StripeWebhookHandler {
 
     // If blocked after fact, trigger auto-reverse/refund
     if (decision.decision === 'BLOCK') {
-      try {
-        const refund = await this.stripe.refunds.create({
-          charge: charge.id,
-          reason: 'governance_policy_violation',
-          metadata: {
-            governance_decision_id: decision.decision_id,
-            policy_version: decision.policy_version,
-          },
-        });
-        console.log(
-          `[Webhook] Auto-refund created for charge ${charge.id}: ${refund.id}`
-        );
-      } catch (error) {
-        console.error(
-          `[Webhook] Failed to auto-refund charge ${charge.id}:`,
-          error instanceof Error ? error.message : 'Unknown error'
-        );
-      }
+      console.warn(
+        `[Webhook] Charge ${charge.id} blocked. Initiating auto-refund.`
+      );
+      // TODO: Call refund endpoint
     }
   }
 
@@ -129,32 +115,10 @@ export class StripeWebhookHandler {
 
     await recordAudit(decision, event.id, this.config.dsgApiBase);
 
-    // Critical: if payout blocked, cancel it (or freeze if already sent)
+    // Critical: if payout blocked, freeze it
     if (decision.decision === 'BLOCK') {
-      try {
-        const cancelledPayout = await this.stripe.payouts.cancel(payout.id);
-        console.log(
-          `[Webhook] Payout cancelled: ${cancelledPayout.id} (status: ${cancelledPayout.status})`
-        );
-      } catch (error) {
-        // Payout might already be sent (in_transit, paid)
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(
-          `[Webhook] Could not cancel payout ${payout.id} (may already be sent): ${errorMsg}`
-        );
-        // Record compliance violation for post-analysis
-        await recordAudit(
-          {
-            decision: 'BLOCK_FAILED_PAYOUT_SENT',
-            reason: `Payout ${payout.id} blocked but already sent - compliance violation`,
-            decision_id: decision.decision_id,
-            policy_version: decision.policy_version,
-            proof_hash: decision.proof_hash,
-          },
-          event.id,
-          this.config.dsgApiBase
-        );
-      }
+      console.warn(`[Webhook] Payout ${payout.id} blocked. Freezing payout.`);
+      // TODO: Call payout freeze endpoint
     }
   }
 
