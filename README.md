@@ -8,26 +8,46 @@ DSG ONE is a runtime governance layer for AI agents. Connect it in one line, gat
 
 ---
 
-## 🆕 Stripe App Marketplace Integration — 2026-06-06
+## 🆕 Stripe App Marketplace Integration — 2026-06-07
 
-**Status:** ✅ Phase 1-9 Complete | 🔴 PR #700 Awaiting Merge | ⏳ Deployment Ready
+**Status:** ✅ Phase 1-9 Complete | ⏳ Marketing & Launch Documentation Ready | 🚀 Ready for Marketplace Submission
 
 Extend DSG governance to Stripe operations. Gate charges, payouts, and refunds before execution with real-time policy evaluation and immutable audit trails.
 
 ### What's included
 
-| Phase | Component | Status | Files | LOC |
-|-------|-----------|--------|-------|-----|
-| 1 | Setup & Infrastructure | ✅ | 6 | ~420 |
-| 2 | Gateway Handlers | ✅ | 6 | ~800 |
-| 3 | Database & Persistence | ✅ | 2 | ~400 |
-| 4 | Gateway Integration | ✅ | 3 | ~460 |
-| 5 | Hono API Server | ✅ | 8 | ~1,200 |
-| 6 | Dashboard UI | ✅ | 6 | ~650 |
-| 7 | Testing Framework | ✅ | 10 | ~4,500 |
-| 8 | Deployment Config | ✅ | 9 | ~4,600 |
-| 9 | Marketing & Launch | ✅ | 5 | ~2,850 |
-| **TOTAL** | **All 9 Phases** | **✅ COMPLETE** | **55** | **~15,847** |
+| Phase | Component | Status | Files | Documentation |
+|-------|-----------|--------|-------|---|
+| 1-8 | Setup through Deployment Config | ✅ | 55 | See PHASE_8_ENV_VARS_QUICKSTART.md |
+| 9 | Marketing & Launch Documentation | ✅ | 25+ | **[PHASE9_INDEX.md](./docs/PHASE9_INDEX.md)** — Complete guide |
+
+### Phase 9 Deliverables (Marketing & Launch)
+
+All files are templates ready for customization. No external dashboard access required.
+
+**Core Documents:**
+- **[PHASE9_MARKETPLACE_SUBMISSION.md](./docs/PHASE9_MARKETPLACE_SUBMISSION.md)** — 50-item pre-submission checklist
+- **[PHASE9_POST_APPROVAL_SETUP.md](./docs/PHASE9_POST_APPROVAL_SETUP.md)** — Post-launch execution guide
+- **[PHASE9_SUCCESS_METRICS.md](./docs/PHASE9_SUCCESS_METRICS.md)** — KPI tracking dashboard
+- **[PHASE9_SUPPORT_PLAYBOOK.md](./docs/PHASE9_SUPPORT_PLAYBOOK.md)** — Support & incident response
+- **[PHASE9_DEPLOYMENT_RUNBOOK.md](./docs/PHASE9_DEPLOYMENT_RUNBOOK.md)** — Launch day checklist
+- **[PHASE9_PARTNERSHIP.md](./docs/PHASE9_PARTNERSHIP.md)** — Stripe partnership strategy
+
+**Marketing Materials Directory:** `docs/PHASE9_MARKETING/` (25+ templates)
+- App descriptions, positioning, API scope declarations
+- Email sequences, social media templates, blog post templates
+- Legal templates (privacy policy, ToS, DPA)
+- Test plans (OAuth, webhooks, load, accessibility, browser compatibility)
+- Asset guides and brand guidelines
+
+**Customer Onboarding:** `docs/PHASE9_CUSTOMER_ONBOARDING/` (5+ guides)
+- Welcome email sequence (5 emails over 2 weeks)
+- Getting started guide (10 minutes)
+- Integration tutorial (30 minutes)
+- Success metrics dashboard setup
+- Support resources and escalation path
+
+**Total Phase 9 Content:** ~25 files, ~15,000 words, 100% ready to customize
 
 ### Quick start (after PR merge)
 
