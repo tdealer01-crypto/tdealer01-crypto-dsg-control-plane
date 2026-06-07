@@ -24,13 +24,13 @@ export interface StripeErrorInfo {
 export function parseStripeError(error: unknown): StripeErrorInfo {
   const logger = createLogger();
 
-  if (error instanceof Stripe.errors.CardError) {
+  if (error instanceof Stripe.errors.StripeCardError) {
     logger.logSecurityEvent(
       'Stripe card error detected',
       'warn',
       {
-        code: error.code,
-        declineCode: error.decline_code,
+        code: (error as any).code,
+        declineCode: (error as any).decline_code,
         message: error.message,
       }
     );
@@ -38,25 +38,25 @@ export function parseStripeError(error: unknown): StripeErrorInfo {
     return {
       type: 'card_error',
       message: error.message,
-      statusCode: error.statusCode,
+      statusCode: (error as any).statusCode,
       retryable: false,
-      requestId: error.requestId,
+      requestId: (error as any).requestId,
     };
   }
 
-  if (error instanceof Stripe.errors.RateLimitError) {
+  if (error instanceof Stripe.errors.StripeRateLimitError) {
     logger.logSecurityEvent('Stripe rate limit exceeded', 'warn');
 
     return {
       type: 'rate_limit_error',
       message: 'Stripe API rate limit exceeded. Please try again later.',
-      statusCode: error.statusCode,
+      statusCode: (error as any).statusCode,
       retryable: true,
-      requestId: error.requestId,
+      requestId: (error as any).requestId,
     };
   }
 
-  if (error instanceof Stripe.errors.AuthenticationError) {
+  if (error instanceof Stripe.errors.StripeAuthenticationError) {
     logger.logSecurityEvent('Stripe authentication error', 'error', {
       message: error.message,
     });
@@ -64,25 +64,25 @@ export function parseStripeError(error: unknown): StripeErrorInfo {
     return {
       type: 'authentication_error',
       message: 'Stripe authentication failed',
-      statusCode: error.statusCode,
+      statusCode: (error as any).statusCode,
       retryable: false,
-      requestId: error.requestId,
+      requestId: (error as any).requestId,
     };
   }
 
-  if (error instanceof Stripe.errors.APIConnectionError) {
+  if (error instanceof Stripe.errors.StripeConnectionError) {
     logger.logSecurityEvent('Stripe API connection error', 'warn');
 
     return {
       type: 'api_connection_error',
       message: 'Connection to Stripe failed. Please try again later.',
-      statusCode: error.statusCode,
+      statusCode: (error as any).statusCode,
       retryable: true,
-      requestId: error.requestId,
+      requestId: (error as any).requestId,
     };
   }
 
-  if (error instanceof Stripe.errors.InvalidRequestError) {
+  if (error instanceof Stripe.errors.StripeInvalidRequestError) {
     logger.logSecurityEvent(
       'Stripe invalid request error',
       'warn',
@@ -92,24 +92,24 @@ export function parseStripeError(error: unknown): StripeErrorInfo {
     return {
       type: 'invalid_request_error',
       message: error.message,
-      statusCode: error.statusCode,
+      statusCode: (error as any).statusCode,
       retryable: false,
-      requestId: error.requestId,
+      requestId: (error as any).requestId,
     };
   }
 
   if (error instanceof Stripe.errors.StripeAPIError) {
     logger.logSecurityEvent('Stripe API error', 'error', {
-      statusCode: error.statusCode,
+      statusCode: (error as any).statusCode,
       message: error.message,
     });
 
     return {
       type: 'api_error',
       message: 'An error occurred while processing your request. Please try again.',
-      statusCode: error.statusCode,
-      retryable: error.statusCode === 500 || error.statusCode === 503,
-      requestId: error.requestId,
+      statusCode: (error as any).statusCode,
+      retryable: ((error as any).statusCode === 500 || (error as any).statusCode === 503),
+      requestId: (error as any).requestId,
     };
   }
 
