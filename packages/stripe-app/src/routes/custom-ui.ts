@@ -133,13 +133,13 @@ router.post('/execute', async (c) => {
 
     // Stub implementation for now
     const evaluation = {
-      decision: 'allow' as const,
+      decision: 'ALLOW' as const,
       reason: 'Action allowed by policy',
       proof_hash: generateProofHash(action, params),
     };
 
     // TODO: Call DSG gateway executor for governance record
-    // if (evaluation.decision !== 'allow') {
+    // if (evaluation.decision !== 'ALLOW') {
     //   const dsgRequest = chargeToGatewayRequest(
     //     { ...params, id: generateRequestId() } as any,
     //     stripe_account_id,
@@ -150,7 +150,7 @@ router.post('/execute', async (c) => {
 
     // TODO: Create approval record if REVIEW
     // let approvalUrl: string | undefined;
-    // if (evaluation.decision === 'review') {
+    // if (evaluation.decision === 'REVIEW') {
     //   const approval = await stateManager.recordAudit(
     //     stripe_account_id,
     //     requestId,
@@ -173,14 +173,14 @@ router.post('/execute', async (c) => {
 
     // Return decision with proof hash for audit trail
     const response = {
-      decision: evaluation.decision.toUpperCase(),
+      decision: evaluation.decision,
       reason: evaluation.reason,
       proof_hash: evaluation.proof_hash,
       evaluation_time_ms: elapsedTime,
     };
 
     // Add approval details if REVIEW
-    if (evaluation.decision === 'review') {
+    if (evaluation.decision === 'REVIEW') {
       Object.assign(response, {
         // approval_id: approval?.id,
         // approval_url: approvalUrl,
