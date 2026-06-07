@@ -30,12 +30,18 @@ export async function GET() {
       ok: dbOk,
       repo: 'dsg-control-plane',
       version: process.env.VERCEL_GIT_COMMIT_SHA ?? 'local',
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? 'local',
       env: process.env.VERCEL_ENV ?? 'local',
       ts: new Date().toISOString(),
       checks: {
         db: dbOk,
       },
     },
-    { status: dbOk ? 200 : 503 },
+    {
+      status: dbOk ? 200 : 503,
+      headers: {
+        'Cache-Control': 'public, max-age=60',
+      },
+    },
   );
 }
