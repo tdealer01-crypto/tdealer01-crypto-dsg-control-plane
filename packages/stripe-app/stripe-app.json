@@ -1,6 +1,6 @@
 {
   "$schema": "https://stripe.com/stripe-app.schema.json",
-  "id": "com.governance.dsg",
+  "id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
   "version": "1.0.0",
   "ui_extension": {
