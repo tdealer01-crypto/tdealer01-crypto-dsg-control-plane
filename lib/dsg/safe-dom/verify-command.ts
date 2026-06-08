@@ -10,7 +10,7 @@ export function verifySafeDomCommand(
   now: Date = new Date(),
 ): SafeDomVerifyResult {
   const element = manifest.find(
-    (item) => item.frameId === command.frameId && item.elementId === getCommandElementId(command),
+    (item) => item.frameId === command.frameId && item.id === getCommandElementId(command),
   );
 
   if (!element) {
