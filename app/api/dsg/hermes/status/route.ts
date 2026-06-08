@@ -10,6 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { buildDsgBrainModelConfig } from "@/lib/dsg/brain/model-config";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,17 @@ const DECISION_MODEL = {
 } as const;
 
 export async function GET() {
+  // Worker brain model/provider (no secrets — env presence only).
+  const brain = buildDsgBrainModelConfig();
   return NextResponse.json({
     ok: true,
     runtime: ARCHITECTURE_VERSION,
+    model: {
+      provider: brain.provider,
+      name: brain.model,
+      hosting: brain.nousHosting ?? null,
+      configured: brain.configured,
+    },
     philosophy: {
       hermes: "Hermes ทำงานเต็มกำลัง",
       dsg: "DSG พิสูจน์ว่างานทำตามแผนผู้ใช้",
