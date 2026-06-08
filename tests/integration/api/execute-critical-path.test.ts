@@ -7,6 +7,8 @@ const {
   applyRateLimitMock,
   checkQuotaMock,
   incrementQuotaMock,
+  fireWebhookMock,
+  meterExecutionMock,
 } = vi.hoisted(() => ({
   resolveAgentFromApiKeyMock: vi.fn(),
   executeSpineIntentMock: vi.fn(),
@@ -14,6 +16,8 @@ const {
   applyRateLimitMock: vi.fn(),
   checkQuotaMock: vi.fn(),
   incrementQuotaMock: vi.fn(),
+  fireWebhookMock: vi.fn(),
+  meterExecutionMock: vi.fn(),
 }));
 
 vi.mock('../../../lib/agent-auth', () => ({
@@ -40,6 +44,14 @@ vi.mock('../../../lib/usage/quota', () => ({
   incrementQuota: incrementQuotaMock,
 }));
 
+vi.mock('../../../lib/webhooks/deliver', () => ({
+  fireWebhook: fireWebhookMock,
+}));
+
+vi.mock('../../../lib/billing/metered', () => ({
+  meterExecution: meterExecutionMock,
+}));
+
 function request(body: unknown, headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/execute', {
     method: 'POST',
@@ -63,6 +75,8 @@ describe('/api/execute critical route contract', () => {
     applyRateLimitMock.mockResolvedValue({ allowed: true, remaining: 59, reset: Date.now() + 60_000 });
     checkQuotaMock.mockResolvedValue({ allowed: true, used: 0, limit: 10000 });
     incrementQuotaMock.mockResolvedValue(undefined);
+    fireWebhookMock.mockResolvedValue(undefined);
+    meterExecutionMock.mockResolvedValue({ ok: true, eventId: 'meter-test-1' });
     resolveAgentFromApiKeyMock.mockResolvedValue({
       id: 'agent-test',
       org_id: 'org-test',
@@ -163,6 +177,11 @@ describe('/api/execute critical route contract', () => {
         payload: expect.objectContaining({ agentId: 'agent-test' }),
       }),
     );
+    expect(fireWebhookMock).toHaveBeenCalledWith('org-test', 'execution.completed', {
+      agent_id: 'agent-test',
+      decision: 'ALLOW',
+    });
+    expect(meterExecutionMock).toHaveBeenCalledWith('org-test', 1, expect.any(String));
   });
 
   it('issues a runtime intent and retries when no pending runtime intent exists', async () => {
