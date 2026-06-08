@@ -1,0 +1,43 @@
+{
+  "name": "DSG Control Plane",
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "description": "DSG GitHub App for controlled execution, repository audit, PR checks, deployment evidence, and deterministic governance.",
+  "public": false,
+  "hook_attributes": {
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/github/webhook",
+    "active": true
+  },
+  "redirect_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/github/app/callback",
+  "callback_urls": [
+    "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/github/app/callback"
+  ],
+  "setup_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/integrations/github",
+  "setup_on_update": true,
+  "request_oauth_on_install": false,
+  "default_permissions": {
+    "metadata": "read",
+    "contents": "write",
+    "pull_requests": "write",
+    "issues": "write",
+    "checks": "write",
+    "actions": "read",
+    "workflows": "write",
+    "deployments": "write",
+    "statuses": "write",
+    "secrets": "write"
+  },
+  "default_events": [
+    "push",
+    "pull_request",
+    "pull_request_review",
+    "issues",
+    "issue_comment",
+    "check_suite",
+    "check_run",
+    "workflow_run",
+    "deployment",
+    "deployment_status",
+    "installation",
+    "installation_repositories"
+  ]
+}

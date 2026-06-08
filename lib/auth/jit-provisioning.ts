@@ -55,7 +55,7 @@ export async function upsertMemberFromIdentityClaims(input: {
   if (!existing) {
     const inserted = await admin
       .from('users')
-      .insert({ org_id: input.orgId, email, auth_user_id: input.authUserId, role: 'viewer', auth_provider: 'sso', is_active: true })
+      .insert({ org_id: input.orgId, email, auth_user_id: input.authUserId, role: 'viewer', is_active: true })
       .select('id, role')
       .single();
     if (inserted.error) throw inserted.error;

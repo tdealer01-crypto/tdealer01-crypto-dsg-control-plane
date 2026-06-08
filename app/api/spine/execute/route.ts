@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { resolveAgentFromApiKey } from '../../../../lib/agent-auth';
 import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
@@ -7,6 +8,7 @@ import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../..
 import { handleApiError } from '../../../../lib/security/api-error';
 import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
+import { meterExecution } from '../../../../lib/billing/metered';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,6 +137,10 @@ export async function POST(request: Request) {
         agent_id: agentId,
         decision: (result.body as Record<string, unknown>)?.decision ?? null,
       });
+      const executionId =
+        ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
+        randomUUID();
+      void meterExecution(orgId, 1, executionId);
     }
 
     return NextResponse.json(result.body, {

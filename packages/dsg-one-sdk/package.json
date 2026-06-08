@@ -1,0 +1,52 @@
+{
+  "name": "dsg-one-sdk",
+  "version": "0.1.0",
+  "description": "DSG ONE SDK - TypeScript client for the Deterministic Security Gateway governed execution API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:dev": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build",
+    "publish:dry": "npm publish --dry-run"
+  },
+  "keywords": [
+    "dsg",
+    "deterministic-security-gateway",
+    "ai-governance",
+    "governed-execution",
+    "audit-trail",
+    "spine"
+  ],
+  "author": "DSG ONE Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane.git",
+    "directory": "packages/dsg-one-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/issues"
+  },
+  "homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "peerDependencies": {},
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

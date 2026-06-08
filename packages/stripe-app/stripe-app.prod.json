@@ -1,0 +1,73 @@
+{
+  "app_id": "com.governance.dsg",
+  "name": "DSG Governance Gate",
+  "description": "Pre-execution governance gates for Stripe operations with deterministic audit trails and approval workflows",
+  "version": "1.0.0",
+  "homepage": "https://dsg.pics",
+  "support_email": "t.dealer01@dsg.pics",
+  "icons": {
+    "square_64": "./docs/assets/icon-64x64.png",
+    "square_128": "./docs/assets/icon-128x128.png",
+    "square_256": "./docs/assets/icon-256x256.png"
+  },
+  "distribution_type": "public",
+  "sandbox_install_compatible": true,
+  "stripe_api_access_type": "oauth",
+  "allowed_redirect_uris": [
+    "https://dsg-stripe-app.vercel.app/api/stripe-app/oauth/callback",
+    "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/oauth/callback"
+  ],
+  "permissions": [
+    {
+      "permission": "charge_read",
+      "purpose": "Read charge details for governance policy evaluation"
+    },
+    {
+      "permission": "charge_write",
+      "purpose": "Apply governance decisions to charge operations"
+    },
+    {
+      "permission": "payment_intent_read",
+      "purpose": "Monitor payment intents for policy compliance"
+    },
+    {
+      "permission": "payout_read",
+      "purpose": "Track payouts for governance audit trail"
+    },
+    {
+      "permission": "refund_read",
+      "purpose": "Monitor refunds for compliance evidence"
+    }
+  ],
+  "ui_extension": {
+    "views": [
+      {
+        "viewport": "stripe.dashboard.charge.detail",
+        "component": "ChargeGate"
+      },
+      {
+        "viewport": "stripe.dashboard.payment_intent.detail",
+        "component": "PaymentIntentGate"
+      },
+      {
+        "viewport": "stripe.dashboard.payout.detail",
+        "component": "PayoutGate"
+      }
+    ],
+    "content_security_policy": {
+      "connect-src": [
+        "https://dsg-stripe-app.vercel.app/",
+        "https://tdealer01-crypto-dsg-control-plane.vercel.app/",
+        "https://api.dsg.pics/"
+      ],
+      "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
+    }
+  },
+  "post_install_action": {
+    "type": "external",
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/onboarding"
+  },
+  "constants": {
+    "DSG_API_BASE": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+  }
+}

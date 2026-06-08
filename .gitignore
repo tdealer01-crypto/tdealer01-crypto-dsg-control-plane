@@ -52,3 +52,15 @@ supabase/.temp/
 gitleaks-report.json
 coverage/
 __pycache__
+.env*
+
+# Local secret/runtime files - never commit
+.env.local
+.env.production.local
+.env.stripe-prices.local
+.stripe-env
+stripe-meter.json
+.dsg-complete-stripe-github-env.sh
+dsg-complete-stripe-github-env.sh
+dsg-final-env-local-only.sh
+.stripe/
