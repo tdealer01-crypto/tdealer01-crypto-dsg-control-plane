@@ -53,7 +53,7 @@
     "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/oauth/callback",
     "https://dsg-stripe-app.vercel.app/api/stripe-app/oauth/callback"
   ],
-  "distribution_type": "private",
+  "distribution_type": "public",
   "stripe_api_access_type": "oauth",
   "sandbox_install_compatible": true
 }
