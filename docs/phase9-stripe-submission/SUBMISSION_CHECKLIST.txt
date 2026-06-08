@@ -1,0 +1,312 @@
+================================================================================
+  STRIPE MARKETPLACE SUBMISSION - FINAL 20-ITEM CHECKLIST
+  DSG Governance Gate
+  Date: ________________  Submitted by: ________________
+================================================================================
+
+PRE-SUBMISSION VALIDATION (Run all scripts first)
+================================================================================
+
+□ [1] Ran validation-submission.sh successfully
+        Command: bash docs/phase9-stripe-submission/scripts/validate-submission.sh
+        Result: ALL CHECKS PASSED
+
+□ [2] Ran pre-submit-checklist.sh successfully
+        Command: bash docs/phase9-stripe-submission/scripts/pre-submit-checklist.sh
+        Result: ALL 20 CHECKS PASSED
+
+□ [3] Confirmed SUBMISSION_DATA.json is valid JSON
+        Command: jq empty docs/phase9-stripe-submission/SUBMISSION_DATA.json
+        Result: Valid JSON
+
+ASSET CHECKLIST (6 items)
+================================================================================
+
+□ [4] Icon file exists and is correct
+        File: docs/phase9-stripe-submission/assets/icon-1200x1200.png
+        Size: 1200 × 1200 pixels
+        Format: PNG
+        Status: READY
+
+□ [5] Screenshot 1 exists (Dashboard Integration)
+        File: docs/phase9-stripe-submission/assets/screenshot-1-dashboard-integration.png
+        Dimensions: 1200 × 800 pixels
+        Format: PNG
+        Status: READY
+
+□ [6] Screenshot 2 exists (Governance Gate Decision)
+        File: docs/phase9-stripe-submission/assets/screenshot-2-governance-gate.png
+        Dimensions: 1200 × 800 pixels
+        Format: PNG
+        Status: READY
+
+□ [7] Screenshot 3 exists (Audit Trail)
+        File: docs/phase9-stripe-submission/assets/screenshot-3-audit-trail.png
+        Dimensions: 1200 × 800 pixels
+        Format: PNG
+        Status: READY
+
+□ [8] Additional screenshots (optional but recommended)
+        Files: screenshot-4-*.png, screenshot-5-*.png
+        Count: ___ (3 minimum, 5 recommended)
+        Status: READY
+
+□ [9] All images are high quality and clearly visible
+        Icon: Clear at all sizes, good contrast
+        Screenshots: Professional, readable text, clear UI
+        Status: VERIFIED
+
+SUBMISSION DATA CHECKLIST (4 items)
+================================================================================
+
+□ [10] App name is finalized
+         Name: DSG Governance Gate
+         Status: FINALIZED
+
+□ [11] Short description is complete (≤140 characters)
+         Length: ___/140 characters
+         Text: Pre-execution governance gates for Stripe operations with
+               deterministic audit trails and approval workflows
+         Status: READY
+
+□ [12] Long description is complete (≤4000 characters)
+         Length: ___/4000 characters
+         Status: READY
+
+□ [13] Category selected
+         Category: Risk Management (or Tools/Utilities)
+         Status: SELECTED
+
+CONFIGURATION CHECKLIST (5 items)
+================================================================================
+
+□ [14] Support email is configured and monitored
+         Email: t.dealer01@dsg.pics
+         Monitoring: YES - Email checked daily
+         Alternative email: ________________ (optional)
+         Status: ACTIVE
+
+□ [15] OAuth redirect URIs are configured and tested
+         URI 1: https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/oauth/callback
+         URI 2: https://dsg-stripe-app.vercel.app/api/stripe-app/oauth/callback
+         Status: TESTED AND WORKING
+
+□ [16] Webhook endpoint is configured and publicly accessible
+         Endpoint: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/stripe/webhook/events
+         Test result (curl): ✓ 200 OK or 400 Bad Request
+         Status: ACCESSIBLE
+
+□ [17] Webhook signature verification is implemented
+         Signature Header: stripe-signature (verified in code)
+         Status: IMPLEMENTED
+
+□ [18] Permissions are selected and justified
+         Permissions selected:
+         ☑ charge:read - Read charge details for policy evaluation
+         ☑ charge:write - Apply governance decisions
+         ☑ payment_intent:read - Monitor payment intents
+         ☑ payout:read - Track payouts for audit trail
+         ☑ refund:read - Monitor refunds
+         Status: SELECTED
+
+LEGAL & COMPLIANCE CHECKLIST (3 items)
+================================================================================
+
+□ [19] Privacy policy is live and accessible
+         URL: https://dsg.pics/privacy
+         Test: curl -I https://dsg.pics/privacy → 200 OK
+         Status: LIVE
+
+□ [20] Terms of Service is live and accessible
+         URL: https://dsg.pics/terms
+         Test: curl -I https://dsg.pics/terms → 200 OK
+         Status: LIVE
+
+NOTE: Optional PDF documents (privacy-policy.pdf, terms-of-service.pdf)
+      are prepared but Stripe may only require URLs
+
+================================================================================
+                         FINAL SUBMISSION READINESS
+================================================================================
+
+CHECKLIST COMPLETION: ___/20 items
+
+Overall Status:
+☐ NOT READY - Fix failed items (see section below)
+☐ READY - Proceed to Stripe Dashboard submission
+
+FAILED ITEMS (if any):
+________________________________________________________________________________
+________________________________________________________________________________
+________________________________________________________________________________
+
+NEXT STEPS (once all 20 items are checked):
+
+1. Open browser: https://dashboard.stripe.com/apps
+2. Click: "Create an app"
+3. Open guide: docs/phase9-stripe-submission/PHASE9_SUBMISSION_READY.md
+4. Follow step-by-step section: "Step-by-Step Stripe Dashboard Submission"
+5. Submit the form when complete
+6. Save confirmation details in POST_SUBMISSION_TRACKING.md
+
+TIME ESTIMATE: 30 minutes from opening Stripe Dashboard to submission
+
+================================================================================
+                          DASHBOARD SUBMISSION STEPS
+================================================================================
+
+Fill in these as you complete each step in the Stripe Dashboard:
+
+T+0 (Open Dashboard):
+  [ ] Opened https://dashboard.stripe.com/apps
+  [ ] Clicked "Create an app"
+  [ ] Form displayed successfully
+  [ ] Time: _______
+
+T+5 (App Metadata):
+  [ ] Entered app name: DSG Governance Gate
+  [ ] Selected category: Risk Management
+  [ ] Entered short description (138/140 chars)
+  [ ] Entered long description (915/4000 chars)
+  [ ] Time: _______
+
+T+10 (Assets):
+  [ ] Uploaded icon (1200x1200 PNG)
+  [ ] Icon preview looks correct
+  [ ] Uploaded screenshot 1
+  [ ] Uploaded screenshot 2
+  [ ] Uploaded screenshot 3
+  [ ] Uploaded additional screenshots (if available)
+  [ ] Time: _______
+
+T+15 (OAuth & Permissions):
+  [ ] Selected OAuth access type
+  [ ] Added redirect URI 1
+  [ ] Added redirect URI 2 (if using)
+  [ ] Selected permission: charge:read
+  [ ] Selected permission: charge:write
+  [ ] Selected permission: payment_intent:read
+  [ ] Selected permission: payout:read
+  [ ] Selected permission: refund:read
+  [ ] Time: _______
+
+T+18 (Webhooks):
+  [ ] Entered webhook endpoint URL
+  [ ] Selected webhook events (11 events)
+  [ ] Webhook status: Verified (or Pending - will verify later)
+  [ ] Time: _______
+
+T+20 (Support Info):
+  [ ] Entered support email: t.dealer01@dsg.pics
+  [ ] Entered support URL: https://dsg.pics/support
+  [ ] Time: _______
+
+T+23 (Legal):
+  [ ] Entered privacy policy URL: https://dsg.pics/privacy
+  [ ] Entered terms of service URL: https://dsg.pics/terms
+  [ ] Time: _______
+
+T+25 (Review):
+  [ ] Reviewed all information
+  [ ] All fields appear correct
+  [ ] Checked "Submit for Review"
+  [ ] Confirmed in popup
+  [ ] Time: _______
+
+T+26 (Confirmation):
+  [ ] Confirmation page displayed
+  [ ] Saved App ID: _______________
+  [ ] Screenshot taken of confirmation
+  [ ] Time: _______
+
+================================================================================
+                        POST-SUBMISSION RECORD
+================================================================================
+
+Submission Timestamp: _______________________________
+App ID: _____________________________________________
+Confirmation Email Received: [ ] Yes [ ] No
+Date Received: ______________________________________
+
+Stripe Status Dashboard:
+URL: https://dashboard.stripe.com/apps/[YOUR_APP_ID]
+
+Next Milestone: Day 5 (Check for Stripe feedback)
+Target Date: ________________________________________
+
+Notes/Issues:
+________________________________________________________________________________
+________________________________________________________________________________
+
+================================================================================
+                        SUBMISSION SIGN-OFF
+================================================================================
+
+I confirm that:
+✓ All 20 checklist items are complete
+✓ All assets meet Stripe specifications
+✓ All endpoints are publicly accessible and tested
+✓ Support email is monitored
+✓ Legal documents are live and accessible
+✓ Submission data is accurate and complete
+✓ I am ready to proceed with Stripe Dashboard submission
+
+Submitted by: ________________________________
+Date: _________________________________________
+Email: ________________________________________
+
+For questions or issues, contact: t.dealer01@dsg.pics
+
+================================================================================
+                        TRACKING AFTER SUBMISSION
+================================================================================
+
+See: docs/phase9-stripe-submission/POST_SUBMISSION_TRACKING.md
+
+This document contains:
+✓ Day-by-day timeline (Days 1-43)
+✓ What to expect from Stripe
+✓ Common questions and response templates
+✓ Troubleshooting guide
+✓ Post-approval steps
+✓ Daily status checklist
+
+Daily Status Check (Days 1-43):
+→ Check email for Stripe communications
+→ Check app status on https://dashboard.stripe.com/apps/[APP_ID]
+→ Check webhook logs for delivery status
+→ Record status in tracking document
+
+Expected Approval Date Range:
+Minimum: 1 day (rare)
+Typical: 7-14 days
+Maximum: 43 days
+
+Timeline resets if Stripe requests changes.
+
+================================================================================
+                            APPROVAL SUCCESS
+================================================================================
+
+Your submission is approved when you receive this email:
+
+Subject: Your app "DSG Governance Gate" is now approved!
+
+This email contains:
+✓ App ID
+✓ Status: APPROVED
+✓ Marketplace URL: https://marketplace.stripe.com/apps/dsg-governance-gate
+
+At approval, immediately:
+1. Update website with Stripe Marketplace link
+2. Create FAQ based on Stripe feedback
+3. Plan ongoing support strategy
+4. Monitor app installations
+
+See: docs/phase9-stripe-submission/POST_SUBMISSION_TRACKING.md → "After Approval"
+
+================================================================================
+
+Last Updated: 2026-06-07
+Version: 1.0
+Maintained by: DSG Team

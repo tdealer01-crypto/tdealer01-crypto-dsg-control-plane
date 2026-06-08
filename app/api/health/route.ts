@@ -118,7 +118,12 @@ export async function GET() {
         error: core.ok ? null : coreDetails.error ?? 'core_unreachable',
       },
       readiness,
-    }, { status: allOk ? 200 : 503 });
+    }, {
+      status: allOk ? 200 : 503,
+      headers: {
+        'Cache-Control': 'public, max-age=30',
+      },
+    });
   } catch (error) {
     return handleApiError('api/health', error);
   }

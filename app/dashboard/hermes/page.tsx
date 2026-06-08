@@ -46,6 +46,12 @@ type HermesRuntimeStatus = {
   ok: boolean;
   runtime: string;
   status: string;
+  model?: {
+    provider: string;
+    name: string;
+    hosting: string | null;
+    configured: boolean;
+  };
   philosophy: Record<string, string>;
   modules: Record<string, string>;
   workers: string[];
@@ -326,6 +332,72 @@ function CapabilityList() {
   );
 }
 
+type CredentialInfo = {
+  ok: boolean;
+  authority: string;
+  leases: { secretName: string; fingerprint: string; expiresAt: number; ttlMs: number }[];
+  unavailable: string[];
+  error?: string | null;
+  note?: string;
+};
+
+// Credentials (Nango) — redacted via credential-broker; raw values never shown.
+function CredentialsPanel() {
+  const [cred, setCred] = useState<CredentialInfo | null>(null);
+  const [denied, setDenied] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/dsg/hermes/credentials');
+        if (res.status === 401 || res.status === 403) { if (active) setDenied(true); return; }
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) { setCred(data as CredentialInfo); setDenied(false); }
+      } catch { /* non-fatal */ }
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+          Credentials ({cred?.authority ?? 'Nango'})
+        </p>
+        {cred && (
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+            {cred.leases.length} lease{cred.leases.length === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
+      {denied ? (
+        <p className="text-xs text-slate-500">Sign in with operator access to view credential leases.</p>
+      ) : !cred ? (
+        <p className="text-xs text-slate-600">Loading credential authority…</p>
+      ) : (
+        <div className="space-y-1.5">
+          {cred.leases.map((l) => (
+            <div key={l.secretName} className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-300">{l.secretName}</span>
+              <span className="font-mono text-[10px] text-slate-500">fp:{l.fingerprint}…</span>
+            </div>
+          ))}
+          {cred.leases.length === 0 && <p className="text-xs text-slate-600">No active leases.</p>}
+          {cred.unavailable.length > 0 && (
+            <p className="mt-2 text-[10px] text-slate-600">unavailable: {cred.unavailable.join(', ')}</p>
+          )}
+          {cred.error && <p className="mt-1 text-[10px] text-amber-400/80">authority note: {cred.error}</p>}
+          <p className="mt-2 text-[10px] italic text-slate-600">Redacted via credential-broker → Nango. Raw secret values are never shown.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HermesRuntimePanel({ data }: { data: HermesRuntimeStatus | null }) {
   if (!data) {
     return (
@@ -369,6 +441,16 @@ function HermesRuntimePanel({ data }: { data: HermesRuntimeStatus | null }) {
           </span>
         </div>
         <p className="mt-1 font-mono text-[10px] text-slate-500">{data.runtime}</p>
+        {data.model && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="rounded bg-violet-500/20 px-1.5 py-0.5 font-semibold text-violet-200">{data.model.provider}</span>
+            <span className="font-mono text-slate-300">{data.model.name}</span>
+            {data.model.hosting && <span className="text-slate-500">· {data.model.hosting}</span>}
+            <span className={data.model.configured ? 'text-emerald-300' : 'text-red-300'}>
+              {data.model.configured ? '● configured' : '○ not configured'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* workers */}
@@ -1115,7 +1197,10 @@ export default function HermesAgentPage() {
                 <CapabilityList />
               </>
             ) : (
-              <HermesRuntimePanel data={hermesStatus} />
+              <>
+                <HermesRuntimePanel data={hermesStatus} />
+                <CredentialsPanel />
+              </>
             )}
           </div>
         </aside>

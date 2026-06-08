@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
@@ -124,12 +123,4 @@ export async function GET(
       height: 630,
     }
   );
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ run_id: string }> }): Promise<Metadata> {
-  const { run_id } = await params;
-  return {
-    title: `Delivery Proof Report — ${run_id} — DSG ONE`,
-    description: 'AI governance proof report with pre-execution gate verification.',
-  };
 }

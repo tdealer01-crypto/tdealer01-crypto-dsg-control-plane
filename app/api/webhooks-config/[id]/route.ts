@@ -53,7 +53,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const patch: Record<string, unknown> = {};
+  type WebhookPatch = {
+    active?: boolean;
+    events?: string[];
+    url?: string;
+  };
+
+  const patch: WebhookPatch = {};
   if ('active' in body) patch.active = Boolean(body.active);
   if ('events' in body && Array.isArray(body.events)) patch.events = body.events;
   if ('url' in body && typeof body.url === 'string' && body.url.startsWith('https://')) patch.url = body.url;
