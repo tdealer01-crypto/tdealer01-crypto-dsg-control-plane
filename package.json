@@ -8,7 +8,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/database.types.ts",
-    "test": "vitest run",
+    "test": "vitest run --exclude tests/integration/api/finance-governance-live-db.test.ts --exclude tests/integration/api/audit-evidence.test.ts --exclude tests/integration/api/execute-live-db.required.test.ts --exclude tests/integration/api/live-db-supabase.required.test.ts",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:failure": "vitest run tests/failure",
