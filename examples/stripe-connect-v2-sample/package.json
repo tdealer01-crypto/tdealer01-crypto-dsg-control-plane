@@ -1,0 +1,16 @@
+{
+  "name": "dsg-stripe-connect-v2-sample",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated Stripe Connect Accounts v2 sample for DSG testing.",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "latest",
+    "express": "latest",
+    "stripe": "latest"
+  }
+}
