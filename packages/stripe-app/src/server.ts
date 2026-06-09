@@ -16,6 +16,7 @@ import auditRouter from './routes/audit';
 import customUIRouter from './routes/custom-ui';
 import oauthRouter from './routes/oauth';
 import approvalsRouter from './routes/approvals';
+import connectV2Router from './routes/connect-v2';
 
 /**
  * Initialize the Stripe App with all route handlers.
@@ -29,6 +30,7 @@ import approvalsRouter from './routes/approvals';
  * - GET /stripe/audit/* - Audit trail queries
  * - GET/POST /stripe/approvals/* - Approval workflow
  * - POST /stripe/oauth/* - OAuth flows
+ * - POST/GET /stripe/connect-v2/* - Stripe Connect Accounts v2 sample/documented flows
  */
 export function initializeStripeApp(): Hono {
   const app = new Hono();
@@ -71,6 +73,7 @@ export function initializeStripeApp(): Hono {
   app.route('/audit', auditRouter);
   app.route('/approvals', approvalsRouter);
   app.route('/oauth', oauthRouter);
+  app.route('/connect-v2', connectV2Router);
 
   // 404 handler
   app.notFound((c) => {
