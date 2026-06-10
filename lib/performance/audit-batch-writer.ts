@@ -86,7 +86,7 @@ export class AuditBatchWriter {
 
     const auditEvent: AuditEvent = {
       ...event,
-      id: generateUUID()
+      id: randomUUID()
     };
 
     this.buffer.push(auditEvent);
@@ -133,7 +133,7 @@ export class AuditBatchWriter {
 
     try {
       // Build batch hash
-      const batchId = generateUUID();
+      const batchId = randomUUID();
       const eventHashes = batch.map(e => this.hashEvent(e)).join('|');
       const batchContent = `${eventHashes}|${this.lastBatchHash}`;
       const batchHash = createHash('sha256').update(batchContent).digest('hex');
