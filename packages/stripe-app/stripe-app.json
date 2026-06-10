@@ -7,10 +7,6 @@
   "ui_extension": {
     "views": [
       {
-        "viewport": "stripe.dashboard.home",
-        "component": "GateSummaryView"
-      },
-      {
         "viewport": "stripe.dashboard.payment.detail",
         "component": "ChargeGate"
       },
