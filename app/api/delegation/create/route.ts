@@ -100,7 +100,7 @@ function validateRequest(body: unknown): {
   return {
     valid: true,
     errors: [],
-    data: req as CreateDelegationRequest,
+    data: (req as unknown) as CreateDelegationRequest,
   };
 }
 

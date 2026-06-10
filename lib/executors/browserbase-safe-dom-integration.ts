@@ -175,8 +175,7 @@ export async function persistManifest(
   };
 
   // Use any type for now since safe_dom_manifests table will be added via migration
-  const manifestTable = supabase.from('safe_dom_manifests') as any;
-  const { data, error } = await manifestTable
+  const { data, error } = await (supabase.from('safe_dom_manifests' as any) as any)
     .insert({
       session_id: sessionId,
       frame_id: frameId,
@@ -205,8 +204,7 @@ export async function verifySafeDomIntentOrFail(
   const supabase = getSupabaseAdmin();
 
   // Use any type for now since safe_dom_manifests table will be added via migration
-  const manifestTable = supabase.from('safe_dom_manifests') as any;
-  const { data, error } = await manifestTable
+  const { data, error } = await (supabase.from('safe_dom_manifests' as any) as any)
     .select('manifest_json, expires_at')
     .eq('session_id', sessionId)
     .eq('frame_id', frameId)

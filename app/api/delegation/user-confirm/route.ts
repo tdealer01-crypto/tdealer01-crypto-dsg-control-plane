@@ -38,12 +38,9 @@ export async function POST(request: NextRequest) {
 
     if (!actionMatch) {
       return handleApiError(
-        {
-          code: 'INVALID_REQUEST',
-          message: 'Invalid request format. Use /approve/{requestId} or /reject/{requestId}',
-          status: 400,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error('Invalid request format. Use /approve/{requestId} or /reject/{requestId}'),
+        { status: 400 },
       );
     }
 
@@ -52,12 +49,9 @@ export async function POST(request: NextRequest) {
 
     if (!requestId || !action) {
       return handleApiError(
-        {
-          code: 'MISSING_PARAMS',
-          message: 'requestId and action are required',
-          status: 400,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error('requestId and action are required'),
+        { status: 400 },
       );
     }
 
@@ -65,12 +59,9 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return handleApiError(
-        {
-          code: 'UNAUTHORIZED',
-          message: 'Missing or invalid Authorization header',
-          status: 401,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error('Missing or invalid Authorization header'),
+        { status: 401 },
       );
     }
 
@@ -97,12 +88,9 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return handleApiError(
-        {
-          code: 'UNAUTHORIZED',
-          message: 'Invalid authentication token',
-          status: 401,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error('Invalid authentication token'),
+        { status: 401 },
       );
     }
 
@@ -111,12 +99,9 @@ export async function POST(request: NextRequest) {
 
     if (!confirmationStatus) {
       return handleApiError(
-        {
-          code: 'NOT_FOUND',
-          message: `Confirmation request ${requestId} not found`,
-          status: 404,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error(`Confirmation request ${requestId} not found`),
+        { status: 404 },
       );
     }
 
@@ -129,23 +114,17 @@ export async function POST(request: NextRequest) {
 
     if (delegationError || !delegation) {
       return handleApiError(
-        {
-          code: 'NOT_FOUND',
-          message: 'Delegation not found',
-          status: 404,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error('Delegation not found'),
+        { status: 404 },
       );
     }
 
     if (delegation.user_id !== user.id) {
       return handleApiError(
-        {
-          code: 'FORBIDDEN',
-          message: 'You do not own this delegation',
-          status: 403,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error('You do not own this delegation'),
+        { status: 403 },
       );
     }
 
@@ -211,12 +190,9 @@ export async function POST(request: NextRequest) {
 
     if (!success) {
       return handleApiError(
-        {
-          code: 'INTERNAL_ERROR',
-          message: `Failed to ${action} confirmation request`,
-          status: 500,
-        },
-        request,
+        '/api/delegation/user-confirm',
+        new Error(`Failed to ${action} confirmation request`),
+        { status: 500 },
       );
     }
 
@@ -234,12 +210,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in user-confirm route:', error);
     return handleApiError(
-      {
-        code: 'INTERNAL_ERROR',
-        message: 'Internal server error',
-        status: 500,
-      },
-      request,
+      '/api/delegation/user-confirm',
+      error instanceof Error ? error : new Error(String(error)),
+      { status: 500 },
     );
   }
 }
@@ -250,11 +223,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   return handleApiError(
-    {
-      code: 'METHOD_NOT_ALLOWED',
-      message: 'GET not supported. Use POST /approve/{requestId} or /reject/{requestId}',
-      status: 405,
-    },
-    new NextRequest('http://localhost'),
+    '/api/delegation/user-confirm',
+    new Error('GET not supported. Use POST /approve/{requestId} or /reject/{requestId}'),
+    { status: 405 },
   );
 }

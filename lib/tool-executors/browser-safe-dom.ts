@@ -73,10 +73,15 @@ export async function executeBrowserStep(
   }
 
   // Build safe DOM command
+  let safeDomAction: 'click' | 'type' | 'submit' | 'navigate' = 'click';
+  if (action === 'type') safeDomAction = 'type';
+  else if (action === 'submit') safeDomAction = 'submit';
+  else if (action === 'navigate') safeDomAction = 'navigate';
+
   const safeDomCommand: SafeDomCommand = {
     frameId: context.manifest?.frame_id || 'main',
     elementId,
-    action,
+    action: safeDomAction,
     value: step.action.includes('type') ? step.target : undefined,
   };
 
