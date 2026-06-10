@@ -9,6 +9,7 @@ import { handleApiError } from '../../../../lib/security/api-error';
 import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { meterExecution } from '../../../../lib/billing/metered';
+import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,32 @@ export async function POST(request: Request) {
         402,
         responseHeaders
       );
+    }
+
+    // Safe DOM verification (new)
+    // Verify that Safe DOM commands only target exposed elements in the manifest
+    const sessionId = String(payload.context.sessionId || payload.input.sessionId || '');
+    const safeDomVerification = await verifySafeDomIntentOrPass(payload, sessionId);
+    if (safeDomVerification) {
+      // Safe DOM verification returned a result (either BLOCK or REVIEW)
+      if (safeDomVerification.decision === 'BLOCK') {
+        return jsonWithHeaders(
+          request,
+          {
+            error: 'Safe DOM verification failed',
+            reason: safeDomVerification.reason,
+            element_id: safeDomVerification.elementId,
+            decision: 'block',
+          },
+          403,
+          responseHeaders
+        );
+      }
+      // REVIEW decision falls through to normal gate/approval flow with verification metadata
+      if (safeDomVerification.decision === 'REVIEW') {
+        // Continue with execution but the pipeline will note the REVIEW status
+        payload.context.safeDomReview = safeDomVerification.reason;
+      }
     }
 
     let result = await executeSpineIntent({
