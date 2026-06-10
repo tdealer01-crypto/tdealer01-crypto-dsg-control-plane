@@ -1,28 +1,45 @@
 import Link from 'next/link';
 import CopyButton from '../../../components/CopyButton';
 
+const STRIPE_INSTALL_URL =
+  process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL ||
+  '/api/stripe/connect/install';
+
 const quickstart = [
   {
     title: '1. Register your integration',
     description: 'Creates an org, managed agent, policy binding, and a one-time API key for server-to-server calls. Store the key once — DSG only keeps a hash.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/register \\\n  -H 'content-type: application/json' \\\n  -d '{\"email\":\"dev@yourcompany.com\",\"app_name\":\"Your App\"}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/register \
+  -H 'content-type: application/json' \
+  -d '{\"email\":\"dev@yourcompany.com\",\"app_name\":\"Your App\"}'",
     response: 'Returns: org_id, agent_id, api_key',
   },
   {
     title: '2. Attach a webhook callback',
     description: 'Connect your app back to DSG so governance decisions can be delivered as events. Set the webhook URL and allowed browser origins.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer $DSG_API_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/integrations/webhooks \
+  -H 'content-type: application/json' \
+  -H 'Authorization: Bearer $DSG_API_KEY' \
+  -d '{\"agent_id\":\"agt_xxx\",\"webhook_url\":\"https://yourapp.com/dsg/events\",\"allowed_origins\":[\"https://yourapp.com\"]}'",
     response: 'Returns: integration profile with normalized allowed_origins',
   },
   {
     title: '3. Run your first governed action',
     description: 'Send one action through DSG. Verify the ALLOW/REVIEW/BLOCK response and check the decision hash before rolling out to production.',
-    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute \\\n  -H 'content-type: application/json' \\\n  -H 'Authorization: Bearer $DSG_API_KEY' \\\n  -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
+    command: "curl -s -X POST https://YOUR_DSG_DOMAIN/api/execute \
+  -H 'content-type: application/json' \
+  -H 'Authorization: Bearer $DSG_API_KEY' \
+  -d '{\"agent_id\":\"agt_xxx\",\"action\":\"approve_invoice\",\"input\":{\"invoice_id\":\"INV-001\",\"amount\":1250}}'",
     response: 'Returns: decision (ALLOW/REVIEW/BLOCK), latency_ms, policy context, audit evidence',
   },
 ];
 
 const connectorCards = [
+  {
+    name: 'Stripe',
+    use: 'Marketplace review, account connection, payment and billing governance',
+    hint: 'Install Stripe / Connect Stripe',
+  },
   {
     name: 'REST API',
     use: 'ERP wrappers, CRM, finance ops, internal services',
@@ -82,6 +99,9 @@ export default function IntegrationsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <a href={STRIPE_INSTALL_URL} target="_blank" rel="noopener noreferrer" className="rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950">
+                Install Stripe
+              </a>
               <Link href="/enterprise-ready" className="rounded-2xl border border-emerald-300/40 bg-emerald-300/10 px-5 py-3 text-sm font-bold text-emerald-100">
                 View enterprise flow
               </Link>
@@ -92,6 +112,27 @@ export default function IntegrationsPage() {
                 Back to dashboard
               </Link>
             </div>
+          </div>
+        </section>
+
+        {/* Stripe install */}
+        <section className="mt-8 rounded-3xl border border-amber-300/25 bg-amber-300/[0.06] p-6 shadow-2xl shadow-amber-950/20">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-amber-200/70">Stripe Marketplace Review</p>
+              <h2 className="mt-2 text-2xl font-black text-amber-50">Install Stripe / Connect Stripe</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+                Use this direct install entry point to authorize DSG Governance Gate on a Stripe account. After authorization, Stripe returns to the configured OAuth callback.
+              </p>
+            </div>
+            <a
+              href={STRIPE_INSTALL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-amber-300 px-5 py-4 text-sm font-black text-slate-950 transition hover:bg-amber-200"
+            >
+              Install Stripe / Connect Stripe
+            </a>
           </div>
         </section>
 

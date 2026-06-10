@@ -5,6 +5,7 @@ function getErrorMessage(error?: string) {
   if (error === 'missing-email') return 'Please enter your email address.';
   if (error === 'missing-password') return 'Please enter your password.';
   if (error === 'invalid-credentials') return 'Invalid email or password. Please try again.';
+  if (error === 'provision-failed') return 'Your login succeeded, but workspace access could not be provisioned. Please contact support.';
   if (error === 'unexpected') return 'Something went wrong. Please try again.';
   return null;
 }
