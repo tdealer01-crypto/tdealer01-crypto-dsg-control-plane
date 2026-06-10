@@ -3,118 +3,19 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseSseData, type AgentChatEvent } from '@/lib/agent/chat-event';
-
-type Decision = 'ALLOW' | 'BLOCK' | 'REVIEW' | 'UNSUPPORTED';
-
-type ToolStep = {
-  id: string;
-  toolId: string;
-  tool?: string;
-  status: 'pending' | 'running' | 'done' | 'error';
-  result?: unknown;
-  error?: string;
-};
-
-type Message = {
-  id: string;
-  role: 'user' | 'agent' | 'system';
-  content: string;
-  ts: number;
-  decision?: Decision;
-  steps?: ToolStep[];
-  model?: string;
-  preflight?: { decision: string; reason?: string };
-  collapsible?: boolean;
-};
-
-type SystemStatus = {
-  ok: boolean;
-  db?: string;
-  env?: string;
-  commit?: string;
-  timestamp?: string;
-};
-
-type ParallelQueueStats = {
-  size: number;
-  avgWaitMs: number;
-  p95WaitMs: number;
-  p99WaitMs: number;
-  priorityDistribution: {
-    p1: number;
-    p2: number;
-    p3: number;
-  };
-  oldestRequestAgeMs: number;
-};
-
-type HarmonyEngineStats = {
-  totalLookups: number;
-  heuristicHits: number;
-  embeddingHits: number;
-  misses: number;
-  heuristicRate: number;
-  embeddingRate: number;
-  hitRate: number;
-  avgLatency: number;
-  indexSize: {
-    heuristic: number;
-    embedding: number;
-  };
-};
-
-type ExecutorCapacityStatus = {
-  'virtual-pc': { current: number; max: number; utilization: number; peak: number };
-  'browserbase': { current: number; max: number; utilization: number; peak: number };
-  'terminal': { current: number; max: number; utilization: number; peak: number };
-  'deploy': { current: number; max: number; utilization: number; peak: number };
-};
-
-type ParallelSystemStatus = {
-  queue?: ParallelQueueStats;
-  harmonyEngine?: HarmonyEngineStats;
-  executorCapacity?: ExecutorCapacityStatus;
-  activeEnvironments?: number;
-  totalAgents?: number;
-  cacheMetrics?: {
-    totalEntries: number;
-    avgEntriesPerEnv: number;
-  };
-};
-
-type AttachedFile = {
-  id: string;
-  name: string;
-  content: string;
-  isImage: boolean;
-};
-
-type HermesRuntimeStatus = {
-  ok: boolean;
-  runtime: string;
-  status: string;
-  model?: {
-    provider: string;
-    name: string;
-    hosting: string | null;
-    configured: boolean;
-  };
-  philosophy: Record<string, string>;
-  modules: Record<string, string>;
-  workers: string[];
-  dsgGate: {
-    planEndpoint: string;
-    actionEndpoint: string;
-    evidenceEndpoint: string;
-    decisionModel: Record<string, string>;
-  };
-  memory: {
-    layers: string[];
-    claimRule: string;
-  };
-  skillLifecycle: string[];
-  adaptiveExecution: Record<string, boolean>;
-};
+import { useAlerts, checkAlertRules, AlertToaster } from '@/lib/hooks';
+import type {
+  Decision,
+  ToolStep,
+  Message,
+  SystemStatus,
+  ParallelQueueStats,
+  HarmonyEngineStats,
+  ExecutorCapacityStatus,
+  ParallelSystemStatus,
+  AttachedFile,
+  HermesRuntimeStatus,
+} from '@/lib/types/hermes';
 
 const TOOL_LABELS: Record<string, string> = {
   readiness: 'System readiness',
@@ -382,6 +283,104 @@ function ExecutionSummaryCard({ msg }: { msg: Message }) {
       >
         View details →
       </button>
+    </div>
+  );
+}
+
+function ReviewGatePanel({ msg, onReview }: { msg: Message; onReview: (msgId: string, decision: 'approve' | 'block' | 'delegate', reason?: string) => Promise<void> }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [delegateEmail, setDelegateEmail] = useState('');
+  const preflight = msg.preflight;
+  const review = msg.reviewGate;
+
+  if (!review || review.status !== 'PENDING') return null;
+
+  const riskColor = preflight?.risk === 'HIGH' ? 'text-red-300 border-red-400/30 bg-red-400/10'
+    : preflight?.risk === 'MEDIUM' ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
+    : 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10';
+
+  const handleApprove = async () => {
+    setIsLoading(true);
+    try {
+      await onReview(msg.id, 'approve', 'Approved by operator');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBlock = async () => {
+    const reason = prompt('Reason for blocking this action:');
+    setIsLoading(true);
+    try {
+      await onReview(msg.id, 'block', reason || 'Blocked by operator');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelegate = async () => {
+    const email = prompt('Delegate to operator email:');
+    if (email) {
+      setDelegateEmail(email);
+      setIsLoading(true);
+      try {
+        await onReview(msg.id, 'delegate', `Delegated to ${email}`);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-bold text-amber-200">⏳ Pending Review</span>
+        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${riskColor}`}>
+          {preflight?.risk || 'UNKNOWN'} Risk
+        </span>
+      </div>
+
+      <div className="space-y-2 text-xs text-slate-300 mb-4">
+        {preflight?.affectedCount && (
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Affected:</span>
+            <span className="font-semibold">{preflight.affectedCount} user{preflight.affectedCount > 1 ? 's' : ''}</span>
+          </div>
+        )}
+        {preflight?.rollbackAvailable && (
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Rollback:</span>
+            <span className="font-semibold text-emerald-300">Available</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleApprove}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+        >
+          ✅ Confirm
+        </button>
+        <button
+          type="button"
+          onClick={handleBlock}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-400/20 disabled:opacity-50"
+        >
+          ❌ Block
+        </button>
+        <button
+          type="button"
+          onClick={handleDelegate}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-300 transition hover:bg-violet-400/20 disabled:opacity-50"
+        >
+          🤔 Delegate
+        </button>
+      </div>
     </div>
   );
 }
@@ -1012,16 +1011,24 @@ export default function HermesAgentPage() {
     }
   }, []);
 
+  const { addAlert } = useAlerts();
+
   const fetchParallelStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/parallel/queue/status');
       if (!response.ok) return;
       const data = await response.json();
       setParallelStatus(data as ParallelSystemStatus);
+
+      // Check alert rules and trigger alerts if needed
+      const triggeredAlerts = checkAlertRules(data as ParallelSystemStatus);
+      for (const alert of triggeredAlerts) {
+        addAlert(alert.message, alert.type, alert.type === 'CRITICAL' ? 0 : 5000, alert.details);
+      }
     } catch {
       // non-fatal — parallel API may not be deployed yet
     }
-  }, []);
+  }, [addAlert]);
 
   useEffect(() => {
     fetchStatus();
@@ -1044,6 +1051,46 @@ export default function HermesAgentPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleReviewGate = useCallback(
+    async (msgId: string, decision: 'approve' | 'block' | 'delegate', reason?: string) => {
+      try {
+        const response = await fetch('/api/dsg/hermes/review-gate', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            decisionId: msgId,
+            decision: decision === 'approve' ? 'APPROVED' : decision === 'block' ? 'BLOCKED' : 'DELEGATED',
+            reason,
+          }),
+        });
+
+        if (!response.ok) {
+          const json = await response.json().catch(() => ({}));
+          alert(`Review failed: ${json.error || 'Unknown error'}`);
+          return;
+        }
+
+        // Update message status
+        setMessages((prev) =>
+          prev.map((item) =>
+            item.id === msgId && item.reviewGate
+              ? {
+                  ...item,
+                  reviewGate: {
+                    ...item.reviewGate,
+                    status: (decision === 'approve' ? 'APPROVED' : decision === 'block' ? 'BLOCKED' : 'DELEGATED') as 'APPROVED' | 'BLOCKED' | 'DELEGATED',
+                  },
+                }
+              : item,
+          ),
+        );
+      } catch (error) {
+        alert(`Review error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+    [],
+  );
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -1134,10 +1181,25 @@ export default function HermesAgentPage() {
                 if (item.id !== agentMsgId) return item;
 
                 if (event.type === 'preflight') {
-                  return {
+                  const decision = event.decision ?? 'ALLOW';
+                  const isReviewGate = decision === 'REVIEW';
+                  const newMsg = {
                     ...item,
-                    preflight: { decision: event.decision ?? 'ALLOW', reason: event.reason },
+                    preflight: {
+                      decision,
+                      reason: event.reason,
+                      risk: (event as any).risk as 'LOW' | 'MEDIUM' | 'HIGH' | undefined,
+                      affectedCount: (event as any).affected_count as number | undefined,
+                      rollbackAvailable: (event as any).rollback_available as boolean | undefined,
+                    },
                   };
+                  if (isReviewGate) {
+                    newMsg.reviewGate = {
+                      status: 'PENDING' as const,
+                      decisionId: (event as any).decision_id ?? `decision-${Date.now()}`,
+                    };
+                  }
+                  return newMsg;
                 }
 
                 if (event.type === 'assistant_reply' && event.reply) {
@@ -1332,6 +1394,7 @@ export default function HermesAgentPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <AlertToaster />
       {/* hidden inputs */}
       <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.ts,.tsx,.js,.json,.py,.yaml,.yml,.csv,.sh,.sql,.env.example" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
       <canvas ref={cameraCanvasRef} className="hidden" />
@@ -1452,7 +1515,12 @@ export default function HermesAgentPage() {
 
             {/* Message feed or search results */}
             {(searchQuery ? searchResults : messages).map((message) => (
-              <MessageBubble key={message.id} msg={message} />
+              <div key={message.id}>
+                <MessageBubble msg={message} />
+                {message.reviewGate && (
+                  <ReviewGatePanel msg={message} onReview={handleReviewGate} />
+                )}
+              </div>
             ))}
             {busy && (
               <div className="flex gap-3">

@@ -7,6 +7,12 @@ export type AgentChatEvent = {
   model?: string;
   steps?: Array<{ id?: string; toolId?: string }>;
   result?: unknown;
+  decision?: string;
+  reason?: string;
+  risk?: 'LOW' | 'MEDIUM' | 'HIGH';
+  affected_count?: number;
+  rollback_available?: boolean;
+  decision_id?: string;
 };
 
 function toPlain(value: unknown): string {
