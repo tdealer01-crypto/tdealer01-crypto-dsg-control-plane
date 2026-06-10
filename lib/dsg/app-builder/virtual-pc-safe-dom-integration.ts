@@ -8,8 +8,6 @@
  * 3. Command verification before execution
  */
 
-import type React from 'react';
-import { render } from '@testing-library/react';
 import {
   buildSafeManifest,
   verifySafeDomCommand,
@@ -36,24 +34,23 @@ export interface VirtualPcSessionState {
 }
 
 /**
- * Extract raw DOM elements from a rendered React component
- * 
- * This function renders a component and extracts accessible elements
+ * Extract raw DOM elements from a rendered DOM container
+ *
+ * This function extracts accessible elements from a DOM tree
  * without sending selector information to the agent
- * 
- * @param component - React component to render
+ *
+ * @param container - DOM container or element to extract from
  * @returns Array of RawDomElement (contains selectors, server-side only)
  */
-export function domExtractorFromReact(component: React.ReactElement): RawDomElement[] {
-  // Note: In a real implementation, this would use a proper rendering library
-  // For testing purposes, we simulate extraction from rendered DOM
+export function domExtractorFromReact(container: Element | Document = typeof document !== 'undefined' ? document : null): RawDomElement[] {
   const elements: RawDomElement[] = [];
 
+  if (!container) {
+    return elements;
+  }
+
   try {
-    // Mock rendering (in production, use @testing-library/react or jsdom)
-    const container = document.createElement('div');
-    
-    // Simulate extraction of button elements
+    // Extract button elements
     const buttons = container.querySelectorAll('button, [role="button"]');
     buttons.forEach((btn, index) => {
       elements.push({
@@ -66,7 +63,7 @@ export function domExtractorFromReact(component: React.ReactElement): RawDomElem
       });
     });
 
-    // Simulate extraction of input elements
+    // Extract input elements
     const inputs = container.querySelectorAll('input, textarea');
     inputs.forEach((input, index) => {
       const isTextarea = input.tagName === 'TEXTAREA';
@@ -79,7 +76,7 @@ export function domExtractorFromReact(component: React.ReactElement): RawDomElem
       });
     });
 
-    // Simulate extraction of links
+    // Extract links
     const links = container.querySelectorAll('a, [role="link"]');
     links.forEach((link, index) => {
       elements.push({
@@ -91,7 +88,7 @@ export function domExtractorFromReact(component: React.ReactElement): RawDomElem
       });
     });
 
-    // Simulate extraction of text containers
+    // Extract text containers
     const texts = container.querySelectorAll('p, span, div[data-text]');
     texts.forEach((text, index) => {
       if (text.textContent && text.textContent.length > 0) {
@@ -104,7 +101,7 @@ export function domExtractorFromReact(component: React.ReactElement): RawDomElem
       }
     });
   } catch (error) {
-    // If rendering fails, return empty array
+    // If DOM access fails, return empty array
     console.warn('DOM extraction failed:', error);
   }
 

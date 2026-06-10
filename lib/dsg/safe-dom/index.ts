@@ -10,6 +10,7 @@ export {
   isManifestExpired,
   findElementInManifest,
   verifyManifestIntegrity,
+  validateManifest,
 } from './manifest';
 export {
   verifySafeDomCommand,

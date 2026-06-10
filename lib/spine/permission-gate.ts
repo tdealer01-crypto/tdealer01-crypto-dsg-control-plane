@@ -52,15 +52,7 @@ export function checkDelegationPermission(
   step: AgentWorkStep,
   context?: PermissionCheckContext
 ): GateDecision {
-  // Step 1: Validate delegation
-  if (!isDelegationValid(delegation)) {
-    return {
-      decision: 'BLOCK',
-      reason: 'DELEGATION_INVALID_OR_EXPIRED',
-      evidence: { delegationPresent: !!delegation },
-    };
-  }
-
+  // Step 1: Check delegation exists
   if (!delegation) {
     return {
       decision: 'BLOCK',
@@ -68,7 +60,16 @@ export function checkDelegationPermission(
     };
   }
 
-  // Step 2: Check if action is explicitly blocked
+  // Step 2: Validate delegation
+  if (!isDelegationValid(delegation)) {
+    return {
+      decision: 'BLOCK',
+      reason: 'DELEGATION_INVALID_OR_EXPIRED',
+      evidence: { delegationPresent: true },
+    };
+  }
+
+  // Step 3: Check if action is explicitly blocked
   if (delegation.blockedActions.includes(step.action)) {
     return {
       decision: 'BLOCK',
@@ -81,12 +82,12 @@ export function checkDelegationPermission(
     };
   }
 
-  // Step 3: Check if action is allowed
-  const isActionAllowed = delegation.allowedActions.includes(step.action) ||
+  // Step 4: Check if action is allowed
+  const isActionAllowedByDelegation = delegation.allowedActions.includes(step.action) ||
     delegation.allowedActions.includes('*') || // wildcard allow
     delegation.allowedActions.some((a) => a === `${step.tool}:*`); // tool wildcard
 
-  if (!isActionAllowed) {
+  if (!isActionAllowedByDelegation) {
     return {
       decision: 'BLOCK',
       reason: 'ACTION_NOT_IN_ALLOWED_LIST',
@@ -98,13 +99,13 @@ export function checkDelegationPermission(
     };
   }
 
-  // Step 4: Check if action requires confirmation
+  // Step 5: Check if action requires confirmation
   const requiresConfirm =
     delegation.requiresUserConfirm.includes(step.action) ||
     delegation.requiresUserConfirm.includes(`${step.tool}:*`) ||
     step.requiresConfirmation;
 
-  // Step 5: Apply risk-based logic
+  // Step 6: Apply risk-based logic
   const riskLevel = RISK_CONFIRMATION_LEVELS[step.risk] ?? 0;
 
   // LOW risk: auto-allow
@@ -179,10 +180,15 @@ export function isActionBlocked(delegation: DelegationContract | null, action: s
  *
  * @param delegation - The delegation contract
  * @param action - The action to check
- * @returns true if action is allowed
+ * @returns true if action is allowed and not blocked
  */
 export function isActionAllowed(delegation: DelegationContract | null, action: string): boolean {
   if (!delegation) {
+    return false;
+  }
+
+  // First check if blocked
+  if (delegation.blockedActions.includes(action)) {
     return false;
   }
 

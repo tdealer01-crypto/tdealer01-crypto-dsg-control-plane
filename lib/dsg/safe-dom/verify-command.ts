@@ -21,11 +21,37 @@ export function verifySafeDomCommand(
   manifest: SafeElementManifest[],
   frameId?: string
 ): SafeDomVerificationResult {
-  // Verify frame ID
+  // Check frame ID exists in manifest
+  const frameExists = manifest.some((e) => e.frameId === command.frameId);
+  if (!frameExists) {
+    return {
+      decision: 'BLOCK',
+      reason: 'INVALID_COMMAND_FRAME',
+      elementId: command.elementId,
+      operation: command.operation,
+    };
+  }
+
+  // Verify frame ID matches context if provided
   if (frameId && command.frameId !== frameId) {
     return {
       decision: 'BLOCK',
       reason: 'INVALID_COMMAND_FRAME',
+      elementId: command.elementId,
+      operation: command.operation,
+    };
+  }
+
+  // Find element in manifest for this specific frame
+  const element = manifest.find(
+    (e) => e.id === command.elementId && e.frameId === command.frameId
+  );
+  if (!element) {
+    return {
+      decision: 'BLOCK',
+      reason: 'ELEMENT_NOT_EXPOSED_TO_AGENT',
+      elementId: command.elementId,
+      operation: command.operation,
     };
   }
 
@@ -34,16 +60,8 @@ export function verifySafeDomCommand(
     return {
       decision: 'BLOCK',
       reason: `INVALID_OPERATION: ${command.operation}`,
-    };
-  }
-
-  // Find element in manifest
-  const element = findElementInManifest(manifest, command.elementId);
-  if (!element) {
-    return {
-      decision: 'BLOCK',
-      reason: 'ELEMENT_NOT_EXPOSED_TO_AGENT',
       elementId: command.elementId,
+      operation: command.operation,
     };
   }
 
@@ -93,6 +111,7 @@ export function verifySafeDomCommand(
   // Command is allowed
   return {
     decision: 'ALLOW',
+    reason: 'VERIFIED',
     elementId: command.elementId,
     operation: command.operation,
     risk: element.risk,

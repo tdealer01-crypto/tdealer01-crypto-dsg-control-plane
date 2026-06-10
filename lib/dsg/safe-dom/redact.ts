@@ -5,27 +5,27 @@
 
 const SECRET_PATTERNS = [
   // Stripe keys
-  { pattern: /sk_(live|test)_[a-zA-Z0-9_]{20,}/, name: 'Stripe Secret Key' },
-  { pattern: /pk_(live|test)_[a-zA-Z0-9_]{20,}/, name: 'Stripe Public Key' },
-  
+  { pattern: /sk_(live|test)_[a-zA-Z0-9_]{10,}/, name: 'Stripe Secret Key' },
+  { pattern: /pk_(live|test)_[a-zA-Z0-9_]{10,}/, name: 'Stripe Public Key' },
+
   // GitHub tokens
   { pattern: /ghp_[a-zA-Z0-9_]{36,255}/, name: 'GitHub Personal Access Token' },
   { pattern: /github_pat_[a-zA-Z0-9_]{20,}/, name: 'GitHub Token' },
-  
+
   // Slack tokens
-  { pattern: /xox[baprs]-[a-zA-Z0-9_]{40,}/, name: 'Slack Token' },
-  
+  { pattern: /xox[baprs]-[a-zA-Z0-9_]{10,}/, name: 'Slack Token' },
+
   // AWS access keys
   { pattern: /AKIA[0-9A-Z]{16}/, name: 'AWS Access Key' },
-  
+
   // Private key headers
   { pattern: /-----BEGIN (PRIVATE|RSA) KEY-----/, name: 'Private Key' },
-  
+
   // Generic secret patterns
-  { pattern: /api[_-]?key[=:]\s*([a-zA-Z0-9_\-]{20,})/i, name: 'API Key' },
-  { pattern: /secret[=:]\s*([a-zA-Z0-9_\-]{20,})/i, name: 'Secret' },
-  { pattern: /password[=:]\s*([a-zA-Z0-9_\-!@#$%^&*]{8,})/i, name: 'Password' },
-  { pattern: /token[=:]\s*([a-zA-Z0-9_\-]{20,})/i, name: 'Token' },
+  { pattern: /api[_-]?key[=:]\s*([a-zA-Z0-9_\-]{10,})/i, name: 'API Key' },
+  { pattern: /secret[=:]\s*([a-zA-Z0-9_\-]{10,})/i, name: 'Secret' },
+  { pattern: /password[=:]\s*([a-zA-Z0-9_\-!@#$%^&*]{6,})/i, name: 'Password' },
+  { pattern: /token[=:]\s*([a-zA-Z0-9_\-]{10,})/i, name: 'Token' },
 ];
 
 /**

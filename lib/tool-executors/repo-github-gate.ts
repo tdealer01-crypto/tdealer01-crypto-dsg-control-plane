@@ -92,8 +92,8 @@ function handlePullRequest(
   // PR creation is typically lower risk than merge
   const sourceScope = context.delegation?.scope || '';
 
-  // Check if PR scope is allowed
-  if (!sourceScope.includes('pr')) {
+  // Check if PR scope is allowed (repo.pr or just repo)
+  if (!sourceScope.includes('repo') && !sourceScope.includes('pr')) {
     return blockedResult('Delegation does not permit pull request creation');
   }
 

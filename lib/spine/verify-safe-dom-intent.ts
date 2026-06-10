@@ -28,7 +28,7 @@ export type SafeDomCommand = {
   frameId: string;
   elementId: string;
   action: string; // click, type, clear, etc
-  value?: string | number | boolean;
+  value?: unknown; // click, type, clear, etc
 };
 
 /**
@@ -123,20 +123,21 @@ export async function verifySafeDomIntentOrPass(
  */
 function extractSafeDomCommand(payload: SpineIntentPayload): SafeDomCommand | null {
   // Check if intent has safeDomCommand field
-  const input = payload.input || {};
+  const input = (payload.input || {}) as Record<string, unknown>;
 
+  const safeDomCmd = input.safeDomCommand;
   if (
-    input.safeDomCommand &&
-    typeof input.safeDomCommand === 'object' &&
-    !Array.isArray(input.safeDomCommand)
+    safeDomCmd &&
+    typeof safeDomCmd === 'object' &&
+    !Array.isArray(safeDomCmd)
   ) {
-    const cmd = input.safeDomCommand as Record<string, unknown>;
+    const cmd = safeDomCmd as Record<string, unknown>;
     if (cmd.frameId && cmd.elementId && cmd.action) {
       return {
         frameId: String(cmd.frameId),
         elementId: String(cmd.elementId),
         action: String(cmd.action),
-        value: cmd.value,
+        value: cmd.value !== undefined ? cmd.value : undefined,
       };
     }
   }
@@ -146,6 +147,9 @@ function extractSafeDomCommand(payload: SpineIntentPayload): SafeDomCommand | nu
 
 /**
  * Query Safe DOM manifest from database
+ *
+ * Defensive implementation: gracefully handles missing table
+ * (safe_dom_manifests table is created in a separate migration)
  */
 async function getSafeDomManifest(
   sessionId: string,
@@ -154,7 +158,10 @@ async function getSafeDomManifest(
   try {
     const supabase = getSupabaseAdmin();
 
-    const { data, error } = await supabase
+    // Use rpc call or raw query to avoid type validation on table not yet in schema
+    // For now, return empty (table doesn't exist in generated types)
+    // When safe_dom_manifests migration is applied, this will query the table
+    const { data, error } = await (supabase as any)
       .from('safe_dom_manifests')
       .select('*')
       .eq('session_id', sessionId)
@@ -168,7 +175,11 @@ async function getSafeDomManifest(
       return [];
     }
 
-    return (data || []).map((row: Record<string, unknown>) => ({
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+
+    return data.map((row: any) => ({
       element_id: String(row.element_id || ''),
       selector: String(row.selector || ''),
       tag_name: String(row.tag_name || ''),

@@ -21,34 +21,44 @@ vi.mock('../../lib/supabase-server', () => ({
       }
 
       return {
-        insert: async (row: Record<string, any>) => {
-          const id = `id-${Date.now()}`;
+        insert: (row: Record<string, any>) => {
+          const id = `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           mockSupabaseData[id] = {
             id,
             ...row,
             created_at: row.created_at ?? new Date().toISOString(),
           };
           return {
-            data: { id },
-            error: null,
+            select: (fields: string) => ({
+              single: async () => {
+                return {
+                  data: mockSupabaseData[id],
+                  error: null,
+                };
+              },
+            }),
           };
         },
         select: (fields: string) => ({
           eq: (column: string, value: string) => ({
-            single: async () => {
-              // Find the first matching record
-              const record = Object.values(mockSupabaseData).find((r) => r[column] === value);
-              if (!record) {
+            eq: (column2: string, value2: string) => ({
+              single: async () => {
+                // Find the first matching record with both conditions
+                const record = Object.values(mockSupabaseData).find(
+                  (r) => r[column] === value && r[column2] === value2,
+                );
+                if (!record) {
+                  return {
+                    data: null,
+                    error: { message: 'Not found' },
+                  };
+                }
                 return {
-                  data: null,
-                  error: { message: 'Not found' },
+                  data: record,
+                  error: null,
                 };
-              }
-              return {
-                data: record,
-                error: null,
-              };
-            },
+              },
+            }),
           }),
         }),
       };
@@ -65,6 +75,13 @@ describe('Safe DOM Browserbase Integration', () => {
   beforeEach(() => {
     // Clear mock data
     Object.keys(mockSupabaseData).forEach((key) => delete mockSupabaseData[key]);
+    // Set API key for tests
+    process.env.BROWSERBASE_API_KEY = 'test-key';
+  });
+
+  afterEach(() => {
+    // Clean up
+    delete process.env.BROWSERBASE_API_KEY;
   });
 
   describe('captureLiveDOM', () => {
@@ -88,8 +105,6 @@ describe('Safe DOM Browserbase Integration', () => {
 
   describe('persistManifest', () => {
     it('should persist manifest to database', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const elements = [
         {
           tagName: 'button',
@@ -116,8 +131,6 @@ describe('Safe DOM Browserbase Integration', () => {
     });
 
     it('should set default expiration to 5 minutes', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const elements = [
         {
           tagName: 'button',
@@ -149,8 +162,6 @@ describe('Safe DOM Browserbase Integration', () => {
 
   describe('verifySafeDomIntentOrFail', () => {
     beforeEach(async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const elements = [
         {
           tagName: 'button',
@@ -276,8 +287,6 @@ describe('Safe DOM Browserbase Integration', () => {
 
   describe('executeVerifiedCommand', () => {
     it('should execute verified command through Browserbase', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const command: SafeDomCommand = {
         elementId: 'submit-btn',
         action: 'click',
@@ -311,8 +320,6 @@ describe('Safe DOM Browserbase Integration', () => {
 
   describe('buildAndPersistManifest', () => {
     it('should build and persist manifest end-to-end', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const manifest = await buildAndPersistManifest(
         testSessionId,
         testFrameUrl,
@@ -331,8 +338,6 @@ describe('Safe DOM Browserbase Integration', () => {
     });
 
     it('should extract clickable elements from DOM', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const manifest = await buildAndPersistManifest(
         testSessionId,
         testFrameUrl,
@@ -351,8 +356,6 @@ describe('Safe DOM Browserbase Integration', () => {
 
   describe('Cross-session tampering protection', () => {
     it('should prevent executing commands from different session', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const elements = [
         {
           tagName: 'button',
@@ -385,8 +388,6 @@ describe('Safe DOM Browserbase Integration', () => {
     });
 
     it('should track unique session/frame combinations', async () => {
-      process.env.BROWSERBASE_API_KEY = 'test-key';
-
       const elements = [
         {
           tagName: 'button',

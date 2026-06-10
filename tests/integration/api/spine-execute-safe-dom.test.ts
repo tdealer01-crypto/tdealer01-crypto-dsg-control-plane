@@ -46,6 +46,14 @@ vi.mock('../../../lib/spine/verify-safe-dom-intent', () => ({
   verifySafeDomIntentOrPass: verifySafeDomIntentOrPassMock,
 }));
 
+vi.mock('../../../lib/webhooks/deliver', () => ({
+  fireWebhook: vi.fn(),
+}));
+
+vi.mock('../../../lib/billing/metered', () => ({
+  meterExecution: vi.fn(),
+}));
+
 function request(body: unknown, headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/spine/execute', {
     method: 'POST',
