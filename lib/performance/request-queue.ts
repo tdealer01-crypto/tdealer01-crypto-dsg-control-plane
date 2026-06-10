@@ -1,5 +1,5 @@
-import { SafeDomCommand } from '@/lib/dsg/safe-dom/types';
-import { generateUUID } from '@/lib/utils/crypto';
+import { randomUUID } from 'crypto';
+import type { SafeDomCommand } from '@/lib/dsg/safe-dom/types';
 
 export type RequestPriority = 1 | 2 | 3; // 1=CONFIRM (highest), 2=AUDIT, 3=AUTO (lowest)
 
@@ -75,7 +75,7 @@ export class RequestQueue {
 
     const queuedRequest: QueuedRequest = {
       ...request,
-      id: generateUUID(),
+      id: randomUUID(),
       attemptCount: 0
     };
 

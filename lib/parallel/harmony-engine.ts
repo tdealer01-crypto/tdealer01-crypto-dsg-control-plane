@@ -1,30 +1,27 @@
-import { SafeDomCommand, SafeElementManifest } from '@/lib/dsg/safe-dom/types';
 import { createHash } from 'crypto';
+import type { SafeDomCommand, SafeElementManifest } from '@/lib/dsg/safe-dom/types';
 
 /**
- * HeuristicMatch: Fast-path semantic matching using command hash
+ * HeuristicMatch: Fast-path matching using exact command hash
  * Cost: O(1) lookup, <5ms
- * Hit rate: ~60% in typical delegations
  */
-interface HeuristicIndex {
-  hash: string; // = hashCommand(commandType + JSON(args))
+interface HeuristicEntry {
+  hash: string; // = hashCommand(frameId|elementId|operation|value|key)
   manifestId: string;
-  cachedResult: SafeElementManifest[];
+  manifest: SafeElementManifest[];
   hitCount: number;
   lastUsedAt: number;
 }
 
 /**
- * EmbeddingMatch: Fallback semantic matching using lightweight embeddings
- * Cost: O(n) cosine similarity (n = 100-500 cached contracts), <50ms
- * Hit rate: ~20% for cases heuristic misses
+ * EmbeddingMatch: Fallback matching using lightweight feature vectors
+ * Cost: O(n) cosine similarity (n = cached entries), <50ms
  */
-interface EmbeddingIndex {
+interface EmbeddingEntry {
   contractHash: string;
   commandHash: string;
-  commandEmbedding: number[]; // Lightweight encoding of command semantics
+  features: number[]; // Lightweight feature encoding of command
   manifestId: string;
-  cosineScore: number;
 }
 
 type MatchSource = 'heuristic' | 'embedding' | 'miss';
@@ -36,16 +33,25 @@ export interface HarmonyMatchResult {
   hitCount?: number; // For heuristic hits only
 }
 
+const HEURISTIC_TTL_MS = 5 * 60 * 1000; // Entries older than 5 min are stale
+const EMBEDDING_SIMILARITY_THRESHOLD = 0.85;
+const MAX_HEURISTIC_ENTRIES = 5000;
+const MAX_EMBEDDING_ENTRIES = 2000;
+
 /**
- * Harmony Engine: Hybrid semantic matching for manifest caching
- * Combines fast heuristic path (60% hit) with embedding fallback (20% hit)
- * Target: >80% combined cache hit rate under 1000 concurrent agents
+ * Harmony Engine: hybrid semantic matching for manifest caching.
+ * Tier 1: exact command-hash lookup (fast path).
+ * Tier 2: feature-vector cosine similarity (fallback).
+ * Combined target: >80% cache hit rate under concurrent load.
+ *
+ * Note: per-process state. On serverless this is per-instance, so stats
+ * reflect the instance serving the request, not a global aggregate.
  */
 export class HarmonyEngine {
-  private heuristicIndex = new Map<string, HeuristicIndex>();
-  private embeddingIndex: EmbeddingIndex[] = [];
+  private heuristicIndex = new Map<string, HeuristicEntry>();
+  private embeddingIndex: EmbeddingEntry[] = [];
+  private manifestStore = new Map<string, SafeElementManifest[]>();
 
-  // Statistics
   private stats = {
     heuristicHits: 0,
     embeddingHits: 0,
@@ -54,259 +60,198 @@ export class HarmonyEngine {
   };
 
   /**
-   * Hash command for heuristic index lookup
-   * Deterministic: same input → same hash
-   *
-   * Format: SHA256(commandType + JSON.stringify(args))
+   * Deterministic command hash from the real SafeDomCommand fields.
    */
   private hashCommand(cmd: SafeDomCommand): string {
-    const key = `${cmd.type}|${JSON.stringify(cmd.args || {})}`;
-    return createHash('sha256').update(key).digest('hex').slice(0, 16); // 16-char hash
+    const key = `${cmd.frameId}|${cmd.elementId}|${cmd.operation}|${cmd.value ?? ''}|${cmd.key ?? ''}`;
+    return createHash('sha256').update(key).digest('hex').slice(0, 16);
   }
 
   /**
-   * Simple lightweight embedding: encode command semantics
-   * Not a real ML embedding; just semantic features
-   *
-   * Features:
-   * - Command type (click=1, type=2, navigate=3, etc.)
-   * - Arguments count
-   * - Argument value hashes (first 4 bytes)
-   * - Text content length (if present)
+   * Lightweight feature vector from command semantics.
+   * Not an ML embedding — deterministic features good enough for
+   * near-duplicate detection across frames/sessions.
    */
   private encodeCommand(cmd: SafeDomCommand): number[] {
-    const typeMap: Record<string, number> = {
-      click: 1,
-      type: 2,
-      navigate: 3,
-      submit: 4,
-      hover: 5,
-      select: 6,
-      upload: 7,
-      clear: 8
-    };
+    const opMap: Record<string, number> = { click: 1, type: 2, scroll: 3, press: 4 };
+    const elementHash = createHash('sha256').update(cmd.elementId).digest();
+    const valueLen = cmd.value?.length ?? 0;
 
-    const embedding: number[] = [
-      typeMap[cmd.type] || 0, // Command type
-      Object.keys(cmd.args || {}).length, // Arg count
-      cmd.args?.selector ? cmd.args.selector.length % 100 : 0, // Selector length mod 100
-      cmd.args?.text ? cmd.args.text.length % 100 : 0, // Text length mod 100
-      cmd.args?.value ? (cmd.args.value as string).length % 100 : 0 // Value length mod 100
+    return [
+      (opMap[cmd.operation] ?? 0) * 10, // Operation dominates similarity
+      elementHash[0], // Element identity features
+      elementHash[1],
+      valueLen % 97, // Value shape (length bucket)
+      cmd.key ? cmd.key.charCodeAt(0) % 97 : 0
     ];
-
-    return embedding;
   }
 
-  /**
-   * Cosine similarity between two embeddings
-   * Range: [0, 1] where 1 = identical, 0 = orthogonal
-   */
   private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length === 0 || b.length === 0) return 0;
-
-    let dotProduct = 0;
+    let dot = 0;
     let normA = 0;
     let normB = 0;
-
     for (let i = 0; i < Math.min(a.length, b.length); i++) {
-      dotProduct += a[i] * b[i];
+      dot += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-
-    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
-    return denominator > 0 ? dotProduct / denominator : 0;
+    const denom = Math.sqrt(normA) * Math.sqrt(normB);
+    return denom > 0 ? dot / denom : 0;
   }
 
   /**
-   * Try fast heuristic match first
-   * Returns manifest if exact hash match found and recent
-   * Cost: <5ms
+   * Tier 1: exact hash match. Cost <5ms.
    */
-  private matchWithHeuristics(cmd: SafeDomCommand): SafeElementManifest[] | null {
+  private matchWithHeuristics(cmd: SafeDomCommand): HeuristicEntry | null {
     const hash = this.hashCommand(cmd);
-    const match = this.heuristicIndex.get(hash);
+    const entry = this.heuristicIndex.get(hash);
+    if (!entry) return null;
 
-    if (match) {
-      // Only use if accessed within last 5 minutes (avoid stale caches)
-      const age = Date.now() - match.lastUsedAt;
-      if (age < 5 * 60 * 1000) {
-        match.hitCount++;
-        match.lastUsedAt = Date.now();
-        this.stats.heuristicHits++;
-        return match.cachedResult;
-      } else {
-        // Stale entry, remove it
-        this.heuristicIndex.delete(hash);
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Try embedding-based semantic matching
-   * Finds similar commands using lightweight embeddings
-   * Threshold: >0.85 cosine similarity
-   * Cost: <50ms for 100-500 embeddings
-   */
-  private matchWithEmbeddings(cmd: SafeDomCommand): SafeElementManifest[] | null {
-    if (this.embeddingIndex.length === 0) {
+    if (Date.now() - entry.lastUsedAt > HEURISTIC_TTL_MS) {
+      this.heuristicIndex.delete(hash);
       return null;
     }
 
-    const cmdEmbedding = this.encodeCommand(cmd);
-    let bestMatch: EmbeddingIndex | null = null;
-    let bestScore = 0.85; // Threshold
+    entry.hitCount++;
+    entry.lastUsedAt = Date.now();
+    return entry;
+  }
 
-    // Linear search through embeddings (O(n) but n small)
-    for (const idx of this.embeddingIndex) {
-      const score = this.cosineSimilarity(cmdEmbedding, idx.commandEmbedding);
+  /**
+   * Tier 2: feature-similarity match. Cost O(n), <50ms for n<=2000.
+   */
+  private matchWithEmbeddings(cmd: SafeDomCommand): SafeElementManifest[] | null {
+    if (this.embeddingIndex.length === 0) return null;
+
+    const features = this.encodeCommand(cmd);
+    let best: EmbeddingEntry | null = null;
+    let bestScore = EMBEDDING_SIMILARITY_THRESHOLD;
+
+    for (const entry of this.embeddingIndex) {
+      const score = this.cosineSimilarity(features, entry.features);
       if (score > bestScore) {
         bestScore = score;
-        bestMatch = idx;
+        best = entry;
       }
     }
 
-    if (bestMatch) {
-      this.stats.embeddingHits++;
-      return undefined; // Caller will fetch manifest from DB
-    }
-
-    return null;
+    if (!best) return null;
+    return this.manifestStore.get(best.manifestId) ?? null;
   }
 
   /**
-   * Main matching function: heuristic → embedding fallback
+   * Main lookup: heuristic first, embeddings as fallback.
    */
-  async findBestMatch(cmd: SafeDomCommand): Promise<HarmonyMatchResult> {
+  findBestMatch(cmd: SafeDomCommand): HarmonyMatchResult {
     const t0 = performance.now();
 
-    // Tier 1: Heuristic match (fast path)
-    let manifest = this.matchWithHeuristics(cmd);
-    if (manifest) {
+    const heuristic = this.matchWithHeuristics(cmd);
+    if (heuristic) {
       const latency = performance.now() - t0;
+      this.stats.heuristicHits++;
       this.stats.totalLatency += latency;
-      return {
-        manifest,
-        source: 'heuristic',
-        latency,
-        hitCount: this.heuristicIndex.get(this.hashCommand(cmd))?.hitCount
-      };
+      return { manifest: heuristic.manifest, source: 'heuristic', latency, hitCount: heuristic.hitCount };
     }
 
-    // Tier 2: Embedding match (fallback)
-    manifest = this.matchWithEmbeddings(cmd);
-    if (manifest) {
+    const fromEmbedding = this.matchWithEmbeddings(cmd);
+    if (fromEmbedding) {
       const latency = performance.now() - t0;
+      this.stats.embeddingHits++;
       this.stats.totalLatency += latency;
-
-      // Cache this embedding result for future heuristic matches
-      this.addToHeuristicIndex(cmd, manifest);
-
-      return {
-        manifest,
-        source: 'embedding',
-        latency
-      };
+      // Promote to heuristic index so the next identical command takes the fast path
+      this.addToIndex(cmd, fromEmbedding);
+      return { manifest: fromEmbedding, source: 'embedding', latency };
     }
 
-    // Miss: will fetch from DB
-    this.stats.misses++;
     const latency = performance.now() - t0;
+    this.stats.misses++;
     this.stats.totalLatency += latency;
-
-    return {
-      manifest: null,
-      source: 'miss',
-      latency
-    };
+    return { manifest: null, source: 'miss', latency };
   }
 
   /**
-   * Add command → manifest mapping to heuristic index
-   * Called after successful match or on-demand fetch
+   * Register a command → manifest mapping (heuristic + embedding).
+   * Called after an on-demand fetch resolves, or when building an index
+   * from a delegation contract.
    */
-  addToHeuristicIndex(cmd: SafeDomCommand, manifest: SafeElementManifest[]): void {
+  addToIndex(cmd: SafeDomCommand, manifest: SafeElementManifest[], contractHash = 'adhoc'): void {
     const hash = this.hashCommand(cmd);
+    const manifestId = `${contractHash}:${hash}`;
+
+    this.manifestStore.set(manifestId, manifest);
 
     if (!this.heuristicIndex.has(hash)) {
+      // Evict oldest entry when full (Map preserves insertion order)
+      if (this.heuristicIndex.size >= MAX_HEURISTIC_ENTRIES) {
+        const oldest = this.heuristicIndex.keys().next().value;
+        if (oldest !== undefined) this.heuristicIndex.delete(oldest);
+      }
       this.heuristicIndex.set(hash, {
         hash,
-        manifestId: `${hash}-${Date.now()}`,
-        cachedResult: manifest,
+        manifestId,
+        manifest,
         hitCount: 0,
         lastUsedAt: Date.now()
       });
     }
+
+    if (this.embeddingIndex.length >= MAX_EMBEDDING_ENTRIES) {
+      this.embeddingIndex.shift();
+    }
+    this.embeddingIndex.push({
+      contractHash,
+      commandHash: hash,
+      features: this.encodeCommand(cmd),
+      manifestId
+    });
   }
 
   /**
-   * Build hybrid index from delegation contract
-   * Stores both heuristic (hash) and embedding representations
-   * Called when new delegation contract is created
+   * Build index from a delegation contract's known commands.
    */
   buildHybridIndex(
     contractHash: string,
     commands: SafeDomCommand[],
     manifests: SafeElementManifest[][]
   ): void {
-    commands.forEach((cmd, idx) => {
-      const manifest = manifests[idx];
-
-      // Add to heuristic index
-      const cmdHash = this.hashCommand(cmd);
-      this.heuristicIndex.set(cmdHash, {
-        hash: cmdHash,
-        manifestId: `${contractHash}-${idx}`,
-        cachedResult: manifest,
-        hitCount: 0,
-        lastUsedAt: Date.now()
-      });
-
-      // Add to embedding index
-      const embedding = this.encodeCommand(cmd);
-      this.embeddingIndex.push({
-        contractHash,
-        commandHash: cmdHash,
-        commandEmbedding: embedding,
-        manifestId: `${contractHash}-${idx}`,
-        cosineScore: 1.0 // Perfect match with itself
-      });
+    commands.forEach((cmd, i) => {
+      const manifest = manifests[i];
+      if (manifest) this.addToIndex(cmd, manifest, contractHash);
     });
   }
 
   /**
-   * Invalidate cache entries on policy change
-   * Called when delegation contract is updated
+   * Invalidate all entries for a contract when its policy changes.
    */
   invalidateOnPolicyChange(contractHash: string): void {
-    // Remove all embeddings for this contract
-    this.embeddingIndex = this.embeddingIndex.filter(idx => idx.contractHash !== contractHash);
+    const prefix = `${contractHash}:`;
+    const removedManifestIds = new Set<string>();
 
-    // Remove heuristic entries (harder to track, keep as-is for now)
-    // Future: add reverse mapping from manifestId to hash
+    for (const id of this.manifestStore.keys()) {
+      if (id.startsWith(prefix)) {
+        this.manifestStore.delete(id);
+        removedManifestIds.add(id);
+      }
+    }
+    for (const [hash, entry] of this.heuristicIndex.entries()) {
+      if (removedManifestIds.has(entry.manifestId)) this.heuristicIndex.delete(hash);
+    }
+    this.embeddingIndex = this.embeddingIndex.filter((e) => e.contractHash !== contractHash);
   }
 
-  /**
-   * Get current statistics for monitoring
-   */
   getStats() {
     const total = this.stats.heuristicHits + this.stats.embeddingHits + this.stats.misses;
-    const heuristicRate = total > 0 ? (this.stats.heuristicHits / total) * 100 : 0;
-    const embeddingRate = total > 0 ? (this.stats.embeddingHits / total) * 100 : 0;
-    const hitRate = total > 0 ? ((this.stats.heuristicHits + this.stats.embeddingHits) / total) * 100 : 0;
-    const avgLatency = total > 0 ? this.stats.totalLatency / total : 0;
+    const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
     return {
       totalLookups: total,
       heuristicHits: this.stats.heuristicHits,
       embeddingHits: this.stats.embeddingHits,
       misses: this.stats.misses,
-      heuristicRate: Math.round(heuristicRate),
-      embeddingRate: Math.round(embeddingRate),
-      hitRate: Math.round(hitRate),
-      avgLatency: Math.round(avgLatency * 100) / 100, // ms, 2 decimal places
+      heuristicRate: pct(this.stats.heuristicHits),
+      embeddingRate: pct(this.stats.embeddingHits),
+      hitRate: pct(this.stats.heuristicHits + this.stats.embeddingHits),
+      avgLatency: total > 0 ? Math.round((this.stats.totalLatency / total) * 100) / 100 : 0,
       indexSize: {
         heuristic: this.heuristicIndex.size,
         embedding: this.embeddingIndex.length
@@ -314,20 +259,13 @@ export class HarmonyEngine {
     };
   }
 
-  /**
-   * Clear all indices (for tests/reset)
-   */
   clear(): void {
     this.heuristicIndex.clear();
     this.embeddingIndex = [];
-    this.stats = {
-      heuristicHits: 0,
-      embeddingHits: 0,
-      misses: 0,
-      totalLatency: 0
-    };
+    this.manifestStore.clear();
+    this.stats = { heuristicHits: 0, embeddingHits: 0, misses: 0, totalLatency: 0 };
   }
 }
 
-// Global harmony engine instance
+// Global harmony engine instance (per process/instance)
 export const harmonyEngine = new HarmonyEngine();

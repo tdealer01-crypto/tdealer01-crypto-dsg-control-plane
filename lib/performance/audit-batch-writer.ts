@@ -1,5 +1,4 @@
-import { createHash } from 'crypto';
-import { generateUUID } from '@/lib/utils/crypto';
+import { createHash, randomUUID } from 'crypto';
 
 export interface AuditEvent {
   id: string;
