@@ -35,6 +35,53 @@ type SystemStatus = {
   timestamp?: string;
 };
 
+type ParallelQueueStats = {
+  size: number;
+  avgWaitMs: number;
+  p95WaitMs: number;
+  p99WaitMs: number;
+  priorityDistribution: {
+    p1: number;
+    p2: number;
+    p3: number;
+  };
+  oldestRequestAgeMs: number;
+};
+
+type HarmonyEngineStats = {
+  totalLookups: number;
+  heuristicHits: number;
+  embeddingHits: number;
+  misses: number;
+  heuristicRate: number;
+  embeddingRate: number;
+  hitRate: number;
+  avgLatency: number;
+  indexSize: {
+    heuristic: number;
+    embedding: number;
+  };
+};
+
+type ExecutorCapacityStatus = {
+  'virtual-pc': { current: number; max: number; utilization: number; peak: number };
+  'browserbase': { current: number; max: number; utilization: number; peak: number };
+  'terminal': { current: number; max: number; utilization: number; peak: number };
+  'deploy': { current: number; max: number; utilization: number; peak: number };
+};
+
+type ParallelSystemStatus = {
+  queue?: ParallelQueueStats;
+  harmonyEngine?: HarmonyEngineStats;
+  executorCapacity?: ExecutorCapacityStatus;
+  activeEnvironments?: number;
+  totalAgents?: number;
+  cacheMetrics?: {
+    totalEntries: number;
+    avgEntriesPerEnv: number;
+  };
+};
+
 type AttachedFile = {
   id: string;
   name: string;
@@ -398,6 +445,150 @@ function CredentialsPanel() {
   );
 }
 
+function ParallelControlPlanePanel({ data }: { data: ParallelSystemStatus | null }) {
+  if (!data) {
+    return (
+      <div className="space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Phase 2: Parallel Control Plane</p>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-slate-600" />
+          Loading parallel metrics...
+        </div>
+      </div>
+    );
+  }
+
+  const getHealthColor = (value: number, max: number) => {
+    const utilization = (value / max) * 100;
+    if (utilization > 90) return 'text-red-300 border-red-400/30 bg-red-400/10';
+    if (utilization > 70) return 'text-amber-300 border-amber-400/30 bg-amber-400/10';
+    return 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10';
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Phase 2: Parallel Control Plane</p>
+        <p className="mt-1 text-xs text-cyan-300">1000+ concurrent agents • sub-second latency • semantic manifest caching</p>
+      </div>
+
+      {/* Request Queue */}
+      {data.queue && (
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Request Queue</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">Queue depth</span>
+              <span className="font-semibold text-slate-200">{data.queue.size}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">Avg wait</span>
+              <span className="font-mono text-slate-300">{Math.round(data.queue.avgWaitMs)}ms</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">P95 wait</span>
+              <span className="font-mono text-slate-300">{Math.round(data.queue.p95WaitMs)}ms</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[10px]">
+              <span className="w-6 text-slate-500">P1:</span>
+              <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-300">{data.queue.priorityDistribution.p1} confirm</span>
+              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-300">{data.queue.priorityDistribution.p2} audit</span>
+              <span className="rounded bg-slate-500/20 px-1.5 py-0.5 text-slate-300">{data.queue.priorityDistribution.p3} auto</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Harmony Engine Cache */}
+      {data.harmonyEngine && (
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Harmony Engine (Semantic Cache)</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-400">Hit rate</span>
+              <span className={`font-bold ${data.harmonyEngine.hitRate > 80 ? 'text-emerald-300' : data.harmonyEngine.hitRate > 60 ? 'text-amber-300' : 'text-slate-300'}`}>
+                {Math.round(data.harmonyEngine.hitRate)}%
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[10px]">
+              <span className="w-16 text-slate-500">Heuristic:</span>
+              <span className="rounded bg-emerald-500/20 px-1 py-0.5 text-emerald-300">{data.harmonyEngine.heuristicRate}%</span>
+              <span className="text-slate-600">({data.harmonyEngine.heuristicHits} hits)</span>
+            </div>
+            <div className="flex items-center gap-1 text-[10px]">
+              <span className="w-16 text-slate-500">Embedding:</span>
+              <span className="rounded bg-violet-500/20 px-1 py-0.5 text-violet-300">{data.harmonyEngine.embeddingRate}%</span>
+              <span className="text-slate-600">({data.harmonyEngine.embeddingHits} hits)</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs">
+              <span className="text-slate-400">Avg latency</span>
+              <span className="font-mono text-slate-300">{data.harmonyEngine.avgLatency}ms</span>
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[10px]">
+              <span className="text-slate-500">Index:</span>
+              <span className="text-slate-400">{data.harmonyEngine.indexSize.heuristic} heuristic</span>
+              <span className="text-slate-400">+ {data.harmonyEngine.indexSize.embedding} embedding</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Executor Capacity */}
+      {data.executorCapacity && (
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Executor Capacity</p>
+          <div className="space-y-2">
+            {Object.entries(data.executorCapacity).map(([executor, status]) => (
+              <div key={executor} className={`rounded-lg border px-3 py-2 ${getHealthColor(status.current, status.max)}`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold capitalize">{executor}</span>
+                  <span className="font-mono">{status.current}/{status.max}</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/20">
+                  <div
+                    className={`h-full transition-all ${status.utilization > 90 ? 'bg-red-400' : status.utilization > 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                    style={{ width: `${status.utilization}%` }}
+                  />
+                </div>
+                <div className="mt-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>{status.utilization}% util</span>
+                  <span>peak: {status.peak}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Simulation Environments */}
+      {data.activeEnvironments !== undefined && (
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Simulation Environments</p>
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Active</span>
+              <span className="font-semibold text-slate-200">{data.activeEnvironments}</span>
+            </div>
+            {data.cacheMetrics && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Cache entries</span>
+                  <span className="font-mono text-slate-300">{data.cacheMetrics.totalEntries}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Avg per env</span>
+                  <span className="font-mono text-slate-300">{data.cacheMetrics.avgEntriesPerEnv}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HermesRuntimePanel({ data }: { data: HermesRuntimeStatus | null }) {
   if (!data) {
     return (
@@ -536,7 +727,7 @@ export default function HermesAgentPage() {
     {
       id: 'welcome',
       role: 'agent',
-      content: `สวัสดี — ฉันคือ Hermes Agent สำหรับ DSG ONE Control Plane
+      content: `สวัสดี — ฉันคือ Hermes Agent สำหรับ DSG ONE Control Plane (Phase 2: Parallel Control Plane activated)
 
 ฉันมี 33 tools พร้อมใช้ทันที:
 
@@ -595,7 +786,8 @@ export default function HermesAgentPage() {
   const [busy, setBusy] = useState(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [hermesStatus, setHermesStatus] = useState<HermesRuntimeStatus | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<'system' | 'runtime'>('system');
+  const [parallelStatus, setParallelStatus] = useState<ParallelSystemStatus | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<'system' | 'runtime' | 'parallel'>('system');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [cameraCaptures, setCameraCaptures] = useState<string[]>([]);
   const [voiceActive, setVoiceActive] = useState(false);
@@ -651,6 +843,17 @@ export default function HermesAgentPage() {
     }
   }, []);
 
+  const fetchParallelStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/parallel/queue/status');
+      if (!response.ok) return;
+      const data = await response.json();
+      setParallelStatus(data as ParallelSystemStatus);
+    } catch {
+      // non-fatal — parallel API may not be deployed yet
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     const id = setInterval(fetchStatus, 30_000);
@@ -662,6 +865,12 @@ export default function HermesAgentPage() {
     const id = setInterval(fetchHermesStatus, 60_000);
     return () => clearInterval(id);
   }, [fetchHermesStatus]);
+
+  useEffect(() => {
+    fetchParallelStatus();
+    const id = setInterval(fetchParallelStatus, 5_000); // Update every 5 seconds for real-time metrics
+    return () => clearInterval(id);
+  }, [fetchParallelStatus]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1165,14 +1374,14 @@ export default function HermesAgentPage() {
         <aside className="hidden w-72 shrink-0 flex-col border-l border-white/10 lg:flex">
           {/* tab switcher */}
           <div className="flex shrink-0 border-b border-white/10">
-            {(['system', 'runtime'] as const).map((tab) => (
+            {(['system', 'runtime', 'parallel'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setSidebarTab(tab)}
                 className={`flex-1 py-2.5 text-xs font-semibold transition ${sidebarTab === tab ? 'border-b-2 border-violet-400 text-violet-300' : 'text-slate-500 hover:text-slate-300'}`}
               >
-                {tab === 'system' ? 'System' : 'Hermes Runtime'}
+                {tab === 'system' ? 'System' : tab === 'runtime' ? 'Hermes' : '⚡ Parallel'}
               </button>
             ))}
           </div>
@@ -1196,10 +1405,14 @@ export default function HermesAgentPage() {
                 </div>
                 <CapabilityList />
               </>
-            ) : (
+            ) : sidebarTab === 'runtime' ? (
               <>
                 <HermesRuntimePanel data={hermesStatus} />
                 <CredentialsPanel />
+              </>
+            ) : (
+              <>
+                <ParallelControlPlanePanel data={parallelStatus} />
               </>
             )}
           </div>
