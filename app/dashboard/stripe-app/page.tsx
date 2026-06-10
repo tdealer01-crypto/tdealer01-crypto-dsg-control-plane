@@ -15,6 +15,10 @@ export default async function StripeAppPage() {
     redirect('/login?next=/dashboard/stripe-app');
   }
 
+  const installUrl =
+    process.env.STRIPE_APP_INSTALL_URL ||
+    'https://marketplace.stripe.com/oauth/v2/authorize?client_id=ca_UfEPAC4NcvG2nYAYjohDQ9GtDlIdajy6&redirect_uri=https%3A%2F%2Ftdealer01-crypto-dsg-control-plane.vercel.app%2Fstripe%2Foauth%2Fcallback';
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-6 py-8">
       <div>
@@ -22,6 +26,32 @@ export default async function StripeAppPage() {
         <p className="mt-2 text-slate-400">
           Governance for Stripe operations - pre-execution gating + audit trails
         </p>
+      </div>
+
+      {/* Install banner — primary entry point for Stripe marketplace install */}
+      <div className="rounded-xl border border-violet-700/50 bg-violet-950/40 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">
+              Step 1 — Install on Stripe
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-white">
+              Add DSG Governance Gate to your Stripe account
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Click the button to open the Stripe marketplace install flow. Authorize the
+              requested permissions and you will be redirected back here automatically.
+            </p>
+          </div>
+          <a
+            href={installUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+          >
+            Install on Stripe ↗
+          </a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
