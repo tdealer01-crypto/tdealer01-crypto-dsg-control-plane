@@ -3,7 +3,7 @@
  * Builds and manages the safe DOM manifest for verification
  */
 
-import crypto from 'crypto';
+import { createHash } from 'crypto';
 import type {
   RawDomElement,
   SafeDomElement,
@@ -21,8 +21,7 @@ import { redactValue } from './redact';
  * SECURITY CRITICAL: Do not use simple e001, e002 without frame scoping
  */
 function generateElementId(frameId: string, index: number): string {
-  const frameHash = crypto
-    .createHash('sha256')
+  const frameHash = createHash('sha256')
     .update(frameId)
     .digest('hex')
     .substring(0, 8);
@@ -33,7 +32,7 @@ function generateElementId(frameId: string, index: number): string {
  * Hash a selector for verification
  */
 function hashSelector(selector: string): string {
-  return crypto.createHash('sha256').update(selector).digest('hex').slice(0, 16);
+  return createHash('sha256').update(selector).digest('hex').slice(0, 16);
 }
 
 /**
@@ -41,7 +40,7 @@ function hashSelector(selector: string): string {
  */
 function computeManifestHash(elements: SafeElementManifest[]): string {
   const payload = JSON.stringify(elements.map((e) => ({ id: e.id, selectorHash: e.selectorHash })));
-  return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 16);
+  return createHash('sha256').update(payload).digest('hex').slice(0, 16);
 }
 
 /**
