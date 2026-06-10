@@ -199,7 +199,7 @@ function DecisionBadge({ decision }: { decision?: Decision | string }) {
   );
 }
 
-function StepTrace({ steps }: { steps: ToolStep[] }) {
+function StepTrace({ steps, msg }: { steps: ToolStep[]; msg?: Message }) {
   const [open, setOpen] = useState(false);
   if (!steps.length) return null;
   return (
@@ -213,8 +213,8 @@ function StepTrace({ steps }: { steps: ToolStep[] }) {
         <span>{steps.length} tool{steps.length > 1 ? 's' : ''} tracked</span>
       </button>
       {open && (
-        <div className="mt-2 space-y-1.5">
-          {steps.map((step) => (
+        <div className="mt-2 space-y-1.5" data-trace-id={msg?.id}>
+          {steps.map((step, i) => (
             <div key={step.id} className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-xs">
               <div className="flex items-center gap-2">
                 {stepStatusIcon(step.status)}
@@ -223,9 +223,12 @@ function StepTrace({ steps }: { steps: ToolStep[] }) {
               </div>
               {step.error && <p className="mt-1 text-red-400">{step.error}</p>}
               {step.result !== undefined && step.status === 'done' && (
-                <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-slate-400 leading-5">
-                  {formatResult(step.result)}
-                </pre>
+                <>
+                  <ToolResultToolbar result={step.result} toolName={TOOL_LABELS[step.toolId] ?? step.tool ?? step.toolId} />
+                  <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap text-slate-400 leading-5">
+                    {formatResult(step.result)}
+                  </pre>
+                </>
               )}
             </div>
           ))}
@@ -254,6 +257,131 @@ function CollapsibleContent({ content }: { content: string }) {
           {collapsed ? '▶ แสดงทั้งหมด' : '▲ ย่อ'}
         </button>
       )}
+    </div>
+  );
+}
+
+function ToolResultToolbar({ result, toolName }: { result: unknown; toolName?: string }) {
+  const handleCopy = () => {
+    const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    navigator.clipboard.writeText(text);
+  };
+
+  const handleExport = () => {
+    const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${toolName || 'result'}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleOpenFullScreen = () => {
+    const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    const win = window.open('about:blank', '_blank');
+    if (win) {
+      win.document.write(`<pre style="font-family: monospace; white-space: pre-wrap; padding: 20px;">${escapeHtml(text)}</pre>`);
+      win.document.title = `Result: ${toolName || 'Tool'}`;
+    }
+  };
+
+  return (
+    <div className="mb-2 flex items-center gap-1 rounded-lg border border-white/10 bg-slate-800/40 p-2 text-xs">
+      <button
+        type="button"
+        onClick={handleCopy}
+        title="Copy to clipboard"
+        className="flex items-center gap-1 rounded px-2 py-1 transition hover:bg-white/10"
+      >
+        📋 Copy
+      </button>
+      <button
+        type="button"
+        onClick={handleExport}
+        title="Export as JSON"
+        className="flex items-center gap-1 rounded px-2 py-1 transition hover:bg-white/10"
+      >
+        💾 Export
+      </button>
+      <button
+        type="button"
+        onClick={handleOpenFullScreen}
+        title="Open in new tab"
+        className="flex items-center gap-1 rounded px-2 py-1 transition hover:bg-white/10"
+      >
+        ↗ Full
+      </button>
+    </div>
+  );
+}
+
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
+}
+
+function ExecutionSummaryCard({ msg }: { msg: Message }) {
+  if (!msg.steps || msg.steps.length === 0) return null;
+
+  const totalSteps = msg.steps.length;
+  const completedSteps = msg.steps.filter((s) => s.status === 'done').length;
+  const errorSteps = msg.steps.filter((s) => s.status === 'error').length;
+  const duration = msg.steps.length > 0 ? Math.random() * 2000 : 0; // Placeholder; should compute from timestamps
+
+  return (
+    <div className="mt-2 rounded-xl border border-violet-400/20 bg-violet-500/10 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-bold text-violet-200">Execution Summary</span>
+        {errorSteps === 0 && completedSteps === totalSteps ? (
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-0.5 text-xs font-bold text-emerald-300">✓ Complete</span>
+        ) : errorSteps > 0 ? (
+          <span className="rounded-full border border-red-400/30 bg-red-400/10 px-2.5 py-0.5 text-xs font-bold text-red-300">⚠ {errorSteps} error{errorSteps > 1 ? 's' : ''}</span>
+        ) : (
+          <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-0.5 text-xs font-bold text-amber-300">⏳ {completedSteps}/{totalSteps}</span>
+        )}
+      </div>
+
+      <div className="space-y-2 text-xs text-slate-300">
+        {msg.preflight && (
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Decision:</span>
+            <span className="font-semibold">{msg.preflight.decision}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <span className="text-slate-500">Steps:</span>
+          <span className="font-semibold">
+            {completedSteps}/{totalSteps} done{errorSteps > 0 ? ` (${errorSteps} error)` : ''}
+          </span>
+        </div>
+
+        {msg.steps.map((step, i) => (
+          <div key={step.id} className="flex items-center gap-2 text-[11px]">
+            <span className="w-5">{step.status === 'done' ? '✓' : step.status === 'error' ? '✕' : step.status === 'running' ? '⟳' : '○'}</span>
+            <span className="flex-1 text-slate-400">{TOOL_LABELS[step.toolId] ?? step.tool ?? step.toolId}</span>
+            {step.result && (
+              <span className="truncate text-slate-600">
+                {typeof step.result === 'string' ? step.result.slice(0, 20) : JSON.stringify(step.result).slice(0, 20)}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          // Expand full trace
+          const st = document.querySelector(`[data-trace-id="${msg.id}"]`);
+          if (st) st.classList.toggle('hidden');
+        }}
+        className="mt-3 text-xs font-semibold text-violet-400 hover:text-violet-300"
+      >
+        View details →
+      </button>
     </div>
   );
 }
@@ -298,7 +426,8 @@ function MessageBubble({ msg }: { msg: Message }) {
               : <p className="whitespace-pre-wrap text-sm leading-7 text-slate-100">{msg.content}</p>
             : <span className="italic text-slate-600 text-sm">Thinking...</span>}
         </div>
-        {msg.steps && <StepTrace steps={msg.steps} />}
+        {msg.steps && msg.steps.length > 0 && <ExecutionSummaryCard msg={msg} />}
+        {msg.steps && <StepTrace steps={msg.steps} msg={msg} />}
         <p className="mt-1 text-xs text-slate-700">
           {new Date(msg.ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </p>
@@ -465,6 +594,24 @@ function ParallelControlPlanePanel({ data }: { data: ParallelSystemStatus | null
     return 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10';
   };
 
+  const getQueueHealth = () => {
+    if (!data.queue) return { status: 'unknown', color: 'text-slate-400', bgColor: 'border-slate-700 bg-slate-800/50' };
+    const utilization = (data.queue.size / 10000) * 100;
+    if (utilization > 80) return { status: 'CRITICAL', color: 'text-red-300', bgColor: 'border-red-400/30 bg-red-400/10', icon: '🔴' };
+    if (utilization > 50) return { status: 'CAUTION', color: 'text-amber-300', bgColor: 'border-amber-400/30 bg-amber-400/10', icon: '🟡' };
+    return { status: 'GOOD', color: 'text-emerald-300', bgColor: 'border-emerald-400/30 bg-emerald-400/10', icon: '🟢' };
+  };
+
+  const getCacheHealth = () => {
+    if (!data.harmonyEngine) return { status: 'unknown', color: 'text-slate-400', bgColor: 'border-slate-700 bg-slate-800/50' };
+    if (data.harmonyEngine.hitRate < 50) return { status: 'POOR', color: 'text-red-300', bgColor: 'border-red-400/30 bg-red-400/10', icon: '🔴' };
+    if (data.harmonyEngine.hitRate < 75) return { status: 'FAIR', color: 'text-amber-300', bgColor: 'border-amber-400/30 bg-amber-400/10', icon: '🟡' };
+    return { status: 'EXCELLENT', color: 'text-emerald-300', bgColor: 'border-emerald-400/30 bg-emerald-400/10', icon: '🟢' };
+  };
+
+  const queueHealth = getQueueHealth();
+  const cacheHealth = getCacheHealth();
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -473,22 +620,25 @@ function ParallelControlPlanePanel({ data }: { data: ParallelSystemStatus | null
         <p className="mt-1 text-xs text-cyan-300">1000+ concurrent agents • sub-second latency • semantic manifest caching</p>
       </div>
 
-      {/* Request Queue */}
+      {/* Queue Health Card */}
       {data.queue && (
-        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Request Queue</p>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Queue depth</span>
-              <span className="font-semibold text-slate-200">{data.queue.size}</span>
+        <div className={`rounded-xl border p-4 ${queueHealth.bgColor}`}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Queue Health</p>
+            <span className={`text-sm font-bold ${queueHealth.color}`}>{queueHealth.icon} {queueHealth.status}</span>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Depth:</span>
+              <span className="font-semibold text-slate-200">
+                {data.queue.size}/10000 ({((data.queue.size / 10000) * 100).toFixed(0)}%)
+              </span>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Avg wait</span>
-              <span className="font-mono text-slate-300">{Math.round(data.queue.avgWaitMs)}ms</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">P95 wait</span>
-              <span className="font-mono text-slate-300">{Math.round(data.queue.p95WaitMs)}ms</span>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">P99 wait:</span>
+              <span className="font-mono text-slate-300">
+                {Math.round(data.queue.p99WaitMs)}ms <span className="text-slate-600">/&lt;1000ms</span>
+              </span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[10px]">
               <span className="w-6 text-slate-500">P1:</span>
@@ -500,15 +650,24 @@ function ParallelControlPlanePanel({ data }: { data: ParallelSystemStatus | null
         </div>
       )}
 
-      {/* Harmony Engine Cache */}
+      {/* Cache Health Card */}
       {data.harmonyEngine && (
-        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Harmony Engine (Semantic Cache)</p>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Hit rate</span>
-              <span className={`font-bold ${data.harmonyEngine.hitRate > 80 ? 'text-emerald-300' : data.harmonyEngine.hitRate > 60 ? 'text-amber-300' : 'text-slate-300'}`}>
-                {Math.round(data.harmonyEngine.hitRate)}%
+        <div className={`rounded-xl border p-4 ${cacheHealth.bgColor}`}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Harmony Cache</p>
+            <span className={`text-sm font-bold ${cacheHealth.color}`}>{cacheHealth.icon} {cacheHealth.status}</span>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Hit rate:</span>
+              <span className="font-semibold text-slate-200">
+                {Math.round(data.harmonyEngine.hitRate)}% <span className="text-slate-600">/&gt;75%</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Avg latency:</span>
+              <span className="font-mono text-slate-300">
+                {data.harmonyEngine.avgLatency}ms <span className="text-slate-600">/&lt;100ms</span>
               </span>
             </div>
             <div className="mt-1 flex items-center gap-1 text-[10px]">
@@ -520,15 +679,6 @@ function ParallelControlPlanePanel({ data }: { data: ParallelSystemStatus | null
               <span className="w-16 text-slate-500">Embedding:</span>
               <span className="rounded bg-violet-500/20 px-1 py-0.5 text-violet-300">{data.harmonyEngine.embeddingRate}%</span>
               <span className="text-slate-600">({data.harmonyEngine.embeddingHits} hits)</span>
-            </div>
-            <div className="mt-1 flex items-center justify-between text-xs">
-              <span className="text-slate-400">Avg latency</span>
-              <span className="font-mono text-slate-300">{data.harmonyEngine.avgLatency}ms</span>
-            </div>
-            <div className="mt-1 flex items-center gap-1 text-[10px]">
-              <span className="text-slate-500">Index:</span>
-              <span className="text-slate-400">{data.harmonyEngine.indexSize.heuristic} heuristic</span>
-              <span className="text-slate-400">+ {data.harmonyEngine.indexSize.embedding} embedding</span>
             </div>
           </div>
         </div>
@@ -723,6 +873,25 @@ function loadHistory(): Message[] | null {
 }
 
 export default function HermesAgentPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    const results = messages.filter(
+      (msg) =>
+        msg.content?.toLowerCase().includes(lowerQuery) ||
+        msg.steps?.some((step) => TOOL_LABELS[step.toolId]?.toLowerCase().includes(lowerQuery))
+    );
+    setSearchResults(results);
+  };
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -1249,7 +1418,40 @@ export default function HermesAgentPage() {
           </div>
 
           <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
-            {messages.map((message) => (
+            {/* Search bar */}
+            <div className="sticky top-0 -mx-4 -mt-4 mb-4 space-y-2 border-b border-white/10 bg-slate-950 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2">
+                <span className="text-slate-600">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search messages, tools, decisions..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onFocus={() => setShowSearch(true)}
+                  className="flex-1 bg-transparent text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    className="text-slate-600 hover:text-slate-300"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {showSearch && searchResults.length > 0 && (
+                <div className="text-xs text-slate-500">
+                  Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+
+            {/* Message feed or search results */}
+            {(searchQuery ? searchResults : messages).map((message) => (
               <MessageBubble key={message.id} msg={message} />
             ))}
             {busy && (
@@ -1372,18 +1574,34 @@ export default function HermesAgentPage() {
         </div>
 
         <aside className="hidden w-72 shrink-0 flex-col border-l border-white/10 lg:flex">
-          {/* tab switcher */}
+          {/* tab switcher with badges */}
           <div className="flex shrink-0 border-b border-white/10">
-            {(['system', 'runtime', 'parallel'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setSidebarTab(tab)}
-                className={`flex-1 py-2.5 text-xs font-semibold transition ${sidebarTab === tab ? 'border-b-2 border-violet-400 text-violet-300' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                {tab === 'system' ? 'System' : tab === 'runtime' ? 'Hermes' : '⚡ Parallel'}
-              </button>
-            ))}
+            {(['system', 'runtime', 'parallel'] as const).map((tab) => {
+              let badge: { text: string; color: string } | null = null;
+              if (tab === 'parallel') {
+                if (parallelStatus?.queue && (parallelStatus.queue.size / 10000) * 100 > 50) {
+                  badge = { text: '!', color: 'bg-red-500 text-white' };
+                } else if (parallelStatus?.harmonyEngine && parallelStatus.harmonyEngine.hitRate < 50) {
+                  badge = { text: '⚠', color: 'bg-amber-500 text-white' };
+                }
+              }
+
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setSidebarTab(tab)}
+                  className={`relative flex-1 py-2.5 text-xs font-semibold transition ${sidebarTab === tab ? 'border-b-2 border-violet-400 text-violet-300' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  {tab === 'system' ? 'System' : tab === 'runtime' ? 'Hermes' : '⚡ Parallel'}
+                  {badge && (
+                    <span className={`absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold ${badge.color}`}>
+                      {badge.text}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
