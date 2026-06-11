@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { ExtensionContextValue } from '@stripe/ui-extension-sdk/context';
+import { ContextView, Box, Badge, Banner, Inline, Spinner } from '@stripe/ui-extension-sdk/ui';
 
 interface GatewayDecision {
   decision: 'ALLOW' | 'BLOCK' | 'REVIEW';
@@ -9,14 +10,26 @@ interface GatewayDecision {
 
 const DSG_API_BASE = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
 
-const ChargeGate: React.FC<{ extensionContext: ExtensionContextValue }> = ({ extensionContext }) => {
+const BADGE_TYPE = {
+  ALLOW: 'positive',
+  REVIEW: 'warning',
+  BLOCK: 'negative',
+} as const;
+
+const BANNER_TYPE = {
+  ALLOW: 'default',
+  REVIEW: 'caution',
+  BLOCK: 'critical',
+} as const;
+
+const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextValue }) => {
   const { environment, userContext } = extensionContext;
   const chargeId = environment?.objectContext?.id ?? null;
   const accountId = userContext?.account?.id ?? null;
 
   const [decision, setDecision] = useState<GatewayDecision | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!chargeId) {
@@ -35,10 +48,11 @@ const ChargeGate: React.FC<{ extensionContext: ExtensionContextValue }> = ({ ext
             stripe_account_id: accountId,
           }),
         });
-        if (!res.ok) throw new Error(`${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setDecision(await res.json() as GatewayDecision);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'error');
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setFetchError(msg);
         setDecision({ decision: 'REVIEW', reason: 'DSG unavailable — held for review' });
       } finally {
         setLoading(false);
@@ -48,73 +62,44 @@ const ChargeGate: React.FC<{ extensionContext: ExtensionContextValue }> = ({ ext
     evaluate();
   }, [chargeId, accountId]);
 
-  const containerStyle: React.CSSProperties = {
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    padding: '12px',
-    borderRadius: '6px',
-    border: '1px solid #e2e8f0',
-    backgroundColor: '#f8fafc',
-  };
-
-  if (!chargeId || !accountId) {
+  if (!chargeId) {
     return (
-      <div style={containerStyle}>
-        <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-          DSG Governance Gate — {!chargeId ? 'no payment context' : 'initializing…'}
-        </p>
-      </div>
+      <ContextView title="DSG Governance Gate">
+        <Banner type="default" description="No payment context available." />
+      </ContextView>
     );
   }
 
   if (loading) {
     return (
-      <div style={containerStyle}>
-        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#374151' }}>
-          DSG Governance Gate
-        </p>
-        <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#94a3b8' }}>
-          Evaluating policy…
-        </p>
-      </div>
+      <ContextView title="DSG Governance Gate">
+        <Box css={{ alignX: 'center', padding: 'large' }}>
+          <Spinner />
+        </Box>
+      </ContextView>
     );
   }
 
   if (!decision) return null;
 
-  const palette = ({
-    ALLOW:  { bg: '#f0fdf4', border: '#86efac', text: '#15803d', badge: '#22c55e', label: '✓ ALLOW' },
-    BLOCK:  { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', badge: '#ef4444', label: '✕ BLOCK' },
-    REVIEW: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', badge: '#f59e0b', label: '⊙ REVIEW' },
-  } as Record<string, { bg: string; border: string; text: string; badge: string; label: string }>)[decision.decision]
-    ?? { bg: '#f8fafc', border: '#e2e8f0', text: '#374151', badge: '#64748b', label: decision.decision };
-
   return (
-    <div style={{ ...containerStyle, backgroundColor: palette.bg, border: `1px solid ${palette.border}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          DSG Governance Gate
-        </p>
-        <span style={{
-          fontSize: '11px', fontWeight: 700, color: 'white',
-          backgroundColor: palette.badge, borderRadius: '4px', padding: '2px 7px',
-        }}>
-          {palette.label}
-        </span>
-      </div>
-      <p style={{ margin: '8px 0 0', fontSize: '13px', color: palette.text }}>
-        {decision.reason}
-      </p>
-      {decision.proof && (
-        <p style={{ margin: '6px 0 0', fontSize: '11px', color: palette.text, fontFamily: 'monospace', opacity: 0.8 }}>
-          proof: {decision.proof.substring(0, 24)}…
-        </p>
-      )}
-      {error && (
-        <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#94a3b8' }}>
-          Note: {error}
-        </p>
-      )}
-    </div>
+    <ContextView title="DSG Governance Gate">
+      <Box css={{ stack: 'y', gapY: 'medium' }}>
+        <Inline>
+          <Badge type={BADGE_TYPE[decision.decision]}>
+            {decision.decision}
+          </Badge>
+        </Inline>
+        <Banner
+          type={BANNER_TYPE[decision.decision]}
+          title={decision.decision}
+          description={decision.reason}
+        />
+        {fetchError && (
+          <Banner type="default" description={`Note: ${fetchError}`} />
+        )}
+      </Box>
+    </ContextView>
   );
 };
 
