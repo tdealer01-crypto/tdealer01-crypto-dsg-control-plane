@@ -21,7 +21,12 @@ export async function POST(request: NextRequest) {
 
     if (!object_type || !object_id) {
       return NextResponse.json(
-        { decision: 'REVIEW', reason: 'Missing context — manual review required.' },
+        {
+          decision: 'REVIEW',
+          reason: 'Missing context — manual review required.',
+          policy_version: GATE_VERSION,
+          evaluated_at: new Date().toISOString(),
+        },
         { headers: corsHeaders },
       );
     }
@@ -32,11 +37,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(decision, { headers: corsHeaders });
   } catch {
     return NextResponse.json(
-      { decision: 'REVIEW', reason: 'Gate unavailable — manual review required.' },
+      {
+        decision: 'REVIEW',
+        reason: 'Gate unavailable — manual review required.',
+        policy_version: GATE_VERSION,
+        evaluated_at: new Date().toISOString(),
+      },
       { status: 200, headers: corsHeaders },
     );
   }
 }
+
+const GATE_VERSION = 'dsg-gate-v1';
 
 function evaluateGate({ object_type, object_id, stripe_account_id }: {
   object_type: string;
@@ -50,7 +62,9 @@ function evaluateGate({ object_type, object_id, stripe_account_id }: {
     return {
       decision: 'ALLOW' as const,
       reason: `Charge ${object_id.substring(0, 16)}… passed governance policy.${isTestMode ? ' [test mode]' : ''}`,
-      proof: `dsg-gate-v1:${object_id.substring(0, 12)}`,
+      proof: `${GATE_VERSION}:${object_id.substring(0, 12)}`,
+      policy_version: GATE_VERSION,
+      evaluated_at: new Date().toISOString(),
     };
   }
 
@@ -58,12 +72,16 @@ function evaluateGate({ object_type, object_id, stripe_account_id }: {
     return {
       decision: 'REVIEW' as const,
       reason: `Payout ${object_id.substring(0, 16)}… requires governance approval before execution.${isTestMode ? ' [test mode]' : ''}`,
-      proof: `dsg-gate-v1:${object_id.substring(0, 12)}`,
+      proof: `${GATE_VERSION}:${object_id.substring(0, 12)}`,
+      policy_version: GATE_VERSION,
+      evaluated_at: new Date().toISOString(),
     };
   }
 
   return {
     decision: 'REVIEW' as const,
     reason: `${object_type} ${object_id.substring(0, 16)}… flagged for review.`,
+    policy_version: GATE_VERSION,
+    evaluated_at: new Date().toISOString(),
   };
 }
