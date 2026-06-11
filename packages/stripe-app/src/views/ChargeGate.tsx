@@ -50,7 +50,20 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setDecision(await res.json() as GatewayDecision);
+        const raw = (await res.json()) as Partial<GatewayDecision> | null;
+        // Unknown/missing verdicts fall back to REVIEW so the badge/banner
+        // lookups never receive an unmapped key and crash the view.
+        const verdict =
+          raw?.decision === 'ALLOW' || raw?.decision === 'BLOCK' || raw?.decision === 'REVIEW'
+            ? raw.decision
+            : 'REVIEW';
+        setDecision({
+          decision: verdict,
+          reason: typeof raw?.reason === 'string' && raw.reason.length > 0
+            ? raw.reason
+            : 'No reason provided — held for review',
+          proof: typeof raw?.proof === 'string' ? raw.proof : undefined,
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         setFetchError(msg);

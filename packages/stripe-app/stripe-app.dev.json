@@ -1,66 +1,15 @@
 {
-  "app_id": "com.governance.dsg.dev",
-  "name": "DSG Governance Gate (Local Dev)",
-  "description": "Pre-execution governance gates for Stripe operations - LOCAL DEVELOPMENT",
-  "version": "1.0.0",
-  "homepage": "http://localhost:3000",
-  "support_email": "t.dealer01@dsg.pics",
-  "distribution_type": "public",
-  "sandbox_install_compatible": true,
-  "stripe_api_access_type": "oauth",
-  "allowed_redirect_uris": [
-    "http://localhost:3000/stripe/oauth/callback",
-    "http://localhost:3001/api/stripe-app/oauth/callback"
-  ],
-  "permissions": [
-    {
-      "permission": "charge_read",
-      "purpose": "Read charge details for governance policy evaluation"
-    },
-    {
-      "permission": "charge_write",
-      "purpose": "Apply governance decisions to charge operations"
-    },
-    {
-      "permission": "payment_intent_read",
-      "purpose": "Monitor payment intents for policy compliance"
-    },
-    {
-      "permission": "payout_read",
-      "purpose": "Track payouts for governance audit trail"
-    },
-    {
-      "permission": "refund_read",
-      "purpose": "Monitor refunds for compliance evidence"
-    }
-  ],
+  "extends": "stripe-app.json",
   "ui_extension": {
-    "views": [
-      {
-        "viewport": "stripe.dashboard.charge.detail",
-        "component": "ChargeGate"
-      },
-      {
-        "viewport": "stripe.dashboard.payment_intent.detail",
-        "component": "PaymentIntentGate"
-      },
-      {
-        "viewport": "stripe.dashboard.payout.detail",
-        "component": "PayoutGate"
-      }
-    ],
     "content_security_policy": {
       "connect-src": [
-        "http://localhost:3000/",
-        "http://localhost:3001/",
-        "http://localhost:8642/"
-      ],
-      "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
+        "http://localhost:3000/api/"
+      ]
     }
   },
   "post_install_action": {
     "type": "external",
-    "url": "http://localhost:3000/stripe/onboarding"
+    "url": "http://localhost:3000/dashboard/stripe-app"
   },
   "constants": {
     "DSG_API_BASE": "http://localhost:3000"

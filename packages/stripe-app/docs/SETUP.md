@@ -1,7 +1,7 @@
 # DSG Governance Gate - Setup & Installation Guide
 
-**Version**: 1.0.0  
-**Last Updated**: 2025-06-06  
+**Version**: 1.1.3  
+**Last Updated**: 2026-06-11  
 **Support**: t.dealer01@dsg.pics
 
 ---
@@ -10,7 +10,7 @@
 
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
-3. [Installation from Stripe Marketplace](#installation-from-stripe-marketplace)
+3. [Installation (Connect from the DSG Platform)](#installation-connect-from-the-dsg-platform)
 4. [Account Connection](#account-connection)
 5. [Configuration](#configuration)
 6. [First Time Setup](#first-time-setup)
@@ -28,7 +28,7 @@
 
 - **Policy-Based Gating**: Define rules for charges, payments, and payouts
 - **Deterministic Decisions**: ALLOW, BLOCK, or REVIEW operations based on policies
-- **Audit Trail**: Complete immutable record of all gated operations
+- **Audit Trail**: Recorded decision log for gated operations
 - **Risk-Based Approval**: Route high-risk operations to manual review
 - **Dashboard Integration**: Seamless integration with Stripe Dashboard
 
@@ -75,15 +75,26 @@ Before installing, you need:
 
 ---
 
-## Installation from Stripe Marketplace
+## Installation (Connect from the DSG Platform)
 
-### Step 1: Locate the App
+Installation starts from the DSG platform, not from the Stripe App Marketplace. If you found the app on the marketplace listing, clicking **"Install from partner"** will route you to the DSG platform login first — then you connect Stripe from inside the DSG dashboard.
 
-1. Go to [Stripe Marketplace](https://marketplace.stripe.com) (or via Stripe Dashboard → Apps)
-2. Search for **"DSG Governance Gate"**
-3. Click on the app card
+### Step 1: Sign in to the DSG Platform
 
-### Step 2: Review Permissions
+1. Go to https://tdealer01-crypto-dsg-control-plane.vercel.app
+2. Sign in, or create an account if you don't have one yet
+
+### Step 2: Open the Stripe App page
+
+1. In the DSG dashboard, navigate to **Dashboard → DSG Stripe App** (`/dashboard/stripe-app`)
+2. Find **"Step 1 — Connect your Stripe account"**
+
+### Step 3: Click "Connect Stripe Account"
+
+1. Click the **"Connect Stripe Account"** button
+2. You will be redirected to Stripe's Live mode authorization page (`https://marketplace.stripe.com/oauth/v2/authorize`)
+
+### Step 4: Review Permissions and Authorize
 
 The app requests the following permissions:
 
@@ -92,33 +103,22 @@ The app requests the following permissions:
 | **Read Charges** | Evaluate governance policies on charge operations |
 | **Write Charges** | Apply governance decisions (approve/block charges) |
 | **Read Payment Intents** | Monitor payment intent flows for compliance |
-| **Read Payouts** | Track fund movements for audit trail |
-| **Read Refunds** | Monitor refund operations for governance |
+| **Read Payouts** | Track fund movements for the decision audit log |
 
 **Note**: This app:
 - Never reads customer PII beyond what's necessary for policy evaluation
 - Never modifies payment method data
 - Never initiates transactions
-- Only records decisions and audit trails
+- Only records decisions and audit logs
 
-### Step 3: Click Install
-
-1. Click the **"Install"** button
-2. Review the permissions dialog
-3. Click **"Authorize"**
-4. You will be redirected to the DSG Control Plane onboarding
-
-### Step 4: Authorize in DSG Control Plane
-
-1. You'll arrive at: `https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/onboarding`
-2. Click **"Complete Setup"** or **"Connect Stripe Account"**
-3. You'll see your Stripe account details
+1. Review the permissions dialog
+2. Click **"Authorize"**
 
 ### Step 5: Installation Complete
 
+- You are redirected back to the DSG platform OAuth callback page
 - The app is now installed in your Stripe account
 - You can see it in Stripe Dashboard → Apps → Installed Apps
-- Onboarding is complete
 
 ---
 
