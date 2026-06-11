@@ -1,11 +1,11 @@
 {
   "app_metadata": {
-    "app_id": "com.governance.dsg",
+    "app_id": "pics.dsg.governance",
     "app_name": "DSG Governance Gate",
-    "version": "1.0.0",
+    "version": "1.0.4",
     "distribution_type": "public",
     "sandbox_install_compatible": true,
-    "submission_date": "2026-06-07"
+    "submission_date": "2026-06-11"
   },
   "app_descriptions": {
     "about": "DSG Governance Gate is a governance platform for Stripe operations. It automatically evaluates charges, refunds, and disputes against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision displayed directly in your Stripe Dashboard. Audit records for each decision are shown within the app panel for compliance and review purposes.",
@@ -183,14 +183,9 @@
   "ui_extensions": {
     "views": [
       {
-        "viewport": "stripe.dashboard.charge.detail",
+        "viewport": "stripe.dashboard.payment.detail",
         "component": "ChargeGate",
-        "description": "Governance gate in charge detail view"
-      },
-      {
-        "viewport": "stripe.dashboard.payment_intent.detail",
-        "component": "PaymentIntentGate",
-        "description": "Governance gate in payment intent detail view"
+        "description": "Governance gate in payment detail view"
       },
       {
         "viewport": "stripe.dashboard.payout.detail",
@@ -209,7 +204,7 @@
   },
   "post_install_action": {
     "type": "external",
-    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/onboarding"
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/stripe-app"
   },
   "submission_checklist": {
     "pre_submission": [
