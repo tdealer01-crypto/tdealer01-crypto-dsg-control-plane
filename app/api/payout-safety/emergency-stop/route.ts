@@ -16,7 +16,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  // biome-ignore lint/suspicious/noExplicitAny: dsg_payout_policies not yet in generated types
+  const { data, error } = await (supabase as any)
     .from('dsg_payout_policies')
     .upsert({ org_id: user.id, emergency_paused: paused }, { onConflict: 'org_id' })
     .select('emergency_paused')
@@ -24,5 +25,5 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ emergency_paused: data.emergency_paused });
+  return NextResponse.json({ emergency_paused: (data as { emergency_paused: boolean }).emergency_paused });
 }
