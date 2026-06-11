@@ -5,6 +5,7 @@ import DsgChatInterface from '@/components/dsg-brain/DsgChatInterface';
 import DsgExecutionHistory from '@/components/dsg-brain/DsgExecutionHistory';
 import DsgConformanceReport from '@/components/dsg-brain/DsgConformanceReport';
 import DsgConfigPanel from '@/components/dsg-brain/DsgConfigPanel';
+import ComparisonPanelComponent from '@/components/dsg-brain/ComparisonPanel';
 import type { ChatMessage, ExecutionHistoryEntry, DsgBrainConfig } from '@/lib/dsg/brain/ui/types';
 import {
   saveSession,
@@ -28,6 +29,8 @@ export default function DsgBrainDashboard() {
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [selectedExecutionId, setSelectedExecutionId] = useState<string>('');
   const [executionHistory, setExecutionHistory] = useState<ExecutionHistoryEntry[]>([]);
+  const [comparisonBefore, setComparisonBefore] = useState<ExecutionHistoryEntry | null>(null);
+  const [comparisonAfter, setComparisonAfter] = useState<ExecutionHistoryEntry | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
@@ -100,6 +103,13 @@ export default function DsgBrainDashboard() {
   const handleClear = () => {
     setMessages([]);
     setSelectedExecutionId('');
+    setComparisonBefore(null);
+    setComparisonAfter(null);
+  };
+
+  const handleCompare = (before: ExecutionHistoryEntry, after: ExecutionHistoryEntry) => {
+    setComparisonBefore(before);
+    setComparisonAfter(after);
   };
 
   const handleExport = () => {
@@ -175,15 +185,35 @@ export default function DsgBrainDashboard() {
 
           {/* Sidebar (1 col) */}
           <div className="space-y-4 h-[600px] overflow-y-auto">
+            {/* Comparison Panel (when active) */}
+            {comparisonBefore && comparisonAfter && (
+              <div className="h-1/2">
+                <ComparisonPanelComponent
+                  before={comparisonBefore}
+                  after={comparisonAfter}
+                  onClose={() => {
+                    setComparisonBefore(null);
+                    setComparisonAfter(null);
+                  }}
+                />
+              </div>
+            )}
+
             {/* History */}
-            <div className="h-1/2">
-              <DsgExecutionHistory entries={executionHistory} onSelectEntry={(e) => setSelectedExecutionId(e.id)} />
+            <div className={comparisonBefore && comparisonAfter ? 'h-1/4' : 'h-1/2'}>
+              <DsgExecutionHistory
+                entries={executionHistory}
+                onSelectEntry={(e) => setSelectedExecutionId(e.id)}
+                onCompare={handleCompare}
+              />
             </div>
 
             {/* Conformance Report */}
-            <div className="h-1/2">
-              <DsgConformanceReport entry={selectedExecution} />
-            </div>
+            {!comparisonBefore && !comparisonAfter && (
+              <div className="h-1/2">
+                <DsgConformanceReport entry={selectedExecution} />
+              </div>
+            )}
           </div>
         </div>
       </div>

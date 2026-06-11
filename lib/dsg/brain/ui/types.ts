@@ -10,6 +10,7 @@ export interface ChatMessage {
   timestamp: number;
   planHash?: string;
   status?: 'pending' | 'success' | 'error' | 'blocked';
+  comparisonWith?: string;
 }
 
 export interface ExecutionResult {
