@@ -1046,13 +1046,57 @@ describe('Infinite Loop Protection — 7 Critical Cases', () => {
 
 ## 📋 Implementation Checklist (6 Phases + 5 Safety Guards)
 
+### ⚠️ PRE-IMPLEMENTATION CHECKLIST (FIX THESE 2 THINGS FIRST)
+
+**CRITICAL:** These 2 inconsistencies must be fixed BEFORE starting Phase 0
+
+**Fix #1: TaskStatus Enum Must Include ALL 11 Statuses**
+```typescript
+// In Phase 0, TaskStatus enum MUST include:
+export enum TaskStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  FAILED_RETRYABLE = 'failed_retryable',
+  RETRYING = 'retrying',
+  FAILED_FINAL = 'failed_final',
+  DLQ = 'dlq',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+  LOCKED = 'locked',              // ← ADD THIS (used in cleanup)
+  WAITING_APPROVAL = 'waiting_approval',    // ← ADD THIS (used in cleanup)
+  WAITING_USER_INPUT = 'waiting_user_input'  // ← ADD THIS (used in cleanup)
+}
+```
+**Why:** Phase 4 cleanup uses these as protectedStatuses. If missing, TypeScript will error.
+
+**Fix #2: QueueItem Type Must Use TaskStatus Enum**
+```typescript
+// BEFORE (wrong):
+interface QueueItem {
+  status: 'pending' | 'executing' | 'completed' | 'failed'
+}
+
+// AFTER (correct):
+interface QueueItem {
+  status: TaskStatus  // ← Use enum, not string union
+  // ... rest of fields
+}
+```
+**Why:** Cleanup code uses TaskStatus.RUNNING, TaskStatus.LOCKED, etc. String union won't match.
+
+- [ ] Add 3 missing statuses to TaskStatus enum
+- [ ] Change QueueItem.status to use TaskStatus type
+- [ ] Verify no TypeScript errors with these changes
+- [ ] Then proceed to Phase 0
+
 ### Before Coding
-- [ ] Create feature branch: `fix/infinite-loop-protection`
+- [ ] Create feature branch: `git checkout -b fix/infinite-loop-protection`
 - [ ] Read this plan + user's 5 safety guard requirements
 - [ ] Review current `executor-throttle.ts` lines 1-100
 - [ ] Review `spine/execute.ts` structure
 - [ ] Review `request-queue.ts` implementation
-- [ ] Understand TaskStatus enum + StopReason enum
+- [ ] Understand TaskStatus enum (all 11 values) + StopReason enum
 
 ### Phase 0: Task Status Model (30 min) ← DO THIS FIRST
 - [ ] Create `lib/types/task.ts` with TaskStatus enum
