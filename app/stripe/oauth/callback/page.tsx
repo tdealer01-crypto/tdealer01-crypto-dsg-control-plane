@@ -38,7 +38,7 @@ function CallbackContent() {
       .then(async (res) => {
         if (res.ok) {
           setStatus('success');
-          setTimeout(() => router.push('/stripe/onboarding'), 1500);
+          setTimeout(() => router.push('/dashboard/stripe-app?connected=true'), 1500);
         } else {
           const data = await res.json() as { message?: string };
           setStatus('error');

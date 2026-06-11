@@ -8,8 +8,8 @@
     "submission_date": "2026-06-11"
   },
   "app_descriptions": {
-    "about": "DSG Governance Gate is a governance platform for Stripe operations. It automatically evaluates charges, refunds, and disputes against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision displayed directly in your Stripe Dashboard. Audit records for each decision are shown within the app panel for compliance and review purposes.",
-    "about_char_count": 355,
+    "about": "DSG Governance Gate is a governance platform for Stripe payments and payouts. It evaluates payments and payouts against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision displayed directly in your Stripe Dashboard. Audit records for each decision are shown within the app panel for compliance and review purposes.",
+    "about_char_count": 341,
     "about_max": 1000,
     "subtitle": "Automated policy gates to evaluate payments and manage transaction reviews.",
     "subtitle_char_count": 75,

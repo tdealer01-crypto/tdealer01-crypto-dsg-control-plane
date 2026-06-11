@@ -39,7 +39,7 @@ const ChargeGate: React.FC = () => {
         setDecision(await res.json() as GatewayDecision);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'error');
-        setDecision({ decision: 'ALLOW', reason: 'DSG unavailable — fail-open mode' });
+        setDecision({ decision: 'REVIEW', reason: 'DSG unavailable — held for review' });
       } finally {
         setLoading(false);
       }
