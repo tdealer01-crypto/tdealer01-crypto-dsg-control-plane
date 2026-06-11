@@ -8,7 +8,7 @@ export const riskGatePlugin: DSGPlugin = {
   kind: 'gate',
   verification: {
     verified: true,
-    solver: 'Z3',
+    solver: 'ts_static_gate',
     properties: ['Determinism', 'Safety Invariance'],
   },
   async health() {
@@ -31,9 +31,9 @@ export const riskGatePlugin: DSGPlugin = {
       latency_ms: Math.round(performance.now() - start),
       proof: {
         proof_hash: 'risk-gate-proof',
-        proof_version: 'dsg-risk-gate-v1',
+        proof_version: 'ts-static-v1',
         theorem_set_id: 'risk-gate-core',
-        solver: 'Z3',
+        solver: 'ts_static_gate',
       },
       metrics: {
         risk_score: riskScore,
