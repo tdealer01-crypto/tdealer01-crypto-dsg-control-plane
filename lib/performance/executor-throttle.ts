@@ -408,6 +408,20 @@ export class ExecutorThrottle {
     this.executionAttempts.clear();
     this.blockedFingerprints.clear();
   }
+
+  /**
+   * PHASE 4: Get count of blocked fingerprints
+   */
+  getBlockedFingerprintsCount(): number {
+    return this.blockedFingerprints.size;
+  }
+
+  /**
+   * PHASE 4: Get all execution attempt stats for monitoring
+   */
+  getTaskAttemptStats(): Map<string, ExecutionAttempt> {
+    return new Map(this.executionAttempts);
+  }
 }
 
 // Global executor throttle instance
