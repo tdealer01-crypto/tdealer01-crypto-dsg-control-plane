@@ -10,6 +10,7 @@ const PRIMARY = [
   { href: '/dashboard/executions', label: 'Executions' },
   { href: '/approvals', label: 'Approvals' },
   { href: '/finance-governance/app', label: 'Finance' },
+  { href: '/dashboard/payout-safety', label: 'Payout Safety' },
   { href: '/dashboard/audit', label: 'Audit' },
   { href: '/dashboard/billing', label: 'Billing' },
   { href: '/demo', label: 'Demo' },
