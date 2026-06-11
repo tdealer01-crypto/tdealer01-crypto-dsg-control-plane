@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { useRefreshDashboardData } from '@stripe/ui-extension-sdk/context';
 import type { ExtensionContextValue } from '@stripe/ui-extension-sdk/context';
-import { ContextView, Box, Badge, Banner, Inline, Spinner } from '@stripe/ui-extension-sdk/ui';
+import { ContextView, Box, Badge, Banner, Spinner } from '@stripe/ui-extension-sdk/ui';
 
 interface GatewayDecision {
   decision: 'ALLOW' | 'BLOCK' | 'REVIEW';
@@ -23,20 +24,20 @@ const BANNER_TYPE = {
 } as const;
 
 const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextValue }) => {
+  const refresh = useRefreshDashboardData();
   const { environment, userContext } = extensionContext;
   const chargeId = environment?.objectContext?.id ?? null;
   const accountId = userContext?.account?.id ?? null;
 
-  const [decision, setDecision] = useState<GatewayDecision | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [decision, setDecision] = React.useState<GatewayDecision | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!chargeId) {
       setLoading(false);
       return;
     }
-
     const evaluate = async () => {
       try {
         const res = await fetch(`${DSG_API_BASE}/api/stripe-app/gate/evaluate`, {
@@ -58,7 +59,6 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
         setLoading(false);
       }
     };
-
     evaluate();
   }, [chargeId, accountId]);
 
@@ -85,11 +85,9 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
   return (
     <ContextView title="DSG Governance Gate">
       <Box css={{ stack: 'y', gapY: 'medium' }}>
-        <Inline>
-          <Badge type={BADGE_TYPE[decision.decision]}>
-            {decision.decision}
-          </Badge>
-        </Inline>
+        <Badge type={BADGE_TYPE[decision.decision]}>
+          {decision.decision}
+        </Badge>
         <Banner
           type={BANNER_TYPE[decision.decision]}
           title={decision.decision}
