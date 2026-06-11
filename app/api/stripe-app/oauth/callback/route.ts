@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,8 @@ export async function POST(request: NextRequest) {
     const tokenData = await tokenResponse.json() as {
       access_token?: string;
       stripe_user_id?: string;
+      scope?: string;
+      token_type?: string;
       error?: string;
       error_description?: string;
     };
@@ -43,10 +46,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Token exchange successful — stripe_user_id is the installed account
+    const stripeAccountId = tokenData.stripe_user_id;
+    if (!stripeAccountId) {
+      return NextResponse.json({ message: 'No Stripe account ID in response' }, { status: 400 });
+    }
+
+    // Persist the connected account in Supabase.
+    // dsg_org_id is set to the Stripe account ID as a stable placeholder
+    // when no DSG user session is present (e.g. direct Stripe install flow).
+    // The dashboard can later link to a real org via the account management UI.
+    //
+    // Note: stripe_app_accounts is in supabase/migrations/ but not yet in the generated
+    // database.types.ts. Cast through unknown to bypass the generated-type constraint;
+    // remove this cast once types are regenerated from the live schema.
+    try {
+      const supabase = getSupabaseAdmin();
+      const { error: upsertError } = await (supabase as unknown as {
+        from: (table: string) => {
+          upsert: (
+            data: Record<string, unknown>,
+            opts: { onConflict: string }
+          ) => Promise<{ error: { message: string } | null }>;
+        };
+      })
+        .from('stripe_app_accounts')
+        .upsert(
+          {
+            stripe_account_id: stripeAccountId,
+            dsg_org_id: stripeAccountId, // placeholder until linked to a DSG org
+            status: 'active',
+            installed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {
+              scope: tokenData.scope ?? null,
+              install_source: 'oauth_callback',
+            },
+          },
+          { onConflict: 'stripe_account_id' },
+        );
+
+      if (upsertError) {
+        // Log but do not fail — the OAuth handshake succeeded even if DB write fails.
+        console.error('[stripe-app/oauth/callback] Supabase upsert error:', upsertError.message);
+      }
+    } catch (dbErr) {
+      console.error('[stripe-app/oauth/callback] DB error:', dbErr);
+    }
+
+    // Token exchange and storage successful
     return NextResponse.json({
       success: true,
-      account_id: tokenData.stripe_user_id,
+      account_id: stripeAccountId,
     });
   } catch {
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
