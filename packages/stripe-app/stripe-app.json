@@ -20,7 +20,6 @@
       "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
     }
   },
-  "extensions": null,
   "permissions": [
     {
       "permission": "charge_read",
