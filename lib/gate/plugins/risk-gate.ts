@@ -28,7 +28,7 @@ export const riskGatePlugin: GatePlugin = {
       decision: gate.decision,
       reason: gate.reason,
       risk_score: riskScore,
-      solver: 'Z3',
+      solver: 'ts_static_gate',
     });
 
     return {
@@ -40,7 +40,7 @@ export const riskGatePlugin: GatePlugin = {
       stability_score: gate.decision === 'ALLOW' ? 1 : gate.decision === 'STABILIZE' ? 0.5 : 0,
       source: 'internal',
       proof_hash: proofHash,
-      proof_version: 'risk-gate-z3-v1',
+      proof_version: 'ts-static-v1',
     };
   },
 

@@ -1,6 +1,6 @@
 export const VERIFIED_FORMAL_CORE = {
   verified: true,
-  solver: "Z3",
+  solver: "ts_static_gate",
   artifact_format: "SMT-LIB v2",
   expected_result: "sat",
   properties: [

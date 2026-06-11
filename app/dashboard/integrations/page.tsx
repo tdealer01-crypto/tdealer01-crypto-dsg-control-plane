@@ -1,9 +1,28 @@
 import Link from 'next/link';
 import CopyButton from '../../../components/CopyButton';
 
-const STRIPE_INSTALL_URL =
-  process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL ||
-  '/api/stripe/connect/install';
+// Build the Live mode Stripe OAuth install URL from env vars.
+// NEXT_PUBLIC_STRIPE_CLIENT_ID is the canonical variable set in Vercel for
+// the Live mode app client_id (format: ca_...).
+// Falls back to the server-side install route which applies the same logic.
+function buildStripeInstallUrl(): string {
+  const clientId = process.env.NEXT_PUBLIC_STRIPE_CLIENT_ID;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+  if (clientId) {
+    const redirectUri = appUrl
+      ? `${appUrl}/stripe/oauth/callback`
+      : '/stripe/oauth/callback';
+    return `https://marketplace.stripe.com/oauth/v2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  }
+  // Explicit override (e.g. a branded marketplace listing URL)
+  if (process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL) {
+    return process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL;
+  }
+  // Server-side route builds the correct URL at request time
+  return '/api/stripe/connect/install';
+}
+
+const STRIPE_INSTALL_URL = buildStripeInstallUrl();
 
 const quickstart = [
   {

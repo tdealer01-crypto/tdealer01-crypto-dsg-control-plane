@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(decision, { headers: corsHeaders });
   } catch {
     return NextResponse.json(
-      { decision: 'ALLOW', reason: 'Gate unavailable — fail-open mode.' },
+      { decision: 'REVIEW', reason: 'Gate unavailable — manual review required.' },
       { status: 200, headers: corsHeaders },
     );
   }

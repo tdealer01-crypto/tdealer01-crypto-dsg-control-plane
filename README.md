@@ -161,9 +161,9 @@ Complete implementation details:
 
 ## 🆕 Stripe App Marketplace Integration — 2026-06-07
 
-**Status:** ✅ Phase 1-9 Complete | ⏳ Marketing & Launch Documentation Ready | 🚀 Ready for Marketplace Submission
+**Status:** ✅ Phase 1-9 Scaffold Complete | ⏳ Marketing & Launch Documentation Ready | 🔧 Governance backend persistence and audit enforcement in progress
 
-Extend DSG governance to Stripe operations. Gate charges, payouts, and refunds before execution with real-time policy evaluation and immutable audit trails.
+Stripe App UI extension live in Stripe Dashboard (payment detail view). Governance gate scaffold connected; backend approval persistence and audit enforcement in progress. Gate charges, payouts, and refunds before execution with real-time policy evaluation and logged audit trails.
 
 ### What's included
 
