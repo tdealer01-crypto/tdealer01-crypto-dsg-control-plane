@@ -6,11 +6,22 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code } = body as { code?: string; state?: string };
+    const { code, state } = body as { code?: string; state?: string };
 
     if (!code) {
       return NextResponse.json({ message: 'Missing authorization code' }, { status: 400 });
     }
+
+    // CSRF protection: state must be present in every OAuth callback.
+    // The authorize route sets state using crypto.randomUUID(). A missing or
+    // empty state indicates the request did not originate from our authorize
+    // flow and must be rejected.
+    if (!state) {
+      console.warn('[stripe-app/oauth/callback] Rejecting request: missing state parameter (CSRF check failed)');
+      return NextResponse.json({ message: 'Missing state parameter' }, { status: 400 });
+    }
+    // Log state for audit tracing. Do NOT log authorization codes.
+    console.info('[stripe-app/oauth/callback] State received:', state);
 
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeSecretKey) {
@@ -51,10 +62,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'No Stripe account ID in response' }, { status: 400 });
     }
 
+    // access_token is intentionally NOT returned in the response body and NOT
+    // logged. It is a secret credential and must only be used server-side if
+    // needed (e.g. stored encrypted in a secrets table). For now we store only
+    // the non-secret account metadata below.
+
     // Persist the connected account in Supabase.
-    // dsg_org_id is set to the Stripe account ID as a stable placeholder
+    // TODO: dsg_org_id is set to the Stripe account ID as a stable placeholder
     // when no DSG user session is present (e.g. direct Stripe install flow).
-    // The dashboard can later link to a real org via the account management UI.
+    // This field MUST be linked to an actual DSG organization once the user
+    // completes onboarding. The dashboard account management UI is the intended
+    // linking surface. Do not treat this placeholder as a resolved org binding.
     //
     // Note: stripe_app_accounts is in supabase/migrations/ but not yet in the generated
     // database.types.ts. Cast through unknown to bypass the generated-type constraint;
@@ -73,7 +91,7 @@ export async function POST(request: NextRequest) {
         .upsert(
           {
             stripe_account_id: stripeAccountId,
-            dsg_org_id: stripeAccountId, // placeholder until linked to a DSG org
+            dsg_org_id: stripeAccountId, // placeholder — link to real DSG org after onboarding
             status: 'active',
             installed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -93,7 +111,7 @@ export async function POST(request: NextRequest) {
       console.error('[stripe-app/oauth/callback] DB error:', dbErr);
     }
 
-    // Token exchange and storage successful
+    // Return only non-secret identifiers. access_token is never included here.
     return NextResponse.json({
       success: true,
       account_id: stripeAccountId,
