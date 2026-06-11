@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import type { PayoutPolicy } from '@/lib/dsg/payout/gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +31,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // biome-ignore lint/suspicious/noExplicitAny: dsg_payout_policies not yet in generated types
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('dsg_payout_policies')
     .select('*')
     .eq('org_id', user.id)
@@ -41,7 +39,7 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ policy: (data as PayoutPolicy | null) ?? { ...DEFAULT_POLICY, org_id: user.id } });
+  return NextResponse.json({ policy: data ?? { ...DEFAULT_POLICY, org_id: user.id } });
 }
 
 export async function POST(request: Request) {
@@ -59,8 +57,7 @@ export async function POST(request: Request) {
   // Remove read-only fields
   const { id: _id, created_at: _c, updated_at: _u, org_id: _o, ...patch } = body as Record<string, unknown>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: dsg_payout_policies not yet in generated types
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('dsg_payout_policies')
     .upsert({ ...patch, org_id: user.id }, { onConflict: 'org_id' })
     .select()
@@ -68,5 +65,5 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ policy: data as PayoutPolicy });
+  return NextResponse.json({ policy: data });
 }
