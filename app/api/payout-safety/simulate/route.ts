@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   // Load policy from DB if not provided inline
   let policy = body.policy;
   if (!policy) {
-    const { data } = await supabase
+    // biome-ignore lint/suspicious/noExplicitAny: dsg_payout_policies not yet in generated types
+    const { data } = await (supabase as any)
       .from('dsg_payout_policies')
       .select('*')
       .eq('org_id', user.id)
