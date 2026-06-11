@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useExtensionContext } from '@stripe/ui-extension-sdk/context';
+import type { ExtensionContextValue } from '@stripe/ui-extension-sdk/context';
 
 interface GatewayDecision {
   decision: 'ALLOW' | 'BLOCK' | 'REVIEW';
@@ -10,8 +10,8 @@ interface GatewayDecision {
 
 const DSG_API_BASE = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
 
-const PayoutGate: React.FC = () => {
-  const { environment, userContext } = useExtensionContext();
+const PayoutGate: React.FC<{ extensionContext: ExtensionContextValue }> = ({ extensionContext }) => {
+  const { environment, userContext } = extensionContext;
   const payoutId = environment?.objectContext?.id ?? null;
   const accountId = userContext?.account?.id ?? null;
 
