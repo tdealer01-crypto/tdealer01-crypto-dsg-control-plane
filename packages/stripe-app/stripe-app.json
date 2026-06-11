@@ -1,5 +1,4 @@
 {
-  "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
   "version": "1.1.3",
@@ -20,7 +19,6 @@
       "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
     }
   },
-  "extensions": null,
   "permissions": [
     {
       "permission": "charge_read",

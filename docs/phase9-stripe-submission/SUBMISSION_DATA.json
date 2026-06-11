@@ -2,14 +2,14 @@
   "app_metadata": {
     "app_id": "pics.dsg.governance",
     "app_name": "DSG Governance Gate",
-    "version": "1.0.4",
+    "version": "1.1.3",
     "distribution_type": "public",
     "sandbox_install_compatible": true,
     "submission_date": "2026-06-11"
   },
   "app_descriptions": {
     "about": "DSG Governance Gate is a governance platform for Stripe payments and payouts. It evaluates payments and payouts against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision displayed directly in your Stripe Dashboard. Audit records for each decision are shown within the app panel for compliance and review purposes.",
-    "about_char_count": 341,
+    "about_char_count": 336,
     "about_max": 1000,
     "subtitle": "Automated policy gates to evaluate payments and manage transaction reviews.",
     "subtitle_char_count": 75,
@@ -19,8 +19,8 @@
         "title": "Automated policy decisions",
         "title_char_count": 26,
         "title_max": 80,
-        "description": "Policy rules evaluate charges and refunds against configurable criteria. Decisions — ALLOW, BLOCK, or REVIEW — appear in the Stripe payment and payout detail panels for each transaction.",
-        "description_char_count": 186,
+        "description": "Policy rules evaluate charges and payment intents against configurable criteria. Decisions — ALLOW, BLOCK, or REVIEW — appear in the Stripe payment detail panel for each transaction.",
+        "description_char_count": 182,
         "description_max": 300
       },
       {
@@ -28,23 +28,23 @@
         "title_char_count": 18,
         "title_max": 80,
         "description": "Each governance decision is recorded with a verifiable reference and timestamp, visible in the app drawer panel. Decision history supports compliance review and internal audit workflows.",
-        "description_char_count": 183,
+        "description_char_count": 186,
         "description_max": 300
       },
       {
         "title": "Policy and approval management",
-        "title_char_count": 31,
+        "title_char_count": 30,
         "title_max": 80,
         "description": "REVIEW-flagged transactions surface in the app drawer for operator awareness. Policy configuration and approval workflows are managed through the DSG platform, with outcomes displayed in the Stripe Dashboard panel.",
-        "description_char_count": 211,
+        "description_char_count": 214,
         "description_max": 300
       }
     ],
     "short_description": "Automated policy gates to evaluate payments and manage transaction reviews.",
     "short_description_char_count": 75,
     "short_description_max": 140,
-    "long_description": "DSG Governance Gate is a governance platform for Stripe operations. It automatically evaluates charges, refunds, and disputes against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision displayed directly in your Stripe Dashboard.\n\nKey capabilities:\n- Automated policy evaluation for charges, refunds, and payouts\n- Decision audit log with verifiable records shown in the app panel\n- Approval workflow visibility for REVIEW-flagged transactions\n- OAuth integration with Stripe Connect\n- Policy enforcement across supported Stripe object types\n\nUse cases:\n- Compliance-driven organizations requiring governance workflows\n- Multi-approval processes for high-risk transactions\n- Audit record requirements for regulatory review\n- Risk management with automated policy gates\n\nThe app integrates directly into your Stripe Dashboard via the app drawer, providing governance visibility without requiring custom infrastructure.\n\nPermissions requested:\n- Read charges, payment intents, payouts, refunds for policy evaluation\n- Write decisions to charges for governance enforcement\n- Webhook access for real-time event processing",
-    "long_description_char_count": 905,
+    "long_description": "DSG Governance Gate is a governance platform for Stripe operations. It automatically evaluates charges and payment intents against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision displayed directly in your Stripe Dashboard payment detail panel.\n\nKey capabilities:\n- Automated policy evaluation for charges and payment intents\n- Decision audit log with verifiable records shown in the app panel\n- Approval workflow visibility for REVIEW-flagged transactions\n- OAuth integration with Stripe Connect\n- Payout activity recorded in the governance decision log\n\nUse cases:\n- Compliance-driven organizations requiring governance workflows\n- Multi-approval processes for high-risk transactions\n- Audit record requirements for regulatory review\n- Risk management with automated policy gates\n\nThe app integrates directly into your Stripe Dashboard via the app drawer, providing governance visibility without requiring custom infrastructure.\n\nPermissions requested:\n- Read charges, payment intents, and payouts for policy evaluation\n- Write decisions to charges for governance enforcement\n- Webhook access for event processing",
+    "long_description_char_count": 1140,
     "long_description_max": 4000,
     "category": "Risk Management"
   },
@@ -70,28 +70,23 @@
   },
   "permissions": [
     {
-      "permission": "charge:read",
-      "purpose": "Read charge details for governance policy evaluation",
+      "permission": "charge_read",
+      "purpose": "Read charge details to display governance policy decisions in the payment detail view",
       "required": true
     },
     {
-      "permission": "charge:write",
-      "purpose": "Apply governance decisions to charge operations",
+      "permission": "charge_write",
+      "purpose": "Apply governance decisions to charge operations when a policy rule triggers a block or review",
       "required": true
     },
     {
-      "permission": "payment_intent:read",
-      "purpose": "Monitor payment intents for policy compliance",
+      "permission": "payment_intent_read",
+      "purpose": "Monitor payment intents for policy compliance checks before capture",
       "required": true
     },
     {
-      "permission": "payout:read",
-      "purpose": "Track payouts for governance audit trail",
-      "required": true
-    },
-    {
-      "permission": "refund:read",
-      "purpose": "Monitor refunds for compliance evidence",
+      "permission": "payout_read",
+      "purpose": "Track payouts to maintain a complete governance audit trail across all fund movements",
       "required": true
     }
   ],
@@ -107,9 +102,7 @@
       "payment_intent.payment_failed",
       "payout.created",
       "payout.updated",
-      "payout.paid",
-      "refund.created",
-      "refund.updated"
+      "payout.paid"
     ]
   },
   "assets": {
@@ -141,8 +134,8 @@
       },
       {
         "file": "docs/phase9-stripe-submission/assets/screenshot-3-audit-trail.png",
-        "title": "Audit Trail",
-        "description": "Immutable audit trail with cryptographic proof",
+        "title": "Decision Audit Log",
+        "description": "Decision audit log with verifiable records and timestamps",
         "dimensions": "1200x800",
         "format": "PNG",
         "order": 3,
@@ -186,18 +179,13 @@
         "viewport": "stripe.dashboard.payment.detail",
         "component": "ChargeGate",
         "description": "Governance gate in payment detail view"
-      },
-      {
-        "viewport": "stripe.dashboard.payout.detail",
-        "component": "PayoutGate",
-        "description": "Governance gate in payout detail view"
       }
     ],
     "content_security_policy": {
       "connect-src": [
-        "https://tdealer01-crypto-dsg-control-plane.vercel.app/",
-        "https://dsg-stripe-app.vercel.app/",
-        "https://api.dsg.pics/"
+        "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/",
+        "https://dsg-stripe-app.vercel.app/api/",
+        "https://api.dsg.pics/v1/"
       ],
       "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
     }

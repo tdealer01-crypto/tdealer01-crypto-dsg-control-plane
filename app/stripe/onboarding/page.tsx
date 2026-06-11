@@ -24,17 +24,17 @@ export default function StripeOnboardingPage() {
               {
                 icon: '⚡',
                 title: 'Gate active on payments',
-                desc: 'Every charge detail view now shows a real-time ALLOW / BLOCK / REVIEW decision.',
+                desc: 'Charge detail views show an automated ALLOW / BLOCK / REVIEW decision.',
               },
               {
                 icon: '📋',
                 title: 'Audit trail recording',
-                desc: 'All payout activity is logged in your governance audit trail automatically.',
+                desc: 'Payout activity is recorded in your governance decision log.',
               },
               {
                 icon: '🔒',
                 title: 'Policy enforcement',
-                desc: 'Governance rules run before capture — high-risk transactions are flagged instantly.',
+                desc: 'Governance rules run before capture — high-risk transactions are flagged for review.',
               },
             ].map((item) => (
               <li key={item.title} className="flex gap-3">
