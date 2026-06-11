@@ -76,8 +76,8 @@ export default function StripeOnboardingPage() {
 
         <p className="text-center text-xs text-slate-600">
           DSG Governance Gate · pics.dsg.governance ·{' '}
-          <a href="mailto:support@dsg.pics" className="hover:text-slate-400">
-            support@dsg.pics
+          <a href="mailto:t.dealer01@dsg.pics" className="hover:text-slate-400">
+            t.dealer01@dsg.pics
           </a>
         </p>
       </div>
