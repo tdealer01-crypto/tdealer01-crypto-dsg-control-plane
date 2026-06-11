@@ -7,6 +7,8 @@ interface GatewayDecision {
   decision: 'ALLOW' | 'BLOCK' | 'REVIEW';
   reason: string;
   proof?: string;
+  policy_version?: string;
+  evaluated_at?: string;
 }
 
 const DSG_API_BASE = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
@@ -63,6 +65,8 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
             ? raw.reason
             : 'No reason provided — held for review',
           proof: typeof raw?.proof === 'string' ? raw.proof : undefined,
+          policy_version: typeof raw?.policy_version === 'string' ? raw.policy_version : undefined,
+          evaluated_at: typeof raw?.evaluated_at === 'string' ? raw.evaluated_at : undefined,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -95,6 +99,17 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
 
   if (!decision) return null;
 
+  const detailRows: Array<[string, string]> = [];
+  if (decision.policy_version) detailRows.push(['Policy', decision.policy_version]);
+  if (decision.proof) detailRows.push(['Proof reference', decision.proof]);
+  if (decision.evaluated_at) {
+    const parsed = new Date(decision.evaluated_at);
+    detailRows.push([
+      'Evaluated',
+      Number.isNaN(parsed.getTime()) ? decision.evaluated_at : parsed.toUTCString(),
+    ]);
+  }
+
   return (
     <ContextView title="DSG Governance Gate">
       <Box css={{ stack: 'y', gapY: 'medium' }}>
@@ -106,6 +121,16 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
           title={decision.decision}
           description={decision.reason}
         />
+        {detailRows.length > 0 && (
+          <Box css={{ stack: 'y', gapY: 'small' }}>
+            {detailRows.map(([label, value]) => (
+              <Box key={label} css={{ stack: 'y' }}>
+                <Box css={{ font: 'caption', color: 'secondary' }}>{label}</Box>
+                <Box css={{ font: 'caption', wordBreak: 'break-all' }}>{value}</Box>
+              </Box>
+            ))}
+          </Box>
+        )}
         {fetchError && (
           <Banner type="default" description={`Note: ${fetchError}`} />
         )}
