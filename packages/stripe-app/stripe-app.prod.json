@@ -4,7 +4,7 @@
   "description": "Pre-execution governance gates for Stripe operations with deterministic audit trails and approval workflows",
   "version": "1.0.0",
   "homepage": "https://dsg.pics",
-  "support_email": "t.dealer01@dsg.pics",
+  "support_email": "support@dsg.pics",
   "icons": {
     "square_64": "./docs/assets/icon-64x64.png",
     "square_128": "./docs/assets/icon-128x128.png",

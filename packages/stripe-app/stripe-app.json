@@ -11,7 +11,7 @@
         "component": "ChargeGate"
       },
       {
-        "viewport": "stripe.dashboard.customer.detail",
+        "viewport": "stripe.dashboard.payout.detail",
         "component": "PayoutGate"
       }
     ],
@@ -45,7 +45,7 @@
   ],
   "post_install_action": {
     "type": "external",
-    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/onboarding"
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/stripe-app"
   },
   "constants": {
     "DSG_API_BASE": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
