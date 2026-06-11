@@ -38,7 +38,7 @@ export default function StripeConnectPage() {
         setStatus('success');
         // Redirect after success
         setTimeout(() => {
-          router.push('/dashboard/stripe-app?success=true');
+          router.push('/dashboard/stripe-app?connected=true');
         }, 2000);
       } else {
         const error = await response.json();
@@ -51,23 +51,9 @@ export default function StripeConnectPage() {
     }
   };
 
-  const handleConnectClick = async () => {
+  const handleConnectClick = () => {
     setStatus('connecting');
-    try {
-      const response = await fetch('/api/stripe-app/oauth/authorize', {
-        method: 'GET',
-      });
-      const data = await response.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setStatus('error');
-        setErrorMessage('Failed to get authorization URL');
-      }
-    } catch (error) {
-      setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to initiate OAuth');
-    }
+    window.location.href = '/api/stripe/connect/install';
   };
 
   return (
