@@ -2,7 +2,7 @@
   "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "icon": "./icon.png",
   "ui_extension": {
     "views": [

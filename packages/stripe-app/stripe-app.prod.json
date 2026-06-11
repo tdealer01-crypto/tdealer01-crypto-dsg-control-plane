@@ -2,7 +2,7 @@
   "app_id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
   "description": "Automated policy gates to evaluate payments and manage transaction reviews.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "homepage": "https://dsg.pics",
   "support_email": "support@dsg.pics",
   "icons": {
