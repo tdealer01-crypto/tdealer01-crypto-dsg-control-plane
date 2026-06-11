@@ -11,8 +11,8 @@ const DSG_API_BASE = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
 
 const ChargeGate: React.FC = () => {
   const { environment, userContext } = useExtensionContext();
-  const chargeId = environment.objectContext?.id ?? null;
-  const accountId = userContext.account.id;
+  const chargeId = environment?.objectContext?.id ?? null;
+  const accountId = userContext?.account?.id ?? null;
 
   const [decision, setDecision] = useState<GatewayDecision | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,11 +56,11 @@ const ChargeGate: React.FC = () => {
     backgroundColor: '#f8fafc',
   };
 
-  if (!chargeId) {
+  if (!chargeId || !accountId) {
     return (
       <div style={containerStyle}>
         <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-          DSG Governance Gate — no charge context
+          DSG Governance Gate — {!chargeId ? 'no payment context' : 'initializing…'}
         </p>
       </div>
     );
@@ -81,11 +81,12 @@ const ChargeGate: React.FC = () => {
 
   if (!decision) return null;
 
-  const palette = {
+  const palette = ({
     ALLOW:  { bg: '#f0fdf4', border: '#86efac', text: '#15803d', badge: '#22c55e', label: '✓ ALLOW' },
     BLOCK:  { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', badge: '#ef4444', label: '✕ BLOCK' },
     REVIEW: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', badge: '#f59e0b', label: '⊙ REVIEW' },
-  }[decision.decision];
+  } as Record<string, { bg: string; border: string; text: string; badge: string; label: string }>)[decision.decision]
+    ?? { bg: '#f8fafc', border: '#e2e8f0', text: '#374151', badge: '#64748b', label: decision.decision };
 
   return (
     <div style={{ ...containerStyle, backgroundColor: palette.bg, border: `1px solid ${palette.border}` }}>
