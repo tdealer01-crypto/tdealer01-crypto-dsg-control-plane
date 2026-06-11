@@ -2,17 +2,13 @@
   "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "icon": "./icon.png",
   "ui_extension": {
     "views": [
       {
         "viewport": "stripe.dashboard.payment.detail",
         "component": "ChargeGate"
-      },
-      {
-        "viewport": "stripe.dashboard.payout.detail",
-        "component": "PayoutGate"
       }
     ],
     "content_security_policy": {

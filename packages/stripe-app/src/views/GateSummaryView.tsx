@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useExtensionContext } from '@stripe/ui-extension-sdk/context';
+import type { ExtensionContextValue } from '@stripe/ui-extension-sdk/context';
 
 interface GateSummary {
   allow: number;
@@ -22,8 +22,8 @@ const DECISION_COLOR = {
   REVIEW: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', badge: '#f59e0b', label: '⊙ REVIEW' },
 };
 
-const GateSummaryView: React.FC = () => {
-  const { userContext, environment } = useExtensionContext();
+const GateSummaryView: React.FC<{ extensionContext: ExtensionContextValue }> = ({ extensionContext }) => {
+  const { userContext, environment } = extensionContext;
   const accountId = userContext.account.id;
   const mode = environment.mode;
 
