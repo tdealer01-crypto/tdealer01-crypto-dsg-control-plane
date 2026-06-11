@@ -113,9 +113,9 @@ Suggested recovery flow:
 3. If PR 216 exists remotely, merge/cherry-pick by commit SHA, not PR number label.
 4. If PR 216 does not exist, continue from the latest merged baseline (`#220`) and re-open the missing changes as a new PR.
 
-## Current test baseline (April 17, 2026)
+## Historical baseline (April 17, 2026)
 
-This section is the active baseline for test-status truth in this repository.
+> **Note:** This is a historical snapshot. See `PROJECT_TRUTH.md` for the current test baseline.
 
 - Test files: **62 passed, 1 skipped, 0 failed**
 - Tests: **185 passed, 3 skipped, 0 failed**
@@ -441,5 +441,5 @@ Recommended triage order:
 
 Operational interpretation for this repository:
 
-- The April 11 control-plane inventory remains historically valid for that date; current test baseline is the April 17 committed result (185 passed, 3 skipped; 62 files passed, 1 skipped).
+- The April 11 control-plane inventory remains historically valid for that date; the April 17 historical baseline was 185 passed, 3 skipped; 62 files passed, 1 skipped (see PROJECT_TRUTH.md for current test baseline).
 - A `286/294` merge indicator should be handled as release-process metadata drift until a concrete failing required check is identified.
