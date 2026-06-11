@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const DEFAULT_CLIENT_ID = 'ca_UfEPAC4NcvG2nYAYjohDQ9GtDlIdajy6';
 const DEFAULT_CALLBACK_PATH = '/stripe/oauth/callback';
 
 function getAppOrigin(requestUrl: string) {
@@ -10,16 +9,22 @@ function getAppOrigin(requestUrl: string) {
 }
 
 export function GET(request: Request) {
-  const installUrl = process.env.STRIPE_INSTALL_URL || process.env.NEXT_PUBLIC_STRIPE_INSTALL_URL;
-  if (installUrl) {
-    return NextResponse.redirect(installUrl, { status: 302 });
+  // Canonical env var for the Stripe app client_id (Live mode, public)
+  const clientId =
+    process.env.NEXT_PUBLIC_STRIPE_CLIENT_ID ||
+    process.env.STRIPE_CONNECT_CLIENT_ID;
+
+  if (!clientId) {
+    return NextResponse.json(
+      { error: 'NEXT_PUBLIC_STRIPE_CLIENT_ID is not configured' },
+      { status: 503 },
+    );
   }
 
-  const clientId = process.env.STRIPE_CONNECT_CLIENT_ID || DEFAULT_CLIENT_ID;
   const callbackPath = process.env.STRIPE_CONNECT_CALLBACK_PATH || DEFAULT_CALLBACK_PATH;
   const redirectUri = new URL(callbackPath, getAppOrigin(request.url));
 
-  // Use live mode public OAuth path — no channel/test link parameters
+  // Live mode public OAuth URL — https://marketplace.stripe.com/oauth/v2/authorize
   const url = new URL('/oauth/v2/authorize', 'https://marketplace.stripe.com');
   url.searchParams.set('client_id', clientId);
   url.searchParams.set('redirect_uri', redirectUri.toString());
