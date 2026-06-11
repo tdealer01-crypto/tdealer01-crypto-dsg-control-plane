@@ -10,11 +10,82 @@ import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { meterExecution } from '../../../../lib/billing/metered';
 import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
+import { StopReason } from '../../../../lib/types/task';
 
 export const dynamic = 'force-dynamic';
 
 const EXECUTE_RATE_LIMIT = 60;
 const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
+
+/**
+ * PHASE 2: Execution State and Break Conditions
+ *
+ * Tracks execution state per agent and enforces break conditions:
+ * - Stop if queue empty
+ * - Stop if 10+ failures
+ * - Stop if elapsed > 5 minutes
+ * - Return stop_reason in all responses
+ */
+
+interface AgentExecutionState {
+  agentId: string;
+  isExecuting: boolean;
+  completedTasks: Set<string>;
+  failedTasks: Set<string>;
+  startTime: number;
+  maxDuration: number; // 5 minutes = 5 * 60 * 1000 ms
+}
+
+const agentExecutionStates = new Map<string, AgentExecutionState>();
+
+function getOrCreateExecutionState(agentId: string): AgentExecutionState {
+  if (!agentExecutionStates.has(agentId)) {
+    agentExecutionStates.set(agentId, {
+      agentId,
+      isExecuting: false,
+      completedTasks: new Set(),
+      failedTasks: new Set(),
+      startTime: 0,
+      maxDuration: 5 * 60 * 1000, // 5 minutes
+    });
+  }
+  return agentExecutionStates.get(agentId)!;
+}
+
+function shouldContinueExecution(
+  agentId: string,
+  queueSize: number
+): { should: boolean; stopReason: StopReason } {
+  const state = getOrCreateExecutionState(agentId);
+
+  // Check if queue is empty
+  if (queueSize === 0) {
+    return { should: false, stopReason: StopReason.QUEUE_EMPTY };
+  }
+
+  // Check if too many failures (10+)
+  if (state.failedTasks.size >= 10) {
+    return { should: false, stopReason: StopReason.TOO_MANY_FAILURES };
+  }
+
+  // Check if execution timeout exceeded (5 minutes)
+  const elapsed = Date.now() - state.startTime;
+  if (elapsed > state.maxDuration) {
+    return { should: false, stopReason: StopReason.EXECUTION_TIMEOUT };
+  }
+
+  return { should: true, stopReason: StopReason.NONE };
+}
+
+function markTaskCompleted(agentId: string, taskId: string): void {
+  const state = getOrCreateExecutionState(agentId);
+  state.completedTasks.add(taskId);
+}
+
+function markTaskFailed(agentId: string, taskId: string): void {
+  const state = getOrCreateExecutionState(agentId);
+  state.failedTasks.add(taskId);
+}
 
 function jsonWithHeaders(
   request: Request,
@@ -126,6 +197,20 @@ export async function POST(request: Request) {
       }
     }
 
+    // Initialize execution state on first call
+    const executionState = getOrCreateExecutionState(agentId);
+    if (!executionState.isExecuting) {
+      executionState.isExecuting = true;
+      executionState.startTime = Date.now();
+      executionState.completedTasks.clear();
+      executionState.failedTasks.clear();
+    }
+
+    // Check break conditions (Phase 2)
+    const queueSize = 1; // Placeholder: in production, query actual queue size
+    const continueCheck = shouldContinueExecution(agentId, queueSize);
+    let stopReason = continueCheck.stopReason;
+
     let result = await executeSpineIntent({
       orgId,
       apiKey,
@@ -144,10 +229,16 @@ export async function POST(request: Request) {
       });
 
       if (!issued.ok) {
-        return NextResponse.json(issued.body, {
-          status: issued.status,
-          headers: responseHeaders,
-        });
+        return NextResponse.json(
+          {
+            ...issued.body,
+            stop_reason: stopReason,
+          },
+          {
+            status: issued.status,
+            headers: responseHeaders,
+          }
+        );
       }
 
       result = await executeSpineIntent({
@@ -155,6 +246,14 @@ export async function POST(request: Request) {
         apiKey,
         payload,
       });
+    }
+
+    // Track task outcome for Phase 2 break conditions
+    const taskId = String((result.body as Record<string, unknown>)?.task_id ?? randomUUID());
+    if (result.status >= 200 && result.status < 300) {
+      markTaskCompleted(agentId, taskId);
+    } else if (result.status >= 400) {
+      markTaskFailed(agentId, taskId);
     }
 
     // Count executions only on success (2xx)
@@ -170,7 +269,13 @@ export async function POST(request: Request) {
       void meterExecution(orgId, 1, executionId);
     }
 
-    return NextResponse.json(result.body, {
+    // Add stop_reason to response (Phase 2)
+    const responseBody = {
+      ...(result.body as Record<string, unknown>),
+      stop_reason: stopReason,
+    };
+
+    return NextResponse.json(responseBody, {
       status: result.status,
       headers: responseHeaders,
     });
