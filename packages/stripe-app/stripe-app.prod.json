@@ -40,10 +40,6 @@
       {
         "viewport": "stripe.dashboard.payment.detail",
         "component": "ChargeGate"
-      },
-      {
-        "viewport": "stripe.dashboard.payout.detail",
-        "component": "PayoutGate"
       }
     ],
     "content_security_policy": {
