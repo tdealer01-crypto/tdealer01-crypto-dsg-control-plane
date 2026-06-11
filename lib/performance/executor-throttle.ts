@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 export type ExecutorType = 'virtual-pc' | 'browserbase' | 'terminal' | 'deploy';
 
 interface ExecutorCapacity {
@@ -7,6 +9,46 @@ interface ExecutorCapacity {
   orgId: string;
   peakCount: number; // For monitoring
   lastResetAt: number;
+}
+
+/**
+ * ExecutionAttempt interface - tracks retry attempts and failure reasons
+ * Used to enforce max retries and fingerprint blocking on repeated failures
+ */
+export interface ExecutionAttempt {
+  taskId: string;
+  fingerprint: string;
+  commandId: string;
+  retryCount: number;
+  maxRetries: number;
+  failureReasons: string[];
+  firstAttemptTime: number;
+  lastAttemptTime: number;
+  lastError: string | null;
+}
+
+/**
+ * Generate deterministic fingerprint from task properties
+ * Hash of {action, target, agentId, workflowId, payload}
+ * Returns 16-char hex string
+ */
+export function generateTaskFingerprint(task: {
+  action: string;
+  target?: string;
+  agentId: string;
+  workflowId?: string;
+  payload?: Record<string, unknown>;
+}): string {
+  const input = JSON.stringify({
+    action: task.action,
+    target: task.target || '',
+    agentId: task.agentId,
+    workflowId: task.workflowId || '',
+    payload: task.payload || {},
+  });
+
+  const hash = createHash('sha256').update(input).digest('hex');
+  return hash.slice(0, 16);
 }
 
 /**
@@ -23,6 +65,12 @@ export class ExecutorThrottle {
   // Capacity tracking: orgId:executorType → capacity info
   private capacityRegistry = new Map<string, ExecutorCapacity>();
 
+  // Execution attempt tracking: taskId → ExecutionAttempt
+  private executionAttempts = new Map<string, ExecutionAttempt>();
+
+  // Blocked fingerprints: set of fingerprints permanently blocked after 3 failures
+  private blockedFingerprints = new Set<string>();
+
   private readonly CAPACITY_LIMITS: Record<ExecutorType, number> = {
     'virtual-pc': 50,
     'browserbase': 100,
@@ -31,6 +79,8 @@ export class ExecutorThrottle {
   };
 
   private readonly DEFAULT_ORG_ID = 'default';
+  private readonly MAX_RETRIES = 3;
+  private readonly EXECUTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
   /**
    * Initialize capacity limits for an org
@@ -248,6 +298,129 @@ export class ExecutorThrottle {
    */
   clear(): void {
     this.capacityRegistry.clear();
+  }
+
+  /**
+   * PHASE 1: Record task execution attempt with retry tracking
+   */
+  recordTaskAttempt(
+    taskId: string,
+    fingerprint: string,
+    executor: string,
+    error?: Error
+  ): ExecutionAttempt {
+    let attempt = this.executionAttempts.get(taskId);
+
+    if (!attempt) {
+      attempt = {
+        taskId,
+        fingerprint,
+        commandId: '',
+        retryCount: 0,
+        maxRetries: this.MAX_RETRIES,
+        failureReasons: [],
+        firstAttemptTime: Date.now(),
+        lastAttemptTime: Date.now(),
+        lastError: error ? error.message : null,
+      };
+      this.executionAttempts.set(taskId, attempt);
+    } else {
+      attempt.retryCount++;
+      attempt.lastAttemptTime = Date.now();
+      attempt.lastError = error ? error.message : null;
+    }
+
+    if (error) {
+      const reason = error.message || String(error);
+      if (!attempt.failureReasons.includes(reason)) {
+        attempt.failureReasons.push(reason);
+      }
+    }
+
+    return attempt;
+  }
+
+  /**
+   * PHASE 1: Check if a task can be retried
+   */
+  canRetryTask(taskId: string, fingerprint: string, failureReason?: string): {
+    allowed: boolean;
+    reason?: string;
+  } {
+    // Check if fingerprint is permanently blocked
+    if (this.blockedFingerprints.has(fingerprint)) {
+      return {
+        allowed: false,
+        reason: 'Fingerprint blocked after 3 identical failures',
+      };
+    }
+
+    const attempt = this.executionAttempts.get(taskId);
+    if (!attempt) {
+      return { allowed: true };
+    }
+
+    // Check max retries exceeded
+    if (attempt.retryCount >= this.MAX_RETRIES) {
+      return {
+        allowed: false,
+        reason: `Max retries (${this.MAX_RETRIES}) exceeded`,
+      };
+    }
+
+    // Check total timeout
+    const elapsed = Date.now() - attempt.firstAttemptTime;
+    if (elapsed > this.EXECUTION_TIMEOUT_MS) {
+      return {
+        allowed: false,
+        reason: `Total execution timeout (${this.EXECUTION_TIMEOUT_MS}ms) exceeded`,
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * PHASE 1: Block a fingerprint after 3 identical failures
+   */
+  blockFingerprint(fingerprint: string, failureReason: string): void {
+    this.blockedFingerprints.add(fingerprint);
+  }
+
+  /**
+   * PHASE 1: Get attempt info for a task
+   */
+  getAttempt(taskId: string): ExecutionAttempt | undefined {
+    return this.executionAttempts.get(taskId);
+  }
+
+  /**
+   * PHASE 1: Check if a fingerprint is blocked
+   */
+  isFingerprinted(fingerprint: string): boolean {
+    return this.blockedFingerprints.has(fingerprint);
+  }
+
+  /**
+   * PHASE 1: Clear all attempt and fingerprint tracking (for tests)
+   */
+  clearAttempts(): void {
+    this.executionAttempts.clear();
+    this.blockedFingerprints.clear();
+  }
+
+  /**
+   * PHASE 4: Get count of blocked fingerprints
+   */
+  getBlockedFingerprintsCount(): number {
+    return this.blockedFingerprints.size;
+  }
+
+  /**
+   * PHASE 4: Get all execution attempt stats for monitoring
+   */
+  getTaskAttemptStats(): Map<string, ExecutionAttempt> {
+    return new Map(this.executionAttempts);
   }
 }
 

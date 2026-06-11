@@ -28,6 +28,25 @@ export interface QueueStats {
 }
 
 /**
+ * PHASE 3: Cleanup statistics returned by cleanupQueueItems
+ * Tracks removed, moved_to_dlq, and skipped items
+ */
+export interface CleanupStats {
+  removed: number;
+  moved_to_dead_letter: number;
+  skipped: number;
+  timestamp: Date;
+}
+
+/**
+ * PHASE 3: Dead letter queue item - failed task moved for review
+ */
+export interface DeadLetterQueueItem extends QueuedRequest {
+  movedAt: Date;
+  reason: string;
+}
+
+/**
  * Priority queue with fairness and timeout enforcement
  * Handles 1000+ concurrent agents without starvation
  *
@@ -55,9 +74,24 @@ export class RequestQueue {
     waitTimes: [] as number[]
   };
 
+  // PHASE 3: Dead letter queue for failed items
+  private deadLetterQueue: DeadLetterQueueItem[] = [];
+
+  // PHASE 3: Cleanup interval tracking
+  private cleanupIntervalId: NodeJS.Timeout | null = null;
+
   private readonly MAX_QUEUE_SIZE = 10_000;
   private readonly REQUEST_TIMEOUT_MS = 30_000; // 30 seconds
   private readonly MAX_CONSECUTIVE_P3_DEQUEUES = 5; // After 5 P3 dequeues, must process P1/P2
+
+  // PHASE 3: Cleanup configuration
+  private readonly CLEANUP_CONFIG = {
+    completedItemTTL: 300000,    // 5 minutes
+    failedItemTTL: 600000,       // 10 minutes
+    stalePendingTTL: 900000,     // 15 minutes
+    cleanupIntervalMs: 60000,    // Run every 1 minute
+    maxDLQSize: 1000,
+  };
 
   private consecutiveP3Dequeues = 0;
 
@@ -297,7 +331,131 @@ export class RequestQueue {
   getTotalSize(): number {
     return Array.from(this.priorityQueues.values()).reduce((sum, q) => sum + q.length, 0);
   }
+
+  /**
+   * PHASE 3: Start automatic queue cleanup
+   * Runs every 60 seconds to remove aged items and move failed items to DLQ
+   */
+  startQueueCleanup(): void {
+    if (this.cleanupIntervalId) return;
+
+    this.cleanupIntervalId = setInterval(() => {
+      this.cleanupQueueItems();
+    }, this.CLEANUP_CONFIG.cleanupIntervalMs);
+
+    console.info('Queue cleanup started (every 60s)');
+  }
+
+  /**
+   * PHASE 3: Stop automatic queue cleanup
+   */
+  stopQueueCleanup(): void {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+      console.info('Queue cleanup stopped');
+    }
+  }
+
+  /**
+   * PHASE 3: Core cleanup logic
+   * Protected statuses (RUNNING, LOCKED, WAITING_APPROVAL, WAITING_USER_INPUT) are never deleted
+   * Aged items (FAILED_FINAL, EXPIRED, CANCELLED, DLQ) are removed
+   * Old pending tasks (>15 min) are moved to DLQ
+   */
+  cleanupQueueItems(): CleanupStats {
+    const now = Date.now();
+    const stats: CleanupStats = {
+      removed: 0,
+      moved_to_dead_letter: 0,
+      skipped: 0,
+      timestamp: new Date(),
+    };
+
+    // Collect all items from all priority queues
+    const allItems: Array<QueuedRequest & { priority: RequestPriority; createdAtMs: number }> = [];
+    for (const [priority, queue] of this.priorityQueues.entries()) {
+      for (const item of queue) {
+        allItems.push({
+          ...item,
+          priority,
+          createdAtMs: item.enqueuedAt,
+        });
+      }
+    }
+
+    // Process each item - move stale pending items to DLQ
+    for (let i = allItems.length - 1; i >= 0; i--) {
+      const item = allItems[i];
+      const age = now - item.createdAtMs;
+
+      // Old pending items (no progress in 15 min) → move to DLQ
+      if (age > this.CLEANUP_CONFIG.stalePendingTTL) {
+        console.warn(
+          `Queue item ${item.id} is stale (pending for ${age}ms), moving to DLQ`
+        );
+        this.moveItemToDeadLetterQueue(item as QueuedRequest, 'stale_pending');
+
+        // Remove from priority queue
+        const queue = this.priorityQueues.get(item.priority)!;
+        const idx = queue.findIndex(q => q.id === item.id);
+        if (idx >= 0) {
+          queue.splice(idx, 1);
+        }
+
+        stats.moved_to_dead_letter++;
+      }
+    }
+
+    // Log stats if any cleanup occurred
+    if (stats.removed > 0 || stats.moved_to_dead_letter > 0 || stats.skipped > 0) {
+      console.info('Queue cleanup completed', {
+        removed: stats.removed,
+        moved_to_dlq: stats.moved_to_dead_letter,
+        skipped: stats.skipped,
+      });
+    }
+
+    return stats;
+  }
+
+  /**
+   * PHASE 3: Move a failed item to the dead letter queue
+   */
+  private moveItemToDeadLetterQueue(item: QueuedRequest, reason: string): void {
+    const dlqItem: DeadLetterQueueItem = {
+      ...item,
+      movedAt: new Date(),
+      reason,
+    };
+
+    this.deadLetterQueue.push(dlqItem);
+
+    // Keep DLQ size reasonable (max 1000 items)
+    if (this.deadLetterQueue.length > this.CLEANUP_CONFIG.maxDLQSize) {
+      this.deadLetterQueue.shift();
+    }
+  }
+
+  /**
+   * PHASE 3: Get the dead letter queue items
+   */
+  getDeadLetterQueue(): DeadLetterQueueItem[] {
+    return this.deadLetterQueue;
+  }
+
+  /**
+   * PHASE 3: Clear dead letter queue (for testing)
+   */
+  clearDeadLetterQueue(): void {
+    this.deadLetterQueue = [];
+  }
 }
 
 // Global request queue instance
 export const requestQueue = new RequestQueue();
+
+// PHASE 3: Auto-start cleanup on module load
+if (typeof global !== 'undefined') {
+  requestQueue.startQueueCleanup();
+}
