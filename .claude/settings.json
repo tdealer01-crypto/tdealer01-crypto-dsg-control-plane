@@ -1,4 +1,5 @@
 {
+  "language": "thai",
   "mcpServers": {
     "dsg-one-v1": {
       "type": "http",
