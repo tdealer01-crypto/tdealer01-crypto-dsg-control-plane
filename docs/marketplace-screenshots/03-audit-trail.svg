@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <!-- Screenshot 3: Audit Trail Detail -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0B0F1A"/>
+      <stop offset="100%" style="stop-color:#141B2D"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A2238"/>
+      <stop offset="100%" style="stop-color:#141B2D"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="1600" height="900" fill="url(#bgGrad)"/>
+  <rect x="40" y="40" width="1520" height="820" fill="none" stroke="#2A3A5E" stroke-width="1" rx="12"/>
+  
+  <!-- Header -->
+  <text x="80" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF">Audit Trail</text>
+  <text x="80" y="135" font-family="system-ui" font-size="14" fill="#6B8ABE">Immutable governance decisions with cryptographic evidence linking</text>
+  
+  <!-- Filter Bar -->
+  <rect x="80" y="180" width="1480" height="56" fill="url(#cardGrad)" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+  <g font-family="system-ui" font-size="13">
+    <text x="100" y="215" fill="#E5E7EB">Filters:</text>
+    <rect x="170" y="192" width="160" height="32" fill="#0F1628" stroke="#2A3A5E" rx="6"/>
+    <text x="250" y="213" fill="#FFFFFF" text-anchor="middle" font-size="12">All Decisions ▼</text>
+    <rect x="350" y="192" width="140" height="32" fill="#0F1628" stroke="#2A3A5E" rx="6"/>
+    <text x="420" y="213" fill="#FFFFFF" text-anchor="middle" font-size="12">Last 7 Days ▼</text>
+    <rect x="510" y="192" width="160" height="32" fill="#0F1628" stroke="#2A3A5E" rx="6"/>
+    <text x="590" y="213" fill="#FFFFFF" text-anchor="middle" font-size="12">All Accounts ▼</text>
+    <rect x="1380" y="192" width="140" height="32" fill="#1E293B" stroke="#2A3A5E" rx="6"/>
+    <text x="1450" y="213" fill="#E5E7EB" text-anchor="middle" font-size="12" font-weight="500">Export CSV</text>
+  </g>
+  
+  <!-- Expanded Audit Entry (Main Focus) -->
+  <rect x="80" y="260" width="1480" height="580" fill="url(#cardGrad)" stroke="#F59E0B" stroke-width="2" rx="12"/>
+  
+  <!-- Entry Header -->
+  <g font-family="system-ui" font-size="13">
+    <text x="100" y="300" fill="#F59E0B" font-weight="600" font-size="14">DECISION: REVIEW</text>
+    <text x="300" y="300" fill="#6B8ABE">Policy: high-value-charge-review • Matched: amount_threshold ($5,000)</text>
+    <text x="100" y="325" fill="#9CA3AF" font-size="12">Event: charge.succeeded • 2026-06-09 14:32:11 UTC • acct_1AbC... (Merchant Store)</text>
+  </g>
+  
+  <!-- Evidence Grid -->
+  <rect x="100" y="350" width="1440" height="470" fill="#0F1628" rx="8"/>
+  
+  <!-- Left Panel: Decision Details -->
+  <g font-family="system-ui" font-size="12">
+    <text x="120" y="385" fill="#E5E7EB" font-weight="600" font-size="14">Decision Details</text>
+    
+    <rect x="120" y="405" width="560" height="120" fill="#151D33" rx="6"/>
+    <text x="140" y="430" fill="#6B8ABE">Decision</text>
+    <text x="140" y="455" fill="#F59E0B" font-weight="700" font-size="18">REVIEW</text>
+    <text x="140" y="480" fill="#6B8ABE">Reason</text>
+    <text x="140" y="505" fill="#E5E7EB">Amount $12,500 exceeds threshold $5,000</text>
+    <text x="380" y="430" fill="#6B8ABE">Policy ID</text>
+    <text x="380" y="455" fill="#E5E7EB" font-family="monospace" font-size="11">pol_7x9K2mN4pQ</text>
+    <text x="380" y="480" fill="#6B8ABE">Evaluated At</text>
+    <text x="380" y="505" fill="#E5E7EB">2026-06-09 14:32:11.247 UTC</text>
+    
+    <!-- Stripe Event -->
+    <text x="120" y="550" fill="#E5E7EB" font-weight="600" font-size="14">Stripe Event</text>
+    <rect x="120" y="570" width="560" height="230" fill="#151D33" rx="6"/>
+    <text x="140" y="595" fill="#6B8ABE" font-family="monospace" font-size="10">{
+  "id": "evt_3R...aB4",
+  "type": "charge.succeeded",
+  "created": 1717915931,
+  "data": {
+    "object": {
+      "id": "ch_3R...Z7Y",
+      "amount": 1250000,
+      "currency": "usd",
+      "customer": "cus_1AbC...",
+      "status": "succeeded"
+    }
+  },
+  "account": "acct_1AbC..."
+}</text>
+  </g>
+  
+  <!-- Right Panel: Evidence & Context -->
+  <g font-family="system-ui" font-size="12">
+    <text x="720" y="385" fill="#E5E7EB" font-weight="600" font-size="14">Evidence & Context</text>
+    
+    <!-- Policy Matched -->
+    <rect x="720" y="405" width="800" height="160" fill="#151D33" rx="6"/>
+    <text x="740" y="430" fill="#6B8ABE">Matched Policy Condition</text>
+    <text x="740" y="455" fill="#E5E7EB" font-family="monospace" font-size="11">{
+  "condition": "amount_threshold",
+  "threshold": 5000,
+  "actual_amount": 12500,
+  "currency": "usd",
+  "matched": true,
+  "operator": "greater_than"
+}</text>
+    <text x="740" y="525" fill="#6B8ABE">Policy Configuration</text>
+    <text x="740" y="550" fill="#E5E7EB" font-family="monospace" font-size="11">{
+  "id": "pol_7x9K2mN4pQ",
+  "operation_type": "charge",
+  "action": "review",
+  "conditions": {
+    "amount_threshold": 5000,
+    "time_window": {"start": "09:00", "end": "18:00", "timezone": "UTC"}
+  },
+  "enabled": true,
+  "version": 3,
+  "created_at": "2026-05-15T10:00:00Z"
+}</text>
+    
+    <!-- Connected Account -->
+    <rect x="720" y="590" width="800" height="110" fill="#151D33" rx="6"/>
+    <text x="740" y="615" fill="#6B8ABE">Connected Account</text>
+    <text x="740" y="640" fill="#E5E7EB">acct_1AbC... (Merchant Store) • Standard • US</text>
+    <text x="740" y="660" fill="#E5E7EB">Fail-Safe: Fail-Open • Status: Active • Policies: 8</text>
+    <text x="740" y="680" fill="#E5E7EB">Installed: 2026-03-22 • Last Active: 2 min ago</text>
+    
+    <!-- Operator -->
+    <rect x="720" y="720" width="800" height="90" fill="#151D33" rx="6"/>
+    <text x="740" y="745" fill="#6B8ABE">Operator</text>
+    <text x="740" y="770" fill="#E5E7EB">sarah.chen@platform.com • Role: Platform Admin</text>
+    <text x="740" y="790" fill="#E5E7EB">IP: 203.0.113.45 • User-Agent: Mozilla/5.0...</text>
+    
+    <!-- Cryptographic Proof -->
+    <rect x="720" y="830" width="800" height="80" fill="#0F1628" rx="6"/>
+    <text x="740" y="855" fill="#6B8ABE">Cryptographic Evidence Link</text>
+    <text x="740" y="875" fill="#9CA3AF" font-family="monospace" font-size="11">sha256: a7f3e8...9b2c (links to DSG decision log entry dsg_dec_8k3L...</text>
+  </g>
+</svg>

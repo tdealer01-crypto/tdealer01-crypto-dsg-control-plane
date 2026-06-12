@@ -262,7 +262,7 @@ describe('/api/spine/execute', () => {
     const executeSpineIntent = vi.fn(async () => ({
       ok: true,
       status: 200,
-      body: { request_id: 'req_1', decision: 'ALLOW' },
+      body: { request_id: 'req_1', decision: 'ALLOW', stop_reason: 'NONE' },
     }));
 
     const issueSpineIntent = vi.fn();
@@ -338,7 +338,7 @@ describe('/api/spine/execute', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        body: { request_id: 'req_2', decision: 'ALLOW' },
+        body: { request_id: 'req_2', decision: 'ALLOW', stop_reason: 'NONE' },
       });
 
     const issueSpineIntent = vi.fn(async () => ({

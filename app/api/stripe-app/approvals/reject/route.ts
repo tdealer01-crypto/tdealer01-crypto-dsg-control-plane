@@ -37,16 +37,16 @@ export async function POST(request: NextRequest) {
       };
     })
       .from('stripe_operation_audits')
-      .update({ status: 'declined' })
+      .update({ status: 'rejected' })
       .eq('id', approvalId)
       .select('id');
 
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) return NextResponse.json({ message: 'Approval not found' }, { status: 404 });
 
-    return NextResponse.json({ ok: true, approval_id: approvalId, status: 'declined' });
+    return NextResponse.json({ ok: true, approval_id: approvalId, status: 'rejected' });
   } catch (error) {
-    console.error('[stripe-app/approvals/decline] failed:', error);
-    return NextResponse.json({ message: 'Failed to update approval' }, { status: 500 });
+    console.error('[stripe-app/approvals/reject] failed:', error);
+    return NextResponse.json({ message: 'Failed to reject approval' }, { status: 500 });
   }
 }

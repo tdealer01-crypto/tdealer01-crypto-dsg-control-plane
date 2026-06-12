@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
+import { isStripeInstallMode, resolveStripeSecretKey, type StripeInstallMode } from '@/lib/stripe-app/oauth-config';
+import { deauthorizeStripeAccount } from '@/lib/stripe-app/deauthorize';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +18,6 @@ const CONNECTED_AT_COOKIE = 'dsg_stripe_connected_at';
 const CONNECTED_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const STATE_MAX_AGE_SECONDS = 30 * 60;
 
-type InstallMode = 'live' | 'sandbox';
-
 type SignedState = {
   nonce?: string;
   mode?: string;
@@ -25,18 +25,8 @@ type SignedState = {
   iat?: number;
 };
 
-function isInstallMode(value: string | undefined): value is InstallMode {
-  return value === 'live' || value === 'sandbox';
-}
-
 function getStateSecret() {
-  return (
-    process.env.STRIPE_CONNECT_STATE_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.AUTH_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'dsg-local-state-secret'
-  );
+  return process.env.STRIPE_CONNECT_STATE_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || null;
 }
 
 function safeCompare(left: string, right: string) {
@@ -49,7 +39,9 @@ function verifySignedState(state: string): SignedState | null {
   const [encoded, signature] = state.split('.');
   if (!encoded || !signature) return null;
 
-  const expected = createHmac('sha256', getStateSecret()).update(encoded).digest('base64url');
+  const secret = getStateSecret();
+  if (!secret) return null;
+  const expected = createHmac('sha256', secret).update(encoded).digest('base64url');
   if (!safeCompare(signature, expected)) return null;
 
   try {
@@ -58,7 +50,8 @@ function verifySignedState(state: string): SignedState | null {
     const ageSeconds = Math.floor(Date.now() / 1000) - issuedAt;
 
     if (ageSeconds < 0 || ageSeconds > STATE_MAX_AGE_SECONDS) return null;
-    if (!isInstallMode(payload.mode)) return null;
+    if (!isStripeInstallMode(payload.mode)) return null;
+    if (typeof payload.nonce !== 'string' || payload.nonce.length < 16) return null;
     if (typeof payload.userId !== 'string' || payload.userId.length === 0) return null;
 
     return payload;
@@ -70,7 +63,7 @@ function verifySignedState(state: string): SignedState | null {
 function jsonWithConnectionCookies(
   body: Record<string, unknown>,
   status: number,
-  connection?: { accountId: string; mode: InstallMode; connectedAt: string },
+  connection?: { accountId: string; mode: StripeInstallMode; connectedAt: string },
 ) {
   const response = NextResponse.json(body, { status });
 
@@ -113,7 +106,7 @@ function jsonWithConnectionCookies(
   return response;
 }
 
-async function resolveOrgId(userId: string): Promise<string> {
+async function resolveOrgId(userId: string): Promise<string | null> {
   const supabase = getSupabaseAdmin();
 
   try {
@@ -132,10 +125,10 @@ async function resolveOrgId(userId: string): Promise<string> {
       .limit(1);
 
     const membership = data?.[0];
-    return membership?.org_id || membership?.organization_id || userId;
+    return membership?.org_id || membership?.organization_id || null;
   } catch (error) {
-    console.warn('[stripe-app/oauth/callback] Could not resolve org membership; falling back to user id:', error);
-    return userId;
+    console.error('[stripe-app/oauth/callback] Could not resolve org membership:', error);
+    return null;
   }
 }
 
@@ -159,8 +152,8 @@ export async function POST(request: NextRequest) {
     const installUserId = cookieStore.get(USER_COOKIE)?.value;
     const signedState = verifySignedState(state);
 
-    if (!signedState && expectedState && expectedState !== state) {
-      console.warn('[stripe-app/oauth/callback] Rejecting request: state mismatch');
+    if (!signedState || !expectedState || !safeCompare(expectedState, state)) {
+      console.warn('[stripe-app/oauth/callback] Rejecting request: invalid, expired, or mismatched state');
       return NextResponse.json({ message: 'Invalid state parameter' }, { status: 400 });
     }
 
@@ -169,16 +162,20 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabaseAuth.auth.getUser();
 
-    const userId = user?.id || signedState?.userId || installUserId;
-    const mode = isInstallMode(signedState?.mode)
-      ? signedState.mode
-      : isInstallMode(installMode)
-        ? installMode
-        : 'live';
+    if (!user || user.id !== signedState.userId || installUserId !== signedState.userId) {
+      console.warn('[stripe-app/oauth/callback] Rejecting request: OAuth state user mismatch');
+      return NextResponse.json({ message: 'Invalid state user' }, { status: 403 });
+    }
+
+    const userId = user.id;
+    if (!isStripeInstallMode(signedState.mode) || installMode !== signedState.mode) {
+      return NextResponse.json({ message: 'Invalid install mode state' }, { status: 400 });
+    }
+    const mode = signedState.mode;
 
     console.info('[stripe-app/oauth/callback] State accepted for mode:', mode);
 
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const stripeSecretKey = resolveStripeSecretKey(mode);
     if (!stripeSecretKey) {
       return NextResponse.json({ message: 'Stripe not configured' }, { status: 503 });
     }
@@ -222,7 +219,10 @@ export async function POST(request: NextRequest) {
 
     try {
       const supabase = getSupabaseAdmin();
-      const dsgOrgId = userId ? await resolveOrgId(userId) : stripeAccountId;
+      const dsgOrgId = await resolveOrgId(userId);
+      if (!dsgOrgId) {
+        return NextResponse.json({ message: 'No DSG organization membership found' }, { status: 403 });
+      }
       const { error: upsertError } = await (supabase as unknown as {
         from: (table: string) => {
           upsert: (
@@ -245,8 +245,11 @@ export async function POST(request: NextRequest) {
               install_mode: mode,
               linked_user_id: userId ?? null,
               dashboard_sync: true,
-              state_verified: Boolean(signedState),
+              state_verified: true,
             },
+            disconnected_at: null,
+            disconnect_reason: null,
+            last_lifecycle_event_id: null,
           },
           { onConflict: 'stripe_account_id' },
         );
@@ -260,6 +263,24 @@ export async function POST(request: NextRequest) {
     } catch (dbErr) {
       persistError = dbErr instanceof Error ? dbErr.message : 'Unknown DB error';
       console.error('[stripe-app/oauth/callback] DB error:', dbErr);
+    }
+
+    if (!persisted) {
+      let compensationSucceeded = false;
+      try {
+        await deauthorizeStripeAccount(mode, stripeAccountId);
+        compensationSucceeded = true;
+      } catch (compensationError) {
+        console.error('[stripe-app/oauth/callback] Failed to compensate unpersisted OAuth connection:', compensationError);
+      }
+      return NextResponse.json(
+        {
+          message: 'Stripe connection could not be persisted',
+          persist_error: persistError,
+          stripe_access_revoked: compensationSucceeded,
+        },
+        { status: 503 },
+      );
     }
 
     return jsonWithConnectionCookies(

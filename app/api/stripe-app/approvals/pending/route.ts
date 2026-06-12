@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 export const dynamic = 'force-dynamic';
 
 const CONNECTED_ACCOUNT_COOKIE = 'dsg_stripe_account_id';
+const OPEN_APPROVAL_STATUSES = new Set(['recorded', 'pending']);
 
 type AuditPayload = {
   amount_cents?: number;
@@ -104,6 +105,7 @@ export async function GET() {
                     stripe_object_id: string;
                     operation_type: string;
                     dsg_reason: string | null;
+                    status: string | null;
                     payload: AuditPayload | null;
                     created_at: string;
                   }> | null;
@@ -116,7 +118,7 @@ export async function GET() {
       };
     })
       .from('stripe_operation_audits')
-      .select('id, stripe_object_id, operation_type, dsg_reason, payload, created_at')
+      .select('id, stripe_object_id, operation_type, dsg_reason, status, payload, created_at')
       .in('stripe_account_id', accountIds)
       .eq('dsg_decision', 'REVIEW')
       .order('created_at', { ascending: false })
@@ -126,6 +128,7 @@ export async function GET() {
 
     const approvals = (data ?? [])
       .filter((row) => row.stripe_object_id && row.operation_type)
+      .filter((row) => OPEN_APPROVAL_STATUSES.has(row.status ?? 'recorded'))
       .map((row) => ({
         id: row.id,
         stripe_object_id: row.stripe_object_id,
@@ -133,6 +136,7 @@ export async function GET() {
         amount_cents: row.payload?.amount_cents ?? row.payload?.amount ?? 0,
         currency: row.payload?.currency ?? 'usd',
         policy_reason: row.dsg_reason ?? 'Manual review required',
+        status: row.status ?? 'recorded',
         created_at: row.created_at,
       }));
 

@@ -24,7 +24,7 @@ function getStripeClient(): Stripe {
     if (!secretKey) {
       throw new Error('STRIPE_SECRET_KEY is required');
     }
-    stripeClient = new Stripe(secretKey, { apiVersion: '2024-06-20' });
+    stripeClient = new Stripe(secretKey);
   }
   return stripeClient;
 }

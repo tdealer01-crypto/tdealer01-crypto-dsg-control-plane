@@ -6,7 +6,6 @@
  */
 
 import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 
@@ -80,14 +79,4 @@ export function initializeStripeApp(): Hono {
   return app;
 }
 
-// Start server if running as CLI
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const app = initializeStripeApp();
-
-  const port = parseInt(process.env.PORT || '3001', 10);
-  console.log(`🚀 Stripe App server running on http://localhost:${port}`);
-
-  serve({ fetch: app.fetch, port });
-}
-
-export default initializeStripeApp();
+export default initializeStripeApp;
