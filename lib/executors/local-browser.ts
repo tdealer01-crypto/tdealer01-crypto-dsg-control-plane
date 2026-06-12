@@ -34,6 +34,14 @@ export interface LocalBrowserCommandInput {
   mode?: LocalBrowserMode;
   /** Capture a screenshot as evidence after the action (live mode only). */
   captureScreenshot?: boolean;
+  /** Optional path to persist the evidence screenshot (live mode only). */
+  screenshotPath?: string;
+  /**
+   * Accept untrusted TLS certs. Default false (secure). Only enable in trusted
+   * environments behind a TLS-intercepting egress proxy whose CA the bundled
+   * Chromium does not carry.
+   */
+  ignoreHttpsErrors?: boolean;
   timeoutMs?: number;
 }
 
@@ -225,7 +233,10 @@ export async function executeLocalBrowserSafeDomCommand(
   });
 
   try {
-    const page = await browser.newPage();
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: input.ignoreHttpsErrors === true,
+    });
+    const page = await context.newPage();
     await page.goto(input.url, {
       waitUntil: 'domcontentloaded',
       timeout: input.timeoutMs ?? 15_000,
@@ -274,8 +285,11 @@ export async function executeLocalBrowserSafeDomCommand(
     }
 
     let screenshotSha256: string | undefined;
-    if (input.captureScreenshot) {
-      const buf = await page.screenshot({ fullPage: false });
+    if (input.captureScreenshot || input.screenshotPath) {
+      const buf = await page.screenshot({
+        fullPage: false,
+        ...(input.screenshotPath ? { path: input.screenshotPath } : {}),
+      });
       screenshotSha256 = createHash('sha256').update(buf).digest('hex');
     }
 
