@@ -2,7 +2,7 @@
   "app_id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
   "description": "Displays ALLOW, BLOCK, or REVIEW policy decisions on payment detail views.",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "homepage": "https://dsg.pics",
   "support_email": "t.dealer01@dsg.pics",
   "icons": {

@@ -6,16 +6,20 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
  * Validates core API endpoints and deployment health after deploying
  * to production or staging environments.
  *
- * Run with: npm run test tests/smoke/deployment.test.ts
- * Or against production: SMOKE_TEST_URL=https://prod.example.com npm run test tests/smoke/deployment.test.ts
+ * Requires a reachable target, so the suite only runs when SMOKE_TEST_URL is set:
+ *   Local dev server: SMOKE_TEST_URL=http://localhost:3000 npm run test tests/smoke/deployment.test.ts
+ *   Production:       SMOKE_TEST_URL=https://prod.example.com npm run test tests/smoke/deployment.test.ts
+ *
+ * Without SMOKE_TEST_URL (e.g. plain `npm run test` in CI) the suite is skipped —
+ * there is no server to probe and every request would fail with status 0.
  */
 
 // Configuration
-const SMOKE_TEST_URL = process.env.SMOKE_TEST_URL;
-const BASE_URL = SMOKE_TEST_URL || 'http://localhost:3000';
+const SMOKE_TEST_ENABLED = Boolean(process.env.SMOKE_TEST_URL);
+const BASE_URL = process.env.SMOKE_TEST_URL || 'http://localhost:3000';
 const AUTH_TOKEN = process.env.SMOKE_TEST_TOKEN || '';
 const CURL_TIMEOUT = 10000; // 10 seconds
-const SKIP_SMOKE_TESTS = !SMOKE_TEST_URL && process.env.CI === 'true';
+const SKIP_SMOKE_TESTS = !SMOKE_TEST_ENABLED;
 
 // Test counters
 let tests_completed = 0;
@@ -87,7 +91,7 @@ async function measureResponseTime(fn: () => Promise<unknown>): Promise<number> 
   return end - start;
 }
 
-describe.skipIf(SKIP_SMOKE_TESTS)('Post-Deployment Smoke Tests', () => {
+describe.skipIf(!SMOKE_TEST_ENABLED)('Post-Deployment Smoke Tests', () => {
   beforeAll(() => {
     console.log(`\n🚀 Running smoke tests against: ${BASE_URL}`);
     console.log(`📝 Auth token: ${AUTH_TOKEN ? AUTH_TOKEN.slice(0, 20) + '...' : 'none'}`);

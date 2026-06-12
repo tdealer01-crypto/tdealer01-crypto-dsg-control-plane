@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <!-- Screenshot 2: Policy Builder -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0B0F1A"/>
+      <stop offset="100%" style="stop-color:#141B2D"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A2238"/>
+      <stop offset="100%" style="stop-color:#141B2D"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="1600" height="900" fill="url(#bgGrad)"/>
+  <rect x="40" y="40" width="1520" height="820" fill="none" stroke="#2A3A5E" stroke-width="1" rx="12"/>
+  
+  <!-- Header -->
+  <text x="80" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF">Create New Policy</text>
+  <text x="80" y="135" font-family="system-ui" font-size="14" fill="#6B8ABE">Define governance rules for Stripe operations</text>
+  
+  <!-- Left Sidebar - Policy List -->
+  <rect x="80" y="180" width="320" height="660" fill="url(#cardGrad)" stroke="#2A3A5E" stroke-width="1" rx="12"/>
+  <text x="100" y="215" font-family="system-ui" font-size="14" font-weight="600" fill="#FFFFFF">Policy Templates</text>
+  
+  <g font-family="system-ui" font-size="13">
+    <!-- Template items -->
+    <g>
+      <rect x="90" y="235" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="268" fill="#FFFFFF" font-weight="500">High-Value Charge Review</text>
+      <text x="110" y="286" fill="#6B8ABE" font-size="11">charge • amount > $5,000</text>
+    </g>
+    <g>
+      <rect x="90" y="305" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="338" fill="#FFFFFF" font-weight="500">Business Hours Only</text>
+      <text x="110" y="356" fill="#6B8ABE" font-size="11">payout • 09:00-18:00 UTC</text>
+    </g>
+    <g>
+      <rect x="90" y="375" width="300" height="56" fill="#0F1628" rx="8" stroke="#6366F1" stroke-width="2"/>
+      <text x="110" y="408" fill="#FFFFFF" font-weight="500">Rate Limit: 100/hr</text>
+      <text x="110" y="426" fill="#6B8ABE" font-size="11">all • sliding window</text>
+    </g>
+    <g>
+      <rect x="90" y="445" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="478" fill="#FFFFFF" font-weight="500">Customer Allowlist</text>
+      <text x="110" y="496" fill="#6B8ABE" font-size="11">refund • trusted customers</text>
+    </g>
+    <g>
+      <rect x="90" y="515" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="548" fill="#FFFFFF" font-weight="500">New Bank Account Review</text>
+      <text x="110" y="566" fill="#6B8ABE" font-size="11">payout • external_account.created</text>
+    </g>
+    <g>
+      <rect x="90" y="585" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="618" fill="#FFFFFF" font-weight="500">Geographic Restrictions</text>
+      <text x="110" y="636" fill="#6B8ABE" font-size="11">charge • block high-risk countries</text>
+    </g>
+    <g>
+      <rect x="90" y="655" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="688" fill="#FFFFFF" font-weight="500">AML/KYC Verification Gate</text>
+      <text x="110" y="706" fill="#6B8ABE" font-size="11">all • require verification</text>
+    </g>
+    <g>
+      <rect x="90" y="725" width="300" height="56" fill="#151D33" rx="8" stroke="#2A3A5E" stroke-width="1"/>
+      <text x="110" y="758" fill="#FFFFFF" font-weight="500">Subscription Trial Limits</text>
+      <text x="110" y="776" fill="#6B8ABE" font-size="11">subscription • trial_days ≤ 14</text>
+    </g>
+  </g>
+  
+  <!-- Main Form Area -->
+  <rect x="440" y="180" width="1120" height="660" fill="url(#cardGrad)" stroke="#2A3A5E" stroke-width="1" rx="12"/>
+  
+  <!-- Form Header -->
+  <text x="470" y="220" font-family="system-ui" font-size="20" font-weight="600" fill="#FFFFFF">Policy Configuration</text>
+  <text x="470" y="245" font-family="system-ui" font-size="13" fill="#6B8ABE">Configure conditions and actions for this policy</text>
+  
+  <!-- Form Fields -->
+  <g font-family="system-ui" font-size="13">
+    <!-- Operation Type -->
+    <text x="470" y="290" fill="#E5E7EB" font-weight="500">Operation Type *</text>
+    <rect x="470" y="300" width="320" height="44" fill="#0F1628" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="490" y="330" fill="#FFFFFF">charge</text>
+    <text x="750" y="330" fill="#6B8ABE" font-size="11">▼</text>
+    
+    <!-- Policy Name -->
+    <text x="820" y="290" fill="#E5E7EB" font-weight="500">Policy Name *</text>
+    <rect x="820" y="300" width="320" height="44" fill="#0F1628" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="840" y="330" fill="#9CA3AF">high-value-charge-review</text>
+    
+    <!-- Description -->
+    <text x="1170" y="290" fill="#E5E7EB" font-weight="500">Description</text>
+    <rect x="1170" y="300" width="350" height="44" fill="#0F1628" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="1190" y="330" fill="#9CA3AF">Review charges exceeding $5,000</text>
+    
+    <!-- Condition Section -->
+    <text x="470" y="370" fill="#E5E7EB" font-weight="500" font-size="15">Conditions (all must match)</text>
+    
+    <!-- Condition 1: Amount Threshold -->
+    <rect x="470" y="390" width="1050" height="70" fill="#0F1628" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="490" y="420" fill="#FFFFFF" font-weight="500">Amount Threshold</text>
+    <text x="490" y="445" fill="#6B8ABE" font-size="12">Trigger when charge amount exceeds threshold</text>
+    <rect x="700" y="410" width="120" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="6"/>
+    <text x="760" y="437" fill="#FFFFFF" text-anchor="middle" font-size="14">5000</text>
+    <text x="830" y="437" fill="#6B8ABE" font-size="13">USD</text>
+    <rect x="950" y="410" width="200" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="6"/>
+    <text x="1050" y="437" fill="#FFFFFF" text-anchor="middle" font-size="13">cents (500000)</text>
+    <rect x="1180" y="410" width="140" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="6"/>
+    <text x="1250" y="437" fill="#FFFFFF" text-anchor="middle" font-size="13">Greater than</text>
+    
+    <!-- Condition 2: Time Window -->
+    <rect x="470" y="480" width="1050" height="70" fill="#0F1628" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="490" y="510" fill="#FFFFFF" font-weight="500">Time Window</text>
+    <text x="490" y="535" fill="#6B8ABE" font-size="12">Only evaluate during business hours</text>
+    <rect x="700" y="500" width="140" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="6"/>
+    <text x="770" y="527" fill="#FFFFFF" text-anchor="middle" font-size="14">09:00</text>
+    <text x="850" y="527" fill="#6B8ABE">to</text>
+    <rect x="900" y="500" width="140" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="6"/>
+    <text x="970" y="527" fill="#FFFFFF" text-anchor="middle" font-size="14">18:00</text>
+    <text x="1050" y="527" fill="#6B8ABE">UTC</text>
+    <rect x="1100" y="500" width="200" height="40" fill="#1A2238" stroke="#F59E0B" stroke-width="1" rx="6"/>
+    <text x="1200" y="527" fill="#F59E0B" text-anchor="middle" font-size="12">Outside = REVIEW</text>
+    
+    <!-- Condition 3: Customer Allowlist -->
+    <rect x="470" y="570" width="1050" height="70" fill="#0F1628" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="490" y="600" fill="#FFFFFF" font-weight="500">Customer Allowlist (optional)</text>
+    <text x="490" y="625" fill="#6B8ABE" font-size="12">Only apply to specific customers</text>
+    <rect x="700" y="590" width="500" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="6"/>
+    <text x="950" y="617" fill="#9CA3AF" text-anchor="middle">cust_1AbC..., cust_2DeF..., cust_3GhI... (+5 more)</text>
+    
+    <!-- Action Section -->
+    <text x="470" y="670" fill="#E5E7EB" font-weight="500" font-size="15">Action</text>
+    
+    <!-- Action Cards -->
+    <g>
+      <rect x="470" y="685" width="320" height="100" fill="#0F1628" stroke="#EF4444" stroke-width="1" rx="8"/>
+      <circle cx="500" cy="715" r="10" fill="none" stroke="#EF4444" stroke-width="2"/>
+      <circle cx="500" cy="715" r="5" fill="#EF4444"/>
+      <text x="530" y="720" fill="#EF4444" font-weight="600" font-size="14">BLOCK</text>
+      <text x="530" y="750" fill="#9CA3AF" font-size="12">Immediately reject the operation</text>
+    </g>
+    
+    <g>
+      <rect x="820" y="685" width="320" height="100" fill="#0F1628" stroke="#F59E0B" stroke-width="2" rx="8"/>
+      <circle cx="850" cy="715" r="10" fill="#F59E0B"/>
+      <text x="880" y="720" fill="#F59E0B" font-weight="600" font-size="14">REVIEW</text>
+      <text x="880" y="740" fill="#F59E0B" font-size="12" font-weight="500">Requires human approval</text>
+      <text x="880" y="760" fill="#9CA3AF" font-size="11">Slack/Email notification • 4hr SLA</text>
+    </g>
+    
+    <g>
+      <rect x="1170" y="685" width="320" height="100" fill="#0F1628" stroke="#10B981" stroke-width="1" rx="8"/>
+      <circle cx="1200" cy="715" r="10" fill="none" stroke="#10B981" stroke-width="2"/>
+      <text x="1230" y="720" fill="#10B981" font-weight="600" font-size="14">ALLOW</text>
+      <text x="1230" y="750" fill="#9CA3AF" font-size="12">Permit operation without review</text>
+    </g>
+    
+    <!-- Tags -->
+    <text x="470" y="815" fill="#E5E7EB" font-weight="500">Tags</text>
+    <rect x="530" y="805" width="100" height="30" fill="#1A2238" stroke="#6366F1" stroke-width="1" rx="15"/>
+    <text x="580" y="824" fill="#A5B4FC" text-anchor="middle" font-size="11">charge</text>
+    <rect x="640" y="805" width="120" height="30" fill="#1A2238" stroke="#6366F1" stroke-width="1" rx="15"/>
+    <text x="700" y="824" fill="#A5B4FC" text-anchor="middle" font-size="11">high-value</text>
+    <rect x="770" y="805" width="100" height="30" fill="#1A2238" stroke="#6366F1" stroke-width="1" rx="15"/>
+    <text x="820" y="824" fill="#A5B4FC" text-anchor="middle" font-size="11">review</text>
+    <rect x="880" y="805" width="180" height="30" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="15"/>
+    <text x="970" y="824" fill="#6B8ABE" text-anchor="middle" font-size="11">+ Add tag</text>
+    
+    <!-- Buttons -->
+    <rect x="1100" y="805" width="140" height="40" fill="#1A2238" stroke="#2A3A5E" stroke-width="1" rx="8"/>
+    <text x="1170" y="832" fill="#E5E7EB" text-anchor="middle" font-weight="500">Cancel</text>
+    <rect x="1260" y="805" width="160" height="40" fill="url(#accentGrad)" rx="8"/>
+    <text x="1340" y="832" fill="#FFFFFF" text-anchor="middle" font-weight="600">Create Policy</text>
+  </g>
+</svg>

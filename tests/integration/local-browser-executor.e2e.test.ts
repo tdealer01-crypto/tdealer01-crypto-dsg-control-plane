@@ -1,28 +1,25 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import http from 'node:http';
-import type { AddressInfo } from 'node:net';
+import fs from 'node:fs';
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
+import type { AddressInfo } from 'node:net';
 import { buildSafeManifest } from '@/lib/dsg/safe-dom/manifest';
 import type { RawDomElement, SafeDomCommand } from '@/lib/dsg/safe-dom/types';
 import { executeLocalBrowserSafeDomCommand } from '@/lib/executors/local-browser';
 
-// Check if Chromium is available (playwright install not run or missing)
-function hasChromium(): boolean {
-  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
-    return existsSync(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
-  }
-  const playwrightDir = `${homedir()}/.cache/ms-playwright`;
-  if (!existsSync(playwrightDir)) return false;
+// The "live" test needs a downloaded Chromium (npx playwright-core install
+// chromium). CI unit jobs do not install browsers, so skip it there instead of
+// failing on browserType.launch.
+function chromiumInstalled(): boolean {
   try {
-    const dirs = readdirSync(playwrightDir);
-    return dirs.some((d) => d.includes('chromium'));
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { chromium } = require('playwright-core') as typeof import('playwright-core');
+    return fs.existsSync(chromium.executablePath());
   } catch {
     return false;
   }
 }
-
-const CHROMIUM_MISSING = !hasChromium();
 
 // Serve a real HTML page locally so the browser drives a real DOM without
 // ever touching an external website.
@@ -37,7 +34,7 @@ const TEST_PAGE = `<!doctype html>
   </form>
 </body></html>`;
 
-describe.skipIf(CHROMIUM_MISSING)('Local self-hosted browser executor (real Chromium, local page)', () => {
+describe('Local self-hosted browser executor (real Chromium, local page)', () => {
   let server: http.Server;
   let baseUrl: string;
 
@@ -176,7 +173,7 @@ describe.skipIf(CHROMIUM_MISSING)('Local self-hosted browser executor (real Chro
     delete process.env.HERMES_LOCAL_BROWSER_LIVE;
   });
 
-  it('live: drives a real Chromium, types into a real DOM input, captures evidence', async () => {
+  it.skipIf(!chromiumInstalled())('live: drives a real Chromium, types into a real DOM input, captures evidence', async () => {
     process.env.HERMES_LOCAL_BROWSER_LIVE = 'true';
 
     const rawElements: RawDomElement[] = [

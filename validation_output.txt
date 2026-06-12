@@ -1,0 +1,108 @@
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34mStripe Configuration Validator[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+Project: tdealer01-crypto-dsg-control-plane
+Timestamp: 2026-06-10T01:43:48Z
+
+[0;34mℹ INFO[0m: Loading environment from: /data/data/com.termux/files/home/tdealer01-crypto-dsg-control-plane/.env.local
+DEBUG: About to run check_env_vars
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m1. Checking Environment Variables[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;32m✓ PASS[0m: STRIPE_SECRET_KEY is set: sk_test_...HARS
+[0;32m✓ PASS[0m: STRIPE_WEBHOOK_SECRET is set: whsec_te...HARS
+[0;32m✓ PASS[0m: STRIPE_APP_CLIENT_ID is set: ca_test_...T_ID
+[0;34mℹ INFO[0m: STRIPE_APP_CLIENT_SECRET is set: sk_test_...HARS
+[0;34mℹ INFO[0m: STRIPE_PUBLISHABLE_KEY is set: pk_test_...HARS
+
+DEBUG: check_env_vars done
+DEBUG: About to run check_key_formats
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m2. Validating Key Formats[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;32m✓ PASS[0m: STRIPE_SECRET_KEY format is valid
+[0;32m✓ PASS[0m: STRIPE_WEBHOOK_SECRET format is valid
+[0;32m✓ PASS[0m: STRIPE_APP_CLIENT_ID format is valid
+
+DEBUG: check_key_formats done
+DEBUG: About to run check_api_connectivity
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m3. Testing API Connectivity[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;31m✗ FAIL[0m: Stripe API key is invalid (401 Unauthorized)
+
+DEBUG: check_api_connectivity done
+DEBUG: About to run check_stripe_cli
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m4. Checking Stripe CLI Availability[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;32m✓ PASS[0m: Stripe CLI is installed: stripe version 1.20.0
+[1;33m⚠ WARN[0m: Stripe CLI is not authenticated (run: stripe login)
+
+DEBUG: check_stripe_cli done
+DEBUG: About to run check_local_webhook_config
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m5. Checking Local Webhook Configuration[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;32m✓ PASS[0m: Webhook handler file exists: src/routes/webhooks.ts
+[0;32m✓ PASS[0m: Webhook secret validation is implemented in code
+[0;32m✓ PASS[0m: Stripe webhook signature validation is implemented
+
+DEBUG: check_local_webhook_config done
+DEBUG: About to run check_oauth_handler
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m6. Checking OAuth Handler[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;32m✓ PASS[0m: OAuth handler file exists: src/routes/oauth.ts
+[0;32m✓ PASS[0m: OAuth client ID is referenced in handler
+[0;32m✓ PASS[0m: OAuth state validation is implemented/planned
+
+DEBUG: check_oauth_handler done
+DEBUG: About to run check_supabase_config
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m7. Checking Supabase Configuration[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;32m✓ PASS[0m: SUPABASE_URL is set
+[0;32m✓ PASS[0m: SUPABASE_SERVICE_ROLE_KEY is set
+
+DEBUG: check_supabase_config done
+DEBUG: About to run print_dashboard_guide
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34m8. Manual Verification Required (Stripe Dashboard)[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+The following checks require manual verification in Stripe Dashboard:
+
+  1. Webhook Endpoint Registration:
+     - Go to: https://dashboard.stripe.com/webhooks
+     - Expected endpoint: https://your-app.vercel.app/api/stripe/webhook/events
+     - Verify events are enabled: charge.*, payout.*, refund.*, payment_intent.*
+
+  2. OAuth Configuration:
+     - Go to: https://dashboard.stripe.com/apps
+     - Verify OAuth client ID is registered
+     - Verify redirect URI is registered: https://your-app.vercel.app/stripe/oauth/callback
+
+  3. Restricted API Keys (optional):
+     - Go to: https://dashboard.stripe.com/apikeys/restricted-tokens
+     - Verify restricted keys have appropriate permissions
+
+  4. Webhook Signing Secret:
+     - Location: https://dashboard.stripe.com/webhooks
+     - Click endpoint to reveal signing secret
+     - Verify it matches STRIPE_WEBHOOK_SECRET in .env
+
+Run the following commands to test:
+  # Test with Stripe CLI (requires authentication)
+  stripe trigger charge.created
+
+  # Or use: ./scripts/test-webhook-delivery.sh
+
+DEBUG: print_dashboard_guide done
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[0;34mValidation Summary[0m
+[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+Passed:  [0;32m15[0m
+Failed:  [0;31m1[0m
+Warnings: [1;33m1[0m
+
+[0;31m1 check(s) failed. See above for details.[0m
