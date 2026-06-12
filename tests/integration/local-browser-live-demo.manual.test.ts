@@ -1,11 +1,28 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { existsSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { executeLocalBrowserSafeDomCommand } from '@/lib/executors/local-browser';
+
+// Check if Chromium is available (playwright install not run or missing)
+function hasChromium(): boolean {
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+    return existsSync(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+  }
+  const playwrightDir = `${homedir()}/.cache/ms-playwright`;
+  if (!existsSync(playwrightDir)) return false;
+  try {
+    const dirs = readdirSync(playwrightDir);
+    return dirs.some((d) => d.includes('chromium'));
+  } catch {
+    return false;
+  }
+}
 
 // Manual LIVE demo — touches a real external website (example.com, an
 // IANA-reserved domain for testing). Guarded so it never runs in CI:
 //   RUN_LIVE_BROWSER_DEMO=1 HERMES_LOCAL_BROWSER_LIVE=true npx vitest run <file>
-const RUN = process.env.RUN_LIVE_BROWSER_DEMO === '1';
+const RUN = process.env.RUN_LIVE_BROWSER_DEMO === '1' && hasChromium();
 
 // Manifest ids are deterministic: sha256(frameId)[:8] + '-e{index:03d}'.
 function elementId(frameId: string, index: number): string {

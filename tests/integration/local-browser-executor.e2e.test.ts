@@ -1,9 +1,28 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { existsSync, readdirSync } from 'node:fs';
+import { homedir, platform } from 'node:os';
 import { buildSafeManifest } from '@/lib/dsg/safe-dom/manifest';
 import type { RawDomElement, SafeDomCommand } from '@/lib/dsg/safe-dom/types';
 import { executeLocalBrowserSafeDomCommand } from '@/lib/executors/local-browser';
+
+// Check if Chromium is available (playwright install not run or missing)
+function hasChromium(): boolean {
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+    return existsSync(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+  }
+  const playwrightDir = `${homedir()}/.cache/ms-playwright`;
+  if (!existsSync(playwrightDir)) return false;
+  try {
+    const dirs = readdirSync(playwrightDir);
+    return dirs.some((d) => d.includes('chromium'));
+  } catch {
+    return false;
+  }
+}
+
+const CHROMIUM_MISSING = !hasChromium();
 
 // Serve a real HTML page locally so the browser drives a real DOM without
 // ever touching an external website.
@@ -18,7 +37,7 @@ const TEST_PAGE = `<!doctype html>
   </form>
 </body></html>`;
 
-describe('Local self-hosted browser executor (real Chromium, local page)', () => {
+describe.skipIf(CHROMIUM_MISSING)('Local self-hosted browser executor (real Chromium, local page)', () => {
   let server: http.Server;
   let baseUrl: string;
 
