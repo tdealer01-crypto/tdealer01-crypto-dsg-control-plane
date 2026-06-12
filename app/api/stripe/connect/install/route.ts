@@ -38,7 +38,6 @@ function resolveConfiguredInstallUrl(mode: InstallMode) {
       process.env.STRIPE_SANDBOX_INSTALL_URL ||
       process.env.NEXT_PUBLIC_STRIPE_SANDBOX_INSTALL_URL ||
       process.env.STRIPE_EXTERNAL_TEST_URL ||
-      // Current Stripe External Test URL used for QA. Keep env vars above as the primary override.
       'https://marketplace.stripe.com/oauth/v2/chnlink_61UpJ0wqNe8NQ3pYF41AZNzhgTUPV4R6/authorize?client_id=ca_UfEPAC4NcvG2nYAYjohDQ9GtDlIdajy6'
     );
   }
@@ -53,7 +52,7 @@ function buildAuthorizeUrl({
   state,
 }: {
   mode: InstallMode;
-  clientId: string;
+  clientId: string | null;
   redirectUri: URL;
   state: string;
 }) {
@@ -62,7 +61,11 @@ function buildAuthorizeUrl({
     ? new URL(configuredUrl)
     : new URL('/oauth/v2/authorize', 'https://marketplace.stripe.com');
 
-  url.searchParams.set('client_id', clientId);
+  if (!url.searchParams.get('client_id')) {
+    if (!clientId) throw new Error(`${mode} Stripe client_id is not configured`);
+    url.searchParams.set('client_id', clientId);
+  }
+
   url.searchParams.set('redirect_uri', redirectUri.toString());
   url.searchParams.set('state', state);
 
@@ -82,19 +85,20 @@ export async function GET(request: NextRequest) {
   }
 
   const mode = resolveMode(request);
-  const clientId = resolveClientId(mode);
-
-  if (!clientId) {
-    return NextResponse.json(
-      { error: `${mode === 'sandbox' ? 'Sandbox' : 'Live'} Stripe client_id is not configured` },
-      { status: 503 },
-    );
-  }
-
+  const clientId = resolveClientId(mode) ?? null;
   const callbackPath = process.env.STRIPE_CONNECT_CALLBACK_PATH || DEFAULT_CALLBACK_PATH;
   const redirectUri = new URL(callbackPath, getAppOrigin(request.url));
   const state = crypto.randomUUID();
-  const authorizeUrl = buildAuthorizeUrl({ mode, clientId, redirectUri, state });
+
+  let authorizeUrl: URL;
+  try {
+    authorizeUrl = buildAuthorizeUrl({ mode, clientId, redirectUri, state });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Stripe OAuth link is not configured' },
+      { status: 503 },
+    );
+  }
 
   const response = NextResponse.redirect(authorizeUrl.toString(), { status: 302 });
   const secure = process.env.NODE_ENV === 'production';
