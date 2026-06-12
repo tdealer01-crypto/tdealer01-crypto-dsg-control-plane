@@ -17,6 +17,8 @@ export interface Task {
   dependencies?: string[];
   estimatedDurationMs?: number;
   priority?: number;
+  /** Executor type: 'browser' (default), 'android', etc. */
+  executorType?: 'browser' | 'android';
 }
 
 export interface TaskDag {
