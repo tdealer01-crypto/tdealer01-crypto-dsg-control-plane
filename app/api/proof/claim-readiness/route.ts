@@ -7,9 +7,11 @@
  * Query parameters:
  *   - claims: comma-separated claim IDs (optional, defaults to standard set)
  *   - includeEvidence: boolean to include detailed evidence artifacts (optional, defaults to false)
+ *   - includeSecurityBreakdown: boolean to include detailed security metric breakdown (optional, defaults to false)
  *
  * Example:
  *   GET /api/proof/claim-readiness?claims=ISO-42001-A.6-PLANNING,NIST-GOVERN-01&includeEvidence=true
+ *   GET /api/proof/claim-readiness?claims=SECURITY-HARDENING&includeSecurityBreakdown=true
  */
 
 import { NextResponse } from 'next/server';
@@ -45,11 +47,41 @@ interface EvidenceArtifact {
   severity_level: number;
 }
 
+interface SecurityBreakdown {
+  npm_audit?: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    timestamp?: string;
+  };
+  gitleaks?: {
+    secrets: number;
+    patterns: string[];
+    timestamp?: string;
+  };
+  codeql?: {
+    critical: number;
+    high: number;
+    medium: number;
+    tool_version?: string;
+    timestamp?: string;
+  };
+  sbom?: {
+    components: number;
+    vulnerabilities: number;
+    format: string;
+    hash?: string;
+    timestamp?: string;
+  };
+}
+
 interface ClaimReadinessReport {
   claim_id: string;
   status: ClaimStatus;
   required_evidence: EvidenceRequirement[];
   available_evidence?: EvidenceArtifact[];
+  security_breakdown?: SecurityBreakdown;
   gaps: string[];
   share_url?: string;
 }
@@ -68,6 +100,7 @@ interface ApiResponse {
     partial: number;
     block: number;
     total: number;
+    security_claims: number;
   };
   checkpoint: {
     timestamp: string;
@@ -151,23 +184,36 @@ const CLAIM_EVIDENCE_STANDARD: Record<string, ClaimSpec> = {
     label: 'Security & Hardening Controls',
     required_evidence_types: [
       {
-        type: 'unit',
-        level: 1,
-        description: 'Security unit tests',
-      },
-      {
-        type: 'adversarial',
+        type: 'npm_audit',
         level: 3,
-        description: 'Adversarial/fuzz tests for API surfaces',
+        description: 'npm vulnerability audit (critical=0, high≤0)',
       },
       {
-        type: 'oversight',
-        level: 4,
-        description: 'Manual security review & audit logs',
+        type: 'gitleaks',
+        level: 3,
+        description: 'gitleaks secret scanning (secrets=0)',
+      },
+      {
+        type: 'codeql',
+        level: 3,
+        description: 'CodeQL static analysis (critical=0)',
       },
     ],
-    pass_criteria: 'No high/critical vulns in npm audit; rate-limiting active; CORS configured',
+    pass_criteria: 'Critical vulns = 0; high ≤ 0; no secrets detected; CodeQL critical = 0',
     responsible_owner: 'Security',
+  },
+  'SBOM-GENERATED': {
+    claim_id: 'SBOM-GENERATED',
+    label: 'Software Bill of Materials Generation',
+    required_evidence_types: [
+      {
+        type: 'sbom',
+        level: 3,
+        description: 'SBOM present and valid (CycloneDX format, ≥100 components)',
+      },
+    ],
+    pass_criteria: 'SBOM exists; format = CycloneDX; components ≥ 100',
+    responsible_owner: 'DevOps / Build',
   },
   'RUNTIME-INTEGRITY': {
     claim_id: 'RUNTIME-INTEGRITY',
@@ -206,6 +252,7 @@ function parseClaimsQuery(claimsParam: string | undefined): string[] {
       'NIST-GOVERN-01',
       'SUPPLY-CHAIN-01',
       'SECURITY-HARDENING',
+      'SBOM-GENERATED',
       'RUNTIME-INTEGRITY',
     ];
   }
@@ -222,6 +269,88 @@ function parseClaimsQuery(claimsParam: string | undefined): string[] {
 
 function getClaimMetadata(claim_id: string): ClaimSpec | null {
   return CLAIM_EVIDENCE_STANDARD[claim_id] ?? null;
+}
+
+// ============================================================================
+// Helper: Get security evidence from Supabase
+// ============================================================================
+
+async function getSecurityEvidence(): Promise<SecurityBreakdown> {
+  const breakdown: SecurityBreakdown = {};
+
+  try {
+    const admin = getSupabaseAdmin();
+
+    // Query claim_readiness_artifacts for security-related evidence
+    const { data, error } = await admin
+      .from('claim_readiness_artifacts')
+      .select('evidence_type, artifact_data, created_at')
+      .in('evidence_type', ['npm_audit', 'gitleaks', 'codeql', 'sbom'])
+      .order('created_at', { ascending: false });
+
+    if (error || !data) {
+      return breakdown;
+    }
+
+    // Group artifacts by evidence_type and take most recent
+    const latest: Record<string, (typeof data)[0]> = {};
+    for (const artifact of data) {
+      if (!latest[artifact.evidence_type]) {
+        latest[artifact.evidence_type] = artifact;
+      }
+    }
+
+    // Parse npm_audit
+    if (latest.npm_audit) {
+      const artifactData = latest.npm_audit.artifact_data as Record<string, unknown>;
+      breakdown.npm_audit = {
+        critical: (artifactData.critical as number) ?? 0,
+        high: (artifactData.high as number) ?? 0,
+        medium: (artifactData.medium as number) ?? 0,
+        low: (artifactData.low as number) ?? 0,
+        timestamp: latest.npm_audit.created_at ?? undefined,
+      };
+    }
+
+    // Parse gitleaks
+    if (latest.gitleaks) {
+      const artifactData = latest.gitleaks.artifact_data as Record<string, unknown>;
+      breakdown.gitleaks = {
+        secrets: (artifactData.secrets_detected as number) ?? 0,
+        patterns: (artifactData.patterns as string[]) ?? [],
+        timestamp: latest.gitleaks.created_at ?? undefined,
+      };
+    }
+
+    // Parse codeql
+    if (latest.codeql) {
+      const artifactData = latest.codeql.artifact_data as Record<string, unknown>;
+      breakdown.codeql = {
+        critical: (artifactData.critical as number) ?? 0,
+        high: (artifactData.high as number) ?? 0,
+        medium: (artifactData.medium as number) ?? 0,
+        tool_version: (artifactData.tool_version as string) ?? undefined,
+        timestamp: latest.codeql.created_at ?? undefined,
+      };
+    }
+
+    // Parse sbom
+    if (latest.sbom) {
+      const artifactData = latest.sbom.artifact_data as Record<string, unknown>;
+      breakdown.sbom = {
+        components: (artifactData.components as number) ?? 0,
+        vulnerabilities: (artifactData.vulnerabilities as number) ?? 0,
+        format: (artifactData.format as string) ?? 'unknown',
+        hash: (artifactData.hash as string) ?? undefined,
+        timestamp: latest.sbom.created_at ?? undefined,
+      };
+    }
+
+    return breakdown;
+  } catch {
+    // Supabase unavailable or query failed; return empty breakdown
+    return breakdown;
+  }
 }
 
 // ============================================================================
@@ -302,10 +431,99 @@ async function getEvidenceStatus(
 
 function assessClaimStatus(
   spec: ClaimSpec,
-  evidenceAvailable: EvidenceArtifact[]
+  evidenceAvailable: EvidenceArtifact[],
+  securityBreakdown?: SecurityBreakdown
 ): { status: ClaimStatus; gaps: string[] } {
   const gaps: string[] = [];
 
+  // Special handling for SECURITY-HARDENING claim
+  if (spec.claim_id === 'SECURITY-HARDENING' && securityBreakdown) {
+    // Check if required security artifacts exist
+    const hasNpmAudit = securityBreakdown.npm_audit !== undefined;
+    const hasGitleaks = securityBreakdown.gitleaks !== undefined;
+    const hasCodeql = securityBreakdown.codeql !== undefined;
+
+    if (!hasNpmAudit && !hasGitleaks && !hasCodeql) {
+      gaps.push('Missing npm_audit evidence: run npm audit scan');
+      gaps.push('Missing gitleaks evidence: run gitleaks scan');
+      gaps.push('Missing codeql evidence: run CodeQL analysis');
+      return { status: 'BLOCK', gaps };
+    }
+
+    // Assess pass criteria: critical=0, high≤0, secrets=0, CodeQL critical=0
+    let critical = false;
+    let highVulns = false;
+    let secretsFound = false;
+    let codeqlCritical = false;
+
+    if (securityBreakdown.npm_audit) {
+      if (securityBreakdown.npm_audit.critical > 0) {
+        critical = true;
+        gaps.push(`npm audit: ${securityBreakdown.npm_audit.critical} critical vulnerabilities found`);
+      }
+      if (securityBreakdown.npm_audit.high > 0) {
+        highVulns = true;
+        gaps.push(`npm audit: ${securityBreakdown.npm_audit.high} high vulnerabilities found`);
+      }
+    } else {
+      gaps.push('npm_audit artifact not found; assuming no scan');
+      return { status: 'BLOCK', gaps };
+    }
+
+    if (securityBreakdown.gitleaks) {
+      if (securityBreakdown.gitleaks.secrets > 0) {
+        secretsFound = true;
+        gaps.push(`gitleaks: ${securityBreakdown.gitleaks.secrets} secrets detected`);
+      }
+    } else {
+      gaps.push('gitleaks artifact not found; assuming no scan');
+      return { status: 'BLOCK', gaps };
+    }
+
+    if (securityBreakdown.codeql) {
+      if (securityBreakdown.codeql.critical > 0) {
+        codeqlCritical = true;
+        gaps.push(`CodeQL: ${securityBreakdown.codeql.critical} critical issues found`);
+      }
+    } else {
+      gaps.push('codeql artifact not found; assuming no scan');
+      return { status: 'BLOCK', gaps };
+    }
+
+    // Pass if no critical/high issues and no secrets
+    if (!critical && !secretsFound && !codeqlCritical) {
+      if (highVulns) {
+        return { status: 'PARTIAL', gaps };
+      }
+      return { status: 'PASS', gaps: [] };
+    }
+
+    return { status: 'BLOCK', gaps };
+  }
+
+  // Special handling for SBOM-GENERATED claim
+  if (spec.claim_id === 'SBOM-GENERATED' && securityBreakdown) {
+    if (!securityBreakdown.sbom) {
+      gaps.push('SBOM artifact not found; run SBOM generation workflow');
+      return { status: 'BLOCK', gaps };
+    }
+
+    if (securityBreakdown.sbom.components < 100) {
+      gaps.push(
+        `SBOM has only ${securityBreakdown.sbom.components} components (requires ≥100)`
+      );
+      return { status: 'PARTIAL', gaps };
+    }
+
+    if (securityBreakdown.sbom.format !== 'CycloneDX') {
+      gaps.push(`SBOM format is ${securityBreakdown.sbom.format} (requires CycloneDX)`);
+      return { status: 'BLOCK', gaps };
+    }
+
+    return { status: 'PASS', gaps: [] };
+  }
+
+  // Generic handling for other claims
   if (evidenceAvailable.length === 0) {
     // No evidence at all
     spec.required_evidence_types.forEach((req) => {
@@ -340,7 +558,9 @@ export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const claimsParam = url.searchParams.get('claims') ?? undefined;
     const includeEvidenceParam = url.searchParams.get('includeEvidence') ?? 'false';
+    const includeSecurityBreakdownParam = url.searchParams.get('includeSecurityBreakdown') ?? 'false';
     const includeEvidence = includeEvidenceParam === 'true';
+    const includeSecurityBreakdown = includeSecurityBreakdownParam === 'true';
 
     // Parse claims from query
     const claimIds = parseClaimsQuery(claimsParam);
@@ -362,6 +582,15 @@ export async function GET(request: Request): Promise<Response> {
     const deploymentCommit = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? 'local';
     const deploymentEnv = process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'local';
     const now = new Date().toISOString();
+
+    // Get security evidence once if any claim requests it
+    const hasSecurityClaims = claimIds.some((cid) =>
+      ['SECURITY-HARDENING', 'SBOM-GENERATED'].includes(cid)
+    );
+    let securityBreakdown: SecurityBreakdown | undefined;
+    if (hasSecurityClaims || includeSecurityBreakdown) {
+      securityBreakdown = await getSecurityEvidence();
+    }
 
     // Query evidence for each claim
     let supabaseHealthy = true;
@@ -388,26 +617,48 @@ export async function GET(request: Request): Promise<Response> {
         evidenceAvailable = [];
       }
 
-      // Assess status
-      const { status, gaps } = assessClaimStatus(spec, evidenceAvailable);
+      // Assess status (pass security breakdown for security claims)
+      const { status, gaps } = assessClaimStatus(
+        spec,
+        evidenceAvailable,
+        ['SECURITY-HARDENING', 'SBOM-GENERATED'].includes(claim_id) ? securityBreakdown : undefined
+      );
 
-      claimsData.push({
+      const report: ClaimReadinessReport = {
         claim_id: spec.claim_id,
         status,
         required_evidence: spec.required_evidence_types,
-        ...(includeEvidence && evidenceAvailable.length > 0
-          ? { available_evidence: evidenceAvailable }
-          : {}),
         gaps,
-      });
+      };
+
+      // Add available evidence if requested
+      if (includeEvidence && evidenceAvailable.length > 0) {
+        report.available_evidence = evidenceAvailable;
+      }
+
+      // Add security breakdown for security claims if requested
+      if (
+        (includeSecurityBreakdown || claim_id === 'SECURITY-HARDENING' || claim_id === 'SBOM-GENERATED') &&
+        securityBreakdown &&
+        Object.keys(securityBreakdown).length > 0
+      ) {
+        report.security_breakdown = securityBreakdown;
+      }
+
+      claimsData.push(report);
     }
 
     // Build summary
+    const securityClaimCount = claimsData.filter((c) =>
+      ['SECURITY-HARDENING', 'SBOM-GENERATED'].includes(c.claim_id)
+    ).length;
+
     const summary = {
       pass: claimsData.filter((c) => c.status === 'PASS').length,
       partial: claimsData.filter((c) => c.status === 'PARTIAL').length,
       block: claimsData.filter((c) => c.status === 'BLOCK').length,
       total: claimsData.length,
+      security_claims: securityClaimCount,
     };
 
     // Build response
@@ -469,26 +720,42 @@ export async function GET(request: Request): Promise<Response> {
 /*
 Test cases:
 1. GET /api/proof/claim-readiness
-   → Returns 5-6 default claims with their status
+   → Returns 6 default claims (added SBOM-GENERATED) with their status
    → No query params, defaults to standard set
+   → Summary includes security_claims count
 
-2. GET /api/proof/claim-readiness?claims=ISO-42001-A.6-PLANNING
-   → Returns 1 claim only
-   → Filters by comma-separated list
+2. GET /api/proof/claim-readiness?claims=SECURITY-HARDENING
+   → Returns 1 claim with security_breakdown populated
+   → Checks npm_audit, gitleaks, codeql artifacts
+   → Pass if: critical=0, high=0, secrets=0, CodeQL critical=0
 
-3. GET /api/proof/claim-readiness?claims=ISO-42001-A.6-PLANNING,NIST-GOVERN-01&includeEvidence=true
-   → Returns 2 claims + detailed evidence artifacts
+3. GET /api/proof/claim-readiness?claims=SBOM-GENERATED&includeSecurityBreakdown=true
+   → Returns SBOM claim with detailed breakdown
+   → Pass if: components ≥100 AND format=CycloneDX
+   → Partial if: components <100
+   → Block if: SBOM missing
+
+4. GET /api/proof/claim-readiness?claims=SECURITY-HARDENING,SBOM-GENERATED&includeSecurityBreakdown=true
+   → Returns 2 security claims with full breakdown
+   → Aggregates npm_audit, gitleaks, codeql, sbom data
+
+5. GET /api/proof/claim-readiness?claims=ISO-42001-A.6-PLANNING,NIST-GOVERN-01&includeEvidence=true
+   → Returns 2 non-security claims + detailed evidence artifacts
    → Evidence array populated when includeEvidence=true
 
-4. GET /api/proof/claim-readiness?claims=INVALID-CLAIM
+6. GET /api/proof/claim-readiness?claims=INVALID-CLAIM
    → Returns 400 with error: "Invalid claim IDs: INVALID-CLAIM"
    → Lists valid claim IDs in response
 
-5. Supabase backend down:
+7. Security artifacts missing (no evidence collected yet):
+   → SECURITY-HARDENING returns BLOCK with warning: "npm_audit artifact not found; assuming no scan"
+   → SBOM-GENERATED returns BLOCK with warning: "SBOM artifact not found; run SBOM generation workflow"
+
+8. Supabase backend down:
    → Returns 503 with warning: "Evidence backend unavailable; status may be incomplete"
    → Status degrades gracefully but does not fail completely
 
-6. Supabase backend empty (no evidence yet):
+9. Supabase backend empty (no evidence yet):
    → Returns 200 with BLOCK status for all claims
    → Includes warning: "Evidence backend empty..."
    → Endpoint remains usable during development phase
