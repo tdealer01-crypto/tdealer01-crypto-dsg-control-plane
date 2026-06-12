@@ -88,7 +88,9 @@ function checkPermission(step: AgentWorkStep, delegation: DelegationContract): {
   return { allowed: true, reason: 'Permission granted' };
 }
 
-describe('User-Delegated AGI Runtime E2E', () => {
+// Live-DB suite: requires a real Supabase project. Skipped when the service
+// role key / URL are not configured (e.g. unit-evidence CI jobs).
+describe.skipIf(!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL)('User-Delegated AGI Runtime E2E', () => {
   let supabase: SupabaseClient;
 
   beforeEach(() => {

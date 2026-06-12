@@ -324,7 +324,8 @@ function extractMutationSummary(data) {
       noCoverage: data.metrics.noCoverage || 0,
       timeout: data.metrics.timeout || 0,
       runtimeError: data.metrics.runtimeError || 0,
-      score: data.metrics.mutationScore || 0,
+      // Stryker reports use mutationScore; CCVS evidence envelopes use mutation_score.
+      score: data.metrics.mutationScore ?? data.metrics.mutation_score ?? 0,
     };
   }
   return null;

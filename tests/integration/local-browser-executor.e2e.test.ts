@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import http from 'node:http';
+import fs from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { buildSafeManifest } from '@/lib/dsg/safe-dom/manifest';
 import type { RawDomElement, SafeDomCommand } from '@/lib/dsg/safe-dom/types';
@@ -17,6 +18,19 @@ const TEST_PAGE = `<!doctype html>
     <button id="next-step" type="button">Next</button>
   </form>
 </body></html>`;
+
+// The "live" test needs a downloaded Chromium (npx playwright-core install
+// chromium). CI unit jobs do not install browsers, so skip it there instead of
+// failing on browserType.launch.
+function chromiumInstalled(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { chromium } = require('playwright-core') as typeof import('playwright-core');
+    return fs.existsSync(chromium.executablePath());
+  } catch {
+    return false;
+  }
+}
 
 describe('Local self-hosted browser executor (real Chromium, local page)', () => {
   let server: http.Server;
@@ -157,7 +171,7 @@ describe('Local self-hosted browser executor (real Chromium, local page)', () =>
     delete process.env.HERMES_LOCAL_BROWSER_LIVE;
   });
 
-  it('live: drives a real Chromium, types into a real DOM input, captures evidence', async () => {
+  it.skipIf(!chromiumInstalled())('live: drives a real Chromium, types into a real DOM input, captures evidence', async () => {
     process.env.HERMES_LOCAL_BROWSER_LIVE = 'true';
 
     const rawElements: RawDomElement[] = [
