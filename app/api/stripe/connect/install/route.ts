@@ -6,6 +6,11 @@ const STATE_COOKIE = 'dsg_stripe_connect_state';
 const MODE_COOKIE = 'dsg_stripe_connect_mode';
 const USER_COOKIE = 'dsg_stripe_connect_user_id';
 const STATE_MAX_AGE_SECONDS = 10 * 60;
+const DEFAULT_STRIPE_INSTALL_URL =
+  'https://marketplace.stripe.com/oauth/v2/' +
+  'chnlink_61UpJ0wqNe8NQ3pYF41AZNzhgTUPV4R6' +
+  '/authorize?client_id=' +
+  'ca_UfEPAC4NcvG2nYAYjohDQ9GtDlIdajy6';
 
 type InstallMode = 'live' | 'sandbox';
 
@@ -38,11 +43,15 @@ function resolveConfiguredInstallUrl(mode: InstallMode) {
       process.env.STRIPE_SANDBOX_INSTALL_URL ||
       process.env.NEXT_PUBLIC_STRIPE_SANDBOX_INSTALL_URL ||
       process.env.STRIPE_EXTERNAL_TEST_URL ||
-      'https://marketplace.stripe.com/oauth/v2/chnlink_61UpJ0wqNe8NQ3pYF41AZNzhgTUPV4R6/authorize?client_id=ca_UfEPAC4NcvG2nYAYjohDQ9GtDlIdajy6'
+      DEFAULT_STRIPE_INSTALL_URL
     );
   }
 
-  return process.env.STRIPE_LIVE_INSTALL_URL || process.env.NEXT_PUBLIC_STRIPE_LIVE_INSTALL_URL || null;
+  return (
+    process.env.STRIPE_LIVE_INSTALL_URL ||
+    process.env.NEXT_PUBLIC_STRIPE_LIVE_INSTALL_URL ||
+    DEFAULT_STRIPE_INSTALL_URL
+  );
 }
 
 function buildAuthorizeUrl({
@@ -57,9 +66,7 @@ function buildAuthorizeUrl({
   state: string;
 }) {
   const configuredUrl = resolveConfiguredInstallUrl(mode);
-  const url = configuredUrl
-    ? new URL(configuredUrl)
-    : new URL('/oauth/v2/authorize', 'https://marketplace.stripe.com');
+  const url = new URL(configuredUrl);
 
   if (!url.searchParams.get('client_id')) {
     if (!clientId) throw new Error(`${mode} Stripe client_id is not configured`);
