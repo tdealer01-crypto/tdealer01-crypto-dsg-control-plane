@@ -1,6 +1,7 @@
 import type { Task, AgentExecutionResult } from './types';
 import { buildDryRunHermesRomContext } from '@/lib/dsg/hermes-e2e/rom';
 import { executeBrowserbaseSafeDomCommand } from '@/lib/dsg/hermes-e2e/browserbase-safe-adapter';
+import { executeAndroidSafeDomCommand } from '@/lib/executors/android-executor';
 import { buildHermesDomMirror } from '@/lib/dsg/hermes-e2e/dom-mirror';
 import type { BrowserbaseSafeCompletion, BrowserbaseSafeExecutionMode } from '@/lib/dsg/hermes-e2e/types';
 import type { RawDomElement, SafeDomCommand, SafeDomOperation } from '@/lib/dsg/safe-dom/types';
@@ -19,9 +20,16 @@ export async function executeTaskOnAgent(
   context: AgentExecutorContext,
   rawElements: RawDomElement[] | undefined,
   executionMode: BrowserbaseSafeExecutionMode = 'dry_run',
+  androidExecutorConfig?: { appPackage: string; allowedApps?: string[] },
 ): Promise<AgentExecutionResult> {
   const startTime = Date.now();
 
+  // Route to Android executor if specified
+  if (task.executorType === 'android') {
+    return executeAndroidTask(task, context, androidExecutorConfig);
+  }
+
+  // Default to browser executor
   try {
     const rom = buildDryRunHermesRomContext({
       goal: `${task.domain}/${task.operation} on ${task.target}`,
@@ -138,6 +146,108 @@ export async function executeTaskOnAgent(
   }
 }
 
+async function executeAndroidTask(
+  task: Task,
+  context: AgentExecutorContext,
+  config?: { appPackage: string; allowedApps?: string[] },
+): Promise<AgentExecutionResult> {
+  const startTime = Date.now();
+
+  if (!config?.appPackage) {
+    return {
+      agentId: context.agentId,
+      taskId: task.id,
+      status: 'BLOCKED',
+      decision: 'BLOCK',
+      error: 'ANDROID_APP_PACKAGE_NOT_PROVIDED',
+      executionTimeMs: Date.now() - startTime,
+    };
+  }
+
+  try {
+    const frameId = `android_frame_${task.id}`;
+    const desiredOp: SafeDomOperation =
+      task.operation === 'submit' || task.operation === 'click' || task.operation === 'send'
+        ? 'click'
+        : 'type';
+
+    const command: SafeDomCommand = {
+      frameId,
+      elementId: `${frameId}-e001`,
+      operation: desiredOp,
+      ...(desiredOp === 'type' ? { value: task.target } : {}),
+    };
+
+    const result = await executeAndroidSafeDomCommand({
+      appPackage: config.appPackage,
+      frameId,
+      command,
+      allowedApps: config.allowedApps,
+      mode: 'dry_run',
+      actionDescriptor: {
+        domain: task.domain,
+        operation: task.operation,
+        target: task.target,
+        dataSensitivity: task.dataSensitivity,
+        externalEffect: task.externalEffect,
+        reversibility: task.reversibility,
+        userAuthorized: task.userAuthorized,
+        planAllowed: task.planAllowed,
+        hasFreshEvidence: task.hasFreshEvidence,
+        hasRollback: task.hasRollback,
+      },
+    });
+
+    const executionTimeMs = Date.now() - startTime;
+    const evidenceHash = sha256Json({
+      taskId: task.id,
+      agentId: context.agentId,
+      batchId: context.batchId,
+      decision: result.decision,
+      status: result.status,
+      reason: result.reason,
+      appPackage: result.trace.appPackage,
+      manifestElementCount: result.trace.manifestElementCount,
+      domMirrorHash: result.trace.domMirrorHash,
+      touchedRealDevice: result.trace.touchedRealDevice,
+      version: 'android-execution-evidence-v1',
+    });
+
+    if (result.ok && result.decision === 'ALLOW') {
+      return {
+        agentId: context.agentId,
+        taskId: task.id,
+        status:
+          result.status === 'DRY_RUN_COMPLETED' || result.status === 'COMPLETED'
+            ? 'SUCCESS'
+            : 'FAILED',
+        decision: result.decision,
+        executionTimeMs,
+        evidenceHash,
+      };
+    }
+
+    return {
+      agentId: context.agentId,
+      taskId: task.id,
+      status: 'BLOCKED',
+      decision: result.decision,
+      error: result.reason || 'POLICY_BLOCKED',
+      executionTimeMs,
+      evidenceHash,
+    };
+  } catch (error) {
+    return {
+      agentId: context.agentId,
+      taskId: task.id,
+      status: 'FAILED',
+      decision: 'BLOCK',
+      error: error instanceof Error ? error.message : 'UNKNOWN_ERROR',
+      executionTimeMs: Date.now() - startTime,
+    };
+  }
+}
+
 /**
  * Execute an agent's assigned tasks in startOrder.
  * Blocked tasks are recorded as evidence and execution continues with the
@@ -148,11 +258,12 @@ export async function executeTasksSequentially(
   context: AgentExecutorContext,
   rawElements?: RawDomElement[],
   executionMode: BrowserbaseSafeExecutionMode = 'dry_run',
+  androidExecutorConfig?: { appPackage: string; allowedApps?: string[] },
 ): Promise<AgentExecutionResult[]> {
   const results: AgentExecutionResult[] = [];
 
   for (const task of tasks) {
-    const result = await executeTaskOnAgent(task, context, rawElements, executionMode);
+    const result = await executeTaskOnAgent(task, context, rawElements, executionMode, androidExecutorConfig);
     results.push(result);
   }
 
