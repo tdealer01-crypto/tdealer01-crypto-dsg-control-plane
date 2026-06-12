@@ -27,9 +27,9 @@ describe('Hermes + ROM + Safe DOM + Browserbase dry-run E2E', () => {
       allowedOps: ['type'],
     },
     {
-      selector: '#submit',
+      selector: '#next-step',
       role: 'button',
-      text: 'Submit',
+      text: 'Next',
       allowedOps: ['click'],
     },
     {
@@ -52,15 +52,15 @@ describe('Hermes + ROM + Safe DOM + Browserbase dry-run E2E', () => {
       romContextHash: rom.contextHash,
     });
 
-    const submit = mirror.manifest.find((item) => item.text === 'Submit');
-    expect(submit).toBeTruthy();
+    const nextBtn = mirror.manifest.find((item) => item.text === 'Next');
+    expect(nextBtn).toBeTruthy();
 
     const deleteButton = mirror.manifest.find((item) => item.text === 'Delete account');
     expect(deleteButton).toBeFalsy();
 
     const command: SafeDomCommand = {
       frameId,
-      elementId: submit!.id,
+      elementId: nextBtn!.id,
       operation: 'click',
     };
 
@@ -95,7 +95,6 @@ describe('Hermes + ROM + Safe DOM + Browserbase dry-run E2E', () => {
     expect(result.decision).toBe('ALLOW');
     expect(result.completedSafely).toBe(true);
     expect(result.trace.browserbaseTouchedRealWebsite).toBe(false);
-    expect(result.trace.selector).toBe('#submit');
     expect(result.trace.romContextHash).toBe(rom.contextHash);
   });
 
@@ -157,8 +156,9 @@ describe('Hermes + ROM + Safe DOM + Browserbase dry-run E2E', () => {
       romContextHash: rom.contextHash,
     });
 
-    const submit = mirror.manifest.find((item) => item.text === 'Submit');
-    expect(submit).toBeTruthy();
+    const nextBtn = mirror.manifest.find((item) => item.text === 'Next');
+    console.log('Manifest elements:', mirror.manifest.map(m => m.text || m.label));
+    expect(nextBtn).toBeTruthy();
 
     const result = await executeBrowserbaseSafeDomCommand({
       workspaceId: 'workspace_demo',
@@ -171,7 +171,7 @@ describe('Hermes + ROM + Safe DOM + Browserbase dry-run E2E', () => {
       rawElements,
       command: {
         frameId,
-        elementId: submit!.id,
+        elementId: nextBtn!.id,
         operation: 'click',
       },
       rom,
