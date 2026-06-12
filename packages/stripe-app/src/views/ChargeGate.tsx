@@ -1,5 +1,4 @@
 import React from 'react';
-import { useRefreshDashboardData } from '@stripe/ui-extension-sdk/context';
 import type { ExtensionContextValue } from '@stripe/ui-extension-sdk/context';
 import { ContextView, Box, Badge, Banner, Spinner } from '@stripe/ui-extension-sdk/ui';
 
@@ -25,9 +24,43 @@ const BANNER_TYPE = {
   BLOCK: 'critical',
 } as const;
 
-const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextValue }) => {
-  const refresh = useRefreshDashboardData();
-  const { environment, userContext } = extensionContext;
+function SafeFallback({ description }: { description: string }) {
+  return (
+    <ContextView title="DSG Governance Gate">
+      <Banner type="default" title="DSG Governance Gate" description={description} />
+    </ContextView>
+  );
+}
+
+class DrawerErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('[DSG Stripe App] Drawer render error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <SafeFallback description="DSG panel could not read this Stripe view context. Please open a payment detail view and refresh." />;
+    }
+
+    return this.props.children;
+  }
+}
+
+function ChargeGateInner({ extensionContext }: { extensionContext?: ExtensionContextValue | null }) {
+  const environment = extensionContext?.environment;
+  const userContext = extensionContext?.userContext;
   const chargeId = environment?.objectContext?.id ?? null;
   const accountId = userContext?.account?.id ?? null;
 
@@ -40,6 +73,9 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
       setLoading(false);
       return;
     }
+
+    let cancelled = false;
+
     const evaluate = async () => {
       try {
         const res = await fetch(`${DSG_API_BASE}/api/stripe-app/gate/evaluate`, {
@@ -51,40 +87,49 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
             stripe_account_id: accountId,
           }),
         });
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw = (await res.json()) as Partial<GatewayDecision> | null;
-        // Unknown/missing verdicts fall back to REVIEW so the badge/banner
-        // lookups never receive an unmapped key and crash the view.
         const verdict =
           raw?.decision === 'ALLOW' || raw?.decision === 'BLOCK' || raw?.decision === 'REVIEW'
             ? raw.decision
             : 'REVIEW';
-        setDecision({
-          decision: verdict,
-          reason: typeof raw?.reason === 'string' && raw.reason.length > 0
-            ? raw.reason
-            : 'No reason provided — held for review',
-          proof: typeof raw?.proof === 'string' ? raw.proof : undefined,
-          policy_version: typeof raw?.policy_version === 'string' ? raw.policy_version : undefined,
-          evaluated_at: typeof raw?.evaluated_at === 'string' ? raw.evaluated_at : undefined,
-        });
+
+        if (!cancelled) {
+          setDecision({
+            decision: verdict,
+            reason: typeof raw?.reason === 'string' && raw.reason.length > 0
+              ? raw.reason
+              : 'No reason provided — held for review',
+            proof: typeof raw?.proof === 'string' ? raw.proof : undefined,
+            policy_version: typeof raw?.policy_version === 'string' ? raw.policy_version : undefined,
+            evaluated_at: typeof raw?.evaluated_at === 'string' ? raw.evaluated_at : undefined,
+          });
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
-        setFetchError(msg);
-        setDecision({ decision: 'REVIEW', reason: 'DSG unavailable — held for review' });
+        if (!cancelled) {
+          setFetchError(msg);
+          setDecision({ decision: 'REVIEW', reason: 'DSG unavailable — held for review' });
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     evaluate();
+
+    return () => {
+      cancelled = true;
+    };
   }, [chargeId, accountId]);
 
+  if (!extensionContext) {
+    return <SafeFallback description="Initializing Stripe context…" />;
+  }
+
   if (!chargeId) {
-    return (
-      <ContextView title="DSG Governance Gate">
-        <Banner type="default" description="No payment context available." />
-      </ContextView>
-    );
+    return <SafeFallback description="No payment context available. Open a payment detail page to evaluate governance." />;
   }
 
   if (loading) {
@@ -97,29 +142,27 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
     );
   }
 
-  if (!decision) return null;
-
+  const safeDecision = decision ?? { decision: 'REVIEW' as const, reason: 'No decision returned — held for review' };
   const detailRows: Array<[string, string]> = [];
-  if (decision.policy_version) detailRows.push(['Policy', decision.policy_version]);
-  if (decision.proof) detailRows.push(['Proof reference', decision.proof]);
-  if (decision.evaluated_at) {
-    const parsed = new Date(decision.evaluated_at);
+
+  if (safeDecision.policy_version) detailRows.push(['Policy', safeDecision.policy_version]);
+  if (safeDecision.proof) detailRows.push(['Proof reference', safeDecision.proof]);
+  if (safeDecision.evaluated_at) {
+    const parsed = new Date(safeDecision.evaluated_at);
     detailRows.push([
       'Evaluated',
-      Number.isNaN(parsed.getTime()) ? decision.evaluated_at : parsed.toUTCString(),
+      Number.isNaN(parsed.getTime()) ? safeDecision.evaluated_at : parsed.toUTCString(),
     ]);
   }
 
   return (
     <ContextView title="DSG Governance Gate">
       <Box css={{ stack: 'y', gapY: 'medium' }}>
-        <Badge type={BADGE_TYPE[decision.decision]}>
-          {decision.decision}
-        </Badge>
+        <Badge type={BADGE_TYPE[safeDecision.decision]}>{safeDecision.decision}</Badge>
         <Banner
-          type={BANNER_TYPE[decision.decision]}
-          title={decision.decision}
-          description={decision.reason}
+          type={BANNER_TYPE[safeDecision.decision]}
+          title={safeDecision.decision}
+          description={safeDecision.reason}
         />
         {detailRows.length > 0 && (
           <Box css={{ stack: 'y', gapY: 'small' }}>
@@ -131,12 +174,16 @@ const ChargeGate = ({ extensionContext }: { extensionContext: ExtensionContextVa
             ))}
           </Box>
         )}
-        {fetchError && (
-          <Banner type="default" description={`Note: ${fetchError}`} />
-        )}
+        {fetchError && <Banner type="default" description={`Note: ${fetchError}`} />}
       </Box>
     </ContextView>
   );
-};
+}
+
+const ChargeGate = ({ extensionContext }: { extensionContext?: ExtensionContextValue | null }) => (
+  <DrawerErrorBoundary>
+    <ChargeGateInner extensionContext={extensionContext} />
+  </DrawerErrorBoundary>
+);
 
 export default ChargeGate;
