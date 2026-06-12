@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 export const dynamic = 'force-dynamic';
 
 const CONNECTED_ACCOUNT_COOKIE = 'dsg_stripe_account_id';
+const VALID_DECISIONS = new Set(['ALLOW', 'BLOCK', 'REVIEW']);
 
 function csvEscape(value: unknown) {
   const text = value == null ? '' : String(value);
@@ -64,7 +65,7 @@ async function getAccountIds(userId: string): Promise<string[]> {
   return [...accountIds];
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabaseAuth = await createClient();
   const {
     data: { user },
@@ -72,7 +73,10 @@ export async function GET() {
 
   if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
+  const requestedDecision = request.nextUrl.searchParams.get('decision')?.toUpperCase() ?? null;
+  const decisionFilter = requestedDecision && VALID_DECISIONS.has(requestedDecision) ? requestedDecision : null;
   const accountIds = await getAccountIds(user.id);
+
   if (accountIds.length === 0) {
     return new NextResponse('created_at,stripe_account_id,stripe_object_id,operation_type,decision,reason,proof,status\n', {
       headers: {
@@ -112,8 +116,12 @@ export async function GET() {
 
     if (error) throw new Error(error.message);
 
+    const filteredRows = decisionFilter
+      ? (data ?? []).filter((row) => row.dsg_decision === decisionFilter)
+      : (data ?? []);
+
     const header = ['created_at', 'stripe_account_id', 'stripe_object_id', 'operation_type', 'decision', 'reason', 'proof', 'status'];
-    const rows = (data ?? []).map((row) => [
+    const rows = filteredRows.map((row) => [
       row.created_at,
       row.stripe_account_id,
       row.stripe_object_id,
@@ -124,11 +132,12 @@ export async function GET() {
       row.status,
     ].map(csvEscape).join(','));
     const csv = [header.join(','), ...rows].join('\n') + '\n';
+    const suffix = decisionFilter ? `-${decisionFilter.toLowerCase()}` : '';
 
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="dsg-stripe-audit-${new Date().toISOString().slice(0, 10)}.csv"`,
+        'Content-Disposition': `attachment; filename="dsg-stripe-audit${suffix}-${new Date().toISOString().slice(0, 10)}.csv"`,
       },
     });
   } catch (error) {
