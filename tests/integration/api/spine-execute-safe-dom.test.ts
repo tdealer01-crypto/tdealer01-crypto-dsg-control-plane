@@ -46,12 +46,14 @@ vi.mock('../../../lib/spine/verify-safe-dom-intent', () => ({
   verifySafeDomIntentOrPass: verifySafeDomIntentOrPassMock,
 }));
 
+// Both are async in the real modules — the route chains .catch() on them,
+// so the mocks must return promises.
 vi.mock('../../../lib/webhooks/deliver', () => ({
-  fireWebhook: vi.fn(),
+  fireWebhook: vi.fn(async () => undefined),
 }));
 
 vi.mock('../../../lib/billing/metered', () => ({
-  meterExecution: vi.fn(),
+  meterExecution: vi.fn(async () => undefined),
 }));
 
 function request(body: unknown, headers: Record<string, string> = {}) {

@@ -36,11 +36,22 @@ function CallbackContent() {
       body: JSON.stringify({ code, state }),
     })
       .then(async (res) => {
+        const data = await res.json() as {
+          message?: string;
+          account_id?: string;
+          mode?: string;
+          connected_at?: string;
+        };
+
         if (res.ok) {
+          const params = new URLSearchParams({ connected: 'true' });
+          if (data.mode) params.set('mode', data.mode);
+          if (data.account_id) params.set('account_id', data.account_id);
+          if (data.connected_at) params.set('connected_at', data.connected_at);
+
           setStatus('success');
-          setTimeout(() => router.push('/dashboard/stripe-app?connected=true'), 1500);
+          setTimeout(() => router.push(`/dashboard/stripe-app?${params.toString()}`), 1500);
         } else {
-          const data = await res.json() as { message?: string };
           setStatus('error');
           setErrorMessage(data.message || 'Installation failed.');
         }
