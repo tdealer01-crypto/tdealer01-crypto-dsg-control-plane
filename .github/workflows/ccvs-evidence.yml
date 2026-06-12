@@ -546,7 +546,9 @@ jobs:
     name: "Check claim readiness"
     runs-on: ubuntu-latest
     needs: build-evidence-bundle
-    if: always()
+    # Skip (not fail) when upstream evidence jobs failed — the bundle artifact
+    # does not exist in that case, so downloading it can only error out.
+    if: needs.build-evidence-bundle.result == 'success'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -16,7 +16,9 @@ import {
   makeTestId,
 } from './helpers/supabase-test-factory';
 
-describe('Delegation Multi-Agent Isolation', () => {
+// Live-DB suite: requires a real Supabase project. Skipped when the service
+// role key / URL are not configured (e.g. unit-evidence CI jobs).
+describe.skipIf(!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL)('Delegation Multi-Agent Isolation', () => {
   let supabase: SupabaseClient;
 
   beforeEach(() => {

@@ -258,15 +258,24 @@ export async function POST(request: Request) {
 
     // Count executions only on success (2xx)
     if (result.status >= 200 && result.status < 300) {
-      void incrementQuota(orgId, agentId);
+      // Fire-and-forget side effects must not become unhandled rejections —
+      // a rejected floating promise can take down the worker after the
+      // response has already been returned.
+      void incrementQuota(orgId, agentId).catch((error) => {
+        console.error('[api/spine/execute] incrementQuota failed:', error);
+      });
       void fireWebhook(orgId, 'execution.completed', {
         agent_id: agentId,
         decision: (result.body as Record<string, unknown>)?.decision ?? null,
+      }).catch((error) => {
+        console.error('[api/spine/execute] fireWebhook failed:', error);
       });
       const executionId =
         ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
         randomUUID();
-      void meterExecution(orgId, 1, executionId);
+      void meterExecution(orgId, 1, executionId).catch((error) => {
+        console.error('[api/spine/execute] meterExecution failed:', error);
+      });
     }
 
     // Add stop_reason to response (Phase 2)

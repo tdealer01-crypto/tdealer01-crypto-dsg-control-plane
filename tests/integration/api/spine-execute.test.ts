@@ -304,7 +304,7 @@ describe('/api/spine/execute', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ request_id: 'req_1', decision: 'ALLOW' });
+    expect(body).toEqual({ request_id: 'req_1', decision: 'ALLOW', stop_reason: 'NONE' });
     expect(resolveAgentFromApiKey).toHaveBeenCalledWith('agt_1', 'dsg_live_good');
     expect(executeSpineIntent).toHaveBeenCalledWith({
       orgId: 'org_1',
@@ -384,7 +384,7 @@ describe('/api/spine/execute', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ request_id: 'req_2', decision: 'ALLOW' });
+    expect(body).toEqual({ request_id: 'req_2', decision: 'ALLOW', stop_reason: 'NONE' });
     expect(issueSpineIntent).toHaveBeenCalledOnce();
     expect(executeSpineIntent).toHaveBeenCalledTimes(2);
   });

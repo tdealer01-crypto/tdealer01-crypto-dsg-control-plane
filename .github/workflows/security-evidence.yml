@@ -91,10 +91,10 @@ jobs:
               console.log('0 vulnerabilities (audit file parse)');
             }
           " || true
-          CRIT=\$(node -e "try{const a=JSON.parse(require('fs').readFileSync('artifacts/security/npm-audit.json','utf8'));console.log(a.metadata?.vulnerabilities?.critical||0)}catch{console.log(0)}" 2>/dev/null || echo "0")
-          HIGH=\$(node -e "try{const a=JSON.parse(require('fs').readFileSync('artifacts/security/npm-audit.json','utf8'));console.log(a.metadata?.vulnerabilities?.high||0)}catch{console.log(0)}" 2>/dev/null || echo "0")
-          echo "critical=\$CRIT" >> "$GITHUB_OUTPUT"
-          echo "high=\$HIGH" >> "$GITHUB_OUTPUT"
+          CRIT=$(node -e "try{const a=JSON.parse(require('fs').readFileSync('artifacts/security/npm-audit.json','utf8'));console.log(a.metadata?.vulnerabilities?.critical||0)}catch{console.log(0)}" 2>/dev/null || echo "0")
+          HIGH=$(node -e "try{const a=JSON.parse(require('fs').readFileSync('artifacts/security/npm-audit.json','utf8'));console.log(a.metadata?.vulnerabilities?.high||0)}catch{console.log(0)}" 2>/dev/null || echo "0")
+          echo "critical=$CRIT" >> "$GITHUB_OUTPUT"
+          echo "high=$HIGH" >> "$GITHUB_OUTPUT"
 
       - name: Upload npm audit artifact
         if: always()
