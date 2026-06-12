@@ -1,3 +1,4 @@
+import { createHmac, randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -5,7 +6,7 @@ const DEFAULT_CALLBACK_PATH = '/stripe/oauth/callback';
 const STATE_COOKIE = 'dsg_stripe_connect_state';
 const MODE_COOKIE = 'dsg_stripe_connect_mode';
 const USER_COOKIE = 'dsg_stripe_connect_user_id';
-const STATE_MAX_AGE_SECONDS = 10 * 60;
+const STATE_MAX_AGE_SECONDS = 30 * 60;
 const DEFAULT_STRIPE_INSTALL_URL =
   'https://marketplace.stripe.com/oauth/v2/' +
   'chnlink_61UpJ0wqNe8NQ3pYF41AZNzhgTUPV4R6' +
@@ -13,6 +14,33 @@ const DEFAULT_STRIPE_INSTALL_URL =
   'ca_UfEPAC4NcvG2nYAYjohDQ9GtDlIdajy6';
 
 type InstallMode = 'live' | 'sandbox';
+
+type StripeStatePayload = {
+  nonce: string;
+  mode: InstallMode;
+  userId: string;
+  iat: number;
+};
+
+function getStateSecret() {
+  return (
+    process.env.STRIPE_CONNECT_STATE_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    process.env.AUTH_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'dsg-local-state-secret'
+  );
+}
+
+function toBase64Url(value: string) {
+  return Buffer.from(value, 'utf8').toString('base64url');
+}
+
+function signState(payload: StripeStatePayload) {
+  const encoded = toBase64Url(JSON.stringify(payload));
+  const signature = createHmac('sha256', getStateSecret()).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+}
 
 function getAppOrigin(requestUrl: string) {
   const configured = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -95,7 +123,12 @@ export async function GET(request: NextRequest) {
   const clientId = resolveClientId(mode) ?? null;
   const callbackPath = process.env.STRIPE_CONNECT_CALLBACK_PATH || DEFAULT_CALLBACK_PATH;
   const redirectUri = new URL(callbackPath, getAppOrigin(request.url));
-  const state = crypto.randomUUID();
+  const state = signState({
+    nonce: randomUUID(),
+    mode,
+    userId: user.id,
+    iat: Math.floor(Date.now() / 1000),
+  });
 
   let authorizeUrl: URL;
   try {
