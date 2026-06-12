@@ -281,19 +281,31 @@ async function getSecurityEvidence(): Promise<SecurityBreakdown> {
   try {
     const admin = getSupabaseAdmin();
 
-    // Query claim_readiness_artifacts for security-related evidence
-    const { data, error } = await admin
-      .from('claim_readiness_artifacts')
+    // Query claim_readiness_artifacts for security-related evidence.
+    // The table is created by migration 20260612041000 but is not yet in the
+    // generated lib/database.types.ts, so the row shape is typed locally.
+    type ArtifactRow = {
+      evidence_type: string;
+      artifact_data: Record<string, unknown> | null;
+      created_at: string | null;
+    };
+
+    const { data, error } = (await (admin.from as (table: string) => any)(
+      'claim_readiness_artifacts',
+    )
       .select('evidence_type, artifact_data, created_at')
       .in('evidence_type', ['npm_audit', 'gitleaks', 'codeql', 'sbom'])
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })) as {
+      data: ArtifactRow[] | null;
+      error: unknown;
+    };
 
     if (error || !data) {
       return breakdown;
     }
 
     // Group artifacts by evidence_type and take most recent
-    const latest: Record<string, (typeof data)[0]> = {};
+    const latest: Record<string, ArtifactRow> = {};
     for (const artifact of data) {
       if (!latest[artifact.evidence_type]) {
         latest[artifact.evidence_type] = artifact;
