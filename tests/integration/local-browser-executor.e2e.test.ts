@@ -1,23 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import fs from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { homedir, platform } from 'node:os';
 import type { AddressInfo } from 'node:net';
 import { buildSafeManifest } from '@/lib/dsg/safe-dom/manifest';
 import type { RawDomElement, SafeDomCommand } from '@/lib/dsg/safe-dom/types';
 import { executeLocalBrowserSafeDomCommand } from '@/lib/executors/local-browser';
-
-// Serve a real HTML page locally so the browser drives a real DOM without
-// ever touching an external website.
-const TEST_PAGE = `<!doctype html>
-<html><head><title>Local Test Form</title></head>
-<body>
-  <h1>Contact</h1>
-  <form id="contact">
-    <input id="name" name="name" placeholder="Name" />
-    <textarea id="message" name="message" placeholder="Message"></textarea>
-    <button id="next-step" type="button">Next</button>
-  </form>
-</body></html>`;
 
 // The "live" test needs a downloaded Chromium (npx playwright-core install
 // chromium). CI unit jobs do not install browsers, so skip it there instead of
@@ -31,6 +20,19 @@ function chromiumInstalled(): boolean {
     return false;
   }
 }
+
+// Serve a real HTML page locally so the browser drives a real DOM without
+// ever touching an external website.
+const TEST_PAGE = `<!doctype html>
+<html><head><title>Local Test Form</title></head>
+<body>
+  <h1>Contact</h1>
+  <form id="contact">
+    <input id="name" name="name" placeholder="Name" />
+    <textarea id="message" name="message" placeholder="Message"></textarea>
+    <button id="next-step" type="button">Next</button>
+  </form>
+</body></html>`;
 
 describe('Local self-hosted browser executor (real Chromium, local page)', () => {
   let server: http.Server;

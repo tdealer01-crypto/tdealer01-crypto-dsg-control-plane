@@ -19,6 +19,7 @@ const SMOKE_TEST_ENABLED = Boolean(process.env.SMOKE_TEST_URL);
 const BASE_URL = process.env.SMOKE_TEST_URL || 'http://localhost:3000';
 const AUTH_TOKEN = process.env.SMOKE_TEST_TOKEN || '';
 const CURL_TIMEOUT = 10000; // 10 seconds
+const SKIP_SMOKE_TESTS = !SMOKE_TEST_ENABLED;
 
 // Test counters
 let tests_completed = 0;
