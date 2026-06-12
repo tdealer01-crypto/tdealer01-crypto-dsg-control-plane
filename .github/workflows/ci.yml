@@ -108,6 +108,12 @@ jobs:
         with:
           node-version: 20
 
+      # stripe-app src imports @/lib/gateway/* from the repo root, which pulls
+      # root lib files (and their deps) into the typecheck — install root
+      # dependencies so those modules resolve.
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install stripe-app dependencies
         run: npm install
         working-directory: packages/stripe-app

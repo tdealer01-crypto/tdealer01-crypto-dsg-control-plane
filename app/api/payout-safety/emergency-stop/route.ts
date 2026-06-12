@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     .select('emergency_paused')
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return handleApiError('api/payout-safety/emergency-stop', error);
 
   return NextResponse.json({ emergency_paused: (data as { emergency_paused: boolean }).emergency_paused });
 }

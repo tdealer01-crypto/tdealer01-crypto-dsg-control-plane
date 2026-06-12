@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 import type { PayoutPolicy } from '@/lib/dsg/payout/gate';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ export async function GET() {
     .eq('org_id', user.id)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return handleApiError('api/payout-safety/policy', error);
 
   return NextResponse.json({ policy: (data as PayoutPolicy | null) ?? { ...DEFAULT_POLICY, org_id: user.id } });
 }
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return handleApiError('api/payout-safety/policy', error);
 
   return NextResponse.json({ policy: data as PayoutPolicy });
 }

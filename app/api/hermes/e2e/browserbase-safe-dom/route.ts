@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { buildDryRunHermesRomContext } from '@/lib/dsg/hermes-e2e/rom';
+import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 import { executeBrowserbaseSafeDomCommand } from '@/lib/dsg/hermes-e2e/browserbase-safe-adapter';
 import type { RawDomElement, SafeDomCommand } from '@/lib/dsg/safe-dom/types';
 
@@ -98,12 +99,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    logApiError('api/hermes/e2e/browserbase-safe-dom', error);
     return NextResponse.json(
       {
         ok: false,
         error: {
           code: 'HERMES_BROWSERBASE_SAFE_DOM_E2E_FAILED',
-          message: error instanceof Error ? error.message : 'UNKNOWN_ERROR',
+          message: internalErrorMessage(),
         },
       },
       { status: 500 },

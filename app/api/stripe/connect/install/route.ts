@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logApiError } from '@/lib/security/api-error';
 import { buildStripeInstallUrl, resolveStripeInstallMode } from '@/lib/stripe-app/install-url';
 import { resolveStripeClientId, resolveStripeConfiguredInstallUrl, type StripeInstallMode } from '@/lib/stripe-app/oauth-config';
 
@@ -54,8 +55,9 @@ export async function GET(request: NextRequest) {
   try {
     mode = resolveStripeInstallMode(request.nextUrl.searchParams.get('mode'));
   } catch (error) {
+    logApiError('api/stripe/connect/install', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid Stripe install mode' },
+      { error: 'Invalid Stripe install mode' },
       { status: 400 },
     );
   }
@@ -71,8 +73,9 @@ export async function GET(request: NextRequest) {
       iat: Math.floor(Date.now() / 1000),
     });
   } catch (error) {
+    logApiError('api/stripe/connect/install', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Stripe OAuth state is not configured' },
+      { error: 'Stripe OAuth state is not configured' },
       { status: 503 },
     );
   }
@@ -87,8 +90,9 @@ export async function GET(request: NextRequest) {
       state,
     });
   } catch (error) {
+    logApiError('api/stripe/connect/install', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Stripe OAuth link is not configured' },
+      { error: 'Stripe OAuth link is not configured' },
       { status: 503 },
     );
   }

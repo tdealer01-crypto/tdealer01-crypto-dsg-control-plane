@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -170,12 +171,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateDel
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating delegation:', error);
+    logApiError('api/delegation/create', error);
     return NextResponse.json(
       {
         success: false,
         error: 'INTERNAL_SERVER_ERROR',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: internalErrorMessage(),
       },
       { status: 500 }
     );

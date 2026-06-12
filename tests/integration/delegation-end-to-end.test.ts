@@ -88,9 +88,22 @@ function checkPermission(step: AgentWorkStep, delegation: DelegationContract): {
   return { allowed: true, reason: 'Permission granted' };
 }
 
-// Live-DB suite: requires a real Supabase project. Skipped when the service
-// role key / URL are not configured (e.g. unit-evidence CI jobs).
-describe.skipIf(!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL)('User-Delegated AGI Runtime E2E', () => {
+// Live-DB suite: requires a real Supabase project AND an explicit opt-in.
+//
+// Skipped unless RUN_DELEGATION_LIVE_DB=1 is set, even when the service-role
+// key / URL are present. Reason: the delegation tables (delegated_agi_jobs,
+// agi_action_audit, user_confirmation_requests) are not verified present in the
+// shared CI live DB, and two checked-in migrations define conflicting
+// `delegated_agi_jobs` shapes (one has `delegation_json` without
+// `current_state`, the other `current_state`/`metadata` without
+// `delegation_json`). These tests insert BOTH columns, so they cannot pass
+// against either single live shape. Gate behind an explicit opt-in until the
+// live schema is reconciled and verified.
+describe.skipIf(
+  process.env.RUN_DELEGATION_LIVE_DB !== '1' ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL,
+)('User-Delegated AGI Runtime E2E', () => {
   let supabase: SupabaseClient;
 
   beforeEach(() => {

@@ -16,6 +16,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -707,12 +708,12 @@ export async function GET(request: Request): Promise<Response> {
       },
     });
   } catch (error) {
-    // Unexpected error
-    const message = error instanceof Error ? error.message : 'unknown_error';
+    // Unexpected error — log internally, never echo the raw message to clients
+    logApiError('api/proof/claim-readiness', error);
     return NextResponse.json(
       {
         ok: false,
-        error: message,
+        error: internalErrorMessage(),
       },
       {
         status: 500,
