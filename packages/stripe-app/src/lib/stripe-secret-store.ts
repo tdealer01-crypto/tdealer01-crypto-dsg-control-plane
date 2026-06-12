@@ -9,8 +9,7 @@
  * - Integrates with DSG policy evaluation for access control
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getSupabase, getDsgApiKey } from './dsg-client';
+import { getSupabase } from './dsg-client';
 
 export interface SecretMetadata {
   id: string;
