@@ -111,10 +111,7 @@ export default function StripeConnectPage() {
       <div className="text-sm text-slate-500">
         <p className="font-medium text-slate-300">This will authorize:</p>
         <ul className="mt-2 list-inside list-disc space-y-1">
-          <li>Read charge details</li>
-          <li>Write governance decisions to charges</li>
-          <li>Read payment intents</li>
-          <li>Read payouts</li>
+          <li>Read charge details — to display governance policy decisions</li>
         </ul>
       </div>
     </div>

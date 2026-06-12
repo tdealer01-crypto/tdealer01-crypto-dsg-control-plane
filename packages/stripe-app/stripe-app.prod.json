@@ -1,8 +1,8 @@
 {
   "app_id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
-  "description": "Automated policy gates to evaluate payments and manage transaction reviews.",
-  "version": "1.1.3",
+  "description": "Displays ALLOW, BLOCK, or REVIEW policy decisions on payment detail views.",
+  "version": "1.1.5",
   "homepage": "https://dsg.pics",
   "support_email": "t.dealer01@dsg.pics",
   "icons": {
@@ -10,19 +10,19 @@
     "square_128": "./docs/assets/icon-128x128.png",
     "square_256": "./docs/assets/icon-256x256.png"
   },
-  "about": "DSG Governance Gate evaluates Stripe payments and charges against configurable policy rules, returning an ALLOW, BLOCK, or REVIEW decision visible inside the Stripe Dashboard payment detail view. Each decision is logged with a proof hash and policy version to support compliance review.",
+  "about": "DSG Governance Gate displays ALLOW, BLOCK, or REVIEW policy decisions on the Stripe Dashboard payment detail view. Each decision shows its policy version, proof reference, and evaluation time inside the app panel. If the governance service is unreachable, the panel shows REVIEW — never ALLOW.",
   "features": [
     {
-      "name": "Automated policy evaluation",
-      "description": "Evaluate payments and charges against your governance ruleset. Each transaction receives an ALLOW, BLOCK, or REVIEW decision based on configurable policy rules, visible in the Stripe Dashboard payment detail panel."
+      "name": "Policy decision display",
+      "description": "Each charge opened in the payment detail view shows an ALLOW, BLOCK, or REVIEW decision badge with the reason, rendered inside the Stripe Dashboard app panel."
     },
     {
-      "name": "Decision audit log",
-      "description": "Each governance decision is logged with a proof hash, timestamp, and policy version — giving compliance teams a verifiable record of evaluated transactions directly from the dashboard."
+      "name": "Decision details",
+      "description": "Every decision shows its policy version, proof reference, and evaluation timestamp in the app panel, giving operators a verifiable record for each evaluated charge."
     },
     {
-      "name": "High-risk transaction flagging",
-      "description": "Transactions exceeding defined risk thresholds are flagged for manual review. Operators can view the flagged decision and policy details inside the app panel in the Stripe Dashboard payment detail view."
+      "name": "Fail-safe behavior",
+      "description": "If the governance API is unreachable or returns an unknown verdict, the panel shows REVIEW instead of ALLOW, so an outage never reads as approval."
     }
   ],
   "distribution_type": "public",
@@ -36,18 +36,6 @@
     {
       "permission": "charge_read",
       "purpose": "Read charge details to display governance policy decisions in the payment detail view"
-    },
-    {
-      "permission": "charge_write",
-      "purpose": "Apply governance decisions to charge operations when a policy rule triggers a block or review"
-    },
-    {
-      "permission": "payment_intent_read",
-      "purpose": "Monitor payment intents for policy compliance checks before capture"
-    },
-    {
-      "permission": "payout_read",
-      "purpose": "Track payouts to maintain a complete governance audit trail across all fund movements"
     }
   ],
   "ui_extension": {

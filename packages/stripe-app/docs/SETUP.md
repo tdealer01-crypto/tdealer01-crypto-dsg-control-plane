@@ -26,23 +26,19 @@
 
 ### Key Features
 
-- **Policy-Based Gating**: Define rules for charges, payments, and payouts
-- **Deterministic Decisions**: ALLOW, BLOCK, or REVIEW operations based on policies
-- **Audit Trail**: Recorded decision log for gated operations
-- **Risk-Based Approval**: Route high-risk operations to manual review
-- **Dashboard Integration**: Seamless integration with Stripe Dashboard
+- **Policy decision display**: ALLOW, BLOCK, or REVIEW decision shown in the Stripe Dashboard payment detail panel
+- **Decision details**: Policy version, proof reference, and evaluation timestamp shown for each decision
+- **Fail-safe behavior**: If the governance API is unreachable, the panel shows REVIEW — never ALLOW
 
 ### What This App Does
 
-1. Intercepts Stripe operations (charges, payments, refunds, payouts)
-2. Evaluates them against your governance policies
-3. Makes deterministic decisions (ALLOW / REVIEW / BLOCK)
-4. Records evidence of each decision in an audit trail
-5. Enforces decisions in real-time
+1. When you open a payment in the Stripe Dashboard, the app panel sends the charge ID to the DSG governance API
+2. The panel displays the returned decision (ALLOW / BLOCK / REVIEW) with the reason
+3. The panel shows the decision's policy version, proof reference, and evaluation time
 
 ### What This App Does NOT Do
 
-- Modify payment amounts
+- Modify charges, payments, or any other Stripe object
 - Change customer information
 - Create or delete payment methods
 - Execute settlements independently
@@ -96,20 +92,17 @@ Installation starts from the DSG platform, not from the Stripe App Marketplace. 
 
 ### Step 4: Review Permissions and Authorize
 
-The app requests the following permissions:
+The app requests the following permission:
 
 | Permission | Purpose |
 |-----------|---------|
-| **Read Charges** | Evaluate governance policies on charge operations |
-| **Write Charges** | Apply governance decisions (approve/block charges) |
-| **Read Payment Intents** | Monitor payment intent flows for compliance |
-| **Read Payouts** | Track fund movements for the decision audit log |
+| **Read Charges** | Read charge details to display governance policy decisions in the payment detail view |
 
 **Note**: This app:
 - Never reads customer PII beyond what's necessary for policy evaluation
-- Never modifies payment method data
+- Never modifies charges or payment method data
 - Never initiates transactions
-- Only records decisions and audit logs
+- Only displays decisions and decision details
 
 1. Review the permissions dialog
 2. Click **"Authorize"**
