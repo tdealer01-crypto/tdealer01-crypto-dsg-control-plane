@@ -13,6 +13,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e:hermes-rom-dom": "vitest run tests/integration/hermes-browserbase-rom-dom.e2e.test.ts",
     "test:multi-agent": "vitest run tests/integration/multi-agent-coordination.test.ts",
+    "test:local-browser": "./scripts/with-playwright-chromium.sh vitest run tests/integration/local-browser-executor.e2e.test.ts",
     "test:failure": "vitest run tests/failure",
     "test:migrations": "vitest run tests/migrations",
     "test:coverage": "vitest run --coverage",

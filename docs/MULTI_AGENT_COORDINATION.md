@@ -107,6 +107,59 @@ task — one gated task does not silence the rest of the audit trail.
 - Hash-based deterministic dispatch and master-worker patterns mirror existing
   in-repo precedents (`lib/parallel/harmony-engine.ts`, orchestrator skill).
 
+## Self-hosted browser executor (touch real websites without Browserbase)
+
+`lib/executors/local-browser.ts` is the self-hosted equivalent of the
+Browserbase adapter. It drives a real Chromium via `playwright-core` (already a
+repo dependency) instead of a paid cloud session, so an agent can act on a real
+DOM with no external browser provider.
+
+It runs behind the SAME safety layers, checked in this order:
+
+1. `evaluateActionPolicy` — credential actions blocked (`CRITICAL`),
+   high-impact actions routed to approval.
+2. **Domain allowlist** — `allowedHosts` must match the target host (exact or
+   subdomain); anything else returns `HOST_NOT_IN_ALLOWLIST`.
+3. **`HERMES_LOCAL_BROWSER_LIVE` env flag** — live navigation is off by default;
+   without it, `live` mode returns `LIVE_EXECUTE_DISABLED_BY_DEFAULT...`.
+4. Safe DOM manifest — real DOM is extracted, dangerous elements filtered, only
+   exposed element ids are actionable.
+5. `verifySafeDomCommand` — element/operation allow-list check before any click
+   or type.
+
+Raw selectors never leave the server; evidence carries only `selectorHash`,
+`domMirrorHash`, page title, and a screenshot SHA-256.
+
+Modes: `dry_run` (default — checks policy + allowlist, never launches a
+browser) and `live` (launches Chromium, requires the env flag).
+
+### Verified locally (2026-06-12)
+
+`npm run test:local-browser` — 5/5 passed against a real Chromium driving a
+**local** HTML page (served from an in-process http server, no external site):
+
+| Test | Result |
+| --- | --- |
+| dry_run host allowed, no browser launched | pass, `touchedRealWebsite=false` |
+| host not in allowlist → blocked | pass |
+| live without env flag → blocked | pass |
+| credential action blocked before launch | pass (`CRITICAL`) |
+| live: real Chromium types into real DOM input + screenshot evidence | pass, `touchedRealWebsite=true`, screenshot SHA-256 captured |
+
+Requires Chromium installed (`npm run test:e2e:install`). On Vercel serverless,
+prefer the existing `effect-callback` webhook pattern over driving a browser
+inside one request (binary size / timeout). For continuous live use, run this
+executor on a host/VPS/GitHub Actions, not in a serverless function.
+
+### Browserbase vs self-hosted
+
+| | Browserbase | Self-hosted (this file) |
+| --- | --- | --- |
+| touches real websites | yes | yes |
+| external account / cost | yes | no |
+| serverless-friendly | yes | no (run on host/VPS/Actions) |
+| safety gates | shared | shared (identical policy + Safe DOM) |
+
 ## Claim boundaries
 
 - OK to claim: deterministic assignment scaffold, Z3-solved capacity
