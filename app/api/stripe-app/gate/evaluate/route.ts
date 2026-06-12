@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,8 +32,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Deterministic gate: evaluate based on object type and context
     const decision = evaluateGate({ object_type, object_id, stripe_account_id });
+
+    await recordAudit({
+      stripe_account_id,
+      object_type,
+      object_id,
+      decision,
+      payload: body,
+    });
 
     return NextResponse.json(decision, { headers: corsHeaders });
   } catch {
@@ -50,12 +58,66 @@ export async function POST(request: NextRequest) {
 
 const GATE_VERSION = 'dsg-gate-v1';
 
-function evaluateGate({ object_type, object_id, stripe_account_id }: {
+type GateDecision = {
+  decision: 'ALLOW' | 'BLOCK' | 'REVIEW';
+  reason: string;
+  proof?: string;
+  policy_version: string;
+  evaluated_at: string;
+};
+
+async function recordAudit({
+  stripe_account_id,
+  object_type,
+  object_id,
+  decision,
+  payload,
+}: {
+  stripe_account_id?: string;
+  object_type: string;
+  object_id: string;
+  decision: GateDecision;
+  payload: Record<string, unknown>;
+}) {
+  if (!stripe_account_id) return;
+
+  try {
+    const supabase = getSupabaseAdmin();
+    const eventId = `eval_${stripe_account_id}_${object_type}_${object_id}`;
+
+    await (supabase as unknown as {
+      from: (table: string) => {
+        upsert: (
+          data: Record<string, unknown>,
+          opts: { onConflict: string }
+        ) => Promise<{ error: { message: string } | null }>;
+      };
+    })
+      .from('stripe_operation_audits')
+      .upsert(
+        {
+          stripe_account_id,
+          stripe_event_id: eventId,
+          stripe_object_id: object_id,
+          operation_type: object_type,
+          dsg_decision: decision.decision,
+          dsg_reason: decision.reason,
+          dsg_proof: decision.proof ?? null,
+          payload,
+          status: decision.decision === 'REVIEW' ? 'recorded' : 'executed',
+        },
+        { onConflict: 'stripe_event_id' },
+      );
+  } catch (error) {
+    console.warn('[stripe-app/gate/evaluate] audit write skipped:', error);
+  }
+}
+
+function evaluateGate({ object_type, object_id }: {
   object_type: string;
   object_id: string;
   stripe_account_id?: string;
-}) {
-  // Test mode objects (ch_3... pi_3... po_3... all test mode)
+}): GateDecision {
   const isTestMode = object_id.includes('_3') || object_id.startsWith('cs_test') || object_id.startsWith('po_test');
 
   if (object_type === 'charge') {
