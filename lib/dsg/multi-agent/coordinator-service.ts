@@ -16,6 +16,7 @@ export interface CoordinationInput {
   rawElements?: RawDomElement[];
   maxSolveTimeMs?: number;
   executionMode?: Extract<BrowserbaseSafeExecutionMode, 'dry_run' | 'create_session_only'>;
+  androidExecutorConfig?: { appPackage: string; allowedApps?: string[] };
 }
 
 export interface CoordinationOutput extends BatchExecutionResult {
@@ -51,6 +52,7 @@ export async function executeMultiAgentBatch(input: CoordinationInput): Promise<
         agentContext,
         input.rawElements,
         input.executionMode ?? 'dry_run',
+        input.androidExecutorConfig,
       );
     }),
   );
