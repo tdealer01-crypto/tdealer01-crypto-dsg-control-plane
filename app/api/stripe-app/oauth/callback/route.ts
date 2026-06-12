@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
@@ -13,11 +14,57 @@ const CONNECTED_ACCOUNT_COOKIE = 'dsg_stripe_account_id';
 const CONNECTED_MODE_COOKIE = 'dsg_stripe_connected_mode';
 const CONNECTED_AT_COOKIE = 'dsg_stripe_connected_at';
 const CONNECTED_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+const STATE_MAX_AGE_SECONDS = 30 * 60;
 
 type InstallMode = 'live' | 'sandbox';
 
+type SignedState = {
+  nonce?: string;
+  mode?: string;
+  userId?: string;
+  iat?: number;
+};
+
 function isInstallMode(value: string | undefined): value is InstallMode {
   return value === 'live' || value === 'sandbox';
+}
+
+function getStateSecret() {
+  return (
+    process.env.STRIPE_CONNECT_STATE_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    process.env.AUTH_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'dsg-local-state-secret'
+  );
+}
+
+function safeCompare(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function verifySignedState(state: string): SignedState | null {
+  const [encoded, signature] = state.split('.');
+  if (!encoded || !signature) return null;
+
+  const expected = createHmac('sha256', getStateSecret()).update(encoded).digest('base64url');
+  if (!safeCompare(signature, expected)) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SignedState;
+    const issuedAt = typeof payload.iat === 'number' ? payload.iat : 0;
+    const ageSeconds = Math.floor(Date.now() / 1000) - issuedAt;
+
+    if (ageSeconds < 0 || ageSeconds > STATE_MAX_AGE_SECONDS) return null;
+    if (!isInstallMode(payload.mode)) return null;
+    if (typeof payload.userId !== 'string' || payload.userId.length === 0) return null;
+
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
 function jsonWithConnectionCookies(
@@ -102,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!state) {
-      console.warn('[stripe-app/oauth/callback] Rejecting request: missing state parameter (CSRF check failed)');
+      console.warn('[stripe-app/oauth/callback] Rejecting request: missing state parameter');
       return NextResponse.json({ message: 'Missing state parameter' }, { status: 400 });
     }
 
@@ -110,8 +157,9 @@ export async function POST(request: NextRequest) {
     const expectedState = cookieStore.get(STATE_COOKIE)?.value;
     const installMode = cookieStore.get(MODE_COOKIE)?.value;
     const installUserId = cookieStore.get(USER_COOKIE)?.value;
+    const signedState = verifySignedState(state);
 
-    if (expectedState && expectedState !== state) {
+    if (!signedState && expectedState && expectedState !== state) {
       console.warn('[stripe-app/oauth/callback] Rejecting request: state mismatch');
       return NextResponse.json({ message: 'Invalid state parameter' }, { status: 400 });
     }
@@ -121,8 +169,12 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabaseAuth.auth.getUser();
 
-    const userId = user?.id || installUserId;
-    const mode = isInstallMode(installMode) ? installMode : 'live';
+    const userId = user?.id || signedState?.userId || installUserId;
+    const mode = isInstallMode(signedState?.mode)
+      ? signedState.mode
+      : isInstallMode(installMode)
+        ? installMode
+        : 'live';
 
     console.info('[stripe-app/oauth/callback] State accepted for mode:', mode);
 
@@ -193,6 +245,7 @@ export async function POST(request: NextRequest) {
               install_mode: mode,
               linked_user_id: userId ?? null,
               dashboard_sync: true,
+              state_verified: Boolean(signedState),
             },
           },
           { onConflict: 'stripe_account_id' },
