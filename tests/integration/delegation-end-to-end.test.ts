@@ -88,7 +88,10 @@ function checkPermission(step: AgentWorkStep, delegation: DelegationContract): {
   return { allowed: true, reason: 'Permission granted' };
 }
 
-describe('User-Delegated AGI Runtime E2E', () => {
+// Skip in CI without live Supabase credentials
+const SKIP_DELEGATION_TESTS = !process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.CI === 'true';
+
+describe.skipIf(SKIP_DELEGATION_TESTS)('User-Delegated AGI Runtime E2E', () => {
   let supabase: SupabaseClient;
 
   beforeEach(() => {

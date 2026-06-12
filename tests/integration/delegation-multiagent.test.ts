@@ -16,7 +16,10 @@ import {
   makeTestId,
 } from './helpers/supabase-test-factory';
 
-describe('Delegation Multi-Agent Isolation', () => {
+// Skip in CI without live Supabase credentials
+const SKIP_DELEGATION_TESTS = !process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.CI === 'true';
+
+describe.skipIf(SKIP_DELEGATION_TESTS)('Delegation Multi-Agent Isolation', () => {
   let supabase: SupabaseClient;
 
   beforeEach(() => {
