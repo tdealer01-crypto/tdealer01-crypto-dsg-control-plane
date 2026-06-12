@@ -28,13 +28,13 @@ export default function StripeOnboardingPage() {
               },
               {
                 icon: '📋',
-                title: 'Audit trail recording',
-                desc: 'Payout activity is recorded in your governance decision log.',
+                title: 'Decision details',
+                desc: 'Each decision shows its policy version, proof reference, and evaluation time.',
               },
               {
                 icon: '🔒',
-                title: 'Policy enforcement',
-                desc: 'Governance rules run before capture — high-risk transactions are flagged for review.',
+                title: 'Fail-safe by default',
+                desc: 'If the governance service is unreachable, the panel shows REVIEW — never ALLOW.',
               },
             ].map((item) => (
               <li key={item.title} className="flex gap-3">

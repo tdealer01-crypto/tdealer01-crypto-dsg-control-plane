@@ -2,7 +2,7 @@
   "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "icon": "./icon.png",
   "ui_extension": {
     "views": [
@@ -25,18 +25,6 @@
     {
       "permission": "charge_read",
       "purpose": "Read charge details to display governance policy decisions in the payment detail view"
-    },
-    {
-      "permission": "charge_write",
-      "purpose": "Apply governance decisions to charge operations when a policy rule triggers a block or review"
-    },
-    {
-      "permission": "payment_intent_read",
-      "purpose": "Monitor payment intents for policy compliance checks before capture"
-    },
-    {
-      "permission": "payout_read",
-      "purpose": "Track payouts to maintain a complete governance audit trail across all fund movements"
     }
   ],
   "post_install_action": {
