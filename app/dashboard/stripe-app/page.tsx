@@ -53,12 +53,22 @@ export default async function StripeAppPage({ searchParams }: PageProps) {
             </p>
             {connectedAt && <p className="mt-1 text-xs text-slate-500">Connected at: {connectedAt}</p>}
           </div>
-          <Link
-            href="/api/stripe/connect/install?mode=live"
-            className="shrink-0 rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
-          >
-            {connected ? 'Reconnect Live Mode' : 'Connect Stripe Account'}
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a
+              href="https://dashboard.stripe.com/payments"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-lg bg-emerald-600 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+            >
+              Open Stripe Dashboard
+            </a>
+            <Link
+              href="/api/stripe/connect/install?mode=live"
+              className="shrink-0 rounded-lg bg-violet-600 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+            >
+              {connected ? 'Reconnect Live Mode' : 'Connect Stripe Account'}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -66,7 +76,7 @@ export default async function StripeAppPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">Installation checks</h2>
-            <p className="mt-1 text-sm text-slate-400">Use these buttons to verify Live mode and Sandbox mode.</p>
+            <p className="mt-1 text-sm text-slate-400">Use these buttons to verify Live mode, Sandbox mode, and the Stripe Dashboard test surface.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="/api/stripe/connect/install?mode=live" className="rounded-lg bg-blue-600 px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-blue-500">
@@ -75,6 +85,9 @@ export default async function StripeAppPage({ searchParams }: PageProps) {
             <Link href="/api/stripe/connect/install?mode=sandbox" className="rounded-lg bg-slate-700 px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-slate-600">
               Install Sandbox App
             </Link>
+            <a href="https://dashboard.stripe.com/payments" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-emerald-600 px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-500">
+              Open Stripe Payments
+            </a>
           </div>
         </div>
       </section>
@@ -98,6 +111,12 @@ export default async function StripeAppPage({ searchParams }: PageProps) {
             <p className="mt-2 text-sm text-slate-400">Review operations that require manual review</p>
           </div>
         </Link>
+        <a href="https://dashboard.stripe.com/payments" target="_blank" rel="noopener noreferrer" className="group">
+          <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-6 transition-all hover:border-slate-600 hover:bg-slate-900">
+            <h3 className="text-lg font-semibold text-white">Stripe Dashboard</h3>
+            <p className="mt-2 text-sm text-slate-400">Open Stripe Payments to test DSG Governance Gate in the app drawer</p>
+          </div>
+        </a>
         <Link href="/api/stripe/connect/install?mode=live" className="group">
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-6 transition-all hover:border-slate-600 hover:bg-slate-900">
             <h3 className="text-lg font-semibold text-white">Reconnect</h3>
