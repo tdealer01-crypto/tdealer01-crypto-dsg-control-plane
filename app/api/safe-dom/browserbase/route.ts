@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
+import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 import type { SafeDomCommand, SafeDomElement } from '@/lib/executors/browserbase-safe-dom-integration';
 
 /**
@@ -64,11 +65,10 @@ async function handleBuildManifest(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[safe-dom/browserbase] build-manifest error:', message);
+    logApiError('api/safe-dom/browserbase:build-manifest', error);
 
     return NextResponse.json(
-      { error: message },
+      { error: internalErrorMessage() },
       { status: 500 },
     );
   }
@@ -135,19 +135,23 @@ async function handleExecuteCommand(request: NextRequest) {
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[safe-dom/browserbase] execute-command error:', message);
+    logApiError('api/safe-dom/browserbase:execute-command', error);
 
-    // Determine appropriate status code
+    // Map verification failures to a status + controlled message; raw error
+    // text stays server-side.
+    const message = (error as Error | null)?.message ?? '';
     let statusCode = 500;
+    let safeMessage = internalErrorMessage();
     if (message.includes('not found') || message.includes('expired')) {
       statusCode = 404;
+      safeMessage = 'Manifest not found or expired';
     } else if (message.includes('not allowed')) {
       statusCode = 403;
+      safeMessage = 'Command not allowed by Safe DOM manifest';
     }
 
     return NextResponse.json(
-      { error: message },
+      { error: safeMessage },
       { status: statusCode },
     );
   }

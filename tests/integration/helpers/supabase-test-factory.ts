@@ -59,9 +59,12 @@ export async function createExecutionFixture(
   supabase = getSupabaseTestAdmin(),
   overrides: Partial<SupabaseTestFixture> = {},
 ): Promise<SupabaseTestFixture> {
-  const orgId = overrides.orgId ?? makeTestId('it-org');
-  const policyId = overrides.policyId ?? makeTestId('it-policy');
-  const agentId = overrides.agentId ?? makeTestId('it-agent');
+  // The live DB uses uuid primary keys for these tables (the checked-in
+  // migrations still say text — live schema wins). UUID strings also satisfy
+  // text columns, so generate UUIDs; the test marker lives in name/slug.
+  const orgId = overrides.orgId ?? randomUUID();
+  const policyId = overrides.policyId ?? randomUUID();
+  const agentId = overrides.agentId ?? randomUUID();
   const apiKey = overrides.apiKey ?? `sk_test_${randomUUID().replaceAll('-', '')}`;
   const apiKeyHash = hashApiKey(apiKey);
   const billingPeriod = overrides.billingPeriod ?? currentBillingPeriod();

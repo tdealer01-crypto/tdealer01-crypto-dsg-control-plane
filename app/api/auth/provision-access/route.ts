@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 
 export async function POST() {
   const supabase = await createClient();
@@ -24,12 +25,12 @@ export async function POST() {
   });
 
   if (error) {
-    console.error('[provision-access] rpc failed:', error);
+    logApiError('api/auth/provision-access', error);
     return NextResponse.json(
       {
         ok: false,
         reason: 'PROVISION_FAILED',
-        error: error.message,
+        error: internalErrorMessage(),
       },
       { status: 500 }
     );

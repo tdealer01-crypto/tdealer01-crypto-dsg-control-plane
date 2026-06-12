@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requestQueue } from '@/lib/performance/request-queue';
 import { executorThrottle } from '@/lib/performance/executor-throttle';
+import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,12 +109,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error in parallel health endpoint:', error);
+    logApiError('api/parallel/health', error);
     return NextResponse.json(
       {
         timestamp: new Date(),
         ok: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: internalErrorMessage(),
         health: {
           ok: false,
           issues: ['Health check failed'],

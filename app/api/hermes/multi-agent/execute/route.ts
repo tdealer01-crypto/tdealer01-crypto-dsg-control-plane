@@ -8,6 +8,7 @@ import {
 import type { TaskDag, AgentCapacity } from '@/lib/dsg/multi-agent/types';
 import type { RawDomElement } from '@/lib/dsg/safe-dom/types';
 import { readJsonBody } from '@/lib/security/request-json';
+import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,12 +113,13 @@ export async function POST(req: Request) {
       })),
     });
   } catch (error) {
+    logApiError('api/hermes/multi-agent/execute', error);
     return NextResponse.json(
       {
         ok: false,
         error: {
           code: 'HERMES_MULTI_AGENT_EXECUTION_FAILED',
-          message: error instanceof Error ? error.message : 'UNKNOWN_ERROR',
+          message: internalErrorMessage(),
         },
       },
       { status: 500 },

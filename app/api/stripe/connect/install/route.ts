@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logApiError } from '@/lib/security/api-error';
 
 const DEFAULT_CALLBACK_PATH = '/stripe/oauth/callback';
 const STATE_COOKIE = 'dsg_stripe_connect_state';
@@ -134,8 +135,9 @@ export async function GET(request: NextRequest) {
   try {
     authorizeUrl = buildAuthorizeUrl({ mode, clientId, redirectUri, state });
   } catch (error) {
+    logApiError('api/stripe/connect/install', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Stripe OAuth link is not configured' },
+      { error: 'Stripe OAuth link is not configured' },
       { status: 503 },
     );
   }
