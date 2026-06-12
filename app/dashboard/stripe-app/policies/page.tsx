@@ -11,6 +11,16 @@ interface Policy {
   created_at?: string;
 }
 
+async function readJsonOrMessage(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as { message?: string };
+  } catch {
+    return { message: `Server returned non-JSON response (${response.status})` };
+  }
+}
+
 export default function PoliciesPage() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +29,7 @@ export default function PoliciesPage() {
   const [maxAmount, setMaxAmount] = useState('50000');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPolicies();
@@ -27,37 +38,19 @@ export default function PoliciesPage() {
   const fetchPolicies = async () => {
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
-      const response = await fetch('/api/stripe-app/policies');
-      if (response.ok) {
-        const data = await response.json();
-        setPolicies(Array.isArray(data) ? data : []);
-      } else {
-        // Mock data for demo
-        setPolicies([
-          {
-            id: 'pol_demo_1',
-            operation_type: 'charge',
-            rule_type: 'amount_threshold',
-            conditions: { max_amount_cents: 50000 },
-            action: 'review',
-            created_at: new Date().toISOString(),
-          },
-        ]);
+      const response = await fetch('/api/stripe-app/policies', { cache: 'no-store' });
+      const data = await readJsonOrMessage(response);
+      if (!response.ok) {
+        setPolicies([]);
+        setError(data.message || 'Failed to fetch policies');
+        return;
       }
+      setPolicies(Array.isArray(data) ? data : []);
     } catch (err) {
+      setPolicies([]);
       setError(err instanceof Error ? err.message : 'Failed to fetch policies');
-      // Set mock data on error
-      setPolicies([
-        {
-          id: 'pol_demo_1',
-          operation_type: 'charge',
-          rule_type: 'amount_threshold',
-          conditions: { max_amount_cents: 50000 },
-          action: 'review',
-          created_at: new Date().toISOString(),
-        },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -66,6 +59,7 @@ export default function PoliciesPage() {
   const handleCreatePolicy = async () => {
     setCreating(true);
     setError(null);
+    setNotice(null);
     try {
       const response = await fetch('/api/stripe-app/policies/create', {
         method: 'POST',
@@ -73,21 +67,22 @@ export default function PoliciesPage() {
         body: JSON.stringify({
           operation_type: operationType,
           rule_type: 'amount_threshold',
-          conditions: { max_amount_cents: parseInt(maxAmount) || 0 },
+          conditions: { max_amount_cents: parseInt(maxAmount, 10) || 0 },
           action,
         }),
       });
 
-      if (response.ok) {
-        fetchPolicies();
-        // Reset form
-        setOperationType('charge');
-        setAction('review');
-        setMaxAmount('50000');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Failed to create policy');
+      const data = await readJsonOrMessage(response);
+      if (!response.ok) {
+        setError(data.message || 'Failed to create policy');
+        return;
       }
+
+      setNotice('Policy created and saved.');
+      setOperationType('charge');
+      setAction('review');
+      setMaxAmount('50000');
+      await fetchPolicies();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create policy');
     } finally {
@@ -112,7 +107,6 @@ export default function PoliciesPage() {
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
       <h1 className="text-2xl font-bold text-white">Governance Policies</h1>
 
-      {/* Create Policy Form */}
       <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-white">Create New Policy</h2>
 
@@ -121,11 +115,14 @@ export default function PoliciesPage() {
             <p className="text-sm text-red-300">{error}</p>
           </div>
         )}
+        {notice && (
+          <div className="rounded bg-emerald-900/40 p-3">
+            <p className="text-sm text-emerald-300">{notice}</p>
+          </div>
+        )}
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Operation Type
-          </label>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Operation Type</label>
           <select
             value={operationType}
             onChange={(e) => setOperationType(e.target.value)}
@@ -139,9 +136,7 @@ export default function PoliciesPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Max Amount (cents)
-          </label>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Max Amount (cents)</label>
           <input
             type="number"
             value={maxAmount}
@@ -152,9 +147,7 @@ export default function PoliciesPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Action
-          </label>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Action</label>
           <select
             value={action}
             onChange={(e) => setAction(e.target.value as 'allow' | 'block' | 'review')}
@@ -175,14 +168,13 @@ export default function PoliciesPage() {
         </button>
       </div>
 
-      {/* Policies List */}
       <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Active Policies</h2>
 
         {loading ? (
           <p className="text-slate-400">Loading...</p>
         ) : policies.length === 0 ? (
-          <p className="text-slate-500">No policies configured yet</p>
+          <p className="text-slate-500">No policies configured yet. Create a policy above after connecting Stripe.</p>
         ) : (
           <div className="space-y-3">
             {policies.map((policy) => (
@@ -192,9 +184,7 @@ export default function PoliciesPage() {
               >
                 <div className="flex-1">
                   <p className="font-semibold text-white">{policy.operation_type}</p>
-                  <p className="text-sm text-slate-400 mt-1">
-                    Rule: {policy.rule_type || 'N/A'}
-                  </p>
+                  <p className="text-sm text-slate-400 mt-1">Rule: {policy.rule_type || 'N/A'}</p>
                   {policy.conditions?.max_amount_cents && (
                     <p className="text-sm text-slate-400">
                       Max: ${((policy.conditions.max_amount_cents as number) / 100).toFixed(2)}
