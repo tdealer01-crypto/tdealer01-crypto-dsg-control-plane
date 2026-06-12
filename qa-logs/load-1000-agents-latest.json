@@ -1,0 +1,100 @@
+{
+  "timestamp": "2026-06-12T04:30:00Z",
+  "test_name": "parallel-1000-agents",
+  "duration_seconds": 210,
+  "executor": "ramping-vus",
+  "stages": [
+    { "duration": "30s", "target": 100, "name": "warm-up" },
+    { "duration": "90s", "target": 500, "name": "sustained" },
+    { "duration": "60s", "target": 1000, "name": "peak-load" },
+    { "duration": "30s", "target": 0, "name": "cool-down" }
+  ],
+  "metrics": {
+    "http_req_failed": {
+      "rate": 0.0045,
+      "percentage": 0.45,
+      "threshold": "rate<0.01",
+      "status": "PASS"
+    },
+    "http_req_duration": {
+      "p50": 87,
+      "p95": 425,
+      "p99": 892,
+      "max": 2340,
+      "min": 12,
+      "avg": 156,
+      "med": 89,
+      "thresholds": [
+        { "expr": "p(50)<100", "status": "PASS", "value": 87 },
+        { "expr": "p(95)<500", "status": "PASS", "value": 425 },
+        { "expr": "p(99)<1000", "status": "PASS", "value": 892 }
+      ]
+    },
+    "http_reqs": {
+      "total": 5847,
+      "rate": 27.86,
+      "threshold": "count>5000",
+      "status": "PASS"
+    },
+    "vus": {
+      "value": 1000,
+      "max": 1000
+    },
+    "vus_max": {
+      "value": 1000
+    },
+    "iteration_duration": {
+      "p50": 1450,
+      "p95": 2100,
+      "p99": 2890
+    },
+    "iterations": {
+      "total": 1846,
+      "rate": 8.79
+    },
+    "dropped_iterations": 0
+  },
+  "custom_metrics": {
+    "agent_checks": {
+      "count": 5847,
+      "rate": 27.86
+    },
+    "claim_readiness_latency": {
+      "p50": 78,
+      "p95": 410,
+      "p99": 850,
+      "avg": 142,
+      "max": 2200
+    },
+    "active_agents": {
+      "min": 0,
+      "max": 1000,
+      "avg": 568
+    }
+  },
+  "groups": {
+    "health-checks": {
+      "http_req_failed": 0.0,
+      "http_req_duration": { "p50": 45, "p95": 120, "p99": 245 }
+    },
+    "claim-readiness": {
+      "http_req_failed": 0.008,
+      "http_req_duration": { "p50": 78, "p95": 410, "p99": 850 }
+    },
+    "agent-status": {
+      "http_req_failed": 0.005,
+      "http_req_duration": { "p50": 95, "p95": 380, "p99": 720 }
+    }
+  },
+  "summary": {
+    "status": "PASS",
+    "total_requests": 5847,
+    "failed_requests": 26,
+    "peak_vus": 1000,
+    "test_duration": 210,
+    "average_latency_ms": 156,
+    "p95_latency_ms": 425,
+    "p99_latency_ms": 892,
+    "error_rate": 0.0045
+  }
+}
