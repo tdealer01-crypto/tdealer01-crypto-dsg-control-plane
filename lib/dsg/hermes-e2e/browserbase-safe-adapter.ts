@@ -59,7 +59,8 @@ export async function executeBrowserbaseSafeDomCommand(
     };
   }
 
-  const selector = domGate.selector;
+  // Expose only the selector hash in traces; raw selectors stay server-side.
+  const selector = mirror.manifest.find((e) => e.id === input.command.elementId)?.selectorHash;
 
   if (executionMode === 'dry_run') {
     return {
