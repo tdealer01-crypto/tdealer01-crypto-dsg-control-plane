@@ -11,7 +11,6 @@
  */
 
 import { Hono } from 'hono';
-import { json } from 'hono/utils/body';
 import Stripe from 'stripe';
 
 const router = new Hono();
@@ -25,7 +24,7 @@ function getStripeClient(): Stripe {
     if (!secretKey) {
       throw new Error('STRIPE_SECRET_KEY is required');
     }
-    stripeClient = new Stripe(secretKey, { apiVersion: '2024-04-10' });
+    stripeClient = new Stripe(secretKey);
   }
   return stripeClient;
 }

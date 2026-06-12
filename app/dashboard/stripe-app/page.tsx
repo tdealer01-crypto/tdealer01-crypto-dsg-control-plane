@@ -23,10 +23,19 @@ export default async function StripeAppPage({ searchParams }: PageProps) {
   if (!user) redirect('/login?next=/dashboard/stripe-app');
 
   const params = searchParams ? await searchParams : {};
-  const connected = getParam(params, 'connected') === 'true';
-  const mode = getParam(params, 'mode') || 'live';
-  const accountId = getParam(params, 'account_id');
-  const connectedAt = getParam(params, 'connected_at');
+  const { data: activeAccounts } = await (supabase as any)
+    .from('stripe_app_accounts')
+    .select('stripe_account_id, status, installed_at, metadata')
+    .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  const activeAccount = activeAccounts?.[0];
+  const connected = activeAccount?.status === 'active';
+  const mode = typeof activeAccount?.metadata?.install_mode === 'string'
+    ? activeAccount.metadata.install_mode
+    : getParam(params, 'mode') || 'live';
+  const accountId = activeAccount?.stripe_account_id;
+  const connectedAt = activeAccount?.installed_at;
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-6 py-8">
@@ -68,6 +77,14 @@ export default async function StripeAppPage({ searchParams }: PageProps) {
             >
               {connected ? 'Reconnect Live Mode' : 'Connect Stripe Account'}
             </Link>
+            {connected && (
+              <form action="/api/stripe-app/disconnect" method="post">
+                <input type="hidden" name="stripe_account_id" value={accountId} />
+                <button type="submit" className="w-full shrink-0 rounded-lg border border-rose-600 px-6 py-3 text-center text-sm font-semibold text-rose-200 transition-colors hover:bg-rose-950">
+                  Disconnect
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </section>
