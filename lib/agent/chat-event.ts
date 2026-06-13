@@ -1,3 +1,5 @@
+import { humanizeAgentEvent } from '../hermes/human-event';
+
 export type AgentChatEvent = {
   type?: string;
   step?: string;
@@ -5,7 +7,7 @@ export type AgentChatEvent = {
   error?: string;
   reply?: string;
   model?: string;
-  steps?: Array<{ id?: string; toolId?: string }>;
+  steps?: Array<{ id?: string; toolId?: string; toolName?: string; goal?: string }>;
   result?: unknown;
   decision?: string;
   reason?: string;
@@ -13,6 +15,8 @@ export type AgentChatEvent = {
   affected_count?: number;
   rollback_available?: boolean;
   decision_id?: string;
+  locale?: 'en' | 'th';
+  renderMode?: 'legacy' | 'human';
 };
 
 function toPlain(value: unknown): string {
@@ -49,7 +53,20 @@ function formatStepResult(step: string, result: unknown): string {
   return `Result ${step}:\n${toPlain(result)}`;
 }
 
+function wantsHumanRender(event: AgentChatEvent): boolean {
+  return event.renderMode === 'human' || event.locale === 'th';
+}
+
+export function formatHumanAgentEventMessage(event: AgentChatEvent): string | null {
+  return humanizeAgentEvent(event);
+}
+
 export function formatAgentEventMessage(event: AgentChatEvent): string | null {
+  if (wantsHumanRender(event)) {
+    const human = humanizeAgentEvent(event);
+    if (human) return human;
+  }
+
   const type = String(event?.type || '');
 
   if (type === 'assistant_reply') {
