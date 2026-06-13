@@ -128,7 +128,8 @@ describe('requireDsgAuth — API key path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(401);
+      const errorResult = result as { ok: false; status: number; error: string };
+      expect(errorResult.status).toBe(401);
     }
   });
 
@@ -139,8 +140,8 @@ describe('requireDsgAuth — API key path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(403);
-      expect(result.error).toContain('inactive or revoked');
+      expect((result as { ok: false; status: number; error: string }).status).toBe(403);
+      expect((result as { ok: false; status: number; error: string }).error).toContain('inactive or revoked');
     }
   });
 
@@ -151,7 +152,7 @@ describe('requireDsgAuth — API key path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(403);
+      expect((result as { ok: false; status: number; error: string }).status).toBe(403);
     }
   });
 
@@ -209,7 +210,7 @@ describe('requireDsgAuth — session path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(401);
+      expect((result as { ok: false; status: number; error: string }).status).toBe(401);
     }
   });
 
@@ -235,7 +236,7 @@ describe('requireDsgAuth — session path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(403);
+      expect((result as { ok: false; status: number; error: string }).status).toBe(403);
     }
   });
 
@@ -247,7 +248,7 @@ describe('requireDsgAuth — session path', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(403);
+      expect((result as { ok: false; status: number; error: string }).status).toBe(403);
     }
   });
 });
@@ -279,8 +280,9 @@ describe('requireDsgAuth — return type', () => {
     const result = await requireDsgAuth(req);
 
     if (!result.ok) {
-      expect(result.status).toBeOneOf([401, 403]);
-      expect(typeof result.error).toBe('string');
+      const errorResult = result as { ok: false; status: number; error: string };
+      expect([401, 403]).toContain(errorResult.status);
+      expect(typeof errorResult.error).toBe('string');
     }
   });
 });
