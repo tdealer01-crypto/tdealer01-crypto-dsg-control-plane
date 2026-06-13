@@ -1,0 +1,20 @@
+/* DSG ONE Color Tokens */
+:root {
+  --color-red: #E10600;
+  --color-red-deep: #7F0509;
+  --color-gold: #D4AF37;
+  --color-gold-soft: #F7DC78;
+  --color-sapphire: #0F52BA;
+  --color-sapphire-soft: #4F8CFF;
+  --color-black: #050507;
+  --color-black-2: #090B12;
+  --color-surface: #14151C;
+  --color-surface-2: #191A22;
+  --color-text: #F8FAFC;
+  --color-text-muted: #AAB3C5;
+  --color-border: rgba(247, 220, 120, 0.16);
+  --color-success: #33D17A;
+  --color-warning: #F5C542;
+  --color-error: #FF4D4D;
+  --color-info: #4F8CFF;
+}
