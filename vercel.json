@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/flush-meter-outbox",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/usage-alerts",
@@ -48,7 +48,7 @@
     },
     {
       "path": "/api/cron/reconcile-meter",
-      "schedule": "0 * * * *"
+      "schedule": "0 4 * * *"
     }
   ]
 }
