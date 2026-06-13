@@ -15,7 +15,7 @@ This PR does **not** claim production readiness. It only adds the first code sli
 | Agent | Workstream | Output in this PR | Remaining follow-up |
 |---|---|---|---|
 | Agent 1 — UX Translator | Convert SSE events into plain user language | `lib/hermes/human-event.ts` | Wire the same translator into the full `/dashboard/hermes` timeline cards |
-| Agent 2 — Chat Event Renderer | Replace terse `Action plan: s1:...` text with readable summaries | `lib/agent/chat-event.ts` | Add mobile timeline polish and copy/export actions for each evidence block |
+| Agent 2 — Chat Event Renderer | Preserve legacy rendering while adding human rendering opt-in | `lib/agent/chat-event.ts` | Add mobile timeline polish and copy/export actions for each evidence block |
 | Agent 3 — Approval Flow | Review why natural text approval is confusing | Evidence note only | Implement explicit approve button/token flow instead of relying on free text |
 | Agent 4 — Runtime Doctor | Diagnose capacity/latency alerts shown in screenshots | Evidence note only | Add a Runtime Doctor card for executor capacity, stale jobs, route, status, and request id |
 | Agent 5 — QA/Evidence | Define acceptance checks | This evidence file | Run CI/typecheck/build and attach screenshots after deployment |
@@ -46,7 +46,11 @@ Updated file:
 lib/agent/chat-event.ts
 ```
 
-The renderer now uses the human translator before falling back to raw technical output.
+Compatibility fix after CI failures:
+
+- `formatAgentEventMessage()` now keeps the legacy English rendering by default so existing consumers/tests are not broken.
+- Human-readable rendering is opt-in via `renderMode: 'human'` or `locale: 'th'`.
+- `formatHumanAgentEventMessage()` exposes the human translator explicitly for the Hermes UI follow-up slice.
 
 ## Truth boundary
 
@@ -69,7 +73,7 @@ Verified from repo inspection before this PR:
 
 ## Follow-up PR slices
 
-1. Wire `humanizeAgentEvent()` directly into `app/dashboard/hermes/page.tsx` trace cards.
+1. Wire `formatHumanAgentEventMessage()` / `humanizeAgentEvent()` directly into `app/dashboard/hermes/page.tsx` trace cards.
 2. Add Runtime Doctor panel:
    - last failed request
    - route
