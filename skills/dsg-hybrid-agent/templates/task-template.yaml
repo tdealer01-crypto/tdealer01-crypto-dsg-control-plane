@@ -1,0 +1,27 @@
+goal: "Template task - replace with actual goal"
+mode: hybrid
+context:
+  email: "user@example.com"
+  password: "secret"
+  targetUrl: "https://example.com"
+
+steps:
+  - id: example-navigate
+    type: navigate
+    rom: landing
+    mode: sim-only
+    description: "Example navigation step"
+
+  - id: example-extract
+    type: extract
+    rom: landing
+    mode: sim-only
+    data:
+      selectors: ["headline", "tagline"]
+    description: "Example extraction step"
+
+  - id: example-api-call
+    type: api-call
+    rom: health
+    mode: sim-only
+    description: "Example API call step"

@@ -44,8 +44,8 @@ function baseRequest(
   };
 }
 
-function fullProof() {
-  return proveDeterministicPlan({
+async function fullProof() {
+  return await proveDeterministicPlan({
     planId: "plan-test-001",
     nonce: "nonce-test-001",
     idempotencyKey: "idem-test-001",
@@ -62,12 +62,13 @@ function fullProof() {
   });
 }
 
-function proofWith(overrides: Record<string, unknown>) {
-  return { ...fullProof(), ...overrides } as ReturnType<typeof fullProof>;
+async function proofWith(overrides: Record<string, unknown>) {
+  const baseProof = await fullProof();
+  return { ...baseProof, ...overrides } as Awaited<ReturnType<typeof fullProof>>;
 }
 
 describe("DSG automation controller", () => {
-  it("passes a fully evidenced low-risk agent action through the real deterministic gate scaffold", () => {
+  it("passes a fully evidenced low-risk agent action through the real deterministic gate scaffold", async () => {
     const result = evaluateAutomationController(
       baseRequest({
         resource: {
@@ -86,7 +87,7 @@ describe("DSG automation controller", () => {
     expect(result.evidenceBoundary.productionReadyClaim).toBe(true);
   });
 
-  it("does not pass high-risk action when required approval is missing", () => {
+  it("does not pass high-risk action when required approval is missing", async () => {
     const result = evaluateAutomationController(
       baseRequest({
         actionType: "deployment_action",
@@ -122,7 +123,7 @@ describe("DSG automation controller", () => {
     expect(result.evidenceBoundary.productionReadyClaim).toBe(false);
   });
 
-  it("blocks unsupported evidence from becoming a passing consumer-facing decision", () => {
+  it("blocks unsupported evidence from becoming a passing consumer-facing decision", async () => {
     const result = evaluateAutomationController(
       baseRequest({
         evidence: [
@@ -150,16 +151,16 @@ describe("DSG automation controller", () => {
 });
 
 describe("production readiness proof boundary", () => {
-  it("sets productionReadyClaim true for a complete PASS proof", () => {
-    const proof = fullProof();
+  it("sets productionReadyClaim true for a complete PASS proof", async () => {
+    const proof = await fullProof();
 
     expect(proof.status).toBe("PASS");
     expect(proof.evidenceBoundary.productionReadyClaim).toBe(true);
     expect(isProductionReadyDeterministicProof(proof)).toBe(true);
   });
 
-  it("keeps productionReadyClaim false when any constraint fails", () => {
-    const proof = proveDeterministicPlan({
+  it("keeps productionReadyClaim false when any constraint fails", async () => {
+    const proof = await proveDeterministicPlan({
       planId: "plan-test-constraint-fail",
       nonce: "nonce-test-001",
       idempotencyKey: "idem-test-001",
@@ -180,35 +181,61 @@ describe("production readiness proof boundary", () => {
     expect(isProductionReadyDeterministicProof(proof)).toBe(false);
   });
 
-  it.each([
-    [
-      "missing nonce",
-      { replayProtection: { ...fullProof().replayProtection, nonce: "" } },
-    ],
-    [
-      "missing idempotencyKey",
-      {
-        replayProtection: {
-          ...fullProof().replayProtection,
-          idempotencyKey: "",
-        },
-      },
-    ],
-    ["missing policyVersion", { policyVersion: "" }],
-    ["missing constraintSetHash", { constraintSetHash: "" }],
-    ["missing proofHash", { proofHash: "" }],
-    [
-      "missing solver.version",
-      { solver: { ...fullProof().solver, version: "" } },
-    ],
-    ["empty constraints", { constraints: [] }],
-  ])("returns false for %s", (_name, overrides) => {
-    expect(isProductionReadyDeterministicProof(proofWith(overrides))).toBe(
+  it("returns false when proof is missing nonce", async () => {
+    const overrides = {
+      replayProtection: { ...(await fullProof()).replayProtection, nonce: "" },
+    };
+    expect(isProductionReadyDeterministicProof(await proofWith(overrides))).toBe(
       false,
     );
   });
 
-  it("keeps disallowed external/compliance boundary claims false", () => {
+  it("returns false when proof is missing idempotencyKey", async () => {
+    const overrides = {
+      replayProtection: {
+        ...(await fullProof()).replayProtection,
+        idempotencyKey: "",
+      },
+    };
+    expect(isProductionReadyDeterministicProof(await proofWith(overrides))).toBe(
+      false,
+    );
+  });
+
+  it("returns false for missing policyVersion", async () => {
+    expect(isProductionReadyDeterministicProof(await proofWith({ policyVersion: "" }))).toBe(
+      false,
+    );
+  });
+
+  it("returns false for missing constraintSetHash", async () => {
+    expect(isProductionReadyDeterministicProof(await proofWith({ constraintSetHash: "" }))).toBe(
+      false,
+    );
+  });
+
+  it("returns false for missing proofHash", async () => {
+    expect(isProductionReadyDeterministicProof(await proofWith({ proofHash: "" }))).toBe(
+      false,
+    );
+  });
+
+  it("returns false when solver.version is missing", async () => {
+    const overrides = {
+      solver: { ...(await fullProof()).solver, version: "" },
+    };
+    expect(isProductionReadyDeterministicProof(await proofWith(overrides))).toBe(
+      false,
+    );
+  });
+
+  it("returns false for empty constraints", async () => {
+    expect(isProductionReadyDeterministicProof(await proofWith({ constraints: [] }))).toBe(
+      false,
+    );
+  });
+
+  it("keeps disallowed external/compliance boundary claims false", async () => {
     const result = evaluateAutomationController(
       baseRequest({
         resource: {

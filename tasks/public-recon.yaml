@@ -1,0 +1,66 @@
+# Task 2: Public Recon Only (SIM ONLY - no auth, free, fast)
+goal: "Reconnaissance of all public DSG endpoints"
+mode: sim-only
+
+steps:
+  - id: landing
+    type: navigate
+    rom: landing
+    description: "Load landing page"
+
+  - id: landing-extract
+    type: extract
+    rom: landing
+    data:
+      selectors: ["headline", "tagline", "corePromise", "ctaButton"]
+    description: "Extract landing content"
+
+  - id: delivery-proof
+    type: navigate
+    rom: delivery-proof
+    description: "Load delivery proof page"
+
+  - id: delivery-proof-extract
+    type: extract
+    rom: delivery-proof
+    data:
+      selectors: ["scanInput", "runScanButton", "pricingLink", "signupLink", "evidencePackLink"]
+    description: "Extract delivery proof elements"
+
+  - id: readiness-report
+    type: navigate
+    rom: readiness-report
+    description: "Load readiness report page"
+
+  - id: readiness-extract
+    type: extract
+    rom: readiness-report
+    data:
+      selectors: ["urlInput", "runCheckButton", "freeReportLink", "githubActionLink"]
+    description: "Extract readiness report elements"
+
+  - id: health-check
+    type: api-call
+    rom: health
+    description: "GET /api/health"
+
+  - id: mcp-manifest
+    type: api-call
+    rom: mcp-manifest
+    description: "GET /api/mcp-server"
+
+  - id: mcp-tools
+    type: action
+    rom: mcp-manifest
+    action: "getMcpTools"
+    description: "GET /api/mcp-server/tools"
+
+  - id: compliance-annex4
+    type: api-call
+    rom: compliance-annex4
+    description: "GET EU AI Act Annex IV evidence"
+
+  - id: ccvs-status
+    type: api-call
+    rom: ccvs-status
+    description: "GET CCVS compliance status"

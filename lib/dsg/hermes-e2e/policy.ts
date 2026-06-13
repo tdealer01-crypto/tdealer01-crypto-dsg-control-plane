@@ -90,12 +90,7 @@ export function evaluateActionPolicy(action: ActionDescriptor): PolicyResult {
     };
   }
 
-  if (
-    action.operation === 'read' ||
-    action.operation === 'open' ||
-    action.operation === 'fill' ||
-    action.operation === 'click'
-  ) {
+  if (action.operation === 'read' || action.operation === 'open' || action.operation === 'fill' || action.operation === 'click') {
     return {
       decision: 'ALLOW',
       risk: 'LOW',
@@ -103,6 +98,42 @@ export function evaluateActionPolicy(action: ActionDescriptor): PolicyResult {
       requiredEvidence: ['audit_hash'],
       requiredApproval: false,
     };
+  }
+
+  // Android-specific operations
+  if (action.domain === 'android') {
+    const androidHighImpact = action.operation === 'swipe' || action.operation === 'long_click' || action.operation === 'input_text';
+
+    if (androidHighImpact) {
+      if (!action.hasFreshEvidence || !action.hasRollback) {
+        return {
+          decision: 'SAFE_ALTERNATIVE',
+          risk: 'MEDIUM',
+          reason: 'ANDROID_HIGH_IMPACT_NEEDS_EVIDENCE',
+          requiredEvidence: ['fresh_evidence', 'screen_state_hash', 'rollback_proof'],
+          requiredApproval: true,
+          safeAlternative: 'Capture current screen state, verify element selector, request approval, then execute.',
+        };
+      }
+      return {
+        decision: 'REVIEW',
+        risk: 'MEDIUM',
+        reason: 'ANDROID_ACTION_REQUIRES_HUMAN_APPROVAL',
+        requiredEvidence: ['screen_state_hash', 'element_selector_hash', 'audit_hash'],
+        requiredApproval: true,
+      };
+    }
+
+    // get_text, scroll - read-only operations
+    if (action.operation === 'get_text' || action.operation === 'scroll') {
+      return {
+        decision: 'ALLOW',
+        risk: 'LOW',
+        reason: 'ANDROID_READ_OPERATION_ALLOWED',
+        requiredEvidence: ['audit_hash', 'screen_state_hash'],
+        requiredApproval: false,
+      };
+    }
   }
 
   return {

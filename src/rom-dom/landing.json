@@ -1,0 +1,57 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/",
+  "html": "<!-- Landing page HTML -->",
+  "selectors": {
+    "headline": "h1",
+    "tagline": "h2, .tagline",
+    "ctaButton": "a[href*=\"signup\"], button:has-text(\"Start\")",
+    "docsLink": "a[href*=\"docs\"]",
+    "githubLink": "a[href*=\"github\"]",
+    "statusBadge": "[data-testid=\"status-badge\"]",
+    "corePromise": "[data-testid=\"core-promise\"]"
+  },
+  "forms": [],
+  "actions": [
+    {
+      "name": "extractLanding",
+      "type": "extract",
+      "target": ["headline", "tagline", "corePromise"],
+      "description": "Extract landing page content"
+    },
+    {
+      "name": "clickSignup",
+      "type": "click",
+      "target": "ctaButton",
+      "description": "Click signup CTA"
+    },
+    {
+      "name": "clickDocs",
+      "type": "click",
+      "target": "docsLink",
+      "description": "Navigate to docs"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "extractLanding",
+      "outcome": "success",
+      "result": {
+        "headline": "DSG ONE — ProofGate Runtime Control Plane",
+        "tagline": "Deterministic Security Gateway · SMT-Verified · WORM Audit",
+        "corePromise": "Govern AI actions before they reach production."
+      }
+    }
+  ],
+  "browserActions": {
+    "goto": {
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/",
+      "waitUntil": "networkidle"
+    },
+    "extract": {
+      "headline": "h1",
+      "tagline": "h2",
+      "corePromise": "[data-testid=\"core-promise\"]"
+    }
+  }
+}

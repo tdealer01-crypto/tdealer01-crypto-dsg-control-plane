@@ -15,9 +15,9 @@ export function proofToGateStatus(
   return 'BLOCK';
 }
 
-export function evaluateDeterministicGate(request: DeterministicProofRequest): DeterministicGateDecision {
+export async function evaluateDeterministicGate(request: DeterministicProofRequest): Promise<DeterministicGateDecision> {
   const riskLevel = request.riskLevel ?? 'medium';
-  const proof: DeterministicProof = proveDeterministicPlan(request);
+  const proof: DeterministicProof = await proveDeterministicPlan(request);
   const gateStatus = proofToGateStatus(proof.status, riskLevel);
 
   return {

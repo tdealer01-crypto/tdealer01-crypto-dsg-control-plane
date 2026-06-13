@@ -47,7 +47,7 @@ export async function callDsgTool(
   try {
     switch (name) {
       case 'dsg.evaluate':
-        return handleEvaluate(args);
+        return await handleEvaluate(args);
       case 'dsg.verifyClaim':
         return handleVerifyClaim(args);
       case 'dsg.recordEvidence':
@@ -64,7 +64,7 @@ export async function callDsgTool(
   }
 }
 
-function handleEvaluate(args: Record<string, unknown>): DsgToolResult {
+async function handleEvaluate(args: Record<string, unknown>): Promise<DsgToolResult> {
   const action = String(args.action ?? '');
   const actor = String(args.actor ?? 'unknown');
   const tool = String(args.tool ?? action);
@@ -94,7 +94,7 @@ function handleEvaluate(args: Record<string, unknown>): DsgToolResult {
     riskLevel,
   };
 
-  const decision = evaluateDeterministicGate(request);
+  const decision = await evaluateDeterministicGate(request);
 
   return {
     ok: true,

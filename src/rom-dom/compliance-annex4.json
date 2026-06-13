@@ -1,0 +1,46 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/compliance-evidence-pack/annex4",
+  "html": "",
+  "selectors": {},
+  "forms": [],
+  "actions": [
+    {
+      "name": "getAnnex4Evidence",
+      "type": "api-call",
+      "target": "compliance-annex4",
+      "description": "GET /api/compliance-evidence-pack/annex4"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "getAnnex4Evidence",
+      "outcome": "success",
+      "result": {
+        "totalItems": 9,
+        "covered": 7,
+        "partial": 2,
+        "pending": 0,
+        "coverageRate": "77.8%",
+        "items": [
+          { "id": 1, "title": "General Description & Intended Purpose", "status": "COVERED", "control": "CTRL-POLICY-ENGINE", "framework": "NIST AI RMF GOVERN 1.1" },
+          { "id": 2, "title": "Version & Update History", "status": "COVERED", "control": "CTRL-BUILD-PROVENANCE", "framework": "SLSA Level 2" },
+          { "id": 3, "title": "Technical Specifications & Performance Metrics", "status": "COVERED", "control": "CTRL-RISK-GATE", "framework": "ISO 42001 Annex A 7.3" },
+          { "id": 4, "title": "Monitoring, Functioning & Control Systems", "status": "COVERED", "control": "CTRL-IMMUTABLE-AUDIT", "framework": "EU AI Act Article 12" },
+          { "id": 5, "title": "Input Data Specifications", "status": "PARTIAL", "control": "CTRL-POLICY-ENGINE", "framework": "NIST AI RMF GOVERN 1.1" },
+          { "id": 6, "title": "Human Oversight Measures", "status": "COVERED", "control": "CTRL-HUMAN-GATE", "framework": "EU AI Act Article 14" },
+          { "id": 7, "title": "Post-Market Monitoring", "status": "COVERED", "control": "CTRL-REPLAY-REJECTION", "framework": "NIST AI RMF MEASURE 2.6" },
+          { "id": 8, "title": "Incident Reporting & Corrective Action", "status": "PARTIAL", "control": "CTRL-AUDIT-TRAIL", "framework": "ISO 42001 Annex A 9.2" },
+          { "id": 9, "title": "Other Documentation", "status": "COVERED", "control": "CTRL-BUILD-PROVENANCE", "framework": "SLSA Level 2" }
+        ]
+      }
+    }
+  ],
+  "browserActions": {
+    "api": {
+      "method": "GET",
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/compliance-evidence-pack/annex4",
+      "expectedStatus": 200
+    }
+  }
+}

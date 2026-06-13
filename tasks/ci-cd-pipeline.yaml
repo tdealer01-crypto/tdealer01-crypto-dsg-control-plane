@@ -1,0 +1,93 @@
+# Task 5: CI/CD Pipeline - Run all verification gates
+goal: "Execute full CI/CD verification pipeline"
+mode: hybrid
+context:
+  commit: "{{github.sha}}"
+  prNumber: "{{github.event.number}}"
+
+steps:
+  # Phase 1: Pre-flight checks (SIM)
+  - id: check-health
+    type: api-call
+    rom: health
+    mode: sim-only
+    description: "Verify system health"
+
+  - id: check-mcp
+    type: api-call
+    rom: mcp-manifest
+    mode: sim-only
+    description: "Verify MCP server available"
+
+  # Phase 2: Deploy preview (REAL - would deploy to preview env)
+  - id: deploy-preview
+    type: api-call
+    rom: gate-evaluate
+    requiresAuth: true
+    data:
+      action: "deploy-preview"
+      context:
+        commit: "{{context.commit}}"
+        pr: "{{context.prNumber}}"
+        env: "preview"
+    description: "Gate preview deployment"
+
+  - id: verify-preview-gate
+    type: extract
+    rom: gate-evaluate
+    requiresAuth: true
+    verification:
+      type: "keys"
+      keys: ["decision"]
+    description: "Verify preview gate passed"
+
+  # Phase 3: Production readiness (SIM)
+  - id: readiness-check
+    type: navigate
+    rom: readiness-report
+    mode: sim-only
+    description: "Load readiness report"
+
+  - id: run-readiness
+    type: action
+    rom: readiness-report
+    action: "runCheck"
+    mode: sim-only
+    data:
+      url: "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+    description: "Run production readiness check"
+
+  # Phase 4: Compliance evidence (SIM)
+  - id: compliance-check
+    type: api-call
+    rom: compliance-annex4
+    mode: sim-only
+    description: "Verify compliance evidence"
+
+  - id: ccvs-check
+    type: api-call
+    rom: ccvs-status
+    mode: sim-only
+    description: "Verify CCVS status"
+
+  # Phase 5: Production deploy gate (REAL - requires approval)
+  - id: production-gate
+    type: api-call
+    rom: gate-evaluate
+    requiresAuth: true
+    data:
+      action: "deploy-production"
+      context:
+        commit: "{{context.commit}}"
+        env: "production"
+        approval: "required"
+    description: "Gate production deployment"
+
+  - id: verify-production-gate
+    type: extract
+    rom: gate-evaluate
+    requiresAuth: true
+    verification:
+      type: "custom"
+      fn: "(sim, real) => real.decision === 'PASS'"
+    description: "Verify production gate PASS"

@@ -1,0 +1,168 @@
+# DSG Hybrid Agent Tasks
+# Reusable task definitions for common workflows
+# Usage: POST to /api/agent/hybrid with this task object
+
+---
+# Task 1: Full Login + Gate Evaluation (Hybrid mode)
+goal: "Login to DSG dashboard and run gate evaluation on deploy-contract action"
+mode: hybrid
+context:
+  email: "reviewer@dsg.pics"
+  password: "reviewer"
+
+steps:
+  # Phase 1: Public reconnaissance (SIM ONLY - fast, free)
+  - id: recon-landing
+    type: navigate
+    rom: landing
+    mode: sim-only
+    description: "Load landing page and extract headline"
+
+  - id: recon-landing-extract
+    type: extract
+    rom: landing
+    mode: sim-only
+    data:
+      selectors: ["headline", "tagline", "corePromise"]
+    description: "Extract landing page content"
+
+  - id: recon-delivery-proof
+    type: navigate
+    rom: delivery-proof
+    mode: sim-only
+    description: "Load delivery proof page"
+
+  - id: recon-delivery-extract
+    type: extract
+    rom: delivery-proof
+    mode: sim-only
+    data:
+      selectors: ["pricingLink", "signupLink", "evidencePackLink"]
+    description: "Extract delivery proof links"
+
+  - id: recon-health
+    type: api-call
+    rom: health
+    mode: sim-only
+    description: "Check system health"
+
+  - id: recon-mcp
+    type: api-call
+    rom: mcp-manifest
+    mode: sim-only
+    description: "Get MCP server manifest"
+
+  - id: recon-compliance
+    type: api-call
+    rom: compliance-annex4
+    mode: sim-only
+    description: "Get EU AI Act Annex IV evidence"
+
+  - id: recon-ccvs
+    type: api-call
+    rom: ccvs-status
+    mode: sim-only
+    description: "Get CCVS compliance status"
+
+  # Phase 2: Authentication (REAL - requires browser)
+  - id: auth-navigate
+    type: navigate
+    rom: login
+    requiresAuth: true
+    mode: real-only
+    data:
+      url: "https://tdealer01-crypto-dsg-control-plane.vercel.app/password-login"
+    description: "Navigate to login page"
+
+  - id: auth-fill-email
+    type: fill-form
+    rom: login
+    form: "password-login"
+    requiresAuth: true
+    data:
+      email: "{{context.email}}"
+    description: "Fill email field"
+
+  - id: auth-fill-password
+    type: fill-form
+    rom: login
+    form: "password-login"
+    requiresAuth: true
+    data:
+      password: "{{context.password}}"
+    description: "Fill password field"
+
+  - id: auth-submit
+    type: click
+    rom: login
+    action: "clickSubmit"
+    requiresAuth: true
+    verification:
+      type: "custom"
+      fn: "(sim, real) => real.navigated && real.navigated.includes('/dashboard')"
+    description: "Submit login form"
+
+  - id: auth-wait
+    type: wait
+    rom: login
+    action: "waitForLogin"
+    requiresAuth: true
+    description: "Wait for login to complete"
+
+  # Phase 3: Dashboard interaction (REAL)
+  - id: dash-navigate
+    type: navigate
+    rom: hermes-dashboard
+    requiresAuth: true
+    description: "Navigate to Hermes dashboard"
+
+  - id: dash-extract-status
+    type: extract
+    rom: hermes-dashboard
+    requiresAuth: true
+    data:
+      selectors: ["gateStatus", "policyVersion", "recentActions"]
+    description: "Extract dashboard status"
+
+  # Phase 4: Gate Evaluation (REAL API call)
+  - id: gate-fill
+    type: fill-form
+    rom: hermes-dashboard
+    form: "gate-evaluation"
+    requiresAuth: true
+    data:
+      action: "deploy-contract"
+      context: '{"env": "production", "amount": 5000, "contract": "StripeApp"}'
+    description: "Fill gate evaluation form"
+
+  - id: gate-run
+    type: click
+    rom: hermes-dashboard
+    action: "runGate"
+    requiresAuth: true
+    description: "Run gate evaluation"
+
+  - id: gate-wait
+    type: wait
+    rom: hermes-dashboard
+    action: "waitForGate"
+    requiresAuth: true
+    description: "Wait for gate result"
+
+  - id: gate-extract
+    type: extract
+    rom: hermes-dashboard
+    action: "extractGateResult"
+    requiresAuth: true
+    verification:
+      type: "keys"
+      keys: ["decision", "evidenceHash"]
+    description: "Extract gate evaluation result"
+
+  # Phase 5: Logout (REAL)
+  - id: auth-logout
+    type: action
+    rom: hermes-dashboard
+    action: "logout"
+    requiresAuth: true
+    description: "Sign out from dashboard"

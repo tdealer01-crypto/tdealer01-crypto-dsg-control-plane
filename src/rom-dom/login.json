@@ -1,0 +1,123 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/password-login",
+  "html": "<!-- Full HTML captured from Playwright recording -->",
+  "selectors": {
+    "emailInput": "input[name=\"email\"]",
+    "passwordInput": "input[name=\"password\"]",
+    "submitButton": "button[type=\"submit\"]",
+    "recoveryLink": "a[href*=\"recovery\"]",
+    "signupLink": "a[href*=\"signup\"]",
+    "ssoButton": "button:has-text(\"Continue with SSO\")",
+    "errorMessage": "[role=\"alert\"], .error-message",
+    "loadingSpinner": "[data-testid=\"loading\"]"
+  },
+  "forms": [
+    {
+      "name": "password-login",
+      "action": "/api/auth/callback/credentials",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "email",
+          "type": "email",
+          "required": true,
+          "selector": "input[name=\"email\"]",
+          "label": "Work email"
+        },
+        {
+          "name": "password",
+          "type": "password",
+          "required": true,
+          "selector": "input[name=\"password\"]",
+          "label": "Password"
+        }
+      ],
+      "submitSelector": "button[type=\"submit\"]",
+      "successIndicators": [
+        "url contains /dashboard",
+        "cookie next-auth.session-token exists"
+      ],
+      "errorIndicators": [
+        "[role=\"alert\"] visible",
+        "url still contains /password-login"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "fillEmail",
+      "type": "type",
+      "target": "emailInput",
+      "description": "Type email into email field"
+    },
+    {
+      "name": "fillPassword",
+      "type": "type",
+      "target": "passwordInput",
+      "description": "Type password into password field"
+    },
+    {
+      "name": "clickSubmit",
+      "type": "click",
+      "target": "submitButton",
+      "description": "Click Sign in button",
+      "waitFor": "navigation"
+    },
+    {
+      "name": "clickRecovery",
+      "type": "click",
+      "target": "recoveryLink",
+      "description": "Click recovery link"
+    },
+    {
+      "name": "waitForLogin",
+      "type": "wait",
+      "target": "loadingSpinner",
+      "description": "Wait for login to complete",
+      "timeout": 10000
+    }
+  ],
+  "authRequired": true,
+  "simulationRules": [
+    {
+      "trigger": "password-login",
+      "condition": "email and password provided",
+      "outcome": "redirect",
+      "redirectUrl": "/dashboard/hermes",
+      "nextSteps": ["navigate:hermes-dashboard"],
+      "cookies": ["next-auth.session-token", "next-auth.callback-url"]
+    },
+    {
+      "trigger": "password-login",
+      "condition": "invalid credentials",
+      "outcome": "error",
+      "errorMessage": "Invalid email or password",
+      "nextSteps": ["retry:fillEmail", "retry:fillPassword"]
+    }
+  ],
+  "browserActions": {
+    "goto": {
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/password-login",
+      "waitUntil": "networkidle",
+      "timeout": 30000
+    },
+    "fill": [
+      { "selector": "input[name=\"email\"]", "value": "{{email}}", "delay": 50 },
+      { "selector": "input[name=\"password\"]", "value": "{{password}}", "delay": 50 }
+    ],
+    "click": {
+      "selector": "button[type=\"submit\"]",
+      "waitForNavigation": true,
+      "timeout": 15000
+    },
+    "waitFor": {
+      "selector": "/dashboard/hermes",
+      "state": "url",
+      "timeout": 10000
+    },
+    "cookies": {
+      "get": ["next-auth.session-token", "next-auth.callback-url"],
+      "set": {}
+    }
+  }
+}

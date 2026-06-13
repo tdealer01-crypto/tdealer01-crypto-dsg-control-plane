@@ -177,11 +177,11 @@ function remediationFor(
   return Array.from(remediation);
 }
 
-export function evaluateAutomationController(
+export async function evaluateAutomationController(
   request: DsgAutomationControllerRequest,
-): DsgAutomationControllerResult {
+): Promise<DsgAutomationControllerResult> {
   const policy = evaluatePolicy(request);
-  const gate = evaluateDeterministicGate({
+  const gate = await evaluateDeterministicGate({
     planId: request.actionId,
     policyRef: policy.policyRef,
     policyVersion: policy.policyVersion,
