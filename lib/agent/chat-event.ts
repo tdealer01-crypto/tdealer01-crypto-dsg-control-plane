@@ -1,4 +1,4 @@
-import { humanizeAgentEvent, summarizeHumanResult } from '../hermes/human-event';
+import { humanizeAgentEvent } from '../hermes/human-event';
 
 export type AgentChatEvent = {
   type?: string;
@@ -15,6 +15,8 @@ export type AgentChatEvent = {
   affected_count?: number;
   rollback_available?: boolean;
   decision_id?: string;
+  locale?: 'en' | 'th';
+  renderMode?: 'legacy' | 'human';
 };
 
 function toPlain(value: unknown): string {
@@ -28,18 +30,71 @@ function toPlain(value: unknown): string {
 }
 
 function formatStepResult(step: string, result: unknown): string {
-  const human = summarizeHumanResult(step, result);
-  const raw = toPlain(result);
-  if (raw === '-' || raw.length > 1200) return human;
-  return `${human}\n\nTechnical evidence:\n${raw}`;
+  if (!result || typeof result !== 'object') {
+    return `Result ${step}: ${toPlain(result)}`;
+  }
+
+  const data = result as Record<string, unknown>;
+  const items = Array.isArray(data.items) ? data.items : null;
+  const pagination = data.pagination as Record<string, unknown> | undefined;
+
+  if (typeof data.status === 'string') {
+    return `Readiness ${step}: ${data.status}`;
+  }
+
+  if (items && pagination && typeof pagination.total === 'number') {
+    return `Done ${step}: found ${pagination.total} items`;
+  }
+
+  if (typeof data.ok === 'boolean') {
+    return `Done ${step}: ${data.ok ? 'ready' : 'issue detected'}`;
+  }
+
+  return `Result ${step}:\n${toPlain(result)}`;
+}
+
+function wantsHumanRender(event: AgentChatEvent): boolean {
+  return event.renderMode === 'human' || event.locale === 'th';
+}
+
+export function formatHumanAgentEventMessage(event: AgentChatEvent): string | null {
+  return humanizeAgentEvent(event);
 }
 
 export function formatAgentEventMessage(event: AgentChatEvent): string | null {
-  const human = humanizeAgentEvent(event);
-  if (human) return human;
+  if (wantsHumanRender(event)) {
+    const human = humanizeAgentEvent(event);
+    if (human) return human;
+  }
 
-  if (event?.type === 'step_result') {
+  const type = String(event?.type || '');
+
+  if (type === 'assistant_reply') {
+    if (!event.reply) return null;
+    return event.model ? `${event.reply}\n\n(model: ${event.model})` : event.reply;
+  }
+
+  if (type === 'plan') {
+    const steps = Array.isArray(event.steps) ? event.steps : [];
+    if (steps.length === 0) return 'Processing command...';
+    const list = steps.map((s) => `${s.id || '-'}:${s.toolId || '-'}`).join(', ');
+    return `Action plan: ${list}`;
+  }
+
+  if (type === 'step_start') {
+    return `Running ${event.step || '-'} • ${event.tool || 'tool'}`;
+  }
+
+  if (type === 'step_error') {
+    return `Failed ${event.step || '-'}: ${event.error || 'an error occurred'}`;
+  }
+
+  if (type === 'step_result') {
     return formatStepResult(event.step || '-', event.result);
+  }
+
+  if (type === 'done') {
+    return 'Done';
   }
 
   return null;
