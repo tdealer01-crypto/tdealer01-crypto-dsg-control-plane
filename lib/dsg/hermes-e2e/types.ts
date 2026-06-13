@@ -13,8 +13,8 @@ export type HermesRomContext = {
 };
 
 export type ActionDescriptor = {
-  domain: 'browser' | 'form' | 'deployment' | 'payment' | 'permission' | 'file' | 'unknown';
-  operation: 'read' | 'open' | 'fill' | 'click' | 'submit' | 'send' | 'delete' | 'deploy' | 'pay' | 'change_permission' | 'unknown';
+  domain: 'browser' | 'form' | 'deployment' | 'payment' | 'permission' | 'file' | 'android' | 'unknown';
+  operation: 'read' | 'open' | 'fill' | 'click' | 'submit' | 'send' | 'delete' | 'deploy' | 'pay' | 'change_permission' | 'swipe' | 'long_click' | 'scroll' | 'input_text' | 'get_text' | 'unknown';
   target?: string;
   dataSensitivity: 'public' | 'internal' | 'pii' | 'financial' | 'credential' | 'legal' | 'unknown';
   externalEffect: boolean;

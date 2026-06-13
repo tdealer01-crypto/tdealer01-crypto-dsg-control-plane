@@ -7,6 +7,7 @@ import {
 } from '@/lib/dsg/multi-agent/coordinator-service';
 import type { TaskDag, AgentCapacity } from '@/lib/dsg/multi-agent/types';
 import type { RawDomElement } from '@/lib/dsg/safe-dom/types';
+import type { AndroidAppConfig } from '@/lib/executors/android';
 import { readJsonBody } from '@/lib/security/request-json';
 import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
       rawElements: (body.rawElements as RawDomElement[] | undefined) ?? buildDemoRawElements(),
       maxSolveTimeMs: typeof body.maxSolveTimeMs === 'number' ? body.maxSolveTimeMs : 5000,
       executionMode,
+      androidAppConfig: body.androidAppConfig as AndroidAppConfig | undefined,
     };
 
     const validation = validateCoordinationInput(coordinationInput);
