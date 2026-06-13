@@ -1,0 +1,46 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health",
+  "html": "",
+  "selectors": {},
+  "forms": [],
+  "actions": [
+    {
+      "name": "healthCheck",
+      "type": "api-call",
+      "target": "health",
+      "description": "GET /api/health"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "healthCheck",
+      "outcome": "success",
+      "result": {
+        "ok": true,
+        "service": "dsg-control-plane",
+        "core_ok": true,
+        "db_ok": true,
+        "readiness": {
+          "ok": true,
+          "checks": {
+            "env": { "ok": true },
+            "nextAuthSecret": { "ok": true },
+            "supabaseServiceRole": { "ok": true },
+            "dsgCoreConfig": { "ok": true },
+            "dsgCoreHealth": { "ok": true },
+            "financeGovernanceSurface": { "ok": true },
+            "financeGovernanceBackend": { "ok": true }
+          }
+        }
+      }
+    }
+  ],
+  "browserActions": {
+    "api": {
+      "method": "GET",
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health",
+      "expectedStatus": 200
+    }
+  }
+}

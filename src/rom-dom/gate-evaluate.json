@@ -1,0 +1,93 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate",
+  "html": "",
+  "selectors": {},
+  "forms": [
+    {
+      "name": "gate-evaluate-api",
+      "action": "/api/dsg/v1/gates/evaluate",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "description": "Action type to evaluate (e.g., deploy-contract, approve-payment)"
+        },
+        {
+          "name": "context",
+          "type": "object",
+          "required": false,
+          "description": "Context object with environment, amount, actor, etc.",
+          "default": {}
+        }
+      ],
+      "submitSelector": "POST request",
+      "successIndicators": ["decision field present", "evidenceHash present"]
+    }
+  ],
+  "actions": [
+    {
+      "name": "evaluateGate",
+      "type": "api-call",
+      "target": "gate-evaluate",
+      "description": "POST /api/dsg/v1/gates/evaluate"
+    }
+  ],
+  "authRequired": true,
+  "simulationRules": [
+    {
+      "trigger": "evaluateGate",
+      "conditions": {
+        "validAction": true,
+        "thresholdOk": true
+      },
+      "outcome": "success",
+      "result": {
+        "decision": "PASS",
+        "evidenceHash": "sha256:{{hash}}",
+        "constraintsChecked": 8,
+        "policyVersion": "v1",
+        "details": {
+          "policyVersion": "PASS",
+          "inputHash": "PRESENT",
+          "constraintSetHash": "PRESENT",
+          "proofHash": "PRESENT",
+          "structuredResults": "PRESENT",
+          "replayNonce": "PRESENT",
+          "idempotencyKey": "PRESENT",
+          "requestHash": "PRESENT"
+        }
+      }
+    },
+    {
+      "trigger": "evaluateGate",
+      "conditions": {
+        "thresholdExceeded": true
+      },
+      "outcome": "success",
+      "result": {
+        "decision": "BLOCK",
+        "evidenceHash": "sha256:{{hash}}",
+        "constraintsChecked": 8,
+        "policyVersion": "v1",
+        "reason": "Amount threshold exceeded"
+      }
+    }
+  ],
+  "browserActions": {
+    "api": {
+      "method": "POST",
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate",
+      "headers": {
+        "Content-Type": "application/json",
+        "Cookie": "{{authCookies}}"
+      },
+      "body": {
+        "action": "{{action}}",
+        "context": "{{context}}"
+      },
+      "expectedStatus": [200, 401, 403]
+    }
+  }
+}

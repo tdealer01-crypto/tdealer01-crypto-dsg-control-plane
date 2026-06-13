@@ -1,0 +1,182 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/hermes",
+  "html": "<!-- Full HTML captured from Playwright recording after login -->",
+  "selectors": {
+    "sidebar": "[data-testid=\"sidebar\"]",
+    "sidebarMonitor": "a[href*=\"monitor\"]",
+    "sidebarGovernance": "a[href*=\"governance\"]",
+    "sidebarConnect": "a[href*=\"connect\"]",
+    "sidebarSettings": "a[href*=\"settings\"]",
+    "mainContent": "main",
+    "gateStatus": "[data-testid=\"gate-status\"]",
+    "recentActions": "[data-testid=\"recent-actions\"]",
+    "policyVersion": "[data-testid=\"policy-version\"]",
+    "runGateButton": "button:has-text(\"Run Gate\")",
+    "gateInput": "textarea[placeholder*=\"action\"]",
+    "gateResult": "[data-testid=\"gate-result\"]",
+    "decisionBadge": "[data-testid=\"decision-badge\"]",
+    "evidenceHash": "[data-testid=\"evidence-hash\"]",
+    "toastContainer": "[data-testid=\"toast-container\"]",
+    "userMenu": "[data-testid=\"user-menu\"]",
+    "logoutButton": "button:has-text(\"Sign out\")"
+  },
+  "forms": [
+    {
+      "name": "gate-evaluation",
+      "action": "/api/dsg/v1/gates/evaluate",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "action",
+          "type": "text",
+          "required": true,
+          "selector": "textarea[placeholder*=\"action\"]",
+          "label": "Action to evaluate"
+        },
+        {
+          "name": "context",
+          "type": "json",
+          "required": false,
+          "selector": "textarea[placeholder*=\"context\"]",
+          "label": "Context (JSON)",
+          "default": "{}"
+        }
+      ],
+      "submitSelector": "button:has-text(\"Run Gate\")",
+      "successIndicators": [
+        "[data-testid=\"gate-result\"] visible",
+        "[data-testid=\"decision-badge\"] exists"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "navigateMonitor",
+      "type": "click",
+      "target": "sidebarMonitor",
+      "description": "Navigate to Monitor section"
+    },
+    {
+      "name": "navigateGovernance",
+      "type": "click",
+      "target": "sidebarGovernance",
+      "description": "Navigate to Governance section"
+    },
+    {
+      "name": "navigateConnect",
+      "type": "click",
+      "target": "sidebarConnect",
+      "description": "Navigate to Connect section"
+    },
+    {
+      "name": "navigateSettings",
+      "type": "click",
+      "target": "sidebarSettings",
+      "description": "Navigate to Settings section"
+    },
+    {
+      "name": "fillGateInput",
+      "type": "type",
+      "target": "gateInput",
+      "description": "Fill gate evaluation input"
+    },
+    {
+      "name": "runGate",
+      "type": "click",
+      "target": "runGateButton",
+      "description": "Run gate evaluation",
+      "waitFor": "gateResult"
+    },
+    {
+      "name": "extractGateResult",
+      "type": "extract",
+      "target": ["decisionBadge", "evidenceHash", "gateResult"],
+      "description": "Extract gate evaluation result"
+    },
+    {
+      "name": "waitForGate",
+      "type": "wait",
+      "target": "gateResult",
+      "description": "Wait for gate result to appear",
+      "timeout": 15000
+    },
+    {
+      "name": "clickUserMenu",
+      "type": "click",
+      "target": "userMenu",
+      "description": "Open user menu"
+    },
+    {
+      "name": "logout",
+      "type": "click",
+      "target": "logoutButton",
+      "description": "Sign out",
+      "waitFor": "navigation"
+    }
+  ],
+  "authRequired": true,
+  "simulationRules": [
+    {
+      "trigger": "gate-evaluation",
+      "conditions": {
+        "validAction": true,
+        "validContext": true
+      },
+      "outcome": "success",
+      "result": {
+        "decision": "PASS",
+        "evidenceHash": "sha256:{{hash}}",
+        "constraintsChecked": 8,
+        "policyVersion": "v1",
+        "timestamp": "{{timestamp}}"
+      },
+      "nextSteps": []
+    },
+    {
+      "trigger": "gate-evaluation",
+      "conditions": {
+        "validAction": false
+      },
+      "outcome": "error",
+      "errorMessage": "Invalid action format",
+      "nextSteps": ["retry:fillGateInput"]
+    }
+  ],
+  "browserActions": {
+    "goto": {
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/hermes",
+      "waitUntil": "networkidle",
+      "timeout": 30000
+    },
+    "navigate": {
+      "monitor": "a[href*=\"monitor\"]",
+      "governance": "a[href*=\"governance\"]",
+      "connect": "a[href*=\"connect\"]",
+      "settings": "a[href*=\"settings\"]"
+    },
+    "fill": [
+      { "selector": "textarea[placeholder*=\"action\"]", "value": "{{action}}", "delay": 50 },
+      { "selector": "textarea[placeholder*=\"context\"]", "value": "{{context}}", "delay": 50 }
+    ],
+    "click": {
+      "selector": "button:has-text(\"Run Gate\")",
+      "waitForSelector": "[data-testid=\"gate-result\"]",
+      "timeout": 15000
+    },
+    "waitFor": {
+      "selector": "[data-testid=\"gate-result\"]",
+      "state": "visible",
+      "timeout": 15000
+    },
+    "extract": {
+      "decision": "[data-testid=\"decision-badge\"]",
+      "evidenceHash": "[data-testid=\"evidence-hash\"]",
+      "fullResult": "[data-testid=\"gate-result\"]"
+    },
+    "logout": {
+      "click": "[data-testid=\"user-menu\"]",
+      "thenClick": "button:has-text(\"Sign out\")",
+      "waitForUrl": "/password-login"
+    }
+  }
+}

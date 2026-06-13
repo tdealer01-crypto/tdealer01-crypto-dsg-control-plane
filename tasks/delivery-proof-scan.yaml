@@ -1,0 +1,34 @@
+# Task 3: Delivery Proof Scan (SIM + optional REAL)
+goal: "Run delivery proof scan on a production URL"
+mode: hybrid
+context:
+  targetUrl: "https://example.com"
+
+steps:
+  - id: navigate-delivery
+    type: navigate
+    rom: delivery-proof
+    description: "Load delivery proof page"
+
+  - id: fill-url
+    type: fill-form
+    rom: delivery-proof
+    form: "proof-scan"
+    data:
+      url: "{{context.targetUrl}}"
+    description: "Enter target URL"
+
+  - id: run-scan
+    type: click
+    rom: delivery-proof
+    action: "runScan"
+    verification:
+      type: "keys"
+      keys: ["claim", "evidenceHash"]
+    description: "Run proof scan"
+
+  - id: extract-result
+    type: extract
+    rom: delivery-proof
+    action: "extractScanResult"
+    description: "Extract scan results"

@@ -1,0 +1,85 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/readiness-report",
+  "html": "<!-- Readiness Report page HTML -->",
+  "selectors": {
+    "urlInput": "input[placeholder*=\"production URL\"]",
+    "runCheckButton": "button:has-text(\"Run Proof Check\")",
+    "freeReportLink": "a[href*=\"buy.stripe.com\"]",
+    "githubActionLink": "a[href*=\"github.com\"]",
+    "reportResult": "[data-testid=\"readiness-result\"]",
+    "verdict": "[data-testid=\"verdict\"]",
+    "evidenceHash": "[data-testid=\"evidence-hash\"]",
+    "remediationList": "[data-testid=\"remediation\"]"
+  },
+  "forms": [
+    {
+      "name": "readiness-check",
+      "action": "/api/readiness/check",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "url",
+          "type": "url",
+          "required": true,
+          "selector": "input[placeholder*=\"production URL\"]",
+          "label": "Production URL"
+        }
+      ],
+      "submitSelector": "button:has-text(\"Run Proof Check\")",
+      "successIndicators": ["[data-testid=\"readiness-result\"] visible"]
+    }
+  ],
+  "actions": [
+    {
+      "name": "fillUrl",
+      "type": "type",
+      "target": "urlInput",
+      "description": "Enter production URL"
+    },
+    {
+      "name": "runCheck",
+      "type": "click",
+      "target": "runCheckButton",
+      "description": "Run readiness check",
+      "waitFor": "reportResult"
+    },
+    {
+      "name": "extractResult",
+      "type": "extract",
+      "target": ["verdict", "evidenceHash", "remediationList", "reportResult"],
+      "description": "Extract readiness report"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "readiness-check",
+      "condition": "valid URL provided",
+      "outcome": "success",
+      "result": {
+        "verdict": "GO",
+        "readinessEndpoint": { "status": 200, "ok": true },
+        "protectedRoutes": { "tested": 5, "passed": 5, "failed": 0 },
+        "evidenceHash": "sha256:{{hash}}",
+        "remediation": []
+      }
+    }
+  ],
+  "browserActions": {
+    "goto": {
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/readiness-report",
+      "waitUntil": "networkidle"
+    },
+    "fill": [{ "selector": "input[placeholder*=\"production URL\"]", "value": "{{url}}", "delay": 50 }],
+    "click": {
+      "selector": "button:has-text(\"Run Proof Check\")",
+      "waitForSelector": "[data-testid=\"readiness-result\"]"
+    },
+    "extract": {
+      "verdict": "[data-testid=\"verdict\"]",
+      "evidenceHash": "[data-testid=\"evidence-hash\"]",
+      "remediation": "[data-testid=\"remediation\"]",
+      "full": "[data-testid=\"readiness-result\"]"
+    }
+  }
+}
