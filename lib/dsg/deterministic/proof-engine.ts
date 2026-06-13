@@ -8,6 +8,12 @@ import type {
 import { buildProofHash, hashDeterministicValue } from "./proof-hash";
 import { getDeterministicPolicyManifest } from "./policy-manifest";
 import { getDeterministicSolverMetadata } from "./solver-metadata";
+import {
+  generateSmt2ForProof,
+  invokeExternalSolver,
+  isValidExternalSolverResult,
+  type ExternalSolverResponse,
+} from "./external-solver";
 
 function boolValue(context: Record<string, unknown>, key: string) {
   return context[key] === true;
@@ -21,6 +27,35 @@ function statusFromFailures(
   if (failures.some((failure) => failure.severity === "high")) return "REVIEW";
   if (failures.length > 0) return "REVIEW";
   return "PASS";
+}
+
+/**
+ * Attempt to invoke external Z3 solver and update solver metadata.
+ * Returns updated solver metadata if successful; original metadata on failure.
+ * Always falls back to static check on error/timeout.
+ */
+async function tryInvokeExternalSolverAndUpdateMetadata(
+  constraints: DeterministicConstraintResult[],
+  request: DeterministicProofRequest,
+  defaultSolver: ReturnType<typeof getDeterministicSolverMetadata>,
+): Promise<ReturnType<typeof getDeterministicSolverMetadata>> {
+  // Generate SMT-LIB2 representation of the constraints
+  const smt2 = generateSmt2ForProof(request, constraints);
+
+  // Attempt to invoke external solver
+  const solverResult = await invokeExternalSolver(smt2, request);
+
+  // If external solver failed or returned invalid result, return default
+  if (!solverResult || !isValidExternalSolverResult(solverResult)) {
+    return defaultSolver;
+  }
+
+  // External solver succeeded; update metadata
+  return {
+    name: "z3",
+    version: solverResult.solver_version,
+    externalSolverInvoked: true,
+  };
 }
 
 function nonceText(value: unknown) {
@@ -55,11 +90,11 @@ export function isProductionReadyDeterministicProof(
   );
 }
 
-export function proveDeterministicPlan(
+export async function proveDeterministicPlan(
   request: DeterministicProofRequest,
-): DeterministicProof {
+): Promise<DeterministicProof> {
   const manifest = getDeterministicPolicyManifest();
-  const solver = getDeterministicSolverMetadata();
+  let solver = getDeterministicSolverMetadata();
   const policyRef = request.policyRef ?? manifest.policyRef;
   const policyVersion = request.policyVersion ?? manifest.policyVersion;
   const context = request.context ?? {};
@@ -73,6 +108,18 @@ export function proveDeterministicPlan(
       };
     },
   );
+
+  // Try to invoke external Z3 solver (if enabled and configured)
+  if (
+    process.env.DSG_DETERMINISTIC_EXTERNAL_SOLVER_ENABLED === "true" &&
+    process.env.DSG_EXTERNAL_SOLVER_URL
+  ) {
+    solver = await tryInvokeExternalSolverAndUpdateMetadata(
+      constraints,
+      request,
+      solver,
+    );
+  }
 
   const failureReasons = constraints
     .filter((constraint) => !constraint.passed)

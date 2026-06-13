@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { evaluateAutomationController } from '../../../../../../lib/dsg/controller/automation-controller';
 import type { DsgAutomationControllerRequest } from '../../../../../../lib/dsg/controller/types';
+import { requireDsgAuth, dsgAuthError } from "../../../../../../lib/dsg/auth/require-dsg-auth";
+
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +37,10 @@ function parseBody(body: unknown, nonce: string, idempotencyKey: string): DsgAut
 }
 
 export async function POST(request: Request) {
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  const caller = await requireDsgAuth(request);
+  if (!caller.ok) return dsgAuthError(caller as typeof caller & { ok: false });
+
   const body = await request.json().catch(() => null);
   const nonce = text(isObject(body) ? body.nonce : null) || text(request.headers.get('x-dsg-nonce'));
   const idempotencyKey =
@@ -46,7 +52,7 @@ export async function POST(request: Request) {
   const controllerRequest = parseBody(body, nonce, idempotencyKey);
   if (!controllerRequest) return invalid('invalid_controller_request');
 
-  const result = evaluateAutomationController(controllerRequest);
+  const result = await evaluateAutomationController(controllerRequest);
 
   return NextResponse.json(result);
 }

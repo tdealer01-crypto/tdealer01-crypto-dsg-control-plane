@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { evaluateAnswerGate } from "../../../../../../lib/dsg/answer-gate";
 import { readJsonBody } from "../../../../../../lib/security/request-json";
+import { requireDsgAuth, dsgAuthError } from "../../../../../../lib/dsg/auth/require-dsg-auth";
+
 import {
   applyRateLimit,
   buildRateLimitHeaders,
@@ -10,6 +12,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  const caller = await requireDsgAuth(request);
+  if (!caller.ok) return dsgAuthError(caller as typeof caller & { ok: false });
+
   const rateLimitResult = await applyRateLimit({
     key: getRateLimitKey(request, "dsg-answer-gate"),
     limit: 60,
