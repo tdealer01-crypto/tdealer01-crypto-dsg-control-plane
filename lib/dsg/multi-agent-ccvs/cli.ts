@@ -118,7 +118,6 @@ Examples:
 `);
 }
 
-// Main execution
 async function main(): Promise<void> {
   const options = parseArgs();
 
@@ -140,6 +139,7 @@ async function main(): Promise<void> {
         createPR: options.createPR || false
       },
       dryRun: options.dryRun !== false,
+      outputDir: './ccvs-output',
       verbose: options.verbose
     });
 

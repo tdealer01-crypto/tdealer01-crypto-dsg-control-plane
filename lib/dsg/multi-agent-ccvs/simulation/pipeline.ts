@@ -94,6 +94,9 @@ export class SimulationPipeline {
       const realResult = await this.runRealExecution(realContext, goal);
       this.logRealResults(realResult);
       
+      // Write evidence files after real execution
+      await this.writeEvidenceFiles(realResult);
+      
       // Phase 3: CREATE PR
       if (this.config.orchestrator.createPR && this.ghpr && realResult.success) {
         this.log('\n=== PHASE 3: CREATE PR ===');
@@ -102,6 +105,9 @@ export class SimulationPipeline {
       
       return realResult;
     } else {
+      // In dry-run mode, still write evidence files for artifact upload
+      const simResult = await this.runSimulation(await this.createSimulationContext(commit), goal);
+      await this.writeEvidenceFiles(simResult);
       this.log('\nDry run complete. Set dryRun=false to execute for real.');
       return { success: true };
     }
@@ -158,9 +164,61 @@ export class SimulationPipeline {
       return;
     }
     
+    // Write evidence files to output directory
+    await this.writeEvidenceFiles(result);
+    
     this.log('Creating PR with evidence...');
     const pr = await this.ghpr.createCCVSPR(result, goal);
     this.log('PR created: ' + pr.url);
+  }
+  
+  private async writeEvidenceFiles(result: any): Promise<void> {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    
+    const outputDir = this.config.outputDir;
+    await fs.mkdir(outputDir, { recursive: true });
+    
+    // Write evidence summary
+    const summary = {
+      commit: result.commit,
+      branchName: result.branchName,
+      goal: 'CCVS Evidence Generation',
+      timestamp: new Date().toISOString(),
+      success: result.success,
+      metrics: result.metrics,
+      levels: result.levels,
+      totalEvidence: result.totalEvidence,
+      diffusionTrace: result.diffusionTrace
+    };
+    
+    await fs.writeFile(
+      path.join(this.config.outputDir, 'evidence-summary.json'),
+      JSON.stringify(summary, null, 2)
+    );
+    
+    // Write individual evidence items
+    for (const evidence of result.totalEvidence) {
+      const safeId = evidence.id.replace(/[^a-zA-Z0-9-_]/g, '_');
+      await fs.writeFile(
+        path.join(this.config.outputDir, `evidence-${safeId}.json`),
+        JSON.stringify(evidence, null, 2)
+      );
+    }
+    
+    // Write diffusion trace
+    await fs.writeFile(
+      path.join(this.config.outputDir, 'diffusion-trace.json'),
+      JSON.stringify(result.diffusionTrace, null, 2)
+    );
+    
+    // Write log file
+    await fs.writeFile(
+      path.join(this.config.outputDir, 'pipeline.log'),
+      `CCVS Evidence Generation Log\nCommit: ${result.commit}\nBranch: ${result.branchName}\nTimestamp: ${new Date().toISOString()}\nSuccess: ${result.success}\nEvidence Count: ${result.totalEvidence.length}\n`
+    );
+    
+    this.log('Evidence files written to ' + this.config.outputDir);
   }
 
   private logSimulationResults(result: any): void {
