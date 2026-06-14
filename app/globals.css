@@ -343,3 +343,12 @@ a.rounded-full:hover {
 .dsg-mascot[data-pose="pointing"] { animation: dsg-mascot-point 1.1s ease-in-out infinite; }
 .dsg-mascot[data-pose="thumbsUp"] { animation: dsg-mascot-bob 1.4s ease-in-out infinite; }
 .dsg-mascot__arm-wave { transform-origin: 70% 30%; animation: dsg-mascot-wave 0.7s ease-in-out infinite; }
+
+/* Badge execution state animations */
+@keyframes badge-executing-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.72; }
+}
+.badge-executing-pulse {
+  animation: badge-executing-pulse 1.2s ease-in-out infinite;
+}

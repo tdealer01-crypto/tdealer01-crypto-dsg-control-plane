@@ -1,7 +1,14 @@
-export { Button } from './Button';
+export { Button, useConfirm } from './Button';
 export { Card } from './Card';
 export { Badge } from './Badge';
 export { Modal } from './Modal';
 export { Table } from './Table';
 export { Input } from './Input';
 export { Tabs } from './Tabs';
+export {
+  CommandPalette,
+  useCommands,
+  useCommandPalette,
+  useCommandRegistry,
+  type Command,
+} from './CommandPalette';
