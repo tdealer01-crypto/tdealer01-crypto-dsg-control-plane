@@ -9,7 +9,10 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
 }
 
-export function Input({ label, error, hint, leftIcon, className = '', id, ...props }: InputProps) {
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
+  { label, error, hint, leftIcon, className = '', id, ...props },
+  ref,
+) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
 
   return (
@@ -24,6 +27,7 @@ export function Input({ label, error, hint, leftIcon, className = '', id, ...pro
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AAB3C5]">{leftIcon}</span>
         )}
         <input
+          ref={ref}
           id={inputId}
           className={`w-full rounded-lg border bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm text-[#F8FAFC] placeholder-[#AAB3C5] outline-none transition-all ${
             leftIcon ? 'pl-9' : ''
@@ -39,4 +43,4 @@ export function Input({ label, error, hint, leftIcon, className = '', id, ...pro
       {hint && !error && <p className="text-xs text-[#AAB3C5]">{hint}</p>}
     </div>
   );
-}
+});
