@@ -12,8 +12,6 @@ import complianceAnnex4 from './compliance-annex4.json';
 import ccvsStatus from './ccvs-status.json';
 import gateEvaluate from './gate-evaluate.json';
 
-export type { DOMSnapshot } from './types';
-
 // Re-export types
 export interface SelectorMap {
   [key: string]: string;
