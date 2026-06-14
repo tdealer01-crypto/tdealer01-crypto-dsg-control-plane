@@ -1,0 +1,1 @@
+(assert amount1 > amount2 → risk1 >= risk2)

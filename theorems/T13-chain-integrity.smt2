@@ -1,0 +1,1 @@
+(assert recordHash == sha256(requestHash + decisionHash))

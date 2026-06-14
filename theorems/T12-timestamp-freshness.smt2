@@ -1,0 +1,1 @@
+(assert now - timestamp < 300)
