@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 /**
  * Execution object type representing a control plane task execution
  */
-interface Execution {
+interface Execution extends Record<string, unknown> {
   id: string;
   status: 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
   created: string;
