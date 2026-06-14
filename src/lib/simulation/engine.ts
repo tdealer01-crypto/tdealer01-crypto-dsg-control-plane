@@ -12,7 +12,7 @@ import {
   getActionSpec,
   getSimulationRule,
   listRoms,
-} from './registry';
+} from '../../rom-dom/registry';
 
 export interface SimResult {
   success: boolean;
@@ -24,6 +24,8 @@ export interface SimResult {
   submittedData?: any;
   simulationLog?: SimTrace[];
   trace?: SimTrace[];
+  result?: any;
+  [key: string]: any;
 }
 
 export interface SimTrace {
