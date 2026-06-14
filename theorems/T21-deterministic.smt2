@@ -1,0 +1,1 @@
+(assert same input → same decision)

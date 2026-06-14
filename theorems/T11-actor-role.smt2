@@ -1,0 +1,1 @@
+(assert actor.role in {MAKER,CHECKER,APPROVER})

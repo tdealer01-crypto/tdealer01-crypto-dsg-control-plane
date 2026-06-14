@@ -1,0 +1,1 @@
+(assert slippage <= 50)
