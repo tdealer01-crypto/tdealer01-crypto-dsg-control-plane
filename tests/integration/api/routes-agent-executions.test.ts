@@ -37,7 +37,8 @@ function makeSupabaseMock(dbError: unknown = null) {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({
+          order: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue({
             data: [
               {
                 id: 'exec-1',
@@ -62,7 +63,6 @@ function makeSupabaseMock(dbError: unknown = null) {
             ],
             error: null,
           }),
-          limit: vi.fn().mockReturnThis(),
         };
       }),
     })),
