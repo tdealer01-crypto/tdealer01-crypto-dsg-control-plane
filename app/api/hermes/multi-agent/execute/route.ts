@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       rawElements: (body.rawElements as RawDomElement[] | undefined) ?? buildDemoRawElements(),
       maxSolveTimeMs: typeof body.maxSolveTimeMs === 'number' ? body.maxSolveTimeMs : 5000,
       executionMode,
-      androidAppConfig: body.androidAppConfig as AndroidAppConfig | undefined,
+      androidExecutorConfig: body.androidAppConfig as AndroidAppConfig | undefined,
     };
 
     const validation = validateCoordinationInput(coordinationInput);
