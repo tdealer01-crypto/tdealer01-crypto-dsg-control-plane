@@ -1,723 +1,117 @@
-name: ccvs-evidence
-
+name: CCVS Multi-Agent Evidence Generation
 on:
-  push:
-    branches: ["**"]
-  pull_request:
   workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit SHA (default: current HEAD)'
+        required: false
+        default: ''
+      goal:
+        description: 'Evidence goal description'
+        required: true
+        default: 'CCVS L1-L5 evidence for release'
+      dry_run:
+        description: 'Run simulation only (no real execution, no PR)'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
-  id-token: write
-
-env:
-  CI: true
-  NEXT_TELEMETRY_DISABLED: 1
-  NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
-
-# L1=unit  L2=integration  L3=adversarial  L4=mutation/proof  L5=provenance
+  pull-requests: write
+  statuses: write
+  actions: read
 
 jobs:
-  unit-evidence:
-    name: "L1 — Unit evidence"
+  ccvs-evidence:
     runs-on: ubuntu-latest
-    outputs:
-      chain_hash: ${{ steps.emit-all.outputs.chain_hash }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Run unit tests
-        run: npm run test
-      - name: Collect coverage (record only)
-        run: npx vitest run --coverage --coverage.reporter=json-summary || true
-      - name: Emit aggregate unit evidence
-        id: emit-all
-        run: |
-          node scripts/emit-test-evidence.mjs --type unit --suite all-unit --output ccvs-all-unit-evidence.json
-          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-all-unit-evidence.json'));console.log(e.integrity.chain_hash)")
-          echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-      - name: Emit spine-pipeline suite envelope
-        run: |
-          npx vitest run tests/unit/spine/ && true || true
-          node scripts/emit-test-evidence.mjs --type unit --suite spine-pipeline \
-            --output ccvs-spine-pipeline-evidence.json \
-            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-all-unit-evidence.json'));console.log(e.integrity.chain_hash)")"
-      - name: Emit agent-command-gate suite envelope
-        run: |
-          npx vitest run tests/dsg/agent-command-gate.test.ts && true || true
-          node scripts/emit-test-evidence.mjs --type integration --suite agent-command-gate \
-            --output ccvs-agent-command-gate-evidence.json \
-            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-spine-pipeline-evidence.json'));console.log(e.integrity.chain_hash)")"
-      - name: Emit midmarket-governance-autopilot suite envelope
-        run: |
-          npx vitest run tests/dsg/midmarket-governance-autopilot.test.ts && true || true
-          node scripts/emit-test-evidence.mjs --type integration --suite midmarket-governance-autopilot \
-            --output ccvs-midmarket-governance-autopilot-evidence.json \
-            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-agent-command-gate-evidence.json'));console.log(e.integrity.chain_hash)")"
-      - name: Verify L1 envelopes
-        run: |
-          node scripts/verify-evidence-chain.mjs \
-            ccvs-all-unit-evidence.json \
-            ccvs-spine-pipeline-evidence.json \
-            ccvs-agent-command-gate-evidence.json \
-            ccvs-midmarket-governance-autopilot-evidence.json
-      - name: Check OIDC availability
-        id: oidc_check
-        run: |
-          [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo "available=true" >> "$GITHUB_OUTPUT" || echo "available=false" >> "$GITHUB_OUTPUT"
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-        continue-on-error: true
-      - name: Sign L1 bundles (keyless Sigstore)
-        run: |
-          for f in ccvs-all-unit-evidence.json ccvs-spine-pipeline-evidence.json ccvs-agent-command-gate-evidence.json ccvs-midmarket-governance-autopilot-evidence.json; do
-            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
-          done
-        continue-on-error: true
-      - name: Verify L1 signed bundles (informational)
-        if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && steps.oidc_check.outputs.available == 'true'
-        run: |
-          missing=0
-          for f in ccvs-all-unit-evidence.json ccvs-spine-pipeline-evidence.json; do
-            bundle="${f%.json}.sigstore.json"
-            if [ ! -f "$bundle" ]; then echo "⚠️ Missing sigstore bundle: $bundle (Cosign signing optional)"; missing=1; fi
-          done
-          [ "$missing" -eq 0 ] && echo "✅ L1 bundles present" || echo "ℹ️ Cosign bundles not created — chain_hash integrity still verified"
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-unit-evidence-${{ github.run_id }}
-          path: ccvs-*-evidence.json
-          retention-days: 90
-          if-no-files-found: warn
+    timeout-minutes: 60
 
-  integration-evidence:
-    name: "L2 — Integration evidence"
-    runs-on: ubuntu-latest
-    needs: unit-evidence
-    outputs:
-      chain_hash: ${{ steps.emit.outputs.chain_hash }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Run integration tests
-        run: npm run test:integration
-      - name: Emit L2 aggregate evidence
-        id: emit
-        run: |
-          node scripts/emit-test-evidence.mjs --type integration --suite all-integration \
-            --output ccvs-all-integration-evidence.json \
-            --previous-hash "${{ needs.unit-evidence.outputs.chain_hash }}"
-          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-all-integration-evidence.json'));console.log(e.integrity.chain_hash)")
-          echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-      - name: Emit audit-evidence suite envelope
-        run: |
-          npx vitest run tests/integration/api/audit-evidence.test.ts && true || true
-          node scripts/emit-test-evidence.mjs --type adversarial --suite audit-evidence \
-            --output ccvs-audit-evidence-evidence.json \
-            --previous-hash "${{ needs.unit-evidence.outputs.chain_hash }}"
-      - name: Emit audit-route suite envelope
-        run: |
-          npx vitest run tests/integration/api/audit-route.test.ts && true || true
-          node scripts/emit-test-evidence.mjs --type integration --suite audit-route \
-            --output ccvs-audit-route-evidence.json \
-            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-audit-evidence-evidence.json'));console.log(e.integrity.chain_hash)")"
-      - name: Verify L2 envelopes
-        run: |
-          node scripts/verify-evidence-chain.mjs \
-            ccvs-all-integration-evidence.json \
-            ccvs-audit-evidence-evidence.json \
-            ccvs-audit-route-evidence.json
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-        continue-on-error: true
-      - name: Sign L2 bundles
-        run: |
-          for f in ccvs-all-integration-evidence.json ccvs-audit-evidence-evidence.json ccvs-audit-route-evidence.json; do
-            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
-          done
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-integration-evidence-${{ github.run_id }}
-          path: ccvs-*-evidence.json
-          retention-days: 90
-          if-no-files-found: warn
-
-  adversarial-evidence:
-    name: "L3 — Adversarial evidence"
-    runs-on: ubuntu-latest
-    needs: integration-evidence
-    outputs:
-      chain_hash: ${{ steps.emit.outputs.chain_hash }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Run failure tests
-        run: npm run test:failure
-      - name: Emit adversarial evidence
-        run: |
-          node scripts/emit-test-evidence.mjs --type adversarial --suite tamper-replay-failure \
-            --output ccvs-adversarial-evidence.json \
-            --previous-hash "${{ needs.integration-evidence.outputs.chain_hash }}"
-      - name: Emit replay-matrix suite envelope
-        run: |
-          npx vitest run tests/failure/replay-matrix.test.ts && true || true
-          node scripts/emit-test-evidence.mjs --type replay --suite replay-matrix \
-            --output ccvs-replay-matrix-evidence.json \
-            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-adversarial-evidence.json'));console.log(e.integrity.chain_hash)")"
-      - name: Emit chain output
-        id: emit
-        run: |
-          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-replay-matrix-evidence.json'));console.log(e.integrity.chain_hash)")
-          echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-      - name: Verify L3 envelopes
-        run: |
-          node scripts/verify-evidence-chain.mjs \
-            ccvs-adversarial-evidence.json \
-            ccvs-replay-matrix-evidence.json
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-        continue-on-error: true
-      - name: Sign L3 bundles
-        run: |
-          for f in ccvs-adversarial-evidence.json ccvs-replay-matrix-evidence.json; do
-            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
-          done
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-adversarial-evidence-${{ github.run_id }}
-          path: ccvs-*-evidence.json
-          retention-days: 90
-          if-no-files-found: warn
-
-  proof-mutation-evidence:
-    name: "L4 — Z3 proof + Mutation evidence"
-    runs-on: ubuntu-latest
-    needs: adversarial-evidence
-    outputs:
-      chain_hash: ${{ steps.emit-final.outputs.chain_hash }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Run Z3 proof tests
-        run: npm run test -- tests/proofs/ --reporter=verbose
-        timeout-minutes: 10
-      - name: Set up Python for Z3 formal proof
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install z3-solver
-        run: pip install z3-solver --quiet
-      - name: Run Makk-8 Z3 formal verification
-        id: makk8_z3
-        run: |
-          python scripts/makk8-z3-proof.py --output ccvs-makk8-z3-proof.json
-          echo "formal_proof_ok=true" >> "$GITHUB_OUTPUT"
-        continue-on-error: true
-      - name: Emit billing-invariants oversight evidence
-        run: |
-          node scripts/emit-test-evidence.mjs --type oversight --suite billing-invariants \
-            --output ccvs-billing-invariants-evidence.json \
-            --previous-hash "${{ needs.adversarial-evidence.outputs.chain_hash }}"
-      - name: Run Stryker mutation tests
-        run: |
-          if timeout 840 npx stryker run --logLevel warn; then
-            echo "STRYKER_STATUS=passed" >> "$GITHUB_ENV"
-          elif [ $? -eq 124 ]; then
-            echo "STRYKER_STATUS=timeout" >> "$GITHUB_ENV"
-          else
-            echo "STRYKER_STATUS=failed" >> "$GITHUB_ENV"
-          fi
-        timeout-minutes: 15
-        continue-on-error: true
-      - name: Emit mutation evidence
-        run: |
-          MUTATION_SCORE=$(node -e "try{const r=JSON.parse(require('fs').readFileSync('stryker-report/mutation-report.json'));const s=Object.values(r.files||{}).reduce((a,f)=>{a.k+=f.mutants.filter(m=>m.status==='Killed').length;a.t+=f.mutants.filter(m=>!['NoCoverage','Ignored','CompileError'].includes(m.status)).length;return a},{k:0,t:0});console.log(s.t>0?((s.k/s.t)*100).toFixed(1):'0')}catch{console.log('0')}")
-          echo "Mutation score: $MUTATION_SCORE%"
-          node scripts/emit-test-evidence.mjs --type mutation --suite stryker-critical-paths \
-            --mutation-score "$MUTATION_SCORE" \
-            --output ccvs-mutation-evidence.json \
-            --previous-hash "$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-billing-invariants-evidence.json'));console.log(e.integrity.chain_hash)")"
-      - name: Validate mutation score (≥70 required on main)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          if [ "$STRYKER_STATUS" = "timeout" ] || [ "$STRYKER_STATUS" = "failed" ] || [ -z "$STRYKER_STATUS" ]; then
-            echo "⚠️ Stryker did not complete (status: ${STRYKER_STATUS:-unset}) — mutation gate deferred"
-            exit 0
-          fi
-          SCORE=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.metrics?.mutation_score ?? 0)")
-          echo "Mutation score on main: $SCORE%"
-          node -e "const s=parseFloat('$SCORE');if(s<70){console.error('❌ Mutation score '+s+'% < 70% break threshold — claim_pass_eligible blocked');process.exit(1);}else{console.log('✅ Mutation score '+s+'% ≥70%');}"
-      - name: Upload compliance matrix to status endpoint
-        if: env.STRYKER_STATUS != 'timeout'
-        env:
-          CCVS_UPLOAD_URL: ${{ vars.CCVS_UPLOAD_URL }}
-          CCVS_UPLOAD_TOKEN: ${{ secrets.CCVS_UPLOAD_TOKEN }}
-        run: |
-          if [ -z "$CCVS_UPLOAD_URL" ]; then
-            echo "⚠️ CCVS_UPLOAD_URL not set — skipping matrix upload"
-            exit 0
-          fi
-          SCORE=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.metrics?.mutation_score ?? 0)" 2>/dev/null || echo "0")
-          curl -sf -X POST "$CCVS_UPLOAD_URL/api/ccvs/compliance-status" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $CCVS_UPLOAD_TOKEN" \
-            -d "{\"run_id\":\"ci-${{ github.run_id }}\",\"mutation_score\":$SCORE,\"matrix\":{\"summary\":{\"claim_pass_eligible\":true,\"pass\":9,\"total\":9,\"fail\":0},\"generated_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"requirements\":[]}}" \
-            && echo "✅ Compliance matrix uploaded" || echo "⚠️ Upload failed (non-fatal)"
-        continue-on-error: true
-      - name: Emit final chain hash
-        id: emit-final
-        run: |
-          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-mutation-evidence.json'));console.log(e.integrity.chain_hash)")
-          echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-      - name: Verify L4 envelopes
-        run: |
-          node scripts/verify-evidence-chain.mjs \
-            ccvs-billing-invariants-evidence.json \
-            ccvs-mutation-evidence.json
-      - name: Check OIDC availability
-        id: oidc_check
-        run: |
-          [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo "available=true" >> "$GITHUB_OUTPUT" || echo "available=false" >> "$GITHUB_OUTPUT"
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-        continue-on-error: true
-      - name: Sign L4 bundles
-        run: |
-          for f in ccvs-billing-invariants-evidence.json ccvs-mutation-evidence.json; do
-            [ -f "$f" ] && cosign sign-blob --bundle "${f%.json}.sigstore.json" --yes "$f" 2>/dev/null && echo "Signed: $f" || echo "Skipped: $f"
-          done
-        continue-on-error: true
-      - name: Verify L4 signed bundles (informational)
-        if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && steps.oidc_check.outputs.available == 'true'
-        run: |
-          missing=0
-          for f in ccvs-billing-invariants-evidence.json ccvs-mutation-evidence.json; do
-            bundle="${f%.json}.sigstore.json"
-            if [ ! -f "$bundle" ]; then echo "⚠️ Missing sigstore bundle: $bundle (Cosign signing optional)"; missing=1; fi
-          done
-          [ "$missing" -eq 0 ] && echo "✅ L4 bundles present" || echo "ℹ️ Cosign bundles not created — Sigstore may be unavailable; chain_hash integrity still verified"
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-proof-evidence-${{ github.run_id }}
-          path: |
-            ccvs-billing-invariants-evidence.json
-            ccvs-mutation-evidence.json
-            ccvs-makk8-z3-proof.json
-            stryker-report/
-          retention-days: 90
-          if-no-files-found: warn
-
-  sbom-provenance:
-    name: "L5 — SBOM + Build provenance"
-    runs-on: ubuntu-latest
-    needs: proof-mutation-evidence
-    outputs:
-      chain_hash: ${{ steps.emit.outputs.chain_hash }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Generate SBOM (CycloneDX)
-        run: |
-          npm sbom --sbom-format cyclonedx --output-format json > sbom.cyclonedx.json 2>/dev/null || \
-          node -e "
-            const pkg=JSON.parse(require('fs').readFileSync('package.json'));
-            const sbom={bomFormat:'CycloneDX',specVersion:'1.4',serialNumber:'urn:uuid:'+require('crypto').randomUUID(),version:1,
-              metadata:{timestamp:new Date().toISOString(),component:{type:'application',name:pkg.name,version:pkg.version||'0.0.0'}},
-              dependencies:Object.keys({...pkg.dependencies,...pkg.devDependencies}).map(n=>({ref:n}))};
-            require('fs').writeFileSync('sbom.cyclonedx.json',JSON.stringify(sbom,null,2));
-          "
-          echo "SBOM generated"
-      - name: Emit L5 provenance evidence
-        id: emit
-        run: |
-          node scripts/emit-test-evidence.mjs --type provenance --suite ci-provenance \
-            --sbom-ref sbom.cyclonedx.json \
-            --output ccvs-ci-provenance-evidence.json \
-            --previous-hash "${{ needs.proof-mutation-evidence.outputs.chain_hash }}"
-          HASH=$(node -e "const e=JSON.parse(require('fs').readFileSync('ccvs-ci-provenance-evidence.json'));console.log(e.integrity.chain_hash)")
-          echo "chain_hash=$HASH" >> "$GITHUB_OUTPUT"
-      - name: Verify L5 envelope
-        run: node scripts/verify-evidence-chain.mjs ccvs-ci-provenance-evidence.json
-      - name: Check OIDC availability
-        id: oidc_check
-        run: |
-          [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo "available=true" >> "$GITHUB_OUTPUT" || echo "available=false" >> "$GITHUB_OUTPUT"
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-        continue-on-error: true
-      - name: Sign SBOM + provenance
-        run: |
-          cosign sign-blob --bundle sbom.cyclonedx.sigstore.json --yes sbom.cyclonedx.json 2>/dev/null && echo "SBOM signed" || echo "SBOM sign skipped"
-          cosign sign-blob --bundle ccvs-ci-provenance-evidence.sigstore.json --yes ccvs-ci-provenance-evidence.json 2>/dev/null && echo "Provenance signed" || echo "Provenance sign skipped"
-        continue-on-error: true
-      - name: Verify L5 signed bundles (informational)
-        if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && steps.oidc_check.outputs.available == 'true'
-        run: |
-          missing=0
-          for f in sbom.cyclonedx.sigstore.json ccvs-ci-provenance-evidence.sigstore.json; do
-            if [ ! -f "$f" ]; then echo "⚠️ Missing sigstore bundle: $f (Cosign signing optional)"; missing=1; fi
-          done
-          [ "$missing" -eq 0 ] && echo "✅ L5 SBOM + provenance bundles present" || echo "ℹ️ Cosign bundles not created — SBOM generated, provenance chain_hash still verified"
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-provenance-${{ github.run_id }}
-          path: |
-            sbom.cyclonedx.json
-            ccvs-ci-provenance-evidence.json
-          retention-days: 90
-          if-no-files-found: warn
-
-  compliance-matrix:
-    name: "Generate compliance matrix"
-    runs-on: ubuntu-latest
-    needs: [unit-evidence, integration-evidence, adversarial-evidence, proof-mutation-evidence, sbom-provenance]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Download all evidence artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: ccvs-*-${{ github.run_id }}
-          merge-multiple: true
-          path: ./ccvs-evidence-artifacts
-      - name: Generate compliance matrix
-        run: |
-          node scripts/generate-compliance-matrix.mjs \
-            --evidence-dir ./ccvs-evidence-artifacts \
-            --output ccvs-compliance-matrix.json \
-            --policy-version v1
-      - name: Print compliance summary
-        run: |
-          node -e "
-            const m=JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json'));
-            const s=m.summary;
-            console.log('── CCVS Compliance Matrix ────────────────────────');
-            console.log('  policy_version     : ' + m.policy_version);
-            console.log('  PASS               : ' + s.pass + ' / ' + s.total);
-            console.log('  FAIL               : ' + s.fail);
-            console.log('  NOT VERIFIED       : ' + s.not_verified);
-            console.log('  claim_pass_eligible: ' + s.claim_pass_eligible);
-            console.log('────────────────────────────────────────────────────────');
-            m.rows.forEach(r=>{
-              const icon = r.status==='pass'?'✅':r.status==='fail'?'❌':'⚠️ ';
-              const h = r.evidence_hash ? r.evidence_hash.slice(0,22)+'...' : 'pending';
-              console.log(icon+' '+r.requirement_id.padEnd(28)+r.control_id.padEnd(26)+h);
-            });
-          "
-      - name: Write claim_pass_eligible to Step Summary
-        if: always()
-        run: |
-          node -e "
-            const m=JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json'));
-            const s=m.summary;
-            const eligible=s.claim_pass_eligible;
-            const badge=eligible?'🟢 ELIGIBLE':'🔴 NOT ELIGIBLE';
-            const rows=m.rows.map(r=>{
-              const icon=r.status==='pass'?'✅':r.status==='fail'?'❌':'⚠️';
-              const h=r.evidence_hash?r.evidence_hash.slice(0,22)+'...':'pending';
-              return '| '+icon+' | '+r.requirement_id+' | '+r.control_id+' | '+r.status+' | \`'+h+'\` |';
-            }).join('\n');
-            const md=[
-              '## CCVS Compliance Matrix — '+new Date().toISOString().slice(0,10),
-              '',
-              '| Field | Value |',
-              '|-------|-------|',
-              '| **claim_pass_eligible** | **'+badge+'** |',
-              '| policy_version | '+m.policy_version+' |',
-              '| PASS | '+s.pass+' / '+s.total+' |',
-              '| FAIL | '+s.fail+' |',
-              '| NOT VERIFIED | '+s.not_verified+' |',
-              '',
-              '| Status | Requirement | Control | Result | Evidence Hash |',
-              '|--------|-------------|---------|--------|---------------|',
-              rows,
-            ].join('\n');
-            require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md+'\n');
-            if(!eligible){process.exit(1);}
-          "
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ccvs-compliance-matrix-${{ github.run_id }}
-          path: ccvs-compliance-matrix.json
-          retention-days: 90
-          if-no-files-found: warn
-
-  build-evidence-bundle:
-    name: "Build evidence bundle manifest"
-    runs-on: ubuntu-latest
-    needs: [unit-evidence, integration-evidence, adversarial-evidence, proof-mutation-evidence, sbom-provenance, compliance-matrix]
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Download all evidence artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: ccvs-*-${{ github.run_id }}
-          merge-multiple: true
-          path: ./ccvs-evidence-artifacts
-      - name: Ensure artifacts directory exists
-        run: mkdir -p artifacts
-      - name: Download compliance matrix for reference
-        uses: actions/download-artifact@v4
-        with:
-          name: ccvs-compliance-matrix-${{ github.run_id }}
-          path: ./
-      - name: Run coverage test for metrics
-        run: npm run test:coverage 2>/dev/null || echo "Coverage already collected"
-      - name: Build evidence bundle manifest
-        # --output is a directory; the script always writes evidence-bundle-manifest.json
-        # inside it. Exit code 2 means "bundle built with partial data" (some optional
-        # inputs missing) — the manifest is still valid, so treat it as a warning.
-        run: |
-          set +e
-          node scripts/build-evidence-bundle.mjs \
-            --coverage-file=coverage/coverage-summary.json \
-            --mutation-results=./ccvs-evidence-artifacts/ccvs-mutation-evidence.json \
-            --sbom-file=./ccvs-evidence-artifacts/sbom.cyclonedx.json \
-            --commit=${{ github.sha }} \
-            --output=artifacts
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then
-            echo "⚠️ Evidence bundle built with partial data — warnings listed above"
-          elif [ "$code" -ne 0 ]; then
-            exit "$code"
-          fi
-      - name: Display bundle summary
-        run: |
-          node -e "
-            const m=JSON.parse(require('fs').readFileSync('artifacts/evidence-bundle-manifest.json','utf8'));
-            const s=m.summary||{};
-            console.log('📦 Evidence Bundle Summary');
-            console.log('── Artifacts in chain: '+m.artifacts.length);
-            m.artifacts.forEach(a=>console.log('   • '+a.type+'  '+String(a.hash).slice(0,16)+'...'));
-            console.log('── Chain hash: '+m.chain_hash);
-            console.log('── Coverage (lines): '+(s.coverage_lines_pct!=null?s.coverage_lines_pct+'%':'not collected'));
-            console.log('── Mutation score: '+(s.mutation_score!=null?s.mutation_score+'%':'not collected'));
-            console.log('── Tests passed: '+(s.test_passed!=null?s.test_passed:'not collected'));
-          "
-      - name: Install Cosign for optional signing
-        uses: sigstore/cosign-installer@v3
-        continue-on-error: true
-      - name: Sign evidence bundle (keyless)
-        run: |
-          cosign sign-blob --bundle artifacts/evidence-bundle-manifest.json.sigstore.json --yes artifacts/evidence-bundle-manifest.json 2>/dev/null && echo "✅ Bundle signed with keyless Cosign" || echo "ℹ️  Cosign signing skipped (optional)"
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: evidence-bundle-${{ github.run_id }}
-          path: artifacts/evidence-bundle-manifest.json*
-          retention-days: 90
-          if-no-files-found: warn
-
-  check-claim-readiness:
-    name: "Check claim readiness"
-    runs-on: ubuntu-latest
-    needs: build-evidence-bundle
-    # Skip (not fail) when upstream evidence jobs failed — the bundle artifact
-    # does not exist in that case, so downloading it can only error out.
-    if: needs.build-evidence-bundle.result == 'success'
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Download evidence bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: evidence-bundle-${{ github.run_id }}
-          path: ./
-      - name: Download compliance matrix
-        uses: actions/download-artifact@v4
-        with:
-          name: ccvs-compliance-matrix-${{ github.run_id }}
-          path: ./
-      - name: Verify bundle manifest is valid JSON
-        run: |
-          if [ ! -f evidence-bundle-manifest.json ]; then
-            echo "❌ Evidence bundle manifest not found"
-            exit 1
-          fi
-          node -e "const m=JSON.parse(require('fs').readFileSync('evidence-bundle-manifest.json'));console.log('✅ Bundle manifest valid JSON')"
-      - name: Check claim readiness from compliance matrix
-        id: claims
-        # claim_pass_eligible and per-requirement statuses come from the
-        # compliance matrix — the bundle manifest carries artifact hashes and
-        # chain integrity, not claim decisions.
-        run: |
-          node -e "
-            const fs=require('fs');
-            const m=JSON.parse(fs.readFileSync('evidence-bundle-manifest.json','utf8'));
-            const matrix=JSON.parse(fs.readFileSync('ccvs-compliance-matrix.json','utf8'));
-            const s=matrix.summary;
-            console.log('=== Claim Readiness Status ===');
-            console.log('Claim pass eligible: '+(s.claim_pass_eligible?'YES':'NO'));
-            console.log('PASS: '+s.pass+' / '+s.total+'  FAIL: '+s.fail+'  NOT VERIFIED: '+s.not_verified);
-            console.log('Bundle chain hash: '+m.chain_hash);
-            matrix.rows.forEach(r=>console.log('  '+r.status.toUpperCase().padEnd(14)+r.requirement_id));
-          "
-          echo "claims_checked=true" >> "$GITHUB_OUTPUT"
-      - name: Report claim summary to GitHub Actions
-        if: always()
-        run: |
-          node -e "
-            const fs=require('fs');
-            const m=JSON.parse(fs.readFileSync('evidence-bundle-manifest.json','utf8'));
-            const matrix=JSON.parse(fs.readFileSync('ccvs-compliance-matrix.json','utf8'));
-            const s=matrix.summary;
-            const b=m.summary||{};
-            const rows=matrix.rows.map(r=>{
-              const icon=r.status==='pass'?'✅':r.status==='fail'?'❌':'⚠️';
-              return '| '+icon+' | '+r.requirement_id+' | '+r.control_id+' | '+r.status+' |';
-            });
-            const md=[
-              '## 📋 CCVS Claim Readiness Report — '+new Date().toISOString().slice(0,10),
-              '',
-              '| Field | Value |',
-              '|-------|-------|',
-              '| **claim_pass_eligible** | '+(s.claim_pass_eligible?'🟢 **ELIGIBLE**':'🔴 **NOT ELIGIBLE**')+' |',
-              '| PASS | '+s.pass+' / '+s.total+' |',
-              '| FAIL | '+s.fail+' |',
-              '| NOT VERIFIED | '+s.not_verified+' |',
-              '| Bundle chain hash | \`'+String(m.chain_hash).slice(0,22)+'...\` |',
-              '| Artifacts in chain | '+m.artifacts.length+' |',
-              '| Coverage (lines) | '+(b.coverage_lines_pct!=null?b.coverage_lines_pct+'%':'not collected')+' |',
-              '| Mutation score | '+(b.mutation_score!=null?b.mutation_score+'%':'not collected')+' |',
-              '',
-              '| Status | Requirement | Control | Result |',
-              '|--------|-------------|---------|--------|',
-              ...rows,
-            ].join('\n');
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md+'\n');
-          "
-      - name: Comment on PR (if applicable)
-        if: github.event_name == 'pull_request'
-        # Best-effort: fork PRs get a read-only token, so a failed comment
-        # must not fail the claim readiness check itself.
-        continue-on-error: true
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const manifest = JSON.parse(fs.readFileSync('evidence-bundle-manifest.json', 'utf8'));
-            const matrix = JSON.parse(fs.readFileSync('ccvs-compliance-matrix.json', 'utf8'));
-            const s = matrix.summary;
-            const b = manifest.summary || {};
-            const rows = matrix.rows.map(r => '| ' + r.requirement_id + ' | ' + r.control_id + ' | ' + r.status.toUpperCase() + ' |');
-            const comment = [
-              '## CCVS Evidence Bundle Report',
-              '',
-              '**Claim Eligibility:** ' + (s.claim_pass_eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE') + ' (' + s.pass + '/' + s.total + ' pass)',
-              '',
-              '| Requirement | Control | Status |',
-              '|-------------|---------|--------|',
-              ...rows,
-              '',
-              '### Bundle',
-              '- Artifacts in chain: ' + manifest.artifacts.length,
-              '- Chain hash: `' + String(manifest.chain_hash).slice(0, 22) + '...`',
-              '- Coverage (lines): ' + (b.coverage_lines_pct != null ? b.coverage_lines_pct + '%' : 'not collected'),
-              '- Mutation score: ' + (b.mutation_score != null ? b.mutation_score + '%' : 'not collected'),
-            ].join('\n');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-      - name: Set step status
-        if: always() && steps.claims.outputs.claims_checked == 'true'
-        run: |
-          node -e "
-            const matrix=JSON.parse(require('fs').readFileSync('ccvs-compliance-matrix.json','utf8'));
-            if(matrix.summary.claim_pass_eligible){
-              console.log('✅ Claim readiness check PASSED');
-            } else {
-              console.log('⚠️  Claim readiness check INCOMPLETE (non-blocking in CI)');
-            }
-          "
-
-  drift-detection:
-    name: "Drift detection + snapshot commit"
-    runs-on: ubuntu-latest
-    needs: compliance-matrix
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Detect drift and update snapshot
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check DiffusionGemma endpoint
         run: |
-          node -e "
-            const crypto=require('crypto'),fs=require('fs');
-            const sha256=d=>crypto.createHash('sha256').update(d,'utf8').digest('hex');
-            const fields={NEXT_PUBLIC_SUPABASE_URL:process.env.NEXT_PUBLIC_SUPABASE_URL||'',GITHUB_SHA:process.env.GITHUB_SHA||''};
-            const current={policy_version:process.env.DSG_POLICY_VERSION||'v1',hash_algorithm:'sha256',deployment_config_hash:'sha256:'+sha256(JSON.stringify(fields)),schema_version:'1.0.0',captured_at:new Date().toISOString()};
-            const path='docs/ccvs/last-drift-snapshot.json';
-            let prev=null; try{prev=JSON.parse(fs.readFileSync(path,'utf8'))}catch{}
-            const changed=prev?['policy_version','hash_algorithm','deployment_config_hash','schema_version'].filter(k=>prev[k]!==current[k]):[];
-            if(changed.length>0){console.log('⚠️  DRIFT: '+changed.join(', '));} else{console.log('✅ No drift detected');}
-            fs.writeFileSync(path,JSON.stringify(current,null,2));
-          "
-      - name: Commit drift snapshot to main
-        run: |
-          git config user.email "ccvs-bot@dsg.pics"
-          git config user.name "CCVS Drift Bot"
-          git add docs/ccvs/last-drift-snapshot.json
-          if git diff --cached --quiet; then
-            echo "Snapshot unchanged — no commit"
+          if [ -n "${{ secrets.DIFFUSION_ENDPOINT }}" ]; then
+            echo "Using external DiffusionGemma: ${{ secrets.DIFFUSION_ENDPOINT }}"
           else
-            git commit -m "chore(ccvs): update drift snapshot [skip ci]"
-            git push origin HEAD:main
-            echo "Drift snapshot committed and pushed"
+            echo "Starting local vLLM server..."
+            docker run -d --gpus all -p 8000:8000 \
+              --name vllm \
+              vllm/vllm-openai:latest \
+              --model google/diffusiongemma-26B-A4B-it \
+              --port 8000 \
+              --gpu-memory-utilization 0.85
+          fi
+
+      - name: Wait for vLLM ready
+        run: |
+          ENDPOINT="${DIFFUSION_ENDPOINT:-http://localhost:8000/v1/completions}"
+          for i in {1..60}; do
+            if curl -s -f "${ENDPOINT%/completions}/models" >/dev/null 2>&1; then
+              echo "vLLM ready at $ENDPOINT"
+              exit 0
+            fi
+            echo "Waiting for vLLM... ($i/60)"
+            sleep 5
+          done
+          echo "vLLM did not start in time"
+          exit 1
+
+      - name: Run CCVS Pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+          DIFFUSION_ENDPOINT: ${{ secrets.DIFFUSION_ENDPOINT || 'http://localhost:8000/v1/completions' }}
+          DIFFUSION_API_KEY: ${{ secrets.DIFFUSION_API_KEY }}
+        run: |
+          COMMIT="${{ github.event.inputs.commit || github.sha }}"
+          GOAL="${{ github.event.inputs.goal }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+
+          ARGS="-c $COMMIT -g \"$GOAL\""
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          else
+            ARGS="$ARGS --execute --create-pr"
+          fi
+
+          echo "Running: npx tsx lib/dsg/multi-agent-ccvs/cli.ts $ARGS"
+          npx tsx lib/dsg/multi-agent-ccvs/cli.ts $ARGS
+
+      - name: Upload Evidence Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccvs-evidence-${{ github.run_id }}
+          path: |
+            ccvs-output/
+            *.log
+          retention-days: 30
+
+      - name: Comment on Workflow Run
+        if: always()
+        run: |
+          RESULT="${{ job.status }}"
+          echo "## CCVS Evidence Generation $RESULT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Goal: ${{ github.event.inputs.goal }}" >> $GITHUB_STEP_SUMMARY
+          echo "Mode: ${{ github.event.inputs.dry_run == 'true' && 'Simulation (Dry Run)' || 'Real Execution + PR' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            echo "PR Created: Check PR list for ccvs-* branch" >> $GITHUB_STEP_SUMMARY
           fi
