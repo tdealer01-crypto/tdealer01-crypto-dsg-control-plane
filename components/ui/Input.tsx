@@ -9,10 +9,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, leftIcon, className = '', id, ...props },
-  ref,
-) {
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input({ label, error, hint, leftIcon, className = '', id, ...props }, ref) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
 
   return (

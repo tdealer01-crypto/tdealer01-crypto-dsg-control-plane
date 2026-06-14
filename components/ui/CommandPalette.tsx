@@ -160,7 +160,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     const unsubscribe = globalCommandRegistry.subscribe(handleUpdate);
     handleUpdate();
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, [searchQuery]);
 
   // Filter and sort commands based on search query
