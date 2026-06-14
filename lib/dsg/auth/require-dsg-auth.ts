@@ -55,9 +55,11 @@ async function resolveApiKey(rawKey: string): Promise<DsgCaller> {
     }
   }
 
-  // Bump last_used + requests_this_month atomically (fire-and-forget)
-  admin.rpc('touch_api_key_last_used', { p_key_hash: keyHash }).then().catch(
-    (e) => console.warn('[dsg-auth] touch_api_key_last_used failed:', e)
+  // Bump last_used + requests_this_month atomically (fire-and-forget).
+  // The database function exists in deployed DB but is not present in the
+  // generated Supabase TypeScript function union, so use a narrow escape hatch.
+  void (admin as any).rpc('touch_api_key_last_used', { p_key_hash: keyHash }).catch(
+    (e: unknown) => console.warn('[dsg-auth] touch_api_key_last_used failed:', e)
   );
 
   return {
