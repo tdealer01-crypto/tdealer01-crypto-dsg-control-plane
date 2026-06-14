@@ -1,0 +1,1 @@
+(assert forall(i: results[i] in {PASS,BLOCK,REVIEW,UNSUPPORTED}))

@@ -1,0 +1,1 @@
+(assert decision in {PASS,BLOCK,REVIEW,UNSUPPORTED})

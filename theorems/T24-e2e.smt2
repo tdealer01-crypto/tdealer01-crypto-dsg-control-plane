@@ -1,0 +1,1 @@
+(assert submit → verify → record → audit)
