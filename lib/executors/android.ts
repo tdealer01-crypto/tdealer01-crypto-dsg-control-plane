@@ -20,6 +20,7 @@ import type { BrowserbaseSafeExecutionMode } from '@/lib/dsg/hermes-e2e/types';
  */
 
 export type AndroidMode = 'dry_run' | 'live';
+export type AndroidExecutionMode = BrowserbaseSafeExecutionMode | 'live_execute';
 
 export interface AndroidAppConfig {
   appPackage: string;
@@ -77,7 +78,7 @@ export interface AndroidCompletion {
   reason: string;
   completedSafely: boolean;
   mode: AndroidMode;
-  executionMode: BrowserbaseSafeExecutionMode;
+  executionMode: AndroidExecutionMode;
   trace: {
     appPackage: string;
     appAllowed: boolean;
@@ -101,6 +102,10 @@ function isAppAllowed(appPackage: string, allowedApps: string[]): boolean {
     const a = allowed.toLowerCase().trim();
     return appPackage.toLowerCase() === a;
   });
+}
+
+function blockedAndroidExecutionMode(mode: AndroidMode): AndroidExecutionMode {
+  return mode === 'dry_run' ? 'dry_run' : 'live_execute_disabled_by_default';
 }
 
 /**
@@ -214,6 +219,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
   const appAllowed = isAppAllowed(input.appConfig.appPackage, input.appConfig.allowedApps);
   const appiumHost = input.appiumHost ?? process.env.APPIUM_HOST ?? 'localhost';
   const appiumPort = input.appiumPort ?? parseInt(process.env.APPIUM_PORT ?? '4723', 10);
+  const executionMode = blockedAndroidExecutionMode(mode);
 
   const baseTrace = {
     appPackage: input.appConfig.appPackage,
@@ -238,6 +244,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
       reason: policy.reason,
       completedSafely: true,
       mode,
+      executionMode,
       trace: baseTrace,
     };
   }
@@ -252,6 +259,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
       reason: 'APP_NOT_IN_ALLOWLIST',
       completedSafely: true,
       mode,
+      executionMode,
       trace: baseTrace,
     };
   }
@@ -266,6 +274,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
       reason: 'DRY_RUN_APP_ALLOWED_NO_APPIUM_LAUNCHED',
       completedSafely: true,
       mode,
+      executionMode,
       trace: baseTrace,
     };
   }
@@ -280,6 +289,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
       reason: 'LIVE_EXECUTE_DISABLED_BY_DEFAULT_SET_HERMES_ANDROID_LIVE',
       completedSafely: true,
       mode,
+      executionMode,
       trace: baseTrace,
     };
   }
@@ -311,6 +321,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
         reason: gate.reason ?? 'SAFE_ANDROID_BLOCKED',
         completedSafely: true,
         mode,
+        executionMode: 'create_session_only',
         trace: {
           ...baseTrace,
           manifestElementCount: manifest.length,
@@ -332,6 +343,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
         reason: 'TARGET_ELEMENT_NOT_FOUND',
         completedSafely: true,
         mode,
+        executionMode: 'create_session_only',
         trace: {
           ...baseTrace,
           manifestElementCount: manifest.length,
@@ -394,6 +406,7 @@ export async function executeAndroidSafeCommand(input: AndroidCommandInput): Pro
       reason: 'LIVE_ANDROID_COMMAND_EXECUTED',
       completedSafely: true,
       mode,
+      executionMode: 'live_execute',
       trace: {
         appPackage: input.appConfig.appPackage,
         appAllowed: true,
