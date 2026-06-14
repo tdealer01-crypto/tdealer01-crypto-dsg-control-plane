@@ -36,27 +36,33 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps --ignore-scripts
 
       - name: Check DiffusionGemma endpoint
         run: |
           if [ -n "${{ secrets.DIFFUSION_ENDPOINT }}" ]; then
             echo "Using external DiffusionGemma: ${{ secrets.DIFFUSION_ENDPOINT }}"
           else
-            echo "Starting local vLLM server..."
-            docker run -d --gpus all -p 8000:8000 \
-              --name vllm \
+            echo "Attempting local vLLM server..."
+            if docker run --rm --gpus all -p 8000:8000 \
               vllm/vllm-openai:latest \
               --model google/diffusiongemma-26B-A4B-it \
               --port 8000 \
-              --gpu-memory-utilization 0.85
+              --gpu-memory-utilization 0.85 & then
+              echo "vLLM started on GPU"
+            else
+              echo "GPU not available, will use simulation mode"
+              export SIMULATION_MODE=true
+            fi
           fi
 
       - name: Wait for vLLM ready
+        if: env.SIMULATION_MODE != 'true'
         run: |
           ENDPOINT="${DIFFUSION_ENDPOINT:-http://localhost:8000/v1/completions}"
           for i in {1..60}; do
@@ -77,18 +83,19 @@ jobs:
           GITHUB_REPO_NAME: ${{ github.event.repository.name }}
           DIFFUSION_ENDPOINT: ${{ secrets.DIFFUSION_ENDPOINT || 'http://localhost:8000/v1/completions' }}
           DIFFUSION_API_KEY: ${{ secrets.DIFFUSION_API_KEY }}
+          SIMULATION_MODE: ${{ github.event.inputs.dry_run == 'true' && 'true' || 'false' }}
         run: |
           COMMIT="${{ github.event.inputs.commit || github.sha }}"
           GOAL="${{ github.event.inputs.goal }}"
           DRY_RUN="${{ github.event.inputs.dry_run }}"
-
+          
           ARGS="-c $COMMIT -g \"$GOAL\""
           if [ "$DRY_RUN" = "true" ]; then
             ARGS="$ARGS --dry-run"
           else
             ARGS="$ARGS --execute --create-pr"
           fi
-
+          
           echo "Running: npx tsx lib/dsg/multi-agent-ccvs/cli.ts $ARGS"
           npx tsx lib/dsg/multi-agent-ccvs/cli.ts $ARGS
 
