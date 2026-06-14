@@ -57,9 +57,11 @@ class CommandRegistry {
       .filter((cmd): cmd is Command => !!cmd);
   }
 
-  subscribe(listener: () => void) {
+  subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   private notifyListeners() {
@@ -193,6 +195,17 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     selectedItemRef.current?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
+  const executeCommand = useCallback(async (command: Command) => {
+    try {
+      globalCommandRegistry.recordUsage(command.id);
+      await command.onExecute();
+      onClose();
+      setSearchQuery('');
+    } catch (error) {
+      console.error(`Error executing command ${command.id}:`, error);
+    }
+  }, [onClose]);
+
   // Handle keyboard events
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -219,19 +232,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           break;
       }
     },
-    [filteredCommands, selectedIndex, onClose]
+    [filteredCommands, selectedIndex, onClose, executeCommand]
   );
-
-  const executeCommand = async (command: Command) => {
-    try {
-      globalCommandRegistry.recordUsage(command.id);
-      await command.onExecute();
-      onClose();
-      setSearchQuery('');
-    } catch (error) {
-      console.error(`Error executing command ${command.id}:`, error);
-    }
-  };
 
   if (!isOpen) return null;
 
