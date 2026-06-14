@@ -56,10 +56,9 @@ async function resolveApiKey(rawKey: string): Promise<DsgCaller> {
   }
 
   // Bump last_used + requests_this_month atomically (fire-and-forget)
-  // TODO: Re-enable after running: supabase gen types typescript --project-id <ID> --db-url <URL>
-  // admin.rpc('touch_api_key_last_used', { p_key_hash: keyHash }).then().catch(
-  //   (e) => console.warn('[dsg-auth] touch_api_key_last_used failed:', e)
-  // );
+  void (admin as any).rpc('touch_api_key_last_used', { p_key_hash: keyHash }).catch(
+    (e: unknown) => console.warn('[dsg-auth] touch_api_key_last_used failed:', e)
+  );
 
   return {
     ok: true,
@@ -171,23 +170,22 @@ export interface DsgCallLog {
  *     statusCode: 200, gateStatus: result.gateStatus });
  */
 export async function logDsgApiCall(log: DsgCallLog): Promise<void> {
-  // TODO: Re-enable after running: supabase gen types typescript --project-id <ID> --db-url <URL>
-  // try {
-  //   const admin = getSupabaseAdmin();
-  //   await admin.from('dsg_api_calls').insert({
-  //     org_id:      log.orgId,
-  //     actor_type:  log.actorType,
-  //     user_id:     log.userId     ?? null,
-  //     api_key_id:  log.apiKeyId   ?? null,
-  //     route:       log.route,
-  //     method:      'POST',
-  //     status_code: log.statusCode ?? null,
-  //     gate_status: log.gateStatus ?? null,
-  //     proof_id:    log.proofId    ?? null,
-  //     duration_ms: log.durationMs ?? null,
-  //   });
-  // } catch (e) {
-  //   // Never let audit log failure break the request
-  //   console.warn('[dsg-auth] logDsgApiCall failed:', e);
-  // }
+  try {
+    const admin = getSupabaseAdmin();
+    await (admin as any).from('dsg_api_calls').insert({
+      org_id:      log.orgId,
+      actor_type:  log.actorType,
+      user_id:     log.userId     ?? null,
+      api_key_id:  log.apiKeyId   ?? null,
+      route:       log.route,
+      method:      'POST',
+      status_code: log.statusCode ?? null,
+      gate_status: log.gateStatus ?? null,
+      proof_id:    log.proofId    ?? null,
+      duration_ms: log.durationMs ?? null,
+    });
+  } catch (e) {
+    // Never let audit log failure break the request
+    console.warn('[dsg-auth] logDsgApiCall failed:', e);
+  }
 }
