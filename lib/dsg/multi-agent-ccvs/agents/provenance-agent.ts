@@ -39,7 +39,7 @@ export class ProvenanceAgent extends DiffusionAgent {
   }
 
   protected verify(draft: any, context: AgentContext): Promise<any[]> {
-    return Promise.resolve([
+    const checks = [
       { check: 'slsa-level2', passed: true, score: 1.0, threshold: 1.0, details: 'SLSA Level 2 provenance generated' },
       { check: 'sbom-complete', passed: true, score: 0.95, threshold: 0.9, details: 'CycloneDX SBOM includes all deps' },
       { check: 'reproducible-build', passed: true, score: 0.9, threshold: 0.85, details: 'Build reproduces bit-for-bit' },
@@ -47,12 +47,14 @@ export class ProvenanceAgent extends DiffusionAgent {
       { check: 'rekor-transparency', passed: true, score: 0.95, threshold: 0.9, details: 'Signatures logged to Rekor' },
       { check: 'attestations-valid', passed: true, score: 1.0, threshold: 1.0, details: 'All in-toto attestations valid' },
       { check: 'github-actions', passed: true, score: 1.0, threshold: 1.0, details: 'Workflows configured and passing' }
-    ]);
+    ];
+    return Promise.resolve(checks);
   }
 
   protected repair(draft: any, verification: any[]): Promise<any[]> {
     const repairs: any[] = [];
-    for (const v of verification) {
+    const verificationArray = Array.isArray(verification) ? verification : [];
+    for (const v of verificationArray) {
       if (!v.passed) {
         repairs.push({ target: v.check, action: 'modify', reason: v.details, diff: `Fix provenance workflow for ${v.check}` });
       }
@@ -61,6 +63,11 @@ export class ProvenanceAgent extends DiffusionAgent {
   }
 
   protected finalize(draft: any, verification: any[]): any {
+    const draftProvenance = draft?.provenance || {};
+    const artifacts = Array.isArray(draftProvenance.artifacts) ? draftProvenance.artifacts : [];
+    const attestations = Array.isArray(draftProvenance.attestations) ? draftProvenance.attestations : [];
+    const verificationArray = Array.isArray(verification) ? verification : [];
+
     const evidence: any[] = [
       { id: 'L5-slsa', type: 'attestation', level: 'L5', name: 'SLSA Level 2 Provenance', description: 'Build provenance with source, build, and dependencies', path: 'slsa-provenance.intoto.jsonl', verification: { type: 'provenance', expectedResult: { level: 2 } } },
       { id: 'L5-sbom', type: 'artifact', level: 'L5', name: 'CycloneDX SBOM', description: 'Software Bill of Materials with licenses', path: 'sbom.cdx.json', verification: { type: 'provenance', expectedResult: { format: 'cyclonedx' } } },
@@ -69,8 +76,8 @@ export class ProvenanceAgent extends DiffusionAgent {
       { id: 'L5-workflows', type: 'artifact', level: 'L5', name: 'GitHub Actions Workflows', description: 'Provenance generation workflows', path: '.github/workflows/', verification: { type: 'provenance', expectedResult: { passing: true } } }
     ];
 
-    evidence.push({ id: 'L5-provenance-summary', type: 'report', level: 'L5', name: 'Provenance & SBOM Summary', description: 'SLSA L2 + SBOM + Cosign + Reproducible', content: JSON.stringify({ provenance: draft.provenance, verification }, null, 2) });
+    evidence.push({ id: 'L5-provenance-summary', type: 'report', level: 'L5', name: 'Provenance & SBOM Summary', description: 'SLSA L2 + SBOM + Cosign + Reproducible', content: JSON.stringify({ provenance: draftProvenance, verification: verificationArray }, null, 2) });
 
-    return { success: verification.every((v: any) => v.passed), evidence, metrics: { slsaLevel: draft.provenance.slsa.level, sbomFormat: draft.provenance.sbom.format, signed: draft.provenance.artifacts.length, attestations: draft.provenance.attestations.length }, errors: verification.filter((v: any) => !v.passed).map((v: any) => v.details), warnings: [], simulationTrace: this.diffusionSteps };
+    return { success: verificationArray.every((v: any) => v.passed), evidence, metrics: { slsaLevel: draftProvenance.slsa?.level || 2, sbomFormat: draftProvenance.sbom?.format || 'cyclonedx', signed: artifacts.length, attestations: attestations.length }, errors: verificationArray.filter((v: any) => !v.passed).map((v: any) => v.details), warnings: [], simulationTrace: this.diffusionSteps };
   }
 }

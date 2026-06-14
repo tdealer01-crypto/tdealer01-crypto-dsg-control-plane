@@ -73,13 +73,13 @@ export function getAgentsByGroup(group: string): any[] {
   return AGENTS_BY_GROUP[group];
 }
 
-export function getExecutionOrder(): string[][] {
+export function getExecutionOrder(): string[] {
   // Returns parallel groups in dependency order
   return [
-    ['L1-unit'],
-    ['L2-integration'],
-    ['L3-adversarial'],
-    ['L4-formal'],
-    ['L5-provenance']
+    'L1-unit',
+    'L2-integration',
+    'L3-adversarial',
+    'L4-formal',
+    'L5-provenance'
   ];
 }

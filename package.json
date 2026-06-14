@@ -58,7 +58,10 @@
     "ccvs:verify": "node scripts/verify-evidence-chain.mjs",
     "ccvs:pipeline": "npm run test:coverage && node scripts/emit-test-evidence.mjs --type unit --suite all-unit --output ccvs-unit-evidence.json && node scripts/verify-evidence-chain.mjs ccvs-unit-evidence.json && node scripts/generate-compliance-matrix.mjs --output ccvs-compliance-matrix.json",
     "test:mutation": "npx stryker run",
-    "test:mutation:ci": "npx stryker run --logLevel warn"
+    "test:mutation:ci": "npx stryker run --logLevel warn",
+    "test:watch": "vitest",
+    "test:evidence": "vitest run lib/dsg/multi-agent-ccvs/tests/evidence.test.ts",
+    "test:ci": "vitest run --reporter=junit --outputFile=junit.xml"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

@@ -1,7 +1,7 @@
 // Multi-Agent Orchestrator with Diffusion Workflow
-import { AGENTS, getAgentsByGroup, getExecutionOrder } from './agents';
-import { AgentContext, AgentResult, EvidenceItem } from './base-agent';
-import { DiffusionAgent } from './diffusion-agent-base';
+import { AGENTS, getAgentsByGroup, getExecutionOrder } from '../agents';
+import { AgentContext, AgentResult, EvidenceItem } from '../agents/base-agent';
+import { DiffusionAgent } from '../agents/diffusion-agent-base';
 
 export interface OrchestratorConfig {
   maxTotalIterations: number;
