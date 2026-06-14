@@ -1,0 +1,1 @@
+(assert policyVersion == 1.0)

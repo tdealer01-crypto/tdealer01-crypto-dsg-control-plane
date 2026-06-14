@@ -1,0 +1,1 @@
+(assert auditLog append-only)
