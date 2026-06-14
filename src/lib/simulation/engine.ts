@@ -192,7 +192,10 @@ export class ROMSimulationEngine {
       case 'extract':
         return this.simulateExtract(params?.selectors || []);
       case 'api-call':
-        return this.simulateApiCall(action.target, params);
+        return this.simulateApiCall(
+          typeof action.target === 'string' ? action.target : action.target[0] || '',
+          params
+        );
       default:
         return { success: false, error: `Unknown action type: ${action.type}`, simulationLog };
     }

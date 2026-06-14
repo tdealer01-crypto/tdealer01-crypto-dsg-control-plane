@@ -31,16 +31,16 @@ export interface FieldSpec {
   name: string;
   type: string;
   required: boolean;
-  selector: string;
+  selector?: string;
   label?: string;
-  default?: string;
+  default?: string | Record<string, any>;
   description?: string;
 }
 
 export interface ActionSpec {
   name: string;
   type: 'click' | 'type' | 'extract' | 'wait' | 'navigate' | 'api-call';
-  target: string;
+  target: string | string[];
   description: string;
   waitFor?: string;
   timeout?: number;
@@ -93,8 +93,8 @@ export interface BrowserActions {
     set: Record<string, string>;
   };
   api?: {
-    method: string;
-    url: string;
+    method?: string;
+    url?: string;
     headers?: Record<string, string>;
     body?: any;
     expectedStatus?: number | number[];
@@ -102,8 +102,8 @@ export interface BrowserActions {
     endpoints?: Record<string, string>;
     get?: string;
     post?: {
-      method: string;
-      body: any;
+      method?: string;
+      body?: any;
     };
   };
 }
@@ -122,18 +122,18 @@ export interface DOMSnapshot {
 // Registry - all ROM DOM snapshots
 export const ROM_REGISTRY: Record<string, DOMSnapshot> = {
   // Public pages (no auth)
-  'landing': landing,
-  'delivery-proof': deliveryProof,
-  'readiness-report': readinessReport,
-  'health': health,
-  'mcp-manifest': mcpManifest,
-  'compliance-annex4': complianceAnnex4,
-  'ccvs-status': ccvsStatus,
+  'landing': landing as DOMSnapshot,
+  'delivery-proof': deliveryProof as DOMSnapshot,
+  'readiness-report': readinessReport as DOMSnapshot,
+  'health': health as DOMSnapshot,
+  'mcp-manifest': mcpManifest as DOMSnapshot,
+  'compliance-annex4': complianceAnnex4 as DOMSnapshot,
+  'ccvs-status': ccvsStatus as DOMSnapshot,
 
   // Protected pages (auth required)
-  'login': login,
-  'hermes-dashboard': hermesDashboard,
-  'gate-evaluate': gateEvaluate,
+  'login': login as DOMSnapshot,
+  'hermes-dashboard': hermesDashboard as DOMSnapshot,
+  'gate-evaluate': gateEvaluate as DOMSnapshot,
 };
 
 // Helper functions
@@ -176,7 +176,7 @@ export function getSimulationRule(romKey: string, trigger: string, context?: any
     if (rule.trigger !== trigger) return false;
     if (rule.condition && context) {
       // Simple condition evaluation
-      return evalCondition(rule.condition, context);
+      return evalCondition(rule.condition as string | Record<string, any>, context);
     }
     if (rule.conditions && context) {
       return Object.entries(rule.conditions).every(([k, v]) => context[k] === v);
@@ -185,7 +185,10 @@ export function getSimulationRule(romKey: string, trigger: string, context?: any
   });
 }
 
-function evalCondition(condition: string, context: any): boolean {
+function evalCondition(condition: string | Record<string, any>, context: any): boolean {
+  if (typeof condition === 'object') {
+    return Object.entries(condition).every(([k, v]) => context[k] === v);
+  }
   try {
     // Safe evaluation - only allow simple comparisons
     const fn = new Function('ctx', `with(ctx) { return ${condition}; }`);
