@@ -1,6 +1,6 @@
 // GitHub PR Automation for CCVS Multi-Agent System
 import { Octokit } from '@octokit/rest';
-import { OrchestrationResult, LevelResult, AgentResult, EvidenceItem } from '../orchestrator/multi-agent-orchestrator';
+import { OrchestrationResult, LevelResult, AgentResult, EvidenceItem } from '../orchestrator';
 
 export interface GHPRAutomationConfig {
   token: string;
