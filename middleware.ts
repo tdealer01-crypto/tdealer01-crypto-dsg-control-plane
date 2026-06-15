@@ -14,10 +14,19 @@ function isProtectedPath(pathname: string) {
   );
 }
 
+const API_BODY_SIZE_LIMIT = 1_048_576; // 1 MB
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  if (request.method === 'OPTIONS' && request.nextUrl.pathname.startsWith('/api/')) {
+  // Enforce body size limit for API routes; skip full auth pipeline for API paths
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
+      const cl = request.headers.get('content-length');
+      if (cl && parseInt(cl, 10) > API_BODY_SIZE_LIMIT) {
+        return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+      }
+    }
     return response;
   }
 
@@ -78,6 +87,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Page routes: Supabase session + protected-path auth
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // API routes: body-size enforcement only
+    '/api/:path*',
   ],
 };

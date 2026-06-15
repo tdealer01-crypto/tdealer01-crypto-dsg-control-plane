@@ -122,7 +122,7 @@ export async function GET(request?: Request) {
 
   const result = await loadFromSupabase(runId);
 
-  if (!result.ok && !result.notFound) {
+  if (result.ok === false && result.notFound === false) {
     // DB connectivity failure — fail closed, do not return stale or fake compliance data
     return NextResponse.json(
       { ok: false, error: 'db_unavailable', deployment },

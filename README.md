@@ -59,21 +59,21 @@ Output: `lib/gateway/verified-constraints.json`
 | Answer gate in SSE stream | Every AI reply scanned before client receives it | `app/api/agent-chat/route.ts:140` |
 | No browser storage | localStorage/sessionStorage removed from all components | `components/TryChatWidget.tsx`, `app/dashboard/hermes/page.tsx` |
 
-### Known open items (not resolved in this codebase version)
+### Resolved items (2026-06-15)
 
-| Item | File | Risk |
+| Item | Resolution | File |
 |---|---|---|
-| 87 routes use `request.json()` without body size limit | `app/api/**/route.ts` | Memory exhaustion DoS |
-| Quota check-then-increment race (not atomic) | `lib/usage/quota.ts:42` | Over-quota execution possible under concurrency |
-| RLS disabled on `claim_readiness_artifacts` | `supabase/migrations/20260612041000:155` | Application must enforce org_id on all queries |
-| Expired credential leases not cleaned up by cron | `lib/dsg/brain/credential-broker.ts:26` | Table bloat (no secret leak — fingerprint only) |
+| API body size limit | `middleware.ts` rejects POST/PUT/PATCH > 1 MB with 413; `/api/:path*` added to matcher | `middleware.ts` |
+| Quota race (non-atomic) | `incrementQuota` now calls `increment_quota_atomic` SQL RPC (atomic `executions = executions + 1`) | `lib/usage/quota.ts`, migration `20260616000001` |
+| RLS disabled on `claim_readiness_artifacts` | RLS enabled; SELECT for authenticated; DELETE blocked via trigger for all roles including service_role | migration `20260616000002` |
+| Expired credential leases not cleaned | Cron route added at `/api/cron/cleanup-expired-leases` (daily 03:00 UTC) | `app/api/cron/cleanup-expired-leases/route.ts` |
 
 ### What is not claimed
 
 - `production-ready` for general traffic cutover — Playwright E2E gate not yet run from CI
 - `third-party audited` — `certificationClaim: false` and `independentAuditClaim: false` in all evidence bundles
 - `external Z3 solver at request time` — Z3 runs design-time only; request path uses deterministic TypeScript scaffold
-- `WORM-certified storage` — `claim_readiness_artifacts` has RLS disabled; WORM is application-layer intent, not DB-enforced
+- `WORM-certified storage` — RLS is now enabled and DELETE is trigger-blocked, but S3 Object Lock is not configured
 
 ---
 

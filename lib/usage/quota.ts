@@ -72,36 +72,22 @@ export async function checkQuota(orgId: string, agentId: string): Promise<QuotaS
 
 /**
  * Atomically increment the execution counter for the current billing period.
- * Uses upsert so concurrent calls are safe.
+ * Calls the increment_quota_atomic SQL function which uses a single UPDATE
+ * (executions = executions + 1) followed by INSERT ON CONFLICT — both
+ * operations are atomic at the DB level, eliminating the read-modify-write
+ * race present in the old SELECT + UPDATE pattern.
  */
 export async function incrementQuota(orgId: string, agentId: string): Promise<void> {
   const supabase = getSupabaseAdmin();
   const period = currentBillingPeriod();
 
-  // Try increment first (UPDATE WHERE existing row)
-  const { data: existing } = await supabase
-    .from('usage_counters')
-    .select('id, executions')
-    .eq('org_id', orgId)
-    .eq('agent_id', agentId)
-    .eq('billing_period', period)
-    .maybeSingle();
+  const { error } = await supabase.rpc('increment_quota_atomic', {
+    p_org_id: orgId,
+    p_agent_id: agentId,
+    p_billing_period: period,
+  });
 
-  if (existing) {
-    await supabase
-      .from('usage_counters')
-      .update({
-        executions: (existing.executions ?? 0) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id);
-  } else {
-    await supabase.from('usage_counters').insert({
-      org_id: orgId,
-      agent_id: agentId,
-      billing_period: period,
-      executions: 1,
-      updated_at: new Date().toISOString(),
-    });
+  if (error) {
+    throw new Error(`incrementQuota failed: ${error.message}`);
   }
 }
