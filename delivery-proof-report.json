@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "type": "delivery_proof",
+  "status": "PASS",
+  "production_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "commit": "8e0ee6b8",
+  "timestamp": "2026-06-15T02:24:39Z",
+  "checks": {
+    "trust_surface": {
+      "terms": { "url": "/terms", "status": 200, "pass": true },
+      "privacy": { "url": "/privacy", "status": 200, "pass": true },
+      "security": { "url": "/security", "status": 200, "pass": true },
+      "support": { "url": "/support", "status": 200, "pass": true }
+    },
+    "runtime_baselines": {
+      "health": { "url": "/api/health", "status": 200, "ok": true, "pass": true },
+      "health_ok": { "value": true, "pass": true },
+      "rate_limiter": { "configured": true, "pass": true },
+      "readiness": { "url": "/api/readiness", "status": 200, "ok": true, "pass": true },
+      "readiness_ok": { "value": true, "pass": true }
+    },
+    "auth_gates": {
+      "execute_no_auth": { "url": "/api/execute", "method": "POST", "status": 401, "pass": true },
+      "webhook_no_sig": { "url": "/api/billing/webhook", "method": "POST", "status": 400, "pass": true }
+    },
+    "mcp_endpoints": {
+      "manifest": { "url": "/api/mcp/manifest", "status": 200, "pass": true },
+      "tools_list": { "url": "/api/mcp", "status": 200, "pass": true }
+    },
+    "pricing": {
+      "page": { "url": "/pricing", "status": 200, "pass": true }
+    }
+  },
+  "summary": {
+    "total_checks": 14,
+    "passed": 14,
+    "failed": 0,
+    "overall": "PASS"
+  },
+  "note": "All critical production gates verified. Auth returns 401/400 (correct), not 429 (rate limit misconfig). Upstash Redis configured. MCP endpoints live. Trust pages accessible."
+}
