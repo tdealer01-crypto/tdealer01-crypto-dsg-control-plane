@@ -7,16 +7,15 @@ on:
       - 'dsg-mcp-server/**'
   workflow_dispatch:
 
-env:
-  NODE_VERSION: '20'
-  MCP_SERVER_DIR: 'dsg-mcp-server'
-  DOCKER_IMAGE: ghcr.io/${{ github.repository_owner }}/dsg-mcp-server
-  DOCKER_TAG: ${{ github.sha }}
-
 jobs:
   build:
     name: Build MCP Server
     runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: '20'
+      MCP_SERVER_DIR: 'dsg-mcp-server'
+      DOCKER_IMAGE: ghcr.io/${{ github.repository_owner }}/dsg-mcp-server
+      DOCKER_TAG: ${{ github.sha }}
     outputs:
       docker-image: ${{ steps.meta.outputs.tags }}
     steps:
@@ -65,6 +64,8 @@ jobs:
     name: Deploy MCP via SSH
     needs: build
     runs-on: ubuntu-latest
+    env:
+      MCP_SERVER_DIR: 'dsg-mcp-server'
     steps:
       - name: Check config
         id: check
@@ -89,7 +90,7 @@ jobs:
           key: ${{ secrets.MCP_TARGET_SSH_KEY }}
           script: |
             set -euo pipefail
-            TARGET_DIR="/home/${{ secrets.MCP_TARGET_USER }}/dsg-mcp-server"
+            TARGET_DIR="/home/${{ secrets.MCP_TARGET_USER }}/${{ env.MCP_SERVER_DIR }}"
             mkdir -p "$TARGET_DIR"
             cp -r dist/* "$TARGET_DIR/dist/"
             cd "$TARGET_DIR"
