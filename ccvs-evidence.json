@@ -13,9 +13,9 @@
   "run": {
     "repo": "local/unknown",
     "commit": "unknown",
-    "workflow_run_id": "local-1781489678552",
+    "workflow_run_id": "local-1781495004609",
     "builder_id": "https://github.com/actions/runner",
-    "invocation_id": "local-1781489678552-1"
+    "invocation_id": "local-1781495004609-1"
   },
   "oidc": {
     "issuer": "https://token.actions.githubusercontent.com",
@@ -26,14 +26,14 @@
   },
   "metrics": {
     "tests_total": 2186,
-    "tests_passed": 2077,
-    "tests_failed": 51,
+    "tests_passed": 2092,
+    "tests_failed": 36,
     "coverage": {}
   },
   "integrity": {
     "previous_chain_hash": "",
-    "chain_hash": "sha256:ea1a06b33744ebd3e76ba5790c76481d3736f4374b1feeb13870ddddd77890ab"
+    "chain_hash": "sha256:2903ac7e281e58ef18b2e94ccacf5bd137afbb1811e7aac76f5febc472d74fad"
   },
   "policy_version": "v1",
-  "generated_at": "2026-06-15T02:14:38.552Z"
+  "generated_at": "2026-06-15T03:43:24.612Z"
 }

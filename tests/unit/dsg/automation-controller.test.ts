@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { evaluateAutomationController } from "../../../lib/dsg/controller/automation-controller";
 import {
   isProductionReadyDeterministicProof,
@@ -69,7 +70,7 @@ async function proofWith(overrides: Record<string, unknown>) {
 
 describe("DSG automation controller", () => {
   it("passes a fully evidenced low-risk agent action through the real deterministic gate scaffold", async () => {
-    const result = evaluateAutomationController(
+    const result = await evaluateAutomationController(
       baseRequest({
         resource: {
           type: "workflow",
@@ -88,7 +89,7 @@ describe("DSG automation controller", () => {
   });
 
   it("does not pass high-risk action when required approval is missing", async () => {
-    const result = evaluateAutomationController(
+    const result = await evaluateAutomationController(
       baseRequest({
         actionType: "deployment_action",
         resource: {
@@ -124,7 +125,7 @@ describe("DSG automation controller", () => {
   });
 
   it("blocks unsupported evidence from becoming a passing consumer-facing decision", async () => {
-    const result = evaluateAutomationController(
+    const result = await evaluateAutomationController(
       baseRequest({
         evidence: [
           {
@@ -236,7 +237,7 @@ describe("production readiness proof boundary", () => {
   });
 
   it("keeps disallowed external/compliance boundary claims false", async () => {
-    const result = evaluateAutomationController(
+    const result = await evaluateAutomationController(
       baseRequest({
         resource: {
           type: "workflow",

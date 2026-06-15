@@ -61,7 +61,7 @@ vi.mock('../../../lib/supabase-server', () => ({
               }),
               in: () => ({
                 lt: () => ({
-                  order: () => ({
+                  gte: () => ({
                     limit: () => Promise.resolve({ data: mockOutboxRows, error: null }),
                   }),
                 }),
@@ -72,9 +72,14 @@ vi.mock('../../../lib/supabase-server', () => ({
                 order: () => ({
                   limit: () => Promise.resolve({ data: mockOutboxRows, error: null }),
                 }),
+                gte: () => ({
+                  limit: () => Promise.resolve({ data: mockOutboxRows, error: null }),
+                }),
               }),
             }),
             eq: () => ({
+              gte: () => 
+                Promise.resolve({ data: mockOutboxRows, error: null }),
               maybeSingle: () =>
                 Promise.resolve({
                   data: mockCustomerId ? { stripe_customer_id: mockCustomerId } : null,

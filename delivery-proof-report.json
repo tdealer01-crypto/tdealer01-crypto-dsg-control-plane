@@ -3,8 +3,8 @@
   "type": "delivery_proof",
   "status": "PASS",
   "production_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
-  "commit": "8e0ee6b8",
-  "timestamp": "2026-06-15T02:24:39Z",
+  "commit": "26b77b79",
+  "timestamp": "2026-06-15T03:43:50Z",
   "checks": {
     "trust_surface": {
       "terms": { "url": "/terms", "status": 200, "pass": true },
