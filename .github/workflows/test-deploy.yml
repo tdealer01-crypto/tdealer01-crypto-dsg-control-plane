@@ -1,0 +1,97 @@
+name: Deploy DSG MCP Server (Minimal)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dsg-mcp-server/**'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  MCP_SERVER_DIR: 'dsg-mcp-server'
+  DOCKER_IMAGE: ghcr.io/${{ github.repository_owner }}/dsg-mcp-server
+  DOCKER_TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    name: Build MCP Server
+    runs-on: ubuntu-latest
+    outputs:
+      docker-image: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.MCP_SERVER_DIR }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ env.MCP_SERVER_DIR }}
+        run: npm ci
+      - name: Build
+        working-directory: ${{ env.MCP_SERVER_DIR }}
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsg-mcp-server-dist
+          path: ${{ env.MCP_SERVER_DIR }}/dist/
+          retention-days: 7
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.MCP_SERVER_DIR }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-ssh:
+    name: Deploy MCP via SSH
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check config
+        id: check
+        run: |
+          if [ -z "${{ secrets.MCP_TARGET_HOST }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Download artifact
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: dsg-mcp-server-dist
+          path: dist/
+      - name: Deploy
+        if: steps.check.outputs.skip == 'false'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.MCP_TARGET_HOST }}
+          username: ${{ secrets.MCP_TARGET_USER }}
+          key: ${{ secrets.MCP_TARGET_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            TARGET_DIR="/home/${{ secrets.MCP_TARGET_USER }}/dsg-mcp-server"
+            mkdir -p "$TARGET_DIR"
+            cp -r dist/* "$TARGET_DIR/dist/"
+            cd "$TARGET_DIR"
+            npm ci --production
+            echo "Deployed"
