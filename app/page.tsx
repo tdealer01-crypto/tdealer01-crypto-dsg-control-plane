@@ -7,9 +7,9 @@ import { GateResultCard } from '../components/GateResultCard';
 import RefTracker from '../components/RefTracker';
 
 const trustBar = [
-  'Deterministic Security Gateway — SMT Solver-verified policy invariants (24 Z3 theorems)',
+  'Deterministic Security Gateway — SMT Solver-verified policy invariants (8 Z3 theorems: 5 core + 3 DeFi)',
   'WORM audit trail — SHA-256 requestHash → recordHash → bundleHash · tamper-evident by construction',
-  'EU AI Act Art. 12/14 · Annex IV · ISO 42001 — CCVS v1.2 live evidence chain · 998 tests · mutation score 72.08%',
+  'EU AI Act Art. 12/14 · Annex IV · ISO 42001 — CCVS v1.2 live evidence chain · 2173 tests · mutation score 72.08%',
 ];
 
 const painCards = [
@@ -290,7 +290,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-20">
         <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
           <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
-          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 998 tests, mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
+          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 2173 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
         </div>
       </section>
 
