@@ -76,7 +76,7 @@ vi.mock('crypto', () => ({
   }),
 }));
 
-import { requireDsgAuth } from './require-dsg-auth';
+import { requireDsgAuth, type DsgCaller } from './require-dsg-auth';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +97,18 @@ function makeActiveApiKey(overrides: Record<string, unknown> = {}) {
     scopes: ['gates:evaluate', 'proofs:prove'],
     ...overrides,
   };
+}
+
+type DsgAuthFailure = Extract<DsgCaller, { ok: false }>;
+
+function expectAuthFailure(result: DsgCaller): DsgAuthFailure {
+  expect(result.ok).toBe(false);
+
+  if (result.ok !== false) {
+    throw new Error('Expected DSG auth failure');
+  }
+
+  return result;
 }
 
 // ─── API Key Auth Tests ───────────────────────────────────────────────────────
@@ -126,10 +138,8 @@ describe('requireDsgAuth — API key path', () => {
     const req = makeRequest('Bearer dsg_invalid_key');
     const result = await requireDsgAuth(req);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(401);
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBe(401);
   });
 
   it('returns 403 for REVOKED key', async () => {
@@ -137,11 +147,9 @@ describe('requireDsgAuth — API key path', () => {
     const req = makeRequest('Bearer dsg_revoked_key');
     const result = await requireDsgAuth(req);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(403);
-      expect(result.error).toContain('inactive or revoked');
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBe(403);
+    expect(failure.error).toContain('inactive or revoked');
   });
 
   it('returns 403 for EXPIRED key', async () => {
@@ -149,10 +157,8 @@ describe('requireDsgAuth — API key path', () => {
     const req = makeRequest('Bearer dsg_expired_key');
     const result = await requireDsgAuth(req);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(403);
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBe(403);
   });
 
   it('allows key with admin scope', async () => {
@@ -207,10 +213,8 @@ describe('requireDsgAuth — session path', () => {
     const req = makeRequest(); // no header
     const result = await requireDsgAuth(req);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(401);
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBe(401);
   });
 
   it('resolves valid session to DsgCaller with actorType user', async () => {
@@ -233,10 +237,8 @@ describe('requireDsgAuth — session path', () => {
     const req = makeRequest();
     const result = await requireDsgAuth(req);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(403);
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBe(403);
   });
 
   it('returns 403 when profile is inactive', async () => {
@@ -245,10 +247,8 @@ describe('requireDsgAuth — session path', () => {
     const req = makeRequest();
     const result = await requireDsgAuth(req);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(403);
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBe(403);
   });
 });
 
@@ -278,9 +278,8 @@ describe('requireDsgAuth — return type', () => {
     const req = makeRequest('Bearer definitely_invalid');
     const result = await requireDsgAuth(req);
 
-    if (!result.ok) {
-      expect(result.status).toBeOneOf([401, 403]);
-      expect(typeof result.error).toBe('string');
-    }
+    const failure = expectAuthFailure(result);
+    expect(failure.status).toBeOneOf([401, 403]);
+    expect(typeof failure.error).toBe('string');
   });
 });
