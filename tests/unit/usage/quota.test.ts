@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock('../../../lib/supabase-server', () => ({
-  getSupabaseAdmin: vi.fn(() => ({ from: mockFrom })),
+  getSupabaseAdmin: vi.fn(() => ({ from: mockFrom, rpc: mockRpc })),
 }));
 
 import { checkQuota, incrementQuota } from '../../../lib/usage/quota';
@@ -25,6 +26,7 @@ function makeChain(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRpc.mockResolvedValue({ error: null });
   delete process.env.NEXT_PUBLIC_APP_URL;
   delete process.env.NEXT_PUBLIC_SITE_URL;
 });
@@ -113,49 +115,23 @@ describe('checkQuota', () => {
 });
 
 describe('incrementQuota', () => {
-  it('inserts a new row when no existing counter', async () => {
-    const insertMock = vi.fn().mockResolvedValue({ error: null });
-    let callCount = 0;
-    mockFrom.mockImplementation(() => {
-      callCount++;
-      const chain = makeChain();
-      chain.insert = insertMock;
-      if (callCount === 1) {
-        // select existing row — none found
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-      }
-      return chain;
-    });
-
+  it('calls increment_quota_atomic RPC with correct params', async () => {
     await incrementQuota('org-1', 'agent-1');
-    expect(insertMock).toHaveBeenCalledWith(
-      expect.objectContaining({ org_id: 'org-1', agent_id: 'agent-1', executions: 1 })
-    );
+    expect(mockRpc).toHaveBeenCalledWith('increment_quota_atomic', expect.objectContaining({
+      p_org_id: 'org-1',
+      p_agent_id: 'agent-1',
+    }));
   });
 
-  it('increments existing counter by 1', async () => {
-    const updateChain = { update: vi.fn(), eq: vi.fn() };
-    updateChain.update.mockReturnValue(updateChain);
-    updateChain.eq.mockResolvedValue({ error: null });
-
-    let callCount = 0;
-    mockFrom.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        const chain = makeChain();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: { id: 'ctr-1', executions: 5 },
-          error: null,
-        });
-        return chain;
-      }
-      return updateChain;
-    });
-
+  it('includes billing_period in RPC params', async () => {
     await incrementQuota('org-1', 'agent-1');
-    expect(updateChain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ executions: 6 })
-    );
-    expect(updateChain.eq).toHaveBeenCalledWith('id', 'ctr-1');
+    const call = mockRpc.mock.calls[0];
+    expect(call[0]).toBe('increment_quota_atomic');
+    expect(call[1].p_billing_period).toMatch(/^\d{4}-\d{2}$/);
+  });
+
+  it('throws when RPC returns an error', async () => {
+    mockRpc.mockResolvedValueOnce({ error: { message: 'function not found' } });
+    await expect(incrementQuota('org-1', 'agent-1')).rejects.toThrow('incrementQuota failed');
   });
 });

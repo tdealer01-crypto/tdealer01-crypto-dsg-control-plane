@@ -5514,6 +5514,10 @@ export type Database = {
         Returns: string
       }
       get_org_health_summary: { Args: { p_org_id: string }; Returns: Json }
+      increment_quota_atomic: {
+        Args: { p_org_id: string; p_agent_id: string; p_billing_period: string }
+        Returns: undefined
+      }
       is_org_admin: { Args: { target_org_id: string }; Returns: boolean }
       is_org_member: { Args: { target_org_id: string }; Returns: boolean }
       normalize_slug: { Args: { input_text: string }; Returns: string }
