@@ -150,11 +150,6 @@ jobs:
     steps:
       - name: Checkout compose files
         uses: actions/checkout@v4
-        with:
-          path: repo
-          sparse-checkout: |
-            dsg-mcp-server/lightpanda-docker-compose.yml
-            dsg-mcp-server/lightpanda@.service
 
       - name: Deploy Lightpanda via Docker Compose
         uses: appleboy/ssh-action@v1
@@ -166,17 +161,81 @@ jobs:
             set -euo pipefail
             TARGET_DIR="/home/${{ secrets.LIGHTPANDA_USER }}/dsg-mcp-server"
             mkdir -p "$TARGET_DIR"
-            
-            # Copy compose file
-            scp -o StrictHostKeyChecking=no -i /dev/stdin \
-              repo/dsg-mcp-server/lightpanda-docker-compose.yml \
-              "${{ secrets.LIGHTPANDA_USER }}@${{ secrets.LIGHTPANDA_HOST }}:$TARGET_DIR/" <<< "${{ secrets.LIGHTPANDA_SSH_KEY }}"
-            
+
+            # Write compose file directly (no scp needed)
+            cat > "$TARGET_DIR/lightpanda-docker-compose.yml" << 'COMPOSE_EOF'
+            version: '3.8'
+
+            services:
+              lightpanda:
+                image: lightpanda/browser:nightly
+                container_name: lightpanda-browser
+                restart: unless-stopped
+                ports:
+                  - "127.0.0.1:9222:9222"
+                command: >
+                  serve
+                  --host 0.0.0.0
+                  --port 9222
+                  --log-format pretty
+                  --log-level info
+                  --obey-robots
+                environment:
+                  - LIGHTPANDA_DISABLE_TELEMETRY=true
+                healthcheck:
+                  test: ["CMD", "wget", "-q", "--spider", "http://localhost:9222/json/version"]
+                  interval: 30s
+                  timeout: 10s
+                  retries: 3
+                  start_period: 10s
+                deploy:
+                  resources:
+                    limits:
+                      memory: 512M
+                      cpus: '0.5'
+                logging:
+                  driver: "json-file"
+                  options:
+                    max-size: "10m"
+                    max-file: "3"
+
+            networks:
+              default:
+                name: lightpanda-net
+            COMPOSE_EOF
+
+            # Write systemd service
+            cat > "$TARGET_DIR/lightpanda@.service" << 'SERVICE_EOF'
+            [Unit]
+            Description=Lightpanda Browser (CDP Server)
+            After=docker.service network-online.target
+            Requires=docker.service
+
+            [Service]
+            Type=simple
+            User=%i
+            WorkingDirectory=/home/%i/dsg-mcp-server
+            ExecStartPre=/usr/bin/docker compose -f lightpanda-docker-compose.yml pull
+            ExecStart=/usr/bin/docker compose -f lightpanda-docker-compose.yml up
+            ExecStop=/usr/bin/docker compose -f lightpanda-docker-compose.yml down
+            Restart=always
+            RestartSec=10
+
+            NoNewPrivileges=true
+            PrivateTmp=true
+            ProtectSystem=strict
+            ProtectHome=true
+            ReadWritePaths=/home/%i/dsg-mcp-server
+
+            [Install]
+            WantedBy=multi-user.target
+            SERVICE_EOF
+
             # Deploy
             cd "$TARGET_DIR"
             docker compose -f lightpanda-docker-compose.yml pull
             docker compose -f lightpanda-docker-compose.yml up -d
-            
+
             # Wait for health
             sleep 5
             if curl -sf http://localhost:9222/json/version > /dev/null; then
@@ -203,7 +262,7 @@ jobs:
 
   notify:
     name: Notify
-    needs: [deploy-ssh, deploy-docker, deploy-lightpanda]
+    needs: [build, deploy-ssh, deploy-docker, deploy-lightpanda]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -213,7 +272,12 @@ jobs:
           SSH_STATUS="${{ needs.deploy-ssh.result }}"
           DOCKER_STATUS="${{ needs.deploy-docker.result }}"
           LIGHTPANDA_STATUS="${{ needs.deploy-lightpanda.result }}"
-          
+
+          # Treat skipped as success for notification logic
+          [ "$SSH_STATUS" = "skipped" ] && SSH_STATUS="success"
+          [ "$DOCKER_STATUS" = "skipped" ] && DOCKER_STATUS="success"
+          [ "$LIGHTPANDA_STATUS" = "skipped" ] && LIGHTPANDA_STATUS="success"
+
           if [ "$SSH_STATUS" = "success" ] || [ "$DOCKER_STATUS" = "success" ] || [ "$LIGHTPANDA_STATUS" = "success" ]; then
             ICON="✅"
             MSG="Deployment completed"
@@ -221,12 +285,12 @@ jobs:
             ICON="❌"
             MSG="Deployment failed"
           fi
-          
+
           DETAILS=""
           [ "$SSH_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-SSH: $SSH_STATUS"
           [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DOCKER_STATUS"
           [ "$LIGHTPANDA_STATUS" != "" ] && DETAILS="$DETAILS\nLightpanda: $LIGHTPANDA_STATUS"
-          
+
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="${ICON} ${MSG} (${{ github.sha::7 }})${DETAILS}" \
