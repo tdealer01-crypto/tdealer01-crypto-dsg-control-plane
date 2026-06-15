@@ -14,9 +14,9 @@ const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 async function synthesizeWithClaude(
   userMessage: string,
   toolResults: Array<{ toolId: string; result: unknown }>,
-): Promise<{ reply: string; gateDecision: string; gateAllowed: boolean }> {
+): Promise<{ reply: string; gateDecision: string; gateAllowed: boolean; claimsDetected: string[] }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { reply: '', gateDecision: 'NO_API_KEY', gateAllowed: true };
+  if (!apiKey) return { reply: '', gateDecision: 'NO_API_KEY', gateAllowed: true, claimsDetected: [] };
 
   const toolSummary = toolResults
     .map((r) => `[${r.toolId}]: ${JSON.stringify(r.result, null, 2).slice(0, 1500)}`)
@@ -45,19 +45,22 @@ async function synthesizeWithClaude(
         messages: [{ role: 'user', content: `คำถาม: ${userMessage}\n\nผลลัพธ์จาก tools:\n${toolSummary}` }],
       }),
     });
-    if (!res.ok) return { reply: '', gateDecision: 'API_ERROR', gateAllowed: true };
+    if (!res.ok) return { reply: '', gateDecision: 'API_ERROR', gateAllowed: true, claimsDetected: [] };
     const data = await res.json() as { content: Array<{ type: string; text?: string }> };
     reply = data.content?.[0]?.text ?? '';
   } catch {
-    return { reply: '', gateDecision: 'FETCH_ERROR', gateAllowed: true };
+    return { reply: '', gateDecision: 'FETCH_ERROR', gateAllowed: true, claimsDetected: [] };
   }
 
   // DSG Answer Gate — pure deterministic Boolean logic, zero LLM
   const facts = detectClaimsInReply(reply, { executedSteps: toolResults.length > 0, hasUserQuestion: true });
   const gate = evaluateAnswerGate(facts);
   const finalReply = !gate.allowed ? `⚠️ [DSG Gate: ${gate.final_decision}]\n\n${reply}` : reply;
+  const claimsDetected = Object.entries(facts)
+    .filter(([key, val]) => key.startsWith('contains_') && val === true)
+    .map(([key]) => key);
 
-  return { reply: finalReply, gateDecision: gate.final_decision, gateAllowed: gate.allowed };
+  return { reply: finalReply, gateDecision: gate.final_decision, gateAllowed: gate.allowed, claimsDetected };
 }
 
 function sseData(payload: unknown) {
@@ -135,7 +138,7 @@ export async function POST(request: Request) {
         }
 
         if (reply) {
-          // DSG Answer Gate applies to every reply regardless of model source
+          // DSG Answer Gate — runs after full reply is buffered, pure deterministic Boolean logic
           const routerFacts = detectClaimsInReply(reply, { executedSteps: false, hasUserQuestion: true });
           const routerGate = evaluateAnswerGate(routerFacts);
           const gatedReply = !routerGate.allowed
@@ -149,6 +152,20 @@ export async function POST(request: Request) {
                 model: modelUsed,
                 gate_decision: routerGate.final_decision,
                 gate_allowed: routerGate.allowed,
+              }),
+            ),
+          );
+          // Emit dedicated gate_decision event after full reply is assembled
+          const routerClaimsDetected = Object.entries(routerFacts)
+            .filter(([key, val]) => key.startsWith('contains_') && val === true)
+            .map(([key]) => key);
+          controller.enqueue(
+            encoder.encode(
+              sseData({
+                type: 'gate_decision',
+                decision: routerGate.final_decision,
+                claims_detected: routerClaimsDetected,
+                allowed: routerGate.allowed,
               }),
             ),
           );
@@ -188,7 +205,7 @@ export async function POST(request: Request) {
 
         // Synthesize reply via Haiku 4.5 + run through DSG Answer Gate (pure logic)
         if (!reply && collectedResults.length > 0) {
-          const { reply: synthesis, gateDecision, gateAllowed } = await synthesizeWithClaude(message, collectedResults);
+          const { reply: synthesis, gateDecision, gateAllowed, claimsDetected } = await synthesizeWithClaude(message, collectedResults);
           const finalReply = synthesis || collectedResults
             .map((r) => {
               const data = r.result as Record<string, unknown>;
@@ -202,6 +219,13 @@ export async function POST(request: Request) {
             model: synthesis ? HAIKU_MODEL : 'fallback',
             gate_decision: gateDecision,
             gate_allowed: gateAllowed,
+          })));
+          // Emit dedicated gate_decision event after full reply is assembled
+          controller.enqueue(encoder.encode(sseData({
+            type: 'gate_decision',
+            decision: gateDecision,
+            claims_detected: claimsDetected,
+            allowed: gateAllowed,
           })));
         }
 
