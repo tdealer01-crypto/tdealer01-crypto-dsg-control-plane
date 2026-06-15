@@ -152,7 +152,16 @@ Runtime governance layer for AI agents. Gate every action before execution and k
 │   ├── dsg_answer_gate.py          Z3 SAT encoding — 6 decision types
 │   ├── prove_answer_gate.py        22 invariant proofs
 │   ├── prove_revenue_ready.py      16 billing theorems (z3-solver WASM)
-│   └── verify_policy.py            8 policy theorems
+│   ├── dsg_revenue_model.py        Revenue model encoding
+│   └── governed_agent_model.py     Agent governance model
+│
+├── lib/gateway/z3/                 Gateway Z3 formal proofs
+│   ├── theorems.py                 5 core policy theorems (UNSAT refutation)
+│   ├── defi_constraints.py         3 DeFi constraint theorems (Theorems 6–8)
+│   ├── generate_spec.py            Runner → lib/gateway/verified-constraints.json
+│   ├── policy_model.py             Policy sorts and decision symbols
+│   ├── custodial_bounds.py         Custodial limit constraints
+│   └── yield_invariants.py         Yield safety invariants
 │
 ├── scripts/                        Verification, smoke, benchmark, deploy scripts
 ├── load/                           k6 load test scripts
@@ -389,7 +398,8 @@ GET /api/dsg/v1/policies/manifest
 Z3 design-time proofs (CI — not invoked at request time):
 
 ```bash
-npm run verify:policy      # tools/proofs/verify_policy.py  — 8 theorems UNSAT
+npm run verify:policy      # scripts/verify-policy.sh → lib/gateway/z3/{theorems,defi_constraints}.py
+                           #   5 core policy theorems + 3 DeFi constraint theorems → 8 total UNSAT
 npm run proof:revenue      # tools/proofs/prove_revenue_ready.py — 16 theorems
 npm run proof:answer-gate  # tools/proofs/prove_answer_gate.py — 22 invariants
 ```
@@ -733,7 +743,7 @@ npm run test:mutation:ci       # npx stryker run (break gate: score < 70%)
 
 # Formal proofs (Python — requires: npm run proof:install)
 npm run proof:install          # pip install -r tools/proofs/requirements.txt
-npm run verify:policy          # 8 Z3 policy theorems
+npm run verify:policy          # 8 Z3 theorems: 5 core policy + 3 DeFi constraints (lib/gateway/z3/)
 npm run proof:revenue          # 16 Z3 billing theorems
 npm run proof:answer-gate      # 22 Z3 answer gate invariants
 

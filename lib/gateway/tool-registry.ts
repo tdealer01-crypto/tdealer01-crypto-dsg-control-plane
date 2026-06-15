@@ -38,15 +38,6 @@ export const DEFAULT_GATEWAY_TOOL_REGISTRY: GatewayToolRegistryEntry[] = [
     requiresApproval: false,
     description: 'Customer-managed HTTP webhook connector.',
   },
-  {
-    name: 'mock.safe.echo',
-    provider: 'mock',
-    action: 'echo',
-    risk: 'low',
-    executionMode: 'gateway',
-    requiresApproval: false,
-    description: 'Deterministic test tool for gateway smoke tests.',
-  },
 ];
 
 export function findDefaultGatewayTool(name: string) {

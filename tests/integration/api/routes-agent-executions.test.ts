@@ -75,6 +75,8 @@ function makeApiErrorMock() {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       return Response.json({ error: msg }, { status: 500 });
     }),
+    logApiError: vi.fn(),
+    toSafeErrorResponse: vi.fn((status = 500) => ({ error: status >= 500 ? 'Internal server error' : 'Request failed' })),
   };
 }
 
@@ -302,6 +304,11 @@ describe('GET /api/executions (alias endpoint)', () => {
       makeRuntimeAccessMock({ ok: true, orgId: 'org-test-1' })
     );
     vi.doMock('../../../lib/supabase-server', () => makeSupabaseMock());
+    // DSG_CORE_MODE may not be set in test env; mock dsg-core to avoid parseMode() throw
+    vi.doMock('../../../lib/dsg-core', () => ({
+      getDSGCoreLedger: vi.fn(async () => ({ ok: true, items: [] })),
+      getDSGCoreMetrics: vi.fn(async () => ({ ok: true, data: null })),
+    }));
 
     const { GET } = await import('../../../app/api/executions/route');
     const req = new Request('http://localhost/api/executions');

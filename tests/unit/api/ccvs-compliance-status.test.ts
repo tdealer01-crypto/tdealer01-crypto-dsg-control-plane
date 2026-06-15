@@ -1,7 +1,56 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// ── In-memory mock store shared across all tests ──────────────────────────────
+const db = vi.hoisted(() => {
+  const rows: Record<string, unknown>[] = [];
+  return {
+    rows,
+    reset() { rows.length = 0; },
+    upsert(row: Record<string, unknown>) {
+      const idx = rows.findIndex(r => r.run_id === (row as { run_id: string }).run_id);
+      if (idx >= 0) rows[idx] = row; else rows.push(row);
+    },
+    latest(): Record<string, unknown> | null { return rows[rows.length - 1] ?? null; },
+    byRunId(id: string): Record<string, unknown> | null {
+      return rows.find(r => (r as { run_id: string }).run_id === id) ?? null;
+    },
+  };
+});
+
+vi.mock('../../../lib/supabase/server', () => ({
+  createClient: async () => ({
+    from: () => ({
+      select: () => ({
+        order: () => ({
+          limit: () => ({
+            single: async () => {
+              const row = db.latest();
+              if (!row) return { data: null, error: { code: 'PGRST116', message: 'no rows' } };
+              return { data: row, error: null };
+            },
+          }),
+        }),
+        eq: (_col: string, val: string) => ({
+          single: async () => {
+            const row = db.byRunId(val);
+            if (!row) return { data: null, error: { code: 'PGRST116', message: 'no rows' } };
+            return { data: row, error: null };
+          },
+        }),
+      }),
+      upsert: async (row: Record<string, unknown>) => {
+        db.upsert(row);
+        return { error: null };
+      },
+    }),
+  }),
+}));
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 describe('GET /api/ccvs/compliance-status', () => {
   beforeEach(() => {
+    db.reset();
     vi.resetModules();
   });
 
@@ -32,6 +81,7 @@ describe('GET /api/ccvs/compliance-status', () => {
 
 describe('POST /api/ccvs/compliance-status', () => {
   beforeEach(() => {
+    db.reset();
     vi.resetModules();
   });
 
