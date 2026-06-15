@@ -1,6 +1,7 @@
 import { randomUUID, createHash } from 'crypto';
 import { getSupabaseAdmin } from './supabase-server';
 import { resolveQuickstartPolicyId } from './supabase/resolve-policy';
+import { generateWebhookSecret } from './integrations/deliver';
 
 export type IntegrationStatus = 'active' | 'disabled';
 
@@ -194,12 +195,15 @@ export async function upsertIntegrationWebhook(input: {
   const now = new Date().toISOString();
   const supabase = getSupabaseAdmin();
 
+  const { secret, secretHash } = await generateWebhookSecret();
+
   const payload = {
     org_id: orgId,
     agent_id: agentId,
     webhook_url: parsedWebhook.toString(),
     allowed_origins: allowedOrigins,
     status: 'active',
+    webhook_secret_hash: secretHash,
     updated_at: now,
   };
 
@@ -213,7 +217,7 @@ export async function upsertIntegrationWebhook(input: {
     throw error || new Error('Failed to persist integration webhook');
   }
 
-  return data as IntegrationProfile;
+  return { profile: data as IntegrationProfile, secret };
 }
 
 export async function getGlobalAllowedOrigins() {
