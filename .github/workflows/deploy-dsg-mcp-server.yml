@@ -79,15 +79,26 @@ jobs:
     name: Deploy MCP via SSH
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.MCP_TARGET_HOST != ''
     steps:
+      - name: Check SSH deploy config
+        run: |
+          if [ -z "${{ secrets.MCP_TARGET_HOST }}" ]; then
+            echo "MCP_TARGET_HOST not set, skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        id: check-config
+
       - name: Download build artifact
+        if: steps.check-config.outputs.skip == 'false'
         uses: actions/download-artifact@v4
         with:
           name: dsg-mcp-server-dist
           path: dist/
 
       - name: Deploy via SSH
+        if: steps.check-config.outputs.skip == 'false'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.MCP_TARGET_HOST }}
@@ -103,8 +114,8 @@ jobs:
             echo "MCP server deployed to $TARGET_DIR"
 
       - name: Restart systemd service
+        if: steps.check-config.outputs.skip == 'false' && secrets.MCP_SYSTEMD_SERVICE != ''
         uses: appleboy/ssh-action@v1
-        if: ${{ secrets.MCP_SYSTEMD_SERVICE != '' }}
         with:
           host: ${{ secrets.MCP_TARGET_HOST }}
           username: ${{ secrets.MCP_TARGET_USER }}
@@ -117,9 +128,19 @@ jobs:
     name: Deploy MCP via Docker
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.MCP_DOCKER_HOST != ''
     steps:
+      - name: Check Docker deploy config
+        run: |
+          if [ -z "${{ secrets.MCP_DOCKER_HOST }}" ]; then
+            echo "MCP_DOCKER_HOST not set, skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        id: check-config
+
       - name: Deploy via Docker
+        if: steps.check-config.outputs.skip == 'false'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.MCP_DOCKER_HOST }}
@@ -146,12 +167,23 @@ jobs:
     name: Deploy Lightpanda Browser
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.LIGHTPANDA_HOST != ''
     steps:
+      - name: Check Lightpanda deploy config
+        run: |
+          if [ -z "${{ secrets.LIGHTPANDA_HOST }}" ]; then
+            echo "LIGHTPANDA_HOST not set, skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        id: check-config
+
       - name: Checkout repository
+        if: steps.check-config.outputs.skip == 'false'
         uses: actions/checkout@v4
 
       - name: Encode Lightpanda files to base64
+        if: steps.check-config.outputs.skip == 'false'
         id: encode-files
         run: |
           COMPOSE_B64=$(base64 -w0 dsg-mcp-server/lightpanda-docker-compose.yml)
@@ -160,6 +192,7 @@ jobs:
           echo "service_b64=$SERVICE_B64" >> $GITHUB_OUTPUT
 
       - name: Deploy Lightpanda via Docker Compose
+        if: steps.check-config.outputs.skip == 'false'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.LIGHTPANDA_HOST }}
@@ -190,8 +223,8 @@ jobs:
             fi
 
       - name: Install systemd service (optional)
+        if: steps.check-config.outputs.skip == 'false' && secrets.LIGHTPANDA_SYSTEMD_SERVICE != ''
         uses: appleboy/ssh-action@v1
-        if: ${{ secrets.LIGHTPANDA_SYSTEMD_SERVICE != '' }}
         with:
           host: ${{ secrets.LIGHTPANDA_HOST }}
           username: ${{ secrets.LIGHTPANDA_USER }}
@@ -230,7 +263,7 @@ jobs:
 
           DETAILS=""
           [ "$SSH_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-SSH: $SSH_STATUS"
-          [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DOCKER_STATUS"
+          [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DETAILS_STATUS"
           [ "$LIGHTPANDA_STATUS" != "" ] && DETAILS="$DETAILS\nLightpanda: $LIGHTPANDA_STATUS"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
