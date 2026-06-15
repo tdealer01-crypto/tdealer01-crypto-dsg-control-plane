@@ -32,7 +32,15 @@ function makeSupabaseAdminMock(dbError: unknown = null) {
             }),
           };
         }
-        return {};
+        // Generic fallback: supports select().eq() chain returning empty array
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockResolvedValue({ data: dbError ? null : [], error: dbError }),
+          order: vi.fn().mockResolvedValue({ data: dbError ? null : [], error: dbError }),
+          upsert: vi.fn().mockReturnThis(),
+          insert: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+        };
       }),
     })),
   };
@@ -55,8 +63,8 @@ describe('GET /api/settings/domains', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 401,
@@ -64,15 +72,15 @@ describe('GET /api/settings/domains', () => {
       })),
     }));
 
-    const { GET } = await import('../../../../app/api/settings/domains/route');
+    const { GET } = await import('../../../app/api/settings/domains/route');
     const res = await GET();
 
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when user lacks org_admin role', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 403,
@@ -80,17 +88,17 @@ describe('GET /api/settings/domains', () => {
       })),
     }));
 
-    const { GET } = await import('../../../../app/api/settings/domains/route');
+    const { GET } = await import('../../../app/api/settings/domains/route');
     const res = await GET();
 
     expect(res.status).toBe(403);
   });
 
   it('returns 200 with domain list when authorized', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
 
-    const { GET } = await import('../../../../app/api/settings/domains/route');
+    const { GET } = await import('../../../app/api/settings/domains/route');
     const res = await GET();
     const body = await res.json();
 
@@ -100,10 +108,10 @@ describe('GET /api/settings/domains', () => {
   });
 
   it('returns 500 when database query fails', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock({ message: 'db_error' }));
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock({ message: 'db_error' }));
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
 
-    const { GET } = await import('../../../../app/api/settings/domains/route');
+    const { GET } = await import('../../../app/api/settings/domains/route');
     const res = await GET();
 
     expect(res.status).toBe(500);
@@ -116,8 +124,8 @@ describe('POST /api/settings/domains', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 401,
@@ -125,7 +133,7 @@ describe('POST /api/settings/domains', () => {
       })),
     }));
 
-    const { POST } = await import('../../../../app/api/settings/domains/route');
+    const { POST } = await import('../../../app/api/settings/domains/route');
     const req = new Request('http://localhost/api/settings/domains', {
       method: 'POST',
       body: JSON.stringify({ domain: 'test.com' }),
@@ -136,13 +144,13 @@ describe('POST /api/settings/domains', () => {
   });
 
   it('returns 400 when domain is missing', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
-    vi.doMock('../../../../lib/auth/domain-governance', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/auth/domain-governance', () => ({
       normalizeDomain: vi.fn(() => null),
     }));
 
-    const { POST } = await import('../../../../app/api/settings/domains/route');
+    const { POST } = await import('../../../app/api/settings/domains/route');
     const req = new Request('http://localhost/api/settings/domains', {
       method: 'POST',
       body: JSON.stringify({}),
@@ -155,13 +163,13 @@ describe('POST /api/settings/domains', () => {
   });
 
   it('returns 201 with created domain on success', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
-    vi.doMock('../../../../lib/auth/domain-governance', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/auth/domain-governance', () => ({
       normalizeDomain: vi.fn((d) => d || null),
     }));
 
-    const { POST } = await import('../../../../app/api/settings/domains/route');
+    const { POST } = await import('../../../app/api/settings/domains/route');
     const req = new Request('http://localhost/api/settings/domains', {
       method: 'POST',
       body: JSON.stringify({ domain: 'example.com' }),
@@ -176,13 +184,13 @@ describe('POST /api/settings/domains', () => {
   });
 
   it('returns 500 when database insert fails', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock({ message: 'db_error' }));
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
-    vi.doMock('../../../../lib/auth/domain-governance', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock({ message: 'db_error' }));
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/auth/domain-governance', () => ({
       normalizeDomain: vi.fn((d) => d || null),
     }));
 
-    const { POST } = await import('../../../../app/api/settings/domains/route');
+    const { POST } = await import('../../../app/api/settings/domains/route');
     const req = new Request('http://localhost/api/settings/domains', {
       method: 'POST',
       body: JSON.stringify({ domain: 'example.com' }),
@@ -199,8 +207,8 @@ describe('PATCH /api/settings/security', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 401,
@@ -208,7 +216,7 @@ describe('PATCH /api/settings/security', () => {
       })),
     }));
 
-    const { PATCH } = await import('../../../../app/api/settings/security/route');
+    const { PATCH } = await import('../../../app/api/settings/security/route');
     const req = new Request('http://localhost/api/settings/security', {
       method: 'PATCH',
       body: JSON.stringify({ sso_enabled: true }),
@@ -219,8 +227,8 @@ describe('PATCH /api/settings/security', () => {
   });
 
   it('returns 403 when user lacks org_admin role', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 403,
@@ -228,7 +236,7 @@ describe('PATCH /api/settings/security', () => {
       })),
     }));
 
-    const { PATCH } = await import('../../../../app/api/settings/security/route');
+    const { PATCH } = await import('../../../app/api/settings/security/route');
     const req = new Request('http://localhost/api/settings/security', {
       method: 'PATCH',
       body: JSON.stringify({ sso_enabled: true }),
@@ -239,13 +247,13 @@ describe('PATCH /api/settings/security', () => {
   });
 
   it('returns 200 with updated security settings', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
-    vi.doMock('../../../../lib/auth/admin-safety', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/auth/admin-safety', () => ({
       preventDisablingAllRecoveryPaths: vi.fn(async () => {}),
     }));
 
-    const { PATCH } = await import('../../../../app/api/settings/security/route');
+    const { PATCH } = await import('../../../app/api/settings/security/route');
     const req = new Request('http://localhost/api/settings/security', {
       method: 'PATCH',
       body: JSON.stringify({ sso_enabled: true, break_glass_email_enabled: true }),
@@ -258,15 +266,15 @@ describe('PATCH /api/settings/security', () => {
   });
 
   it('returns 409 when SSO enforcement fails recovery path check', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
-    vi.doMock('../../../../lib/auth/admin-safety', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/auth/admin-safety', () => ({
       preventDisablingAllRecoveryPaths: vi.fn(async () => {
         throw new Error('Cannot disable all recovery paths');
       }),
     }));
 
-    const { PATCH } = await import('../../../../app/api/settings/security/route');
+    const { PATCH } = await import('../../../app/api/settings/security/route');
     const req = new Request('http://localhost/api/settings/security', {
       method: 'PATCH',
       body: JSON.stringify({ sso_enforced: true }),
@@ -277,13 +285,13 @@ describe('PATCH /api/settings/security', () => {
   });
 
   it('returns 500 when database update fails', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock({ message: 'db_error' }));
-    vi.doMock('../../../../lib/authz', () => makeAuthzMock(true));
-    vi.doMock('../../../../lib/auth/admin-safety', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock({ message: 'db_error' }));
+    vi.doMock('../../../lib/authz', () => makeAuthzMock(true));
+    vi.doMock('../../../lib/auth/admin-safety', () => ({
       preventDisablingAllRecoveryPaths: vi.fn(async () => {}),
     }));
 
-    const { PATCH } = await import('../../../../app/api/settings/security/route');
+    const { PATCH } = await import('../../../app/api/settings/security/route');
     const req = new Request('http://localhost/api/settings/security', {
       method: 'PATCH',
       body: JSON.stringify({ sso_enabled: true }),
@@ -300,8 +308,8 @@ describe('GET /api/settings/quota', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 401,
@@ -309,15 +317,15 @@ describe('GET /api/settings/quota', () => {
       })),
     }));
 
-    const { GET } = await import('../../../../app/api/settings/quota/route');
+    const { GET } = await import('../../../app/api/settings/quota/route');
     const res = await GET();
 
     expect(res.status).toBe(401);
   });
 
   it('returns 403 when user lacks required role', async () => {
-    vi.doMock('../../../../lib/supabase-server', () => makeSupabaseAdminMock());
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => makeSupabaseAdminMock());
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: false,
         status: 403,
@@ -325,7 +333,7 @@ describe('GET /api/settings/quota', () => {
       })),
     }));
 
-    const { GET } = await import('../../../../app/api/settings/quota/route');
+    const { GET } = await import('../../../app/api/settings/quota/route');
     const res = await GET();
 
     expect(res.status).toBe(403);
@@ -348,15 +356,15 @@ describe('GET /api/settings/quota', () => {
       return originalFrom.call({}, table);
     });
 
-    vi.doMock('../../../../lib/supabase-server', () => supabaseMock);
-    vi.doMock('../../../../lib/authz', () => ({
+    vi.doMock('../../../lib/supabase-server', () => supabaseMock);
+    vi.doMock('../../../lib/authz', () => ({
       requireOrgRole: vi.fn(async () => ({
         ok: true,
         orgId: 'org-1',
         grantedRoles: ['org_admin']
       })),
     }));
-    vi.doMock('../../../../lib/billing/quota-policy', () => ({
+    vi.doMock('../../../lib/billing/quota-policy', () => ({
       getEffectiveExecutionQuotaForOrg: vi.fn(async () => ({
         planKey: 'pro',
         windowDays: 30,
@@ -369,7 +377,7 @@ describe('GET /api/settings/quota', () => {
       })),
     }));
 
-    const { GET } = await import('../../../../app/api/settings/quota/route');
+    const { GET } = await import('../../../app/api/settings/quota/route');
     const res = await GET();
 
     expect(res.status).toBe(200);

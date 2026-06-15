@@ -383,7 +383,7 @@ describe('POST /api/webhooks/dsg (DSG webhook handler)', () => {
   it('returns 200 when webhook is processed successfully', async () => {
     const crypto = await import('crypto');
     const secret = 'test-secret';
-    const payload = { event: 'execution.completed', id: 'exec-1', timestamp: Date.now(), actorId: 'actor-1' };
+    const payload = { event: 'execution.completed', payload: { actorId: 'actor-1', jobId: 'job-1' }, timestamp: Date.now() };
     const rawBody = JSON.stringify(payload);
     const signature = `sha256=${crypto.createHmac('sha256', secret).update(rawBody).digest('hex')}`;
 
