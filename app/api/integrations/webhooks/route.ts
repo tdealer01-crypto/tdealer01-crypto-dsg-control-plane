@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid agent_id or API key' }, { status: 401, headers });
     }
 
-    const { profile, secret } = await upsertIntegrationWebhook({
+    const { profile, secret, secret_returned } = await upsertIntegrationWebhook({
       orgId: integration.orgId,
       agentId: integration.agentId,
       webhookUrl,
@@ -72,7 +72,8 @@ export async function POST(request: Request) {
           allowed_origins: profile.allowed_origins,
           status: profile.status,
         },
-        secret, // Only returned once during webhook registration
+        secret_returned,
+        ...(secret ? { secret } : {}),
       },
       { headers }
     );
