@@ -7,16 +7,15 @@ on:
       - 'dsg-mcp-server/**'
   workflow_dispatch:
 
-env:
-  NODE_VERSION: '20'
-  MCP_SERVER_DIR: 'dsg-mcp-server'
-  DOCKER_IMAGE: ghcr.io/${{ github.repository_owner }}/dsg-mcp-server
-  DOCKER_TAG: ${{ github.sha }}
-
 jobs:
   build:
     name: Build MCP Server
     runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: '20'
+      MCP_SERVER_DIR: 'dsg-mcp-server'
+      DOCKER_IMAGE: ghcr.io/${{ github.repository_owner }}/dsg-mcp-server
+      DOCKER_TAG: ${{ github.sha }}
     outputs:
       docker-image: ${{ steps.meta.outputs.tags }}
     steps:
@@ -81,6 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check SSH deploy config
+        id: check-config
         run: |
           if [ -z "${{ secrets.MCP_TARGET_HOST }}" ]; then
             echo "MCP_TARGET_HOST not set, skipping"
@@ -88,7 +88,6 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-        id: check-config
 
       - name: Download build artifact
         if: steps.check-config.outputs.skip == 'false'
@@ -130,6 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Docker deploy config
+        id: check-config
         run: |
           if [ -z "${{ secrets.MCP_DOCKER_HOST }}" ]; then
             echo "MCP_DOCKER_HOST not set, skipping"
@@ -137,7 +137,6 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-        id: check-config
 
       - name: Deploy via Docker
         if: steps.check-config.outputs.skip == 'false'
@@ -169,6 +168,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Lightpanda deploy config
+        id: check-config
         run: |
           if [ -z "${{ secrets.LIGHTPANDA_HOST }}" ]; then
             echo "LIGHTPANDA_HOST not set, skipping"
@@ -176,7 +176,6 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-        id: check-config
 
       - name: Checkout repository
         if: steps.check-config.outputs.skip == 'false'
@@ -263,7 +262,7 @@ jobs:
 
           DETAILS=""
           [ "$SSH_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-SSH: $SSH_STATUS"
-          [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DETAILS_STATUS"
+          [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DOCKER_STATUS"
           [ "$LIGHTPANDA_STATUS" != "" ] && DETAILS="$DETAILS\nLightpanda: $LIGHTPANDA_STATUS"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
