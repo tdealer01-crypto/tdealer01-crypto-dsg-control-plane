@@ -1,4 +1,4 @@
-name: Deploy DSG MCP Server
+name: Deploy DSG MCP Server + Lightpanda
 
 on:
   push:
@@ -76,7 +76,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-ssh:
-    name: Deploy via SSH
+    name: Deploy MCP via SSH
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && secrets.MCP_TARGET_HOST != ''
@@ -114,7 +114,7 @@ jobs:
             sudo systemctl status ${{ secrets.MCP_SYSTEMD_SERVICE }} --no-pager
 
   deploy-docker:
-    name: Deploy via Docker
+    name: Deploy MCP via Docker
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && secrets.MCP_DOCKER_HOST != ''
@@ -142,9 +142,68 @@ jobs:
               dsg-mcp-server:latest
             echo "Docker container deployed"
 
+  deploy-lightpanda:
+    name: Deploy Lightpanda Browser
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && secrets.LIGHTPANDA_HOST != ''
+    steps:
+      - name: Checkout compose files
+        uses: actions/checkout@v4
+        with:
+          path: repo
+          sparse-checkout: |
+            dsg-mcp-server/lightpanda-docker-compose.yml
+            dsg-mcp-server/lightpanda@.service
+
+      - name: Deploy Lightpanda via Docker Compose
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIGHTPANDA_HOST }}
+          username: ${{ secrets.LIGHTPANDA_USER }}
+          key: ${{ secrets.LIGHTPANDA_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            TARGET_DIR="/home/${{ secrets.LIGHTPANDA_USER }}/dsg-mcp-server"
+            mkdir -p "$TARGET_DIR"
+            
+            # Copy compose file
+            scp -o StrictHostKeyChecking=no -i /dev/stdin \
+              repo/dsg-mcp-server/lightpanda-docker-compose.yml \
+              "${{ secrets.LIGHTPANDA_USER }}@${{ secrets.LIGHTPANDA_HOST }}:$TARGET_DIR/" <<< "${{ secrets.LIGHTPANDA_SSH_KEY }}"
+            
+            # Deploy
+            cd "$TARGET_DIR"
+            docker compose -f lightpanda-docker-compose.yml pull
+            docker compose -f lightpanda-docker-compose.yml up -d
+            
+            # Wait for health
+            sleep 5
+            if curl -sf http://localhost:9222/json/version > /dev/null; then
+              echo "✅ Lightpanda CDP server responding on port 9222"
+            else
+              echo "❌ Lightpanda health check failed"
+              docker compose -f lightpanda-docker-compose.yml logs
+              exit 1
+            fi
+
+      - name: Install systemd service (optional)
+        uses: appleboy/ssh-action@v1
+        if: ${{ secrets.LIGHTPANDA_SYSTEMD_SERVICE != '' }}
+        with:
+          host: ${{ secrets.LIGHTPANDA_HOST }}
+          username: ${{ secrets.LIGHTPANDA_USER }}
+          key: ${{ secrets.LIGHTPANDA_SSH_KEY }}
+          script: |
+            sudo cp /home/${{ secrets.LIGHTPANDA_USER }}/dsg-mcp-server/lightpanda@.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl enable ${{ secrets.LIGHTPANDA_SYSTEMD_SERVICE }}
+            sudo systemctl restart ${{ secrets.LIGHTPANDA_SYSTEMD_SERVICE }}
+            sudo systemctl status ${{ secrets.LIGHTPANDA_SYSTEMD_SERVICE }} --no-pager
+
   notify:
     name: Notify
-    needs: [deploy-ssh, deploy-docker]
+    needs: [deploy-ssh, deploy-docker, deploy-lightpanda]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -153,14 +212,22 @@ jobs:
         run: |
           SSH_STATUS="${{ needs.deploy-ssh.result }}"
           DOCKER_STATUS="${{ needs.deploy-docker.result }}"
-          if [ "$SSH_STATUS" = "success" ] || [ "$DOCKER_STATUS" = "success" ]; then
+          LIGHTPANDA_STATUS="${{ needs.deploy-lightpanda.result }}"
+          
+          if [ "$SSH_STATUS" = "success" ] || [ "$DOCKER_STATUS" = "success" ] || [ "$LIGHTPANDA_STATUS" = "success" ]; then
             ICON="✅"
-            MSG="DSG MCP Server deployed"
+            MSG="Deployment completed"
           else
             ICON="❌"
-            MSG="DSG MCP Server deployment failed"
+            MSG="Deployment failed"
           fi
+          
+          DETAILS=""
+          [ "$SSH_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-SSH: $SSH_STATUS"
+          [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DOCKER_STATUS"
+          [ "$LIGHTPANDA_STATUS" != "" ] && DETAILS="$DETAILS\nLightpanda: $LIGHTPANDA_STATUS"
+          
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="${ICON} ${MSG} (${{ github.sha::7 }})" \
+            -d text="${ICON} ${MSG} (${{ github.sha::7 }})${DETAILS}" \
             -d parse_mode=Markdown
