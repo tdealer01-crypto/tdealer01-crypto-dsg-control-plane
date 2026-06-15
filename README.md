@@ -10,6 +10,73 @@ Runtime governance layer for AI agents. Gate every action before execution and k
 
 ---
 
+## Evidence snapshot — 2026-06-15
+
+Verified facts from live system and current codebase. Not claims — each row has a source.
+
+### Production endpoints
+
+| Endpoint | Result | Verified |
+|---|---|---|
+| `GET /api/health` | `ok:true, db_ok:true, rateLimiter:ok, dsgCoreConfig:ok, 7/7 readiness checks pass` | 2026-06-15T19:03:05Z |
+| `GET /api/readiness` | `ok:true` — env, nextAuthSecret, supabaseServiceRole, dsgCoreConfig, dsgCoreHealth, financeGovernanceSurface, financeGovernanceBackend | 2026-06-15T19:03:05Z |
+| `GET /api/agent/status` | `ok:true, env:production, db:true` | 2026-06-15T19:03:04Z |
+
+### Test suite
+
+```
+Test Files  220 passed | 9 skipped (229)
+Tests       2172 passed | 58 skipped | 0 failed (2230)
+Duration    ~35s
+Run date    2026-06-15
+Command     npm run test
+```
+
+Skipped: 58 tests gated on `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (live DB required).
+
+### Formal proofs (Z3 SMT — design-time, not request-time)
+
+| File | Theorems | Method |
+|---|---|---|
+| `lib/gateway/z3/theorems.py` | 5 core policy theorems (role_safety, plan_safety, approval_safety, audit_completeness, non_triviality) | `assert Not(claim)` → UNSAT |
+| `lib/gateway/z3/defi_constraints.py` | 3 DeFi constraint theorems (amount_bound, slippage_bound, constraint_consistency) | UNSAT refutation |
+| `tools/proofs/prove_revenue_ready.py` | 16 billing/quota theorems | `assert_unsat` |
+| `tools/proofs/prove_answer_gate.py` | 22 answer gate invariants | `assert_decision` |
+
+Runner: `npm run verify:policy` → `scripts/verify-policy.sh` → `lib/gateway/z3/generate_spec.py`  
+Output: `lib/gateway/verified-constraints.json`
+
+### Security boundaries (code-verified)
+
+| Control | Implementation | File:line |
+|---|---|---|
+| Bearer auth before body read | `requireDsgAuth()` fail-closed — 401/403 if no valid token | `lib/dsg/auth/require-dsg-auth.ts:113` |
+| CORS origin-locked | `getAllowedCorsOrigins()` — no wildcard; strict mode in production | `lib/security/cors.ts:35` |
+| Rate limit fail-closed | Falls back to in-memory bucket if Redis unavailable | `lib/security/rate-limit.ts:90` |
+| Cron auth fail-closed | Returns 503 when `CRON_SECRET` missing, 401 on mismatch | `app/api/cron/flush-meter-outbox/route.ts:9` |
+| Compliance status fail-closed | Returns 503 when Supabase unavailable — no fake data | `app/api/ccvs/compliance-status/route.ts:125` |
+| Credential broker | Returns SHA-256 fingerprint only — never raw secret value | `lib/dsg/brain/credential-broker.ts` |
+| Answer gate in SSE stream | Every AI reply scanned before client receives it | `app/api/agent-chat/route.ts:140` |
+| No browser storage | localStorage/sessionStorage removed from all components | `components/TryChatWidget.tsx`, `app/dashboard/hermes/page.tsx` |
+
+### Known open items (not resolved in this codebase version)
+
+| Item | File | Risk |
+|---|---|---|
+| 87 routes use `request.json()` without body size limit | `app/api/**/route.ts` | Memory exhaustion DoS |
+| Quota check-then-increment race (not atomic) | `lib/usage/quota.ts:42` | Over-quota execution possible under concurrency |
+| RLS disabled on `claim_readiness_artifacts` | `supabase/migrations/20260612041000:155` | Application must enforce org_id on all queries |
+| Expired credential leases not cleaned up by cron | `lib/dsg/brain/credential-broker.ts:26` | Table bloat (no secret leak — fingerprint only) |
+
+### What is not claimed
+
+- `production-ready` for general traffic cutover — Playwright E2E gate not yet run from CI
+- `third-party audited` — `certificationClaim: false` and `independentAuditClaim: false` in all evidence bundles
+- `external Z3 solver at request time` — Z3 runs design-time only; request path uses deterministic TypeScript scaffold
+- `WORM-certified storage` — `claim_readiness_artifacts` has RLS disabled; WORM is application-layer intent, not DB-enforced
+
+---
+
 ## Contents
 
 - [Codebase map](#codebase-map)
