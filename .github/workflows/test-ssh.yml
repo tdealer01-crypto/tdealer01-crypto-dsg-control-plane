@@ -1,0 +1,20 @@
+name: Test SSH Action
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test SSH
+        if: false
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.MCP_TARGET_HOST }}
+          username: ${{ secrets.MCP_TARGET_USER }}
+          key: ${{ secrets.MCP_TARGET_SSH_KEY }}
+          script: |
+            echo "Host: ${{ secrets.MCP_TARGET_HOST }}"
+            echo "Test"
