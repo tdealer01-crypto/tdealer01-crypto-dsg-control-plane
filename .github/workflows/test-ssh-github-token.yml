@@ -1,0 +1,17 @@
+name: Test SSH Action (GITHUB_TOKEN)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: example.com
+          username: test
+          key: ${{ secrets.GITHUB_TOKEN }}
+          script: echo "test"
