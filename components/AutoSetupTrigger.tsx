@@ -17,11 +17,8 @@ export default function AutoSetupTrigger() {
 
       const setupResponse = await fetch("/api/setup/auto", { method: "POST" });
       const data = await setupResponse.json().catch(() => null);
-      if (!cancelled && data?.api_key) {
-        // One-time reveal bridge only; persistent onboarding source-of-truth remains the org-scoped API/DB state.
-        sessionStorage.setItem("dsg_new_api_key", data.api_key);
-        sessionStorage.setItem("dsg_new_agent_id", data.agent_id ?? "");
-      }
+      // Auto-setup completed; persistent onboarding source-of-truth is the org-scoped API/DB state.
+      // api_key and agent_id are available via authenticated API routes — not stored in browser storage.
     }
 
     void runAutoSetupIfNeeded().catch(() => null);

@@ -1,11 +1,11 @@
 /**
- * GET  /api/ccvs/compliance-status          — latest report (Supabase → in-memory fallback)
+ * GET  /api/ccvs/compliance-status          — latest report (Supabase-backed, fail-closed)
  * GET  /api/ccvs/compliance-status?run_id=X — fetch specific report by run_id (shareable link)
  * POST /api/ccvs/compliance-status          — CI uploads compliance matrix after each run
  *
  * Persists to `delivery_proof_reports` Supabase table so reports survive cold starts
  * and can be shared via /delivery-proof/report/[run_id].
- * Falls back to in-memory cache when Supabase is unavailable.
+ * Returns 503 when Supabase is unavailable — no in-memory fallback.
  */
 
 import { NextResponse } from 'next/server';
@@ -16,7 +16,7 @@ import { createClient } from '../../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-interface CachedStatus {
+interface DbStatus {
   claim_pass_eligible: boolean;
   last_ci_run: string;
   run_id: string;
@@ -25,9 +25,6 @@ interface CachedStatus {
   requirements_total: number;
   updated_at: string;
 }
-
-// In-memory fallback — used when Supabase is unavailable
-let cachedStatus: CachedStatus | null = null;
 
 function shieldColor(eligible: boolean | null): string {
   if (eligible === null) return 'lightgrey';
@@ -47,7 +44,12 @@ function getShareUrl(runId: string): string {
   return `${base}/delivery-proof/report/${encodeURIComponent(runId)}`;
 }
 
-async function loadFromSupabase(runId?: string): Promise<CachedStatus | null> {
+type SupabaseResult =
+  | { ok: true; data: DbStatus }
+  | { ok: false; notFound: true }
+  | { ok: false; notFound: false; error: string };
+
+async function loadFromSupabase(runId?: string): Promise<SupabaseResult> {
   try {
     const supabase = await createClient();
     const query = supabase
@@ -58,25 +60,36 @@ async function loadFromSupabase(runId?: string): Promise<CachedStatus | null> {
       ? await query.eq('run_id', runId).single()
       : await query.order('created_at', { ascending: false }).limit(1).single();
 
-    if (error || !data) return null;
+    if (error) {
+      // PGRST116 = no rows found — not a DB connectivity error
+      if ((error as { code?: string }).code === 'PGRST116') {
+        return { ok: false, notFound: true };
+      }
+      return { ok: false, notFound: false, error: error.message };
+    }
+    if (!data) return { ok: false, notFound: true };
+
     return {
-      claim_pass_eligible: data.claim_pass_eligible as boolean,
-      last_ci_run: (data.last_ci_run as string) ?? new Date().toISOString(),
-      run_id: data.run_id as string,
-      mutation_score: (data.mutation_score as number | null) ?? null,
-      requirements_pass: (data.requirements_pass as number) ?? 0,
-      requirements_total: (data.requirements_total as number) ?? REQUIREMENT_CATALOG.length,
-      updated_at: data.updated_at as string,
+      ok: true,
+      data: {
+        claim_pass_eligible: data.claim_pass_eligible as boolean,
+        last_ci_run: (data.last_ci_run as string) ?? new Date().toISOString(),
+        run_id: data.run_id as string,
+        mutation_score: (data.mutation_score as number | null) ?? null,
+        requirements_pass: (data.requirements_pass as number) ?? 0,
+        requirements_total: (data.requirements_total as number) ?? REQUIREMENT_CATALOG.length,
+        updated_at: data.updated_at as string,
+      },
     };
-  } catch {
-    return null;
+  } catch (err) {
+    return { ok: false, notFound: false, error: err instanceof Error ? err.message : 'db_error' };
   }
 }
 
-async function saveToSupabase(status: CachedStatus, matrix: ComplianceMatrix): Promise<void> {
+async function saveToSupabase(status: DbStatus, matrix: ComplianceMatrix): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = await createClient();
-    await supabase.from('delivery_proof_reports').upsert(
+    const { error } = await supabase.from('delivery_proof_reports').upsert(
       {
         run_id: status.run_id,
         claim_pass_eligible: status.claim_pass_eligible,
@@ -89,8 +102,10 @@ async function saveToSupabase(status: CachedStatus, matrix: ComplianceMatrix): P
       },
       { onConflict: 'run_id' },
     );
-  } catch {
-    // non-fatal — in-memory cache is the fallback
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'db_error' };
   }
 }
 
@@ -105,7 +120,17 @@ export async function GET(request?: Request) {
     policy_version: process.env.DSG_POLICY_VERSION ?? 'v1',
   };
 
-  const status = (await loadFromSupabase(runId)) ?? (!runId ? cachedStatus : null);
+  const result = await loadFromSupabase(runId);
+
+  if (!result.ok && !result.notFound) {
+    // DB connectivity failure — fail closed, do not return stale or fake compliance data
+    return NextResponse.json(
+      { ok: false, error: 'db_unavailable', deployment },
+      { status: 503 },
+    );
+  }
+
+  const status = result.ok ? result.data : null;
   const eligible = status?.claim_pass_eligible ?? null;
 
   return NextResponse.json({
@@ -156,7 +181,7 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
-  const newStatus: CachedStatus = {
+  const newStatus: DbStatus = {
     claim_pass_eligible: matrix.summary.claim_pass_eligible,
     last_ci_run: matrix.generated_at ?? now,
     run_id,
@@ -166,8 +191,13 @@ export async function POST(request: Request) {
     updated_at: now,
   };
 
-  await saveToSupabase(newStatus, matrix);
-  cachedStatus = newStatus;
+  const saved = await saveToSupabase(newStatus, matrix);
+  if (!saved.ok) {
+    return NextResponse.json(
+      { ok: false, error: 'db_unavailable', detail: saved.error },
+      { status: 503 },
+    );
+  }
 
   return NextResponse.json({
     ok: true,

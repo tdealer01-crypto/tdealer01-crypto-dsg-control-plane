@@ -9,8 +9,6 @@ type ChatLine = {
 };
 
 const ENDPOINT = '/api/try/chat';
-const STORAGE_KEY = 'dsg_try_chat_v1';
-const MAX_HISTORY = 40;
 
 const SUGGESTIONS = [
   'How do I connect my agent to DSG?',
@@ -32,19 +30,6 @@ export default function TryChatWidget() {
     makeLine('system', 'DSG Expert ready — ask about the gate, audit trail, connecting your agent, or pricing 🛂'),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as ChatLine[];
-      if (Array.isArray(parsed) && parsed.length > 0) setLines(parsed.slice(-MAX_HISTORY));
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(lines.slice(-MAX_HISTORY))); } catch { /* ignore */ }
-  }, [lines]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });

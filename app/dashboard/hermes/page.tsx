@@ -858,19 +858,6 @@ function HermesRuntimePanel({ data }: { data: HermesRuntimeStatus | null }) {
   );
 }
 
-const HISTORY_KEY = 'hermes-chat-history';
-const HISTORY_MAX = 120;
-
-function loadHistory(): Message[] | null {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Message[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    return parsed;
-  } catch { return null; }
-}
-
 export default function HermesAgentPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[]>([]);
@@ -968,20 +955,6 @@ export default function HermesAgentPage() {
   const cameraCanvasRef = useRef<HTMLCanvasElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
-
-  // Restore chat history from localStorage on first mount
-  useEffect(() => {
-    const saved = loadHistory();
-    if (saved) setMessages(saved);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist chat history to localStorage on every change (capped at HISTORY_MAX)
-  useEffect(() => {
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-HISTORY_MAX)));
-    } catch { /* storage full — ignore */ }
-  }, [messages]);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -1438,7 +1411,6 @@ export default function HermesAgentPage() {
           <button
             type="button"
             onClick={() => {
-              try { localStorage.removeItem(HISTORY_KEY); } catch { /* ignore */ }
               setMessages([{
                 id: 'welcome',
                 role: 'agent',
