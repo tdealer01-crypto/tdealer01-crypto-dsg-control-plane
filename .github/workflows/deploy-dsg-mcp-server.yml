@@ -138,7 +138,7 @@ jobs:
               --name dsg-mcp-server \
               --restart unless-stopped \
               -e DSG_API_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app" \
-              -e DSG_API_KEY="${DSG_PROD_API_KEY}" \
+              -e DSG_API_KEY=*** \
               dsg-mcp-server:latest
             echo "Docker container deployed"
 
@@ -148,8 +148,20 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && secrets.LIGHTPANDA_HOST != ''
     steps:
-      - name: Checkout compose files
+      - name: Checkout Lightpanda config files
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            dsg-mcp-server/lightpanda-docker-compose.yml
+            dsg-mcp-server/lightpanda@.service
+
+      - name: Encode Lightpanda files to base64
+        id: encode-files
+        run: |
+          COMPOSE_B64=$(base64 -w0 dsg-mcp-server/lightpanda-docker-compose.yml)
+          SERVICE_B64=$(base64 -w0 dsg-mcp-server/lightpanda@.service)
+          echo "compose_b64=$COMPOSE_B64" >> $GITHUB_OUTPUT
+          echo "service_b64=$SERVICE_B64" >> $GITHUB_OUTPUT
 
       - name: Deploy Lightpanda via Docker Compose
         uses: appleboy/ssh-action@v1
@@ -157,86 +169,21 @@ jobs:
           host: ${{ secrets.LIGHTPANDA_HOST }}
           username: ${{ secrets.LIGHTPANDA_USER }}
           key: ${{ secrets.LIGHTPANDA_SSH_KEY }}
+          env:
+            COMPOSE_B64: ${{ steps.encode-files.outputs.compose_b64 }}
+            SERVICE_B64: ${{ steps.encode-files.outputs.service_b64 }}
           script: |
             set -euo pipefail
             TARGET_DIR="/home/${{ secrets.LIGHTPANDA_USER }}/dsg-mcp-server"
             mkdir -p "$TARGET_DIR"
 
-            # Write compose file directly (no scp needed)
-            cat > "$TARGET_DIR/lightpanda-docker-compose.yml" << 'COMPOSE_EOF'
-            version: '3.8'
+            echo "$COMPOSE_B64" | base64 -d > "$TARGET_DIR/lightpanda-docker-compose.yml"
+            echo "$SERVICE_B64" | base64 -d > "$TARGET_DIR/lightpanda@.service"
 
-            services:
-              lightpanda:
-                image: lightpanda/browser:nightly
-                container_name: lightpanda-browser
-                restart: unless-stopped
-                ports:
-                  - "127.0.0.1:9222:9222"
-                command: >
-                  serve
-                  --host 0.0.0.0
-                  --port 9222
-                  --log-format pretty
-                  --log-level info
-                  --obey-robots
-                environment:
-                  - LIGHTPANDA_DISABLE_TELEMETRY=true
-                healthcheck:
-                  test: ["CMD", "wget", "-q", "--spider", "http://localhost:9222/json/version"]
-                  interval: 30s
-                  timeout: 10s
-                  retries: 3
-                  start_period: 10s
-                deploy:
-                  resources:
-                    limits:
-                      memory: 512M
-                      cpus: '0.5'
-                logging:
-                  driver: "json-file"
-                  options:
-                    max-size: "10m"
-                    max-file: "3"
-
-            networks:
-              default:
-                name: lightpanda-net
-            COMPOSE_EOF
-
-            # Write systemd service
-            cat > "$TARGET_DIR/lightpanda@.service" << 'SERVICE_EOF'
-            [Unit]
-            Description=Lightpanda Browser (CDP Server)
-            After=docker.service network-online.target
-            Requires=docker.service
-
-            [Service]
-            Type=simple
-            User=%i
-            WorkingDirectory=/home/%i/dsg-mcp-server
-            ExecStartPre=/usr/bin/docker compose -f lightpanda-docker-compose.yml pull
-            ExecStart=/usr/bin/docker compose -f lightpanda-docker-compose.yml up
-            ExecStop=/usr/bin/docker compose -f lightpanda-docker-compose.yml down
-            Restart=always
-            RestartSec=10
-
-            NoNewPrivileges=true
-            PrivateTmp=true
-            ProtectSystem=strict
-            ProtectHome=true
-            ReadWritePaths=/home/%i/dsg-mcp-server
-
-            [Install]
-            WantedBy=multi-user.target
-            SERVICE_EOF
-
-            # Deploy
             cd "$TARGET_DIR"
             docker compose -f lightpanda-docker-compose.yml pull
             docker compose -f lightpanda-docker-compose.yml up -d
 
-            # Wait for health
             sleep 5
             if curl -sf http://localhost:9222/json/version > /dev/null; then
               echo "✅ Lightpanda CDP server responding on port 9222"
@@ -273,7 +220,6 @@ jobs:
           DOCKER_STATUS="${{ needs.deploy-docker.result }}"
           LIGHTPANDA_STATUS="${{ needs.deploy-lightpanda.result }}"
 
-          # Treat skipped as success for notification logic
           [ "$SSH_STATUS" = "skipped" ] && SSH_STATUS="success"
           [ "$DOCKER_STATUS" = "skipped" ] && DOCKER_STATUS="success"
           [ "$LIGHTPANDA_STATUS" = "skipped" ] && LIGHTPANDA_STATUS="success"
