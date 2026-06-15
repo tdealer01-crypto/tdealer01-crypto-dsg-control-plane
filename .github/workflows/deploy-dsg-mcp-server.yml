@@ -148,12 +148,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && secrets.LIGHTPANDA_HOST != ''
     steps:
-      - name: Checkout Lightpanda config files
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            dsg-mcp-server/lightpanda-docker-compose.yml
-            dsg-mcp-server/lightpanda@.service
 
       - name: Encode Lightpanda files to base64
         id: encode-files
