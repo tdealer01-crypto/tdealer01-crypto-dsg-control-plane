@@ -145,7 +145,7 @@ export default function ChatDemoPage() {
                 • ลดโหลด executor สักหน่อย
               </p>
               <p className="text-gray-300">
-                • What's the current system status?
+                • What&apos;s the current system status?
               </p>
               <p className="text-gray-300">
                 • Should I escalate this alert?
