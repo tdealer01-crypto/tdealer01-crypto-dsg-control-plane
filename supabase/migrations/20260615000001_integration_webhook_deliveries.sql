@@ -38,9 +38,9 @@ create index if not exists integration_webhook_deliveries_created_idx
 create index if not exists integration_webhook_deliveries_status_idx
   on public.integration_webhook_deliveries(status);
 
--- Add webhook_secret_hash column to integration_profiles if not exists
+-- Add webhook_secret_encrypted column to integration_profiles if not exists
 alter table public.integration_profiles
-add column if not exists webhook_secret_hash text;
+add column if not exists webhook_secret_encrypted text;
 
 -- RPC function to ensure delivery table exists (idempotent)
 create or replace function public.ensure_integration_webhook_deliveries_table()

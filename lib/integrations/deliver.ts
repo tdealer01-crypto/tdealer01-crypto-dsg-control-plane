@@ -1,5 +1,6 @@
-import { randomUUID, createHash, createHmac } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import { getSupabaseAdmin } from '../supabase-server';
+import { generateWebhookSecret, decryptSecret, createWebhookSignature, verifyWebhookSignature } from '../security/secret-crypto';
 
 export type IntegrationEvent =
   | 'execution.completed'
@@ -36,7 +37,7 @@ interface IntegrationProfile {
   webhook_url: string | null;
   allowed_origins: string[];
   status: 'active' | 'disabled';
-  webhook_secret_hash?: string;
+  webhook_secret_encrypted?: string;
 }
 
 interface WebhookDeliveryRecord {
@@ -63,7 +64,7 @@ function buildHeaders(
   payloadStr: string,
   timestamp: string,
 ): Record<string, string> {
-  const signature = createHmac('sha256', secret).update(payloadStr).digest('hex');
+  const signature = createWebhookSignature(secret, payloadStr);
   return {
     'content-type': 'application/json',
     'x-dsg-event': payloadStr.length > 0 ? JSON.parse(payloadStr).event : 'unknown',
@@ -71,7 +72,7 @@ function buildHeaders(
     'x-dsg-agent-id': JSON.parse(payloadStr).agent_id ?? '',
     'x-dsg-webhook-id': webhookId,
     'x-dsg-timestamp': timestamp,
-    'x-dsg-signature': `sha256=${signature}`,
+    'x-dsg-signature': signature,
     'x-dsg-delivery-id': createHash('sha256').update(`${webhookId}:${timestamp}`).digest('hex').slice(0, 16),
   };
 }
@@ -162,7 +163,7 @@ export async function fireIntegrationWebhook(
     // Get active integration profiles for this org
     const { data: profiles, error } = await (admin as any)
       .from('integration_profiles')
-      .select('id, org_id, agent_id, webhook_url, webhook_secret_hash, status')
+      .select('id, org_id, agent_id, webhook_url, webhook_secret_encrypted, status')
       .eq('org_id', orgId)
       .eq('status', 'active')
       .not('webhook_url', 'is', null);
@@ -176,11 +177,11 @@ export async function fireIntegrationWebhook(
     };
 
     const deliveryPromises = profiles
-      .filter((p: IntegrationProfile) => p.webhook_url && p.webhook_secret_hash)
+      .filter((p: IntegrationProfile) => p.webhook_url && p.webhook_secret_encrypted)
       .map(async (profile) => {
         const webhookId = profile.id;
         const webhookUrl = profile.webhook_url!;
-        const webhookSecret = profile.webhook_secret_hash!;
+        const webhookSecret = decryptSecret(profile.webhook_secret_encrypted!);
 
         let attempt = 0;
         let lastError: string | null = null;
@@ -250,31 +251,6 @@ export async function fireIntegrationWebhook(
   } catch {
     // Webhook delivery is best-effort — never block the main response.
   }
-}
-
-export async function verifyWebhookSignature(
-  secret: string,
-  payloadStr: string,
-  signatureHeader: string | null,
-): Promise<boolean> {
-  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
-    return false;
-  }
-  const providedSig = signatureHeader.slice(7);
-  const expectedSig = createHmac('sha256', secret).update(payloadStr).digest('hex');
-  // Constant-time comparison
-  if (providedSig.length !== expectedSig.length) return false;
-  let result = 0;
-  for (let i = 0; i < providedSig.length; i++) {
-    result |= providedSig.charCodeAt(i) ^ expectedSig.charCodeAt(i);
-  }
-  return result === 0;
-}
-
-export async function generateWebhookSecret(): Promise<{ secret: string; secretHash: string }> {
-  const secret = `whsec_${randomUUID().replace(/-/g, '')}`;
-  const secretHash = createHash('sha256').update(secret).digest('hex');
-  return { secret, secretHash };
 }
 
 export function parseIntegrationEvents(events: string[]): IntegrationEvent[] {

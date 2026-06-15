@@ -1,7 +1,7 @@
 import { randomUUID, createHash } from 'crypto';
 import { getSupabaseAdmin } from './supabase-server';
 import { resolveQuickstartPolicyId } from './supabase/resolve-policy';
-import { generateWebhookSecret } from './integrations/deliver';
+import { generateWebhookSecret } from './security/secret-crypto';
 
 export type IntegrationStatus = 'active' | 'disabled';
 
@@ -195,7 +195,7 @@ export async function upsertIntegrationWebhook(input: {
   const now = new Date().toISOString();
   const supabase = getSupabaseAdmin();
 
-  const { secret, secretHash } = await generateWebhookSecret();
+  const { secret, secretEncrypted } = await generateWebhookSecret();
 
   const payload = {
     org_id: orgId,
@@ -203,7 +203,7 @@ export async function upsertIntegrationWebhook(input: {
     webhook_url: parsedWebhook.toString(),
     allowed_origins: allowedOrigins,
     status: 'active',
-    webhook_secret_hash: secretHash,
+    webhook_secret_encrypted: secretEncrypted,
     updated_at: now,
   };
 
