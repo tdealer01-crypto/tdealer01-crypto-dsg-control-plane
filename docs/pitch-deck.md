@@ -51,7 +51,7 @@ AI Agent → [DSG Gate: policy + replay + quota + evidence] → Execute / Block 
 | Audit export JSON/CSV (secret masking) | `/dashboard/export` | ✅ Live |
 | Quota enforcement (402 on exceeded) | `lib/usage/quota.ts` | ✅ Live |
 | Flat-tier subscription (Pro $99, Biz $299, Ent $999) | `lib/stripe-products.ts` | ✅ Live |
-| 1,027 tests passing, mutation score ~72% | CI pipeline | ✅ Verified |
+| 2173 tests passing, mutation score 72.08% | CI pipeline | ✅ Verified |
 
 ---
 

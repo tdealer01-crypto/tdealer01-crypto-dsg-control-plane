@@ -98,7 +98,7 @@ Auth = Bearer token + SHA256 hash ของ agent key (resolve ใน `lib/agent
 ## 5. การตลาด (Marketing / GTM)
 
 ### เสาหลัก 3 เสา
-**ก. Proof-led marketing (เสาหลัก):** ใช้ shareable Delivery Proof report เป็นเครื่องมือการตลาดในตัว + อ้างอิงความโปร่งใส (Z3 theorems, mutation score ~72%, Zenodo DOI `10.5281/zenodo.18225586`) สร้าง credibility ผ่าน "ความจริงที่ตรวจสอบได้"
+**ก. Proof-led marketing (เสาหลัก):** ใช้ shareable Delivery Proof report เป็นเครื่องมือการตลาดในตัว + อ้างอิงความโปร่งใส (Z3 theorems, mutation score 72.08%, Zenodo DOI `10.5281/zenodo.18225586`) สร้าง credibility ผ่าน "ความจริงที่ตรวจสอบได้"
 
 **ข. Segment-specific GTM (3 หัวหอก):**
 - **Compliance-driven** (Enterprise/CISO): ขายผ่าน EU AI Act deadline — รอบยาว 4–8 สัปดาห์ deal ใหญ่ ใช้ Evidence Pack เป็นอาวุธ
