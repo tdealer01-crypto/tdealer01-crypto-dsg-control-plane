@@ -136,7 +136,7 @@ console.log(result.audit_id, result.proof.proof_hash);
 |-------------|------------|
 | SDK builds, types work | **Not yet on npm** (ready to publish) |
 | Gate returns decision + proof | Metered billing not wired to execution |
-| 1,027 tests pass | GitHub App not yet live |
+| 2173 tests pass | GitHub App not yet live |
 | Edge gate <50ms latency | PyPI package not built |
 
 ---
