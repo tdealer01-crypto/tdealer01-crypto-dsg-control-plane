@@ -13,9 +13,25 @@ async function cleanupOrg() {
   await supabase.from('finance_workflow_cases').delete().eq('org_id', orgId);
 }
 
+async function seedCase() {
+  const supabase = getSupabaseAdmin() as any;
+  const { error } = await supabase.from('finance_workflow_cases').upsert({
+    id: caseId,
+    org_id: orgId,
+    status: 'pending',
+    export_status: 'Not ready',
+    vendor: 'Audit Evidence Test Vendor',
+    amount: 100,
+    currency: 'USD',
+    workflow: 'Invoice approval governance',
+  });
+  if (error) throw new Error(`seed case failed: ${JSON.stringify(error)}`);
+}
+
 describeLive('audit evidence fields', () => {
   beforeEach(async () => {
     await cleanupOrg();
+    await seedCase();
   });
 
   afterEach(async () => {

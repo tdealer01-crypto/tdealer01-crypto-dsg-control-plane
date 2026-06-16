@@ -22,7 +22,7 @@
 | **Pre-execution control** | `POST /api/dsg/v1/gates/evaluate` — stateless deterministic gate |
 | **Tamper-evident audit trail** | SHA-256 chain: requestHash → decisionHash → recordHash → bundleHash |
 | **Human oversight** | STABILIZE decision → requires human approval before execution |
-| **Accuracy/robustness proof** | 24 Z3 SMT theorems (UNSAT = invariants hold) |
+| **Accuracy/robustness proof** | 8 Z3 SMT theorems (5 core + 3 DeFi, UNSAT = invariants hold) |
 | **Transparency/logging** | Full execution trace with decision, reason, proof hash, latency |
 | **Annex IV mapping** | `/api/compliance-evidence-pack/annex4` — live mapping |
 | **CCVS Evidence Chain** | `/api/ccvs/compliance-status` — L1–L5 live status |
@@ -68,10 +68,10 @@
 |---------------------------|----------------|
 | Pre-execution deterministic gate | "Certified / Third-party audited" |
 | SHA-256 evidence chain (WORM by construction) | "WORM-certified HSM/blockchain storage" |
-| 24 Z3 theorems — formally UNSAT | "Mathematically proven secure" |
+| 8 Z3 theorems (5 core + 3 DeFi) — formally UNSAT | "Mathematically proven secure" |
 | Annex IV mapping live & reviewable | "ISO 42001 / NIST AI RMF certified" |
 | Cardholder data protected (no PII in proof) | "PCI DSS Level 1" |
-| 1,027 tests, mutation score ~72% | "Zero defects" |
+| 2173 tests, mutation score 72.08% | "Zero defects" |
 
 **Required language:** *"Pre-audit evidence mapping / audit-ready / production-connected"*  
 **Forbidden:** *"Certified / production-ready / tamper-proof / third-party validated"*

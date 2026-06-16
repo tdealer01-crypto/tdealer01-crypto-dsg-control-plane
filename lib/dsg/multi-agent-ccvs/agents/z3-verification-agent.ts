@@ -75,7 +75,7 @@ export class Z3VerificationAgent extends DiffusionAgent {
       verification: { type: 'z3', expectedResult: { status: 'SAT' } }
     }));
 
-    evidence.push({ id: 'L4-z3-summary', type: 'report', level: 'L4', name: 'Formal Verification Summary', description: '24 Z3 theorems verified SAT', content: JSON.stringify({ theorems: draft.theorems.map((t: any) => t.id), verification }, null, 2) });
+    evidence.push({ id: 'L4-z3-summary', type: 'report', level: 'L4', name: 'Formal Verification Summary', description: '8 Z3 theorems (5 core policy + 3 DeFi) verified SAT', content: JSON.stringify({ theorems: draft.theorems.map((t: any) => t.id), verification }, null, 2) });
 
     return { success: verification.every((v: any) => v.passed), evidence, metrics: { theorems: draft.theorems.length, sat: verification.filter((v: any) => v.passed).length, z3Version: '4.12.2' }, errors: verification.filter((v: any) => !v.passed).map((v: any) => v.details), warnings: [], simulationTrace: this.diffusionSteps };
   }
