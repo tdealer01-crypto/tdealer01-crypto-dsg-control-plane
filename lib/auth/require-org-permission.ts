@@ -1,15 +1,18 @@
 import { headers } from 'next/headers';
 import { createClient } from '../supabase/server';
 import { getSupabaseAdmin } from '../supabase-server';
+import { requireInternalService, type InternalServiceIdentity } from './internal-service';
 import { hasOrgPermission, normalizeOrgRole, type OrgPermission, type OrgRole } from './rbac';
 
 export type OrgPermissionContext = {
   ok: true;
   orgId: string;
-  userId: string;
-  authUserId: string;
-  email: string;
+  userId?: string;
+  authUserId?: string;
+  email?: string;
   role: OrgRole;
+  actorType: 'user' | 'agent';
+  agentId?: string;
 };
 
 export type OrgPermissionDenied = {
@@ -39,8 +42,18 @@ async function resolveUserFromRequest() {
 }
 
 export async function requireOrgPermission(permission: OrgPermission): Promise<OrgPermissionContext | OrgPermissionDenied> {
-  const user = await resolveUserFromRequest();
+  const req = new Request('http://localhost', {
+    headers: await headers(),
+  });
 
+  // Try agent access first
+  const agentAccess = requireInternalService(req);
+  if (agentAccess.ok) {
+    return checkAgentPermission(agentAccess, permission);
+  }
+
+  // Fall back to user access
+  const user = await resolveUserFromRequest();
   if (!user?.id || !user.email) {
     return { ok: false, status: 401, error: 'Unauthorized' };
   }
@@ -68,5 +81,52 @@ export async function requireOrgPermission(permission: OrgPermission): Promise<O
     authUserId: String(user.id),
     email: String(profile.email || user.email).toLowerCase(),
     role,
+    actorType: 'user',
+  };
+}
+
+/**
+ * Check if agent has required permission
+ */
+async function checkAgentPermission(
+  agentAccess: InternalServiceIdentity,
+  permission: OrgPermission,
+): Promise<OrgPermissionContext | OrgPermissionDenied> {
+  if (!agentAccess.agentId) {
+    return { ok: false, status: 403, error: 'Agent ID required' };
+  }
+
+  const admin = getSupabaseAdmin();
+
+  // Get agent's default role (fallback to 'operator' for most agents)
+  // Note: TypeScript types will be updated after migration
+  const { data: agentPerms } = await admin
+    .from('agent_permissions' as any)
+    .select('permissions, default_role')
+    .eq('org_id', agentAccess.orgId)
+    .eq('agent_id', agentAccess.agentId)
+    .maybeSingle();
+
+  // If no explicit permissions, use default role-based permissions
+  let hasPermission = false;
+  const perms = agentPerms as any;
+  if (perms?.permissions?.length > 0) {
+    hasPermission = perms.permissions.includes(permission);
+  } else {
+    // Fallback: check default role
+    const role = normalizeOrgRole(perms?.default_role ?? 'operator');
+    hasPermission = hasOrgPermission(role, permission);
+  }
+
+  if (!hasPermission) {
+    return { ok: false, status: 403, error: 'Agent lacks permission' };
+  }
+
+  return {
+    ok: true,
+    orgId: agentAccess.orgId,
+    agentId: agentAccess.agentId,
+    role: normalizeOrgRole((agentPerms as any)?.default_role ?? 'operator'),
+    actorType: 'agent',
   };
 }
