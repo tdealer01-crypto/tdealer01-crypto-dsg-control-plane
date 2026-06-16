@@ -3,8 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS agent_permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL,
-  agent_id UUID NOT NULL,
+  org_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
 
   -- Permissions as a JSONB set for flexibility
   permissions TEXT[] NOT NULL DEFAULT '{}',
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS agent_permissions (
   created_by UUID,
 
   UNIQUE(org_id, agent_id),
-  FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE,
+  FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );

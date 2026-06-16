@@ -1,9 +1,9 @@
 -- Policies table for storing markdown-based policy documents
 -- Integrates with Markdoc rendering and DSG governance
 
-CREATE TABLE IF NOT EXISTS policies (
+CREATE TABLE IF NOT EXISTS policies_markdoc (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL,
+  org_id TEXT NOT NULL,
 
   -- Policy metadata
   name TEXT NOT NULL,
@@ -29,30 +29,30 @@ CREATE TABLE IF NOT EXISTS policies (
   created_by UUID,
   updated_by UUID,
 
-  FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE,
+  FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT policy_name_org_unique UNIQUE(org_id, name)
+  CONSTRAINT policy_markdoc_name_org_unique UNIQUE(org_id, name)
 );
 
 -- Index for lookups
-CREATE INDEX IF NOT EXISTS idx_policies_org_status
-  ON policies(org_id, status);
+CREATE INDEX IF NOT EXISTS idx_policies_markdoc_org_status
+  ON policies_markdoc(org_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_policies_content_hash
-  ON policies(org_id, content_hash);
+CREATE INDEX IF NOT EXISTS idx_policies_markdoc_content_hash
+  ON policies_markdoc(org_id, content_hash);
 
-CREATE INDEX IF NOT EXISTS idx_policies_policy_hash
-  ON policies(org_id, policy_hash);
+CREATE INDEX IF NOT EXISTS idx_policies_markdoc_policy_hash
+  ON policies_markdoc(org_id, policy_hash);
 
 -- RLS policies
-ALTER TABLE policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE policies_markdoc ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "users_read_org_policies" ON policies
+CREATE POLICY "users_read_org_policies_markdoc" ON policies_markdoc
   FOR SELECT
   USING (org_id IN (SELECT org_id FROM users WHERE auth_user_id = auth.uid()));
 
-CREATE POLICY "admins_manage_policies" ON policies
+CREATE POLICY "admins_manage_policies_markdoc" ON policies_markdoc
   FOR ALL
   USING (
     org_id IN (SELECT org_id FROM users
@@ -61,9 +61,9 @@ CREATE POLICY "admins_manage_policies" ON policies
   );
 
 -- Policy versions table (audit trail)
-CREATE TABLE IF NOT EXISTS policy_versions (
+CREATE TABLE IF NOT EXISTS policy_markdoc_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL,
+  org_id TEXT NOT NULL,
   policy_id UUID NOT NULL,
 
   -- Content snapshot
@@ -79,14 +79,14 @@ CREATE TABLE IF NOT EXISTS policy_versions (
   -- Timestamp
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
 
-  FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE,
-  FOREIGN KEY (policy_id) REFERENCES policies(id) ON DELETE CASCADE,
+  FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (policy_id) REFERENCES policies_markdoc(id) ON DELETE CASCADE,
   FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT policy_version_unique UNIQUE(policy_id, version)
+  CONSTRAINT policy_markdoc_version_unique UNIQUE(policy_id, version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_policy_versions_policy_id
-  ON policy_versions(policy_id, version DESC);
+CREATE INDEX IF NOT EXISTS idx_policy_markdoc_versions_policy_id
+  ON policy_markdoc_versions(policy_id, version DESC);
 
 -- Helper function: compute policy hash from markdown
 CREATE OR REPLACE FUNCTION compute_policy_hash(p_markdown TEXT)
@@ -118,9 +118,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS policies_update_timestamp ON policies;
-CREATE TRIGGER policies_update_timestamp
-  BEFORE UPDATE ON policies
+DROP TRIGGER IF EXISTS policies_markdoc_update_timestamp ON policies_markdoc;
+CREATE TRIGGER policies_markdoc_update_timestamp
+  BEFORE UPDATE ON policies_markdoc
   FOR EACH ROW
   EXECUTE FUNCTION update_policy_timestamp();
 
@@ -130,7 +130,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.markdown_content IS DISTINCT FROM OLD.markdown_content THEN
     -- Archive current version
-    INSERT INTO policy_versions (org_id, policy_id, version, markdown_content, content_hash, policy_hash, changed_by)
+    INSERT INTO policy_markdoc_versions (org_id, policy_id, version, markdown_content, content_hash, policy_hash, changed_by)
     VALUES (OLD.org_id, OLD.id, OLD.version, OLD.markdown_content, OLD.content_hash, OLD.policy_hash, NEW.updated_by);
 
     -- Increment version
@@ -142,14 +142,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS policies_archive_on_update ON policies;
-CREATE TRIGGER policies_archive_on_update
-  BEFORE UPDATE ON policies
+DROP TRIGGER IF EXISTS policies_markdoc_archive_on_update ON policies_markdoc;
+CREATE TRIGGER policies_markdoc_archive_on_update
+  BEFORE UPDATE ON policies_markdoc
   FOR EACH ROW
   EXECUTE FUNCTION archive_policy_on_update();
 
-COMMENT ON TABLE policies IS 'Markdown-based policies for DSG governance (Markdoc rendering support)';
-COMMENT ON COLUMN policies.markdown_content IS 'Policy document in Markdoc markdown format';
-COMMENT ON COLUMN policies.rendered_content IS 'Optional cached Markdoc AST (JSONB)';
-COMMENT ON COLUMN policies.content_hash IS 'SHA256 of markdown_content for caching/comparison';
-COMMENT ON COLUMN policies.policy_hash IS 'Hash of actual policy constraints (for governance verification)';
+COMMENT ON TABLE policies_markdoc IS 'Markdown-based policies for DSG governance (Markdoc rendering support)';
+COMMENT ON COLUMN policies_markdoc.markdown_content IS 'Policy document in Markdoc markdown format';
+COMMENT ON COLUMN policies_markdoc.rendered_content IS 'Optional cached Markdoc AST (JSONB)';
+COMMENT ON COLUMN policies_markdoc.content_hash IS 'SHA256 of markdown_content for caching/comparison';
+COMMENT ON COLUMN policies_markdoc.policy_hash IS 'Hash of actual policy constraints (for governance verification)';
