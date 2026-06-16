@@ -65,6 +65,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
+    "@markdoc/markdoc": "^0.5.7",
+    "@markdoc/next.js": "^0.5.0",
     "@octokit/rest": "^22.0.1",
     "@sentry/nextjs": "^10.48.0",
     "@supabase/ssr": "^0.7.0",
