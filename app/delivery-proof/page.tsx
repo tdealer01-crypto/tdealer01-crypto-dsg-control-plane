@@ -220,7 +220,7 @@ export default function DeliveryProofPage() {
               </p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-6">
-              <p className="font-bold text-white">24 Z3 Formal Theorems · 998 Tests · 72.08% Mutation</p>
+              <p className="font-bold text-white">8 Z3 Theorems (5 core + 3 DeFi) · 2173 Tests · 72.08% Mutation</p>
               <p className="mt-2 text-sm leading-6 text-slate-400">
                 Policy invariants proved UNSAT — ไม่ใช่แค่ functional test
                 Stryker mutation score ≥70% gate ก่อน compliance claim ใดๆ

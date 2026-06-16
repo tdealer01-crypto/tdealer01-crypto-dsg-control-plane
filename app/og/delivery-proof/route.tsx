@@ -108,7 +108,7 @@ export async function GET(
 
         {/* Bottom trust signals */}
         <div style={{ position: 'absolute', bottom: 60, left: 80, right: 80, display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#6b7280' }}>
-          <span>CCVS v1.2 · 24 Z3 Theorems · 72% Mutation Score</span>
+          <span>CCVS v1.2 · 8 Z3 Theorems (5 core + 3 DeFi) · 72% Mutation Score</span>
           <span>zenodo.org/10.5281/zenodo.18225586</span>
         </div>
 
