@@ -28,7 +28,7 @@ export async function GET(): Promise<NextResponse> {
     .eq('org_id', orgId)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'db_error', detail: 'webhook_configs table may not be migrated yet' }, { status: 500 });
 
   // Fetch recent deliveries for each webhook
   const webhookIds = (configs ?? []).map((c) => c.id);
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .select()
     .single();
 
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+  if (insertError) return NextResponse.json({ error: 'db_error', detail: 'webhook_configs table may not be migrated yet' }, { status: 500 });
 
   return NextResponse.json(
     {

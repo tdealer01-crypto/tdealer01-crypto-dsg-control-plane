@@ -67,17 +67,21 @@ export const ALERT_RULES: AlertRule[] = [
   },
   {
     id: 'executor-near-capacity',
-    description: 'Executor capacity > 90%',
+    description: 'Executor capacity > 90% (pools with max > 1 only)',
     check: (status) => {
       if (!status?.executorCapacity) return false;
-      return Object.values(status.executorCapacity).some((cap) => cap.utilization > 90);
+      // Single-slot executors (max === 1) are always at 100% when busy — that is normal
+      // operation, not a capacity crisis. Only alert when a multi-slot pool is near full.
+      return Object.values(status.executorCapacity).some(
+        (cap) => cap.max > 1 && cap.utilization > 90,
+      );
     },
     message: 'Executor near capacity limit',
     type: 'CRITICAL',
     details: (status) => {
       if (status.executorCapacity) {
         const maxCap = Object.entries(status.executorCapacity).find(
-          ([_, cap]) => cap.utilization > 90
+          ([_, cap]) => cap.max > 1 && cap.utilization > 90
         );
         if (maxCap) {
           const [name, cap] = maxCap;
