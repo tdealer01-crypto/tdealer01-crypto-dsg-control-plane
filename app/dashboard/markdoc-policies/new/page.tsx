@@ -238,13 +238,13 @@ export default function CreatePolicyPage() {
             <div>
               <p className="font-medium">PolicyRule</p>
               <code className="block bg-blue-100 p-2 font-mono text-xs">
-                {"{"}%PolicyRule type="allow" condition="..." /%{"}"}
+                {"{"}%PolicyRule type=&quot;allow&quot; condition=&quot;...&quot; /%{"}"}
               </code>
             </div>
             <div>
               <p className="font-medium">Alert</p>
               <code className="block bg-blue-100 p-2 font-mono text-xs">
-                {"{"}%Alert type="info" title="..." %{"}"}...{"{"}/%Alert%{"}"}
+                {"{"}%Alert type=&quot;info&quot; title=&quot;...&quot; %{"}"}...{"{"}/%Alert%{"}"}
               </code>
             </div>
           </div>

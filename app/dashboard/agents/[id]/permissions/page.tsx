@@ -57,9 +57,7 @@ export default function PermissionsPage() {
   useEffect(() => {
     async function loadPermissions() {
       try {
-        const response = await fetch(
-          `/api/agents/permissions/setup?agent_id=${agentId}`
-        );
+        const response = await fetch(`/api/agents/${agentId}/permissions`);
 
         if (!response.ok) {
           throw new Error(`Failed to load permissions: ${response.status}`);
@@ -95,13 +93,12 @@ export default function PermissionsPage() {
     setSuccess("");
 
     try {
-      const response = await fetch("/api/agents/permissions/setup", {
-        method: "POST",
+      const response = await fetch(`/api/agents/${agentId}/permissions`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          agent_id: agentId,
           permissions: permissions,
         }),
       });
