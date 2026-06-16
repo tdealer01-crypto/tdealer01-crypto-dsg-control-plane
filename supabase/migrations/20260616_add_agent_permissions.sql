@@ -3,8 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS agent_permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id TEXT NOT NULL,
-  agent_id TEXT NOT NULL,
+  org_id UUID NOT NULL,
+  agent_id UUID NOT NULL,
 
   -- Permissions as a JSONB set for flexibility
   permissions TEXT[] NOT NULL DEFAULT '{}',

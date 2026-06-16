@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS policies_markdoc (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id TEXT NOT NULL,
+  org_id UUID NOT NULL,
 
   -- Policy metadata
   name TEXT NOT NULL,
@@ -63,7 +63,7 @@ CREATE POLICY "admins_manage_policies_markdoc" ON policies_markdoc
 -- Policy versions table (audit trail)
 CREATE TABLE IF NOT EXISTS policy_markdoc_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id TEXT NOT NULL,
+  org_id UUID NOT NULL,
   policy_id UUID NOT NULL,
 
   -- Content snapshot
