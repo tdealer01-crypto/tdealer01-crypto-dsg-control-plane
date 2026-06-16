@@ -65,7 +65,7 @@ async function loadFromSupabase(runId?: string): Promise<SupabaseResult> {
       if ((error as { code?: string }).code === 'PGRST116') {
         return { ok: false, notFound: true };
       }
-      return { ok: false, notFound: false, error: error.message };
+      return { ok: false, notFound: false, error: 'db_error' };
     }
     if (!data) return { ok: false, notFound: true };
 
@@ -82,7 +82,7 @@ async function loadFromSupabase(runId?: string): Promise<SupabaseResult> {
       },
     };
   } catch (err) {
-    return { ok: false, notFound: false, error: err instanceof Error ? err.message : 'db_error' };
+    return { ok: false, notFound: false, error: 'db_error' };
   }
 }
 
@@ -102,10 +102,10 @@ async function saveToSupabase(status: DbStatus, matrix: ComplianceMatrix): Promi
       },
       { onConflict: 'run_id' },
     );
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: 'db_error' };
     return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'db_error' };
+  } catch {
+    return { ok: false, error: 'db_error' };
   }
 }
 

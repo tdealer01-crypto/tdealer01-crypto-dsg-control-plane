@@ -163,7 +163,7 @@ async function callOpenRouter(userGoal: string): Promise<{ reply: string; steps:
       "X-Title": "DSG Hermes Planner",
     },
     body: JSON.stringify({
-      model: "anthropic/claude-haiku-4-5",
+      model: process.env.DSG_HERMES_PLANNER_MODEL ?? "nousresearch/hermes-3-llama-3.1-405b:free",
       messages: [
         { role: "system", content: buildPlannerSystem() },
         { role: "user", content: userGoal },

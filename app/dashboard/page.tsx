@@ -168,9 +168,9 @@ export default function DashboardPage() {
   ];
 
   const onboardingSteps = [
-    { label: "Org created",        done: true },
-    { label: "Agent connected",    done: Boolean(onboarding?.has_agent) },
-    { label: "First execution run", done: Boolean(onboarding?.first_run_complete) },
+    { label: "Org created",        done: true,                                      href: "/dashboard/settings/go-live" },
+    { label: "Agent connected",    done: Boolean(onboarding?.has_agent),            href: "/dashboard/agents" },
+    { label: "First execution run", done: Boolean(onboarding?.first_run_complete),  href: "/delivery-proof" },
   ];
   const doneCount = onboardingSteps.filter(s => s.done).length;
 
@@ -264,20 +264,27 @@ export default function DashboardPage() {
             </div>
             <ul className="mt-4 space-y-2">
               {onboardingSteps.map(s => (
-                <li key={s.label} className="flex items-center gap-2.5 text-sm">
-                  <span className={`h-4 w-4 rounded-full border text-[9px] flex items-center justify-center font-bold ${s.done ? "border-emerald-400/50 bg-emerald-400/20 text-emerald-300" : "border-white/15 text-transparent"}`}>
-                    {s.done ? "✓" : ""}
-                  </span>
-                  <span className={s.done ? "text-emerald-100" : "text-slate-500"}>{s.label}</span>
+                <li key={s.label}>
+                  <Link href={s.href}
+                    className={`flex items-center gap-2.5 text-sm rounded-lg px-2 py-1 -mx-2 transition-colors ${s.done ? "hover:bg-emerald-400/5" : "hover:bg-white/5"}`}>
+                    <span className={`h-4 w-4 rounded-full border text-[9px] flex items-center justify-center font-bold shrink-0 ${s.done ? "border-emerald-400/50 bg-emerald-400/20 text-emerald-300" : "border-white/15 text-transparent"}`}>
+                      {s.done ? "✓" : ""}
+                    </span>
+                    <span className={s.done ? "text-emerald-100" : "text-slate-400 underline decoration-dotted"}>{s.label}</span>
+                    {!s.done && <span className="ml-auto text-[10px] text-slate-600">→</span>}
+                  </Link>
                 </li>
               ))}
             </ul>
             {!loading && onboarding?.next_action && (
               <p className="mt-4 text-xs text-emerald-300/60">Next: {onboarding.next_action}</p>
             )}
-            <Link href={doneCount < 3 ? "/dashboard/skills" : "/dashboard/executions"}
+            <Link href={(() => {
+              const next = onboardingSteps.find(s => !s.done);
+              return next ? next.href : "/dashboard/executions";
+            })()}
               className="mt-4 inline-block rounded-xl border border-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-400/10 transition-colors">
-              {doneCount < 3 ? "Continue setup →" : "View executions →"}
+              {doneCount < 3 ? `Next: ${onboardingSteps.find(s => !s.done)?.label ?? "Continue"} →` : "View executions →"}
             </Link>
           </div>
 

@@ -10,7 +10,7 @@ Runtime governance layer for AI agents. Gate every action before execution and k
 
 ---
 
-## Evidence snapshot — 2026-06-15
+## Evidence snapshot — 2026-06-16
 
 Verified facts from live system and current codebase. Not claims — each row has a source.
 
@@ -28,7 +28,7 @@ Verified facts from live system and current codebase. Not claims — each row ha
 Test Files  220 passed | 9 skipped (229)
 Tests       2172 passed | 58 skipped | 0 failed (2230)
 Duration    ~35s
-Run date    2026-06-15
+Run date    2026-06-16
 Command     npm run test
 ```
 
@@ -58,8 +58,19 @@ Output: `lib/gateway/verified-constraints.json`
 | Credential broker | Returns SHA-256 fingerprint only — never raw secret value | `lib/dsg/brain/credential-broker.ts` |
 | Answer gate in SSE stream | Every AI reply scanned before client receives it | `app/api/agent-chat/route.ts:140` |
 | No browser storage | localStorage/sessionStorage removed from all components | `components/TryChatWidget.tsx`, `app/dashboard/hermes/page.tsx` |
+| Webhook error not leaking | Raw `insertError.message` replaced with structured `db_error` response | `app/api/webhooks-config/route.ts` |
 
-### Resolved items (2026-06-15)
+### Hermes Agent LLM stack
+
+| Layer | Provider | Model | Trigger |
+|---|---|---|---|
+| Planner (primary) | Anthropic | `claude-haiku-4-5-20251001` | `ANTHROPIC_API_KEY` set |
+| Planner (secondary) | Together AI | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `TOGETHER_API_KEY` set |
+| Planner (tertiary) | OpenRouter | `nousresearch/hermes-3-llama-3.1-405b:free` | `OPENROUTER_API_KEY` set; override via `DSG_HERMES_PLANNER_MODEL` |
+| Synthesis | Anthropic | `claude-haiku-4-5-20251001` | After tool steps complete |
+| DadBot (Android) | OpenRouter | `qwen/qwen-2.5-7b-instruct:free` | `OPENROUTER_API_KEY` set; override via `DSG_DADBOT_MODEL` |
+
+### Resolved items (2026-06-16)
 
 | Item | Resolution | File |
 |---|---|---|
@@ -67,6 +78,12 @@ Output: `lib/gateway/verified-constraints.json`
 | Quota race (non-atomic) | `incrementQuota` now calls `increment_quota_atomic` SQL RPC (atomic `executions = executions + 1`) | `lib/usage/quota.ts`, migration `20260616000001` |
 | RLS disabled on `claim_readiness_artifacts` | RLS enabled; SELECT for authenticated; DELETE blocked via trigger for all roles including service_role | migration `20260616000002` |
 | Expired credential leases not cleaned | Cron route added at `/api/cron/cleanup-expired-leases` (daily 03:00 UTC) | `app/api/cron/cleanup-expired-leases/route.ts` |
+| Bilingual UI (TH/EN) | GlobalNav language switcher; 4 pages fully bilingual: Delivery Proof, Dashboard Approvals, Finance Approvals, Hermes page; no mixed language | `components/GlobalNav.tsx`, `store/useAppLanguage.ts` |
+| Executor capacity alert spam | Single-slot executors (max=1) at 100% no longer trigger CRITICAL alert — guard `cap.max > 1` added | `lib/hooks/alert-rules.ts` |
+| Webhook "Internal server error" | Structured `db_error` response + amber guidance panel with `supabase db push` instruction | `app/api/webhooks-config/route.ts`, `app/dashboard/webhooks/page.tsx` |
+| Hermes "Thinking…" stuck on timeout | Stream-close handler sets fallback message when SSE closes without `assistant_reply` | `app/dashboard/hermes/page.tsx` |
+| Hermes planner model (noisy) | Switched from `anthropic/claude-haiku-4-5` (OpenRouter) to `nousresearch/hermes-3-llama-3.1-405b:free`; overridable via `DSG_HERMES_PLANNER_MODEL` | `lib/hermes/llm-planner.ts`, `lib/agent/llm-router.ts` |
+| DadBot noisy default model | Replaced `nvidia/nemotron-3-ultra-550b-a55b:free` with `qwen/qwen-2.5-7b-instruct:free` (better Thai, cleaner output) | `app/api/agent/chat/route.ts` |
 
 ### What is not claimed
 

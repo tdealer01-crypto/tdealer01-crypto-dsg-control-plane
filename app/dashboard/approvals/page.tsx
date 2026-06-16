@@ -2,6 +2,60 @@
 
 import { useEffect, useState } from 'react';
 import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { useAppLanguage } from '@/store/useAppLanguage';
+
+const APPROVALS_T = {
+  th: {
+    title: 'การอนุมัติ',
+    subtitle: 'ตรวจสอบและอนุมัติ action ของ agent ก่อนรัน',
+    refresh: 'รีเฟรช ↻',
+    loading: 'กำลังโหลด…',
+    pendingLabel: 'รออนุมัติ',
+    totalLabel: 'คำขอทั้งหมด',
+    filterAll: 'ทั้งหมด',
+    filterPending: 'รออนุมัติ',
+    filterApproved: 'อนุมัติแล้ว',
+    filterRejected: 'ปฏิเสธแล้ว',
+    emptyPendingTitle: 'ไม่มีรายการรออนุมัติ',
+    emptyPendingBody: 'เมื่อ AI agent ส่ง STABILIZE decision จะปรากฏที่นี่เพื่อรอการอนุมัติ',
+    emptyOtherTitle: (f: string) => `ไม่มีรายการ${f}`,
+    emptyOtherBody: 'เปลี่ยนตัวกรองเป็น "ทั้งหมด" เพื่อดูทุกคำขอ',
+    viewAll: 'ดูทั้งหมด',
+    agentLabel: 'Agent',
+    createdLabel: 'สร้างเมื่อ',
+    viewDetails: 'ดูรายละเอียด',
+    expires: 'หมดอายุ',
+    approve: 'อนุมัติ',
+    reject: 'ปฏิเสธ',
+    approved: '✓ อนุมัติแล้ว',
+    rejected: '✗ ปฏิเสธแล้ว',
+  },
+  en: {
+    title: 'Approvals',
+    subtitle: 'Review and approve agent actions before execution',
+    refresh: 'Refresh ↻',
+    loading: 'Loading…',
+    pendingLabel: 'Pending Approvals',
+    totalLabel: 'Total Requests',
+    filterAll: 'All',
+    filterPending: 'Pending',
+    filterApproved: 'Approved',
+    filterRejected: 'Rejected',
+    emptyPendingTitle: 'No pending approvals',
+    emptyPendingBody: 'When an AI agent submits a STABILIZE decision it will appear here for review.',
+    emptyOtherTitle: (f: string) => `No ${f} approvals`,
+    emptyOtherBody: 'Switch to "All" to see every approval request.',
+    viewAll: 'View all',
+    agentLabel: 'Agent',
+    createdLabel: 'Created',
+    viewDetails: 'View Details',
+    expires: '⏰ Expires',
+    approve: 'Approve',
+    reject: 'Reject',
+    approved: '✓ Approved',
+    rejected: '✗ Rejected',
+  },
+};
 
 interface ApprovalRequest {
   id: string;
@@ -16,6 +70,9 @@ interface ApprovalRequest {
 }
 
 export default function ApprovalsPage() {
+  const lang = useAppLanguage();
+  const t = APPROVALS_T[lang];
+
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
@@ -115,20 +172,29 @@ export default function ApprovalsPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Approvals</h1>
-          <p className="text-gray-600">Review and approve agent actions before execution</p>
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">{t.title}</h1>
+            <p className="text-gray-600">{t.subtitle}</p>
+          </div>
+          <button
+            onClick={fetchApprovals}
+            disabled={loading}
+            className="self-start sm:self-auto rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-blue-600 hover:text-blue-600 transition disabled:opacity-40"
+          >
+            {loading ? t.loading : t.refresh}
+          </button>
         </div>
 
         {/* Stats */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex gap-8">
             <div>
-              <p className="text-gray-600 text-sm">Pending Approvals</p>
+              <p className="text-gray-600 text-sm">{t.pendingLabel}</p>
               <p className="text-4xl font-bold text-yellow-600">{pendingCount}</p>
             </div>
             <div>
-              <p className="text-gray-600 text-sm">Total Requests</p>
+              <p className="text-gray-600 text-sm">{t.totalLabel}</p>
               <p className="text-4xl font-bold text-gray-900">{approvals.length}</p>
             </div>
           </div>
@@ -136,29 +202,68 @@ export default function ApprovalsPage() {
 
         {/* Filters */}
         <div className="flex gap-2 mb-8">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${
-                filter === status
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
-              }`}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
+          {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => {
+            const labels = { all: t.filterAll, pending: t.filterPending, approved: t.filterApproved, rejected: t.filterRejected };
+            return (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                  filter === status
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
+                }`}
+              >
+                {labels[status]}
+              </button>
+            );
+          })}
         </div>
 
         {/* Approvals List */}
         {loading ? (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-600">
-            Loading approvals...
+          <div className="space-y-4">
+            {[1, 2, 3].map(n => (
+              <div key={n} className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-gray-200 animate-pulse">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex gap-3">
+                      <div className="h-5 w-5 rounded-full bg-gray-200" />
+                      <div className="h-5 w-48 rounded bg-gray-200" />
+                      <div className="h-5 w-16 rounded-full bg-gray-200" />
+                    </div>
+                    <div className="h-4 w-64 rounded bg-gray-100" />
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <div className="h-9 w-24 rounded-lg bg-gray-200" />
+                    <div className="h-9 w-20 rounded-lg bg-gray-200" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredApprovals.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-600">
-            No {filter === 'all' ? 'approvals' : `${filter} approvals`} found
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <p className="text-lg font-semibold text-gray-700">
+              {filter === 'pending' ? t.emptyPendingTitle : t.emptyOtherTitle(filter)}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              {filter === 'pending' ? t.emptyPendingBody : t.emptyOtherBody}
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                onClick={() => setFilter('all')}
+                className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 text-sm font-semibold hover:bg-blue-50 transition"
+              >
+                {t.viewAll}
+              </button>
+              <button
+                onClick={fetchApprovals}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+              >
+                {t.refresh}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -184,16 +289,16 @@ export default function ApprovalsPage() {
 
                     {/* Agent & Time */}
                     <p className="text-sm text-gray-600 mb-4">
-                      Agent: <span className="font-mono font-semibold">{approval.agentId}</span>
+                      {t.agentLabel}: <span className="font-mono font-semibold">{approval.agentId}</span>
                       {' • '}
-                      Created: <span>{new Date(approval.createdAt).toLocaleString()}</span>
+                      {t.createdLabel}: <span>{new Date(approval.createdAt).toLocaleString()}</span>
                     </p>
 
                     {/* Action Input (if any) */}
                     {approval.input && Object.keys(approval.input).length > 0 && (
                       <details className="mb-4">
                         <summary className="cursor-pointer text-sm font-semibold text-blue-600 hover:text-blue-700">
-                          View Details
+                          {t.viewDetails}
                         </summary>
                         <pre className="mt-2 bg-gray-50 p-3 rounded text-xs overflow-x-auto">
                           {JSON.stringify(approval.input, null, 2)}
@@ -204,7 +309,7 @@ export default function ApprovalsPage() {
                     {/* Expiry Warning */}
                     {approval.status === 'pending' && (
                       <p className="text-xs text-red-600 font-semibold">
-                        ⏰ Expires: {new Date(approval.expiresAt).toLocaleString()}
+                        {t.expires}: {new Date(approval.expiresAt).toLocaleString()}
                       </p>
                     )}
                   </div>
@@ -218,7 +323,7 @@ export default function ApprovalsPage() {
                         className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        Approve
+                        {t.approve}
                       </button>
                       <button
                         onClick={() => handleReject(approval.id)}
@@ -226,17 +331,17 @@ export default function ApprovalsPage() {
                         className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
                       >
                         <XCircle className="w-4 h-4" />
-                        Reject
+                        {t.reject}
                       </button>
                     </div>
                   )}
 
                   {approval.status === 'approved' && (
-                    <span className="text-green-600 font-bold">✓ Approved</span>
+                    <span className="text-green-600 font-bold">{t.approved}</span>
                   )}
 
                   {approval.status === 'rejected' && (
-                    <span className="text-red-600 font-bold">✗ Rejected</span>
+                    <span className="text-red-600 font-bold">{t.rejected}</span>
                   )}
                 </div>
               </div>

@@ -302,7 +302,15 @@ export default function WebhooksPage() {
 
         {/* Loading / error */}
         {loadingList && <p className="mt-6 text-sm text-slate-400">Loading webhooks…</p>}
-        {listError && <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{listError}</p>}
+        {listError && (
+          <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/8 px-5 py-4">
+            <p className="text-sm font-bold text-amber-200">Webhook database not ready</p>
+            <p className="mt-1 text-xs text-amber-100/70">
+              Run <code className="rounded bg-amber-300/10 px-1 font-mono">supabase db push</code> to apply migrations, then reload this page.
+              The registration form below will work once the database is set up.
+            </p>
+          </div>
+        )}
 
         {/* Security note */}
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/8 px-5 py-4">
