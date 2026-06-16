@@ -12,57 +12,29 @@ import {
   ChevronDown,
   FileCheck,
 } from 'lucide-react';
+import { useAppLanguage } from '@/store/useAppLanguage';
+import { languageStore } from '@/store/languageStore';
 
-const PRODUCT_ITEMS = [
-  {
-    href: '/delivery-proof',
-    icon: FileCheck,
-    title: 'Delivery Proof',
-    description: 'AI code proof report สำหรับ agency',
-    highlight: true,
-  },
-  {
-    href: '/proofgate',
-    icon: Shield,
-    title: 'ProofGate',
-    description: 'Runtime control layer',
-  },
-  {
-    href: '/enterprise-ready',
-    icon: Building2,
-    title: 'Enterprise Ready',
-    description: 'No-migration enterprise setup',
-  },
-  {
-    href: '/finance-governance',
-    icon: DollarSign,
-    title: 'Finance Governance',
-    description: 'Payment & finance controls',
-  },
-  {
-    href: '/finance-approval-gate',
-    icon: DollarSign,
-    title: 'Finance Approval Gate',
-    description: 'AI payment approval pilot',
-  },
-  {
-    href: '/automation',
-    icon: Zap,
-    title: 'Automation',
-    description: 'Webhook & workflow automation',
-  },
-  {
-    href: '/ai-compliance',
-    icon: ShieldCheck,
-    title: 'AI Compliance',
-    description: 'ISO 42001, NIST AI RMF',
-  },
-  {
-    href: '/eu-ai-act',
-    icon: Shield,
-    title: 'EU AI Act',
-    description: 'Block before damage, not after',
-  },
+const PRODUCT_ITEMS_TH = [
+  { href: '/delivery-proof',        icon: FileCheck,  title: 'Delivery Proof',       description: 'รายงาน proof สำหรับ agency และ dev team', highlight: true },
+  { href: '/proofgate',             icon: Shield,     title: 'ProofGate',             description: 'ชั้นควบคุม runtime ของ AI' },
+  { href: '/enterprise-ready',      icon: Building2,  title: 'Enterprise Ready',      description: 'ตั้งค่า enterprise โดยไม่ต้อง migrate' },
+  { href: '/finance-governance',    icon: DollarSign, title: 'Finance Governance',    description: 'ควบคุม payment และการเงิน' },
+  { href: '/finance-approval-gate', icon: DollarSign, title: 'Finance Approval Gate', description: 'ระบบอนุมัติ AI payment' },
+  { href: '/automation',            icon: Zap,        title: 'Automation',            description: 'Webhook และ workflow อัตโนมัติ' },
+  { href: '/ai-compliance',         icon: ShieldCheck, title: 'AI Compliance',        description: 'ISO 42001, NIST AI RMF' },
+  { href: '/eu-ai-act',             icon: Shield,     title: 'EU AI Act',             description: 'บล็อกก่อนเกิดความเสียหาย' },
+];
+
+const PRODUCT_ITEMS_EN = [
+  { href: '/delivery-proof',        icon: FileCheck,  title: 'Delivery Proof',       description: 'AI code proof report for agencies & dev teams', highlight: true },
+  { href: '/proofgate',             icon: Shield,     title: 'ProofGate',             description: 'Runtime control layer for AI' },
+  { href: '/enterprise-ready',      icon: Building2,  title: 'Enterprise Ready',      description: 'No-migration enterprise setup' },
+  { href: '/finance-governance',    icon: DollarSign, title: 'Finance Governance',    description: 'Payment & finance controls' },
+  { href: '/finance-approval-gate', icon: DollarSign, title: 'Finance Approval Gate', description: 'AI payment approval pilot' },
+  { href: '/automation',            icon: Zap,        title: 'Automation',            description: 'Webhook & workflow automation' },
+  { href: '/ai-compliance',         icon: ShieldCheck, title: 'AI Compliance',        description: 'ISO 42001, NIST AI RMF' },
+  { href: '/eu-ai-act',             icon: Shield,     title: 'EU AI Act',             description: 'Block before damage, not after' },
 ];
 
 const FLAT_LINKS = [
@@ -72,11 +44,20 @@ const FLAT_LINKS = [
   { href: '/quickstart', label: 'Quickstart', match: (p: string) => p === '/quickstart' },
 ];
 
+const NAV_T = {
+  th: { product: 'สินค้า', startFree: 'เริ่มใช้ฟรี →', login: 'เข้าสู่ระบบ', openMenu: 'เปิดเมนู', closeMenu: 'ปิดเมนู' },
+  en: { product: 'Product', startFree: 'Start free →', login: 'Login',       openMenu: 'Open menu',  closeMenu: 'Close menu' },
+};
+
 export default function GlobalNav() {
   const pathname = usePathname();
+  const lang = useAppLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
   const [mobileProductOpen, setMobileProductOpen] = useState(false);
+
+  const t = NAV_T[lang];
+  const PRODUCT_ITEMS = lang === 'th' ? PRODUCT_ITEMS_TH : PRODUCT_ITEMS_EN;
 
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     return null;
@@ -120,7 +101,7 @@ export default function GlobalNav() {
                 aria-expanded={productOpen}
                 aria-haspopup="true"
               >
-                Product
+                {t.product}
                 <ChevronDown
                   className={`h-3.5 w-3.5 transition-transform duration-200 ${
                     productOpen ? 'rotate-180' : ''
@@ -170,12 +151,21 @@ export default function GlobalNav() {
               </Link>
             ))}
 
+            {/* Language switcher */}
+            <button
+              onClick={() => languageStore.setLanguage(lang === 'th' ? 'en' : 'th')}
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-slate-400 transition hover:border-amber-300/30 hover:text-amber-100"
+              aria-label="Switch language"
+            >
+              {lang === 'th' ? 'EN' : 'TH'}
+            </button>
+
             {/* CTAs */}
             <Link href="/dashboard/integrations" className="dsg-btn-gold text-sm">
-              Start free →
+              {t.startFree}
             </Link>
             <Link href="/login" className="dsg-btn-blue text-sm">
-              Login
+              {t.login}
             </Link>
           </nav>
 
@@ -183,7 +173,7 @@ export default function GlobalNav() {
           <button
             onClick={openMobileMenu}
             className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-slate-300 md:hidden"
-            aria-label="Open menu"
+            aria-label={t.openMenu}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -209,7 +199,7 @@ export default function GlobalNav() {
             <button
               onClick={closeMobileMenu}
               className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-slate-300"
-              aria-label="Close menu"
+              aria-label={t.closeMenu}
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -224,7 +214,7 @@ export default function GlobalNav() {
               onClick={() => setMobileProductOpen((v) => !v)}
               className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
             >
-              Product
+              {t.product}
               <ChevronDown
                 className={`h-4 w-4 transition-transform duration-200 ${
                   mobileProductOpen ? 'rotate-180' : ''
@@ -273,19 +263,25 @@ export default function GlobalNav() {
 
           {/* Sticky bottom CTAs */}
           <div className="shrink-0 space-y-2 border-t border-white/10 px-6 py-4">
+            <button
+              onClick={() => languageStore.setLanguage(lang === 'th' ? 'en' : 'th')}
+              className="block w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300"
+            >
+              {lang === 'th' ? '🌐 Switch to English' : '🌐 เปลี่ยนเป็นภาษาไทย'}
+            </button>
             <Link
               href="/dashboard/integrations"
               onClick={closeMobileMenu}
               className="block rounded-xl bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-slate-950"
             >
-              Start free →
+              {t.startFree}
             </Link>
             <Link
               href="/login"
               onClick={closeMobileMenu}
               className="block rounded-xl border border-blue-300/30 bg-blue-300/10 px-4 py-3 text-center text-sm font-semibold text-blue-200"
             >
-              Login
+              {t.login}
             </Link>
           </div>
         </div>

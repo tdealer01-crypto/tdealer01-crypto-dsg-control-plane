@@ -3,6 +3,46 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { financeGovernanceFetch } from '../request';
+import { useAppLanguage } from '@/store/useAppLanguage';
+
+const FIN_T = {
+  th: {
+    eyebrow: 'คิวอนุมัติ live',
+    title: 'รายการรออนุมัติ (การเงิน)',
+    subtitle: 'รายการ payment ที่รอการอนุมัติ — ตรวจสอบ risk level และกดอนุมัติหรือปฏิเสธ',
+    updated: (time: string) => `อัปเดต ${time}`,
+    refresh: 'รีเฟรช ↻',
+    submit: '+ ส่ง action',
+    retry: 'ลองใหม่',
+    emptyTitle: 'ไม่มีรายการรออนุมัติ',
+    emptyBody: 'เมื่อ AI agent ส่ง action ที่ต้องการอนุมัติ จะปรากฏที่นี่',
+    emptyBtn: 'ส่ง action ทดสอบ →',
+    statsFooter: (n: number) => `${n} รายการ · กด Refresh เพื่ออัปเดต`,
+    colId: 'Approval ID',
+    colVendor: 'Vendor',
+    colAmount: 'Amount',
+    colStatus: 'Status',
+    colRisk: 'Risk',
+  },
+  en: {
+    eyebrow: 'Live approval queue',
+    title: 'Pending finance approvals',
+    subtitle: 'Review payment requests — check risk level and approve or reject.',
+    updated: (time: string) => `updated ${time}`,
+    refresh: 'Refresh ↻',
+    submit: '+ Submit action',
+    retry: 'Try again',
+    emptyTitle: 'No pending approvals',
+    emptyBody: 'When an AI agent submits an action requiring approval it will appear here.',
+    emptyBtn: 'Submit a test action →',
+    statsFooter: (n: number) => `${n} item${n !== 1 ? 's' : ''} · click Refresh to update`,
+    colId: 'Approval ID',
+    colVendor: 'Vendor',
+    colAmount: 'Amount',
+    colStatus: 'Status',
+    colRisk: 'Risk',
+  },
+};
 
 type Approval = { id: string; vendor: string; amount: string; status: string; risk: string; };
 type ApprovalsResponse = { approvals: Approval[] };
@@ -26,6 +66,9 @@ const RISK_CLS: Record<string, string> = {
 };
 
 export default function FinanceGovernanceLiveApprovalsPage() {
+  const lang = useAppLanguage();
+  const t = FIN_T[lang];
+
   const [data, setData] = useState<ApprovalsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,16 +99,14 @@ export default function FinanceGovernanceLiveApprovalsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-2xl">
-          <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live approval queue</p>
-          <h1 className="mt-2 text-4xl font-bold md:text-5xl">Pending finance approvals</h1>
-          <p className="mt-3 text-base leading-7 text-slate-400">
-            รายการ payment ที่รอการอนุมัติ — ตรวจสอบ risk level และกดอนุมัติหรือปฏิเสธ
-          </p>
+          <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">{t.eyebrow}</p>
+          <h1 className="mt-2 text-4xl font-bold md:text-5xl">{t.title}</h1>
+          <p className="mt-3 text-base leading-7 text-slate-400">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {lastRefresh && !loading && (
             <span className="text-[11px] text-slate-600">
-              updated {lastRefresh.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+              {t.updated(lastRefresh.toLocaleTimeString(lang === 'th' ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit' }))}
             </span>
           )}
           <button
@@ -73,13 +114,13 @@ export default function FinanceGovernanceLiveApprovalsPage() {
             disabled={loading}
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:text-white disabled:opacity-40"
           >
-            {loading ? '…' : 'Refresh ↻'}
+            {loading ? '…' : t.refresh}
           </button>
           <Link
             href="/finance-governance/live/actions"
             className="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
           >
-            + Submit action
+            {t.submit}
           </Link>
         </div>
       </div>
@@ -88,7 +129,7 @@ export default function FinanceGovernanceLiveApprovalsPage() {
       {error && (
         <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">
           {error}
-          <button onClick={() => void load()} className="ml-3 underline hover:no-underline">ลองใหม่</button>
+          <button onClick={() => void load()} className="ml-3 underline hover:no-underline">{t.retry}</button>
         </div>
       )}
 
@@ -97,11 +138,11 @@ export default function FinanceGovernanceLiveApprovalsPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-white/10 bg-white/5 text-slate-400">
             <tr>
-              <th className="px-5 py-4 font-semibold">Approval ID</th>
-              <th className="px-5 py-4 font-semibold">Vendor</th>
-              <th className="px-5 py-4 font-semibold">Amount</th>
-              <th className="px-5 py-4 font-semibold">Status</th>
-              <th className="px-5 py-4 font-semibold">Risk</th>
+              <th className="px-5 py-4 font-semibold">{t.colId}</th>
+              <th className="px-5 py-4 font-semibold">{t.colVendor}</th>
+              <th className="px-5 py-4 font-semibold">{t.colAmount}</th>
+              <th className="px-5 py-4 font-semibold">{t.colStatus}</th>
+              <th className="px-5 py-4 font-semibold">{t.colRisk}</th>
             </tr>
           </thead>
           <tbody>
@@ -110,13 +151,13 @@ export default function FinanceGovernanceLiveApprovalsPage() {
             ) : approvals.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-16 text-center">
-                  <p className="text-base font-semibold text-slate-300">ไม่มีรายการรออนุมัติ</p>
-                  <p className="mt-1 text-sm text-slate-500">เมื่อ AI agent ส่ง action ที่ต้องการอนุมัติ จะปรากฏที่นี่</p>
+                  <p className="text-base font-semibold text-slate-300">{t.emptyTitle}</p>
+                  <p className="mt-1 text-sm text-slate-500">{t.emptyBody}</p>
                   <Link
                     href="/finance-governance/live/actions"
                     className="mt-4 inline-flex rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-200 transition hover:bg-emerald-400/20"
                   >
-                    ส่ง action ทดสอบ →
+                    {t.emptyBtn}
                   </Link>
                 </td>
               </tr>
@@ -141,7 +182,7 @@ export default function FinanceGovernanceLiveApprovalsPage() {
 
       {/* Stats footer */}
       {!loading && approvals.length > 0 && (
-        <p className="mt-3 text-xs text-slate-600">{approvals.length} รายการ · กด Refresh เพื่ออัปเดต</p>
+        <p className="mt-3 text-xs text-slate-600">{t.statsFooter(approvals.length)}</p>
       )}
     </main>
   );
