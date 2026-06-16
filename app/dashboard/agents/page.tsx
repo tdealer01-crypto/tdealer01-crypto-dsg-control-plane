@@ -35,7 +35,7 @@ export default function AgentsPage() {
         }
 
         const data = await response.json();
-        setAgents(data.agents || []);
+        setAgents(data.agents || data.items || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load agents");
       } finally {
