@@ -1117,7 +1117,17 @@ export default function HermesAgentPage() {
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            // Stream ended — if message still has no content, show fallback
+            setMessages((prev) =>
+              prev.map((item) =>
+                item.id === agentMsgId && !item.content
+                  ? { ...item, content: 'Hermes ไม่ได้รับคำตอบ — อาจ timeout หรือ LLM ไม่ตอบ ลองส่งใหม่อีกครั้ง' }
+                  : item,
+              ),
+            );
+            break;
+          }
           buffer += decoder.decode(value, { stream: true });
           const events = buffer.split('\n\n');
           buffer = events.pop() ?? '';

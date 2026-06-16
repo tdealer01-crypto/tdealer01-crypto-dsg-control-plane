@@ -11,8 +11,8 @@ type ModelSpec = {
 const FREE_MODELS: ModelSpec[] = [
   {
     id: 'qwen-planner',
-    openRouterId: 'qwen/qwen-2.5-7b-instruct:free',
-    strengths: ['planning', 'tool-selection', 'thai'],
+    openRouterId: 'nousresearch/hermes-3-llama-3.1-405b:free',
+    strengths: ['planning', 'tool-selection', 'thai', 'json', 'function-calling'],
     maxTokens: 2048,
   },
   {
