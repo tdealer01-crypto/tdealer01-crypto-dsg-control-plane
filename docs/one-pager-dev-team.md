@@ -55,7 +55,7 @@ console.log(result.audit_id, result.proof.proof_hash);
 | Replay protection (nonce/idempotency) | `lib/gateway/replay-protection.ts` | Duplicate execution |
 | Quota enforcement | `lib/usage/quota.ts` | Runaway loops / cost overruns |
 | Actor authorization | `lib/agent-auth.ts` | Unauthorized agent |
-| Deterministic constraints (24 Z3 theorems) | `tools/proofs/` | Invariant violations |
+| Deterministic constraints (8 Z3 theorems: 5 core + 3 DeFi) | `tools/proofs/` | Invariant violations |
 
 ---
 

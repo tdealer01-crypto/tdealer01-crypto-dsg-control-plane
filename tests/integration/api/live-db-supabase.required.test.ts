@@ -158,6 +158,7 @@ describeLive('LIVE DB GATE: Supabase/Postgres production safety', () => {
         agent_id: orgA.agentId,
         decision: 'ALLOW',
         reason: 'immutability fixture',
+        policy_version: 'v1',
         metadata: { before: true },
         evidence: { immutable_test: true },
       })
