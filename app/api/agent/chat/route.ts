@@ -54,7 +54,7 @@ const OPENAI_TOOLS = [
   { type: 'function', function: { name: 'queue_command', description: TOOL_DESCRIPTION, parameters: TOOL_PARAMETERS } },
 ];
 
-const DEFAULT_OPENROUTER_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const DEFAULT_OPENROUTER_MODEL = 'qwen/qwen-2.5-7b-instruct:free';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
 function activeProvider(): { provider: 'openrouter' | 'anthropic'; model: string } | null {
@@ -79,7 +79,7 @@ export async function GET() {
     stream: 'text/event-stream — {"type":"text","delta":"..."} | {"type":"command",...} | {"type":"done"} | {"type":"error",...}',
     provider: active?.provider ?? 'none',
     model: active?.model ?? null,
-    note: 'Set OPENROUTER_API_KEY for free models (default nemotron-3-ultra:free) or ANTHROPIC_API_KEY. Override the model with DSG_DADBOT_MODEL.',
+    note: 'Set OPENROUTER_API_KEY for free models (default qwen-2.5-7b:free) or ANTHROPIC_API_KEY. Override the model with DSG_DADBOT_MODEL.',
   });
 }
 
