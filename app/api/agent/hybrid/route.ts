@@ -109,7 +109,7 @@ async function executeRealStep(step: TaskStep, context: Record<string, any>): Pr
   } catch (error) {
     return {
       success: false,
-      error: `Optional Stagehand package is not installed: ${error instanceof Error ? error.message : String(error)}`,
+      error: 'Optional Stagehand package is not installed. Install @browserbasehq/stagehand to enable browser steps.',
     };
   }
 
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: 'Internal execution error',
         durationMs: Date.now() - startTime,
       },
       { status: 500 },

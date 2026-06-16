@@ -411,7 +411,7 @@ export async function POST(request: NextRequest) {
       risk_score: 0,
       risk_level: 'low',
       matched_rule_ids: [],
-      error: err instanceof Error ? err.message : 'Unknown error',
+      error: 'evaluation_error',
     }, { status: 500, headers: corsHeaders });
   }
 }
