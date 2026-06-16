@@ -115,9 +115,18 @@ export default function ApprovalsPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Approvals</h1>
-          <p className="text-gray-600">Review and approve agent actions before execution</p>
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Approvals</h1>
+            <p className="text-gray-600">Review and approve agent actions before execution</p>
+          </div>
+          <button
+            onClick={fetchApprovals}
+            disabled={loading}
+            className="self-start sm:self-auto rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-blue-600 hover:text-blue-600 transition disabled:opacity-40"
+          >
+            {loading ? 'Loading…' : 'Refresh ↻'}
+          </button>
         </div>
 
         {/* Stats */}
@@ -153,12 +162,50 @@ export default function ApprovalsPage() {
 
         {/* Approvals List */}
         {loading ? (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-600">
-            Loading approvals...
+          <div className="space-y-4">
+            {[1, 2, 3].map(n => (
+              <div key={n} className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-gray-200 animate-pulse">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex gap-3">
+                      <div className="h-5 w-5 rounded-full bg-gray-200" />
+                      <div className="h-5 w-48 rounded bg-gray-200" />
+                      <div className="h-5 w-16 rounded-full bg-gray-200" />
+                    </div>
+                    <div className="h-4 w-64 rounded bg-gray-100" />
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <div className="h-9 w-24 rounded-lg bg-gray-200" />
+                    <div className="h-9 w-20 rounded-lg bg-gray-200" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredApprovals.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-600">
-            No {filter === 'all' ? 'approvals' : `${filter} approvals`} found
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <p className="text-lg font-semibold text-gray-700">
+              {filter === 'pending' ? 'ไม่มีรายการรออนุมัติ' : `No ${filter} approvals`}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              {filter === 'pending'
+                ? 'เมื่อ AI agent ส่ง STABILIZE decision จะปรากฏที่นี่เพื่อรอการอนุมัติ'
+                : `Switch to "All" to see every approval request`}
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                onClick={() => setFilter('all')}
+                className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 text-sm font-semibold hover:bg-blue-50 transition"
+              >
+                ดูทั้งหมด
+              </button>
+              <button
+                onClick={fetchApprovals}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+              >
+                Refresh ↻
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
