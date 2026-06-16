@@ -279,7 +279,7 @@ export default function HomePage() {
               { key: 'solverName', label: 'solver.name', availability: 'present', detail: 'Observed solver.name: static_check.' },
               { key: 'solverVersion', label: 'solver.version', availability: 'present', detail: 'Observed solver.version: dsg-deterministic-ts-0.0.0.' },
               { key: 'constraintsChecked', label: 'constraintsChecked', availability: 'present', detail: 'Observed constraintsChecked: 8.' },
-              { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Z3 runs at design time (24 theorems proved UNSAT); not invoked per-request in production.' },
+              { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Z3 runs at design time (8 theorems: 5 core policy + 3 DeFi, proved UNSAT); not invoked per-request in production.' },
               { key: 'jwtJwks', label: 'JWT/JWKS auth completion', availability: 'planned', detail: 'Supabase session auth is live; full JWT/JWKS standalone completion not yet claimed.' },
               { key: 'worm', label: 'WORM-certified storage', availability: 'planned', detail: 'SHA-256 hash chain is tamper-evident by construction; WORM-certified external storage not yet claimed.' },
             ]}
