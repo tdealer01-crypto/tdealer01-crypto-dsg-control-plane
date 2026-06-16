@@ -24,7 +24,7 @@ export async function GET(
   const admin = getSupabaseAdmin();
 
   const { data: policy, error } = await (admin
-    .from('policies' as any)
+    .from('policies_markdoc' as any)
     .select('id, name, description, markdown_content, version, status, content_hash, policy_hash, created_at, updated_at')
     .eq('org_id', access.orgId)
     .eq('id', id)
@@ -73,7 +73,7 @@ export async function POST(
   const admin = getSupabaseAdmin();
 
   const { data: policy, error } = await (admin
-    .from('policies' as any)
+    .from('policies_markdoc' as any)
     .select('markdown_content, name, version, policy_hash')
     .eq('org_id', access.orgId)
     .eq('id', id)

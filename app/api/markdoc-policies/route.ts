@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   const admin = getSupabaseAdmin();
   const { data: policies, error } = await (admin
-    .from('policies' as any)
+    .from('policies_markdoc' as any)
     .select('id, name, description, version, status, is_default, created_at, updated_at')
     .eq('org_id', access.orgId)
     .eq('status', 'active')
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { data: created, error } = await (admin
-      .from('policies' as any)
+      .from('policies_markdoc' as any)
       .insert({
         org_id: access.orgId,
         name: name.trim(),
