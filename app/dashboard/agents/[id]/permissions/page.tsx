@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 const AVAILABLE_PERMISSIONS = [
@@ -43,28 +43,44 @@ const AVAILABLE_PERMISSIONS = [
   },
 ];
 
+function normalizeParamId(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const id = String(raw ?? "").trim();
+  if (!id || id === "undefined" || id === "null") return "";
+  return id;
+}
+
 export default function PermissionsPage() {
-  const router = useRouter();
   const params = useParams();
-  const agentId = params.id as string;
+  const agentId = normalizeParamId(params.id);
 
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [warning, setWarning] = useState("");
 
   useEffect(() => {
     async function loadPermissions() {
+      if (!agentId) {
+        setError("Invalid agent id. Go back to Agents and open Permissions from a real agent card.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/agents/${agentId}/permissions`);
+        const response = await fetch(`/api/agents/${encodeURIComponent(agentId)}/permissions`);
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          throw new Error(`Failed to load permissions: ${response.status}`);
+          throw new Error(data.error || `Failed to load permissions: ${response.status}`);
         }
 
-        const data = await response.json();
-        setPermissions(data.permissions || []);
+        setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+        if (data.warning) {
+          setWarning(String(data.warning));
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load permissions"
@@ -74,40 +90,44 @@ export default function PermissionsPage() {
       }
     }
 
-    if (agentId) {
-      loadPermissions();
-    }
+    loadPermissions();
   }, [agentId]);
 
   const togglePermission = (permissionId: string) => {
     setPermissions((prev) =>
       prev.includes(permissionId)
-        ? prev.filter((p) => p !== permissionId)
+        ? prev.filter((permission) => permission !== permissionId)
         : [...prev, permissionId]
     );
   };
 
   const handleSave = async () => {
+    if (!agentId) {
+      setError("Invalid agent id. Go back to Agents and open Permissions from a real agent card.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
 
     try {
-      const response = await fetch(`/api/agents/${agentId}/permissions`, {
+      const response = await fetch(`/api/agents/${encodeURIComponent(agentId)}/permissions`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          permissions: permissions,
+          permissions,
         }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to save permissions");
       }
 
+      setPermissions(Array.isArray(data.permissions) ? data.permissions : permissions);
       setSuccess("Permissions updated successfully");
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
@@ -129,7 +149,6 @@ export default function PermissionsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="mb-8">
           <Link
             href="/dashboard/agents"
@@ -143,12 +162,18 @@ export default function PermissionsPage() {
           <p className="mt-2 text-gray-600">
             Control what this agent can do
           </p>
+          {agentId && <p className="mt-1 font-mono text-xs text-gray-400">{agentId}</p>}
         </div>
 
-        {/* Messages */}
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800">
             {error}
+          </div>
+        )}
+
+        {warning && !error && (
+          <div className="mb-4 rounded-lg bg-amber-50 p-4 text-amber-800">
+            Warning: {warning}
           </div>
         )}
 
@@ -158,14 +183,12 @@ export default function PermissionsPage() {
           </div>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="text-center text-gray-600">
             Loading permissions...
           </div>
         )}
 
-        {/* Permissions */}
         {!loading && (
           <div className="space-y-8">
             {Object.entries(groupedPermissions).map(
@@ -188,6 +211,7 @@ export default function PermissionsPage() {
                             type="checkbox"
                             checked={permissions.includes(perm.id)}
                             onChange={() => togglePermission(perm.id)}
+                            disabled={!agentId}
                             className="mt-1 h-4 w-4 rounded border-gray-300"
                           />
                           <div className="flex-1">
@@ -209,7 +233,6 @@ export default function PermissionsPage() {
               )
             )}
 
-            {/* Summary */}
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
               <h3 className="font-semibold text-blue-900">
                 Granted Permissions ({permissions.length})
@@ -230,11 +253,10 @@ export default function PermissionsPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-4">
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || !agentId}
                 className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Permissions"}
