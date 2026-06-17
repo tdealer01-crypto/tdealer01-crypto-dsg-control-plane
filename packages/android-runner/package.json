@@ -1,0 +1,26 @@
+{
+  "name": "@dsg/android-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted Android/Appium runner for executing Android actions under DSG governance.",
+  "type": "module",
+  "bin": {
+    "dsg-android-runner": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "webdriverio": "^9.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.20.0",
+    "typescript": "5.8.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
