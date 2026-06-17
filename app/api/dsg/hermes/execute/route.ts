@@ -3,10 +3,10 @@
  *
  * Low-latency Hermes chat endpoint for the dashboard.
  *
- * This endpoint is intentionally deterministic-first. It executes the selected
- * DSG tools, streams every step result/error, and always emits a final
- * assistant_reply before done. Optional LLM synthesis must never block the
- * chat path long enough to hit the Vercel function timeout.
+ * This endpoint is deterministic-first. It executes the selected DSG tools,
+ * streams every step result/error, and always emits a final assistant_reply
+ * before done. LLM synthesis must not block the chat path long enough to hit
+ * the Vercel function timeout.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -120,10 +120,7 @@ function summarize(message: string, outcomes: StepOutcome[]): string {
   return lines.join("\n");
 }
 
-async function executeStep(
-  step: AgentPlanStep,
-  context: AgentContext,
-): Promise<StepOutcome> {
+async function executeStep(step: AgentPlanStep, context: AgentContext): Promise<StepOutcome> {
   const tool = DSG_TOOLS.find((candidate) => candidate.id === step.toolId);
   if (!tool) {
     return {
@@ -153,6 +150,11 @@ async function executeStep(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function finalDecision(outcomes: StepOutcome[]) {
+  if (outcomes.length === 0) return "REVIEW";
+  return outcomes.every((item) => item.ok) ? "ALLOW" : "REVIEW";
 }
 
 export async function POST(req: NextRequest) {
@@ -210,12 +212,13 @@ export async function POST(req: NextRequest) {
           return;
         }
 
+        const preflightDecision = preflight.decision === "review" ? "REVIEW" : "ALLOW";
         send({ type: "session.status_running" });
         send({
           type: "preflight",
-          decision: "ALLOW",
+          decision: preflightDecision,
           reason: preflight.reason ?? "Hermes deterministic plan allowed",
-          risk: preflight.risk ?? "LOW",
+          risk: preflight.decision === "review" ? "MEDIUM" : "LOW",
         });
         send({
           type: "assistant_reply",
@@ -263,7 +266,7 @@ export async function POST(req: NextRequest) {
           type: "assistant_reply",
           reply: gate.allowed ? finalReply : `DSG Answer Gate: ${gate.final_decision}\n\n${finalReply}`,
           model: "hermes-deterministic-summary",
-          decision: failedDecision(outcomes),
+          decision: finalDecision(outcomes),
           evidenceCount: outcomes.length,
         });
         send({ type: "done" });
@@ -285,9 +288,4 @@ export async function POST(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
-}
-
-function failedDecision(outcomes: StepOutcome[]) {
-  if (outcomes.length === 0) return "REVIEW";
-  return outcomes.every((item) => item.ok) ? "ALLOW" : "REVIEW";
 }
