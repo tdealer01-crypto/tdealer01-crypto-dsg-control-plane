@@ -23,10 +23,12 @@ export async function executeTaskOnAgent(
 ): Promise<AgentExecutionResult> {
   const startTime = Date.now();
 
-  // Route to Android executor if specified. Keep the Android/WebdriverIO stack
-  // out of the default serverless bundle; it is only loaded for Android tasks.
+  // Android device control is intentionally not executed inside the hosted
+  // Hermes multi-agent route. It must run through the self-hosted Android
+  // Runner so Appium/WebDriverIO and real-device access stay out of the core
+  // serverless bundle and out of hosted production by default.
   if (task.executorType === 'android') {
-    return executeAndroidTask(task, context, androidExecutorConfig);
+    return blockHostedAndroidTask(task, context, androidExecutorConfig, startTime);
   }
 
   // Default to browser executor
@@ -146,108 +148,35 @@ export async function executeTaskOnAgent(
   }
 }
 
-async function executeAndroidTask(
+function blockHostedAndroidTask(
   task: Task,
   context: AgentExecutorContext,
-  config?: { appPackage: string; allowedApps?: string[] },
-): Promise<AgentExecutionResult> {
-  const startTime = Date.now();
+  config: { appPackage: string; allowedApps?: string[] } | undefined,
+  startTime: number,
+): AgentExecutionResult {
+  const evidenceHash = sha256Json({
+    taskId: task.id,
+    agentId: context.agentId,
+    batchId: context.batchId,
+    executorType: 'android',
+    decision: 'BLOCK',
+    status: 'SELF_HOSTED_RUNNER_REQUIRED',
+    appPackage: config?.appPackage ?? null,
+    allowedApps: config?.allowedApps ?? [],
+    touchedRealDevice: false,
+    hostedCoreBoundary: true,
+    version: 'android-runner-boundary-v1',
+  });
 
-  if (!config?.appPackage) {
-    return {
-      agentId: context.agentId,
-      taskId: task.id,
-      status: 'BLOCKED',
-      decision: 'BLOCK',
-      error: 'ANDROID_APP_PACKAGE_NOT_PROVIDED',
-      executionTimeMs: Date.now() - startTime,
-    };
-  }
-
-  try {
-    const { executeAndroidSafeDomCommand } = await import('@/lib/executors/android-executor');
-
-    const frameId = `android_frame_${task.id}`;
-    const desiredOp: SafeDomOperation =
-      task.operation === 'submit' || task.operation === 'click' || task.operation === 'send'
-        ? 'click'
-        : 'type';
-
-    const command: SafeDomCommand = {
-      frameId,
-      elementId: `${frameId}-e001`,
-      operation: desiredOp,
-      ...(desiredOp === 'type' ? { value: task.target } : {}),
-    };
-
-    const result = await executeAndroidSafeDomCommand({
-      appPackage: config.appPackage,
-      frameId,
-      command,
-      allowedApps: config.allowedApps,
-      mode: 'dry_run',
-      actionDescriptor: {
-        domain: task.domain,
-        operation: task.operation,
-        target: task.target,
-        dataSensitivity: task.dataSensitivity,
-        externalEffect: task.externalEffect,
-        reversibility: task.reversibility,
-        userAuthorized: task.userAuthorized,
-        planAllowed: task.planAllowed,
-        hasFreshEvidence: task.hasFreshEvidence,
-        hasRollback: task.hasRollback,
-      },
-    });
-
-    const executionTimeMs = Date.now() - startTime;
-    const evidenceHash = sha256Json({
-      taskId: task.id,
-      agentId: context.agentId,
-      batchId: context.batchId,
-      decision: result.decision,
-      status: result.status,
-      reason: result.reason,
-      appPackage: result.trace.appPackage,
-      manifestElementCount: result.trace.manifestElementCount,
-      domMirrorHash: result.trace.domMirrorHash,
-      touchedRealDevice: result.trace.touchedRealDevice,
-      version: 'android-execution-evidence-v1',
-    });
-
-    if (result.ok && result.decision === 'ALLOW') {
-      return {
-        agentId: context.agentId,
-        taskId: task.id,
-        status:
-          result.status === 'DRY_RUN_COMPLETED' || result.status === 'COMPLETED'
-            ? 'SUCCESS'
-            : 'FAILED',
-        decision: result.decision,
-        executionTimeMs,
-        evidenceHash,
-      };
-    }
-
-    return {
-      agentId: context.agentId,
-      taskId: task.id,
-      status: 'BLOCKED',
-      decision: result.decision,
-      error: result.reason || 'POLICY_BLOCKED',
-      executionTimeMs,
-      evidenceHash,
-    };
-  } catch (error) {
-    return {
-      agentId: context.agentId,
-      taskId: task.id,
-      status: 'FAILED',
-      decision: 'BLOCK',
-      error: error instanceof Error ? error.message : 'UNKNOWN_ERROR',
-      executionTimeMs: Date.now() - startTime,
-    };
-  }
+  return {
+    agentId: context.agentId,
+    taskId: task.id,
+    status: 'BLOCKED',
+    decision: 'BLOCK',
+    error: 'ANDROID_EXECUTOR_REQUIRES_SELF_HOSTED_RUNNER',
+    executionTimeMs: Date.now() - startTime,
+    evidenceHash,
+  };
 }
 
 /**
