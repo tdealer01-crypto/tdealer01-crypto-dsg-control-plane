@@ -1,7 +1,6 @@
 import type { Task, AgentExecutionResult } from './types';
 import { buildDryRunHermesRomContext } from '@/lib/dsg/hermes-e2e/rom';
 import { executeBrowserbaseSafeDomCommand } from '@/lib/dsg/hermes-e2e/browserbase-safe-adapter';
-import { executeAndroidSafeDomCommand } from '@/lib/executors/android-executor';
 import { buildHermesDomMirror } from '@/lib/dsg/hermes-e2e/dom-mirror';
 import type { BrowserbaseSafeCompletion, BrowserbaseSafeExecutionMode } from '@/lib/dsg/hermes-e2e/types';
 import type { RawDomElement, SafeDomCommand, SafeDomOperation } from '@/lib/dsg/safe-dom/types';
@@ -24,7 +23,8 @@ export async function executeTaskOnAgent(
 ): Promise<AgentExecutionResult> {
   const startTime = Date.now();
 
-  // Route to Android executor if specified
+  // Route to Android executor if specified. Keep the Android/WebdriverIO stack
+  // out of the default serverless bundle; it is only loaded for Android tasks.
   if (task.executorType === 'android') {
     return executeAndroidTask(task, context, androidExecutorConfig);
   }
@@ -165,6 +165,8 @@ async function executeAndroidTask(
   }
 
   try {
+    const { executeAndroidSafeDomCommand } = await import('@/lib/executors/android-executor');
+
     const frameId = `android_frame_${task.id}`;
     const desiredOp: SafeDomOperation =
       task.operation === 'submit' || task.operation === 'click' || task.operation === 'send'
