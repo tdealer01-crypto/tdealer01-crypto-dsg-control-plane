@@ -2,24 +2,14 @@
 
 Browserbase automation service package for lead generation, scraping, testing, and monitoring.
 
-This package wraps Browserbase Stagehand into reusable scripts and a CLI under one consistent env contract:
+## Environment
+
 - `BROWSERBASE_PROJECT_ID`
 - `BROWSERBASE_API_KEY`
 
-## Scripts
-
-- `npm run lead-gen` — collect leads from a listing page
-- `npm run scrape` — extract content by selector
-- `npm run monitor` — page health/readiness sample
-- `npm run form-fill` — fill and optionally submit a form
-- `npm run screenshot` — full-page screenshot capture
-
-## Example usage
+## Usage — CLI
 
 ```bash
-export BROWSERBASE_PROJECT_ID="your-project-id"
-export BROWSERBASE_API_KEY="your-api-key"
-
 npm run lead-gen -- \
   --url "https://example.com/companies" \
   --list-selector ".company-card" \
@@ -27,9 +17,22 @@ npm run lead-gen -- \
   --max-items 20
 ```
 
-## Output
+## Usage — MCP server
 
-Each command prints a JSON result plus a Browserbase recording URL:
+Start the MCP stdio server:
+
+```bash
+npm run mcp
 ```
-https://browserbase.com/sessions/<sessionId>
-```
+
+Then configure this server in your MCP client. Exposed tools:
+
+- `browser_navigate`
+- `browser_screenshot`
+- `browser_click`
+- `browser_scrape`
+- `browser_lead_gen`
+- `browser_monitor`
+- `browser_form_fill`
+
+Valid credentials are required. Actual browser execution depends on the runtime platform (Stagehand/Playwright-supported environment).
