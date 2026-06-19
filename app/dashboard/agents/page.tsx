@@ -13,6 +13,25 @@ interface Agent {
   last_used_at?: string;
 }
 
+type RawAgent = Partial<Agent> & {
+  agent_id?: string;
+  agentId?: string;
+};
+
+function normalizeAgent(raw: RawAgent): Agent | null {
+  const id = String(raw.id ?? raw.agent_id ?? raw.agentId ?? "").trim();
+  if (!id || id === "undefined" || id === "null") return null;
+
+  return {
+    id,
+    name: String(raw.name ?? id),
+    status: String(raw.status ?? "active"),
+    created_at: String(raw.created_at ?? new Date().toISOString()),
+    api_key_hash: raw.api_key_hash,
+    last_used_at: raw.last_used_at,
+  };
+}
+
 export default function AgentsPage() {
   const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -35,7 +54,12 @@ export default function AgentsPage() {
         }
 
         const data = await response.json();
+<<<<<<< HEAD
         setAgents(Array.isArray(data.agents) ? data.agents : Array.isArray(data.items) ? data.items : []);
+=======
+        const rawAgents = Array.isArray(data.agents) ? data.agents : Array.isArray(data.items) ? data.items : [];
+        setAgents(rawAgents.map(normalizeAgent).filter(Boolean) as Agent[]);
+>>>>>>> origin/main
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load agents");
       } finally {
@@ -67,7 +91,6 @@ export default function AgentsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Agents</h1>
@@ -83,19 +106,16 @@ export default function AgentsPage() {
           </Link>
         </div>
 
-        {/* Error message */}
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800">
             {error}
           </div>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="text-center text-gray-600">Loading agents...</div>
         )}
 
-        {/* Empty state */}
         {!loading && agents.length === 0 && !error && (
           <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
             <p className="text-gray-600">No agents yet</p>
@@ -111,7 +131,6 @@ export default function AgentsPage() {
           </div>
         )}
 
-        {/* Agents Grid */}
         {!loading && agents.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
@@ -137,7 +156,6 @@ export default function AgentsPage() {
                   </span>
                 </div>
 
-                {/* Agent Details */}
                 <div className="space-y-2 text-sm text-gray-600">
                   <div>
                     <p className="text-xs font-medium text-gray-500">
@@ -153,20 +171,15 @@ export default function AgentsPage() {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="mt-6 flex gap-2">
                   <button
-                    onClick={() =>
-                      router.push(`/dashboard/agents/${agent.id}/permissions`)
-                    }
+                    onClick={() => router.push(`/dashboard/agents/${encodeURIComponent(agent.id)}/permissions`)}
                     className="flex-1 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-100"
                   >
                     Permissions
                   </button>
                   <button
-                    onClick={() =>
-                      router.push(`/dashboard/agents/${agent.id}/settings`)
-                    }
+                    onClick={() => router.push(`/dashboard/agents/${encodeURIComponent(agent.id)}/settings`)}
                     className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
                   >
                     Settings

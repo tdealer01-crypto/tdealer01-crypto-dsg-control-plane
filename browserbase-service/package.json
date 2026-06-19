@@ -4,6 +4,7 @@
   "description": "Browserbase automation service package for lead gen, scraping, testing, and monitoring",
   "main": "dist/index.js",
   "type": "module",
+<<<<<<< HEAD
   "bin": {
     "browserbase-automation": "./dist/cli.js",
     "browserbase-automation-mcp": "./dist/mcp-server.js"
@@ -12,12 +13,22 @@
     "build": "tsc",
     "dev": "tsx watch src/cli.ts",
     "mcp": "tsx src/mcp-server.ts",
+=======
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/test.ts",
+>>>>>>> origin/main
     "lead-gen": "tsx src/scripts/lead-gen.ts",
     "scrape": "tsx src/scripts/scrape.ts",
     "monitor": "tsx src/scripts/monitor.ts",
     "form-fill": "tsx src/scripts/form-fill.ts",
+<<<<<<< HEAD
     "screenshot": "tsx src/scripts/screenshot.ts",
     "test": "tsx src/test.ts"
+=======
+    "screenshot": "tsx src/scripts/screenshot.ts"
+>>>>>>> origin/main
   },
   "keywords": [
     "browserbase",
@@ -32,10 +43,14 @@
   "dependencies": {
     "@browserbasehq/sdk": "^2.0.0",
     "@browserbasehq/stagehand": "^1.0.0",
+<<<<<<< HEAD
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.22.4",
     "p-limit": "^5.0.0",
     "p-retry": "^6.2.0"
+=======
+    "zod": "^3.22.4"
+>>>>>>> origin/main
   },
   "devDependencies": {
     "typescript": "^5.4.0",
@@ -45,4 +60,8 @@
   "engines": {
     "node": ">=18.0.0"
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
