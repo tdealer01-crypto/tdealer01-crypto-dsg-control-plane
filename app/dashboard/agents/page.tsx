@@ -54,12 +54,8 @@ export default function AgentsPage() {
         }
 
         const data = await response.json();
-<<<<<<< HEAD
-        setAgents(Array.isArray(data.agents) ? data.agents : Array.isArray(data.items) ? data.items : []);
-=======
         const rawAgents = Array.isArray(data.agents) ? data.agents : Array.isArray(data.items) ? data.items : [];
         setAgents(rawAgents.map(normalizeAgent).filter(Boolean) as Agent[]);
->>>>>>> origin/main
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load agents");
       } finally {
