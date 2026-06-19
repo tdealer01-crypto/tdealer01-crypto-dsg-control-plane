@@ -155,7 +155,7 @@ describe('Phase 2 Customer Workflow - Complete E2E', () => {
       const fs = await import('fs/promises');
       const content = await fs.readFile('app/dashboard/agents/page.tsx', 'utf-8');
       
-      expect(content).toContain('data.agents || data.items || []');
+      expect(content).toContain('Array.isArray(data.agents) ? data.agents : Array.isArray(data.items) ? data.items : []');
     });
 
     it('Fix #3: Markdoc preview claim is accurate', async () => {

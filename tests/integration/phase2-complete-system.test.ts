@@ -120,6 +120,6 @@ describe('Three Bug Fixes - Verification', () => {
     const fs = await import('fs/promises');
     const content = await fs.readFile('app/dashboard/agents/page.tsx', 'utf-8');
 
-    expect(content).toContain('data.agents || data.items || []');
+    expect(content).toContain('Array.isArray(data.agents) ? data.agents : Array.isArray(data.items) ? data.items : []');
   });
 });

@@ -50,10 +50,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Policy render error:', error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Render failed',
-        stack: process.env.NODE_ENV === 'development' ? (error as any).stack : undefined,
-      },
+      { error: 'Render failed' },
       { status: 500 }
     );
   }
