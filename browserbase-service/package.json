@@ -1,0 +1,40 @@
+{
+  "name": "@dsg/browserbase-automation",
+  "version": "1.0.0",
+  "description": "Browserbase automation service package for lead gen, scraping, testing, and monitoring",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/test.ts",
+    "lead-gen": "tsx src/scripts/lead-gen.ts",
+    "scrape": "tsx src/scripts/scrape.ts",
+    "monitor": "tsx src/scripts/monitor.ts",
+    "form-fill": "tsx src/scripts/form-fill.ts",
+    "screenshot": "tsx src/scripts/screenshot.ts"
+  },
+  "keywords": [
+    "browserbase",
+    "automation",
+    "lead-generation",
+    "web-scraping",
+    "testing",
+    "monitoring"
+  ],
+  "author": "DSG Team",
+  "license": "MIT",
+  "dependencies": {
+    "@browserbasehq/sdk": "^2.0.0",
+    "@browserbasehq/stagehand": "^1.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.11.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
