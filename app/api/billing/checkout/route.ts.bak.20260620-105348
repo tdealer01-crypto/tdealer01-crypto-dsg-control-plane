@@ -91,8 +91,7 @@ export async function GET(request: Request) {
       .eq('auth_user_id', user.id)
       .maybeSingle();
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
+    if (!profile?.is_active || !profile?.org_id) {
       return NextResponse.redirect(`${appUrl}/login?next=/marketplace/skills`);
     }
 
@@ -165,9 +164,8 @@ export async function POST(request: Request) {
       .eq('auth_user_id', user.id)
       .maybeSingle();
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
-      return NextResponse.json({ error: 'Missing organization' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
+    if (!profile?.is_active || !profile?.org_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
     }
 
     if (orgId && orgId !== profile.org_id) {

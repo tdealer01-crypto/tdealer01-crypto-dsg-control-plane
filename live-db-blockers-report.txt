@@ -1,0 +1,685 @@
+# Live DB Blockers Report
+
+## Git
+ M browserbase-service/package.json
+?? app/api/billing/checkout/route.ts.bak.20260620-105122
+?? app/api/billing/checkout/route.ts.bak.20260620-105348
+?? browserbase-service/src/stripe-tools.ts
+?? ci-failure-report-pr-755.txt
+?? collect-pr-755-failures.sh
+?? fix-billing-checkout-test-v3.sh
+?? fix-billing-checkout-trial-upgrade-v2.sh
+?? fix-billing-checkout-trial-upgrade.sh
+?? fix-billing-checkout.patch
+?? inspect-and-prepare-live-db-fix.sh
+?? inspect-pr-755-check-runs.sh
+?? live-db-blockers-report.txt
+?? merge-pr-755-if-ready.sh
+?? pr-755-check-runs-detail.txt
+?? tests/unit/billing/checkout-route.test.ts.bak.20260620-112404
+?? wait-pr-755-and-merge.sh
+
+## incrementQuota references
+app/api/approval-queue/request/route.ts:61:    // 1. Check org quota (free: 100/month, pro: unlimited)
+app/api/capacity/route.ts:61:    // Fire quota alert email (once per threshold per billing period, cooldown via billing_events)
+app/api/capacity/route.ts:64:        const alertEventId = `quota-alert-${access.orgId}-${periodKey}-${threshold}`;
+app/api/capacity/route.ts:83:            event_type: `quota_alert_${Math.round(threshold * 100)}`,
+app/api/compliance-evidence-pack/route.ts:24:  'Revenue monotonicity: upgrading plan never decreases quota',
+app/api/compliance-evidence-pack/route.ts:33:  'Plan transition: downgrade never grants higher quota',
+app/api/cron/usage-alerts/route.ts:4: * Runs daily. Scans all orgs for quota consumption > 80%.
+app/api/cron/usage-alerts/route.ts:33:    ? `[DSG ONE] You've used ${snapshot.pct}% of your ${snapshot.plan} quota`
+app/api/cron/usage-alerts/route.ts:34:    : `[DSG ONE] ${snapshot.pct}% of your monthly quota used`;
+app/api/dsg-bridge/ai-gateway/route.ts:10:// control-plane does not need OPENAI_API_KEY — all quota handled by dsg-one-v1.
+app/api/realtime-search/route.ts:38:// ── Brave search (alternative, no quota issues) ────────────────────────────
+app/api/settings/quota/route.ts:4:import { getEffectiveExecutionQuotaForOrg, buildQuotaSummary } from '../../../../lib/billing/quota-policy';
+app/api/settings/quota/route.ts:12:// Read-only quota policy surface. Additive route: does NOT enforce or mutate
+app/api/settings/quota/route.ts:13:// quota. Existing enforcement lives in app/api/usage and app/api/execute on
+app/api/settings/quota/route.ts:36:    { quota: { ...summary, windowDays: policy.windowDays } },
+app/api/spine/execute/route.ts:9:import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
+app/api/spine/execute/route.ts:159:    const quota = await checkQuota(orgId, agentId);
+app/api/spine/execute/route.ts:160:    if (!quota.allowed) {
+app/api/spine/execute/route.ts:164:          error: 'Monthly execution quota exceeded',
+app/api/spine/execute/route.ts:165:          used: quota.used,
+app/api/spine/execute/route.ts:166:          limit: quota.limit,
+app/api/spine/execute/route.ts:167:          upgrade_url: quota.upgradeUrl,
+app/api/spine/execute/route.ts:264:      void incrementQuota(orgId, agentId).catch((error) => {
+app/api/spine/execute/route.ts:265:        console.error('[api/spine/execute] incrementQuota failed:', error);
+app/api/usage/analytics/route.ts:5: * Powers the "you've used X% of your quota" banner in the frontend.
+app/api/usage/analytics/route.ts:87:      quota: {
+app/api/orchestrate/execute/route.ts:90:    // Check quota before executing
+app/api/orchestrate/execute/route.ts:92:      .from('org_quotas' as any)
+app/api/orchestrate/execute/route.ts:97:    const quotaCost = subagents.length;
+app/api/orchestrate/execute/route.ts:98:    const usedQuota = (orgQuota?.used_this_month || 0) + quotaCost;
+app/api/orchestrate/execute/route.ts:104:          error: 'Organization quota exceeded',
+app/api/orchestrate/execute/route.ts:108:            requested_cost: quotaCost,
+app/app/capacity/page.tsx:10:        <p className="mt-2 text-slate-400">Route entry for quota and projection monitoring.</p>
+app/auth/confirm/route.ts:279:          'Review quota/billing basics',
+app/dashboard/billing/page.tsx:116:  quota: { pct: number; nudge: NudgeLevel; used: number; limit: number };
+app/dashboard/billing/page.tsx:135:      setToast('Subscription activated — your new quota is live.');
+app/dashboard/billing/page.tsx:148:  const quota = analytics?.quota;
+app/dashboard/billing/page.tsx:180:        {/* Usage bar — real quota data */}
+app/dashboard/billing/page.tsx:184:          ) : quota ? (
+app/dashboard/billing/page.tsx:186:              used={quota.used}
+app/dashboard/billing/page.tsx:187:              limit={quota.limit}
+app/dashboard/billing/page.tsx:189:              nudge={quota.nudge}
+app/dashboard/capacity/page.tsx:55:        <p className="mt-2 text-slate-400">Plan quota, remaining executions, utilization, and projected overage.</p>
+app/dashboard/command-center/page.tsx:336:    if ((capacity?.utilization ?? 0) > 0.8) actions.push('Reduce execution load or expand plan capacity before quota pressure becomes operational risk.');
+app/dashboard/hermes/page.tsx:891:  • "usage" — quota ที่ใช้ไป
+app/dashboard/hermes/page.tsx:892:  • "capacity" — quota คงเหลือ
+app/dashboard/skills/page.tsx:15:  ["capacity", "GET /api/capacity", "Read quota and utilization"],
+app/github-app/setup/page.tsx:133:          <li>Every PR check runs against your plan quota — not the app owner&rsquo;s.</li>
+app/llms.txt/route.ts:70:- [GET /api/capacity](${BASE}/docs#capacity): Remaining quota and capacity for the authenticated org.
+app/llms.txt/route.ts:103:- [Dashboard: Billing](${BASE}/dashboard/billing): Billing and quota management.
+app/llms.txt/route.ts:113:- Runtime spine: intent → quota → pipeline → commit RPC → audit trail.
+app/pricing/page.tsx:62:    features: ['Custom quota', 'Everything in Agency', 'All skill packs', 'Custom skill builder', 'SSO + RBAC', 'SLA 4h + CSM'],
+app/products/policy-gates/page.tsx:72:                Gate API calls by role, time window, or quota. Enforce rules on edge functions.
+lib/agent/llm-router.ts:148:• capacity — quota remaining & utilization
+lib/agent/llm-router.ts:149:  ใช้เมื่อ: "quota เหลือเท่าไหร่", "how much quota left"
+lib/agent/planner.ts:142:  if (/quota|capacity/.test(lower)) {
+lib/agent/preflight.ts:27:  orgPlan?: string;             // for quota/plan gating
+lib/agent/tools.ts:229:    description: 'Fetch quota remaining and utilization.',
+lib/billing/entitlements.ts:18: * Pure mapping: plan key → monthly execution quota.
+lib/billing/entitlements.ts:23:  const quota = PLAN_QUOTA[plan];
+lib/billing/entitlements.ts:25:  return typeof quota === 'number' && quota > 0 ? quota : FREE_QUOTA;
+lib/billing/entitlements.ts:28:/** Active subscription statuses that entitle the org to its plan quota. */
+lib/billing/quota-policy.ts:19:export function isQuotaExceeded(currentExecutions: number, quota: { executionsPer30Days: number }) {
+lib/billing/quota-policy.ts:20:  return currentExecutions >= quota.executionsPer30Days;
+lib/database.types.ts:222:          quota_hits: number
+lib/database.types.ts:243:          quota_hits?: number
+lib/database.types.ts:264:          quota_hits?: number
+lib/database.types.ts:5517:      increment_quota_atomic: {
+lib/dsg/app-builder/templates/template-registry.ts:364:    businessOutcome: 'Members access features according to plan, seat, quota, and upgrade path.',
+lib/dsg/app-builder/templates/template-registry.ts:367:    requiredData: ['plans', 'members', 'seats', 'quotas', 'entitlements'],
+lib/dsg/app-builder/templates/template-registry.ts:374:      'Define plan tiers, seat limits, and quota rules for your product.',
+lib/dsg/app-builder/templates/template-registry.ts:376:      'Test quota-exceeded denial and upgrade path before launch.',
+lib/dsg/app-builder/outcome-intake.ts:105:  const needsBilling = /billing|subscription|membership|payment|stripe|plan|quota|entitlement/.test(goalText);
+lib/dsg/app-builder/deterministic/lane-orchestrator.ts:75:    lane('preview', 'Preview Proof', previewDone ? 'DONE' : buildDone ? 'READY' : 'WAITING', ['build'], previewDone ? ['preview_loaded'] : [], previewDone ? 'Keep preview proof attached.' : 'Load the resulting URL once quota is intentionally spent.'),
+lib/dsg/agent-runtime/capability-gap-resolver.ts:54:      'No production deploy is triggered by the gap resolver. Preview or production proof remains a separate quota-gated step.',
+lib/dsg/agent-runtime/capability-gap-resolver.ts:60:      'Prefer GitHub pull request evidence before spending Vercel deployment quota.',
+lib/dsg/agent-runtime/service-registry.ts:11:  | 'quota_gated';
+lib/dsg/agent-runtime/service-registry.ts:105:      userBenefit: 'The user can immediately inspect a generated app route or proof page without spending extra automation quota.',
+lib/dsg/agent-runtime/service-registry.ts:214:      status: 'quota_gated',
+lib/dsg/agent-runtime/service-registry.ts:219:      userBenefit: 'The user preserves Vercel quota and spends it only on proof that matters.',
+lib/dsg/billing/entitlement-contract.ts:5:  quotaRemaining: number | null;
+lib/dsg/billing/entitlement-contract.ts:14:  quotaRemaining?: number | null;
+lib/dsg/billing/entitlement-contract.ts:20:  if (input.billingRequired && !input.planId) return { ok: false, planId: null, feature: input.feature, quotaRemaining: input.quotaRemaining ?? null, reason: 'BILLING_REQUIRED', upgradePath: input.upgradePath ?? '/enterprise/entitlement' };
+lib/dsg/billing/entitlement-contract.ts:21:  if (!input.planId) return { ok: false, planId: null, feature: input.feature, quotaRemaining: input.quotaRemaining ?? null, reason: 'NO_PLAN', upgradePath: input.upgradePath ?? '/enterprise/entitlement' };
+lib/dsg/billing/entitlement-contract.ts:22:  if (!input.allowedFeatures) return { ok: false, planId: input.planId, feature: input.feature, quotaRemaining: input.quotaRemaining ?? null, reason: 'POLICY_MISSING', upgradePath: input.upgradePath ?? '/enterprise/entitlement' };
+lib/dsg/billing/entitlement-contract.ts:23:  if (!input.allowedFeatures.includes(input.feature)) return { ok: false, planId: input.planId, feature: input.feature, quotaRemaining: input.quotaRemaining ?? null, reason: 'FEATURE_DENIED', upgradePath: input.upgradePath ?? '/enterprise/entitlement' };
+lib/dsg/billing/entitlement-contract.ts:24:  if (typeof input.quotaRemaining === 'number' && input.quotaRemaining <= 0) return { ok: false, planId: input.planId, feature: input.feature, quotaRemaining: input.quotaRemaining, reason: 'QUOTA_EXCEEDED', upgradePath: input.upgradePath ?? '/enterprise/entitlement' };
+lib/dsg/billing/entitlement-contract.ts:25:  return { ok: true, planId: input.planId, feature: input.feature, quotaRemaining: input.quotaRemaining ?? null, reason: 'ALLOW', upgradePath: null };
+lib/dsg/marketplace/entitlement.ts:31:    id: 'seat-quota-policy',
+lib/dsg/marketplace/entitlement.ts:32:    title: 'Seat and quota policy',
+lib/dsg/marketplace/entitlement.ts:36:    nextAction: 'Add seat and quota enforcement proof before PASS.',
+lib/dsg/marketplace/entitlement.ts:71:      rule: 'Do not mark entitlement checks PASS until real plan, seat, quota, upgrade, and denial evidence are attached.',
+lib/dsg/marketplace/readiness.ts:81:    title: 'Billing, entitlement, seat, and quota gates',
+lib/dsg/marketplace/readiness.ts:90:      'Plan/seat/quota source-of-truth',
+lib/dsg/marketplace/readiness.ts:96:    nextAction: 'Run entitlement smoke check, attach real billing/quota enforcement evidence, and keep PASS blocked until denial tests exist.',
+lib/email/sales.ts:53:    `⚠️ You've used ${pct}% of your quota — upgrade before the system pauses`,
+lib/email/sales.ts:57:      <p>Once you hit the limit, additional executions are billed at $0.001 each — or upgrade your plan for a higher quota.</p>
+lib/email/sales.ts:163:        <li>Higher execution quota per your plan</li>
+lib/marketing/ai-email.ts:37:    subject: 'You\'re using DSG heavily — upgrade before you hit quota',
+lib/marketing/ai-email.ts:38:    openingLine: 'Hi — we\'re seeing a lot of executions through the gate, which means DSG is working hard for you. If you want more quota and team features, check out the Business plan:',
+lib/onboarding/bootstrap.ts:8:  'Review quota/billing basics',
+lib/readiness/go-live.ts:69:  const quota = getQuotaForPlan(planKey);
+lib/readiness/go-live.ts:102:      name: 'Billing & quota',
+lib/readiness/go-live.ts:105:        { key: 'quota_policy_resolvable', ok: quota > 0, detail: `monthly execution quota: ${quota}` },
+lib/revenue/upgrade-nudge.ts:4: * Detects orgs approaching quota limits and triggers upgrade prompts.
+lib/revenue/upgrade-nudge.ts:9: *   100% usage → quota block (402) + upgrade required
+lib/spine/engine.ts:36:    error: 'quota_exceeded',
+lib/spine/engine.ts:38:    reason: `${label} quota exhausted. Upgrade is required to continue governed execution.`,
+lib/spine/engine.ts:76:  if (hasAny('agent_quota_exceeded', 'agent quota exceeded')) {
+lib/spine/engine.ts:82:  if (hasAny('org_quota_exceeded', 'org quota exceeded')) {
+lib/stripe-products.ts:48:    description: 'Audit-heavy and governance-first deployments — custom quotas',
+lib/stripe-products.ts:52:    features: ['Custom quotas', '30-day pilot', 'Governance onboarding', 'Audit exports'],
+lib/stripe-products.ts:113:      description: 'Per-execution overage charges beyond plan quota',
+lib/usage/quota.ts:6: *   I2: incrementQuota is idempotent within a billing period
+lib/usage/quota.ts:8: *   I3: ∀ org: executions after increment ≤ quota + 1
+lib/usage/quota.ts:9: *       (we check BEFORE incrementing — optimistic but safe for quota enforcement)
+lib/usage/quota.ts:39: * Read current usage and quota for an org in the current billing period.
+lib/usage/quota.ts:75: * Calls the increment_quota_atomic SQL function which uses a single UPDATE
+lib/usage/quota.ts:80:export async function incrementQuota(orgId: string, agentId: string): Promise<void> {
+lib/usage/quota.ts:84:  const { error } = await supabase.rpc('increment_quota_atomic', {
+lib/usage/quota.ts:91:    throw new Error(`incrementQuota failed: ${error.message}`);
+lib/markdoc/example-policy.md:73:Each agent has monthly execution quota limits. Exceeding quota will trigger rate limiting and block further execution until the quota period resets.
+tests/e2e/billing-limit.spec.ts:6:const quotaExceededApiKey = process.env.PLAYWRIGHT_QUOTA_EXCEEDED_API_KEY;
+tests/e2e/billing-limit.spec.ts:7:const quotaExceededAgentId = process.env.PLAYWRIGHT_QUOTA_EXCEEDED_AGENT_ID;
+tests/e2e/billing-limit.spec.ts:9:test.describe('billing and quota enforcement', () => {
+tests/e2e/billing-limit.spec.ts:10:  test('execute under quota returns 200', async () => {
+tests/e2e/billing-limit.spec.ts:21:        action: 'quota_under_limit_test',
+tests/e2e/billing-limit.spec.ts:22:        input: { scenario: 'under quota' },
+tests/e2e/billing-limit.spec.ts:33:  test('execute over quota returns 402 with upgrade_url', async () => {
+tests/e2e/billing-limit.spec.ts:34:    test.skip(!quotaExceededApiKey || !quotaExceededAgentId, 'Set PLAYWRIGHT_QUOTA_EXCEEDED_API_KEY and PLAYWRIGHT_QUOTA_EXCEEDED_AGENT_ID.');
+tests/e2e/billing-limit.spec.ts:39:        authorization: `Bearer ${quotaExceededApiKey}`,
+tests/e2e/billing-limit.spec.ts:43:        agent_id: quotaExceededAgentId,
+tests/e2e/billing-limit.spec.ts:44:        action: 'quota_over_limit_test',
+tests/e2e/billing-limit.spec.ts:45:        input: { scenario: 'quota exceeded' },
+tests/e2e/billing-limit.spec.ts:51:    expect(body.error).toMatch(/quota exceeded/i);
+tests/e2e/revenue-happy-path.spec.ts:36:  test('free org: at quota returns 402 with upgrade_url', async () => {
+tests/e2e/revenue-happy-path.spec.ts:47:        action: 'e2e_quota_exceeded',
+tests/e2e/revenue-happy-path.spec.ts:91:      // Must NOT be a quota block
+tests/e2e/revenue-happy-path.spec.ts:93:      expect(body?.error).not.toMatch(/quota/i);
+tests/integration/api/execute-critical-path.test.ts:9:  incrementQuotaMock,
+tests/integration/api/execute-critical-path.test.ts:16:  incrementQuotaMock: vi.fn(),
+tests/integration/api/execute-critical-path.test.ts:38:vi.mock('../../../lib/usage/quota', () => ({
+tests/integration/api/execute-critical-path.test.ts:40:  incrementQuota: incrementQuotaMock,
+tests/integration/api/execute-critical-path.test.ts:65:    incrementQuotaMock.mockResolvedValue(undefined);
+tests/integration/api/spine-execute.test.ts:74:  const incrementQuota = vi.fn(async () => undefined);
+tests/integration/api/spine-execute.test.ts:76:  vi.doMock('../../../lib/usage/quota', () => ({
+tests/integration/api/spine-execute.test.ts:78:    incrementQuota,
+tests/integration/api/spine-execute.test.ts:81:  return { checkQuota, incrementQuota };
+tests/integration/api/spine-execute.test.ts:254:    const { incrementQuota } = mockQuota();
+tests/integration/api/spine-execute.test.ts:316:    expect(incrementQuota).toHaveBeenCalledWith('org_1', 'agt_1');
+tests/integration/api/spine-execute.test.ts:392:  it('returns 402 when quota is exceeded', async () => {
+tests/integration/api/spine-execute.test.ts:396:    const { checkQuota } = mockQuota(false); // quota exceeded
+tests/integration/api/spine-execute.test.ts:434:    expect(body.error).toMatch(/quota exceeded/i);
+tests/integration/api/spine-execute.test.ts:436:    // Spine engine should NOT be called when quota is exceeded
+tests/integration/api/spine-execute-safe-dom.test.ts:9:  incrementQuotaMock,
+tests/integration/api/spine-execute-safe-dom.test.ts:17:  incrementQuotaMock: vi.fn(),
+tests/integration/api/spine-execute-safe-dom.test.ts:40:vi.mock('../../../lib/usage/quota', () => ({
+tests/integration/api/spine-execute-safe-dom.test.ts:42:  incrementQuota: incrementQuotaMock,
+tests/integration/api/spine-execute-safe-dom.test.ts:81:    incrementQuotaMock.mockResolvedValue(undefined);
+tests/integration/api/spine-execute-safe-dom.test.ts:276:    expect(body.error).toBe('Monthly execution quota exceeded');
+tests/integration/api/spine-execute-safe-dom.test.ts:277:    // Verification should NOT run if quota is exceeded
+tests/integration/api/ROUTES_TESTS_README.md:35:- ✓ GET /api/settings/quota
+tests/integration/api/routes-settings.test.ts:305:describe('GET /api/settings/quota', () => {
+tests/integration/api/routes-settings.test.ts:320:    const { GET } = await import('../../../app/api/settings/quota/route');
+tests/integration/api/routes-settings.test.ts:336:    const { GET } = await import('../../../app/api/settings/quota/route');
+tests/integration/api/routes-settings.test.ts:342:  it('returns 200 with quota summary when authorized', async () => {
+tests/integration/api/routes-settings.test.ts:367:    vi.doMock('../../../lib/billing/quota-policy', () => ({
+tests/integration/api/routes-settings.test.ts:380:    const { GET } = await import('../../../app/api/settings/quota/route');
+tests/integration/api/routes-settings.test.ts:385:    expect(body.quota).toBeDefined();
+tests/integration/api/routes-settings.test.ts:386:    expect(body.quota.windowDays).toBe(30);
+tests/integration/api/spine-evidence-chain.test.ts:7: *   3. Calls the runtime commit / quota side-effects when execution succeeds
+tests/integration/api/spine-evidence-chain.test.ts:26:  incrementQuotaMock,
+tests/integration/api/spine-evidence-chain.test.ts:36:  incrementQuotaMock: vi.fn(),
+tests/integration/api/spine-evidence-chain.test.ts:76:vi.mock("../../../lib/usage/quota", () => ({
+tests/integration/api/spine-evidence-chain.test.ts:78:  incrementQuota: incrementQuotaMock,
+tests/integration/api/spine-evidence-chain.test.ts:130:  incrementQuotaMock.mockResolvedValue(undefined);
+tests/integration/api/spine-evidence-chain.test.ts:154:        { step: "quota", result: "pass", latency_ms: 1 },
+tests/integration/api/spine-evidence-chain.test.ts:243:  it("increments quota on successful 200 response", async () => {
+tests/integration/api/spine-evidence-chain.test.ts:250:    // incrementQuota is called but not awaited, so we wait a tick
+tests/integration/api/spine-evidence-chain.test.ts:252:    expect(incrementQuotaMock).toHaveBeenCalledWith("org_evidence_test", "agt_evidence_test");
+tests/integration/api/spine-evidence-chain.test.ts:391:  it("returns 402 when quota is exceeded and does not call executeSpineIntent", async () => {
+tests/integration/api/spine-evidence-chain.test.ts:405:    expect(body.error).toMatch(/quota exceeded/i);
+tests/proofs/README.md:7:Files such as `billing-invariants.test.ts` and `quota-invariants.test.ts` run through Vitest and may use `z3-solver` WASM to verify behavioral invariants against the current TypeScript implementation.
+tests/proofs/billing-invariants.test.ts:166:    // The DSG quota pattern: check(used, limit) → execute → increment
+tests/proofs/quota-invariants.test.ts:5: * the DSG billing quota model is mathematically correct by construction.
+tests/proofs/quota-invariants.test.ts:10: * Run: npx vitest run tests/proofs/quota-invariants.proof.ts
+tests/proofs/quota-invariants.test.ts:22:  ctx = new Context('dsg-quota-proofs');
+tests/proofs/quota-invariants.test.ts:47:      'quota strict ordering',
+tests/proofs/quota-invariants.test.ts:61:    // For all known plans, quota > 0
+tests/proofs/quota-invariants.test.ts:64:      const quota = ctx.Int.val(getQuotaForPlan(plan));
+tests/proofs/quota-invariants.test.ts:68:        (c) => c.Not(quota.gt(zero))
+tests/proofs/quota-invariants.test.ts:136:  it('upgrading plan never decreases quota (∀ plan A→B: quota[B] ≥ quota[A])', async () => {
+tests/proofs/quota-invariants.test.ts:152:      const quotaFrom = ctx.Int.val(getQuotaForPlan(from));
+tests/proofs/quota-invariants.test.ts:153:      const quotaTo   = ctx.Int.val(getQuotaForPlan(to));
+tests/proofs/quota-invariants.test.ts:155:        `upgrade ${from}→${to}: quota[${to}] ≥ quota[${from}]`,
+tests/proofs/quota-invariants.test.ts:156:        (c) => c.Not(quotaTo.ge(quotaFrom))
+tests/proofs/quota-invariants.test.ts:161:  it('free plan quota (60) fits in an int32 without overflow', async () => {
+tests/proofs/quota-invariants.test.ts:162:    const quota  = ctx.Int.val(FREE_QUOTA);
+tests/proofs/quota-invariants.test.ts:166:      (c) => c.Not(quota.le(maxI32))
+tests/proofs/quota-invariants.test.ts:170:  it('enterprise plan quota fits in a JavaScript safe integer', async () => {
+tests/proofs/quota-invariants.test.ts:171:    const quota   = ctx.Int.val(PLAN_QUOTA['enterprise']);
+tests/proofs/quota-invariants.test.ts:174:      'enterprise quota fits in MAX_SAFE_INTEGER',
+tests/proofs/quota-invariants.test.ts:175:      (c) => c.Not(quota.le(maxSafe))
+tests/unit/billing/entitlements.test.ts:28:  it('returns correct quota for each known plan', () => {
+tests/unit/billing/entitlements.test.ts:29:    for (const [plan, quota] of Object.entries(PLAN_QUOTA)) {
+tests/unit/billing/entitlements.test.ts:30:      expect(getQuotaForPlan(plan)).toBe(quota);
+tests/unit/billing/quota-policy.test.ts:2:import { buildQuotaSummary } from '../../../lib/billing/quota-policy';
+tests/unit/billing/quota-policy.test.ts:4:describe('quota policy defaults', () => {
+tests/unit/billing/reconciliation.test.ts:147:} from '../../../lib/billing/quota-policy';
+tests/unit/billing/reconciliation.test.ts:326:  it('returns trial quota for null plan', () => {
+tests/unit/billing/reconciliation.test.ts:332:  it('returns trial quota for undefined plan', () => {
+tests/unit/billing/reconciliation.test.ts:337:  it('returns correct pro quota', () => {
+tests/unit/billing/reconciliation.test.ts:343:  it('returns correct business quota', () => {
+tests/unit/billing/reconciliation.test.ts:348:  it('returns correct enterprise quota', () => {
+tests/unit/billing/reconciliation.test.ts:373:  it('returns false when under quota', () => {
+tests/unit/billing/reconciliation.test.ts:377:  it('returns true at exact quota limit', () => {
+tests/unit/billing/reconciliation.test.ts:381:  it('returns true when over quota', () => {
+tests/unit/revenue/upgrade-nudge.test.ts:116:  it('unknown plan falls back to free quota (60)', async () => {
+tests/unit/spine/planner-execute.test.ts:35:  it('plans capacity for "check quota"', () => {
+tests/unit/spine/planner-execute.test.ts:36:    const plan = planGoal('check quota');
+tests/unit/usage/quota.test.ts:10:import { checkQuota, incrementQuota } from '../../../lib/usage/quota';
+tests/unit/usage/quota.test.ts:35:  it('allows execution when under quota', async () => {
+tests/unit/usage/quota.test.ts:58:  it('blocks execution when at quota', async () => {
+tests/unit/usage/quota.test.ts:78:  it('uses free plan quota when org has no plan set', async () => {
+tests/unit/usage/quota.test.ts:117:describe('incrementQuota', () => {
+tests/unit/usage/quota.test.ts:118:  it('calls increment_quota_atomic RPC with correct params', async () => {
+tests/unit/usage/quota.test.ts:119:    await incrementQuota('org-1', 'agent-1');
+tests/unit/usage/quota.test.ts:120:    expect(mockRpc).toHaveBeenCalledWith('increment_quota_atomic', expect.objectContaining({
+tests/unit/usage/quota.test.ts:127:    await incrementQuota('org-1', 'agent-1');
+tests/unit/usage/quota.test.ts:129:    expect(call[0]).toBe('increment_quota_atomic');
+tests/unit/usage/quota.test.ts:135:    await expect(incrementQuota('org-1', 'agent-1')).rejects.toThrow('incrementQuota failed');
+supabase/migrations/20260330_monitor_stats.sql:77:  -- billing / quota overlay
+supabase/migrations/20260330_monitor_stats.sql:158:    check (source in ('core', 'control_plane', 'billing', 'quota', 'auth', 'db', 'system', 'agent')),
+supabase/migrations/20260330_monitor_stats.sql:207:  quota_hits integer not null default 0,
+supabase/migrations/20260330_monitor_stats.sql:331:  quota_state text,
+supabase/migrations/20260330_monitor_stats.sql:366:  quota_ok boolean,
+supabase/migrations/20260330_monitor_stats.sql:427:  sum(quota_hits) as quota_hits_7d,
+supabase/migrations/20260402_billing_quota_in_rpc.sql:1:-- Add quota enforcement inside the atomic RPC transaction.
+supabase/migrations/20260402_billing_quota_in_rpc.sql:2:-- This prevents concurrent requests from exceeding quota limits.
+supabase/migrations/20260402_billing_quota_in_rpc.sql:103:      raise exception 'agent_quota_exceeded';
+
+## audit_logs references
+app/api/compliance-evidence-pack/annex4/route.ts:71:    dsg_control_description: 'SHA-256 WORM hash chain: requestHash → decisionHash → recordHash. Tamper-evident audit log.',
+app/api/dsg/hermes/execute/route.ts:75:    get_audit: "อ่าน audit log",
+app/api/enterprise-proof/runtime-report/route.ts:42:    // even if audit_logs is temporarily unavailable.
+app/api/enterprise-proof/runtime-report/route.ts:46:      const { error: auditError } = await supabase.from('audit_logs').insert({
+app/api/ledger/route.ts:35:        return NextResponse.json({ error: "Audit export is temporarily unavailable because audit_logs relation is missing." }, { status: 503 });
+app/api/onboarding/state/route.ts:174:    const audit = await admin.from("audit_logs").insert({
+app/api/proofs/route.ts:12:    // scoped by org_id. The previous cookie-SSR client ran the audit_logs
+app/api/proofs/route.ts:26:      .from("audit_logs")
+app/api/replay/[executionId]/route.ts:55:        .from("audit_logs")
+app/api/setup/auto/route.ts:231:      await admin.from('audit_logs').insert({
+app/compliance/eu-ai-act/page.tsx:108:          Export EU AI Act audit log
+app/compliance/export/page.tsx:10:  { key: 'audit-log.json', label: 'audit-log.json', description: 'Structured audit log of all compliance controls' },
+app/compliance/export/page.tsx:44:          Download evidence, audit log, replay proof, and claim boundary files for your compliance review.
+app/dashboard/agents/[id]/permissions/page.tsx:41:    description: "View audit logs and compliance evidence",
+app/dashboard/hermes/page.tsx:60:  { label: 'Audit', cmd: 'Show the latest audit log.' },
+app/dashboard/hermes/page.tsx:908:  • "audit log" — audit events
+app/dashboard/notifications/page.tsx:46:  { id: 'n15', type: 'deployment.ready', title: 'Deployment go/no-go ready', body: 'Release v2.3.9 cleared all pre-deployment gates. Governance proof exported to audit log.', relativeTime: '2 days ago', read: true },
+app/dashboard/team/page.tsx:48:  OPERATOR: 'Execute actions, manage integrations, view audit logs. Cannot manage team members or policies.',
+app/dashboard/team/page.tsx:49:  VIEWER: 'Read-only access to dashboard, executions, proofs, and audit logs.',
+app/delivery-proof/page.tsx:70:    pain: 'ลูกค้าใหญ่ถาม security, audit log, compliance ก่อนซื้อ',
+app/dsg/notifications/page.tsx:33:  { id: 'n19', type: 'GOVERNANCE', title: 'Policy gate triggered on Auth Service', body: 'RBAC rule blocked an unapproved tool call. Review the audit log.', timestamp: '2026-05-15T09:30:00Z', relativeTime: '3 hours ago', read: false },
+app/eu-ai-act/page.tsx:134:            One-line setup. Adds pre-execution controls, audit logs, and human oversight evidence mapped to EU AI Act Articles 9, 12 &amp; 14. No changes to your existing stack.
+app/integrations/[framework]/page.tsx:367:      'Structured audit logs with Pydantic model validation',
+app/products/agent-governance/page.tsx:22:            Every modification tracked in your audit log.
+app/products/agent-governance/page.tsx:244:                <span>Basic audit log</span>
+app/products/agent-governance/page.tsx:293:                <span>Advanced audit logs</span>
+app/products/agent-governance/page.tsx:369:            <h3 className="text-xl font-bold mb-2">Can I export audit logs?</h3>
+app/products/agent-governance/page.tsx:371:              Yes (Pro tier). Export JSON audit logs with SHA-256 proofs for compliance, SOC2, or other
+app/products/compliance-proof/page.tsx:118:                Export JSON with audit log, evidence, and framework mappings. Includes cryptographic hashes for verification.
+app/try/page.tsx:144:              {/* Simulated audit log */}
+lib/agent/llm-router.ts:203:• list_proofs — proof artifacts จาก audit logs
+lib/agent/llm-router.ts:213:  ใช้เมื่อ: "audit log", "audit events"
+lib/agent/tools.ts:335:    description: 'List recent proof artifacts from audit logs.',
+lib/database.types.ts:457:      audit_logs: {
+lib/database.types.ts:496:            foreignKeyName: "audit_logs_agent_id_fkey"
+lib/database.types.ts:503:            foreignKeyName: "audit_logs_execution_id_fkey"
+lib/database.types.ts:510:            foreignKeyName: "audit_logs_org_id_fkey"
+lib/dsg-core/index.ts:65:    .from('audit_logs')
+lib/dsg-core/local-runtime.ts:28:    .from('audit_logs')
+lib/dsg/app-builder/templates/template-registry.ts:192:      'Configure audit logging for any customer data mutations.',
+lib/dsg/app-builder/templates/template-registry.ts:261:      'Enable audit logging for every decision event.',
+lib/dsg/app-builder/templates/template-registry.ts:353:      'Enable prompt and output audit logging before any production use.',
+lib/dsg/midmarket-governance-autopilot.ts:380:        ? "source systems expose audit logs or equivalent evidence"
+lib/dsg/agent-runtime/governance-db-reference.ts:4:  'Use this reference when the user asks about agent memory, governance state, jobs, planning, approval, execution steps, audit logs, evidence refs, or claim status.',
+lib/dsg/agent-runtime/governance-db-reference.ts:29:  '4. governance_audit_logs',
+lib/dsg/agent-runtime/governance-db-reference.ts:39:  '- Treat governance_audit_logs as the source of audit chain evidence.',
+lib/dsg/agent-runtime/governance-db-reference.ts:49:  '- audit proof: only after governance_audit_logs event_hash exists for the relevant event.',
+lib/dsg/agent-runtime/governance-db-reference.ts:53:  return /memory|เมโมรี|database|db|schema|sql|agent_jobs|approval_requests|execution_steps|governance_audit_logs|approval|อนุมัติ|audit|ledger|event_hash|previous_hash|claim_status|job_status|runtime_handoff|evidence_refs|decision_frame|goal_hash|plan_hash/i.test(message);
+lib/dsg/agent-runtime/phase1-governance-reference.ts:20:  '- Read execution audit log.',
+lib/dsg/auth/require-dsg-auth.ts:188:    // Never let audit log failure break the request
+lib/email/sequences/customer-acquisition.ts:111:- Basic audit log
+lib/email/sequences/customer-acquisition.ts:118:- Advanced audit logs
+lib/enterprise/proof-runtime.ts:71:      .from('audit_logs')
+lib/enterprise/proof-runtime.ts:89:  if (auditRes.error) gaps.push(`audit_logs unavailable: ${auditRes.error.message}`);
+lib/enterprise/proof-runtime.ts:114:  if (antiReplayEvidence.length === 0) gaps.push('No anti-replay evidence in audit logs for org/agent scope');
+lib/hermes/human-event.ts:26:  audit_events_v2: 'ดู audit log',
+lib/readiness/go-live.ts:20: *   `audit_logs` as the real, typed evidence source for security/audit signals instead.
+lib/readiness/go-live.ts:53:    admin.from('audit_logs').select('id').eq('org_id', orgId).limit(1),
+lib/readiness/go-live.ts:74:  if (!auditLoggingActive) warnings.push('No audit log entries yet; confirm governance logging is wired.');
+lib/readiness/go-live.ts:139:      'Export and archive weekly audit logs',
+lib/security/audit-export.ts:19:    .from('audit_logs')
+lib/security/batch4-audit-events.ts:12:// audit_logs). The original also folded in access_requests + guest_access_grants,
+lib/security/batch4-audit-events.ts:51:      .from('audit_logs')
+lib/markdoc/example-policy.md:51:- Read audit logs
+tests/integration/api/execute-live-db.required.test.ts:76:    const auditCount = await countRows(supabase, 'audit_logs', { org_id: fixture.orgId, agent_id: fixture.agentId });
+tests/integration/api/live-db-supabase.required.test.ts:37:      'audit_logs',
+tests/integration/api/live-db-supabase.required.test.ts:153:  it('fails closed if audit_logs can be mutated through the configured test role', async () => {
+tests/integration/api/live-db-supabase.required.test.ts:155:      .from('audit_logs')
+tests/integration/api/live-db-supabase.required.test.ts:170:      .from('audit_logs')
+tests/integration/api/live-db-supabase.required.test.ts:176:        'NO-GO gap: configured live-test role can update audit_logs. Add DB-level immutability controls, trigger protection, append-only ledger design, or use a non-bypass test role before claiming immutable audit trail.',
+tests/integration/helpers/supabase-test-factory.ts:119:  await ignoreMissingTable(supabase.from('audit_logs').delete().eq('org_id', fixture.orgId));
+tests/unit/api/onboarding-state-route.test.ts:96:      if (table === "audit_logs") {
+tests/unit/enterprise/proof-runtime.test.ts:63:      if (table === 'audit_logs') return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [], error: null }) }) }) }) }) };
+tests/unit/readiness/go-live.test.ts:7: * sign_in_events, audit_logs, org_onboarding_states.
+tests/unit/readiness/go-live.test.ts:78:        audit_logs: { list: [{ id: 'a1' }] },
+tests/unit/security/batch4-audit-events.test.ts:27:    if (table === 'audit_logs') return makeChain({ data: auditRows });
+tests/unit/security/batch4-audit-events.test.ts:41:  it('merges sign_in_events and audit_logs sorted by created_at desc', async () => {
+supabase/migrations/20260323053000_product_loop_scaffold.sql:53:create table if not exists public.audit_logs (
+supabase/migrations/20260323053000_product_loop_scaffold.sql:94:create index if not exists idx_audit_logs_org_created_at on public.audit_logs(org_id, created_at desc);
+supabase/migrations/20260323054500_product_loop_rls.sql:8:alter table public.audit_logs enable row level security;
+supabase/migrations/20260323054500_product_loop_rls.sql:53:drop policy if exists audit_logs_select_same_org on public.audit_logs;
+supabase/migrations/20260323054500_product_loop_rls.sql:54:create policy audit_logs_select_same_org
+supabase/migrations/20260323054500_product_loop_rls.sql:55:  on public.audit_logs
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:153:    select 1 from pg_constraint where conname = 'audit_logs_org_id_not_blank'
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:155:    alter table public.audit_logs
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:156:      add constraint audit_logs_org_id_not_blank
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:161:    select 1 from pg_constraint where conname = 'audit_logs_decision_allowed'
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:163:    alter table public.audit_logs
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:164:      add constraint audit_logs_decision_allowed
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:250:    select 1 from pg_constraint where conname = 'audit_logs_agent_id_org_fk'
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:252:    alter table public.audit_logs
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:253:      add constraint audit_logs_agent_id_org_fk
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:290:    select 1 from pg_constraint where conname = 'audit_logs_execution_id_org_fk'
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:292:    alter table public.audit_logs
+supabase/migrations/20260323140000_schema_constraints_hardening.sql:293:      add constraint audit_logs_execution_id_org_fk
+supabase/migrations/20260323141000_rls_policy_hardening.sql:55:revoke all on public.audit_logs from anon;
+supabase/migrations/20260323141000_rls_policy_hardening.sql:63:grant select on public.audit_logs to authenticated;
+supabase/migrations/20260323141000_rls_policy_hardening.sql:71:alter table public.audit_logs force row level security;
+supabase/migrations/20260323141000_rls_policy_hardening.sql:115:drop policy if exists audit_logs_select_same_org on public.audit_logs;
+supabase/migrations/20260323141000_rls_policy_hardening.sql:116:drop policy if exists audit_logs_select_active_user_same_org on public.audit_logs;
+supabase/migrations/20260323141000_rls_policy_hardening.sql:117:create policy audit_logs_select_active_user_same_org
+supabase/migrations/20260323141000_rls_policy_hardening.sql:118:  on public.audit_logs
+supabase/migrations/20260331_runtime_spine_rpc.sql:165:  insert into audit_logs (
+supabase/migrations/20260402_billing_quota_in_rpc.sql:142:  insert into audit_logs (org_id, agent_id, execution_id, policy_version, decision, reason, evidence, created_at)
+supabase/migrations/20260404_runtime_spine_rpc_hardening.sql:185:  insert into audit_logs (org_id, agent_id, execution_id, policy_version, decision, reason, evidence, created_at)
+supabase/migrations/20260417000000_full_schema_sync.sql:39:drop table if exists public.audit_logs cascade;
+supabase/migrations/20260417000000_full_schema_sync.sql:138:create table public.audit_logs (
+supabase/migrations/20260417000000_full_schema_sync.sql:151:create index idx_audit_logs_execution_id on public.audit_logs(execution_id);
+supabase/migrations/20260417000000_full_schema_sync.sql:804:  insert into public.audit_logs (
+supabase/migrations/20260531_batch4_security_settings.sql:7:-- audit_logs already exist on main and are reused as-is.
+supabase/migrations/20260610095000_add_agi_action_audit.sql:54:-- RLS policy: Allow authenticated users to read audit logs
+supabase/migrations/20260610095000_add_agi_action_audit.sql:61:-- RLS policy: Allow system/service role to insert audit logs
+supabase/migrations/20260613000002_dsg_auth_indexes_and_audit.sql:8:--   4. DSG API call audit log (who called which route, when, with which key)
+supabase/migrations/20260613000002_dsg_auth_indexes_and_audit.sql:100:-- 5. DSG API audit log
+supabase/schema.sql:85:create table public.audit_logs (
+supabase/schema.sql:98:create index idx_audit_logs_execution_id on public.audit_logs(execution_id);
+supabase/schema.sql:751:  insert into public.audit_logs (
+
+## Relevant test context
+
+### tests/integration/api/execute-live-db.required.test.ts
+     1	import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+     2	import {
+     3	  assertOk,
+     4	  cleanupExecutionFixture,
+     5	  countRows,
+     6	  createExecutionFixture,
+     7	  getSupabaseTestAdmin,
+     8	  type SupabaseTestFixture,
+     9	} from '../helpers/supabase-test-factory';
+    10	
+    11	const hasLiveEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    12	const describeLive = hasLiveEnv ? describe : describe.skip;
+    13	
+    14	function executeRequest(fixture: SupabaseTestFixture, input: unknown = { message: 'live-db-test' }) {
+    15	  return new Request('http://localhost/api/execute', {
+    16	    method: 'POST',
+    17	    headers: {
+    18	      authorization: `Bearer ${fixture.apiKey}`,
+    19	      'content-type': 'application/json',
+    20	    },
+    21	    body: JSON.stringify({
+    22	      agent_id: fixture.agentId,
+    23	      action: 'live_db_execute_test',
+    24	      input,
+    25	      context: { test_run: fixture.orgId },
+    26	    }),
+    27	  });
+    28	}
+    29	
+    30	describeLive('/api/execute live Supabase required gate', () => {
+    31	  let supabase: ReturnType<typeof getSupabaseTestAdmin>;
+    32	  let fixture: SupabaseTestFixture;
+    33	
+    34	  beforeAll(async () => {
+    35	    supabase = getSupabaseTestAdmin();
+    36	    fixture = await createExecutionFixture(supabase);
+    37	  }, 30_000);
+    38	
+    39	  afterAll(async () => {
+    40	    if (fixture && supabase) await cleanupExecutionFixture(fixture, supabase);
+    41	  }, 30_000);
+    42	
+    43	  it('resolves an active Supabase agent from SHA-256 API key hash', async () => {
+    44	    const { resolveAgentFromApiKey } = await import('../../../lib/agent-auth');
+    45	
+    46	    const agent = await resolveAgentFromApiKey(fixture.agentId, fixture.apiKey);
+    47	
+    48	    expect(agent).toMatchObject({
+    49	      id: fixture.agentId,
+    50	      org_id: fixture.orgId,
+    51	      status: 'active',
+    52	    });
+    53	  });
+    54	
+    55	  it('executes through the real route and writes runtime evidence', async () => {
+    56	    const { POST } = await import('../../../app/api/execute/route');
+    57	
+    58	    const response = await POST(executeRequest(fixture));
+    59	    const body = await response.json();
+    60	
+    61	    if (response.status !== 200) {
+    62	      throw new Error(
+    63	        `Expected /api/execute live DB to return 200. Got ${response.status}: ${JSON.stringify(body)}. ` +
+    64	          'This usually means staging migrations, runtime_commit_execution RPC, plugin config, or Supabase env is not ready.',
+    65	      );
+    66	    }
+    67	
+    68	    expect(body).toEqual(
+    69	      expect.objectContaining({
+    70	        request_id: expect.any(String),
+    71	        decision: expect.any(String),
+    72	      }),
+    73	    );
+    74	
+    75	    const executionCount = await countRows(supabase, 'executions', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    76	    const auditCount = await countRows(supabase, 'audit_logs', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    77	    const usageCount = await countRows(supabase, 'usage_events', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    78	
+    79	    expect(executionCount).toBeGreaterThanOrEqual(1);
+    80	    expect(auditCount).toBeGreaterThanOrEqual(1);
+    81	    expect(usageCount).toBeGreaterThanOrEqual(1);
+    82	  }, 30_000);
+    83	
+    84	  it('does not resolve cross-agent api key pairs', async () => {
+    85	    const other = await createExecutionFixture(supabase);
+    86	    try {
+    87	      const { resolveAgentFromApiKey } = await import('../../../lib/agent-auth');
+    88	      const crossAgent = await resolveAgentFromApiKey(fixture.agentId, other.apiKey);
+    89	      const crossKey = await resolveAgentFromApiKey(other.agentId, fixture.apiKey);
+    90	
+    91	      expect(crossAgent).toBeNull();
+    92	      expect(crossKey).toBeNull();
+    93	    } finally {
+    94	      await cleanupExecutionFixture(other, supabase);
+    95	    }
+    96	  });
+    97	
+    98	  it('blocks inactive agents at the route boundary', async () => {
+    99	    await assertOk(
+   100	      supabase.from('agents').update({ status: 'revoked' }).eq('id', fixture.agentId),
+   101	      'mark test agent revoked',
+   102	    );
+   103	
+   104	    const { POST } = await import('../../../app/api/execute/route');
+   105	    const response = await POST(executeRequest(fixture, { message: 'revoked-agent-test' }));
+   106	    const body = await response.json();
+   107	
+   108	    expect(response.status).toBe(403);
+   109	    expect(body).toEqual({ error: 'Agent is not active' });
+   110	
+   111	    await assertOk(
+   112	      supabase.from('agents').update({ status: 'active' }).eq('id', fixture.agentId),
+   113	      'restore test agent active',
+   114	    );
+   115	  });
+   116	});
+
+### tests/integration/api/live-db-supabase.required.test.ts
+     1	import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+     2	import {
+     3	  assertOk,
+     4	  assertTableExists,
+     5	  cleanupExecutionFixture,
+     6	  createExecutionFixture,
+     7	  currentBillingPeriod,
+     8	  getSupabaseTestAdmin,
+     9	  type SupabaseTestFixture,
+    10	} from '../helpers/supabase-test-factory';
+    11	
+    12	const hasLiveEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    13	const describeLive = hasLiveEnv ? describe : describe.skip;
+    14	
+    15	describeLive('LIVE DB GATE: Supabase/Postgres production safety', () => {
+    16	  let supabase: ReturnType<typeof getSupabaseTestAdmin>;
+    17	  let orgA: SupabaseTestFixture;
+    18	  let orgB: SupabaseTestFixture;
+    19	
+    20	  beforeAll(async () => {
+    21	    supabase = getSupabaseTestAdmin();
+    22	    orgA = await createExecutionFixture(supabase);
+    23	    orgB = await createExecutionFixture(supabase);
+    24	  }, 30_000);
+    25	
+    26	  afterAll(async () => {
+    27	    if (orgA && supabase) await cleanupExecutionFixture(orgA, supabase);
+    28	    if (orgB && supabase) await cleanupExecutionFixture(orgB, supabase);
+    29	  }, 30_000);
+    30	
+    31	  it('required production tables are queryable with service role', async () => {
+    32	    for (const table of [
+    33	      'organizations',
+    34	      'policies',
+    35	      'agents',
+    36	      'executions',
+    37	      'audit_logs',
+    38	      'usage_events',
+    39	      'usage_counters',
+    40	      'runtime_approval_requests',
+    41	      'runtime_truth_states',
+    42	    ]) {
+    43	      await assertTableExists(supabase, table);
+    44	    }
+    45	  });
+    46	
+    47	  it('keeps organization data separated by org_id in direct DB reads', async () => {
+    48	    await assertOk(
+    49	      supabase.from('executions').insert({
+    50	        org_id: orgA.orgId,
+    51	        agent_id: orgA.agentId,
+    52	        decision: 'ALLOW',
+    53	        reason: 'org A isolation fixture',
+    54	        request_payload: { input: 'a' },
+    55	        context_payload: {},
+    56	        metadata: { test: true },
+    57	        policy_version: 'v1',
+    58	      }),
+    59	      'insert org A execution',
+    60	    );
+    61	
+    62	    await assertOk(
+    63	      supabase.from('executions').insert({
+    64	        org_id: orgB.orgId,
+    65	        agent_id: orgB.agentId,
+    66	        decision: 'ALLOW',
+    67	        reason: 'org B isolation fixture',
+    68	        request_payload: { input: 'b' },
+    69	        context_payload: {},
+    70	        metadata: { test: true },
+    71	        policy_version: 'v1',
+    72	      }),
+    73	      'insert org B execution',
+    74	    );
+    75	
+    76	    const { data, error } = await supabase
+    77	      .from('executions')
+    78	      .select('org_id, agent_id, reason')
+    79	      .eq('org_id', orgA.orgId);
+    80	
+    81	    if (error) throw error;
+    82	    expect(data.length).toBeGreaterThanOrEqual(1);
+    83	    expect(data.every((row) => row.org_id === orgA.orgId)).toBe(true);
+    84	    expect(data.some((row) => row.org_id === orgB.orgId)).toBe(false);
+    85	  });
+    86	
+    87	  it('increments usage counter only for the target org and agent', async () => {
+    88	    const period = currentBillingPeriod();
+    89	
+    90	    await assertOk(
+    91	      supabase.from('usage_counters').upsert({
+    92	        org_id: orgA.orgId,
+    93	        agent_id: orgA.agentId,
+    94	        billing_period: period,
+    95	        executions: 0,
+    96	        amount_usd: 0,
+    97	      }, { onConflict: 'agent_id,billing_period' }),
+    98	      'upsert org A usage counter',
+    99	    );
+   100	
+   101	    await assertOk(
+   102	      supabase.from('usage_counters').upsert({
+   103	        org_id: orgB.orgId,
+   104	        agent_id: orgB.agentId,
+   105	        billing_period: period,
+   106	        executions: 0,
+   107	        amount_usd: 0,
+   108	      }, { onConflict: 'agent_id,billing_period' }),
+   109	      'upsert org B usage counter',
+   110	    );
+   111	
+   112	    const { data: beforeA, error: beforeError } = await supabase
+   113	      .from('usage_counters')
+   114	      .select('executions')
+   115	      .eq('org_id', orgA.orgId)
+   116	      .eq('agent_id', orgA.agentId)
+   117	      .eq('billing_period', period)
+   118	      .single();
+   119	    if (beforeError) throw beforeError;
+   120	
+   121	    await assertOk(
+   122	      supabase
+   123	        .from('usage_counters')
+   124	        .update({ executions: Number(beforeA.executions) + 1 })
+   125	        .eq('org_id', orgA.orgId)
+   126	        .eq('agent_id', orgA.agentId)
+   127	        .eq('billing_period', period),
+   128	      'increment org A usage counter',
+   129	    );
+   130	
+   131	    const { data: afterA, error: afterAError } = await supabase
+   132	      .from('usage_counters')
+   133	      .select('executions')
+   134	      .eq('org_id', orgA.orgId)
+   135	      .eq('agent_id', orgA.agentId)
+   136	      .eq('billing_period', period)
+   137	      .single();
+   138	    if (afterAError) throw afterAError;
+   139	
+   140	    const { data: afterB, error: afterBError } = await supabase
+   141	      .from('usage_counters')
+   142	      .select('executions')
+   143	      .eq('org_id', orgB.orgId)
+   144	      .eq('agent_id', orgB.agentId)
+   145	      .eq('billing_period', period)
+   146	      .single();
+   147	    if (afterBError) throw afterBError;
+   148	
+   149	    expect(Number(afterA.executions)).toBe(Number(beforeA.executions) + 1);
+   150	    expect(Number(afterB.executions)).toBe(0);
+   151	  });
+   152	
+   153	  it('fails closed if audit_logs can be mutated through the configured test role', async () => {
+   154	    const { data: inserted, error: insertError } = await supabase
+   155	      .from('audit_logs')
+   156	      .insert({
+   157	        org_id: orgA.orgId,
+   158	        agent_id: orgA.agentId,
+   159	        decision: 'ALLOW',
+   160	        reason: 'immutability fixture',
+   161	        policy_version: 'v1',
+   162	        metadata: { before: true },
+   163	        evidence: { immutable_test: true },
+   164	      })
+   165	      .select('id, metadata')
+   166	      .single();
+   167	    if (insertError) throw insertError;
+   168	
+   169	    const { error: updateError } = await supabase
+   170	      .from('audit_logs')
+   171	      .update({ metadata: { tampered: true } })
+   172	      .eq('id', inserted.id);
+   173	
+   174	    if (!updateError) {
+   175	      throw new Error(
+   176	        'NO-GO gap: configured live-test role can update audit_logs. Add DB-level immutability controls, trigger protection, append-only ledger design, or use a non-bypass test role before claiming immutable audit trail.',
+   177	      );
+   178	    }
+   179	
+   180	    expect(String(updateError.message || '').length).toBeGreaterThan(0);
+   181	  });
+   182	});

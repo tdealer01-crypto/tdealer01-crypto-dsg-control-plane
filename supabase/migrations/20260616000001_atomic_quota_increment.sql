@@ -24,8 +24,8 @@ BEGIN
   UPDATE usage_counters
   SET    executions = executions + 1,
          updated_at = NOW()
-  WHERE  org_id         = p_org_id
-    AND  agent_id       = p_agent_id
+  WHERE  org_id = public.dsg_text_to_uuid(p_org_id)
+    AND  agent_id = public.dsg_text_to_uuid(p_agent_id)
     AND  billing_period = p_billing_period;
 
   -- If no row existed (NOT FOUND from UPDATE), insert one.
