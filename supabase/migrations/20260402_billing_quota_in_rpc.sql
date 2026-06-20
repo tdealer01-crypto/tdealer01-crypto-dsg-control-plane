@@ -50,8 +50,8 @@ begin
   select * into v_request
   from runtime_approval_requests
   where id = p_request_id
-    and org_id = p_org_id
-    and agent_id = p_agent_id
+    and org_id = public.dsg_text_to_uuid(p_org_id)
+    and agent_id = public.dsg_text_to_uuid(p_agent_id)
   for update;
 
   if v_request.id is null then
@@ -95,7 +95,7 @@ begin
   if p_agent_monthly_limit > 0 then
     select coalesce(sum(uc.executions), 0) into v_agent_executions
     from usage_counters uc
-    where uc.agent_id = p_agent_id
+    where uc.agent_id = public.dsg_text_to_uuid(p_agent_id)
       and uc.billing_period = v_billing_period
     for update;
 
@@ -107,7 +107,7 @@ begin
   if p_org_plan_limit > 0 then
     select coalesce(sum(uc.executions), 0) into v_org_executions
     from usage_counters uc
-    where uc.org_id = p_org_id
+    where uc.org_id = public.dsg_text_to_uuid(p_org_id)
       and uc.billing_period = v_billing_period
     for update;
 
@@ -129,7 +129,7 @@ begin
   select coalesce(max(truth_sequence), 0) + 1
     into v_truth_sequence
   from runtime_ledger_entries
-  where org_id = p_org_id and agent_id = p_agent_id;
+  where org_id = public.dsg_text_to_uuid(p_org_id) and agent_id = public.dsg_text_to_uuid(p_agent_id);
 
   insert into runtime_ledger_entries (org_id, agent_id, request_id, execution_id, truth_state_id, decision, truth_sequence, reason, metadata)
   values (p_org_id, p_agent_id, p_request_id, v_execution.id, v_truth.id, p_decision, v_truth_sequence, p_reason, coalesce(p_metadata, '{}'::jsonb))

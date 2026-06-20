@@ -1,0 +1,10 @@
+--- app/api/billing/checkout/route.ts
++++ app/api/billing/checkout/route.ts
+@@ export async function POST(request: Request) {
+-  if (!profile?.is_active || !profile?.org_id) {
+-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+-  }
++  // allow inactive profiles to upgrade; still require org_id
++  if (!profile?.org_id) {
++    return NextResponse.json({ error: 'Missing organization' }, { status: 403 });
++  }
