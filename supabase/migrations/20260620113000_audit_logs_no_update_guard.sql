@@ -1,5 +1,5 @@
--- DSG ONE audit log update guard
--- Blocks UPDATE on audit_logs at DB trigger level while preserving test cleanup DELETE behavior.
+-- DSG ONE audit immutability guard
+-- Blocks UPDATE on audit_logs at DB trigger level while preserving cleanup behavior via DELETE.
 
 BEGIN;
 
@@ -10,7 +10,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  RAISE EXCEPTION 'audit_logs updates are blocked by DSG audit guard'
+  RAISE EXCEPTION 'audit_logs are append-only: updates are blocked'
     USING ERRCODE = '55000';
 END;
 $$;
