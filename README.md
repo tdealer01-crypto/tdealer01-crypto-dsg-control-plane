@@ -6,6 +6,21 @@ This README is a codebase map for developers and reviewers. It intentionally avo
 
 **Production:** `https://tdealer01-crypto-dsg-control-plane.vercel.app`
 
+## Current verified snapshot
+
+The current evidence source of truth is [`docs/PRODUCTION_EVIDENCE_2026-06-20.md`](docs/PRODUCTION_EVIDENCE_2026-06-20.md).
+
+Use that document before requesting new proof or repeating deployment/revenue checks. New proof should be appended there with exact source IDs and claim boundaries.
+
+| Area | Status | Evidence pointer |
+|---|---:|---|
+| PR #754 | Merged | Merge commit `2b768d8b81bfaeff2a07991b9ed3db9c225cd7e7`. |
+| Latest main production deploy | Ready | Vercel deployment `dpl_7H5X3Sb48KfXASERy9PSziSQYV3n`, target `production`, source `main`, commit `2b768d8b81bfaeff2a07991b9ed3db9c225cd7e7`. |
+| Merge-conflict incident | Resolved | `app/dashboard/agents/page.tsx` conflict markers were removed through PR #754. |
+| Supabase billing schema | Present | `billing_customers`, `billing_events`, `billing_meter_outbox`, and `billing_subscriptions` observed. |
+| Stripe product surfaces | Present | DSG Pro, Business, Enterprise, Execution Overage, MCP, and related product surfaces observed. |
+| Live paid revenue | Not claimed | Live keys, successful real charge, webhook persistence, and meter event processing must be evidenced before claiming live revenue. |
+
 ## Repository surfaces
 
 | Area | Files / directories |
@@ -14,6 +29,7 @@ This README is a codebase map for developers and reviewers. It intentionally avo
 | Shared application logic | `lib/` |
 | Supabase migrations | `supabase/migrations/` |
 | Stripe App package | `packages/stripe-app/` |
+| Browserbase service package | `browserbase-service/` |
 | Scripts and verification | `scripts/`, `package.json` |
 | Documentation | `docs/` |
 
@@ -23,6 +39,7 @@ This README is a codebase map for developers and reviewers. It intentionally avo
 |---|---|
 | Runtime execution compatibility route | `app/api/execute/route.ts` |
 | Spine execution route | `app/api/spine/execute/route.ts` |
+| Parallel multi-agent execution route | `app/api/multi-agent/execute/route.ts` |
 | Deterministic policy manifest | `app/api/dsg/v1/policies/manifest/route.ts` |
 | Deterministic gate decision | `app/api/dsg/v1/gates/evaluate/route.ts` |
 | Deterministic proof response | `app/api/dsg/v1/proofs/prove/route.ts` |
@@ -38,6 +55,7 @@ This README is a codebase map for developers and reviewers. It intentionally avo
 |---|---|
 | `POST /api/execute` | Compatibility entry that re-exports the spine execution handler. |
 | `POST /api/spine/execute` | Runtime/spine execution route with auth, quota, Safe DOM verification, execution-state tracking, side effects, and `stop_reason`. |
+| `POST /api/multi-agent/execute` | Parallel multi-agent execution route with scoped auth, quota, Safe DOM verification, execution state tracking, side effects, and `stop_reason`. |
 | `GET /api/dsg/v1/policies/manifest` | Deterministic policy manifest and solver metadata. |
 | `POST /api/dsg/v1/gates/evaluate` | Deterministic gate decision. |
 | `POST /api/dsg/v1/proofs/prove` | Deterministic proof generation. |
@@ -104,11 +122,12 @@ The repository models explicit non-claims in the deterministic proof type surfac
 - no third-party certification claim;
 - no independent audit claim;
 - no WORM-certified external storage claim;
-- no complete cryptographic signing claim.
+- no complete cryptographic signing claim;
+- no live paid revenue claim until Stripe live checkout, real charge/invoice, webhook persistence, and Supabase billing rows are recorded in the evidence snapshot.
 
-Safe public wording: deterministic gate, proof hash, replay protection fields, evidence boundary, audit/event logging, and human-review control surfaces.
+Safe public wording: deterministic gate, proof hash, replay protection fields, evidence boundary, audit/event logging, human-review control surfaces, and Vercel production deployment readiness for the recorded merge commit.
 
-Avoid public wording that implies external certification, independent audit, or certified WORM storage unless those controls are separately implemented and evidenced.
+Avoid public wording that implies external certification, independent audit, certified WORM storage, all compliance gates complete, or active paid revenue unless those controls are separately implemented and evidenced.
 
 ## Local development
 
@@ -138,6 +157,7 @@ npm run deploy:prod
 
 ## Documentation
 
+- [`docs/PRODUCTION_EVIDENCE_2026-06-20.md`](docs/PRODUCTION_EVIDENCE_2026-06-20.md)
 - [`docs/README.md`](docs/README.md)
 - [`docs/CODEBASE_REVIEW_2026-06-17.md`](docs/CODEBASE_REVIEW_2026-06-17.md)
 - [`docs/IMPLEMENTED_SURFACES_2026-06-17.md`](docs/IMPLEMENTED_SURFACES_2026-06-17.md)
