@@ -68,6 +68,49 @@ function getPriceId(plan: PlanKey, interval: BillingInterval) {
   return '';
 }
 
+type CheckoutProfileResult =
+  | {
+      ok: true;
+      profile: {
+        auth_user_id: string;
+        email: string | null;
+        org_id: string;
+        is_active: boolean;
+      };
+      bootstrapped: boolean;
+    }
+  | { ok: false; status: number; error: string };
+
+async function resolveCheckoutProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: { id: string; email?: string | null },
+  email?: string | null
+): Promise<CheckoutProfileResult> {
+  const { data: existingProfile } = await supabase
+    .from('users')
+    .select('org_id, is_active, email')
+    .eq('auth_user_id', user.id)
+    .maybeSingle();
+
+  if (existingProfile?.org_id) {
+    return {
+      ok: true,
+      bootstrapped: existingProfile.is_active !== true,
+      profile: {
+        auth_user_id: user.id,
+        email: existingProfile.email || email || user.email || null,
+        org_id: String(existingProfile.org_id),
+        is_active: existingProfile.is_active === true,
+      },
+    };
+  }
+
+  return ensureUserWorkspace(getSupabaseAdmin(), {
+    authUserId: user.id,
+    email: email || user.email || null,
+  });
+}
+
 // GET handler: used by skills marketplace Link hrefs
 // GET /api/billing/checkout?plan=finance_skills&interval=monthly
 export async function GET(request: Request) {
@@ -87,10 +130,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${appUrl}/login?next=/marketplace/skills`);
     }
 
-    const workspace = await ensureUserWorkspace(getSupabaseAdmin(), {
-      authUserId: user.id,
-      email: user.email || null,
-    });
+    const workspace = await resolveCheckoutProfile(supabase, user, user.email || null);
 
     if (!workspace.ok) {
       return NextResponse.redirect(`${appUrl}/marketplace/skills?checkout=setup_failed`);
@@ -167,10 +207,7 @@ export async function POST(request: Request) {
     const customerEmail = body?.email ? String(body.email) : undefined;
     const orgId = body?.org_id ? String(body.org_id) : undefined;
 
-    const workspace = await ensureUserWorkspace(getSupabaseAdmin(), {
-      authUserId: user.id,
-      email: customerEmail || user.email || null,
-    });
+    const workspace = await resolveCheckoutProfile(supabase, user, customerEmail || user.email || null);
 
     if (!workspace.ok) {
       return NextResponse.json(

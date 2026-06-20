@@ -1,5 +1,10 @@
-type SupabaseAdminLike = {
-  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }>;
+type RpcResult = {
+  data: unknown;
+  error: { message?: string } | null;
+};
+
+type SupabaseAdminLoose = {
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>;
   from: (table: string) => any;
 };
 
@@ -20,14 +25,16 @@ function errorMessage(error: unknown) {
 }
 
 export async function ensureUserWorkspace(
-  admin: SupabaseAdminLike,
+  admin: unknown,
   input: { authUserId: string; email?: string | null }
 ): Promise<EnsureUserWorkspaceResult> {
   if (!input.authUserId) {
     return { ok: false, status: 401, error: 'missing_auth_user' };
   }
 
-  const { data: ensuredOrgId, error: rpcError } = await admin.rpc(
+  const client = admin as SupabaseAdminLoose;
+
+  const { data: ensuredOrgId, error: rpcError } = await client.rpc(
     'dsg_ensure_workspace_for_auth_user',
     {
       p_auth_user_id: input.authUserId,
@@ -43,7 +50,7 @@ export async function ensureUserWorkspace(
     };
   }
 
-  const { data: profile, error: profileError } = await admin
+  const { data: profile, error: profileError } = await client
     .from('users')
     .select('id, auth_user_id, email, org_id, is_active')
     .eq('auth_user_id', input.authUserId)
