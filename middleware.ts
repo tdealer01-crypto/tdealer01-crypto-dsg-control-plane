@@ -17,19 +17,49 @@ function isProtectedPath(pathname: string) {
 const API_BODY_SIZE_LIMIT = 1_048_576; // 1 MB
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // ── Correlation ID ─────────────────────────────────────────────────────────
+  // Propagate or generate a unique request ID for every request.
+  // Downstream services receive it via X-Request-ID header.
+  // Clients can correlate logs, errors, and traces with a single ID.
+  const requestId =
+    request.headers.get('x-request-id') ??
+    request.headers.get('x-correlation-id') ??
+    crypto.randomUUID();
 
-  // Enforce body size limit for API routes; skip full auth pipeline for API paths
+  const requestStart = Date.now();
+
+  // Clone the request with the correlation ID injected
+  const requestWithId = new NextRequest(request.url, {
+    method: request.method,
+    headers: new Headers(request.headers),
+    body: request.body,
+    duplex: 'half',
+  } as RequestInit & { duplex: 'half' });
+  requestWithId.headers.set('x-request-id', requestId);
+
+  let response = NextResponse.next({ request: requestWithId });
+
+  // Helper: stamp correlation + timing headers on any response
+  function stamp(res: NextResponse): NextResponse {
+    res.headers.set('x-request-id', requestId);
+    res.headers.set('x-response-time', `${Date.now() - requestStart}ms`);
+    return res;
+  }
+
+  // ── API routes: body-size enforcement only ─────────────────────────────────
   if (request.nextUrl.pathname.startsWith('/api/')) {
     if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
       const cl = request.headers.get('content-length');
       if (cl && parseInt(cl, 10) > API_BODY_SIZE_LIMIT) {
-        return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+        return stamp(
+          NextResponse.json({ error: 'Request body too large' }, { status: 413 }),
+        );
       }
     }
-    return response;
+    return stamp(response);
   }
 
+  // ── Page routes: Supabase auth ─────────────────────────────────────────────
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
@@ -40,14 +70,15 @@ export async function middleware(request: NextRequest) {
       if (request.nextUrl.pathname === '/app-shell') {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('next', '/app-shell');
-        return NextResponse.redirect(loginUrl);
+        return stamp(NextResponse.redirect(loginUrl));
       }
-      return new NextResponse(
-        'Service unavailable — authentication not configured',
-        { status: 503 }
+      return stamp(
+        new NextResponse('Service unavailable — authentication not configured', {
+          status: 503,
+        }),
       );
     }
-    return response;
+    return stamp(response);
   }
 
   const supabase = createServerClient(url, key, {
@@ -70,26 +101,26 @@ export async function middleware(request: NextRequest) {
 
   if (request.nextUrl.pathname === '/login' && user) {
     const next = getSafeNext(request.nextUrl.searchParams.get('next'));
-    return NextResponse.redirect(new URL(next, request.url));
+    return stamp(NextResponse.redirect(new URL(next, request.url)));
   }
 
   if (isProtectedPath(request.nextUrl.pathname) && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set(
       'next',
-      `${request.nextUrl.pathname}${request.nextUrl.search}`
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
     );
-    return NextResponse.redirect(loginUrl);
+    return stamp(NextResponse.redirect(loginUrl));
   }
 
-  return response;
+  return stamp(response);
 }
 
 export const config = {
   matcher: [
     // Page routes: Supabase session + protected-path auth
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    // API routes: body-size enforcement only
+    // API routes: body-size enforcement + correlation ID
     '/api/:path*',
   ],
 };
