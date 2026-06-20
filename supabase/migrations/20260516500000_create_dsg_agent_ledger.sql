@@ -102,7 +102,7 @@ create or replace function public.dsg_ledger_next_seq(p_org_id text)
 returns bigint language sql security definer as $$
   select coalesce(max(seq), -1) + 1
   from public.dsg_agent_ledger
-  where org_id = p_org_id;
+  where org_id = public.dsg_text_to_uuid(p_org_id);
 $$;
 
 revoke execute on function public.dsg_ledger_next_seq(text) from public;
@@ -113,7 +113,7 @@ create or replace function public.dsg_ledger_latest_hash(p_org_id text)
 returns text language sql security definer as $$
   select entry_hash
   from public.dsg_agent_ledger
-  where org_id = p_org_id
+  where org_id = public.dsg_text_to_uuid(p_org_id)
   order by seq desc
   limit 1;
 $$;

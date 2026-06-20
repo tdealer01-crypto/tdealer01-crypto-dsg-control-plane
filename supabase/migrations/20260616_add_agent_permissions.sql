@@ -40,7 +40,7 @@ RETURNS TEXT[] AS $$
 BEGIN
   RETURN COALESCE(
     (SELECT permissions FROM agent_permissions
-     WHERE org_id = p_org_id AND agent_id = p_agent_id),
+     WHERE org_id = public.dsg_text_to_uuid(p_org_id) AND agent_id = public.dsg_text_to_uuid(p_agent_id)),
     '{org.execute, org.view_reports, org.view_evidence}'::TEXT[]
   );
 END;
