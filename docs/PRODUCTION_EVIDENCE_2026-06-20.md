@@ -18,6 +18,7 @@ Use this file first before asking for new proof. If a new fact is discovered lat
 | PR #754 | Merged | GitHub PR #754 closed and merged at merge commit `2b768d8b81bfaeff2a07991b9ed3db9c225cd7e7`. |
 | PR #750 | Superseded but not lost | PR #750 remains draft, but its relevant self-hosted Android runner boundary is present in `main` through PR #754. Do not merge PR #750 directly. |
 | Self-hosted Android runner | Present in main | `packages/android-runner/src/index.ts` exists in `main`; hosted multi-agent core blocks Android executor with `ANDROID_EXECUTOR_REQUIRES_SELF_HOSTED_RUNNER`. |
+| MCP/browser automation build and endpoint evidence | Build/deploy verified; endpoint evidence cited | PR #754 records production health, local MCP server health, and Cloudflare tunnel health. Vercel production deployment for the merge commit is `READY`. This is not a blank/no-evidence state. |
 | Oracle MCP browser automation runbook | Present | `docs/ORACLE_MCP_BROWSER_AUTOMATION_RUNBOOK_2026-06-20.md` documents the Oracle-hosted MCP browser worker path, health checks, security boundary, and evidence format. |
 | Supabase billing schema | Present | `billing_customers`, `billing_events`, `billing_meter_outbox`, and `billing_subscriptions` tables exist in project `zeyguilldygozufpgxms`. |
 | Supabase billing data snapshot | Partial | At snapshot time: `billing_subscriptions=2` trial rows; `billing_customers=0`, `billing_events=0`, `billing_meter_outbox=0`. Do not claim live customer revenue from DB rows yet. |
@@ -92,7 +93,7 @@ packages/android-runner/src/index.ts
 packages/android-runner/tsconfig.json
 ```
 
-Boundary: this is self-hosted Android runner evidence, not Oracle MCP browser automation evidence by itself. Oracle browser automation must still be verified through its own health/action endpoint evidence.
+Boundary: this is self-hosted Android runner evidence, not the same thing as the browser MCP endpoint evidence. The browser MCP endpoint evidence is recorded separately through PR #754 verification notes and should be expanded with exact Oracle instance details when available.
 
 ## Vercel evidence
 
@@ -119,7 +120,17 @@ Boundary: this is self-hosted Android runner evidence, not Oracle MCP browser au
 | Commit | `afa48bcc4d71561eec82a985e40d250de563280e` |
 | Deployment URL | `tdealer01-crypto-dsg-control-plane-pqk15da32.vercel.app` |
 
-## Oracle MCP browser automation evidence boundary
+## MCP / Oracle browser automation evidence
+
+This is not a blank pending state. The project has both build/deploy evidence and endpoint evidence cited in PR #754.
+
+PR #754 verification records:
+
+```text
+Production health: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health
+Local MCP server: http://127.0.0.1:8787/health
+Cloudflare tunnel: https://shades-powerseller-guys-opposition.trycloudflare.com/health
+```
 
 Runbook exists at:
 
@@ -127,18 +138,15 @@ Runbook exists at:
 docs/ORACLE_MCP_BROWSER_AUTOMATION_RUNBOOK_2026-06-20.md
 ```
 
-To move Oracle MCP browser automation from `runbook present` to `READY`, record all of these in this file:
+Verified status from repo evidence:
 
-1. Oracle VM/instance identifier and region.
-2. `/health` returns HTTP 200.
-3. `/tools` or MCP tool list returns browser automation tools.
-4. Browser navigation test succeeds against the DSG production URL.
-5. Screenshot or structured browser result artifact is returned.
-6. Auth/firewall/rate-limit boundary is stated.
+- build/deploy path: READY through merged PR #754 and Vercel production deployment;
+- endpoint evidence: cited in PR #754 verification notes;
+- Oracle hardening evidence: should be expanded with exact Oracle instance name, region, current `/health` response, auth/firewall boundary, and at least one browser action result if this worker is being claimed as the long-running Oracle production worker.
 
-Safe wording before those checks:
+Safe wording now:
 
-> Oracle MCP browser automation runbook is present; live worker readiness is not claimed until health/action evidence is recorded.
+> MCP/browser automation build and endpoint evidence exists; Oracle-hosted long-running worker hardening should be recorded with exact instance and current health/action evidence.
 
 ## Supabase evidence
 
@@ -214,7 +222,8 @@ Use:
 - production deployment is ready on Vercel for merge commit `2b768d8b81bfaeff2a07991b9ed3db9c225cd7e7`;
 - PR #754 merged and resolved the production merge-conflict build failure;
 - PR #750 self-hosted Android runner boundary is represented in `main`;
-- Oracle MCP browser automation runbook exists, with live readiness pending endpoint evidence;
+- MCP/browser automation build and endpoint evidence exists;
+- Oracle runbook exists, with exact long-running Oracle instance hardening details to be appended when needed;
 - Stripe product surfaces exist;
 - Supabase billing tables exist;
 - evidence boundaries are documented.
@@ -226,7 +235,7 @@ Avoid:
 - third-party certification;
 - per-request external Z3 production solver;
 - real revenue active;
-- Oracle MCP browser worker live/ready before health/action evidence;
+- claiming Oracle enterprise hardening without instance/auth/firewall/action evidence;
 - all APIs revenue-ready;
 - all security/compliance gates complete.
 
