@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '../../../../lib/supabase/server';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { ensureUserWorkspace } from '../../../../lib/auth/ensure-user-workspace';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -85,20 +87,26 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${appUrl}/login?next=/marketplace/skills`);
     }
 
-    const { data: profile } = await supabase
-      .from('users')
-      .select('org_id, is_active, email')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
+    const workspace = await ensureUserWorkspace(getSupabaseAdmin(), {
+      authUserId: user.id,
+      email: user.email || null,
+    });
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
-      return NextResponse.redirect(`${appUrl}/login?next=/marketplace/skills`);
+    if (!workspace.ok) {
+      return NextResponse.redirect(`${appUrl}/marketplace/skills?checkout=setup_failed`);
     }
 
+    const profile = workspace.profile;
     const bundle = SKILLS_BUNDLE_CONFIG[plan];
     const unitAmount = interval === 'yearly' ? bundle.amountYearly : bundle.amountMonthly;
     const stripe = getStripeClient();
+    const metadata: Record<string, string> = {
+      plan_key: plan,
+      billing_interval: interval,
+      source: 'skills-marketplace',
+      org_id: profile.org_id,
+      auth_user_id: user.id,
+    };
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -114,10 +122,10 @@ export async function GET(request: Request) {
       success_url: `${appUrl}/dashboard/billing?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/marketplace/skills?checkout=cancelled`,
       customer_email: profile.email ?? undefined,
-      client_reference_id: String(profile.org_id),
+      client_reference_id: profile.org_id,
       allow_promotion_codes: true,
-      metadata: { plan_key: plan, billing_interval: interval, source: 'skills-marketplace', org_id: String(profile.org_id) },
-      subscription_data: { metadata: { plan_key: plan, billing_interval: interval, org_id: String(profile.org_id) } },
+      metadata,
+      subscription_data: { metadata },
     });
 
     return NextResponse.redirect(session.url ?? `${appUrl}/marketplace/skills`);
@@ -159,16 +167,19 @@ export async function POST(request: Request) {
     const customerEmail = body?.email ? String(body.email) : undefined;
     const orgId = body?.org_id ? String(body.org_id) : undefined;
 
-    const { data: profile } = await supabase
-      .from('users')
-      .select('org_id, is_active, email')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
+    const workspace = await ensureUserWorkspace(getSupabaseAdmin(), {
+      authUserId: user.id,
+      email: customerEmail || user.email || null,
+    });
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
-      return NextResponse.json({ error: 'Missing organization' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
+    if (!workspace.ok) {
+      return NextResponse.json(
+        { error: workspace.error },
+        { status: workspace.status, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
     }
+
+    const profile = workspace.profile;
 
     if (orgId && orgId !== profile.org_id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
@@ -183,9 +194,14 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripeClient();
-    const resolvedOrgId = orgId || String(profile.org_id);
-    const resolvedEmail = customerEmail || profile.email || undefined;
-    const metadata: Record<string, string> = { billing_interval: interval, source: 'dsg-control-plane', org_id: resolvedOrgId };
+    const resolvedOrgId = profile.org_id;
+    const resolvedEmail = customerEmail || profile.email || user.email || undefined;
+    const metadata: Record<string, string> = {
+      billing_interval: interval,
+      source: 'dsg-control-plane',
+      org_id: resolvedOrgId,
+      auth_user_id: user.id,
+    };
     if (resolvedEmail) metadata.customer_email = resolvedEmail;
 
     let lineItems: Stripe.Checkout.SessionCreateParams['line_items'];
