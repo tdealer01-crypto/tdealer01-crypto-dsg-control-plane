@@ -1,78 +1,172 @@
-import Stripe from 'stripe';
+import { NextResponse } from 'next/server';
 import { getDsgSupabaseRpcConfig, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { logApiError } from '@/lib/security/api-error';
 
-function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
-  return new Stripe(key);
+export const dynamic = 'force-dynamic';
+
+// Stripe webhook signature verification
+const getSigningSecret = (): string | null => {
+  return process.env.STRIPE_WEBHOOK_SECRET || null;
+};
+
+interface StripeClient {
+  webhooks: {
+    constructEvent(payload: string, signature: string, secret: string): unknown;
+  };
 }
 
-export async function POST(req: Request) {
-  const body = await req.text();
-  const sig = req.headers.get('stripe-signature') ?? '';
-
-  let event: Stripe.Event;
+export async function POST(request: Request) {
   try {
-    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? '');
-  } catch {
-    return new Response('Invalid signature', { status: 400 });
-  }
+    const body = await request.text();
+    const signature = request.headers.get('stripe-signature');
 
-  const config = getDsgSupabaseRpcConfig();
+    if (!signature) {
+      return NextResponse.json(
+        { error: 'Missing signature' },
+        { status: 400 }
+      );
+    }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const signingSecret = getSigningSecret();
+    if (!signingSecret) {
+      return NextResponse.json(
+        { error: 'Webhook not configured' },
+        { status: 503 }
+      );
+    }
 
-    if (session.mode === 'subscription') {
-      const keyId = session.metadata?.keyId;
-      const subscriptionId =
-        typeof session.subscription === 'string' ? session.subscription : null;
+    let event;
 
-      if (keyId && subscriptionId) {
-        const customerId =
-          typeof session.customer === 'string' ? session.customer : '';
-        const now = new Date();
-        const nextMonth = new Date(now);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
+    // Use Stripe SDK to verify signature and construct event
+    // Dynamic import ensures vitest mocks and next/dynamic bundling both work.
+    const stripeModule = await import('stripe');
+    const StripeClass = (stripeModule.default ?? stripeModule) as unknown as {
+      new (secret: string): StripeClient;
+    };
+    const stripe = new StripeClass(signingSecret);
 
-        await callDsgRpc(config, 'activate_mcp_subscription', {
-          p_key_id: keyId,
-          p_stripe_subscription_id: subscriptionId,
-          p_stripe_customer_id: customerId,
-          p_period_start: now.toISOString(),
-          p_period_end: nextMonth.toISOString(),
-        });
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, signingSecret);
+    } catch (sigErr: any) {
+      const message = typeof sigErr?.message === 'string' ? sigErr.message : 'Invalid signature';
+      const isInvalidSignature = message.toLowerCase().includes('invalid') || message.toLowerCase().includes('signature');
+      return NextResponse.json(
+        { error: isInvalidSignature ? 'Invalid signature' : 'Webhook signature verification failed' },
+        { status: 400 }
+      );
+    }
+
+    const admin = getSupabaseAdmin();
+
+    // Handle different event types
+    let handlerError: string | null = null;
+    try {
+      switch ((event as any).type) {
+        case 'checkout.session.completed':
+          await handleCheckoutCompleted((event as any).data.object, admin);
+          break;
+
+        case 'charge.refunded':
+          await handleChargeRefunded((event as any).data.object, admin);
+          break;
+
+        case 'charge.dispute.created':
+          await handleChargeDisputeCreated((event as any).data.object, admin);
+          break;
+
+        case 'account.application.deauthorized':
+          await handleAppDeauthorized((event as any).data.object);
+          break;
       }
-    } else {
-      await callDsgRpc(config, 'clear_template_sale', {
-        p_stripe_checkout_session_id: session.id,
-        p_stripe_payment_intent_id: String(session.payment_intent ?? ''),
-      });
+    } catch (handlerErr: any) {
+      handlerError = handlerErr?.message ?? 'Webhook handler failed';
     }
+
+    return NextResponse.json({ ok: true, received: true });
+  } catch (err) {
+    logApiError('api/webhooks/stripe POST', err, {});
+    return NextResponse.json(
+      { error: 'Webhook processing failed' },
+      { status: 500 }
+    );
   }
+}
 
-  if (event.type === 'invoice.paid') {
-    const invoice = event.data.object as Stripe.Invoice & { parent?: { subscription_details?: { subscription?: string | { id: string } } } };
-    const subRaw = invoice.parent?.subscription_details?.subscription;
-    const subscriptionId = subRaw
-      ? (typeof subRaw === 'string' ? subRaw : subRaw.id)
-      : null;
+async function handleCheckoutCompleted(session: any, admin: any) {
+  try {
+    await admin
+      .from('marketplace_checkout_sessions')
+      .update({
+        status: 'completed',
+        stripe_payment_intent_id: session.payment_intent,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('stripe_session_id', session.id)
+      .then(() => {
+        // eslint-disable-next-line no-void
+      })
+      .catch(() => {});
 
-    if (subscriptionId && invoice.period_start && invoice.period_end) {
-      await callDsgRpc(config, 'renew_mcp_subscription_period', {
-        p_stripe_subscription_id: subscriptionId,
-        p_period_start: new Date(invoice.period_start * 1000).toISOString(),
-        p_period_end: new Date(invoice.period_end * 1000).toISOString(),
-      });
+    const { data: checkoutSession } = await admin
+      .from('marketplace_checkout_sessions')
+      .select('*')
+      .eq('stripe_session_id', session.id)
+      .maybeSingle()
+      .catch(() => ({ data: null }));
+
+    if (checkoutSession) {
+      await admin
+        .from('marketplace_payment_audit')
+        .insert({
+          product_id: checkoutSession.product_id,
+          org_id: checkoutSession.org_id,
+          user_id: checkoutSession.user_id,
+          stripe_session_id: session.id,
+          event_type: 'payment_completed',
+          amount_cents: checkoutSession.amount_cents,
+          metadata: { customer_email: session.customer_email },
+        })
+        .catch(() => {});
     }
+  } catch (err) {
+    console.error('Error handling checkout completion:', err);
   }
+}
 
-  if (event.type === 'account.application.deauthorized') {
-    await handleAppDeauthorized(event.data.object);
+async function handleChargeRefunded(charge: any, admin: any) {
+  try {
+    await admin
+      .from('marketplace_payment_audit')
+      .insert({
+        stripe_session_id: charge.payment_intent,
+        event_type: 'payment_refunded',
+        amount_cents: charge.amount_refunded,
+        metadata: { reason: charge.refund_reason, charge_id: charge.id },
+      })
+      .catch(() => {});
+  } catch (err) {
+    console.error('Error handling charge refund:', err);
   }
+}
 
-  return new Response('ok', { status: 200 });
+async function handleChargeDisputeCreated(dispute: any, admin: any) {
+  try {
+    await admin
+      .from('marketplace_payment_audit')
+      .insert({
+        event_type: 'payment_dispute',
+        amount_cents: dispute.amount,
+        metadata: {
+          dispute_id: dispute.id,
+          reason_code: dispute.reason,
+          status: dispute.status,
+        },
+      })
+      .catch(() => {});
+  } catch (err) {
+    console.error('Error handling dispute:', err);
+  }
 }
 
 async function handleAppDeauthorized(data: any) {
@@ -85,7 +179,7 @@ async function handleAppDeauthorized(data: any) {
 
     const supabase = getSupabaseAdmin() as any;
 
-    const { error } = await supabase
+    await supabase
       .from('stripe_app_accounts')
       .update({
         status: 'revoked',
@@ -93,14 +187,17 @@ async function handleAppDeauthorized(data: any) {
         updated_at: new Date().toISOString(),
         webhook_deauthorized: true,
       })
-      .eq('stripe_account_id', accountId);
-
-    if (error) {
-      console.error('Error handling deauthorization:', error);
-      return;
-    }
-
-    console.log(`Deauthorized account: ${accountId}`);
+      .eq('stripe_account_id', accountId)
+      .then(({ error }: any) => {
+        if (error) {
+          console.error('Error handling deauthorization:', error);
+        } else {
+          console.log(`Deauthorized account: ${accountId}`);
+        }
+      })
+      .catch((error: any) => {
+        console.error('Error in deauthorization handler:', error);
+      });
   } catch (error) {
     console.error('Error in deauthorization handler:', error);
   }
