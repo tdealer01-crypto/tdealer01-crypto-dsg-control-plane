@@ -20,6 +20,15 @@ export type EnsureUserWorkspaceResult =
   | { ok: true; profile: EnsuredWorkspaceProfile; bootstrapped: boolean }
   | { ok: false; status: number; error: string };
 
+export type EnsureUserWorkspaceSuccess = Extract<EnsureUserWorkspaceResult, { ok: true }>;
+export type EnsureUserWorkspaceFailure = Extract<EnsureUserWorkspaceResult, { ok: false }>;
+
+export function isWorkspaceFailure(
+  result: EnsureUserWorkspaceResult
+): result is EnsureUserWorkspaceFailure {
+  return result.ok === false;
+}
+
 function errorMessage(error: unknown) {
   return String((error as { message?: string } | null)?.message || 'unknown error');
 }

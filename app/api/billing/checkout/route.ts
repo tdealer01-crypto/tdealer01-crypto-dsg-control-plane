@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
-import { ensureUserWorkspace } from '../../../../lib/auth/ensure-user-workspace';
+import { ensureUserWorkspace, isWorkspaceFailure } from '../../../../lib/auth/ensure-user-workspace';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -132,7 +132,7 @@ export async function GET(request: Request) {
 
     const workspace = await resolveCheckoutProfile(supabase, user, user.email || null);
 
-    if (!workspace.ok) {
+    if (isWorkspaceFailure(workspace)) {
       return NextResponse.redirect(`${appUrl}/marketplace/skills?checkout=setup_failed`);
     }
 
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
 
     const workspace = await resolveCheckoutProfile(supabase, user, customerEmail || user.email || null);
 
-    if (!workspace.ok) {
+    if (isWorkspaceFailure(workspace)) {
       return NextResponse.json(
         { error: workspace.error },
         { status: workspace.status, headers: buildRateLimitHeaders(rateLimit, 20) }

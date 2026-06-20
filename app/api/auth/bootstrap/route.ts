@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
-import { ensureUserWorkspace } from '../../../../lib/auth/ensure-user-workspace';
+import { ensureUserWorkspace, isWorkspaceFailure } from '../../../../lib/auth/ensure-user-workspace';
 import { handleApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +23,7 @@ async function bootstrap() {
       email: user.email || null,
     });
 
-    if (!ensured.ok) {
+    if (isWorkspaceFailure(ensured)) {
       return NextResponse.json(
         { ok: false, error: ensured.error },
         { status: ensured.status }
