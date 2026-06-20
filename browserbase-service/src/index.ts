@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+export { createStagehand, closeStagehand, navigate, screenshot, click, scrape, fillForm, leadGen, monitor } from "./client.js";
+export type { ServiceContext } from "./client.js";
+=======
 import { program } from "commander";
 import { createStagehand, closeStagehand, navigate, click, screenshot, scrape, fillForm, monitor, leadGen } from "./client.js";
 
@@ -158,3 +162,4 @@ program
   });
 
 program.parse();
+>>>>>>> origin/main

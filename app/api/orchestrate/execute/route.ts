@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('Orchestration error:', err);
     return NextResponse.json(
-      { error: 'Orchestration failed', details: err instanceof Error ? err.message : 'Unknown error' },
+      { error: 'Orchestration failed' },
       { status: 500 }
     );
   }

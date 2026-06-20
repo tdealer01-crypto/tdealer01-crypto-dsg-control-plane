@@ -70,6 +70,15 @@ function isMissingRelation(error: unknown): boolean {
   return /relation .* does not exist|relation not found|does not exist/i.test(message);
 }
 
+function isDuplicateRecordHash(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String((error as { code?: string; message?: string })?.message ?? '');
+  const code = (error as { code?: string })?.code;
+  return (
+    code === '23505' ||
+    /duplicate key value violates unique constraint/i.test(message)
+  );
+}
+
 function toAuditEvent(row: FinanceGovernanceAuditLedgerRow): FinanceGovernanceAuditEvent {
   return {
     orgId: row.org_id,
@@ -146,18 +155,28 @@ export async function writeFinanceGovernanceAuditLedger(
   };
   const recordHash = sha256(record);
 
-  const { error } = await supabase.from('finance_governance_audit_ledger').insert({
-    ...record,
-    record_hash: recordHash,
-  });
+  const insertResult = await supabase
+    .from('finance_governance_audit_ledger')
+    .insert({
+      ...record,
+      record_hash: recordHash,
+    });
 
-  if (error) {
-    if (isMissingRelation(error)) {
+  if (insertResult.error) {
+    if (isMissingRelation(insertResult.error)) {
       return { requestHash, recordHash, stored: false };
     }
 
-    throw new Error(`failed_to_write_audit_ledger:${error.message}`);
+    if (isDuplicateRecordHash(insertResult.error)) {
+      return { requestHash, recordHash, stored: false };
+    }
+
+    throw new Error(`failed_to_write_audit_ledger:${insertResult.error.message}`);
   }
 
-  return { requestHash, recordHash, stored: true };
+  return {
+    requestHash,
+    recordHash,
+    stored: true,
+  };
 }
