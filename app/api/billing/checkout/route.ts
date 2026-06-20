@@ -86,13 +86,13 @@ export async function GET(request: Request) {
     }
 
     const { data: profile } = await supabase
-      .from('users')
-      .select('org_id, is_active, email')
-      .eq('auth_user_id', user.id)
+      .from('user')
+      .select('email')
+      .eq('id', user.id)
       .maybeSingle();
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
+    // Trial/inactive owners must still reach checkout; do not gate on org_id here.
+    if (!profile?.email) {
       return NextResponse.redirect(`${appUrl}/login?next=/marketplace/skills`);
     }
 
@@ -113,11 +113,11 @@ export async function GET(request: Request) {
       }],
       success_url: `${appUrl}/dashboard/billing?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/marketplace/skills?checkout=cancelled`,
-      customer_email: profile.email ?? undefined,
-      client_reference_id: String(profile.org_id),
+      customer_email: user.email ?? undefined,
+      client_reference_id: user.id,
       allow_promotion_codes: true,
-      metadata: { plan_key: plan, billing_interval: interval, source: 'skills-marketplace', org_id: String(profile.org_id) },
-      subscription_data: { metadata: { plan_key: plan, billing_interval: interval, org_id: String(profile.org_id) } },
+      metadata: { plan_key: plan, billing_interval: interval, source: 'skills-marketplace', user_id: user.id },
+      subscription_data: { metadata: { plan_key: plan, billing_interval: interval, user_id: user.id } },
     });
 
     return NextResponse.redirect(session.url ?? `${appUrl}/marketplace/skills`);
@@ -160,18 +160,14 @@ export async function POST(request: Request) {
     const orgId = body?.org_id ? String(body.org_id) : undefined;
 
     const { data: profile } = await supabase
-      .from('users')
-      .select('org_id, is_active, email')
-      .eq('auth_user_id', user.id)
+      .from('user')
+      .select('email')
+      .eq('id', user.id)
       .maybeSingle();
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
-      return NextResponse.json({ error: 'Missing organization' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
-    }
-
-    if (orgId && orgId !== profile.org_id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
+    // Owners on trial/inactive should still enter checkout; do not gate on org_id.
+    if (!profile?.email) {
+      return NextResponse.json({ error: 'Missing profile' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
