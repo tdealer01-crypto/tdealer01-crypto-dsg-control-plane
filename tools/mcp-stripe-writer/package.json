@@ -1,0 +1,28 @@
+{
+  "name": "@dsg/mcp-stripe-writer",
+  "version": "1.0.0",
+  "description": "Standalone DSG MCP server for governed Stripe product, price, and payment link creation",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "dsg-mcp-stripe-writer": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}
