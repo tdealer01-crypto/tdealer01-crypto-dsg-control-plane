@@ -1,10 +1,14 @@
 # DSG ONE — ProofGate Control Plane
 
-Runtime control-plane scaffold for governed AI, agent, workflow, finance, Stripe, and deployment actions.
+Runtime control-plane for governed AI agents: policy gate, audit trail, Hermes dashboard, marketplace, and Stripe billing.
 
-This README is a codebase map for developers and reviewers. It intentionally avoids certification-style language unless the repo contains direct evidence for the claim.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftdealer01-crypto%2Ftdealer01-crypto-dsg-control-plane&project-name=dsg-control-plane&repository-name=dsg-control-plane&demo-title=DSG%20ONE%20Control%20Plane&demo-description=Governed%20AI%20runtime%20with%20policy%20gate%2C%20audit%20chain%2C%20Hermes%20agent%20dashboard%2C%20and%20Stripe%20billing&demo-url=https%3A%2F%2Ftdealer01-crypto-dsg-control-plane.vercel.app&demo-image=https%3A%2F%2Ftdealer01-crypto-dsg-control-plane.vercel.app%2Fog%2Fdefault.png&envs=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,ANTHROPIC_API_KEY,NEXTAUTH_SECRET&env-description=Required%20environment%20variables%20for%20DSG%20ONE)
+[![Install GitHub App](https://img.shields.io/badge/GitHub%20App-Install%20DSG%20Gate-black?logo=github)](https://tdealer01-crypto-dsg-control-plane.vercel.app/github-app)
+[![Production](https://img.shields.io/badge/production-live-brightgreen)](https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health)
 
 **Production:** `https://tdealer01-crypto-dsg-control-plane.vercel.app`
+**Marketplace:** `https://tdealer01-crypto-dsg-control-plane.vercel.app/marketplace`
+**GitHub App:** `https://tdealer01-crypto-dsg-control-plane.vercel.app/github-app`
 
 ## Current verified snapshot
 
