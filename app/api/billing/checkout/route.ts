@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '../../../../lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { ensureUserWorkspace } from '@/lib/auth/ensure-user-workspace';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 
@@ -159,20 +161,19 @@ export async function POST(request: Request) {
     const customerEmail = body?.email ? String(body.email) : undefined;
     const orgId = body?.org_id ? String(body.org_id) : undefined;
 
-    const { data: profile } = await supabase
-      .from('users')
-      .select('org_id, is_active, email')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
+    const workspace = await ensureUserWorkspace(getSupabaseAdmin(), {
+      authUserId: user.id,
+      email: customerEmail || user.email || null,
+    });
 
-    // Allow trial/inactive profiles to start Stripe checkout; still require an organization.
-    if (!profile?.org_id) {
-      return NextResponse.json({ error: 'Missing organization' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
+    if (!workspace.ok) {
+      return NextResponse.json(
+        { error: workspace.error },
+        { status: workspace.status, headers: buildRateLimitHeaders(rateLimit, 20) }
+      );
     }
 
-    if (orgId && orgId !== profile.org_id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: buildRateLimitHeaders(rateLimit, 20) });
-    }
+    const profile = workspace.profile;
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) {
