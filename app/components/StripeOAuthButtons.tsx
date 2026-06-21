@@ -72,7 +72,7 @@ export function StripeOAuthButtons({
               )}
             </div>
             <Button
-              variant="destructive"
+              variant="danger"
               size="sm"
               onClick={handleDisconnect}
             >
