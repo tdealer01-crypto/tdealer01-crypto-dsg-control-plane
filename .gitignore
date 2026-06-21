@@ -64,3 +64,4 @@ stripe-meter.json
 dsg-complete-stripe-github-env.sh
 dsg-final-env-local-only.sh
 .stripe/
+.vercel
