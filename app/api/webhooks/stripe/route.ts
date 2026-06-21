@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { getDsgSupabaseRpcConfig, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -67,5 +68,40 @@ export async function POST(req: Request) {
     }
   }
 
+  if (event.type === 'account.application.deauthorized') {
+    await handleAppDeauthorized(event.data.object);
+  }
+
   return new Response('ok', { status: 200 });
+}
+
+async function handleAppDeauthorized(data: any) {
+  try {
+    const accountId = data?.account;
+    if (!accountId) {
+      console.error('Deauthorization event missing account ID');
+      return;
+    }
+
+    const supabase = getSupabaseAdmin() as any;
+
+    const { error } = await supabase
+      .from('stripe_app_accounts')
+      .update({
+        status: 'revoked',
+        disconnected_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        webhook_deauthorized: true,
+      })
+      .eq('stripe_account_id', accountId);
+
+    if (error) {
+      console.error('Error handling deauthorization:', error);
+      return;
+    }
+
+    console.log(`Deauthorized account: ${accountId}`);
+  } catch (error) {
+    console.error('Error in deauthorization handler:', error);
+  }
 }
