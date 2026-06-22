@@ -83,16 +83,22 @@ export function StripeOAuthButtons({
       ) : (
         <>
           <div className="flex flex-col gap-2">
-            <Button asChild>
-              <a href={LIVE_OAUTH_URL} target="_blank" rel="noopener noreferrer">
-                Connect Live Stripe
-              </a>
-            </Button>
-            <Button asChild variant="outline">
-              <a href={SANDBOX_OAUTH_URL} target="_blank" rel="noopener noreferrer">
-                Connect Sandbox Stripe
-              </a>
-            </Button>
+            <a
+              href={LIVE_OAUTH_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Connect Live Stripe
+            </a>
+            <a
+              href={SANDBOX_OAUTH_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Connect Sandbox Stripe
+            </a>
           </div>
         </>
       )}
