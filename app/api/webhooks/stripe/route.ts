@@ -32,14 +32,14 @@ export async function POST(request: Request) {
     let event;
 
     // Use Stripe SDK to verify signature and construct event
-    const StripeLib = require('stripe').default || require('stripe');
+    const StripeLib = require('stripe');
     const stripe = new StripeLib(signingSecret);
     
     try {
       event = stripe.webhooks.constructEvent(body, signature, signingSecret);
     } catch (sigErr: any) {
       return NextResponse.json(
-        { error: `Webhook signature verification failed: ${sigErr.message}` },
+        { error: `Webhook signature verification failed: ${sigErr?.message ?? ''}` },
         { status: 400 }
       );
     }
@@ -86,7 +86,6 @@ async function handleCheckoutCompleted(session: any, admin: any) {
         // Table might not exist yet, ignore
       });
 
-    // Log to audit trail if exists
     const { data: checkoutSession } = await admin
       .from('marketplace_checkout_sessions')
       .select('*')
