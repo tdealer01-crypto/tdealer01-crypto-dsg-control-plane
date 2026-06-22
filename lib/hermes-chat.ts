@@ -50,8 +50,8 @@ export async function chatWithHermes(
       content: formatContextForAI(request.message, request.context),
     });
 
-    // Call Claude API via our route
-    const response = await fetch('/api/chat/hermes', {
+    // Call DSG ONE agent chat (OpenRouter-backed orchestrator)
+    const res = await fetch('/api/agent/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -61,11 +61,23 @@ export async function chatWithHermes(
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`Chat API error: ${response.statusText}`);
+    if (!res.ok) {
+      throw new Error(`Chat API error: ${res.status} ${res.statusText}`);
     }
 
-    return await response.json();
+    const data = (await res.json()) as {
+      ok?: boolean;
+      reply?: string;
+      response?: string;
+      error?: string;
+      meta?: Record<string, unknown>;
+    };
+
+    return {
+      reply: data.reply ?? data.response ?? '',
+      action: 'info',
+      confidence: data.ok ? 0.9 : 0,
+    };
   } catch (error) {
     console.error('[Hermes Chat] Error:', error);
     return {
