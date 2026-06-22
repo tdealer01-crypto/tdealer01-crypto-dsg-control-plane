@@ -12,17 +12,17 @@ function getSupabase() {
   return createClient<Database>(url, serviceRole);
 }
 
-export async function OPTIONS(request: Request) {
+export async function OPTIONS(request: NextRequest) {
   return buildPreflightResponse(request);
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const corsHeaders = buildCorsHeaders(request);
   try {
-    const conversationId = String(params.id);
+    const { id: conversationId } = await params;
     const supabase: any = getSupabase();
 
     const { data: conv, error: convErr } = await supabase
@@ -61,11 +61,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const corsHeaders = buildCorsHeaders(request);
   try {
-    const conversationId = String(params.id);
+    const { id: conversationId } = await params;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const uiConfig = (body.ui_config ?? {}) as Record<string, unknown>;
 
