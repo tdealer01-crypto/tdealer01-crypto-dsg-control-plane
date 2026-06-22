@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
 import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import type { SafeDomCommand, SafeDomElement } from '@/lib/executors/browserbase-safe-dom-integration';
 
 /**
@@ -160,6 +161,60 @@ async function handleExecuteCommand(request: NextRequest) {
 /**
  * Route handler dispatcher.
  */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
+    const frameId = searchParams.get('frameId');
+
+    if (!sessionId) {
+      return NextResponse.json(
+        { error: 'Missing required query param: sessionId' },
+        { status: 400 },
+      );
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    let queryBuilder: any = supabase
+      .from('safe_dom_manifests' as any)
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+
+    if (frameId) {
+      queryBuilder = supabase
+        .from('safe_dom_manifests' as any)
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('frame_id', frameId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+    }
+
+    const { data, error } = await (queryBuilder as unknown as Promise<{ data: any[] | null; error: any }>);
+
+    if (error || !data) {
+      return NextResponse.json({ status: 'EMPTY', manifests: [] });
+    }
+
+    const manifests = (Array.isArray(data) ? data : data ? [data] : []).map((row: any) => ({
+      manifestId: row.id,
+      sessionId: row.session_id,
+      frameId: row.frame_id,
+      orgId: row.org_id,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      elementCount: row.manifest_json?.elements?.length ?? 0,
+    }));
+
+    return NextResponse.json({ status: 'READY', manifests });
+  } catch (error) {
+    logApiError('api/safe-dom/browserbase:status', error);
+    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const url = new URL(request.url);
   const path = url.pathname;
