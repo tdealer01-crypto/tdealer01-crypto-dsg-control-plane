@@ -19,17 +19,17 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolved = await params;
+  const { id: conversationId } = resolved;
   const corsHeaders = buildCorsHeaders(request);
 
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const conversationId = String(params.id);
-
-    const supabase = getSupabase();
     const now = new Date().toISOString();
 
+    const supabase = getSupabase();
     const { data, error } = await supabase
       .from('conversations')
       .update({

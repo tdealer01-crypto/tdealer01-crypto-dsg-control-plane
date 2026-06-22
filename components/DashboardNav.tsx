@@ -34,6 +34,7 @@ const MORE = [
   { href: '/marketplace/skills', label: 'Skills Marketplace' },
   { href: '/dashboard/referrals', label: 'Referrals' },
   { href: '/app-shell', label: 'App Shell' },
+  { href: '/dashboard/hermes/agents', label: 'Multi-Agent' },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {
