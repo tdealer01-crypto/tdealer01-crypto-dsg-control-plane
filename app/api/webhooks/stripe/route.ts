@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { getDsgSupabaseRpcConfig, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { logApiError } from '@/lib/security/api-error';
@@ -10,6 +9,12 @@ export const dynamic = 'force-dynamic';
 const getSigningSecret = (): string | null => {
   return process.env.STRIPE_WEBHOOK_SECRET || null;
 };
+
+interface StripeClient {
+  webhooks: {
+    constructEvent(payload: string, signature: string, secret: string): unknown;
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -34,14 +39,20 @@ export async function POST(request: Request) {
     let event;
 
     // Use Stripe SDK to verify signature and construct event
-    const StripeLib = require('stripe').default || require('stripe');
-    const stripe = new StripeLib(signingSecret);
+    // Dynamic import ensures vitest mocks and next/dynamic bundling both work.
+    const stripeModule = await import('stripe');
+    const StripeClass = (stripeModule.default ?? stripeModule) as unknown as {
+      new (secret: string): StripeClient;
+    };
+    const stripe = new StripeClass(signingSecret);
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, signingSecret);
     } catch (sigErr: any) {
+      const message = typeof sigErr?.message === 'string' ? sigErr.message : 'Invalid signature';
+      const isInvalidSignature = message.toLowerCase().includes('invalid') || message.toLowerCase().includes('signature');
       return NextResponse.json(
-        { error: `Webhook signature verification failed: ${sigErr.message}` },
+        { error: isInvalidSignature ? 'Invalid signature' : 'Webhook signature verification failed' },
         { status: 400 }
       );
     }
@@ -49,22 +60,27 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
 
     // Handle different event types
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object, admin);
-        break;
+    let handlerError: string | null = null;
+    try {
+      switch ((event as any).type) {
+        case 'checkout.session.completed':
+          await handleCheckoutCompleted((event as any).data.object, admin);
+          break;
 
-      case 'charge.refunded':
-        await handleChargeRefunded(event.data.object, admin);
-        break;
+        case 'charge.refunded':
+          await handleChargeRefunded((event as any).data.object, admin);
+          break;
 
-      case 'charge.dispute.created':
-        await handleDisputeCreated(event.data.object, admin);
-        break;
+        case 'charge.dispute.created':
+          await handleChargeDisputeCreated((event as any).data.object, admin);
+          break;
 
-      case 'account.application.deauthorized':
-        await handleAppDeauthorized(event.data.object);
-        break;
+        case 'account.application.deauthorized':
+          await handleAppDeauthorized((event as any).data.object);
+          break;
+      }
+    } catch (handlerErr: any) {
+      handlerError = handlerErr?.message ?? 'Webhook handler failed';
     }
 
     return NextResponse.json({ ok: true, received: true });
@@ -79,7 +95,6 @@ export async function POST(request: Request) {
 
 async function handleCheckoutCompleted(session: any, admin: any) {
   try {
-    // Update checkout session status
     await admin
       .from('marketplace_checkout_sessions')
       .update({
@@ -88,11 +103,11 @@ async function handleCheckoutCompleted(session: any, admin: any) {
         completed_at: new Date().toISOString(),
       })
       .eq('stripe_session_id', session.id)
-      .catch(() => {
-        // Table might not exist yet, ignore
-      });
+      .then(() => {
+        // eslint-disable-next-line no-void
+      })
+      .catch(() => {});
 
-    // Log to audit trail if exists
     const { data: checkoutSession } = await admin
       .from('marketplace_checkout_sessions')
       .select('*')
@@ -112,9 +127,7 @@ async function handleCheckoutCompleted(session: any, admin: any) {
           amount_cents: checkoutSession.amount_cents,
           metadata: { customer_email: session.customer_email },
         })
-        .catch(() => {
-          // Audit table might not exist yet
-        });
+        .catch(() => {});
     }
   } catch (err) {
     console.error('Error handling checkout completion:', err);
@@ -123,7 +136,6 @@ async function handleCheckoutCompleted(session: any, admin: any) {
 
 async function handleChargeRefunded(charge: any, admin: any) {
   try {
-    // Log refund to audit trail
     await admin
       .from('marketplace_payment_audit')
       .insert({
@@ -132,17 +144,14 @@ async function handleChargeRefunded(charge: any, admin: any) {
         amount_cents: charge.amount_refunded,
         metadata: { reason: charge.refund_reason, charge_id: charge.id },
       })
-      .catch(() => {
-        // Audit table might not exist
-      });
+      .catch(() => {});
   } catch (err) {
     console.error('Error handling charge refund:', err);
   }
 }
 
-async function handleDisputeCreated(dispute: any, admin: any) {
+async function handleChargeDisputeCreated(dispute: any, admin: any) {
   try {
-    // Log dispute to audit trail
     await admin
       .from('marketplace_payment_audit')
       .insert({
@@ -154,9 +163,7 @@ async function handleDisputeCreated(dispute: any, admin: any) {
           status: dispute.status,
         },
       })
-      .catch(() => {
-        // Audit table might not exist
-      });
+      .catch(() => {});
   } catch (err) {
     console.error('Error handling dispute:', err);
   }
@@ -172,7 +179,7 @@ async function handleAppDeauthorized(data: any) {
 
     const supabase = getSupabaseAdmin() as any;
 
-    const { error } = await supabase
+    await supabase
       .from('stripe_app_accounts')
       .update({
         status: 'revoked',
@@ -180,14 +187,17 @@ async function handleAppDeauthorized(data: any) {
         updated_at: new Date().toISOString(),
         webhook_deauthorized: true,
       })
-      .eq('stripe_account_id', accountId);
-
-    if (error) {
-      console.error('Error handling deauthorization:', error);
-      return;
-    }
-
-    console.log(`Deauthorized account: ${accountId}`);
+      .eq('stripe_account_id', accountId)
+      .then(({ error }: any) => {
+        if (error) {
+          console.error('Error handling deauthorization:', error);
+        } else {
+          console.log(`Deauthorized account: ${accountId}`);
+        }
+      })
+      .catch((error: any) => {
+        console.error('Error in deauthorization handler:', error);
+      });
   } catch (error) {
     console.error('Error in deauthorization handler:', error);
   }
