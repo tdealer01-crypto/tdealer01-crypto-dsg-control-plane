@@ -7,9 +7,29 @@ type UiConfig = Record<string, unknown>;
 export default function ConversationUiConfigPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const conversationId = params.id;
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    params.then(({ id }) => {
+      if (mounted) setConversationId(id);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [params]);
+
+  if (!conversationId) {
+    return (
+      <div className="p-6">
+        <p className="text-gray-500">กำลังโหลดข้อมูลบทสนทนา...</p>
+      </div>
+    );
+  }
+
+  const uiConfigTarget = conversationId;
   const [uiConfig, setUiConfig] = useState<UiConfig>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,7 +41,7 @@ export default function ConversationUiConfigPage({
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/conversations/${conversationId}/ui-config`);
+        const res = await fetch(`/api/conversations/${uiConfigTarget}/ui-config`);
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: 'Unknown error' }));
           throw new Error(err.error || `HTTP ${res.status}`);
@@ -44,7 +64,7 @@ export default function ConversationUiConfigPage({
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch(`/api/conversations/${conversationId}/ui-config`, {
+      const res = await fetch(`/api/conversations/${uiConfigTarget}/ui-config`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ui_config: uiConfig }),
@@ -86,7 +106,7 @@ export default function ConversationUiConfigPage({
     <div className="mx-auto max-w-2xl p-6">
       <h1 className="mb-4 text-xl font-semibold">Backend UI Config</h1>
       <p className="mb-4 text-sm text-gray-600">
-        Conversation ID: <code className="rounded bg-gray-100 px-1">{conversationId}</code>
+        Conversation ID: <code className="rounded bg-gray-100 px-1">{uiConfigTarget}</code>
       </p>
 
       {error && (

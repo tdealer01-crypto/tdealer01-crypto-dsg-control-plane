@@ -65,6 +65,13 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
+  // Localhost/dev bypass: skip auth for local inspection UI
+  const host = request.headers.get('host') || '';
+  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+  if (isLocalhost) {
+    return stamp(response);
+  }
+
   if (!url || !key) {
     if (isProtectedPath(request.nextUrl.pathname)) {
       if (request.nextUrl.pathname === '/app-shell') {
