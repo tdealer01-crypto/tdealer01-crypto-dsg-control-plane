@@ -15,7 +15,7 @@
 3. OpenAI.com (Agent governance interest)
 4. Replit.com (Multiplayer AI coding)
 5. Cursor.sh (VS Code + Claude integration)
-6. Github.com (Copilot Enterprise customers)
+6. GitHub.com (Copilot Enterprise customers)
 7. Linear.app (Dev team efficiency)
 8. Stripe.com (Compliance-sensitive API platform)
 9. Figma.com (Design + AI agents)
@@ -87,7 +87,7 @@ Agent Governance for the AI Era
 
 ### Email 1 Variants (Personalized for Company Type)
 
-**For Enterprise Audiences (Vercel, Github, Stripe):**
+**For Enterprise Audiences (Vercel, GitHub, Stripe):**
 
 ```
 Hi [FIRST_NAME],
