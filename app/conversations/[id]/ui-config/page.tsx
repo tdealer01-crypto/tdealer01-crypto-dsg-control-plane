@@ -10,16 +10,36 @@ export default function ConversationUiConfigPage({
   params: Promise<{ id: string }>;
 }) {
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [uiConfig, setUiConfig] = useState<UiConfig>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     params.then(({ id }) => {
-      if (mounted) setConversationId(id);
+      if (mounted) {
+        setConversationId(id);
+        setLoading(true);
+        setError(null);
+        fetch(`/api/conversations/${id}/ui-config`)
+          .then(r => r.json())
+          .then(json => {
+            if (mounted) setUiConfig(json.ui_config ?? {});
+          })
+          .catch(err => {
+            if (mounted) setError(err.message || 'Failed to load');
+          })
+          .finally(() => {
+            if (mounted) setLoading(false);
+          });
+      }
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [params]);
+
+  const uiConfigTarget = conversationId;
 
   if (!conversationId) {
     return (
@@ -28,36 +48,6 @@ export default function ConversationUiConfigPage({
       </div>
     );
   }
-
-  const uiConfigTarget = conversationId;
-  const [uiConfig, setUiConfig] = useState<UiConfig>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/conversations/${uiConfigTarget}/ui-config`);
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(err.error || `HTTP ${res.status}`);
-        }
-        const json = await res.json();
-        setUiConfig(json.ui_config ?? {});
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [conversationId]);
 
   const handleSave = async () => {
     setSaving(true);
