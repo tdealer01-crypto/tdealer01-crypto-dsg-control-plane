@@ -21,6 +21,13 @@ export default function ConversationUiConfigPage({
     };
   }, [params]);
 
+  const uiConfigTarget = conversationId;
+  const [uiConfig, setUiConfig] = useState<UiConfig>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
   if (!conversationId) {
     return (
       <div className="p-6">
@@ -28,13 +35,6 @@ export default function ConversationUiConfigPage({
       </div>
     );
   }
-
-  const uiConfigTarget = conversationId;
-  const [uiConfig, setUiConfig] = useState<UiConfig>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
