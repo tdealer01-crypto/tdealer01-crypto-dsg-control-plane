@@ -177,6 +177,7 @@ export function useUltraBackend() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshManifests defined below
   }, []);
 
   const refreshManifests = useCallback(async () => {
