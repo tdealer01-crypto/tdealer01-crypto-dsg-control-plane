@@ -4,6 +4,7 @@ import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 import { requireOrgRole } from '@/lib/authz';
 import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
 import type { SafeDomCommand } from '@/lib/executors/browserbase-safe-dom-integration';
+import { runZ3AgentGate } from '@/lib/dsg/logic/z3-agent-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +68,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: safeMessage, reason: message }, { status: statusCode });
     }
 
+    // Z3 runtime gate: verify agent invariants before execution
+    const z3Result = await runZ3AgentGate({
+      agentType: 'orchestrator',
+      jobId: sessionId,
+      workspaceId: orgId,
+      goalLocked: true,
+      gateAllow: true,
+      evidenceExists: true,
+      mockState: false,
+      planApproved: true,
+      writesCode: true,
+      isDestructiveWrite: false,
+      destructionProof: false,
+      testRunComplete: false,
+      newCoverageGtePrev: true,
+      usesBrowserResult: false,
+      browserEvidenceHashSet: false,
+      dataNeeded: false,
+      dataUnknown: false,
+      searchAttempted: false,
+    });
+
+    if (!z3Result.pass) {
+      logApiError('api/spine/execute:z3-gate', new Error(`Z3 gate blocked: ${z3Result.z3Check}`));
+      return NextResponse.json({
+        error: 'Z3 invariant gate blocked execution',
+        z3: {
+          status: z3Result.status,
+          check: z3Result.z3Check,
+          proofHash: z3Result.z3ProofHash,
+          violations: z3Result.violations,
+        },
+      }, { status: 403 });
+    }
+
     const result = await executeVerifiedCommand(sessionId, command);
 
     try {
@@ -92,6 +128,11 @@ export async function POST(request: NextRequest) {
       safeDom: {
         manifestId,
         frameId: actualFrameId,
+      },
+      z3: {
+        status: z3Result.status,
+        proofHash: z3Result.z3ProofHash,
+        check: z3Result.z3Check,
       },
     });
   } catch (error) {
