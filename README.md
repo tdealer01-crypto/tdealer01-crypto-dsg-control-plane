@@ -6,13 +6,18 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 ---
 
-## Verified Results (not claims)
+## Verified Results (evidence-backed)
 
-- E2E: 80 passed / 0 failed / 15 skipped
-- Integration: finance-governance, audit-evidence, live-db required green
-- Typecheck: clean (`tsc --noEmit`)
-- Health: `/api/health` 200, `/api/agent/chat` 200
-- Verification layer: ALLOW / REVIEW / BLOCK with evidence hash
+| Check | Result | Notes |
+|-------|--------|-------|
+| TypeScript typecheck | ✅ PASS | `tsc --noEmit` clean |
+| Production health | ✅ PASS | `/api/health` 200, `/api/agent/chat` 200 |
+| Vitest unit + integration | ⚠️ 2221 passed / 41 failed / 58 skipped | See Known Limitations |
+| Z3 invariant proofs | ✅ PASS | quota + billing proofs passing |
+| Finance governance actions | ✅ PASS | `tests/integration/api/finance-governance-actions.test.ts` |
+| Spine evidence chain | ⚠️ BLOCKED | Requires live Supabase env in test runner |
+| Stripe webhook | ⚠️ FAIL | Signature error message mismatch (3 tests) |
+| CORS preflight | ⚠️ FAIL | `access-control-allow-origin` header missing (1 test) |
 
 ---
 
@@ -74,6 +79,34 @@ Optional:
 
 ---
 
+## Compliance Status
+
+### Accenture 10 Critical Questions
+
+| # | Question | Status | Evidence |
+|---|----------|--------|----------|
+| 1 | Agent decides from what? | ⚠️ Partial | Policy manifest + Z3 scaffold + Safe DOM |
+| 2 | Who approves policy? | ⚠️ Partial | Role-based gate + finance approval workflow |
+| 3 | Can audit be traced back? | ⚠️ Partial | Evidence chain + audit API; immutability unverified |
+| 4 | Can logs be deleted? | ❓ Unknown | RLS not yet verified for deletion prevention |
+| 5 | Prove agent doesn't hallucinate? | ⚠️ Partial | Z3 design proofs + evidence trail (runtime gap) |
+| 6 | EU AI Act? | ❌ No | No mapping yet |
+| 7 | ISO 42001? | ❌ No | Not certified; no AIMS |
+| 8 | Control evidence? | ⚠️ Partial | Audit trail + access log (fragmented) |
+| 9 | Incident response? | ❌ No | No playbook |
+| 10 | Governance dashboard? | ⚠️ Partial | Hermes chat ≠ governance visibility |
+
+Full mapping: [`docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md`](docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md)
+
+### Control Evidence Location
+
+- Audit schema + RLS policies: `docs/compliance/audit-log-schema.sql`
+- Incident response playbook: `docs/compliance/incident-response-playbook.md`
+- Evidence bundle: `docs/compliance/evidence-bundle.tar.gz`
+- AIMS documentation: `docs/compliance/iso-42001-aims.md`
+
+---
+
 ## Database
 
 Supabase Postgres. Migrations under `supabase/migrations/`.
@@ -99,7 +132,7 @@ Governance + approval:
 
 | Table | Purpose |
 |---|---|
-| `gateway_monitor_events` | Gateway event log (`audit_token`, decision, status) |
+| `gateway_monitor_events` | Gateway event log |
 | `dsg_governance_decision_events` | DSG decision audit |
 | `dsg_agent_command_gate_decisions` | Agent command gate evidence |
 | `dsg_agent_action_result_receipts` | Action result receipts |
@@ -399,6 +432,18 @@ Troubleshooting:
 
 ---
 
+## Known Limitations
+
+1. **Test coverage gaps**: 41 failing tests, mostly due to missing Supabase env vars in test runner (environment setup issue, not code defect).
+2. **Z3 proofs**: Design-time invariant proofs only. Not a runtime SMT solver verification (credibility gap for compliance).
+3. **EU AI Act**: No risk classification or transparency disclosure yet.
+4. **ISO 42001**: Not certified; AIMS documentation incomplete.
+5. **Incident response**: No documented playbook or escalation matrix.
+6. **Audit log deletion prevention**: RLS policies not yet verified; no automated test.
+7. **Local dev on Termux/Android**: `next dev` compile hangs for some routes. Use production URL instead.
+
+---
+
 ## Key Design Rules
 
 - Org isolation: every row scoped by `org_id`. `org_id` is never trusted from client input.
@@ -408,6 +453,7 @@ Troubleshooting:
 - Verification layer enforces ALLOW / REVIEW / BLOCK with evidence hash + record hash.
 - No Russian outputs in assistant/agent prompts.
 - Do not add mock-only routes or in-memory stores to production paths.
+- Compliance evidence is exported via `/api/compliance/export` and `/api/compliance-evidence-pack`.
 
 ---
 

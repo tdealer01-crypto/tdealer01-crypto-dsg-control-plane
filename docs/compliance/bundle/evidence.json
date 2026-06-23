@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-06-23T17:20:00Z",
+  "framework": "DSG Control Plane",
+  "accenture_10q": {
+    "source": "docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md",
+    "status": "partial",
+    "gaps": ["EU AI Act mapping incomplete", "ISO 42001 certification pending", "Z3 runtime solver gap", "Audit immutability unverified"]
+  },
+  "test_results": {
+    "accenture_10q": "31 passed",
+    "file": "tests/integration/compliance/accenture-10q.test.ts"
+  },
+  "artifacts": [
+    "docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md",
+    "docs/compliance/incident-response-playbook.md",
+    "docs/compliance/iso-42001-aims.md",
+    "tests/integration/compliance/accenture-10q.test.ts",
+    "app/dashboard/governance/question/[id]/page.tsx",
+    "app/dashboard/governance/controls/page.tsx",
+    "app/dashboard/governance/evidence/page.tsx",
+    "app/dashboard/governance/incidents/page.tsx"
+  ]
+}
