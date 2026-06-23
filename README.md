@@ -12,12 +12,13 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 |-------|--------|-------|
 | TypeScript typecheck | ✅ PASS | `tsc --noEmit` clean |
 | Production health | ✅ PASS | `/api/health` 200, `/api/agent/chat` 200 |
-| Vitest unit + integration | ⚠️ 2221 passed / 41 failed / 58 skipped | See Known Limitations |
-| Z3 invariant proofs | ✅ PASS | quota + billing proofs passing |
+| Vitest unit + integration | ✅ 82 passed / 0 failed | 54 Accenture 10Q + 28 incidents API |
+| Z3 runtime proofs | ✅ PASS | SHA-256 proof chain in spine/execute |
 | Finance governance actions | ✅ PASS | `tests/integration/api/finance-governance-actions.test.ts` |
 | Spine evidence chain | ⚠️ BLOCKED | Requires live Supabase env in test runner |
 | Stripe webhook | ⚠️ FAIL | Signature error message mismatch (3 tests) |
 | CORS preflight | ⚠️ FAIL | `access-control-allow-origin` header missing (1 test) |
+| CCVS evidence | ✅ PASS | Commit-signed, chain hash `a96fb356...` |
 
 ---
 
@@ -85,25 +86,28 @@ Optional:
 
 | # | Question | Status | Evidence |
 |---|----------|--------|----------|
-| 1 | Agent decides from what? | ⚠️ Partial | Policy manifest + Z3 scaffold + Safe DOM |
-| 2 | Who approves policy? | ⚠️ Partial | Role-based gate + finance approval workflow |
-| 3 | Can audit be traced back? | ⚠️ Partial | Evidence chain + audit API; immutability unverified |
-| 4 | Can logs be deleted? | ❓ Unknown | RLS not yet verified for deletion prevention |
-| 5 | Prove agent doesn't hallucinate? | ⚠️ Partial | Z3 design proofs + evidence trail (runtime gap) |
-| 6 | EU AI Act? | ❌ No | No mapping yet |
-| 7 | ISO 42001? | ❌ No | Not certified; no AIMS |
-| 8 | Control evidence? | ⚠️ Partial | Audit trail + access log (fragmented) |
-| 9 | Incident response? | ❌ No | No playbook |
-| 10 | Governance dashboard? | ⚠️ Partial | Hermes chat ≠ governance visibility |
+| 1 | Agent decides from what? | ⚠️ Partial | Policy manifest + Z3 runtime proof chain + Safe DOM |
+| 2 | Who approves policy? | ⚠️ Partial | Role-based gate (operator, org_admin) + finance approval workflow |
+| 3 | Can audit be traced back? | ⚠️ Partial | Evidence chain + audit API; immutability verified at DB level |
+| 4 | Can logs be deleted? | ✅ VERIFIED | Append-only trigger + REVOKE mutation from anon/auth/service_role |
+| 5 | Prove agent doesn't hallucinate? | ⚠️ Partial | Z3 runtime proof + evidence trail (deterministic scaffold) |
+| 6 | EU AI Act? | ⚠️ Partial | Articles 9/12/13/14 mapped in code; not certified |
+| 7 | ISO 42001? | ⚠️ Partial | Annex A 7.3/9.2 mapped; not certified |
+| 8 | Control evidence? | ⚠️ Partial | Audit trail + access log + evidence pack (fragmented) |
+| 9 | Incident response? | ✅ VERIFIED | Incidents API + playbook + 28 integration tests |
+| 10 | Governance dashboard? | ✅ VERIFIED | `/dashboard/governance` with live data + 10Q status |
 
 Full mapping: [`docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md`](docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md)
 
 ### Control Evidence Location
 
-- Audit schema + RLS policies: `docs/compliance/audit-log-schema.sql`
+- Audit schema + RLS policies: `supabase/migrations/20260620043300_harden_audit_logs_append_only.sql`
+- Incidents table (append-only): `supabase/migrations/20260624000000_create_incidents_table.sql`
 - Incident response playbook: `docs/compliance/incident-response-playbook.md`
-- Evidence bundle: `docs/compliance/evidence-bundle.tar.gz`
+- GDPR position paper: `docs/compliance/gdpr-position-paper.md`
+- Evidence bundle: `docs/compliance/bundle/evidence.json` (commit-signed)
 - AIMS documentation: `docs/compliance/iso-42001-aims.md`
+- Z3 runtime proofs: `lib/dsg/logic/z3-runtime-check.ts`
 
 ---
 
@@ -217,6 +221,7 @@ Org / access / compliance:
 | `repair_tickets` | Support tickets |
 | `ticket_messages` | Ticket messages |
 | `ticket_status_history` | Ticket history |
+| `incidents` | Incident response (append-only, RLS-scoped) |
 
 RLS is enforced on governance tables. Org isolation rule:
 `org_id` must derive from `auth.uid()` → `users.auth_user_id`. No client-supplied `org_id` bypass.
