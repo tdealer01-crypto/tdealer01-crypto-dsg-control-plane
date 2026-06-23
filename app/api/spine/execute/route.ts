@@ -4,7 +4,7 @@ import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 import { requireOrgRole } from '@/lib/authz';
 import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
 import type { SafeDomCommand } from '@/lib/executors/browserbase-safe-dom-integration';
-import { runZ3AgentGate } from '@/lib/dsg/logic/z3-agent-gate';
+import { verifyAgentInvariants } from '@/lib/dsg/logic/z3-runtime-check';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Z3 runtime gate: verify agent invariants before execution
-    const z3Result = await runZ3AgentGate({
+    const z3Result = verifyAgentInvariants({
       agentType: 'orchestrator',
       jobId: sessionId,
       workspaceId: orgId,
@@ -91,13 +91,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!z3Result.pass) {
-      logApiError('api/spine/execute:z3-gate', new Error(`Z3 gate blocked: ${z3Result.z3Check}`));
+      logApiError('api/spine/execute:z3-gate', new Error(`Z3 gate blocked: ${z3Result.check}`));
       return NextResponse.json({
         error: 'Z3 invariant gate blocked execution',
         z3: {
-          status: z3Result.status,
-          check: z3Result.z3Check,
-          proofHash: z3Result.z3ProofHash,
+          status: z3Result.pass ? 'PASS' : 'BLOCK',
+          check: z3Result.check,
+          proofHash: z3Result.proofHash,
           violations: z3Result.violations,
         },
       }, { status: 403 });
@@ -130,9 +130,9 @@ export async function POST(request: NextRequest) {
         frameId: actualFrameId,
       },
       z3: {
-        status: z3Result.status,
-        proofHash: z3Result.z3ProofHash,
-        check: z3Result.z3Check,
+        status: z3Result.pass ? 'PASS' : 'BLOCK',
+        proofHash: z3Result.proofHash,
+        check: z3Result.check,
       },
     });
   } catch (error) {

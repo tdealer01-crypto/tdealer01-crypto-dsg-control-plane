@@ -15,7 +15,7 @@ interface Incident {
   org_id?: string;
 }
 
-// Fallback in-memory store (used when Supabase env not configured)
+// In-memory store (replace with Supabase once incidents table migration is applied)
 const INCIDENTS_STORE: Incident[] = [
   {
     id: 'INC-2026-001',
@@ -35,18 +35,6 @@ const INCIDENTS_STORE: Incident[] = [
     created_at: '2026-06-22T09:30:00Z',
   },
 ];
-
-async function getSupabaseClient() {
-  try {
-    const mod = await import('../../../lib/supabase-server');
-    if (mod?.getSupabaseAdmin) {
-      return mod.getSupabaseAdmin();
-    }
-  } catch {
-    // Supabase not available
-  }
-  return null;
-}
 
 function validateIncident(body: unknown): { ok: boolean; error?: string; data?: Partial<Incident> } {
   if (!body || typeof body !== 'object') {
@@ -88,31 +76,6 @@ export async function GET(request: NextRequest) {
     const severity = url.searchParams.get('severity');
     const status = url.searchParams.get('status');
 
-    // Try Supabase first
-    const supabase = await getSupabaseClient();
-    if (supabase) {
-      try {
-        let query = supabase.from('incidents').select('*');
-        if (severity) query = query.eq('severity', severity);
-        if (status) query = query.eq('status', status);
-        query = query.order('created_at', { ascending: false });
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        return NextResponse.json({
-          ok: true,
-          count: data?.length || 0,
-          items: data || [],
-          source: 'supabase',
-        });
-      } catch (dbErr) {
-        logApiError('api/incidents', dbErr, { stage: 'supabase_fallback' });
-        // Fall through to in-memory
-      }
-    }
-
-    // Fallback: in-memory store
     let filtered = [...INCIDENTS_STORE];
     if (severity) filtered = filtered.filter(i => i.severity === severity);
     if (status) filtered = filtered.filter(i => i.status === status);
@@ -122,7 +85,6 @@ export async function GET(request: NextRequest) {
       ok: true,
       count: filtered.length,
       items: filtered,
-      source: 'in-memory',
     });
   } catch (error) {
     logApiError('api/incidents', error, { stage: 'list' });
@@ -156,42 +118,8 @@ export async function POST(request: NextRequest) {
       org_id: access.orgId,
     };
 
-    // Try Supabase first
-    const supabase = await getSupabaseClient();
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('incidents')
-          .insert({
-            severity: newIncident.severity,
-            title: newIncident.title,
-            description: newIncident.description,
-            status: 'open',
-            org_id: access.orgId,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        return NextResponse.json({
-          ok: true,
-          incident: data,
-          source: 'supabase',
-        }, { status: 201 });
-      } catch (dbErr) {
-        logApiError('api/incidents', dbErr, { stage: 'supabase_insert_fallback' });
-        // Fall through to in-memory
-      }
-    }
-
-    // Fallback: in-memory store
     INCIDENTS_STORE.push(newIncident);
-    return NextResponse.json({
-      ok: true,
-      incident: newIncident,
-      source: 'in-memory',
-    }, { status: 201 });
+    return NextResponse.json({ ok: true, incident: newIncident }, { status: 201 });
   } catch (error) {
     logApiError('api/incidents', error, { stage: 'create' });
     return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
@@ -226,56 +154,17 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const updateData: Partial<Incident> = {
-      status: b.status as Incident['status'],
-    };
-    if (b.status === 'resolved') {
-      updateData.resolved_at = new Date().toISOString();
-    }
-
-    // Try Supabase first
-    const supabase = await getSupabaseClient();
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('incidents')
-          .update({
-            status: updateData.status,
-            resolved_at: updateData.resolved_at || null,
-          })
-          .eq('id', b.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        return NextResponse.json({
-          ok: true,
-          incident: data,
-          source: 'supabase',
-        });
-      } catch (dbErr) {
-        logApiError('api/incidents', dbErr, { stage: 'supabase_update_fallback' });
-        // Fall through to in-memory
-      }
-    }
-
-    // Fallback: in-memory store
     const incident = INCIDENTS_STORE.find(i => i.id === b.id);
     if (!incident) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
-    incident.status = updateData.status!;
-    if (updateData.resolved_at) {
-      incident.resolved_at = updateData.resolved_at;
+    incident.status = b.status as Incident['status'];
+    if (b.status === 'resolved') {
+      incident.resolved_at = new Date().toISOString();
     }
 
-    return NextResponse.json({
-      ok: true,
-      incident,
-      source: 'in-memory',
-    });
+    return NextResponse.json({ ok: true, incident });
   } catch (error) {
     logApiError('api/incidents', error, { stage: 'update' });
     return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
