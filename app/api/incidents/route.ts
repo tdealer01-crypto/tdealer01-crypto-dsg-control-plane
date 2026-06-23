@@ -39,8 +39,8 @@ const INCIDENTS_STORE: Incident[] = [
 async function getSupabaseClient() {
   try {
     const mod = await import('../../../lib/supabase-server');
-    if (mod?.createClient) {
-      return await mod.createClient();
+    if (mod?.getSupabaseAdmin) {
+      return mod.getSupabaseAdmin();
     }
   } catch {
     // Supabase not available
