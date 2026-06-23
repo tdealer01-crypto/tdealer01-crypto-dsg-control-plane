@@ -136,11 +136,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
 
   // Insert org role
-  await supabase.from('user_org_roles').insert({
+  const { error: roleInsertError } = await supabase.from('user_org_roles').insert({
     org_id: orgId,
     user_id: newUser.id,
     role,
   });
+
+  if (roleInsertError) {
+    return NextResponse.json({ error: 'Failed to assign organization role' }, { status: 500 });
+  }
 
   const invite = {
     id: newUser.id,
