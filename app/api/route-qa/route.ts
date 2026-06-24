@@ -47,25 +47,20 @@ function extractTitle(html: string) {
 async function browserCheck(url: string) {
   const startedAt = Date.now();
   try {
-    // Use dynamic import — graceful fallback if not available
-    let chromium;
-    try {
-      ({ chromium } = await import('playwright'));
-    } catch {
-      // Fallback: try playwright-core
-      ({ chromium } = await import('playwright-core'));
-    }
-    if (!chromium) throw new Error('playwright_not_available');
-    
-    const browser = await chromium.launch({
+    // Use Termux-installed Chromium directly
+    const chromiumPath = '/data/data/com.termux/files/usr/bin/chromium-browser';
+    const { chromium: playwright } = await import('playwright-core');
+
+    const browser = await playwright.launch({
+      executablePath: chromiumPath,
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
     });
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
     });
     const page = await context.newPage();
-    
+
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -95,7 +90,6 @@ async function browserCheck(url: string) {
       ok: bodyVisible && hasContent && consoleErrors.length === 0,
     };
   } catch (err) {
-    // Graceful fallback — return skip if browser not available
     return {
       mode: 'browser',
       ok: true,
