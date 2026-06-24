@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-06-23T23:06:30.398Z",
+  "commit": "0a6b2b98fbfbd78098a7a7ce9fa96b5f26a58a48",
+  "policy_version": "unknown",
+  "artifacts": [
+    {
+      "type": "tests",
+      "hash": "8e11bccf191cfd99c6e896932140051a4c2ac0775154344f673b47f77677beec",
+      "chain_hash": "a96fb356b3c3645d00c826f9fdfae4a347857fd4dd981e03d8f29b6040a09007",
+      "linked_from": "root",
+      "path": "qa-logs/test-results.json",
+      "created_at": "2026-06-23T23:06:30.341Z",
+      "summary": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "duration": 0
+      }
+    }
+  ],
+  "chain_hash": "a96fb356b3c3645d00c826f9fdfae4a347857fd4dd981e03d8f29b6040a09007",
+  "summary": {
+    "test_passed": 0,
+    "test_failed": 0,
+    "test_skipped": 0,
+    "test_duration_ms": 0
+  },
+  "signature": null
+}

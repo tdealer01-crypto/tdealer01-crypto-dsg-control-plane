@@ -39,12 +39,7 @@
     }
   ],
   "ui_extension": {
-    "views": [
-      {
-        "viewport": "stripe.dashboard.payment.detail",
-        "component": "ChargeGate"
-      }
-    ],
+    "views": [],
     "content_security_policy": {
       "connect-src": [
         "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/",

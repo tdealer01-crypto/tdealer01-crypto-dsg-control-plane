@@ -22,10 +22,29 @@ const DEFAULT_OUTPUT_DIR = "artifacts";
 const OUTPUT_MANIFEST = "evidence-bundle-manifest.json";
 
 // ============================================================================
+// Helper: Get Git Commit
+// ============================================================================
+
+async function getGitCommit() {
+  try {
+    const result = await spawnPromise("git", ["rev-parse", "HEAD"], {
+      cwd: PROJECT_ROOT,
+    });
+    const commit = result.stdout.trim();
+    if (commit && /^[0-9a-f]{40}$/.test(commit)) {
+      return commit;
+    }
+  } catch {
+    // fall through
+  }
+  return "unknown";
+}
+
+// ============================================================================
 // CLI Argument Parsing
 // ============================================================================
 
-function parseArgs() {
+async function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     coverageFile: DEFAULT_COVERAGE_FILE,
@@ -33,7 +52,7 @@ function parseArgs() {
     mutationResults: DEFAULT_MUTATION_RESULTS,
     sbomFile: DEFAULT_SBOM_FILE,
     auditFile: DEFAULT_AUDIT_FILE,
-    commit: process.env.GIT_COMMIT || "unknown",
+    commit: process.env.GIT_COMMIT || await getGitCommit(),
     outputDir: DEFAULT_OUTPUT_DIR,
     sign: false,
     uploadS3: false,
@@ -580,7 +599,7 @@ function reportResults(manifest, signResult, warnings, options) {
 // ============================================================================
 
 async function main() {
-  const options = parseArgs();
+  const options = await parseArgs();
 
   if (options.help) {
     showHelp();

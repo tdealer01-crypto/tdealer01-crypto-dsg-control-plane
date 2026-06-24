@@ -1,8 +1,15 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
-import { ReactNode } from 'react';
-import { AlertProvider } from '@/lib/hooks';
+export const dynamic = 'force-dynamic';
 
-export default function HermesLayout({ children }: { children: ReactNode }) {
-  return <AlertProvider>{children}</AlertProvider>;
+export default async function HermesLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login?next=/dashboard/hermes');
+  }
+
+  return <>{children}</>;
 }

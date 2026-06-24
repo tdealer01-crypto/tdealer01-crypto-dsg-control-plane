@@ -59,7 +59,7 @@ export async function callOpenRouterProvider(request: ModelProviderRequest): Pro
     };
   }
 
-  const model = process.env.OPENROUTER_MODEL || 'qwen/qwen-2.5-7b-instruct:free';
+  const model = process.env.OPENROUTER_MODEL || 'openrouter/owl-alpha';
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
 

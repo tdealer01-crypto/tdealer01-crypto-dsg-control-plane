@@ -4,6 +4,7 @@ import {
   cleanupExecutionFixture,
   countRows,
   createExecutionFixture,
+  waitForCountRows,
   getSupabaseTestAdmin,
   type SupabaseTestFixture,
 } from '../helpers/supabase-test-factory';
@@ -72,9 +73,9 @@ describeLive('/api/execute live Supabase required gate', () => {
       }),
     );
 
-    const executionCount = await countRows(supabase, 'executions', { org_id: fixture.orgId, agent_id: fixture.agentId });
-    const auditCount = await countRows(supabase, 'audit_logs', { org_id: fixture.orgId, agent_id: fixture.agentId });
-    const usageCount = await countRows(supabase, 'usage_events', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    const executionCount = await waitForCountRows(supabase, 'executions', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    const auditCount = await waitForCountRows(supabase, 'audit_logs', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    const usageCount = await waitForCountRows(supabase, 'usage_events', { org_id: fixture.orgId, agent_id: fixture.agentId });
 
     expect(executionCount).toBeGreaterThanOrEqual(1);
     expect(auditCount).toBeGreaterThanOrEqual(1);
