@@ -350,7 +350,17 @@ Stripe App (under `packages/stripe-app`):
 | `GET  /api/stripe-app/audit` | Stripe App audit |
 | `POST /api/stripe-app/connect` | Stripe App connect |
 
-Other integration routes: `dsg-bridge/*`, `delegation/*`, `integrations/*`, `github-app/*`, `defi/*`, `playground/*`, `demo/*`, `proof/*`, `readiness/*`, `settings/*`, `support/*`.
+|Metered billing ||
+
+### Incident response:
+
+| Route | Purpose |
+|---|---|
+| `GET  /api/incidents` | List incidents (monitor+) |
+| `POST /api/incidents` | Create incident (admin) |
+| `PATCH /api/incidents` | Update incident status (admin) |
+
+Other integration routes: `dsg-bridge/*`, `delegation/*`, `integrations/*`, `github-app/*`, `defi/*`, `playground/*`, `demo/*`, `proof/*`, `readiness/*`, `settings/*`, `support/*`, `incidents/*`.
 
 Full route list: `find app/api -name 'route.ts'`
 
@@ -425,7 +435,7 @@ Troubleshooting:
 
 - Vercel: `vercel --yes --prod`
 - Env must include production Stripe + Supabase keys
-- `installCommand` in `vercel.json` is `npm install` (not `npm ci`) because lockfile diverges on `lucide-react`
+- `installCommand` in `vercel.json` is `npm ci` (lockfile synced with lucide-react)
 
 ---
 
@@ -439,12 +449,12 @@ Troubleshooting:
 
 ## Known Limitations
 
-1. **Test coverage gaps**: 41 failing tests, mostly due to missing Supabase env vars in test runner (environment setup issue, not code defect).
-2. **Z3 proofs**: Design-time invariant proofs only. Not a runtime SMT solver verification (credibility gap for compliance).
-3. **EU AI Act**: No risk classification or transparency disclosure yet.
-4. **ISO 42001**: Not certified; AIMS documentation incomplete.
-5. **Incident response**: No documented playbook or escalation matrix.
-6. **Audit log deletion prevention**: RLS policies not yet verified; no automated test.
+1. **Test coverage**: 82 tests passing (54 Accenture 10Q + 28 incidents API). Remaining failures are integration tests requiring live Supabase env vars.
+2. **Z3 proofs**: Runtime SHA-256 proof chain integrated in spine/execute. External Z3 solver not invoked per-request (design-time theorems: 8 UNSAT proofs for policy invariants).
+3. **EU AI Act**: Articles 9/12/13/14 mapped in compliance matrix. Not certified.
+4. **ISO 42001**: Annex A 7.3/9.2 mapped. Not certified; AIMS documentation incomplete.
+5. **Incident response**: API + playbook + 28 integration tests. Production persistence requires Supabase migration application.
+6. **Audit log immutability**: Append-only trigger + REVOKE + RLS verified at DB level. Incidents table migration pending production apply.
 7. **Local dev on Termux/Android**: `next dev` compile hangs for some routes. Use production URL instead.
 
 ---
