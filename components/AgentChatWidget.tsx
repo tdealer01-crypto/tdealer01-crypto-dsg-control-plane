@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { parseSseData, formatAgentEventMessage } from "../lib/agent/chat-event";
+import { parseSseData, formatHumanAgentEventMessage } from "../lib/agent/chat-event";
 
 type ChatLine = {
   id: string;
@@ -236,24 +236,25 @@ function makeLine(role: ChatLine["role"], content: string): ChatLine {
 }
 
 function formatRouteQa(result: RouteQaResult) {
-  if (result.error) return `Route QA failed: ${result.error}`;
+  if (result.error) return `❌ ตรวจสอบไม่สำเร็จ: ${result.error}`;
 
   const summary = result.summary;
   const header = result.ok
-    ? `✅ Route QA passed: ${summary?.passed ?? 0}/${summary?.total ?? 0} page(s)`
-    : `⚠️ Route QA found issues: ${summary?.failed ?? 0}/${summary?.total ?? 0} failed`;
+    ? `✅ หน้าเว็บผ่านทั้งหมด ${summary?.passed ?? 0} หน้า`
+    : `⚠️ พบปัญหา ${summary?.failed ?? 0} จาก ${summary?.total ?? 0} หน้า`;
 
   const rows = (result.results || [])
     .map((row) => {
-      const state = row.ok ? "PASS" : "FAIL";
-      return `${state} ${row.path || "-"} • HTTP ${row.status ?? "-"} • ${row.latencyMs ?? "-"}ms${row.title ? ` • ${row.title}` : ""}`;
+      const state = row.ok ? "✅ ผ่าน" : "❌ มีปัญหา";
+      const title = row.title ? ` (${row.title})` : "";
+      return `${state} ${row.path || "-"}${title}`;
     })
     .join("\n");
 
   return [
     header,
     rows,
-    result.truthBoundary ? `Boundary: ${result.truthBoundary}` : "",
+    result.truthBoundary ? `\nข้อจำกัด: ${result.truthBoundary}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -270,7 +271,7 @@ export default function AgentChatWidget() {
   const [lines, setLines] = useState<ChatLine[]>([
     makeLine(
       "system",
-      "DSG Agent v2 ready — plan first, approve before execution. Page QA buttons check real routes.",
+      "สวัสดีครับ ผมคือ DSG Agent พร้อมช่วยตรวจสอบระบบและดำเนินการให้คุณ เลือกคำสั่งด้านล่างหรือพิมพ์คำถามได้เลย",
     ),
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -390,7 +391,7 @@ export default function AgentChatWidget() {
           } else {
             const event = parseSseData(raw);
             if (!event) continue;
-            const msg = formatAgentEventMessage(event);
+            const msg = formatHumanAgentEventMessage(event);
             if (!msg) continue;
             setLines((prev) => [...prev, makeLine("assistant", msg)]);
           }
@@ -551,7 +552,7 @@ export default function AgentChatWidget() {
                 void submit(draft);
               }
             }}
-            placeholder="Type a command..."
+            placeholder="พิมพ์คำสั่งหรือคำถาม..."
             className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
           />
           <button
