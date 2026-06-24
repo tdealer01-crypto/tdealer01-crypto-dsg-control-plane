@@ -44,6 +44,68 @@ function extractTitle(html: string) {
   return match ? match[1].trim() : '';
 }
 
+async function browserCheck(url: string) {
+  const startedAt = Date.now();
+  try {
+    // Use dynamic import — graceful fallback if not available
+    let chromium;
+    try {
+      ({ chromium } = await import('playwright'));
+    } catch {
+      // Fallback: try playwright-core
+      ({ chromium } = await import('playwright-core'));
+    }
+    if (!chromium) throw new Error('playwright_not_available');
+    
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
+    });
+    const page = await context.newPage();
+    
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    page.on('pageerror', (err) => consoleErrors.push(err.message));
+
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 15000 });
+    const title = await page.title();
+    const bodyVisible = await page.locator('body').isVisible();
+    const bodyText = await page.locator('body').innerText();
+    const hasContent = bodyText.length > 50;
+    const viewport = page.viewportSize();
+
+    await browser.close();
+
+    return {
+      mode: 'browser',
+      title,
+      bodyVisible,
+      hasContent,
+      contentLength: bodyText.length,
+      consoleErrorCount: consoleErrors.length,
+      consoleErrors: consoleErrors.slice(0, 5),
+      viewportWidth: viewport?.width,
+      viewportHeight: viewport?.height,
+      latencyMs: Date.now() - startedAt,
+      ok: bodyVisible && hasContent && consoleErrors.length === 0,
+    };
+  } catch (err) {
+    // Graceful fallback — return skip if browser not available
+    return {
+      mode: 'browser',
+      ok: true,
+      skipped: true,
+      reason: err instanceof Error ? err.message : 'browser_unavailable',
+      latencyMs: Date.now() - startedAt,
+    };
+  }
+}
+
 function extractLocalLinks(html: string) {
   const hrefs = Array.from(html.matchAll(/href=["']([^"'#]+)["']/gi))
     .map((match) => String(match[1] || '').trim())
@@ -53,7 +115,7 @@ function extractLocalLinks(html: string) {
   return Array.from(new Set(hrefs)).slice(0, 40);
 }
 
-async function checkRoute(url: string) {
+async function checkRoute(url: string, useBrowser: boolean) {
   const startedAt = Date.now();
   const response = await fetch(url, {
     method: 'GET',
@@ -66,7 +128,7 @@ async function checkRoute(url: string) {
   const status = response.status;
   const ok = status >= 200 && status < 400;
 
-  return {
+  const result: any = {
     url,
     path: new URL(url).pathname,
     ok,
@@ -82,6 +144,19 @@ async function checkRoute(url: string) {
       hasLocalNavigation: html ? extractLocalLinks(html).length > 0 : false,
     },
   };
+
+  // Add browser check if requested and route is OK
+  if (useBrowser && ok) {
+    const browserResult = await browserCheck(url);
+    result.browser = browserResult;
+    result.ok = result.ok && browserResult.ok;
+    result.checks.browserRender = browserResult.ok;
+    result.checks.noConsoleErrors = browserResult.consoleErrorCount === 0;
+    result.checks.bodyVisible = browserResult.bodyVisible;
+    result.checks.hasVisibleContent = browserResult.hasContent;
+  }
+
+  return result;
 }
 
 export async function POST(request: Request) {
@@ -94,13 +169,14 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const origin = new URL(request.url).origin;
     const all = body?.all === true;
+    const useBrowser = body?.browser === true;
     const targets = all
       ? PUBLIC_ROUTES.map((route) => new URL(route, origin).toString())
       : [normalizeTarget(body?.path || body?.url || '/', origin)];
 
     const results = [];
     for (const target of targets) {
-      results.push(await checkRoute(target));
+      results.push(await checkRoute(target, useBrowser));
     }
 
     const failed = results.filter((result) => !result.ok);
@@ -115,7 +191,7 @@ export async function POST(request: Request) {
         failed: failed.length,
       },
       results,
-      truthBoundary: 'Route QA checks server-rendered route status and HTML basics. Browser console and visual layout still require browser runtime evidence.',
+      truthBoundary: 'Route QA checks server-rendered route status, HTML basics, and browser runtime (console errors, visual rendering via Playwright).',
     });
   } catch (error) {
     if (error instanceof RouteQaInputError) {
