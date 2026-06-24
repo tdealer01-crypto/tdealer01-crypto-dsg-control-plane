@@ -59,7 +59,7 @@ export async function callOpenRouterProvider(request: ModelProviderRequest): Pro
     };
   }
 
-  const model = process.env.OPENROUTER_MODEL || 'openrouter/fusion';
+  const model = process.env.OPENROUTER_MODEL || 'openrouter/owl-alpha';
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
 

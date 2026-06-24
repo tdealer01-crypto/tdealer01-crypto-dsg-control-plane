@@ -18,9 +18,9 @@ type Credential = {
 };
 
 const MODEL_BY_INTENT: Record<ModelIntent, { id: string; model: string; maxTokens: number }> = {
-  planning: { id: 'fusion-planner', model: process.env.OPENROUTER_MODEL_PLANNING || 'openrouter/fusion', maxTokens: 1200 },
-  reasoning: { id: 'deepseek-reasoner', model: process.env.OPENROUTER_MODEL_REASONING || 'deepseek/deepseek-r1-0528:free', maxTokens: 1800 },
-  chat: { id: 'fusion-chat', model: process.env.OPENROUTER_MODEL_CHAT || 'openrouter/fusion', maxTokens: 1200 },
+  planning: { id: 'owl-planner', model: process.env.OPENROUTER_MODEL_PLANNING || 'openrouter/owl-alpha', maxTokens: 1200 },
+  reasoning: { id: 'owl-reasoner', model: process.env.OPENROUTER_MODEL_REASONING || 'openrouter/owl-alpha', maxTokens: 1800 },
+  chat: { id: 'owl-chat', model: process.env.OPENROUTER_MODEL_CHAT || 'openrouter/owl-alpha', maxTokens: 1200 },
   code: { id: 'qwen-coder', model: process.env.OPENROUTER_MODEL_CODE || 'qwen/qwen-2.5-coder-7b-instruct:free', maxTokens: 1200 },
 };
 
