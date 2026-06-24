@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 type Notice = {
   type: "error" | "success" | "info";
@@ -58,6 +59,14 @@ function getNotice(error?: string, message?: string): Notice | null {
 }
 
 export default function LoginPage() {
+  return ($
+    <Suspense>
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -87,7 +96,7 @@ export default function LoginPage() {
     info: "ℹ️",
   };
 
-  return (
+  return ($
     <main className="flex min-h-screen items-center justify-center bg-[#07080b] px-4 py-12">
       <div className="w-full max-w-4xl">
         {/* Logo */}
