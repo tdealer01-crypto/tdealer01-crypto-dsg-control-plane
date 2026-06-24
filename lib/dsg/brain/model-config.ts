@@ -56,7 +56,7 @@ export function buildDsgBrainModelConfig(
       ? (env.TOGETHER_API_KEY
           ? 'NousResearch/Hermes-3-Llama-3.1-70B-FP8'
           : 'nousresearch/hermes-3-llama-3.1-70b')
-      : 'claude-haiku-4-5-20251001';
+      : (env.OPENROUTER_API_KEY ? 'openrouter/owl-alpha' : 'claude-haiku-4-5-20251001');
 
   const model = env.DSG_BRAIN_MODEL || env.DSG_DADBOT_MODEL || defaultModel;
 

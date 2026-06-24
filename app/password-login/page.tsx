@@ -1,96 +1,124 @@
-import Link from 'next/link';
-import { getSafeNext } from '../../lib/auth/safe-next';
+"use client";
 
-function getErrorMessage(error?: string) {
-  if (error === 'missing-email') return 'Please enter your email address.';
-  if (error === 'missing-password') return 'Please enter your password.';
-  if (error === 'invalid-credentials') return 'Invalid email or password. Please try again.';
-  if (error === 'provision-failed') return 'Your login succeeded, but workspace access could not be provisioned. Please contact support.';
-  if (error === 'unexpected') return 'Something went wrong. Please try again.';
-  return null;
-}
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default async function PasswordLoginPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ error?: string; next?: string }>;
-}) {
-  const params = await searchParams;
-  const next = getSafeNext(params?.next || '/dashboard');
-  const errorMessage = getErrorMessage(params?.error);
+export default function PasswordLoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const next = searchParams.get("next") || "/dashboard";
+
+  useEffect(() => {
+    const err = searchParams.get("error");
+    if (err === "missing-email") setError("กรุณากรอกอีเมล");
+    else if (err === "missing-password") setError("กรุณากรอกรหัสผ่าน");
+    else if (err === "invalid-credentials") setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่");
+    else if (err === "provision-failed") setError("เข้าสู่ระบบสำเร็จแต่ไม่สามารถสร้างสิทธิ์เข้าถึงได้ กรุณาติดต่อผู้ดูแล");
+    else if (err === "unexpected") setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
+    else setError(null);
+  }, [searchParams]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    setLoading(true);
+    // Form submits to /auth/password-login via POST
+  };
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-      <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
-          <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Operator access</p>
-          <h1 className="mt-4 text-4xl font-bold">Sign in with password</h1>
-          <p className="mt-4 text-base leading-7 text-slate-300">Use your existing operator account credentials to continue into authenticated workspace routes.</p>
+    <main className="flex min-h-screen items-center justify-center bg-[#07080b] px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-lg font-bold text-black">
+            DSG
+          </div>
+          <h1 className="text-xl font-bold text-white">เข้าสู่ระบบ</h1>
+          <p className="mt-1 text-sm text-slate-500">กรอกข้อมูลเพื่อเข้าถึง workspace</p>
+        </div>
 
-          {errorMessage ? (
-            <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{errorMessage}</div>
-          ) : null}
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+            <span className="text-lg">❌</span>
+            <span className="text-sm text-red-200">{error}</span>
+          </div>
+        )}
 
-          <form action="/auth/password-login" method="post" className="mt-8 space-y-4">
+        {/* Form Card */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <form
+            action="/auth/password-login"
+            method="post"
+            onSubmit={handleSubmit}
+            className="space-y-5"
+          >
             <input type="hidden" name="next" value={next} />
 
             <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">
-                Work email
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-300">
+                อีเมลธุรกิจ
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
                 placeholder="name@company.com"
-                className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-slate-100 outline-none"
+                className="w-full rounded-xl border border-white/10 bg-[#0a0c12] px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/20"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-200">
-                Password
+              <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-300">
+                รหัสผ่าน
               </label>
               <input
                 id="password"
                 name="password"
                 type="password"
                 required
-                placeholder="Enter your password"
-                className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-slate-100 outline-none"
+                autoComplete="current-password"
+                placeholder="กรอกรหัสผ่านของคุณ"
+                className="w-full rounded-xl border border-white/10 bg-[#0a0c12] px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/20"
               />
             </div>
 
-            <button className="w-full rounded-2xl bg-emerald-400 px-5 py-4 font-semibold text-slate-950 transition hover:scale-[1.01]">
-              Sign in
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-3.5 font-semibold text-black transition hover:scale-[1.01] hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  กำลังเข้าสู่ระบบ...
+                </span>
+              ) : (
+                "เข้าสู่ระบบ →"
+              )}
             </button>
           </form>
-
-          <p className="mt-4 text-center text-sm text-slate-400">
-            Need an email recovery link instead?{' '}
-            <Link href={`/login?next=${encodeURIComponent(next)}`} className="text-emerald-300 underline">
-              Back to login options
-            </Link>
-          </p>
         </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-emerald-950/20">
-          <div className="rounded-[1.5rem] border border-emerald-400/20 bg-slate-950/90 p-6">
-            <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Need access help?</p>
-            <div className="mt-6 grid gap-4">
-              {[
-                'Use the same operator email registered in DSG control plane.',
-                'If your password is invalid, ask your admin to reset it in Supabase.',
-                'Email recovery link remains available from the regular login page.',
-              ].map((item, index) => (
-                <div key={item} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-200">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-400/10 font-semibold text-emerald-200">{index + 1}</div>
-                  <p className="text-sm leading-7">{item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Back Link */}
+        <div className="mt-6 text-center">
+          <a
+            href="/login"
+            className="text-sm text-slate-400 transition hover:text-emerald-400"
+          >
+            ← กลับไปหน้าเข้าสู่ระบบ
+          </a>
+        </div>
+
+        {/* Help */}
+        <div className="mt-8 rounded-xl border border-white/5 bg-white/[0.01] p-4 text-center text-xs text-slate-500">
+          ต้องการความช่วยเหลือ? <a href="/request-access" className="text-emerald-400 underline">ติดต่อผู้ดูแล</a>
         </div>
       </div>
     </main>

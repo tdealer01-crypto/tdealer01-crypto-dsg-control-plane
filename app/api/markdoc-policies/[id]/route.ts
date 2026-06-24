@@ -114,10 +114,7 @@ export async function POST(
   } catch (err) {
     console.error('Render policy error:', err);
     return NextResponse.json(
-      {
-        error: 'Failed to render policy',
-        details: err instanceof Error ? err.message : 'Unknown error',
-      },
+      { error: 'Failed to render policy' },
       { status: 500 }
     );
   }

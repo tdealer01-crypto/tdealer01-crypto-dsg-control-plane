@@ -58,12 +58,9 @@ export async function GET() {
       }
     );
   } catch (error) {
+    console.error('Deployment info error:', error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'Failed to retrieve deployment info',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { ok: false, error: 'Failed to retrieve deployment info' },
       { status: 500 }
     );
   }

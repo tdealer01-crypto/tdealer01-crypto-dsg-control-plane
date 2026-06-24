@@ -176,7 +176,7 @@ POST /api/plugins/graphmap/query
 - `app/layout.tsx` (updated) — เพิ่ม `<ToastProvider>` ครอบ body
 
 ### กฎที่ต้องรู้สำหรับ agent ที่จะทำต่อ
-- **`installCommand` ใน `vercel.json` เปลี่ยนเป็น `npm install` แล้ว** (ไม่ใช่ `npm ci`) เพราะ `package-lock.json` ไม่ sync กับ `lucide-react` ที่เพิ่มเข้ามา
+- **`installCommand` ใน `vercel.json` ใช้ `npm ci` แล้ว** เพราะ `package-lock.json` sync กับ `lucide-react` แล้ว
 - **`lucide-react: ^0.460.0`** เพิ่มใน `package.json` dependencies แล้ว — ถ้าใครเพิ่มไฟล์ใหม่ที่ import lucide ไม่ต้องเพิ่มซ้ำ
 - **`components/Skeleton.tsx` ใช้ inline `cx()` helper** ไม่ใช้ `cn` จาก `@/lib/utils` เพราะไฟล์นั้นไม่มีใน repo นี้
 - **API route pattern (Next.js 15):** async params ต้องใช้ `params: Promise<{id: string}>` และ `await params` ก่อนใช้

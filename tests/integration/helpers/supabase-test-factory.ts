@@ -159,3 +159,23 @@ export async function countRows(
   if (error) throw error;
   return count ?? 0;
 }
+
+export async function waitForCountRows(
+  supabase: SupabaseClient,
+  table: string,
+  filters: Json,
+  minimum = 1,
+  timeoutMs = 10_000,
+  intervalMs = 250,
+): Promise<number> {
+  const startedAt = Date.now();
+  let lastCount = 0;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    lastCount = await countRows(supabase, table, filters);
+    if (lastCount >= minimum) return lastCount;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  return lastCount;
+}

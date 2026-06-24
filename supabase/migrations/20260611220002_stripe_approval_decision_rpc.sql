@@ -42,7 +42,7 @@ BEGIN
   JOIN stripe_app_accounts ac ON ac.stripe_account_id = a.stripe_account_id
   WHERE a.stripe_event_id = p_approval_id
     AND a.dsg_decision = 'REVIEW'
-    AND ac.dsg_org_id = p_org_id;
+    AND ac.dsg_org_id = public.dsg_text_to_uuid(p_org_id);
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object(

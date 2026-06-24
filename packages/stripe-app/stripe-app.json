@@ -4,13 +4,13 @@
   "name": "DSG Governance Gate",
   "version": "1.1.6",
   "icon": "./icon.png",
+  "description": "DSG Platform provides automated risk governance and compliance infrastructure for digital enterprises. The DSG Governance Gate Stripe app evaluates policy decisions directly inside your payment detail view, surfacing real-time status details including policy versions, proof references, and clear verification time logs.",
+  "shortDescription": "Real-time governance and compliance status on payment details",
+  "documentationUrl": "https://dsg.pics/docs/stripe-app",
+  "websiteUrl": "https://dsg.pics",
+  "supportEmail": "support@dsg.pics",
   "ui_extension": {
-    "views": [
-      {
-        "viewport": "stripe.dashboard.payment.detail",
-        "component": "ChargeGate"
-      }
-    ],
+    "views": [],
     "content_security_policy": {
       "connect-src": [
         "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/",
@@ -21,10 +21,42 @@
     }
   },
   "extensions": null,
+  "features": [
+    {
+      "id": "policy_enforcement",
+      "title": "Real-Time Policy Evaluation",
+      "description": "View ALLOW, BLOCK, or REVIEW decisions from the DSG control plane directly on payment details, with policy version and proof reference tracking.",
+      "imageUrl": "https://cdn.dsg.pics/stripe-app/policy-enforcement.png"
+    },
+    {
+      "id": "compliance_tracking",
+      "title": "Governance Audit Trail",
+      "description": "Every policy decision is timestamped and versioned, providing a complete audit trail for compliance reviews and regulatory reporting.",
+      "imageUrl": "https://cdn.dsg.pics/stripe-app/audit-trail.png"
+    },
+    {
+      "id": "fallback_safety",
+      "title": "Safe Failure Mode",
+      "description": "If the governance service is unreachable, the app displays REVIEW status—never auto-allowing transactions. This ensures maximum safety during service interruptions.",
+      "imageUrl": "https://cdn.dsg.pics/stripe-app/fallback-mode.png"
+    }
+  ],
   "permissions": [
     {
-      "permission": "charge_read",
-      "purpose": "Read charge details to display governance policy decisions in the payment detail view"
+      "id": "account_information",
+      "name": "Account and user information",
+      "access_level": "read_only"
+    },
+    {
+      "id": "charges_refunds",
+      "name": "Charges and Refunds",
+      "access_level": "read_only"
+    },
+    {
+      "id": "external_access",
+      "name": "External access",
+      "access_level": "data_sharing",
+      "description": "The app sends policy decisions and audit logs to the DSG control plane for governance enforcement."
     }
   ],
   "post_install_action": {
