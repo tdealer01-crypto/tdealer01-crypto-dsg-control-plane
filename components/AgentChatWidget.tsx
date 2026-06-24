@@ -28,6 +28,206 @@ type RouteQaResult = {
 
 const MAX_HISTORY = 100;
 const AGENT_CHAT_ENDPOINT = "/api/agent-chat-v2";
+const CODEX_ENDPOINT = "/api/dsg-bridge/codex";
+
+const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
+  // Overview
+  "/dashboard": [
+    { label: "🔍 ตรวจสอบระบบ", prompt: "check readiness" },
+    { label: "📋 ดู audit log", prompt: "show recent audit logs" },
+    { label: "🤖 ดู agents", prompt: "list agents" },
+    { label: "📊 ดู capacity", prompt: "check capacity" },
+  ],
+  // Agents
+  "/dashboard/agents": [
+    { label: "➕ สร้าง agent", prompt: "create agent" },
+    { label: "📋 ดู agents", prompt: "list agents" },
+    { label: "🤖 สร้าง chatbot", prompt: 'create chatbot "Support Bot"' },
+  ],
+  // Executions
+  "/dashboard/executions": [
+    { label: "📊 ดู executions", prompt: "show recent executions" },
+    { label: "📋 ดู audit", prompt: "audit lineage" },
+  ],
+  // Approvals
+  "/approvals": [
+    { label: "📋 Pending approvals", prompt: "show pending approvals" },
+    { label: "📊 Approval stats", prompt: "show approval statistics" },
+  ],
+  // Audit
+  "/dashboard/audit": [
+    { label: "📋 ดู logs", prompt: "show audit logs" },
+    { label: "🔍 ค้นหา", prompt: "search audit for approval" },
+  ],
+  // Billing
+  "/dashboard/billing": [
+    { label: "📊 ดู usage", prompt: "show usage this month" },
+    { label: "💳 ดู capacity", prompt: "check capacity" },
+  ],
+  "/dashboard/capacity": [
+    { label: "📊 ดู quota", prompt: "check capacity" },
+    { label: "⬆️ Upgrade plan", prompt: "how do I upgrade my plan?" },
+  ],
+  // Policies
+  "/dashboard/policies": [
+    { label: "📋 ดู policies", prompt: "list policies" },
+    { label: "➕ สร้าง policy", prompt: "create policy" },
+  ],
+  // Proofs
+  "/dashboard/proofs": [
+    { label: "📊 ดู proofs", prompt: "show recent proofs" },
+    { label: "📄 สร้าง proof", prompt: "generate proof" },
+  ],
+  // Verification
+  "/dashboard/verification": [
+    { label: "🔍 Run verification", prompt: "run verification check" },
+    { label: "📊 Evidence chain", prompt: "show evidence chain" },
+  ],
+  // Ledger
+  "/dashboard/ledger": [
+    { label: "📊 ดู ledger", prompt: "show ledger entries" },
+    { label: "📋 ดู lineage", prompt: "audit lineage" },
+  ],
+  // Live Control
+  "/dashboard/live-control": [
+    { label: "📊 Live status", prompt: "check live status" },
+    { label: "🤖 Monitor agents", prompt: "list active agents" },
+  ],
+  // Command Center
+  "/dashboard/command-center": [
+    { label: "📊 System status", prompt: "check readiness" },
+    { label: "🤖 All agents", prompt: "list agents" },
+  ],
+  // Operations
+  "/dashboard/operations": [
+    { label: "📋 Audit lineage", prompt: "audit lineage" },
+    { label: "📊 System health", prompt: "check readiness" },
+  ],
+  // Integration / Webhooks
+  "/dashboard/integration": [
+    { label: "🔧 ตั้งค่า integration", prompt: "ตั้งค่า integration กับ core banking" },
+    { label: "📋 ดู connections", prompt: "show integrations" },
+    { label: "➕ เพิ่ม webhook", prompt: "สร้าง webhook ใหม่" },
+  ],
+  "/dashboard/integrations": [
+    { label: "➕ เพิ่ม integration", prompt: "ตั้งค่า integration ใหม่" },
+    { label: "📋 ดู connections", prompt: "show integrations" },
+  ],
+  "/dashboard/webhooks": [
+    { label: "➕ เพิ่ม webhook", prompt: "สร้าง webhook สำหรับ finance approval" },
+    { label: "📋 ดู webhooks", prompt: "show my webhooks" },
+    { label: "🧪 Test delivery", prompt: "test webhook delivery" },
+  ],
+  // API Keys
+  "/dashboard/api-keys": [
+    { label: "➕ สร้าง API key", prompt: "create API key" },
+    { label: "📋 ดู API keys", prompt: "list API keys" },
+  ],
+  // Team / Access
+  "/dashboard/team": [
+    { label: "➕ เชิญสมาชิก", prompt: "invite team member" },
+    { label: "👥 ดู team", prompt: "show team members" },
+  ],
+  "/dashboard/settings/access": [
+    { label: "🔧 จัดการ access", prompt: "show access settings" },
+    { label: "➕ เพิ่ม role", prompt: "add user role" },
+  ],
+  "/dashboard/settings/security": [
+    { label: "🔒 ตรวจความปลอดภัย", prompt: "check security settings" },
+  ],
+  // Skills / Setup
+  "/dashboard/skills": [
+    { label: "🚀 Run auto-setup", prompt: "run auto_setup" },
+    { label: "📋 ดู skills", prompt: "list skills" },
+  ],
+  // Breach Signal
+  "/dashboard/breach-signal": [
+    { label: "🚨 Evaluate breach", prompt: "evaluate breach signal for domain example.com" },
+    { label: "📊 ดู history", prompt: "show breach signal history" },
+  ],
+  // DSG Brain / Hermes
+  "/dashboard/dsg-brain": [
+    { label: "🧠 ดู brain status", prompt: "show DSG Brain status" },
+    { label: "📋 Run plan", prompt: "propose execution plan" },
+  ],
+  "/dashboard/hermes": [
+    { label: "🧠 ดู Hermes status", prompt: "show Hermes status" },
+    { label: "📋 Controlled execution", prompt: "propose execution plan" },
+  ],
+  // Finance Governance
+  "/finance-governance/live": [
+    { label: "➕ สร้าง case", prompt: "สร้าง approval case ใหม่" },
+    { label: "📋 ดู queue", prompt: "แสดง approval queue" },
+    { label: "🔧 ตั้งค่า webhook", prompt: "ตั้งค่า webhook สำหรับ finance approval" },
+  ],
+  "/finance-governance/live/approvals": [
+    { label: "📋 Pending approvals", prompt: "แสดง approval ที่รอ" },
+    { label: "⬆️ Escalate case", prompt: "escalate approval case" },
+  ],
+  "/finance-governance/live/cases": [
+    { label: "📋 Active cases", prompt: "แสดง cases ที่เปิดอยู่" },
+    { label: "➕ สร้าง case", prompt: "สร้าง case ใหม่" },
+  ],
+  "/finance-governance/live/onboarding": [
+    { label: "🚀 Auto-setup", prompt: "run auto_setup" },
+    { label: "🔧 Configure webhook", prompt: "ตั้งค่า webhook สำหรับ core banking" },
+    { label: "🔑 Get API key", prompt: "create API key for core banking integration" },
+  ],
+  "/finance-governance/live/workflow": [
+    { label: "📊 Workflow status", prompt: "show workflow status" },
+    { label: "🔧 Setup rules", prompt: "ตั้งค่า workflow rules" },
+  ],
+  // Delivery Proof
+  "/delivery-proof": [
+    { label: "🔍 Scan URL", prompt: "scan https://my-app.vercel.app" },
+    { label: "📄 Generate report", prompt: "สร้าง delivery proof report" },
+  ],
+  // Referrals / Missions
+  "/dashboard/referrals": [
+    { label: "📊 My referrals", prompt: "show referral status" },
+    { label: "🔗 Referral link", prompt: "get my referral link" },
+  ],
+  "/dashboard/missions": [
+    { label: "📋 Active missions", prompt: "show active missions" },
+    { label: "✅ Complete mission", prompt: "what missions can I complete?" },
+  ],
+  // ProofGate
+  "/proofgate": [
+    { label: "🛡 Evaluate gate", prompt: "evaluate my first gate" },
+    { label: "🔗 Connect system", prompt: "how do I connect my system to ProofGate?" },
+    { label: "🔑 Get API key", prompt: "create API key" },
+  ],
+  // Enterprise Ready
+  "/enterprise-ready": [
+    { label: "🚀 Auto-setup", prompt: "run auto_setup" },
+    { label: "🔗 Connect to DSG", prompt: "how do I connect my system to DSG?" },
+    { label: "🔍 Check readiness", prompt: "check readiness" },
+  ],
+  // Finance Approval Gate
+  "/finance-approval-gate": [
+    { label: "➕ Submit approval", prompt: "สร้าง approval case สำหรับการโอนเงิน" },
+    { label: "📋 View queue", prompt: "แสดง approval queue" },
+    { label: "🔧 Setup webhook", prompt: "ตั้งค่า webhook สำหรับ finance approval" },
+  ],
+  // Automation
+  "/automation": [
+    { label: "➕ Add webhook", prompt: "สร้าง webhook ใหม่" },
+    { label: "📋 List automations", prompt: "show my webhooks" },
+    { label: "🧪 Test delivery", prompt: "test webhook delivery" },
+  ],
+  // AI Compliance
+  "/ai-compliance": [
+    { label: "📊 Compliance status", prompt: "show compliance status" },
+    { label: "🔍 ISO 42001 check", prompt: "check ISO 42001 compliance" },
+    { label: "📤 Export evidence", prompt: "export compliance evidence" },
+  ],
+  // EU AI Act
+  "/eu-ai-act": [
+    { label: "🇪🇺 EU AI Act status", prompt: "check EU AI Act compliance status" },
+    { label: "🔍 Risk assessment", prompt: "run AI risk assessment" },
+    { label: "📤 Export report", prompt: "export EU AI Act evidence report" },
+  ],
+};
 
 function makeLine(role: ChatLine["role"], content: string): ChatLine {
   return {
@@ -64,6 +264,8 @@ export default function AgentChatWidget() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [qaBusy, setQaBusy] = useState(false);
+  const [useCodex, setUseCodex] = useState(false);
+  const [codexResponseId, setCodexResponseId] = useState<string | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([
     makeLine(
       "system",
@@ -102,7 +304,7 @@ export default function AgentChatWidget() {
     } catch (err) {
       setLines((prev) => [
         ...prev,
-        makeLine("assistant", err instanceof Error ? err.message : "เกิดข้อผิดพลาด"),
+        makeLine("assistant", err instanceof Error ? `❌ ${err.message}` : "❌ เกิดข้อผิดพลาด"),
       ]);
     } finally {
       setQaBusy(false);
@@ -117,13 +319,26 @@ export default function AgentChatWidget() {
 
     // Add typing indicator
     const typingId = `typing-${Date.now()}`;
-    setLines((prev) => [...prev, { id: typingId, role: "assistant", content: "", isTyping: true }]);
+    setLines((prev) => [
+      ...prev,
+      { id: typingId, role: "assistant", content: "", isTyping: true },
+    ]);
 
     try {
-      const res = await fetch(AGENT_CHAT_ENDPOINT, {
+      const endpoint = useCodex ? CODEX_ENDPOINT : AGENT_CHAT_ENDPOINT;
+      const body = useCodex
+        ? JSON.stringify({
+            input: message,
+            ...(codexResponseId
+              ? { previous_response_id: codexResponseId }
+              : {}),
+          })
+        : JSON.stringify({ message, pageContext: pathname });
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message, pageContext: pathname }),
+        body,
         credentials: "include",
       });
 
@@ -149,28 +364,68 @@ export default function AgentChatWidget() {
 
         for (const raw of events) {
           if (!raw.startsWith("data: ")) continue;
-          const event = parseSseData(raw);
-          if (!event) continue;
-          const msg = formatHumanAgentEventMessage(event);
-          if (!msg) continue;
-          fullReply += (fullReply ? "\n" : "") + msg;
-          // Update typing indicator with partial content
-          setLines((prev) =>
-            prev.map((line) =>
-              line.id === typingId ? { ...line, content: fullReply } : line
-            )
-          );
+
+          if (useCodex) {
+            try {
+              const event = JSON.parse(raw.slice(6)) as Record<string, unknown>;
+              if (event.type === "token") {
+                fullReply += (event.content as string) ?? "";
+                setLines((prev) =>
+                  prev.map((line) =>
+                    line.id === typingId
+                      ? { ...line, content: fullReply }
+                      : line
+                  )
+                );
+              }
+              if (event.type === "done") {
+                if (fullReply.trim()) {
+                  setLines((prev) => [
+                    ...prev.filter((l) => l.id !== typingId),
+                    makeLine("assistant", fullReply.trim()),
+                  ]);
+                }
+                setCodexResponseId(
+                  (event.responseId as string | null) ?? null
+                );
+                break;
+              }
+              if (event.type === "error") {
+                throw new Error((event.error as string) ?? "Codex error");
+              }
+            } catch {
+              // skip malformed events
+            }
+          } else {
+            const event = parseSseData(raw);
+            if (!event) continue;
+            const msg = formatHumanAgentEventMessage(event);
+            if (!msg) continue;
+            fullReply += (fullReply ? "\n" : "") + msg;
+            setLines((prev) =>
+              prev.map((line) =>
+                line.id === typingId
+                  ? { ...line, content: fullReply }
+                  : line
+              )
+            );
+          }
         }
       }
 
-      // Remove typing indicator and add final reply
-      setLines((prev) => [
-        ...prev.filter((line) => line.id !== typingId),
-        makeLine("assistant", fullReply || "ไม่ได้รับคำตอบ"),
-      ]);
+      // If we got no content, show a fallback
+      if (!fullReply.trim()) {
+        setLines((prev) => [
+          ...prev.filter((l) => l.id !== typingId),
+          makeLine("assistant", "ไม่ได้รับคำตอบจากระบบ ลองใหม่อีกครั้ง"),
+        ]);
+      } else {
+        // Remove typing indicator if still there
+        setLines((prev) => prev.filter((l) => l.id !== typingId));
+      }
     } catch (err) {
       setLines((prev) => [
-        ...prev.filter((line) => line.id !== typingId),
+        ...prev.filter((l) => l.id !== typingId),
         makeLine(
           "assistant",
           err instanceof Error ? `❌ ${err.message}` : "❌ เกิดข้อผิดพลาด"
@@ -179,7 +434,7 @@ export default function AgentChatWidget() {
     } finally {
       setBusy(false);
     }
-  }, [pathname, busy]);
+  }, [pathname, busy, useCodex, codexResponseId]);
 
   if (!open) {
     return (
@@ -188,8 +443,18 @@ export default function AgentChatWidget() {
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-lg shadow-emerald-500/30 transition hover:scale-110 active:scale-95"
         aria-label="เปิดแชท AI"
       >
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
         </svg>
       </button>
     );
@@ -204,19 +469,47 @@ export default function AgentChatWidget() {
             <span className="text-sm">🤖</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">DSG AI</p>
+            <p className="text-sm font-semibold text-white">
+              {useCodex ? "⚡ Codex" : "DSG AI"}
+            </p>
             <p className="text-[10px] text-emerald-400">พร้อมช่วยเหลือ</p>
           </div>
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-          aria-label="ปิดแชท"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setUseCodex((v) => !v);
+              setCodexResponseId(null);
+            }}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+              useCodex
+                ? "bg-violet-500 text-white"
+                : "bg-slate-800 text-slate-400 hover:text-slate-200"
+            }`}
+            title={useCodex ? "เปลี่ยนเป็น DSG Agent" : "เปลี่ยนเป็น Codex"}
+          >
+            {useCodex ? "Codex ON" : "Codex"}
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+            aria-label="ปิดแชท"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* QA Buttons */}
@@ -238,15 +531,14 @@ export default function AgentChatWidget() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+      >
         {lines.map((line) => (
           <div
             key={line.id}
-            className={
-              line.role === "user"
-                ? "ml-auto max-w-[85%]"
-                : "max-w-[90%]"
-            }
+            className={line.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[90%]"}
           >
             {line.role === "system" ? (
               <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-200">
@@ -260,10 +552,21 @@ export default function AgentChatWidget() {
               <div className="rounded-2xl rounded-bl-md border border-white/10 bg-[#161822] px-3 py-2 text-xs text-slate-200">
                 {line.isTyping ? (
                   <div className="flex items-center gap-1">
-                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" style={{ animationDelay: "0ms" }} />
-                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" style={{ animationDelay: "150ms" }} />
-                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" style={{ animationDelay: "300ms" }} />
-                    {line.content && <span className="ml-2 text-slate-400">{line.content}</span>}
+                    <div
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <div
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <div
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+                      style={{ animationDelay: "300ms" }}
+                    />
+                    {line.content && (
+                      <span className="ml-2 text-slate-400">{line.content}</span>
+                    )}
                   </div>
                 ) : (
                   <p className="whitespace-pre-wrap">{line.content}</p>
@@ -317,68 +620,3 @@ export default function AgentChatWidget() {
     </div>
   );
 }
-
-const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
-  "/dashboard": [
-    { label: "🔍 ตรวจสอบระบบ", prompt: "check readiness" },
-    { label: "📋 ดู audit log", prompt: "show recent audit logs" },
-    { label: "🤖 ดู agents", prompt: "list agents" },
-    { label: "📊 ดู capacity", prompt: "check capacity" },
-  ],
-  "/dashboard/agents": [
-    { label: "➕ สร้าง agent", prompt: "create agent" },
-    { label: "📋 ดู agents", prompt: "list agents" },
-    { label: "🤖 สร้าง chatbot", prompt: 'create chatbot "Support Bot"' },
-  ],
-  "/dashboard/executions": [
-    { label: "📊 ดู executions", prompt: "show recent executions" },
-    { label: "📋 ดู audit", prompt: "audit lineage" },
-  ],
-  "/dashboard/audit": [
-    { label: "📋 ดู logs", prompt: "show audit logs" },
-    { label: "🔍 ค้นหา", prompt: "search audit for approval" },
-  ],
-  "/dashboard/billing": [
-    { label: "📊 ดู usage", prompt: "show usage this month" },
-    { label: "💳 ดู capacity", prompt: "check capacity" },
-  ],
-  "/dashboard/governance": [
-    { label: "🏛 ดู compliance", prompt: "show compliance status" },
-    { label: "🚨 ดู incidents", prompt: "show incidents" },
-    { label: "📊 ดู 10Q", prompt: "show 10Q governance status" },
-  ],
-  "/dashboard/hermes": [
-    { label: "🧠 ดู brain status", prompt: "show DSG Brain status" },
-    { label: "📋 ดู agents", prompt: "list agents" },
-    { label: "🔍 ตรวจระบบ", prompt: "check readiness" },
-  ],
-  "/dashboard/team": [
-    { label: "👥 ดู team", prompt: "show team members" },
-    { label: "➕ เชิญสมาชิก", prompt: "invite team member" },
-  ],
-  "/dashboard/settings/security": [
-    { label: "🔒 ตรวจความปลอดภัย", prompt: "check security settings" },
-  ],
-  "/finance-governance/live": [
-    { label: "➕ สร้าง case", prompt: "สร้าง approval case ใหม่" },
-    { label: "📋 ดู queue", prompt: "แสดง approval queue" },
-  ],
-  "/delivery-proof": [
-    { label: "📄 สร้าง report", prompt: "สร้าง delivery proof report" },
-  ],
-  "/proofgate": [
-    { label: "🛡 evaluate", prompt: "evaluate my first gate" },
-  ],
-  "/enterprise-ready": [
-    { label: "🚀 auto-setup", prompt: "run auto_setup" },
-  ],
-  "/ai-compliance": [
-    { label: "📊 compliance", prompt: "show compliance status" },
-  ],
-  "/eu-ai-act": [
-    { label: "🇪🇺 EU AI Act", prompt: "check EU AI Act compliance status" },
-  ],
-  "/automation": [
-    { label: "⚡ เพิ่ม webhook", prompt: "สร้าง webhook ใหม่" },
-  ],
-};
