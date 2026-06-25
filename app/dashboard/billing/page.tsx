@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import UsageBar from '../../../components/billing/UsageBar';
 
@@ -123,6 +123,14 @@ function formatDate(value?: string | null) {
 }
 
 export default function BillingPage() {
+  return (
+    <Suspense>
+      <BillingInner />
+    </Suspense>
+  );
+}
+
+function BillingInner() {
   const [usage, setUsage]         = useState<Usage | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading]     = useState(true);
