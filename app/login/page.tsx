@@ -59,7 +59,7 @@ function getNotice(error?: string, message?: string): Notice | null {
 }
 
 export default function LoginPage() {
-  return ($
+  return (
     <Suspense>
       <LoginInner />
     </Suspense>
@@ -69,26 +69,26 @@ export default function LoginPage() {
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<{ type: string; message: string } | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     const error = searchParams.get("error") || undefined;
     const message = searchParams.get("message") || undefined;
-    setNotice(getNotice(error, message));
-    setDismissed(false);
+    if (message === "check-email") setNotice({ type: "success", message: "ส่งลิงก์กู้คืนแล้ว! กรุณาตรวจสอบอีเมลของคุณ" });
+    else if (error === "approval-required") setNotice({ type: "error", message: "Workspace นี้ต้องได้รับอนุมัติจากผู้ดูแลก่อนเข้าสู่ระบบ" });
+    else if (error === "sso-required") setNotice({ type: "error", message: "องค์กรนี้กำหนดให้เข้าสู่ระบบผ่าน SSO เท่านั้น" });
+    else if (error === "not-allowed") setNotice({ type: "error", message: "บัญชีของคุณไม่ได้รับอนุญาตให้เข้าถึง workspace นี้" });
+    else if (error === "invalid-email") setNotice({ type: "error", message: "รูปแบบอีเมลไม่ถูกต้อง กรุณาใส่อีเมลธุรกิจที่ถูกต้อง" });
+    else if (error === "too-many-attempts") setNotice({ type: "error", message: "คุณพยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอ 60 วินาทีแล้วลองใหม่" });
+    else if (error) setNotice({ type: "error", message: "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง" });
+    else setNotice(null);
   }, [searchParams]);
 
   const handleSSOClick = useCallback(() => {
     const next = searchParams.get("next") || "/dashboard";
     router.push(`/api/auth/sso?next=${encodeURIComponent(next)}`);
   }, [router, searchParams]);
-
-  const noticeStyles = {
-    error: "border-red-500/30 bg-red-500/10 text-red-200",
-    success: "border-emerald-400/30 bg-emerald-400/10 text-emerald-100",
-    info: "border-blue-400/30 bg-blue-400/10 text-blue-200",
-  };
 
   const noticeIcons = {
     error: "❌",
