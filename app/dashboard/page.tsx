@@ -190,7 +190,7 @@ export default function DashboardPage() {
     { label: "สร้างองค์กร", done: true, href: "/dashboard/settings/go-live", ring: "white" },
     { label: "เชือมต่อตัวแทน", done: Boolean(onboarding?.has_agent), href: "/dashboard/agents", ring: "blue" },
     { label: "รันการดำเนินการครั้งแรก", done: Boolean(onboarding?.first_run_complete), href: "/delivery-proof", ring: "purple" },
-    { label: "เปิดใช้งาน Ring Hermes", done: systemHealth.allGood, href: "/dashboard/hermes", ring: "green" },
+    { label: "เปิดใช้งาน Ring Hermes", done: systemHealth?.allGood ?? false, href: "/dashboard/hermes", ring: "green" },
   ];
   const doneCount = onboardingSteps.filter((s) => s.done).length;
 
