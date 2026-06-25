@@ -96,7 +96,7 @@ function LoginInner() {
     info: "ℹ️",
   };
 
-  return ($
+  return (
     <main className="flex min-h-screen items-center justify-center bg-[#07080b] px-4 py-12">
       <div className="w-full max-w-4xl">
         {/* Logo */}
