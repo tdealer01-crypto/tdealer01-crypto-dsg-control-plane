@@ -74,11 +74,17 @@ def main():
 
     check_result = check_string_length(desc['short_description'], 140, "Short description")
     print(f"   {check_result[1]}")
-    (passed if check_result[0] else failed) += 1
+    if check_result[0]:
+        passed += 1
+    else:
+        failed += 1
 
     check_result = check_string_length(desc['long_description'], 4000, "Long description")
     print(f"   {check_result[1]}")
-    (passed if check_result[0] else failed) += 1
+    if check_result[0]:
+        passed += 1
+    else:
+        failed += 1
 
     # 3. Contact Info
     print("\n3️⃣ Contact Information:")
@@ -98,7 +104,10 @@ def main():
     for url_type, url in legal.items():
         check_result = check_url_valid(url, url_type.replace('_', ' '))
         print(f"   {check_result[1]}")
-        (passed if check_result[0] else failed) += 1
+        if check_result[0]:
+            passed += 1
+        else:
+            failed += 1
 
     # 5. OAuth Configuration
     print("\n5️⃣ OAuth Configuration:")
@@ -132,7 +141,10 @@ def main():
     if webhook_url:
         check_result = check_url_valid(webhook_url, "Webhook endpoint")
         print(f"   {check_result[1]}")
-        (passed if check_result[0] else failed) += 1
+        if check_result[0]:
+            passed += 1
+        else:
+            failed += 1
 
         if webhook.get('signature_verification'):
             print("   ✓ Signature verification enabled")
@@ -151,7 +163,10 @@ def main():
     icon_file = assets['icon']['file']
     check_result = check_file_exists(icon_file, "App icon")
     print(f"   {check_result[1]}")
-    (passed if check_result[0] else failed) += 1
+    if check_result[0]:
+        passed += 1
+    else:
+        failed += 1
 
     # Screenshots
     screenshots = assets.get('screenshots', [])
@@ -159,7 +174,10 @@ def main():
     for ss in screenshots:
         check_result = check_file_exists(ss['file'], f"  Screenshot: {ss['title']}")
         print(f"   {check_result[1]}")
-        (passed if check_result[0] else failed) += 1
+        if check_result[0]:
+            passed += 1
+        else:
+            failed += 1
 
     # 9. Submission Endpoints
     print("\n9️⃣ API Endpoints:")
