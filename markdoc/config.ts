@@ -5,149 +5,74 @@ export const markdocConfig: Config = {
     title: 'DSG ONE',
     description: 'Enterprise AI Governance Platform',
     version: '1.0.0',
-    locale: 'en',
-    locales: ['en', 'th'],
-    defaultLocale: 'en',
+    locale: 'th',
+    locales: ['th', 'en'],
+    defaultLocale: 'th',
   },
   headings: {
     anchorPrefix: 'heading-',
   },
   tags: {
-    callout: {
-      render: 'Callout',
+    designButton: {
+      render: 'DesignButton',
       attributes: {
-        type: {
-          type: String,
-          default: 'info',
-          matches: ['info', 'warning', 'error', 'success'],
-        },
-        title: {
-          type: String,
-          required: true,
-        },
+        color: { type: String },
+        variant: { type: String, default: 'primary' },
       },
     },
-    tabs: {
-      render: 'Tabs',
+    colorSwatch: {
+      render: 'ColorSwatch',
       attributes: {
-        items: {
-          type: Array,
-          required: true,
-        },
+        color: { type: String, required: true },
+        name: { type: String, required: true },
+        usage: { type: String },
       },
     },
-    tab: {
-      render: 'Tab',
-      attributes: {
-        label: {
-          type: String,
-          required: true,
-        },
-      },
+    spacingTable: {
+      render: 'SpacingTable',
     },
-    code: {
-      render: 'CodeBlock',
+    componentSpec: {
+      render: 'ComponentSpec',
       attributes: {
-        language: {
-          type: String,
-          required: true,
-        },
-        filename: {
-          type: String,
-        },
+        name: { type: String, required: true },
+        bg: { type: String },
+        border: { type: String },
+        rounded: { type: String },
+        padding: { type: String },
+        text: { type: String },
       },
     },
   },
   nodes: {
-    document: {
-      render: 'Document',
-    },
+    document: { render: 'Document' },
     heading: {
       render: 'Heading',
-      attributes: {
-        id: { type: String },
-        level: { type: Number, required: true },
-      },
+      attributes: { id: { type: String }, level: { type: Number, required: true } },
     },
-    paragraph: {
-      render: 'Paragraph',
-    },
-    blockquote: {
-      render: 'BlockQuote',
-    },
+    paragraph: { render: 'Paragraph' },
+    blockquote: { render: 'BlockQuote' },
     code: {
       render: 'CodeBlock',
-      attributes: {
-        content: { type: String, required: true },
-        language: { type: String },
-        filename: { type: String },
-      },
+      attributes: { content: { type: String, required: true }, language: { type: String } },
     },
     fence: {
       render: 'CodeBlock',
-      attributes: {
-        content: { type: String, required: true },
-        language: { type: String, required: true },
-        filename: { type: String },
-      },
+      attributes: { content: { type: String, required: true }, language: { type: String, required: true } },
     },
-    hr: {
-      render: 'HR',
-    },
-    ul: {
-      render: 'List',
-    },
-    ol: {
-      render: 'OrderedList',
-    },
-    li: {
-      render: 'ListItem',
-    },
-    table: {
-      render: 'Table',
-    },
-    thead: {
-      render: 'THead',
-    },
-    tbody: {
-      render: 'TBody',
-    },
-    tr: {
-      render: 'TR',
-    },
-    th: {
-      render: 'TH',
-      attributes: {
-        align: { type: String },
-      },
-    },
-    td: {
-      render: 'TD',
-      attributes: {
-        align: { type: String },
-      },
-    },
-    link: {
-      render: 'Link',
-      attributes: {
-        href: { type: String, required: true },
-      },
-    },
-    image: {
-      render: 'Image',
-      attributes: {
-        src: { type: String, required: true },
-        alt: { type: String },
-      },
-    },
-    strong: {
-      render: 'Strong',
-    },
-    em: {
-      render: 'Em',
-    },
-    inlineCode: {
-      render: 'InlineCode',
-    },
+    hr: { render: 'HR' },
+    ul: { render: 'List' } as any,
+    ol: { render: 'OrderedList' } as any,
+    li: { render: 'ListItem' } as any,
+    table: { render: 'Table' },
+    thead: { render: 'THead' },
+    tbody: { render: 'TBody' },
+    tr: { render: 'TR' },
+    th: { render: 'TH', attributes: { align: { type: String } } },
+    td: { render: 'TD', attributes: { align: { type: String } } },
+    link: { render: 'Link', attributes: { href: { type: String, required: true } } },
+    image: { render: 'Image', attributes: { src: { type: String, required: true }, alt: { type: String } } },
+    strong: { render: 'Strong' },
+    em: { render: 'Em' },
+    inlineCode: { render: 'InlineCode' },
   },
 };

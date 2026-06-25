@@ -187,10 +187,10 @@ export default function DashboardPage() {
   }, [loading, health, hermes]);
 
   const onboardingSteps = [
-    { label: "สร้างองค์กร", done: true, href: "/dashboard/settings/go-live" },
-    { label: "เชื่อมต่อตัวแทน", done: Boolean(onboarding?.has_agent), href: "/dashboard/agents" },
-    { label: "รันการดำเนินการครั้งแรก", done: Boolean(onboarding?.first_run_complete), href: "/delivery-proof" },
-    { label: "เปิดใช้งาน AI Agent", done: systemHealth.allGood, href: "/dashboard/hermes" },
+    { label: "สร้างองค์กร", done: true, href: "/dashboard/settings/go-live", ring: "white" },
+    { label: "เชือมต่อตัวแทน", done: Boolean(onboarding?.has_agent), href: "/dashboard/agents", ring: "blue" },
+    { label: "รันการดำเนินการครั้งแรก", done: Boolean(onboarding?.first_run_complete), href: "/delivery-proof", ring: "purple" },
+    { label: "เปิดใช้งาน Ring Hermes", done: systemHealth.allGood, href: "/dashboard/hermes" ring: "green" },
   ];
   const doneCount = onboardingSteps.filter((s) => s.done).length;
 
@@ -341,7 +341,7 @@ export default function DashboardPage() {
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/30">
               <div
                 className="h-2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-300 transition-all duration-500"
-                style={{ width: `${Math.round((doneCount / 3) * 100)}%` }}
+                style={{ width: `${Math.round((doneCount / onboardingSteps.length) * 100)}%` }}
               />
             </div>
             <ul className="mt-4 space-y-1">
@@ -353,14 +353,21 @@ export default function DashboardPage() {
                       s.done ? "hover:bg-emerald-400/5" : "hover:bg-white/5"
                     }`}
                   >
-                    <span
-                      className={`h-5 w-5 rounded-full border text-[10px] flex items-center justify-center font-bold shrink-0 ${
+                    {/* Ring indicator */}
+                    <span className="relative flex h-6 w-6 shrink-0 items-center justify-center">
+                      <span className={`absolute inset-0 rounded-full border-2 ${
                         s.done
-                          ? "border-emerald-400/50 bg-emerald-400/20 text-emerald-300"
-                          : "border-white/15 text-transparent"
-                      }`}
-                    >
-                      {s.done ? "✓" : ""}
+                          ? "border-emerald-400/60 bg-emerald-400/20"
+                          : "border-white/15"
+                      }`} />
+                      {s.ring === "green" && s.done && (
+                        <span className="absolute -inset-1 animate-ping rounded-full bg-emerald-400/30" />
+                      )}
+                      <span className={`relative z-10 text-[10px] font-bold ${
+                        s.done ? "text-emerald-300" : "text-slate-600"
+                      }`}>
+                        {s.done ? "✓" : s.ring === "green" ? "●" : "○"}
+                      </span>
                     </span>
                     <span
                       className={s.done ? "text-emerald-100" : "text-slate-400 underline decoration-dotted"}

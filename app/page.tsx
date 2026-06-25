@@ -104,7 +104,13 @@ export default function HomePage() {
                 Delivery Proof →
               </Link>
               <Link href="/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
-                Try demo
+                🎬 Try demo
+              </Link>
+              <Link href="/presentation" className="rounded-2xl border border-violet-400/30 bg-violet-400/10 px-6 py-4 text-base font-semibold text-violet-100 transition hover:bg-violet-400/20">
+                📊 Presentation
+              </Link>
+              <Link href="/design" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 text-base font-semibold text-slate-100 transition hover:border-white/20">
+                🎨 Design
               </Link>
               <Link href="/pricing" className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-6 py-4 text-base font-semibold text-amber-100 transition hover:border-amber-300/60">
                 Pricing

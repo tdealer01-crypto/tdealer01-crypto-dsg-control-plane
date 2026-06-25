@@ -1,5 +1,19 @@
 /** @type {import('next').NextConfig} */
 
+function loadMarkdocConfig() {
+  try {
+    const withMarkdoc = require('@markdoc/next.js');
+    return withMarkdoc()({ pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdoc'] });
+  } catch {
+    return {};
+  }
+}
+
+const markdocConfig = loadMarkdocConfig();
+
+// Merge markdoc config with our custom config
+const { ...markdocRest } = markdocConfig;
+
 function parseOrigin(url) {
   if (!url) return null;
 
@@ -132,4 +146,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = { ...markdocRest, ...nextConfig };
