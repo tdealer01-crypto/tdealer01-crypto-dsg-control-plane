@@ -1,196 +1,132 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase-server';
-import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
-import { requireOrgRole } from '@/lib/authz';
-import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
-import type { SafeDomCommand } from '@/lib/executors/browserbase-safe-dom-integration';
-import { verifyAgentInvariants } from '@/lib/dsg/logic/z3-runtime-check';
+import { NextResponse } from 'next/server';
+import { resolveAgentFromApiKey } from '@/lib/agent-auth';
+import { executeSpineIntent, issueSpineIntent } from '@/lib/spine/engine';
+import { normalizeSpinePayload } from '@/lib/spine/request';
+import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
+import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '@/lib/security/rate-limit';
+import { handleApiError } from '@/lib/security/api-error';
+import { checkQuota, incrementQuota } from '@/lib/usage/quota';
+import { verifySafeDomIntentOrPass } from '@/lib/spine/verify-safe-dom-intent';
 
 export const dynamic = 'force-dynamic';
 
-interface SpineExecutePayload {
-  sessionId: string;
-  frameUrl: string;
-  frameId?: string;
-  command: SafeDomCommand;
-  agentId?: string;
+const EXECUTE_RATE_LIMIT = 60;
+const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
+
+function extractBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get('authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7).trim();
+  return token.length > 0 ? token : null;
 }
 
-export async function POST(request: NextRequest) {
-  const access = await requireOrgRole(['operator', 'org_admin']);
-  if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
-  }
+export async function OPTIONS(request: Request) {
+  return buildPreflightResponse(request);
+}
 
-  let body: SpineExecutePayload;
-  try {
-    body = (await request.json()) as SpineExecutePayload;
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
-  }
-
-  if (!body.sessionId || !body.frameUrl || !body.command) {
-    return NextResponse.json(
-      { error: 'Missing required fields: sessionId, frameUrl, command' },
-      { status: 400 },
-    );
-  }
-
-  const { sessionId, frameUrl, frameId, command, agentId } = body;
-  const supabase = getSupabaseAdmin();
-  const orgId = access.orgId;
-  const actualFrameId = frameId || `frame-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export async function POST(request: Request) {
+  let responseHeaders: Headers | undefined;
 
   try {
-    let manifestId: string;
-    try {
-      const manifest = await buildAndPersistManifest(sessionId, frameUrl, actualFrameId, orgId);
-      manifestId = manifest.sessionId;
-    } catch (manifestError) {
-      logApiError('api/spine/execute:build-manifest', manifestError);
+    const rateLimit = await applyRateLimit({
+      key: getRateLimitKey(request, 'spine-execute'),
+      limit: EXECUTE_RATE_LIMIT,
+      windowMs: EXECUTE_RATE_WINDOW_MS,
+    });
+
+    responseHeaders = buildCorsHeaders(
+      request,
+      buildRateLimitHeaders(rateLimit, EXECUTE_RATE_LIMIT),
+    ) as Headers;
+
+    if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: 'Failed to build Safe DOM manifest' },
-        { status: 500 },
+        { error: 'Too many requests' },
+        { status: 429, headers: responseHeaders },
       );
     }
 
-    try {
-      await verifySafeDomIntentOrFail(sessionId, actualFrameId, command);
-    } catch (verifyError) {
-      logApiError('api/spine/execute:verify', verifyError);
-      const message = verifyError instanceof Error ? verifyError.message : String(verifyError);
-      let statusCode = 403;
-      let safeMessage = 'Command not allowed by Safe DOM manifest';
-      if (message.toLowerCase().includes('not found') || message.toLowerCase().includes('expired')) {
-        statusCode = 404;
-        safeMessage = 'Safe DOM manifest not found or expired';
-      }
-      return NextResponse.json({ error: safeMessage, reason: message }, { status: statusCode });
+    const apiKey = extractBearerToken(request);
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Missing Bearer token' },
+        { status: 401, headers: responseHeaders },
+      );
     }
 
-    // Z3 runtime gate: verify agent invariants before execution
-    const z3Result = verifyAgentInvariants({
-      agentType: 'orchestrator',
-      jobId: sessionId,
-      workspaceId: orgId,
-      goalLocked: true,
-      gateAllow: true,
-      evidenceExists: true,
-      mockState: false,
-      planApproved: true,
-      writesCode: true,
-      isDestructiveWrite: false,
-      destructionProof: false,
-      testRunComplete: false,
-      newCoverageGtePrev: true,
-      usesBrowserResult: false,
-      browserEvidenceHashSet: false,
-      dataNeeded: false,
-      dataUnknown: false,
-      searchAttempted: false,
-    });
+    const payload = normalizeSpinePayload(await request.json().catch(() => null));
+    if (!payload.agentId) {
+      return NextResponse.json(
+        { error: 'agent_id is required' },
+        { status: 400, headers: responseHeaders },
+      );
+    }
 
-    if (!z3Result.pass) {
-      logApiError('api/spine/execute:z3-gate', new Error(`Z3 gate blocked: ${z3Result.check}`));
-      return NextResponse.json({
-        error: 'Z3 invariant gate blocked execution',
-        z3: {
-          status: z3Result.pass ? 'PASS' : 'BLOCK',
-          check: z3Result.check,
-          proofHash: z3Result.proofHash,
-          violations: z3Result.violations,
+    const agent = await resolveAgentFromApiKey(payload.agentId, apiKey);
+    if (!agent) {
+      return NextResponse.json(
+        { error: 'Invalid agent_id or API key' },
+        { status: 401, headers: responseHeaders },
+      );
+    }
+
+    if ((agent as Record<string, unknown>).status !== 'active') {
+      return NextResponse.json(
+        { error: 'Agent is not active' },
+        { status: 403, headers: responseHeaders },
+      );
+    }
+
+    const orgId = String((agent as Record<string, unknown>).org_id ?? '');
+    const quota = await checkQuota(orgId, payload.agentId);
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Monthly execution quota exceeded',
+          used: quota.used,
+          limit: quota.limit,
+          upgrade_url: quota.upgradeUrl ?? 'https://app.dsg.pics/pricing',
         },
-      }, { status: 403 });
+        { status: 402, headers: responseHeaders },
+      );
     }
 
-    const result = await executeVerifiedCommand(sessionId, command);
-
-    try {
-      await (supabase.from('spine_executions' as any).insert({
-        org_id: orgId,
-        agent_id: agentId || null,
-        session_id: sessionId,
-        frame_id: actualFrameId,
-        manifest_id: manifestId,
-        command_json: command,
-        result_json: result,
-        status: 'SUCCEEDED',
-        executed_at: new Date().toISOString(),
-      }));
-    } catch (auditError) {
-      logApiError('api/spine/execute:audit', auditError);
+    const sessionId = String((payload.input as Record<string, unknown>)?.sessionId ?? '');
+    const safeDomCheck = await verifySafeDomIntentOrPass(payload, sessionId);
+    if (safeDomCheck && safeDomCheck.decision === 'BLOCK') {
+      return NextResponse.json(
+        {
+          error: 'Safe DOM verification failed',
+          decision: 'block',
+          reason: safeDomCheck.reason,
+          element_id: safeDomCheck.elementId,
+        },
+        { status: 403, headers: responseHeaders },
+      );
     }
 
-    return NextResponse.json({
-      status: 'SUCCEEDED',
-      command,
-      result,
-      safeDom: {
-        manifestId,
-        frameId: actualFrameId,
-      },
-      z3: {
-        status: z3Result.pass ? 'PASS' : 'BLOCK',
-        proofHash: z3Result.proofHash,
-        check: z3Result.check,
-      },
-    });
+    if (safeDomCheck && safeDomCheck.decision === 'REVIEW' && safeDomCheck.reason) {
+      (payload.context as Record<string, unknown>).safeDomReview = safeDomCheck.reason;
+    }
+
+    let result = await executeSpineIntent({ orgId, apiKey, payload });
+
+    if (!result.ok && result.status === 409) {
+      await issueSpineIntent({ orgId, apiKey, payload });
+      result = await executeSpineIntent({ orgId, apiKey, payload });
+    }
+
+    if (result.ok) {
+      void incrementQuota(orgId, payload.agentId);
+    }
+
+    const responseBody = result.ok
+      ? { stop_reason: 'NONE', ...result.body }
+      : result.body;
+    return NextResponse.json(responseBody, { status: result.status, headers: responseHeaders });
   } catch (error) {
-    logApiError('api/spine/execute', error);
-    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
-  }
-}
-
-export const OPTIONS = () => new NextResponse(null, { status: 204 });
-
-export async function GET(request: NextRequest) {
-  const access = await requireOrgRole(['operator', 'org_admin']);
-  if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const sessionId = searchParams.get('sessionId');
-  const agentId = searchParams.get('agentId');
-
-  if (!sessionId) {
-    return NextResponse.json({ error: 'Missing query param: sessionId' }, { status: 400 });
-  }
-
-  const supabase = getSupabaseAdmin();
-
-  try {
-    const query = (supabase
-      .from('spine_executions' as any)
-      .select('*')
-      .eq('org_id', access.orgId)
-      .eq('session_id', sessionId)
-      .order('executed_at', { ascending: false })
-      .limit(20) as unknown) as Promise<{ data: any[] | null; error: any }>;
-
-    const { data, error } = await query;
-
-    if (error || !data) {
-      return NextResponse.json({ executions: [] });
-    }
-
-    const executions = agentId
-      ? data.filter((row) => row.agent_id === agentId)
-      : data;
-
-    return NextResponse.json({
-      sessionId,
-      executions: executions.map((row) => ({
-        executionId: row.id,
-        agentId: row.agent_id,
-        status: row.status,
-        command: row.command_json,
-        result: row.result_json,
-        executedAt: row.executed_at,
-      })),
+    return handleApiError('api/spine/execute', error, {
+      headers: responseHeaders ?? buildCorsHeaders(request),
     });
-  } catch (error) {
-    logApiError('api/spine/execute:history', error);
-    return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   }
 }
