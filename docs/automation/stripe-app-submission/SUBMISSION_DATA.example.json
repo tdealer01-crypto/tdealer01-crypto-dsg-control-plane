@@ -9,7 +9,8 @@
   "app_descriptions": {
     "short_description": "AI-powered governance gate for controlled agent execution and compliance",
     "long_description": "DSG Governance Gate provides deterministic policy evaluation, runtime compliance tracking, and evidence collection for AI agent operations. It integrates with Stripe to control access and governance of AI services.",
-    "category": "Risk Management"
+    "category": "Risk Management",
+    "pricing_statement": "DSG Governance Gate is free and open-source software. No additional fees are charged through this Stripe integration. Users pay only for their existing Stripe charges, with no markup or service fees applied by this app."
   },
   "contact_info": {
     "support_email": "support@dsg.pics",
