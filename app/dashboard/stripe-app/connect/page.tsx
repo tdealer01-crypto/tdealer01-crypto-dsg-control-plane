@@ -1,11 +1,19 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type ConnectionStatus = 'idle' | 'connecting' | 'success' | 'error';
 
 export default function StripeConnectPage() {
+  return (
+    <Suspense>
+      <StripeConnectInner />
+    </Suspense>
+  );
+}
+
+function StripeConnectInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');

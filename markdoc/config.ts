@@ -9,9 +9,6 @@ export const markdocConfig: Config = {
     locales: ['th', 'en'],
     defaultLocale: 'th',
   },
-  headings: {
-    anchorPrefix: 'heading-',
-  },
   tags: {
     designButton: {
       render: 'DesignButton',
@@ -60,9 +57,8 @@ export const markdocConfig: Config = {
       attributes: { content: { type: String, required: true }, language: { type: String, required: true } },
     },
     hr: { render: 'HR' },
-    ul: { render: 'List' } as any,
-    ol: { render: 'OrderedList' } as any,
-    li: { render: 'ListItem' } as any,
+    list: { render: 'List' },
+    item: { render: 'ListItem' },
     table: { render: 'Table' },
     thead: { render: 'THead' },
     tbody: { render: 'TBody' },
@@ -73,6 +69,5 @@ export const markdocConfig: Config = {
     image: { render: 'Image', attributes: { src: { type: String, required: true }, alt: { type: String } } },
     strong: { render: 'Strong' },
     em: { render: 'Em' },
-    inlineCode: { render: 'InlineCode' },
   },
 };
