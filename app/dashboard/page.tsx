@@ -190,6 +190,7 @@ export default function DashboardPage() {
     { label: "สร้างองค์กร", done: true, href: "/dashboard/settings/go-live" },
     { label: "เชื่อมต่อตัวแทน", done: Boolean(onboarding?.has_agent), href: "/dashboard/agents" },
     { label: "รันการดำเนินการครั้งแรก", done: Boolean(onboarding?.first_run_complete), href: "/delivery-proof" },
+    { label: "เปิดใช้งาน AI Agent", done: systemHealth.allGood, href: "/dashboard/hermes" },
   ];
   const doneCount = onboardingSteps.filter((s) => s.done).length;
 
@@ -377,10 +378,10 @@ export default function DashboardPage() {
               </p>
             )}
             <Link
-              href={() => {
+              href={(() => {
                 const next = onboardingSteps.find((s) => !s.done);
                 return next ? next.href : "/dashboard/executions";
-              }()}
+              })()}
               className="mt-4 inline-block rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-4 py-2 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-400/10"
             >
               {doneCount < 3 ? `ถัดไป: ${onboardingSteps.find((s) => !s.done)?.label ?? "ดำเนินการต่อ"} →` : "ดูการดำเนินการทั้งหมด →"}
