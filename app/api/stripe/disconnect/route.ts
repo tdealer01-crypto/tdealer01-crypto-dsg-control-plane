@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error updating deauthorization:', error);
       return NextResponse.json(
-        { received: true, error: error.message },
+        { received: true, error: 'Internal server error' },
         { status: 200 }
       );
     }

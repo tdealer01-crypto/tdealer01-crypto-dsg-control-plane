@@ -60,7 +60,7 @@ export async function POST(
       { status: 200, headers: corsHeaders }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = 'Internal server error';
     return NextResponse.json(
       { error: message },
       { status: 500, headers: corsHeaders }

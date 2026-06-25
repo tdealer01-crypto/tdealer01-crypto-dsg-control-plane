@@ -265,7 +265,7 @@ async function executeSubagents(
       return {
         agent_id: subagent.agent_id,
         status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: 'Internal server error',
         result: null,
       };
     }

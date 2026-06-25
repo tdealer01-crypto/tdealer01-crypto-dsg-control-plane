@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       { status: result.ok ? 200 : 502 }
     );
   } catch (err) {
-    const reason = err instanceof Error ? err.message : 'Unknown error';
+    const reason = 'Internal server error';
     return NextResponse.json(
       { ok: false, error: 'orchestration_failed', reason, response: `Hermes Orchestrator error: ${reason}` },
       { status: 500 }

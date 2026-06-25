@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         send({
           type: 'error',
-          message: error instanceof Error ? error.message : 'Hermes adapter failed',
+          message: 'Hermes adapter failed',
         });
       } finally {
         reader.releaseLock();

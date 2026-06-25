@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         actionRecord.result = result;
       } catch (err) {
         actionRecord.status = 'FAILED';
-        actionRecord.error = err instanceof Error ? err.message : String(err);
+        actionRecord.error = String(err);
       }
 
       await (supabase.from('dsg_actions' as any).update({

@@ -54,7 +54,7 @@ export async function GET(
 
     return NextResponse.json({ ok: true, ui_config: data.ui_config ?? {} }, { status: 200, headers: corsHeaders });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500, headers: corsHeaders });
   }
 }
@@ -114,7 +114,7 @@ export async function PUT(
       { status: 200, headers: corsHeaders }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const message = 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500, headers: corsHeaders });
   }
 }

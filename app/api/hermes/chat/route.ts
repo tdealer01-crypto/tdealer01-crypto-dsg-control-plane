@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try {
     result = await orchestrateChat(input);
   } catch (err) {
-    const reason = err instanceof Error ? err.message : 'Unknown error';
+    const reason = 'Internal server error';
     return Response.json(
       {
         ok: false,

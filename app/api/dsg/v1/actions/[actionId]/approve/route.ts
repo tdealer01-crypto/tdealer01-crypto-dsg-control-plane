@@ -82,7 +82,7 @@ export async function POST(
 
     return NextResponse.json({ actionId, status: 'SUCCEEDED', result });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorMessage = String(err);
     logApiError(`api/dsg/v1/actions:${actionId}:execute`, err);
 
     await (supabase.from('dsg_actions' as any).update({
@@ -91,7 +91,7 @@ export async function POST(
       updated_at: new Date().toISOString(),
     }).eq('action_id', actionId));
 
-    return NextResponse.json({ actionId, status: 'FAILED', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ actionId, status: 'FAILED', error: 'Internal server error' }, { status: 500 });
   }
 }
 
