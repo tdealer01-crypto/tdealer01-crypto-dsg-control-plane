@@ -14,15 +14,15 @@ def check_file_exists(path: str, file_type: str) -> tuple[bool, str]:
         return True, f"✓ {file_type} exists ({size_kb:.1f} KB)"
     return False, f"✗ {file_type} missing: {path}"
 
-def check_url_valid(url: str) -> tuple[bool, str]:
+def check_url_valid(url: str, url_type: str = "") -> tuple[bool, str]:
     """Verify URL format"""
     try:
         result = urlparse(url)
         if all([result.scheme, result.netloc]):
-            return True, f"✓ Valid URL: {url}"
-        return False, f"✗ Invalid URL format: {url}"
+            return True, f"✓ {url_type} Valid URL: {url}" if url_type else f"✓ Valid URL: {url}"
+        return False, f"✗ {url_type} Invalid URL format: {url}" if url_type else f"✗ Invalid URL format: {url}"
     except:
-        return False, f"✗ URL parse error: {url}"
+        return False, f"✗ {url_type} URL parse error: {url}" if url_type else f"✗ URL parse error: {url}"
 
 def check_string_length(value: str, max_len: int, name: str) -> tuple[bool, str]:
     """Verify string within limits"""
