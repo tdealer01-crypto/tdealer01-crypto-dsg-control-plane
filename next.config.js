@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 
-async function loadNextConfig() {
-  // Conditionally load markdoc plugin if installed
+function loadMarkdocConfig() {
   try {
     const withMarkdoc = require('@markdoc/next.js');
     return withMarkdoc()({ pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdoc'] });
@@ -10,10 +9,10 @@ async function loadNextConfig() {
   }
 }
 
-const markdocConfig = await loadNextConfig();
+const markdocConfig = loadMarkdocConfig();
 
 // Merge markdoc config with our custom config
-const { pageExtensions: _markdocPageExtensions, ...markdocRest } = markdocConfig;
+const { ...markdocRest } = markdocConfig;
 
 function parseOrigin(url) {
   if (!url) return null;
