@@ -1,6 +1,6 @@
 import { Config } from '@markdoc/markdoc';
 
-export const markdocConfig: Config = {
+export const markdocConfig = {
   variables: {
     title: 'DSG ONE',
     description: 'Enterprise AI Governance Platform',
@@ -60,9 +60,11 @@ export const markdocConfig: Config = {
       attributes: { content: { type: String, required: true }, language: { type: String, required: true } },
     },
     hr: { render: 'HR' },
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     ul: { render: 'List' } as any,
     ol: { render: 'OrderedList' } as any,
     li: { render: 'ListItem' } as any,
+    /* eslint-enable @typescript-eslint/no-explicit-any */
     table: { render: 'Table' },
     thead: { render: 'THead' },
     tbody: { render: 'TBody' },

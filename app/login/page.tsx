@@ -69,7 +69,7 @@ export default function LoginPage() {
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [notice, setNotice] = useState<{ type: string; message: string } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -90,10 +90,16 @@ function LoginInner() {
     router.push(`/api/auth/sso?next=${encodeURIComponent(next)}`);
   }, [router, searchParams]);
 
-  const noticeIcons = {
+  const noticeIcons: Record<string, string> = {
     error: "❌",
     success: "✅",
     info: "ℹ️",
+  };
+
+  const noticeStyles: Record<string, string> = {
+    error: "border-red-500/30 bg-red-500/10 text-red-300",
+    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+    info: "border-blue-500/30 bg-blue-500/10 text-blue-300",
   };
 
   return (

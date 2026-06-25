@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import Link from 'next/link';
 import Markdoc from '@markdoc/markdoc';
 import { markdocConfig } from '../../markdoc/config';
 
@@ -28,9 +29,9 @@ export default async function DesignPage() {
     );
   }
 
-  const { createReactComponents } = Markdoc.createReactComponents(markdocConfig);
-  const transformed = Markdoc.transform(content, markdocConfig);
-  const rendered = Markdoc.renderReact(transformed, createReactComponents());
+  const ast = Markdoc.parse(content);
+  const transformed = Markdoc.transform(ast, markdocConfig);
+  const rendered = Markdoc.renderers.html(transformed);
 
   return (
     <div className="min-h-screen bg-[#07080b] text-white">
@@ -43,16 +44,14 @@ export default async function DesignPage() {
             <span className="text-lg font-semibold text-white">Design System</span>
           </div>
           <div className="flex gap-2">
-            <a href="/docs/th" className="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white">เอกสาร</a>
-            <a href="/dashboard" className="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Dashboard</a>
+            <Link href="/docs/th" className="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white">เอกสาร</Link>
+            <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white">Dashboard</Link>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-12">
-        <article className="design-content prose prose-invert max-w-none">
-          {rendered}
-        </article>
+        <article className="design-content prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: rendered }} />
       </main>
 
       <footer className="border-t border-white/5 py-8 text-center text-xs text-slate-600">
