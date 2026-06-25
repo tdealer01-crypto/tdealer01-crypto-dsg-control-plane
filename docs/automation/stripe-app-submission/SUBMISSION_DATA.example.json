@@ -1,0 +1,78 @@
+{
+  "app_metadata": {
+    "app_id": "pics.dsg.governance",
+    "app_name": "DSG Governance Gate",
+    "version": "1.1.5",
+    "distribution_type": "public",
+    "sandbox_install_compatible": true
+  },
+  "app_descriptions": {
+    "short_description": "AI-powered governance gate for controlled agent execution and compliance",
+    "long_description": "DSG Governance Gate provides deterministic policy evaluation, runtime compliance tracking, and evidence collection for AI agent operations. It integrates with Stripe to control access and governance of AI services.",
+    "category": "Risk Management"
+  },
+  "contact_info": {
+    "support_email": "support@dsg.pics",
+    "support_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/readiness",
+    "contact_timezone": "UTC"
+  },
+  "legal_urls": {
+    "privacy_policy": "https://tdealer01-crypto-dsg-control-plane.vercel.app/privacy",
+    "terms_of_service": "https://tdealer01-crypto-dsg-control-plane.vercel.app/terms",
+    "company_homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+  },
+  "oauth_configuration": {
+    "redirect_uris": [
+      "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/stripe/oauth/callback",
+      "https://dsg-stripe-app.vercel.app/api/stripe/oauth/callback"
+    ]
+  },
+  "webhook_configuration": {
+    "webhook_endpoint": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/stripe/webhook/events",
+    "signature_verification": true,
+    "events": [
+      "charge.created",
+      "charge.updated",
+      "charge.failed"
+    ]
+  },
+  "permissions": [
+    {
+      "permission": "charge:read",
+      "purpose": "Read charge details for governance decisions",
+      "required": true
+    }
+  ],
+  "assets": {
+    "icon": {
+      "file": "docs/assets/dsg-icon-1200x1200.png"
+    },
+    "screenshots": [
+      {
+        "file": "docs/assets/screenshot-1-dashboard.png",
+        "title": "Governance Dashboard",
+        "description": "Control plane for managing AI agent permissions and compliance"
+      },
+      {
+        "file": "docs/assets/screenshot-2-policies.png",
+        "title": "Policy Management",
+        "description": "Define and enforce governance policies for AI execution"
+      },
+      {
+        "file": "docs/assets/screenshot-3-audit.png",
+        "title": "Audit Trail",
+        "description": "Complete evidence collection and audit logging"
+      },
+      {
+        "file": "docs/assets/screenshot-4-compliance.png",
+        "title": "Compliance Matrix",
+        "description": "Real-time compliance status and verification"
+      },
+      {
+        "file": "docs/assets/screenshot-5-reporting.png",
+        "title": "Evidence Reports",
+        "description": "Shareable compliance and governance reports"
+      }
+    ]
+  }
+}
