@@ -113,12 +113,12 @@ export default function DashboardPage() {
     setError("");
     try {
       const results = await Promise.allSettled([
-        fetch("/api/agents", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/executions?limit=8", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/usage", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/health", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/dsg/brain/execute", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/onboarding/state", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/agents", { cache: "no-store", credentials: "include" }).then((r) => r.json()),
+        fetch("/api/executions?limit=8", { cache: "no-store", credentials: "include" }).then((r) => r.json()),
+        fetch("/api/usage", { cache: "no-store", credentials: "include" }).then((r) => r.json()),
+        fetch("/api/health", { cache: "no-store", credentials: "include" }).then((r) => r.json()),
+        fetch("/api/dsg/brain/execute", { cache: "no-store", credentials: "include" }).then((r) => r.json()),
+        fetch("/api/onboarding/state", { cache: "no-store", credentials: "include" }).then((r) => r.json()),
       ]);
 
       const [a, e, u, h, hm, ob] = results;
