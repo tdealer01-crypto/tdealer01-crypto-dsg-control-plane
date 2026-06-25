@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import React from 'react';
 import Link from 'next/link';
 import Markdoc from '@markdoc/markdoc';
 import { markdocConfig } from '../../../markdoc/config';
@@ -26,7 +27,7 @@ export default async function DocsPage({ params }: { params: Promise<{ lang: str
 
   const ast = Markdoc.parse(content);
   const transformed = Markdoc.transform(ast, markdocConfig);
-  const rendered = Markdoc.renderers.html(transformed);
+  const rendered = Markdoc.renderers.react(transformed, React, {});
 
   const availableLangs = [
     { code: 'en', label: '🇬🇧 English' },
@@ -67,7 +68,9 @@ export default async function DocsPage({ params }: { params: Promise<{ lang: str
 
       {/* Content */}
       <main className="mx-auto max-w-4xl px-6 py-12">
-        <article className="docs-content" dangerouslySetInnerHTML={{ __html: rendered }} />
+        <article className="docs-content">
+          {rendered}
+        </article>
       </main>
 
       {/* Footer */}

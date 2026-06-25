@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import React from 'react';
 import Link from 'next/link';
 import Markdoc from '@markdoc/markdoc';
 import { markdocConfig } from '../../markdoc/config';
@@ -31,7 +32,7 @@ export default async function DesignPage() {
 
   const ast = Markdoc.parse(content);
   const transformed = Markdoc.transform(ast, markdocConfig);
-  const rendered = Markdoc.renderers.html(transformed);
+  const rendered = Markdoc.renderers.react(transformed, React, {});
 
   return (
     <div className="min-h-screen bg-[#07080b] text-white">
@@ -51,7 +52,9 @@ export default async function DesignPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-12">
-        <article className="design-content prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: rendered }} />
+        <article className="design-content prose prose-invert max-w-none">
+          {rendered}
+        </article>
       </main>
 
       <footer className="border-t border-white/5 py-8 text-center text-xs text-slate-600">
