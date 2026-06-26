@@ -121,7 +121,7 @@ Example response:
 
 ```bash
 curl -X POST http://localhost:3000/api/execute \
-  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -H "Authorization: Bearer $YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "test-agent",
