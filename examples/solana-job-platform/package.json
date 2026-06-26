@@ -1,0 +1,27 @@
+{
+  "name": "solana-job-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Solana Job Marketplace Agent — AI agent ค้นหาและรับงานบน Solana ecosystem (simulated mode)",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx solana_job_marketplace.ts",
+    "build": "tsc",
+    "agent:single": "tsx solana_job_marketplace.ts single",
+    "agent:loop": "tsx solana_job_marketplace.ts continuous",
+    "agent:continuous": "tsx solana_job_marketplace.ts continuous agent-main 3600000",
+    "agent:fast": "tsx solana_job_marketplace.ts continuous agent-main 600000",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -f marketplace-data.json"
+  },
+  "dependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
