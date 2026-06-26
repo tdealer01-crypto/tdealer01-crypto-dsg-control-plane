@@ -55,6 +55,8 @@ useDefault = true
     "bbe1919f65cb8a9df9aa8969fe9624278937104e:.env.production:jwt:29",
     "3a12904ac507c06623641eb824d941a17ba43bbc:app/docs/page.tsx:curl-auth-header:27",
     "7f0b34469384697320b712dc48ed8d3a7b52945a:.env.example:generic-api-key:13",
+    "0ffff14:QUICKSTART.md:curl-auth-header:124",
+    "0ffff14:README_TH.md:curl-auth-header:124",
   ]
 
   # isSecretLike helper function in public-chat route checks for secret-looking
