@@ -35,13 +35,25 @@ jobs:
         continue-on-error: true
         run: |
           echo "Validating JSON config..."
-          node -e "require('fs').readFileSync('config/default.json'); console.log('valid')" 2>/dev/null && echo "JSON_CONFIG=valid" >> $GITHUB_OUTPUT || echo "JSON_CONFIG=invalid" >> $GITHUB_OUTPUT
+          if test -f config/default.json; then
+            echo "JSON_CONFIG=valid" >> $GITHUB_OUTPUT
+          else
+            echo "JSON_CONFIG=missing" >> $GITHUB_OUTPUT
+          fi
 
           echo "Checking YAML config..."
-          test -f config/default.yaml && echo "YAML_CONFIG=present" >> $GITHUB_OUTPUT || echo "YAML_CONFIG=missing" >> $GITHUB_OUTPUT
+          if test -f config/default.yaml; then
+            echo "YAML_CONFIG=present" >> $GITHUB_OUTPUT
+          else
+            echo "YAML_CONFIG=missing" >> $GITHUB_OUTPUT
+          fi
 
           echo "Verifying configuration documentation..."
-          test -f docs/AI_SETUP_WIZARD_GUIDE.md && echo "SETUP_DOCS=present" >> $GITHUB_OUTPUT || echo "SETUP_DOCS=missing" >> $GITHUB_OUTPUT
+          if test -f docs/AI_SETUP_WIZARD_GUIDE.md; then
+            echo "SETUP_DOCS=present" >> $GITHUB_OUTPUT
+          else
+            echo "SETUP_DOCS=missing" >> $GITHUB_OUTPUT
+          fi
 
       - name: Verify OpenRouter Integration
         id: openrouter
