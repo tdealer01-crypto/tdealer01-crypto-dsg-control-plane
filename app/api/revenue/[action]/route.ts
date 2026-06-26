@@ -7,18 +7,26 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { PostHog } from 'posthog-node';
 
+export const dynamic = 'force-dynamic';
+
 // ========== INIT ==========
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY || '');
+}
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+}
 
-const posthog = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_API_KEY || '', {
-  host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
-});
+function getPostHog() {
+  return new PostHog(process.env.NEXT_PUBLIC_POSTHOG_API_KEY || '', {
+    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
+  });
+}
 
 // ========== TYPES ==========
 
@@ -39,6 +47,9 @@ export async function POST(
   { params }: { params: Promise<{ action: string }> }
 ) {
   const { action } = await params;
+  const stripe = getStripe();
+  const supabase = getSupabase();
+  const posthog = getPostHog();
 
   try {
     // ========== ACTION: CHECKOUT ==========

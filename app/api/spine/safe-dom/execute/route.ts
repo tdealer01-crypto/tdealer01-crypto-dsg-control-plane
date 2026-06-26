@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_FRAME_URL_PROTOCOLS = ['https:'];
 const BLOCKED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', 'metadata.google.internal', '169.254.169.254'];
 
-function validateFrameUrl(raw: string): { valid: boolean; error?: string } {
+function validateFrameUrl(raw: string): { valid: true; sanitizedUrl: string } | { valid: false; error: string } {
   let parsed: URL;
   try {
     parsed = new URL(raw);
@@ -24,7 +24,7 @@ function validateFrameUrl(raw: string): { valid: boolean; error?: string } {
   if (BLOCKED_HOSTS.some((h) => parsed.hostname === h || parsed.hostname.endsWith('.internal'))) {
     return { valid: false, error: 'Blocked host' };
   }
-  return { valid: true };
+  return { valid: true, sanitizedUrl: parsed.href };
 }
 
 interface SpineExecutePayload {
@@ -56,14 +56,15 @@ export async function POST(request: NextRequest) {
   }
 
   const urlCheck = validateFrameUrl(body.frameUrl);
-  if (!urlCheck.valid) {
+  if (urlCheck.valid === false) {
     return NextResponse.json(
       { error: urlCheck.error },
       { status: 400 },
     );
   }
 
-  const { sessionId, frameUrl, frameId, command, agentId } = body;
+  const { sessionId, frameId, command, agentId } = body;
+  const frameUrl = urlCheck.sanitizedUrl;
   const supabase = getSupabaseAdmin();
   const orgId = access.orgId;
   const actualFrameId = frameId || `frame-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
