@@ -88,7 +88,8 @@ jobs:
             message += `- Setup Documentation: ${docsStatus}\n`;
             message += '\n### OpenRouter Integration\n';
             message += `- Client Library: ${clientStatus}\n`;
-            message += `- Usage Tracker: ${' + '${{ steps.openrouter.outputs.TRACKER_PRESENT }}' === 'yes' ? '✅' : '❌'}\n`;
+            const trackerStatus = '${{ steps.openrouter.outputs.TRACKER_PRESENT }}' === 'yes' ? '✅' : '❌';
+            message += `- Usage Tracker: ${trackerStatus}\n`;
             message += `- Examples: ${exampleStatus}\n`;
             message += '\n### Setup Ready\n';
 
