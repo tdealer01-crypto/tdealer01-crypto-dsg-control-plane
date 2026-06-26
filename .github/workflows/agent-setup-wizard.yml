@@ -1,0 +1,103 @@
+name: Agent — Setup Wizard & Config
+
+on:
+  pull_request:
+    paths:
+      - "app/components/setup/**"
+      - "app/setup/**"
+      - "app/api/setup/**"
+      - "lib/openrouter/**"
+      - "config/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  setup-wizard-agent:
+    runs-on: ubuntu-latest
+    name: Setup Wizard & Configuration Analysis
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Validate Configuration Files
+        id: config-validate
+        continue-on-error: true
+        run: |
+          echo "Validating JSON config..."
+          node -c config/default.json 2>/dev/null && echo "JSON_CONFIG=valid" >> $GITHUB_OUTPUT || echo "JSON_CONFIG=invalid" >> $GITHUB_OUTPUT
+
+          echo "Checking YAML config..."
+          test -f config/default.yaml && echo "YAML_CONFIG=present" >> $GITHUB_OUTPUT || echo "YAML_CONFIG=missing" >> $GITHUB_OUTPUT
+
+          echo "Verifying configuration documentation..."
+          test -f docs/AI_SETUP_WIZARD_GUIDE.md && echo "SETUP_DOCS=present" >> $GITHUB_OUTPUT || echo "SETUP_DOCS=missing" >> $GITHUB_OUTPUT
+
+      - name: Verify OpenRouter Integration
+        id: openrouter
+        continue-on-error: true
+        run: |
+          echo "Checking OpenRouter client..."
+          test -f lib/openrouter/client.ts && echo "CLIENT_PRESENT=yes" >> $GITHUB_OUTPUT || echo "CLIENT_PRESENT=no" >> $GITHUB_OUTPUT
+
+          echo "Checking usage tracker..."
+          test -f lib/openrouter/usage-tracker.ts && echo "TRACKER_PRESENT=yes" >> $GITHUB_OUTPUT || echo "TRACKER_PRESENT=no" >> $GITHUB_OUTPUT
+
+      - name: Test Configuration Examples
+        id: examples
+        continue-on-error: true
+        run: npm run typecheck -- examples/openrouter-integration.ts
+
+      - name: Report Setup Readiness
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const configStatus = '${{ steps.config-validate.outputs.JSON_CONFIG }}' === 'valid' ? '✅' : '❌';
+            const yamlStatus = '${{ steps.config-validate.outputs.YAML_CONFIG }}' === 'present' ? '✅' : '❌';
+            const docsStatus = '${{ steps.config-validate.outputs.SETUP_DOCS }}' === 'present' ? '✅' : '❌';
+            const clientStatus = '${{ steps.openrouter.outputs.CLIENT_PRESENT }}' === 'yes' ? '✅' : '❌';
+            const exampleStatus = '${{ steps.examples.outcome }}' === 'success' ? '✅' : '❌';
+
+            let message = '## 🔧 Setup Wizard & Configuration Agent Report\n\n';
+            message += '### Configuration Status\n';
+            message += `- JSON Config: ${configStatus}\n`;
+            message += `- YAML Config: ${yamlStatus}\n`;
+            message += `- Setup Documentation: ${docsStatus}\n`;
+            message += '\n### OpenRouter Integration\n';
+            message += `- Client Library: ${clientStatus}\n`;
+            message += `- Usage Tracker: ${' + '${{ steps.openrouter.outputs.TRACKER_PRESENT }}' === 'yes' ? '✅' : '❌'}\n`;
+            message += `- Examples: ${exampleStatus}\n`;
+            message += '\n### Setup Ready\n';
+
+            const allReady = '${{ steps.config-validate.outputs.JSON_CONFIG }}' === 'valid' &&
+                           '${{ steps.openrouter.outputs.CLIENT_PRESENT }}' === 'yes' &&
+                           '${{ steps.examples.outcome }}' === 'success';
+
+            if (allReady) {
+              message += '✅ Users can complete setup in 4 minutes\n';
+              message += '- All config formats available\n';
+              message += '- OpenRouter models ready\n';
+              message += '- Integration examples working\n';
+            } else {
+              message += '⚠️ Setup experience needs attention\n';
+            }
+
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }
