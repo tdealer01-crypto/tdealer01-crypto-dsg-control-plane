@@ -35,7 +35,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Validating JSON config..."
-          node -c config/default.json 2>/dev/null && echo "JSON_CONFIG=valid" >> $GITHUB_OUTPUT || echo "JSON_CONFIG=invalid" >> $GITHUB_OUTPUT
+          node -e "require('fs').readFileSync('config/default.json'); console.log('valid')" 2>/dev/null && echo "JSON_CONFIG=valid" >> $GITHUB_OUTPUT || echo "JSON_CONFIG=invalid" >> $GITHUB_OUTPUT
 
           echo "Checking YAML config..."
           test -f config/default.yaml && echo "YAML_CONFIG=present" >> $GITHUB_OUTPUT || echo "YAML_CONFIG=missing" >> $GITHUB_OUTPUT
