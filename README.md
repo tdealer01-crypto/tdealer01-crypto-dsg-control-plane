@@ -22,6 +22,48 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 ---
 
+## Browser Agent (Stripe App Submission Automation)
+
+Automate Stripe app submission with resilient, auditable browser automation:
+
+| Feature | Details |
+|---------|---------|
+| **Orchestration** | 20-step workflow for Stripe dashboard submission |
+| **Handlers** | Navigation, form interaction, verification with error recovery |
+| **Checkpoints** | Save state every 3-5 steps, recover in 2-5 seconds (vs 30+ minutes) |
+| **Audit Trail** | Hash-chained evidence recording compatible with CCVS |
+| **Verification** | Step-level verification with evidence screenshots |
+| **API** | `POST /api/browser/stripe-submission/start` |
+
+**Usage** (Phase 1 - Core Infrastructure):
+```bash
+# Initiate submission
+curl -X POST http://localhost:3000/api/browser/stripe-submission/start \
+  -H "Content-Type: application/json" \
+  -d '{ "submissionData": { ... } }'
+
+# Response
+{
+  "submissionId": "sub_xxx",
+  "browserbaseSessionId": "session_yyy",
+  "recordingUrl": "https://browserbase.com/sessions/..."
+}
+```
+
+**Next** (Phase 2 - API Endpoints):
+- `POST /api/browser/stripe-submission/step` - Execute next step
+- `GET /api/browser/stripe-submission/progress/:id` - Track progress
+- Safe DOM manifest integration for element safety
+
+**Implementation** (`lib/browser-agents/stripe-submission/`):
+- `types.ts` - Type definitions
+- `orchestrator.ts` - Workflow engine
+- `evidence-recorder.ts` - Audit trail with hash chain
+- `checkpoint.ts` - Checkpoint/recovery manager
+- `handlers/step-handler-factory.ts` - Step handlers
+
+---
+
 ## Stack
 
 - Frontend: Next.js 15, React 18, Tailwind, Motion, Recharts
