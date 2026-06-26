@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { PostHog } from 'posthog-js';
+import { PostHog } from 'posthog-node';
 
 // ========== INIT ==========
 
@@ -36,9 +36,9 @@ interface AnalyticsRequest {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { action: string } }
+  { params }: { params: Promise<{ action: string }> }
 ) {
-  const action = params.action;
+  const { action } = await params;
 
   try {
     // ========== ACTION: CHECKOUT ==========
@@ -84,9 +84,9 @@ export async function POST(
 
         customerId = newCustomer.id;
 
-        // Track in PostHog
-        posthog.capture('customer_created', {
-          distinct_id: email,
+        posthog.capture({
+          distinctId: email,
+          event: 'customer_created',
           properties: {
             customer_id: customerId,
             initial_plan: plan,
@@ -119,9 +119,9 @@ export async function POST(
         },
       });
 
-      // 3. Track checkout in PostHog
-      posthog.capture('checkout_started', {
-        distinct_id: email,
+      posthog.capture({
+        distinctId: email,
+        event: 'checkout_started',
         properties: {
           plan,
           session_id: session.id,
@@ -350,8 +350,9 @@ export async function POST(
           .select()
           .single();
 
-        posthog.capture('subscription_created', {
-          distinct_id: customer.email,
+        posthog.capture({
+          distinctId: customer.email,
+          event: 'subscription_created',
           properties: {
             customer_id: customer.id,
             plan: plan || 'pro',
@@ -381,8 +382,9 @@ export async function POST(
           .select()
           .single();
 
-        posthog.capture('invoice_paid', {
-          distinct_id: customer.email,
+        posthog.capture({
+          distinctId: customer.email,
+          event: 'invoice_paid',
           properties: {
             customer_id: customer.id,
             amount: plan === 'pro' ? 99 : 299,

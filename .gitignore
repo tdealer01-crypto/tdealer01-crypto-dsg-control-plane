@@ -54,6 +54,9 @@ coverage/
 __pycache__
 .env*
 
+# Solana job platform generated data
+examples/solana-job-platform/marketplace-data.json
+
 # Local secret/runtime files - never commit
 .env.local
 .env.production.local
