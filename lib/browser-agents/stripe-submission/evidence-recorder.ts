@@ -1,5 +1,4 @@
 import { createHash } from "crypto";
-import { v4 as uuidv4 } from "crypto";
 import type { EvidencePayload, StepResult } from "./types";
 
 export class EvidenceRecorder {
