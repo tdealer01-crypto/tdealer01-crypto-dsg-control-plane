@@ -37,7 +37,16 @@ export class NavigationHandler implements StepHandler {
   async verify(context: StepContext, step: SubmissionStep): Promise<VerificationResult> {
     try {
       const currentUrl = context.page.url();
-      const verified = currentUrl.includes("dashboard.stripe.com") || currentUrl.includes(step.expectedUrl || "");
+      let verified = false;
+
+      try {
+        const url = new URL(currentUrl);
+        verified =
+          url.hostname === "dashboard.stripe.com" ||
+          (step.expectedUrl ? new URL(step.expectedUrl).hostname === url.hostname : false);
+      } catch {
+        verified = false;
+      }
 
       return {
         verified,
