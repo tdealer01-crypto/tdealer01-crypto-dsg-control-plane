@@ -121,7 +121,7 @@ Local:  http://localhost:3000
 
 ```bash
 curl -X POST http://localhost:3000/api/execute \
-  -H "Authorization: Bearer $YOUR_API_KEY" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "test-agent",
