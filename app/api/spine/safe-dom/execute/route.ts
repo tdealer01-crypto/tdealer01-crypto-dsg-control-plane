@@ -8,6 +8,25 @@ import { verifyAgentInvariants } from '@/lib/dsg/logic/z3-runtime-check';
 
 export const dynamic = 'force-dynamic';
 
+const ALLOWED_FRAME_URL_PROTOCOLS = ['https:'];
+const BLOCKED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', 'metadata.google.internal', '169.254.169.254'];
+
+function validateFrameUrl(raw: string): { valid: boolean; error?: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { valid: false, error: 'Invalid frameUrl format' };
+  }
+  if (!ALLOWED_FRAME_URL_PROTOCOLS.includes(parsed.protocol)) {
+    return { valid: false, error: `Disallowed protocol: ${parsed.protocol}` };
+  }
+  if (BLOCKED_HOSTS.some((h) => parsed.hostname === h || parsed.hostname.endsWith('.internal'))) {
+    return { valid: false, error: 'Blocked host' };
+  }
+  return { valid: true };
+}
+
 interface SpineExecutePayload {
   sessionId: string;
   frameUrl: string;
@@ -32,6 +51,14 @@ export async function POST(request: NextRequest) {
   if (!body.sessionId || !body.frameUrl || !body.command) {
     return NextResponse.json(
       { error: 'Missing required fields: sessionId, frameUrl, command' },
+      { status: 400 },
+    );
+  }
+
+  const urlCheck = validateFrameUrl(body.frameUrl);
+  if (!urlCheck.valid) {
+    return NextResponse.json(
+      { error: urlCheck.error },
       { status: 400 },
     );
   }
