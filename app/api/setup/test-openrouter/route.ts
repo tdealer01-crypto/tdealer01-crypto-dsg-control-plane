@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError, logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (!apiKey || !model) {
       return NextResponse.json(
-        { error: 'Missing required fields: apiKey, model' },
+        { error: 'Invalid input' },
         { status: 400 }
       );
     }
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Validate API key format
     if (!apiKey.startsWith('sk-or-')) {
       return NextResponse.json(
-        { error: 'Invalid OpenRouter API key format' },
+        { error: 'Invalid input' },
         { status: 400 }
       );
     }
@@ -70,13 +71,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const latency = Date.now() - startTime;
 
     if (!testResponse.ok) {
-      const errorData = await testResponse.json().catch(() => ({}));
-
       if (testResponse.status === 401) {
+        logApiError('api/setup/test-openrouter', new Error('Invalid API key'), { status: 401 });
         return NextResponse.json(
           {
-            error: 'Invalid API key. Check your OpenRouter credentials.',
-            model: model,
+            error: 'Unauthorized',
             statusCode: 401,
           },
           { status: 401 }
@@ -84,23 +83,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       if (testResponse.status === 404) {
+        logApiError('api/setup/test-openrouter', new Error('Model not found'), { status: 404, model });
         return NextResponse.json(
           {
-            error: `Model not found: ${model}. Check model availability on OpenRouter.`,
-            model: model,
+            error: 'Not found',
             statusCode: 404,
           },
           { status: 404 }
         );
       }
 
-      const errorMessage =
-        (errorData as any).error?.message || testResponse.statusText;
-
+      logApiError('api/setup/test-openrouter', new Error('API request failed'), { status: testResponse.status });
       return NextResponse.json(
         {
-          error: `OpenRouter API error: ${errorMessage}`,
-          model: model,
+          error: 'API request failed',
           statusCode: testResponse.status,
         },
         { status: testResponse.status }
@@ -117,13 +113,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       usage: (responseData as any).usage || null,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    return NextResponse.json(
-      {
-        error: `Connection test failed: ${errorMessage}`,
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/setup/test-openrouter', error);
   }
 }
