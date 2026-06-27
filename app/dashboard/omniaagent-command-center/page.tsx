@@ -273,6 +273,8 @@ export default function OmniAgentCommandCenter() {
     spawnAgent();
   };
 
+  const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'executions'>('overview');
+
   return (
     <div className="bg-[#050505] min-h-screen p-4 pb-20" style={{ color: '#00ff41', fontFamily: 'Courier New, Courier, monospace' }}>
       <style jsx>{`
@@ -343,6 +345,40 @@ export default function OmniAgentCommandCenter() {
           }
         }
       `}</style>
+
+      {/* Tab Navigation */}
+      <div className="max-w-md mx-auto mb-6 flex gap-2">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-2 text-sm font-bold uppercase border rounded ${
+            activeTab === 'overview'
+              ? 'border-green-500 bg-green-900/20 text-green-400'
+              : 'border-gray-700 bg-gray-900/20 text-gray-400'
+          }`}
+        >
+          overview
+        </button>
+        <button
+          onClick={() => setActiveTab('agents')}
+          className={`px-4 py-2 text-sm font-bold uppercase border rounded ${
+            activeTab === 'agents'
+              ? 'border-cyan-500 bg-cyan-900/20 text-cyan-400'
+              : 'border-gray-700 bg-gray-900/20 text-gray-400'
+          }`}
+        >
+          agents
+        </button>
+        <button
+          onClick={() => setActiveTab('executions')}
+          className={`px-4 py-2 text-sm font-bold uppercase border rounded ${
+            activeTab === 'executions'
+              ? 'border-orange-500 bg-orange-900/20 text-orange-400'
+              : 'border-gray-700 bg-gray-900/20 text-gray-400'
+          }`}
+        >
+          executions
+        </button>
+      </div>
 
       {/* Header */}
       <div className="max-w-md mx-auto mb-6 text-center">
