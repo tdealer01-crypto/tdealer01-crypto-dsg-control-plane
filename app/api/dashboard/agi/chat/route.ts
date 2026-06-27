@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,8 @@ async function generateAgentResponse(message: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    throw new Error('OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable.');
+    const err = new Error('OpenRouter API key not configured');
+    throw err;
   }
 
   const systemPrompt = `You are AGI Agent, an advanced AI assistant specialized in:
@@ -80,8 +82,8 @@ Be concise, technical, and helpful.`;
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} ${error}`);
+    const error = new Error('OpenRouter API request failed');
+    throw error;
   }
 
   const data = (await response.json()) as {
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
+        { error: 'Unauthorized' },
         { status: 401 },
       );
     }
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
-        { error: 'Invalid input', message: 'Message is required' },
+        { error: 'Invalid input' },
         { status: 400 },
       );
     }
@@ -183,19 +185,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('[agi/chat] Error:', errorMessage);
-
-    if (errorMessage.includes('API key')) {
-      return NextResponse.json(
-        { error: 'OpenRouter API key not configured', message: errorMessage },
-        { status: 503 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Internal server error', message: errorMessage },
-      { status: 500 },
-    );
+    return handleApiError('api/dashboard/agi/chat', error, {
+      status: error instanceof Error && error.message.includes('API key') ? 503 : 500,
+    });
   }
 }
