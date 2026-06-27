@@ -130,17 +130,22 @@ describe('Hermes Dashboard UI', () => {
     const fs = await import('fs');
     const content = fs.readFileSync('./app/dashboard/hermes/page.tsx', 'utf8');
 
-    // Client-side component
+    // Tabs
+    expect(content).toContain('overview');
+    expect(content).toContain('agents');
+    expect(content).toContain('executions');
+    expect(content).toContain('governance');
+
+    // API calls
+    expect(content).toContain('/api/agents');
+    expect(content).toContain('/api/executions');
+    expect(content).toContain('/api/health');
+
+    // Supabase auth
+    expect(content).toContain('supabase');
+
+    // Client-side
     expect(content).toContain('use client');
-
-    // Auth check
-    expect(content).toContain('/api/auth/session');
-
-    // Chat component
-    expect(content).toContain('HermesAgentChat');
-
-    // Dark theme
-    expect(content).toContain('bg-slate-950');
   });
 });
 
