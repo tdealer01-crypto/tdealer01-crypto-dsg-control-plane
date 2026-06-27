@@ -30,7 +30,6 @@ export async function POST(request: Request) {
       );
     }
 
-<<<<<<< HEAD
     let event;
 
     const stripe = new Stripe(signingSecret);
@@ -58,6 +57,10 @@ export async function POST(request: Request) {
 
       case 'charge.dispute.created':
         await handleDisputeCreated(event.data.object, admin);
+        break;
+
+      case 'account.application.deauthorized':
+        await handleOAuthDisconnect(event.account as string, admin);
         break;
     }
 
@@ -153,26 +156,15 @@ async function handleDisputeCreated(dispute: any, admin: any) {
   } catch (err) {
     console.error('Error handling dispute:', err);
   }
-=======
-  if (event.type === 'account.application.deauthorized') {
-    const stripeAccountId = event.account as string;
-    try {
-      const supabase = getSupabaseAdmin();
-      await (supabase as unknown as {
-        from: (table: string) => {
-          update: (data: Record<string, unknown>) => {
-            eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
-          };
-        };
-      })
-        .from('stripe_app_accounts')
-        .update({ status: 'inactive', updated_at: new Date().toISOString() })
-        .eq('stripe_account_id', stripeAccountId);
-    } catch (error) {
-      console.error('[webhook] Failed to deauthorize stripe account:', error);
-    }
-  }
+}
 
-  return new Response('ok', { status: 200 });
->>>>>>> cfe99201 (fix(stripe-app): Address marketplace review rejection issues)
+async function handleOAuthDisconnect(stripeAccountId: string, admin: any) {
+  try {
+    await admin
+      .from('stripe_app_accounts')
+      .update({ status: 'inactive', updated_at: new Date().toISOString() })
+      .eq('stripe_account_id', stripeAccountId);
+  } catch (error) {
+    console.error('[webhook] Failed to deauthorize stripe account:', error);
+  }
 }
