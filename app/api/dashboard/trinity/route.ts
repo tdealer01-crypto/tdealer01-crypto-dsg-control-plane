@@ -1,4 +1,8 @@
-<!DOCTYPE html>
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+const dashboardHTML = `<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -216,7 +220,7 @@ canvas {
   <!-- LEFT: PHOENIX REPAIRS -->
   <div class="panel">
     <div class="header">🔥 Phoenix Repair Engine</div>
-    
+
     <div class="metric">
       <div class="metric-label">Bounty Pool</div>
       <div class="metric-value">5.25 SOL</div>
@@ -273,7 +277,7 @@ canvas {
     <!-- TOP: ORCHESTRATION STATUS -->
     <div class="panel">
       <div class="header">🌐 Trinity Orchestration</div>
-      
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="metric">
           <div class="metric-label">Mode</div>
@@ -327,7 +331,7 @@ canvas {
     <!-- MIDDLE: ECONOMICS -->
     <div class="panel">
       <div class="header">💰 Economic Dashboard</div>
-      
+
       <div style="text-align: center; padding: 20px; background: rgba(0, 255, 0, 0.05); border-radius: 4px;">
         <div style="font-size: 12px; color: #8892b0;">NET PROFIT TODAY</div>
         <div class="big-metric">42.87 SOL</div>
@@ -359,7 +363,7 @@ canvas {
     <!-- BOTTOM: TERMUX GRID -->
     <div class="panel">
       <div class="header">🌐 Termux Grid (Resource Market)</div>
-      
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="metric">
           <div class="metric-label">Active Jobs</div>
@@ -402,7 +406,7 @@ canvas {
   <!-- RIGHT: MONITORING -->
   <div class="panel">
     <div class="header">📊 System Monitor</div>
-    
+
     <div class="metric">
       <div class="metric-label">Device Temp</div>
       <div class="metric-value">38.2°C</div>
@@ -435,7 +439,7 @@ canvas {
     </div>
 
     <div class="header" style="margin-top: 15px;">📡 Sensor Oracle</div>
-    
+
     <div class="job-card">
       <div class="job-type">📍 GPS Readings</div>
       <div class="job-price">142 reads → 0.00142 SOL</div>
@@ -469,14 +473,14 @@ canvas {
     <button class="button">🔄 Refresh Stats</button>
     <button class="button">⚙️ Settings</button>
   </div>
+
 </div>
 
 <script>
-// Chart drawing
 function drawChart(canvasId, data) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
-  
+
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
   const h = canvas.height;
@@ -497,7 +501,6 @@ function drawChart(canvasId, data) {
 
   ctx.stroke();
 
-  // Grid
   ctx.strokeStyle = 'rgba(0, 212, 255, 0.1)';
   ctx.lineWidth = 0.5;
   for (let i = 0; i <= 4; i++) {
@@ -509,9 +512,7 @@ function drawChart(canvasId, data) {
   }
 }
 
-// Simulate data updates
 setInterval(() => {
-  // Random oscillations
   drawChart('repairChart', [
     45, 52, 48, 61, 58, 67, 72, 68, 75, 82,
     88, 85, 90, 92, 94, 91, 88, 85, 83, 81
@@ -522,7 +523,6 @@ setInterval(() => {
   ]);
 }, 2000);
 
-// Initial draw
 drawChart('repairChart', [45, 52, 48, 61, 58, 67, 72, 68, 75, 82]);
 drawChart('economicsChart', [20, 35, 28, 45, 52, 48, 61, 58, 67, 72]);
 
@@ -533,4 +533,13 @@ console.log('💰 GENESIS token: Auto-minted on successful jobs');
 </script>
 
 </body>
-</html>
+</html>`;
+
+export async function GET() {
+  return new NextResponse(dashboardHTML, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    },
+  });
+}
