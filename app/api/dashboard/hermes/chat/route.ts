@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import Anthropic from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,14 +42,37 @@ async function evaluateGovernancePolicy(
   return decisions[Math.floor(Math.random() * decisions.length)];
 }
 
-function formatAgentResponse(decision: ExecutionDecision): string {
-  return `Policy Decision: ${decision.decision}
+async function generateAgentResponse(message: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return 'ไม่สามารถเชื่อมต่อกับ Claude API ได้ กรุณาตั้งค่า ANTHROPIC_API_KEY';
+  }
 
-Reasoning: ${decision.reasoning}
+  const client = new Anthropic({ apiKey });
 
-Policy Version: ${decision.policyVersion}
-Proof Reference: ${decision.proofReference}
-Evaluated at: ${decision.timestamp}`;
+  const systemPrompt = `You are Hermes, a helpful AI governance agent that helps users understand policies and make decisions.
+You support Thai language responses.
+Keep responses concise but informative.
+Always be respectful and helpful.`;
+
+  const response = await client.messages.create({
+    model: 'claude-opus-4-1',
+    max_tokens: 500,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: message,
+      },
+    ],
+  });
+
+  const content = response.content[0];
+  if (content.type === 'text') {
+    return content.text;
+  }
+
+  return 'ไม่สามารถสร้างการตอบสนองได้';
 }
 
 export async function POST(request: NextRequest) {
@@ -80,8 +104,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const responseText = await generateAgentResponse(message);
     const decision = await evaluateGovernancePolicy(message);
-    const responseText = formatAgentResponse(decision);
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -100,7 +124,7 @@ export async function POST(request: NextRequest) {
               encoder.encode(`data: ${data}\n\n`),
             );
             index++;
-            setTimeout(sendWord, 50);
+            setTimeout(sendWord, 30);
           } else {
             const summaryData = JSON.stringify({
               type: 'execution',
