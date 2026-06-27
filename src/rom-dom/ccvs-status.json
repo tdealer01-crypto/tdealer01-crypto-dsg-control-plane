@@ -1,0 +1,35 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/ccvs/status",
+  "html": "",
+  "selectors": {},
+  "forms": [],
+  "actions": [
+    {
+      "name": "ccvsStatus",
+      "type": "api-call",
+      "target": "ccvsStatus",
+      "description": "Simulated ROM status check for CCVS evidence-chain surface"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "ccvsStatus",
+      "outcome": "success",
+      "result": {
+        "ok": true,
+        "mode": "rom_simulation_snapshot",
+        "service": "ccvs-status",
+        "evidenceChain": "simulated",
+        "note": "ROM snapshot for deterministic simulation only; not a production readiness claim."
+      }
+    }
+  ],
+  "browserActions": {
+    "api": {
+      "method": "GET",
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/ccvs/status",
+      "expectedStatus": [200, 404]
+    }
+  }
+}

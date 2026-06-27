@@ -1,6 +1,8 @@
 import { randomUUID, createHash } from 'crypto';
+import { isIP } from 'net';
 import { getSupabaseAdmin } from './supabase-server';
 import { resolveQuickstartPolicyId } from './supabase/resolve-policy';
+import { generateWebhookSecret } from './security/secret-crypto';
 
 export type IntegrationStatus = 'active' | 'disabled';
 
@@ -13,6 +15,11 @@ export interface IntegrationProfile {
   webhook_url: string | null;
   allowed_origins: string[];
   status: IntegrationStatus;
+}
+
+interface ExistingIntegrationProfileSecret {
+  id: string;
+  webhook_secret_encrypted: string | null;
 }
 
 function normalizeSlug(input: string): string {
@@ -52,6 +59,55 @@ function normalizeOrigins(value: unknown): string[] {
     .filter(Boolean) as string[];
 
   return Array.from(new Set(items));
+}
+
+function isPrivateOrLocalHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === 'metadata.google.internal'
+  ) {
+    return true;
+  }
+
+  if (isIP(host) === 4) {
+    const [a, b] = host.split('.').map((part) => Number(part));
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  if (isIP(host) === 6) {
+    return (
+      host === '::1' ||
+      host.startsWith('fc') ||
+      host.startsWith('fd') ||
+      host.startsWith('fe80:')
+    );
+  }
+
+  return false;
+}
+
+function validateWebhookUrl(parsedWebhook: URL) {
+  if (process.env.NODE_ENV === 'production' && parsedWebhook.protocol !== 'https:') {
+    throw new Error('webhook_url must use https in production');
+  }
+
+  if (parsedWebhook.protocol !== 'https:' && parsedWebhook.protocol !== 'http:') {
+    throw new Error('webhook_url must use http or https');
+  }
+
+  if (isPrivateOrLocalHostname(parsedWebhook.hostname)) {
+    throw new Error('webhook_url must not point to localhost, private IP, or metadata services');
+  }
 }
 
 export async function provisionIntegration(input: {
@@ -187,12 +243,26 @@ export async function upsertIntegrationWebhook(input: {
     throw new Error('webhook_url must be a valid URL');
   }
 
-  if (parsedWebhook.protocol !== 'https:' && parsedWebhook.protocol !== 'http:') {
-    throw new Error('webhook_url must use http or https');
-  }
+  validateWebhookUrl(parsedWebhook);
 
   const now = new Date().toISOString();
   const supabase = getSupabaseAdmin();
+
+  const { data: existing } = await (supabase as any)
+    .from('integration_profiles')
+    .select('id, webhook_secret_encrypted')
+    .eq('agent_id', agentId)
+    .maybeSingle();
+
+  const existingProfile = existing as ExistingIntegrationProfileSecret | null;
+  let secret: string | null = null;
+  let secretEncrypted = existingProfile?.webhook_secret_encrypted ?? null;
+
+  if (!secretEncrypted) {
+    const generated = generateWebhookSecret();
+    secret = generated.secret;
+    secretEncrypted = generated.secretEncrypted;
+  }
 
   const payload = {
     org_id: orgId,
@@ -200,6 +270,7 @@ export async function upsertIntegrationWebhook(input: {
     webhook_url: parsedWebhook.toString(),
     allowed_origins: allowedOrigins,
     status: 'active',
+    webhook_secret_encrypted: secretEncrypted,
     updated_at: now,
   };
 
@@ -213,7 +284,11 @@ export async function upsertIntegrationWebhook(input: {
     throw error || new Error('Failed to persist integration webhook');
   }
 
-  return data as IntegrationProfile;
+  return {
+    profile: data as IntegrationProfile,
+    secret,
+    secret_returned: Boolean(secret),
+  };
 }
 
 export async function getGlobalAllowedOrigins() {

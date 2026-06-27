@@ -1,0 +1,129 @@
+name: CCVS Multi-Agent Evidence Generation
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit SHA (default: current HEAD)'
+        required: false
+        default: ''
+      goal:
+        description: 'Evidence goal description'
+        required: true
+        default: 'CCVS L1-L5 evidence for release'
+      dry_run:
+        description: 'Run simulation only (no real execution, no PR)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  actions: read
+
+jobs:
+  ccvs-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --ignore-scripts
+
+      - name: Check DiffusionGemma endpoint
+        run: |
+          if [ -n "${{ secrets.DIFFUSION_ENDPOINT }}" ]; then
+            echo "Using external DiffusionGemma: ${{ secrets.DIFFUSION_ENDPOINT }}"
+          else
+            echo "Attempting local vLLM server..."
+            if docker run --rm --gpus all -p 8000:8000 \
+              vllm/vllm-openai:latest \
+              --model google/diffusiongemma-26B-A4B-it \
+              --port 8000 \
+              --gpu-memory-utilization 0.85 & then
+              echo "vLLM started on GPU"
+            else
+              echo "GPU not available, will use simulation mode"
+              export SIMULATION_MODE=true
+            fi
+          fi
+
+      - name: Wait for vLLM ready
+        if: env.SIMULATION_MODE != 'true'
+        run: |
+          ENDPOINT="${DIFFUSION_ENDPOINT:-http://localhost:8000/v1/completions}"
+          for i in {1..60}; do
+            if curl -s -f "${ENDPOINT%/completions}/models" >/dev/null 2>&1; then
+              echo "vLLM ready at $ENDPOINT"
+              exit 0
+            fi
+            echo "Waiting for vLLM... ($i/60)"
+            sleep 5
+          done
+          echo "vLLM not ready, continuing in simulation mode"
+          export SIMULATION_MODE=true
+
+      - name: Run CCVS Pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+          DIFFUSION_ENDPOINT: ${{ secrets.DIFFUSION_ENDPOINT || 'http://localhost:8000/v1/completions' }}
+          DIFFUSION_API_KEY: ${{ secrets.DIFFUSION_API_KEY }}
+          SIMULATION_MODE: ${{ github.event.inputs.dry_run == 'true' && 'true' || 'false' }}
+        run: |
+          COMMIT="${{ github.event.inputs.commit || github.sha }}"
+          GOAL="${{ github.event.inputs.goal }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          
+          ARGS="-c $COMMIT -g \"$GOAL\""
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          else
+            ARGS="$ARGS --execute --create-pr"
+          fi
+          
+          echo "Running: npx tsx lib/dsg/multi-agent-ccvs/cli.ts $ARGS"
+          npx tsx lib/dsg/multi-agent-ccvs/cli.ts $ARGS
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "Pipeline failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+      - name: Upload Evidence Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccvs-evidence-${{ github.run_id }}
+          path: |
+            ccvs-output/
+            *.log
+          retention-days: 30
+
+      - name: Comment on Workflow Run
+        if: always()
+        run: |
+          RESULT="${{ job.status }}"
+          echo "## CCVS Evidence Generation $RESULT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Goal: ${{ github.event.inputs.goal }}" >> $GITHUB_STEP_SUMMARY
+          echo "Mode: ${{ github.event.inputs.dry_run == 'true' && 'Simulation (Dry Run)' || 'Real Execution + PR' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            echo "PR Created: Check PR list for ccvs-* branch" >> $GITHUB_STEP_SUMMARY
+          fi

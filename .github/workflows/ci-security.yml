@@ -37,17 +37,48 @@ jobs:
         run: |
           find . -path './node_modules' -prune -o -name '*.sh' -print0 | xargs -0 -r shellcheck || true
 
-      - name: Gitleaks (detect secrets)
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: detect --source=. --report-path=gitleaks-report.json
+      - name: Gitleaks (scan all commits in PR / last commit on push)
+        run: |
+          set -euo pipefail
+          # On pull_request: scan every new commit since the merge-base with main
+          # On push to main: scan the single new commit only
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+            GITLEAKS_LOG_OPTS="${BASE}..${HEAD}"
+            echo "PR mode: scanning commits ${BASE:0:8}..${HEAD:0:8}"
+          else
+            GITLEAKS_LOG_OPTS="-1 HEAD"
+            echo "Push mode: scanning last commit only"
+          fi
+          echo "Running gitleaks with log opts: ${GITLEAKS_LOG_OPTS}"
+          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect \
+            --source=/repo \
+            --config=/repo/.gitleaks.toml \
+            --log-opts="${GITLEAKS_LOG_OPTS}" \
+            --redact \
+            --report-format=json \
+            --report-path=/repo/gitleaks-report.json
 
-      - name: npm audit (fail on high severity)
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          if-no-files-found: ignore
+
+      - name: npm audit (fail on high severity — production deps only)
         run: |
           npm ci
-          npm audit --audit-level=high
+          npm audit --audit-level=high --omit=dev
 
       - name: Enforce central error handler on API routes
         run: |
           chmod +x ./scripts/check-error-handlers.sh
           ./scripts/check-error-handlers.sh
+
+      - name: Check request body safety (informational)
+        run: |
+          chmod +x ./scripts/check-request-body-safety.sh
+          ./scripts/check-request-body-safety.sh

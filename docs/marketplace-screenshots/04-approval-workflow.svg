@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <!-- Screenshot 4: Approval Workflow (Slack Integration) -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1D1C2A"/>
+      <stop offset="100%" style="stop-color:#2A2D3A"/>
+    </linearGradient>
+    <linearGradient id="slackSidebarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#202227"/>
+      <stop offset="100%" style="stop-color:#272A30"/>
+    </linearGradient>
+    <linearGradient id="slackMainGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#202227"/>
+      <stop offset="100%" style="stop-color:#1E1F26"/>
+    </linearGradient>
+    <linearGradient id="messageGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2D2E34"/>
+      <stop offset="100%" style="stop-color:#25282D"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="1600" height="900" fill="url(#bgGrad)"/>
+  
+  <!-- Slack Sidebar -->
+  <rect x="0" y="0" width="280" height="900" fill="url(#slackSidebarGrad)"/>
+  <rect x="280" y="0" width="1" height="900" fill="#333538"/>
+  
+  <!-- Workspace Header -->
+  <rect x="0" y="0" width="280" height="60" fill="#1D1C2A"/>
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="14">
+    <circle cx="30" cy="30" r="16" fill="#4A154B"/>
+    <text x="55" y="34" fill="#FFFFFF" font-weight="600">DSG Ops</text>
+    <text x="55" y="50" fill="#888A8D" font-size="11">tdealer01-crypto</text>
+  </g>
+  
+  <!-- Channels -->
+  <g font-family="system-ui" font-size="13" fill="#DCBBDD">
+    <text x="20" y="100" font-weight="600" fill="#FFFFFF">CHANNELS</text>
+    
+    <rect x="8" y="115" width="264" height="40" fill="#2E3136" rx="6"/>
+    <text x="20" y="142" fill="#FFFFFF">#general</text>
+    <circle cx="250" cy="135" r="6" fill="#6A6C6F"/>
+    
+    <rect x="8" y="160" width="264" height="40" fill="#2E3136" rx="6"/>
+    <text x="20" y="187" fill="#FFFFFF">#random</text>
+    
+    <rect x="8" y="205" width="264" height="40" fill="#2E3136" rx="6"/>
+    <text x="20" y="232" fill="#FFFFFF">#alerts</text>
+    <circle cx="250" cy="225" r="6" fill="#F6C555"/>
+    
+    <rect x="8" y="250" width="264" height="40" fill="#3A2E3F" rx="6" stroke="#F6C555" stroke-width="1"/>
+    <text x="20" y="277" fill="#F6C555" font-weight="500">#dsg-approvals</text>
+    <circle cx="250" cy="270" r="6" fill="#F6C555"/>
+    <text x="260" y="277" fill="#F6C555" font-size="10">3</text>
+    
+    <rect x="8" y="295" width="264" height="40" fill="#2E3136" rx="6"/>
+    <text x="20" y="322" fill="#DCBBDD">#dsg-audit</text>
+    
+    <rect x="8" y="340" width="264" height="40" fill="#2E3136" rx="6"/>
+    <text x="20" y="367" fill="#DCBBDD">#platform-ops</text>
+  </g>
+  
+  <!-- Direct Messages -->
+  <g font-family="system-ui" font-size="13" fill="#DCBBDD">
+    <text x="20" y="420" font-weight="600" fill="#FFFFFF">DIRECT MESSAGES</text>
+    <text x="20" y="450" fill="#DCBBDD">@sarah.chen</text>
+    <text x="20" y="480" fill="#DCBBDD">@alex.wong</text>
+    <text x="20" y="510" fill="#DCBBDD">@DSG Bot</text>
+  </g>
+  
+  <!-- Main Message Area -->
+  <rect x="281" y="0" width="1319" height="900" fill="url(#slackMainGrad)"/>
+  
+  <!-- Channel Header -->
+  <rect x="281" y="0" width="1319" height="60" fill="#1D1C2A"/>
+  <rect x="281" y="60" width="1319" height="1" fill="#333538"/>
+  <g font-family="system-ui" font-size="14">
+    <text x="300" y="35" fill="#FFFFFF" font-weight="600">#dsg-approvals</text>
+    <text x="550" y="35" fill="#888A8D" font-size="12">🔧 DSG Governance Gate • Approval workflows for Stripe operations</text>
+    <rect x="1450" y="15" width="130" height="30" fill="#2E3136" rx="6"/>
+    <text x="1515" y="35" fill="#DCBBDD" text-anchor="middle" font-size="12" font-weight="500">Search</text>
+  </g>
+  
+  <!-- Messages -->
+  <g font-family="system-ui" font-size="13">
+    <!-- Bot Message - Approval Request -->
+    <rect x="320" y="80" width="1200" height="320" fill="url(#messageGrad)" rx="8"/>
+    <rect x="320" y="80" width="4" height="320" fill="#F6C555" rx="8 0 0 8"/>
+    
+    <!-- Bot avatar -->
+    <circle cx="350" cy="130" r="20" fill="#36C5F0"/>
+    <text x="350" y="136" fill="#FFFFFF" text-anchor="middle" font-size="14" font-weight="700">DSG</text>
+    
+    <text x="390" y="110" fill="#FFFFFF" font-weight="600">DSG Governance Gate</text>
+    <text x="390" y="130" fill="#888A8D" font-size="12">App • 2:32 PM</text>
+    
+    <!-- Message content -->
+    <rect x="390" y="155" width="1110" height="230" fill="#1E1F26" rx="6"/>
+    
+    <!-- Header -->
+    <rect x="390" y="155" width="1110" height="48" fill="#2D2E34" rx="6 6 0 0"/>
+    <text x="410" y="183" fill="#F6C555" font-weight="600" font-size="14">⚠️ Approval Required: High-Value Charge Review</text>
+    
+    <!-- Fields -->
+    <g font-size="12">
+      <text x="410" y="220" fill="#888A8D">Operation</text>
+      <text x="410" y="240" fill="#FFFFFF" font-weight="500">charge.succeeded — $12,500.00 USD</text>
+      
+      <text x="410" y="270" fill="#888A8D">Policy</text>
+      <text x="410" y="290" fill="#FFFFFF" font-weight="500">high-value-charge-review (amount > $5,000)</text>
+      
+      <text x="410" y="320" fill="#888A8D">Account</text>
+      <text x="410" y="340" fill="#FFFFFF" font-weight="500">acct_1AbC... (Merchant Store) • Fail-Open</text>
+      
+      <text x="850" y="220" fill="#888A8D">Customer</text>
+      <text x="850" y="240" fill="#FFFFFF" font-weight="500">cus_2XyZ... (Acme Corp)</text>
+      
+      <text x="850" y="270" fill="#888A8D">Triggered</text>
+      <text x="850" y="290" fill="#FFFFFF" font-weight="500">2026-06-09 14:32:11 UTC</text>
+      
+      <text x="850" y="320" fill="#888A8D">Expires</text>
+      <text x="850" y="340" fill="#F6C555" font-weight="500">2026-06-09 18:32:11 UTC (4 hours)</text>
+    </g>
+    
+    <!-- Action Buttons -->
+    <rect x="410" y="385" width="160" height="38" fill="#F6C555" rx="6"/>
+    <text x="490" y="410" fill="#1D1C2A" text-anchor="middle" font-weight="600" font-size="13">✅ Approve</text>
+    <rect x="590" y="385" width="160" height="38" fill="#EB4D5C" rx="6"/>
+    <text x="670" y="410" fill="#FFFFFF" text-anchor="middle" font-weight="600" font-size="13">❌ Deny</text>
+    <rect x="770" y="385" width="220" height="38" fill="#2D2E34" stroke="#36C5F0" stroke-width="1" rx="6"/>
+    <text x="880" y="410" fill="#36C5F0" text-anchor="middle" font-weight="500" font-size="13">📄 View Full Details</text>
+    <rect x="1010" y="385" width="220" height="38" fill="#2D2D34" stroke="#4A154B" stroke-width="1" rx="6"/>
+    <text x="1120" y="410" fill="#A86EB8" text-anchor="middle" font-weight="500" font-size="13">🔗 Open in Dashboard</text>
+    
+    <!-- Context links -->
+    <text x="410" y="445" fill="#888A8D" font-size="11">Full context: <text style="fill:#36C5F0">Audit Trail</text> • <text style="fill:#36C5F0">Policy Config</text> • <text style="fill:#36C5F0">Account Details</text> • <text style="fill:#36C5F0">Stripe Event</text></text>
+    
+    <!-- Second Message - Approved -->
+    <rect x="320" y="420" width="1200" height="120" fill="url(#messageGrad)" rx="8" opacity="0.7"/>
+    <rect x="320" y="420" width="4" height="120" fill="#10B981" rx="8 0 0 8"/>
+    
+    <circle cx="350" cy="460" r="18" fill="#10B981"/>
+    <text x="350" y="466" fill="#FFFFFF" text-anchor="middle" font-size="12" font-weight="700">✓</text>
+    
+    <text x="390" y="455" fill="#FFFFFF" font-weight="600">DSG Governance Gate</text>
+    <text x="390" y="472" fill="#888A8D" font-size="11">App • 2:35 PM</text>
+    <text x="390" y="495" fill="#10B981" font-weight="500">✅ Approved by @sarah.chen — Charge allowed to proceed. Decision logged to audit trail (dsg_dec_8k3L...).</text>
+    
+    <!-- Third Message - Another Pending -->
+    <rect x="320" y="560" width="1200" height="280" fill="url(#messageGrad)" rx="8"/>
+    <rect x="320" y="560" width="4" height="280" fill="#F6C555" rx="8 0 0 8"/>
+    
+    <circle cx="350" cy="630" r="20" fill="#36C5F0"/>
+    <text x="350" y="636" fill="#FFFFFF" text-anchor="middle" font-size="14" font-weight="700">DSG</text>
+    
+    <text x="390" y="600" fill="#FFFFFF" font-weight="600">DSG Governance Gate</text>
+    <text x="390" y="620" fill="#888A8D" font-size="12">App • 2:45 PM</text>
+    
+    <rect x="390" y="650" width="1110" height="175" fill="#1E1F26" rx="6"/>
+    <rect x="390" y="650" width="1110" height="44" fill="#2D2E34" rx="6 6 0 0"/>
+    <text x="410" y="677" fill="#F6C555" font-weight="600" font-size="14">⚠️ Approval Required: New Bank Account Review</text>
+    
+    <g font-size="12">
+      <text x="410" y="705" fill="#888A8D">Operation</text>
+      <text x="410" y="725" fill="#FFFFFF" font-weight="500">payout.created — $45,000.00 USD</text>
+      
+      <text x="410" y="755" fill="#888A8D">Policy</text>
+      <text x="410" y="775" fill="#FFFFFF" font-weight="500">new-bank-account-review (external_account.created)</text>
+      
+      <text x="410" y="805" fill="#888A8D">Account</text>
+      <text x="410" y="825" fill="#FFFFFF" font-weight="500">acct_3GhI... (SaaS Billing) • Fail-Closed</text>
+    </g>
+    
+    <rect x="850" y="650" width="650" height="175" fill="#1E1F26" rx="0 6 6 0"/>
+    <text x="870" y="677" fill="#888A8D" font-size="12">New Bank Account Details</text>
+    <text x="870" y="705" fill="#FFFFFF" font-family="monospace" font-size="11">Bank: Chase • • • • 1234</text>
+    <text x="870" y="725" fill="#FFFFFF" font-family="monospace" font-size="11">Routing: 021000021</text>
+    <text x="870" y="745" fill="#FFFFFF" font-family="monospace" font-size="11">Account: • • • • 5678</text>
+    <text x="870" y="765" fill="#FFFFFF" font-family="monospace" font-size="11">Holder: Merchant Store LLC</text>
+    <text x="870" y="785" fill="#FFFFFF" font-family="monospace" font-size="11">Added: 2026-06-09 14:42:00 UTC</text>
+    
+    <!-- Buttons -->
+    <rect x="410" y="835" width="160" height="36" fill="#F6C555" rx="6"/>
+    <text x="490" y="860" fill="#1D1C2A" text-anchor="middle" font-weight="600" font-size="12">✅ Approve</text>
+    <rect x="590" y="835" width="160" height="36" fill="#EB4D5C" rx="6"/>
+    <text x="670" y="860" fill="#FFFFFF" text-anchor="middle" font-weight="600" font-size="12">❌ Deny</text>
+    <rect x="770" y="835" width="200" height="36" fill="#2D2D34" stroke="#36C5F0" rx="6"/>
+    <text x="870" y="860" fill="#36C5F0" text-anchor="middle" font-weight="500" font-size="12">📄 View Full Details</text>
+  </g>
+</svg>

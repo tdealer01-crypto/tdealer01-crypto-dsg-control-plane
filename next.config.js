@@ -1,5 +1,19 @@
 /** @type {import('next').NextConfig} */
 
+function loadMarkdocConfig() {
+  try {
+    const withMarkdoc = require('@markdoc/next.js');
+    return withMarkdoc()({ pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdoc'] });
+  } catch {
+    return {};
+  }
+}
+
+const markdocConfig = loadMarkdocConfig();
+
+// Merge markdoc config with our custom config
+const { ...markdocRest } = markdocConfig;
+
 function parseOrigin(url) {
   if (!url) return null;
 
@@ -21,6 +35,21 @@ function resolveRemoteApiOrigin() {
   return parseOrigin(process.env.DSG_REMOTE_API_URL || process.env.NEXT_PUBLIC_DSG_REMOTE_API_URL);
 }
 
+function resolveCanonicalResponseOrigin() {
+  const appOrigin = parseOrigin(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL);
+  const vercelProductionOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
+    : null;
+  const vercelDeploymentOrigin = process.env.VERCEL_URL
+    ? parseOrigin(`https://${process.env.VERCEL_URL}`)
+    : null;
+
+  return appOrigin
+    || vercelProductionOrigin
+    || vercelDeploymentOrigin
+    || 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+}
+
 function buildConnectSrc() {
   const coreOrigin = parseOrigin(process.env.DSG_CORE_URL);
   const remoteApiOrigin = resolveRemoteApiOrigin();
@@ -38,6 +67,31 @@ function buildScriptSrc() {
 
 const nextConfig = {
 
+  async redirects() {
+    return [
+      {
+        source: '/finance-governance/live/server-store',
+        destination: '/finance-governance/live/workspace',
+        permanent: true,
+      },
+      {
+        source: '/finance-governance/live/server-store/:path*',
+        destination: '/finance-governance/live/workspace/:path*',
+        permanent: true,
+      },
+      {
+        source: '/docs/llms.txt',
+        destination: '/llms.txt',
+        permanent: false,
+      },
+      {
+        source: '/docs/llms-full.txt',
+        destination: '/llms-full.txt',
+        permanent: false,
+      },
+    ];
+  },
+
   async rewrites() {
     const remoteApiOrigin = resolveRemoteApiOrigin();
     if (!remoteApiOrigin) return [];
@@ -52,7 +106,16 @@ const nextConfig = {
 
   async headers() {
     // API CORS is intentionally handled at route level via lib/security/cors.ts.
+    // Non-API document/static responses should never expose wildcard CORS.
+    const canonicalResponseOrigin = resolveCanonicalResponseOrigin();
+
     return [
+      {
+        source: '/((?!api/).*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: canonicalResponseOrigin },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [
@@ -83,4 +146,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = { ...markdocRest, ...nextConfig };

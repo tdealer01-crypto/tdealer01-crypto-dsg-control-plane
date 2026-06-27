@@ -1,0 +1,129 @@
+name: Production Quality Gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Migration tests
+        run: npm run test:migrations
+
+      - name: Coverage report
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+          if-no-files-found: warn
+
+  live-db-required:
+    runs-on: ubuntu-latest
+    needs: fast-gate
+    timeout-minutes: 20
+    if: >
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
+      secrets.STAGING_SUPABASE_URL != '' &&
+      secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY != ''
+    env:
+      CI: true
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Required live Supabase DB gate
+        run: npm run test:live:db:required
+
+  staging-e2e:
+    runs-on: ubuntu-latest
+    needs: live-db-required
+    timeout-minutes: 30
+    if: >
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
+      secrets.STAGING_BASE_URL != ''
+    env:
+      CI: true
+      PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      PLAYWRIGHT_TEST_SESSION_COOKIE: ${{ secrets.STAGING_TEST_SESSION_COOKIE }}
+      PLAYWRIGHT_BILLING_TEST_API_KEY: ${{ secrets.STAGING_BILLING_TEST_API_KEY }}
+      PLAYWRIGHT_BILLING_TEST_AGENT_ID: ${{ secrets.STAGING_BILLING_TEST_AGENT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npm run test:e2e:install
+
+      - name: Staging Playwright gate
+        run: npm run test:e2e:staging
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: warn

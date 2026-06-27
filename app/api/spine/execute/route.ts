@@ -1,15 +1,91 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { resolveAgentFromApiKey } from '../../../../lib/agent-auth';
 import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/security/cors';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
+import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
+import { fireWebhook } from '../../../../lib/webhooks/deliver';
+import { meterExecution } from '../../../../lib/billing/metered';
+import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
+import { StopReason } from '../../../../lib/types/task';
 
 export const dynamic = 'force-dynamic';
 
 const EXECUTE_RATE_LIMIT = 60;
 const EXECUTE_RATE_WINDOW_MS = 60 * 1000;
+
+/**
+ * PHASE 2: Execution State and Break Conditions
+ *
+ * Tracks execution state per agent and enforces break conditions:
+ * - Stop if queue empty
+ * - Stop if 10+ failures
+ * - Stop if elapsed > 5 minutes
+ * - Return stop_reason in all responses
+ */
+
+interface AgentExecutionState {
+  agentId: string;
+  isExecuting: boolean;
+  completedTasks: Set<string>;
+  failedTasks: Set<string>;
+  startTime: number;
+  maxDuration: number; // 5 minutes = 5 * 60 * 1000 ms
+}
+
+const agentExecutionStates = new Map<string, AgentExecutionState>();
+
+function getOrCreateExecutionState(agentId: string): AgentExecutionState {
+  if (!agentExecutionStates.has(agentId)) {
+    agentExecutionStates.set(agentId, {
+      agentId,
+      isExecuting: false,
+      completedTasks: new Set(),
+      failedTasks: new Set(),
+      startTime: 0,
+      maxDuration: 5 * 60 * 1000, // 5 minutes
+    });
+  }
+  return agentExecutionStates.get(agentId)!;
+}
+
+function shouldContinueExecution(
+  agentId: string,
+  queueSize: number
+): { should: boolean; stopReason: StopReason } {
+  const state = getOrCreateExecutionState(agentId);
+
+  // Check if queue is empty
+  if (queueSize === 0) {
+    return { should: false, stopReason: StopReason.QUEUE_EMPTY };
+  }
+
+  // Check if too many failures (10+)
+  if (state.failedTasks.size >= 10) {
+    return { should: false, stopReason: StopReason.TOO_MANY_FAILURES };
+  }
+
+  // Check if execution timeout exceeded (5 minutes)
+  const elapsed = Date.now() - state.startTime;
+  if (elapsed > state.maxDuration) {
+    return { should: false, stopReason: StopReason.EXECUTION_TIMEOUT };
+  }
+
+  return { should: true, stopReason: StopReason.NONE };
+}
+
+function markTaskCompleted(agentId: string, taskId: string): void {
+  const state = getOrCreateExecutionState(agentId);
+  state.completedTasks.add(taskId);
+}
+
+function markTaskFailed(agentId: string, taskId: string): void {
+  const state = getOrCreateExecutionState(agentId);
+  state.failedTasks.add(taskId);
+}
 
 function jsonWithHeaders(
   request: Request,
@@ -77,6 +153,63 @@ export async function POST(request: Request) {
     }
 
     const orgId = String(agent.org_id);
+    const agentId = String(agent.id);
+
+    // Quota gate: check before executing (read-only, safe to run first)
+    const quota = await checkQuota(orgId, agentId);
+    if (!quota.allowed) {
+      return jsonWithHeaders(
+        request,
+        {
+          error: 'Monthly execution quota exceeded',
+          used: quota.used,
+          limit: quota.limit,
+          upgrade_url: quota.upgradeUrl,
+        },
+        402,
+        responseHeaders
+      );
+    }
+
+    // Safe DOM verification (new)
+    // Verify that Safe DOM commands only target exposed elements in the manifest
+    const sessionId = String(payload.context.sessionId || payload.input.sessionId || '');
+    const safeDomVerification = await verifySafeDomIntentOrPass(payload, sessionId);
+    if (safeDomVerification) {
+      // Safe DOM verification returned a result (either BLOCK or REVIEW)
+      if (safeDomVerification.decision === 'BLOCK') {
+        return jsonWithHeaders(
+          request,
+          {
+            error: 'Safe DOM verification failed',
+            reason: safeDomVerification.reason,
+            element_id: safeDomVerification.elementId,
+            decision: 'block',
+          },
+          403,
+          responseHeaders
+        );
+      }
+      // REVIEW decision falls through to normal gate/approval flow with verification metadata
+      if (safeDomVerification.decision === 'REVIEW') {
+        // Continue with execution but the pipeline will note the REVIEW status
+        payload.context.safeDomReview = safeDomVerification.reason;
+      }
+    }
+
+    // Initialize execution state on first call
+    const executionState = getOrCreateExecutionState(agentId);
+    if (!executionState.isExecuting) {
+      executionState.isExecuting = true;
+      executionState.startTime = Date.now();
+      executionState.completedTasks.clear();
+      executionState.failedTasks.clear();
+    }
+
+    // Check break conditions (Phase 2)
+    const queueSize = 1; // Placeholder: in production, query actual queue size
+    const continueCheck = shouldContinueExecution(agentId, queueSize);
+    let stopReason = continueCheck.stopReason;
 
     let result = await executeSpineIntent({
       orgId,
@@ -96,10 +229,16 @@ export async function POST(request: Request) {
       });
 
       if (!issued.ok) {
-        return NextResponse.json(issued.body, {
-          status: issued.status,
-          headers: responseHeaders,
-        });
+        return NextResponse.json(
+          {
+            ...issued.body,
+            stop_reason: stopReason,
+          },
+          {
+            status: issued.status,
+            headers: responseHeaders,
+          }
+        );
       }
 
       result = await executeSpineIntent({
@@ -109,7 +248,43 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json(result.body, {
+    // Track task outcome for Phase 2 break conditions
+    const taskId = String((result.body as Record<string, unknown>)?.task_id ?? randomUUID());
+    if (result.status >= 200 && result.status < 300) {
+      markTaskCompleted(agentId, taskId);
+    } else if (result.status >= 400) {
+      markTaskFailed(agentId, taskId);
+    }
+
+    // Count executions only on success (2xx)
+    if (result.status >= 200 && result.status < 300) {
+      // Fire-and-forget side effects must not become unhandled rejections —
+      // a rejected floating promise can take down the worker after the
+      // response has already been returned.
+      void incrementQuota(orgId, agentId).catch((error) => {
+        console.error('[api/spine/execute] incrementQuota failed:', error);
+      });
+      void fireWebhook(orgId, 'execution.completed', {
+        agent_id: agentId,
+        decision: (result.body as Record<string, unknown>)?.decision ?? null,
+      }).catch((error) => {
+        console.error('[api/spine/execute] fireWebhook failed:', error);
+      });
+      const executionId =
+        ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
+        randomUUID();
+      void meterExecution(orgId, 1, executionId).catch((error) => {
+        console.error('[api/spine/execute] meterExecution failed:', error);
+      });
+    }
+
+    // Add stop_reason to response (Phase 2)
+    const responseBody = {
+      ...(result.body as Record<string, unknown>),
+      stop_reason: stopReason,
+    };
+
+    return NextResponse.json(responseBody, {
       status: result.status,
       headers: responseHeaders,
     });

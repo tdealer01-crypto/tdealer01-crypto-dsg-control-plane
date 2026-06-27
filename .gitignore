@@ -8,6 +8,10 @@ out/
 # local env files
 .env
 .env.local
+
+# Claude Code local secrets & worktrees — never commit
+.claude/settings.local.json
+.claude/worktrees/
 .env.*.local
 
 # logs
@@ -23,3 +27,44 @@ pnpm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# vercel
+.vercel/
+
+# temp/build artifacts
+.tmp/
+test-results/
+playwright-report/
+artifacts/
+
+# stryker mutation testing output
+stryker-report/
+.stryker-tmp/
+
+# locally-generated CCVS evidence artifacts (CI-generated only; commit=unknown)
+ccvs-*.json
+
+# playwright auth/session state
+playwright/.auth/
+supabase/.temp/
+
+# security scan reports
+gitleaks-report.json
+coverage/
+__pycache__
+.env*
+
+# Solana job platform generated data
+examples/solana-job-platform/marketplace-data.json
+
+# Local secret/runtime files - never commit
+.env.local
+.env.production.local
+.env.stripe-prices.local
+.stripe-env
+stripe-meter.json
+.dsg-complete-stripe-github-env.sh
+dsg-complete-stripe-github-env.sh
+dsg-final-env-local-only.sh
+.stripe/
+.vercel

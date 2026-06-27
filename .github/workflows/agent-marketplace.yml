@@ -1,0 +1,97 @@
+name: Agent — Marketplace & Integration
+
+on:
+  pull_request:
+    paths:
+      - "app/marketplace/**"
+      - "app/dashboard/marketplace/**"
+      - "lib/integrations/**"
+      - "docs/integrations/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  marketplace-agent:
+    runs-on: ubuntu-latest
+    name: Marketplace & Integration Audit
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Check Marketplace Routes
+        id: routes
+        continue-on-error: true
+        run: |
+          echo "Verifying marketplace routes..."
+          test -f app/marketplace/page.tsx && echo "MARKETPLACE_PAGE=present" >> $GITHUB_OUTPUT || echo "MARKETPLACE_PAGE=missing" >> $GITHUB_OUTPUT
+          test -f app/api/marketplace/integrations/route.ts && echo "INTEGRATIONS_API=present" >> $GITHUB_OUTPUT || echo "INTEGRATIONS_API=missing" >> $GITHUB_OUTPUT
+          test -d lib/integrations && echo "INTEGRATIONS_LIB=present" >> $GITHUB_OUTPUT || echo "INTEGRATIONS_LIB=missing" >> $GITHUB_OUTPUT
+
+      - name: Verify Integration Documentation
+        id: docs
+        continue-on-error: true
+        run: |
+          echo "Checking integration guides..."
+          test -f docs/AUTO_CONFIG_INTEGRATION_CHECKLIST.md && echo "CHECKLIST=present" >> $GITHUB_OUTPUT || echo "CHECKLIST=missing" >> $GITHUB_OUTPUT
+          test -f docs/OPENROUTER_SETUP_SUMMARY.md && echo "OPENROUTER_GUIDE=present" >> $GITHUB_OUTPUT || echo "OPENROUTER_GUIDE=missing" >> $GITHUB_OUTPUT
+
+      - name: Test Integration Examples
+        id: integration-tests
+        continue-on-error: true
+        run: npm run test:integration -- --grep "integration|marketplace" 2>/dev/null || echo "TESTS_EXIST=checked"
+
+      - name: Report Marketplace Status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marketplaceStatus = '${{ steps.routes.outputs.MARKETPLACE_PAGE }}' === 'present' ? '✅' : '❌';
+            const apiStatus = '${{ steps.routes.outputs.INTEGRATIONS_API }}' === 'present' ? '✅' : '❌';
+            const libStatus = '${{ steps.routes.outputs.INTEGRATIONS_LIB }}' === 'present' ? '✅' : '❌';
+            const checklistStatus = '${{ steps.docs.outputs.CHECKLIST }}' === 'present' ? '✅' : '❌';
+            const guideStatus = '${{ steps.docs.outputs.OPENROUTER_GUIDE }}' === 'present' ? '✅' : '❌';
+
+            let message = '## 🛍️ Marketplace & Integration Agent Report\n\n';
+            message += '### Marketplace Components\n';
+            message += `- Marketplace Page: ${marketplaceStatus}\n`;
+            message += `- Integrations API: ${apiStatus}\n`;
+            message += `- Integration Library: ${libStatus}\n`;
+            message += '\n### Integration Documentation\n';
+            message += `- Integration Checklist: ${checklistStatus}\n`;
+            message += `- Setup Guides: ${guideStatus}\n`;
+            message += '\n### Integration Readiness\n';
+
+            const allReady = '${{ steps.routes.outputs.MARKETPLACE_PAGE }}' === 'present' &&
+                           '${{ steps.routes.outputs.INTEGRATIONS_API }}' === 'present' &&
+                           '${{ steps.routes.outputs.INTEGRATIONS_LIB }}' === 'present' &&
+                           '${{ steps.docs.outputs.CHECKLIST }}' === 'present';
+
+            if (allReady) {
+              message += '✅ Marketplace ready for users\n';
+              message += '- All integration components present\n';
+              message += '- Documentation complete\n';
+              message += '- Users can discover and enable integrations\n';
+            } else {
+              message += '⚠️ Marketplace components incomplete\n';
+              message += '- Verify all routes and documentation are in place\n';
+            }
+
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

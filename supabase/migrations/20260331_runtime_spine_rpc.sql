@@ -46,8 +46,8 @@ begin
   select * into v_request
   from runtime_approval_requests
   where id = p_request_id
-    and org_id = p_org_id
-    and agent_id = p_agent_id
+    and org_id = public.dsg_text_to_uuid(p_org_id)
+    and agent_id = public.dsg_text_to_uuid(p_agent_id)
   for update;
 
   if v_request.id is null then
@@ -129,8 +129,8 @@ begin
   select coalesce(max(truth_sequence), 0) + 1
     into v_truth_sequence
   from runtime_ledger_entries
-  where org_id = p_org_id
-    and agent_id = p_agent_id;
+  where org_id = public.dsg_text_to_uuid(p_org_id)
+    and agent_id = public.dsg_text_to_uuid(p_agent_id);
 
   insert into runtime_ledger_entries (
     org_id,

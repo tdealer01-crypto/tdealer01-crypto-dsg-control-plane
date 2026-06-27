@@ -1,0 +1,56 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server",
+  "html": "",
+  "selectors": {},
+  "forms": [],
+  "actions": [
+    {
+      "name": "getMcpManifest",
+      "type": "api-call",
+      "target": "mcp-manifest",
+      "description": "GET /api/mcp-server"
+    },
+    {
+      "name": "getMcpTools",
+      "type": "api-call",
+      "target": "mcp-tools",
+      "description": "GET /api/mcp-server/tools"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "getMcpManifest",
+      "outcome": "success",
+      "result": {
+        "name": "dsg-one-v1-mcp",
+        "version": "1.0.0",
+        "tools": 6
+      }
+    },
+    {
+      "trigger": "getMcpTools",
+      "outcome": "success",
+      "result": {
+        "tools": [
+          { "name": "evaluate_gate", "description": "Evaluate a gate with action and context" },
+          { "name": "get_health", "description": "Get system health status" },
+          { "name": "get_compliance_evidence", "description": "Get compliance evidence pack" },
+          { "name": "get_ccvs_status", "description": "Get CCVS compliance status" },
+          { "name": "get_readiness_report", "description": "Get production readiness report" },
+          { "name": "run_delivery_proof", "description": "Run delivery proof scan" }
+        ]
+      }
+    }
+  ],
+  "browserActions": {
+    "api": {
+      "baseUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server",
+      "endpoints": {
+        "manifest": "GET /",
+        "tools": "GET /tools",
+        "call": "POST /tools/call"
+      }
+    }
+  }
+}

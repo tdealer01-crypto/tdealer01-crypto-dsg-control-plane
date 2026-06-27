@@ -1,0 +1,46 @@
+{
+  "name": "DSG ONE",
+  "description": "Deterministic Security Gateway - governed AI agent execution with audit trails",
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "hook_attributes": {
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/github/webhook"
+  },
+  "redirect_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/github/callback",
+  "callback_urls": [
+    "https://tdealer01-crypto-dsg-control-plane.vercel.app/github/callback"
+  ],
+  "setup_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/github/setup",
+  "public": true,
+  "default_permissions": {
+    "actions": "read",
+    "contents": "read",
+    "metadata": "read",
+    "issues": "write",
+    "pull_requests": "write",
+    "checks": "write",
+    "deployments": "read",
+    "repository_hooks": "read"
+  },
+  "default_events": [
+    "push",
+    "pull_request",
+    "pull_request_review",
+    "check_run",
+    "check_suite",
+    "deployment",
+    "deployment_status",
+    "workflow_run",
+    "issues",
+    "issue_comment"
+  ],
+  "webhook_events": [
+    "push",
+    "pull_request",
+    "pull_request_review",
+    "check_run",
+    "check_suite",
+    "workflow_run",
+    "issues",
+    "issue_comment"
+  ]
+}

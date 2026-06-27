@@ -1,0 +1,16 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test:e2e:live
+> ./scripts/with-playwright-chromium.sh playwright test tests/e2e/finance-governance-live-supabase.spec.ts
+
+[2m[WebServer] [22mnpm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+[2m[WebServer] [22m(node:6301) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:6312) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+  -  1 [chromium] › tests/e2e/finance-governance-live-supabase.spec.ts:24:7 › finance governance live e2e against supabase › submit -> approve persists to Supabase, updates UI, and writes audit evidence
+
+  1 skipped

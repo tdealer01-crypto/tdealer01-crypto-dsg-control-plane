@@ -2,11 +2,22 @@
   "extends": "./tsconfig.json",
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx"
+    "global.d.ts",
+    "middleware.ts",
+    "sentry.server.config.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "skills/**/*.ts",
+    "skills/**/*.tsx",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    "packages",
     ".next"
   ]
 }

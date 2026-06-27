@@ -6,10 +6,40 @@ import { canonicalHash, canonicalJson, type CanonicalInput } from '../runtime/ca
 import { invokeRuntimeCommitRpc } from '../runtime/commit-rpc';
 import { runPipeline, SpineInfraError } from './pipeline';
 import type { SpineIntentPayload, TruthState } from './types';
+import { recordMilestone } from '../marketing/milestones';
+import { sendTelegram } from '../marketing/mcp-tools';
 
 function getIncludedExecutions(planKey?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
   return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
+}
+
+function buildUsage(used: number, limit: number) {
+  const safeUsed = Math.max(0, Number.isFinite(used) ? Math.floor(used) : 0);
+  const safeLimit = Math.max(0, Number.isFinite(limit) ? Math.floor(limit) : 0);
+  return {
+    used: safeUsed,
+    limit: safeLimit,
+    remaining: Math.max(0, safeLimit - safeUsed),
+  };
+}
+
+function buildQuotaExceededBody(params: {
+  scope: 'agent' | 'organization';
+  used: number;
+  limit: number;
+  auditId?: string | null;
+}) {
+  const label = params.scope === 'agent' ? 'Agent' : 'Organization';
+  return {
+    ok: false,
+    error: 'quota_exceeded',
+    decision: 'block',
+    reason: `${label} quota exhausted. Upgrade is required to continue governed execution.`,
+    audit_id: params.auditId ?? null,
+    upgrade_url: '/pricing',
+    usage: buildUsage(params.used, params.limit),
+  };
 }
 
 function rpcErrorMessage(error: unknown): string {
@@ -44,10 +74,16 @@ function mapRpcError(error: unknown) {
   }
 
   if (hasAny('agent_quota_exceeded', 'agent quota exceeded')) {
-    return { status: 429, body: { error: 'Agent monthly quota exceeded' } };
+    return {
+      status: 402,
+      body: buildQuotaExceededBody({ scope: 'agent', used: 0, limit: 0 }),
+    };
   }
   if (hasAny('org_quota_exceeded', 'org quota exceeded')) {
-    return { status: 429, body: { error: 'Organization execution quota exceeded' } };
+    return {
+      status: 402,
+      body: buildQuotaExceededBody({ scope: 'organization', used: 0, limit: 0 }),
+    };
   }
   if (hasAny('approval_request_expired', 'approval request expired')) {
     return { status: 409, body: { error: 'Runtime intent expired' } };
@@ -228,7 +264,16 @@ export async function executeSpineIntent(params: {
   const currentAgentExecutions = Number(counter?.executions || 0);
   const monthlyLimit = Number(agent.monthly_limit || 0);
   if (monthlyLimit > 0 && currentAgentExecutions >= monthlyLimit) {
-    return { ok: false as const, status: 429, body: { error: 'Agent monthly quota exceeded' } };
+    return {
+      ok: false as const,
+      status: 402,
+      body: buildQuotaExceededBody({
+        scope: 'agent',
+        used: currentAgentExecutions,
+        limit: monthlyLimit,
+        auditId: String(approvalRequest.id),
+      }),
+    };
   }
 
   const { data: subscription, error: subscriptionError } = await supabase
@@ -258,8 +303,18 @@ export async function executeSpineIntent(params: {
   }
 
   const orgExecutions = (orgCounters || []).reduce((sum, row) => sum + Number(row.executions || 0), 0);
-  if (orgExecutions >= getIncludedExecutions(subscription?.plan_key || 'trial')) {
-    return { ok: false as const, status: 429, body: { error: 'Organization execution quota exceeded' } };
+  const orgPlanLimit = getIncludedExecutions(subscription?.plan_key || 'trial');
+  if (orgExecutions >= orgPlanLimit) {
+    return {
+      ok: false as const,
+      status: 402,
+      body: buildQuotaExceededBody({
+        scope: 'organization',
+        used: orgExecutions,
+        limit: orgPlanLimit,
+        auditId: String(approvalRequest.id),
+      }),
+    };
   }
 
   const { data: latestTruthRow } = await supabase
@@ -367,7 +422,7 @@ export async function executeSpineIntent(params: {
     p_usage_amount_usd: getOverageRateUsd(),
     p_created_at: nowIso,
     p_agent_monthly_limit: monthlyLimit,
-    p_org_plan_limit: getIncludedExecutions(subscription?.plan_key || 'trial'),
+    p_org_plan_limit: orgPlanLimit,
   });
 
   if (rpcError) {
@@ -382,18 +437,47 @@ export async function executeSpineIntent(params: {
 
   await supabase.from('agents').update({ last_used_at: nowIso, updated_at: nowIso }).eq('id', agent.id);
 
+  // Fire-and-forget milestone tracking — must never affect gate response
+  void (async () => {
+    try {
+      const { isNew: isFirstExec } = await recordMilestone(agent.org_id, 'first_execution', {
+        metadata: { action: params.payload.action, decision: pipeline.final_decision },
+      });
+      if (isFirstExec) {
+        void sendTelegram(`🎯 First execution!\nOrg: ${agent.org_id}\nAction: ${params.payload.action}\nDecision: ${pipeline.final_decision}`);
+      }
+      if (pipeline.final_decision === 'BLOCK') {
+        const { isNew: isFirstBlock } = await recordMilestone(agent.org_id, 'first_block', {
+          metadata: { action: params.payload.action, reason: pipeline.final_reason ?? '' },
+        });
+        if (isFirstBlock) {
+          void sendTelegram(`🛂 First BLOCK!\nOrg: ${agent.org_id}\nAction: ${params.payload.action}\nReason: ${pipeline.final_reason ?? 'policy'}`);
+        }
+      }
+    } catch {
+      // milestone errors must never affect gate decisions
+    }
+  })();
+
+  const auditId = String(commitRow.execution_id);
+  const usage = buildUsage(orgExecutions + 1, orgPlanLimit);
+
   return {
     ok: true as const,
     status: 200,
     body: {
-      request_id: String(commitRow.execution_id),
+      ok: true,
+      request_id: auditId,
+      audit_id: auditId,
       decision: pipeline.final_decision,
+      decision_normalized: String(pipeline.final_decision || '').toLowerCase(),
       reason: pipeline.final_reason,
       latency_ms: pipeline.total_latency_ms,
       policy_version: pipeline.final_policy_version,
       replayed: Boolean(commitRow.replayed),
       ledger_sequence: Number(commitRow.ledger_sequence || 0),
       truth_sequence: Number(commitRow.truth_sequence || 0),
+      usage,
       proof: pipeline.proof,
       authoritative_plugin_id: pipeline.authoritative_plugin_id,
       pipeline_trace: pipeline.stages,

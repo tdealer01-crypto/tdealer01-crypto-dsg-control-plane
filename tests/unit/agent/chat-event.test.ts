@@ -19,7 +19,7 @@ describe('parseSseData', () => {
 describe('formatAgentEventMessage', () => {
   it('formats step error as human-readable text', () => {
     const text = formatAgentEventMessage({ type: 'step_error', step: 's1', error: 'Internal server error' });
-    expect(text).toBe('ไม่สำเร็จ s1: Internal server error');
+    expect(text).toBe('Failed s1: Internal server error');
   });
 
   it('formats paginated list results as summary count', () => {
@@ -31,7 +31,7 @@ describe('formatAgentEventMessage', () => {
         pagination: { page: 1, per_page: 10, total: 1, total_pages: 1 },
       },
     });
-    expect(text).toBe('สำเร็จ s2: พบ 1 รายการ');
+    expect(text).toBe('Done s2: found 1 items');
   });
 
   it('formats plan steps list', () => {
@@ -40,6 +40,6 @@ describe('formatAgentEventMessage', () => {
       steps: [{ id: 's1', toolId: 'readiness' }, { id: 's2', toolId: 'list_agents' }],
     });
 
-    expect(text).toBe('แผนการทำงาน: s1:readiness, s2:list_agents');
+    expect(text).toBe('Action plan: s1:readiness, s2:list_agents');
   });
 });

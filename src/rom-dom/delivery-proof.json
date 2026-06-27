@@ -1,0 +1,89 @@
+{
+  "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/delivery-proof",
+  "html": "<!-- Delivery Proof page HTML -->",
+  "selectors": {
+    "scanInput": "input[placeholder*=\"URL\"], input[placeholder*=\"repo\"]",
+    "runScanButton": "button:has-text(\"Run Scan\")",
+    "pricingLink": "a[href*=\"pricing\"]",
+    "signupLink": "a[href*=\"signup\"]",
+    "evidencePackLink": "a[href*=\"evidence\"]",
+    "scanResult": "[data-testid=\"scan-result\"]",
+    "claimResult": "[data-testid=\"claim-result\"]",
+    "remediationList": "[data-testid=\"remediation\"]"
+  },
+  "forms": [
+    {
+      "name": "proof-scan",
+      "action": "/api/delivery-proof/scan",
+      "method": "POST",
+      "fields": [
+        {
+          "name": "url",
+          "type": "url",
+          "required": true,
+          "selector": "input[placeholder*=\"URL\"], input[placeholder*=\"repo\"]",
+          "label": "Production URL or GitHub repo"
+        }
+      ],
+      "submitSelector": "button:has-text(\"Run Scan\")",
+      "successIndicators": ["[data-testid=\"scan-result\"] visible"]
+    }
+  ],
+  "actions": [
+    {
+      "name": "fillScanUrl",
+      "type": "type",
+      "target": "scanInput",
+      "description": "Enter production URL"
+    },
+    {
+      "name": "runScan",
+      "type": "click",
+      "target": "runScanButton",
+      "description": "Run proof scan",
+      "waitFor": "scanResult"
+    },
+    {
+      "name": "extractScanResult",
+      "type": "extract",
+      "target": ["claimResult", "remediationList", "scanResult"],
+      "description": "Extract scan results"
+    }
+  ],
+  "authRequired": false,
+  "simulationRules": [
+    {
+      "trigger": "proof-scan",
+      "condition": "valid URL provided",
+      "outcome": "success",
+      "result": {
+        "claim": "EVIDENCE COMPLETE",
+        "checks": {
+          "build": "pass",
+          "tests": "pass",
+          "dependencies": "clean",
+          "authGate": "pass",
+          "evidenceChain": "complete"
+        },
+        "evidenceHash": "sha256:{{hash}}",
+        "remediation": []
+      }
+    }
+  ],
+  "browserActions": {
+    "goto": {
+      "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/delivery-proof",
+      "waitUntil": "networkidle"
+    },
+    "fill": [{ "selector": "input[placeholder*=\"URL\"]", "value": "{{url}}", "delay": 50 }],
+    "click": {
+      "selector": "button:has-text(\"Run Scan\")",
+      "waitForSelector": "[data-testid=\"scan-result\"]"
+    },
+    "extract": {
+      "claim": "[data-testid=\"claim-result\"]",
+      "remediation": "[data-testid=\"remediation\"]",
+      "full": "[data-testid=\"scan-result\"]"
+    }
+  }
+}

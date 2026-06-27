@@ -1,0 +1,100 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "name": "dsg-stripe-app",
+  "version": 1,
+  "public": false,
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "framework": "nextjs",
+  "nodeVersion": "20.x",
+  "env": {
+    "STRIPE_SECRET_KEY": {
+      "description": "Stripe secret key for API operations",
+      "required": true
+    },
+    "STRIPE_WEBHOOK_SECRET": {
+      "description": "Stripe webhook signing secret",
+      "required": true
+    },
+    "STRIPE_APP_CLIENT_ID": {
+      "description": "Stripe OAuth client ID for the app",
+      "required": true
+    },
+    "STRIPE_APP_CLIENT_SECRET": {
+      "description": "Stripe OAuth client secret for the app",
+      "required": true
+    },
+    "DSG_API_URL": {
+      "description": "Base URL for DSG Control Plane API",
+      "default": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+    },
+    "DSG_API_KEY": {
+      "description": "API key for authentication with DSG Control Plane",
+      "required": true
+    },
+    "SUPABASE_URL": {
+      "description": "Supabase project URL",
+      "required": true
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "description": "Supabase service role key (server-side only)",
+      "required": true
+    },
+    "UPSTASH_REDIS_REST_URL": {
+      "description": "Upstash Redis REST endpoint URL",
+      "required": true
+    },
+    "UPSTASH_REDIS_REST_TOKEN": {
+      "description": "Upstash Redis REST API token",
+      "required": true
+    },
+    "REDIS_CACHE_TTL": {
+      "default": "300",
+      "description": "Cache TTL in seconds for Redis operations"
+    },
+    "NODE_ENV": {
+      "default": "production",
+      "description": "Node environment"
+    },
+    "LOG_LEVEL": {
+      "default": "info",
+      "description": "Logging level (debug|info|warn|error)"
+    },
+    "SENTRY_DSN": {
+      "description": "Sentry error tracking DSN (optional)",
+      "required": false
+    }
+  },
+  "regions": [
+    "iad1"
+  ],
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        }
+      ]
+    }
+  ]
+}

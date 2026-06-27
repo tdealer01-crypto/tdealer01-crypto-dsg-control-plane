@@ -20,6 +20,9 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,7 +45,22 @@ jobs:
       - name: E2E tests
         run: npm run test:e2e
 
+      - name: Check live E2E secrets
+        id: secrets_check
+        run: |
+          if [ -n "$SUPABASE_URL_VAL" ] && [ -n "$SUPABASE_KEY_VAL" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "✓ Supabase secrets present — live E2E will run"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "⚠ Supabase secrets missing — live E2E skipped (set SUPABASE_URL + SUPABASE_KEY in repo secrets to enable)"
+          fi
+        env:
+          SUPABASE_URL_VAL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY_VAL: ${{ secrets.SUPABASE_KEY }}
+
       - name: Live E2E tests
+        if: steps.secrets_check.outputs.available == 'true'
         run: npm run test:e2e:live
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

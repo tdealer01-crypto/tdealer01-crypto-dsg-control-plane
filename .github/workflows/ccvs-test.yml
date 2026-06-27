@@ -1,0 +1,73 @@
+name: CCVS Evidence Tests
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  test:
+    name: CCVS Evidence Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                                                            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+                                                                                      
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Evidence Tests
+        run: npm run test:ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Test Results
+        if: always()                                                                            
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/
+            coverage/
+          retention-days: 7
+
+      - name: Upload JUnit Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: junit.xml
+          retention-days: 7
+
+      - name: Comment Test Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('junit.xml')) {
+              const junit = fs.readFileSync('junit.xml', 'utf8');
+              const match = junit.match(/tests="(\d+)" failures="(\d+)" errors="(\d+)"/);
+              if (match) {
+                const [, tests, failures, errors] = match;
+                const totalFailures = parseInt(failures) + parseInt(errors);
+                const status = totalFailures === 0 ? '✅ PASS' : '❌ FAIL';
+                const body = `## CCVS Evidence Test Results\n\n| Metric | Count |\n|--------|-------|\n| Tests | ${tests} |\n| Failures | ${failures} |\n| Errors | ${errors} |\n| Status | ${status} |`;
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body
+                });
+              }
+            }

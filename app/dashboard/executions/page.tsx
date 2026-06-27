@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
+import DecisionExplainer from '../../../components/DecisionExplainer';
 
 type Execution = {
   id: string;
   agent_id: string;
-  decision: 'ALLOW' | 'STABILIZE' | 'BLOCK' | string;
+  decision: string;
   latency_ms: number;
   policy_version: string | null;
   reason: string | null;
@@ -34,77 +36,36 @@ type ExecutionsResponse = {
   ok?: boolean;
   executions?: Execution[];
   core?: {
-    ledger_ok?: boolean;
     ledger_items?: CoreLedgerItem[];
-    metrics_ok?: boolean;
     metrics?: CoreMetrics | null;
     error?: string | null;
   };
   error?: string;
 };
 
-type TabKey = 'payload' | 'headers' | 'raw';
-
-const INTERNAL_MODE_INFO =
-  'Showing database-only execution view. DSG core ledger and metrics are unavailable in internal mode.';
-
-const EMPTY_STATE_TITLE = 'No executions found for this workspace yet.';
-
-const EMPTY_STATE_BODY =
-  'Run your first execution to start tracing real requests, latency, and runtime outcomes for this workspace.';
-
-function formatTime(value?: string | null) {
-  if (!value) return '--:--:--';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleTimeString();
-}
+const steps = [
+  { label: '1', title: 'Review executions', body: 'View the list of actions the agent recently submitted to the runtime gate' },
+  { label: '2', title: 'Filter decision', body: 'Separate ALLOW, STABILIZE, and BLOCK to spot risk quickly' },
+  { label: '3', title: 'Inspect evidence', body: 'Open trace, latency, policy version, reason, and ledger preview' },
+  { label: '4', title: 'Take next step', body: 'Forward to audit or policy workflow when a rule or threshold needs adjustment' },
+];
 
 function formatDate(value?: string | null) {
   if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-function decisionTone(decision?: string) {
+function decisionTone(decision?: string): 'green' | 'blue' | 'red' | 'slate' {
   const normalized = String(decision || '').toUpperCase();
-  if (normalized === 'ALLOW') return 'text-[#00fe66]';
-  if (normalized === 'STABILIZE') return 'text-[#81ecff]';
-  if (normalized === 'BLOCK') return 'text-[#ff6e85]';
-  return 'text-slate-300';
+  if (normalized === 'ALLOW') return 'green';
+  if (normalized === 'STABILIZE') return 'blue';
+  if (normalized === 'BLOCK' || normalized === 'FREEZE') return 'red';
+  return 'slate';
 }
 
-function decisionBorder(decision?: string) {
-  const normalized = String(decision || '').toUpperCase();
-  if (normalized === 'ALLOW') return 'border-[#00fe66]/40';
-  if (normalized === 'STABILIZE') return 'border-[#81ecff]/40';
-  if (normalized === 'BLOCK') return 'border-[#ff6e85]/40';
-  return 'border-transparent';
-}
-
-function waterfallSegments(latencyMs: number) {
-  const total = Math.max(latencyMs, 1);
-  const phases = [
-    { key: 'DNS_LOOKUP', percent: 10 },
-    { key: 'TCP_HANDSHAKE', percent: 15 },
-    { key: 'TLS_NEGOTIATION', percent: 20 },
-    { key: 'REQUEST_SENT', percent: 5 },
-    { key: 'WAITING_TTFB', percent: 40 },
-    { key: 'CONTENT_DOWNLOAD', percent: 10 },
-  ];
-
-  let offset = 0;
-  return phases.map((phase) => {
-    const duration = Number(((total * phase.percent) / 100).toFixed(3));
-    const segment = {
-      ...phase,
-      duration,
-      left: offset,
-    };
-    offset += phase.percent;
-    return segment;
-  });
+function countDecision(items: Execution[], decision: string) {
+  return items.filter((item) => String(item.decision).toUpperCase() === decision).length;
 }
 
 export default function ExecutionsPage() {
@@ -115,7 +76,7 @@ export default function ExecutionsPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('payload');
+  const [filter, setFilter] = useState('ALL');
 
   useEffect(() => {
     let alive = true;
@@ -124,7 +85,6 @@ export default function ExecutionsPage() {
       setLoading(true);
       setError('');
       setCoreError('');
-
       try {
         const res = await fetch('/api/executions?limit=20', { cache: 'no-store' });
         const json = (await res.json().catch(() => ({}))) as ExecutionsResponse;
@@ -151,260 +111,121 @@ export default function ExecutionsPage() {
     };
   }, []);
 
+  const filteredExecutions = useMemo(() => {
+    if (filter === 'ALL') return executions;
+    return executions.filter((item) => String(item.decision).toUpperCase() === filter);
+  }, [executions, filter]);
+
   const selectedExecution = useMemo(
-    () => executions.find((item) => item.id === selectedId) || executions[0] || null,
-    [executions, selectedId],
+    () => executions.find((item) => item.id === selectedId) || filteredExecutions[0] || executions[0] || null,
+    [executions, filteredExecutions, selectedId],
   );
 
   const relatedLedger = useMemo(() => {
     if (!selectedExecution) return null;
-    return (
-      coreLedger.find((item) => item.agent_id === selectedExecution.agent_id) || coreLedger[0] || null
-    );
+    return coreLedger.find((item) => item.agent_id === selectedExecution.agent_id) || coreLedger[0] || null;
   }, [coreLedger, selectedExecution]);
 
   const payloadJson = useMemo(() => {
-    return {
-      trace_id: selectedExecution?.id || null,
-      environment: 'PRODUCTION',
-      request: {
+    return JSON.stringify(
+      {
+        trace_id: selectedExecution?.id || null,
         agent_id: selectedExecution?.agent_id || null,
-        policy_version: selectedExecution?.policy_version || null,
         decision: selectedExecution?.decision || null,
+        latency_ms: selectedExecution?.latency_ms || 0,
+        policy_version: selectedExecution?.policy_version || null,
         reason: selectedExecution?.reason || null,
         created_at: selectedExecution?.created_at || null,
-      },
-      response: {
-        latency_ms: selectedExecution?.latency_ms || 0,
         core_metrics: coreMetrics,
+        ledger_preview: relatedLedger,
       },
-      ledger_preview: relatedLedger,
-    };
+      null,
+      2,
+    );
   }, [selectedExecution, coreMetrics, relatedLedger]);
 
-  const headersJson = useMemo(() => {
-    return {
-      'x-dsg-trace-id': selectedExecution?.id || null,
-      'x-dsg-agent-id': selectedExecution?.agent_id || null,
-      'x-dsg-policy-version': selectedExecution?.policy_version || null,
-      'x-dsg-decision': selectedExecution?.decision || null,
-      'x-dsg-executed-at': selectedExecution?.created_at || null,
-    };
-  }, [selectedExecution]);
-
-  const rawStream = useMemo(() => {
-    return [
-      `[TRACE] id=${selectedExecution?.id || 'N/A'}`,
-      `[AGENT] ${selectedExecution?.agent_id || 'N/A'}`,
-      `[DECISION] ${selectedExecution?.decision || 'N/A'}`,
-      `[LATENCY_MS] ${selectedExecution?.latency_ms ?? 0}`,
-      `[REASON] ${selectedExecution?.reason || '-'}`,
-      `[LEDGER_ACTION] ${relatedLedger?.action || '-'}`,
-      `[LEDGER_DECISION] ${relatedLedger?.decision || '-'}`,
-      `[EVALUATED_AT] ${relatedLedger?.evaluated_at || '-'}`,
-    ].join('\n');
-  }, [selectedExecution, relatedLedger]);
-
-  const totalExecutions = coreMetrics?.total_executions ?? executions.length;
-
   return (
-    <main className="h-screen overflow-hidden bg-[#0d0e11] text-[#f7f6f9]">
-      <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between bg-[#0d0e11] px-6 text-[#00E5FF] shadow-[0_0_8px_rgba(0,229,255,0.15)]">
-        <div className="flex items-center gap-4">
-          <span className="font-['Chakra_Petch'] text-xl font-bold uppercase tracking-tighter">DSG ONE</span>
-          <span className="border border-[#00fe66]/20 bg-[#242629] px-2 py-0.5 font-mono text-[10px] uppercase tracking-tighter text-[#00fe66]">ENV: PRODUCTION</span>
-        </div>
-        <nav className="hidden items-center gap-8 font-['Chakra_Petch'] text-sm uppercase tracking-widest md:flex">
-          <Link className="px-2 py-1 text-slate-400 transition-colors hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard">Overview</Link>
-          <Link className="px-2 py-1 text-slate-400 transition-colors hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard/policies">Policy Graph</Link>
-          <Link className="px-2 py-1 font-bold text-[#00fe66]" href="/dashboard/executions">Execution Loops</Link>
-          <Link className="px-2 py-1 text-slate-400 transition-colors hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard/audit">Audit Evidence</Link>
-        </nav>
-        <div className="flex items-center gap-4">
-          <button className="material-symbols-outlined text-slate-400 transition-colors hover:text-[#81ecff]" aria-label="notifications">notifications_active</button>
-          <button className="material-symbols-outlined text-slate-400 transition-colors hover:text-[#81ecff]" aria-label="settings">settings</button>
-          <div className="flex h-8 w-8 items-center justify-center border border-[#47484b] bg-[#242629]">
-            <span className="material-symbols-outlined text-xs">person</span>
+    <RuntimeWorkflowPage
+      active="/dashboard/executions"
+      eyebrow="DSG Execution Evidence"
+      title="Execution Review Flow"
+      description="Review actions that passed through the runtime gate: see decision, latency, policy version, and the evidence needed for the next decision"
+      status={loading ? 'Loading' : `${executions.length} traces`}
+      statusTone="blue"
+      actions={[{ href: '/dashboard/audit', label: 'Open audit', tone: 'gold' }, { href: '/dashboard/policies', label: 'Tune policy', tone: 'slate' }]}
+      steps={steps}
+    >
+      {error ? <div className="mt-6 border border-rose-300/25 bg-rose-300/10 p-4 text-sm text-rose-100">{error}</div> : null}
+      {coreError ? <div className="mt-6 border border-sky-300/25 bg-sky-300/10 p-4 text-sm text-sky-100">Core ledger unavailable; showing database execution view.</div> : null}
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MetricTile label="Total" value={String(coreMetrics?.total_executions ?? executions.length)} helper="executions loaded" tone="blue" />
+            <MetricTile label="Allow" value={String(coreMetrics?.allow_count ?? countDecision(executions, 'ALLOW'))} helper="passed actions" tone="green" />
+            <MetricTile label="Stabilize" value={String(coreMetrics?.stabilize_count ?? countDecision(executions, 'STABILIZE'))} helper="needs guardrails" tone="gold" />
+            <MetricTile label="Block" value={String(coreMetrics?.block_count ?? countDecision(executions, 'BLOCK'))} helper="requires audit" tone="red" />
           </div>
-        </div>
-      </header>
 
-      <aside className="fixed left-0 hidden h-full w-64 flex-col border-r border-[#47484b]/10 bg-[#0d0e11] pb-4 pt-20 text-[#00E5FF] md:flex">
-        <div className="mb-8 px-6">
-          <div className="font-['Space_Grotesk'] text-[0.6875rem] font-black uppercase tracking-[0.1em] text-[#00E5FF]">OPERATOR_01</div>
-          <div className="mt-1 font-mono text-[9px] text-[#ababae]">LEVEL_4_ACCESS</div>
-        </div>
-        <div className="flex-1 space-y-1">
-          <Link className="flex items-center gap-3 px-3 py-2 font-['Space_Grotesk'] text-[0.6875rem] uppercase tracking-[0.1em] text-slate-500 transition-all duration-200 hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard">
-            <span className="material-symbols-outlined text-lg">dashboard</span>
-            <span>Overview</span>
-          </Link>
-          <Link className="flex items-center gap-3 px-3 py-2 font-['Space_Grotesk'] text-[0.6875rem] uppercase tracking-[0.1em] text-slate-500 transition-all duration-200 hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard/policies">
-            <span className="material-symbols-outlined text-lg">hub</span>
-            <span>Policy Graph</span>
-          </Link>
-          <Link className="flex items-center gap-3 border-l-4 border-[#00fe66] bg-[#1e2023] px-3 py-2 font-['Space_Grotesk'] text-[0.6875rem] uppercase tracking-[0.1em] text-[#00E5FF] shadow-[inset_0_0_10px_rgba(0,229,255,0.1)]" href="/dashboard/executions">
-            <span className="material-symbols-outlined text-lg">sync_alt</span>
-            <span>Execution Loops</span>
-          </Link>
-          <Link className="flex items-center gap-3 px-3 py-2 font-['Space_Grotesk'] text-[0.6875rem] uppercase tracking-[0.1em] text-slate-500 transition-all duration-200 hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard/audit">
-            <span className="material-symbols-outlined text-lg">gavel</span>
-            <span>Audit Evidence</span>
-          </Link>
-          <Link className="flex items-center gap-3 px-3 py-2 font-['Space_Grotesk'] text-[0.6875rem] uppercase tracking-[0.1em] text-slate-500 transition-all duration-200 hover:bg-[#1e2023] hover:text-[#00E5FF]" href="/dashboard/verification">
-            <span className="material-symbols-outlined text-lg">verified_user</span>
-            <span>Verification</span>
-          </Link>
-        </div>
-      </aside>
-
-      <main className="flex h-screen flex-col pt-16 md:pl-64">
-        <div className="flex h-14 items-center justify-between border-b border-[#47484b]/10 bg-[#121316] px-6">
-          <div className="flex items-center gap-4">
-            <h1 className="font-headline text-lg font-bold uppercase tracking-tighter">Execution Loops</h1>
-            <div className="h-4 w-px bg-[#47484b]/30" />
-            <div className="flex items-center gap-2 font-mono text-[10px] text-[#00fe66]">
-              <span className="h-2 w-2 rounded-full bg-[#00fe66] shadow-[0_0_8px_#00fe66]" />
-              REAL-TIME TRACING ACTIVE
+          <WorkflowPanel eyebrow="Decision filter" title="Filter by outcome">
+            <div className="flex flex-wrap gap-2">
+              {['ALL', 'ALLOW', 'STABILIZE', 'BLOCK'].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setFilter(item)}
+                  className={[
+                    'rounded-xl border px-4 py-2 text-xs font-bold uppercase tracking-[0.16em]',
+                    filter === item ? 'border-amber-300/40 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-white/[0.03] text-slate-400',
+                  ].join(' ')}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="h-8 bg-[#81ecff] px-4 text-[10px] font-bold uppercase tracking-widest text-[#005762]">Export Trace</button>
-            <button className="h-8 border border-[#81ecff]/40 px-4 text-[10px] font-bold uppercase tracking-widest text-[#81ecff] hover:bg-[#81ecff]/10">Filter Params</button>
-          </div>
+            <div className="mt-4 space-y-2">
+              {loading ? <EmptyState title="Loading executions" body="Loading executions from backend" /> : null}
+              {!loading && filteredExecutions.length === 0 ? <EmptyState title="No matching executions" body="No executions match this filter. Change the filter or run more agent actions." href="/dashboard/live-control" action="Open live control" /> : null}
+              {filteredExecutions.slice(0, 8).map((execution) => (
+                <button key={execution.id} type="button" onClick={() => setSelectedId(execution.id)} className="w-full text-left">
+                  <EvidenceRow label={execution.decision} value={`${execution.id.slice(0, 8)} · ${execution.latency_ms}ms`} tone={decisionTone(execution.decision)} />
+                </button>
+              ))}
+            </div>
+          </WorkflowPanel>
         </div>
 
-        {error ? (
-          <div className="border-b border-[#ff6e85]/20 bg-[#ff6e85]/10 px-6 py-2 font-mono text-xs text-[#ffa8a3]">
-            {error}
-          </div>
-        ) : null}
-
-        {coreError ? (
-          <div className="border-b border-[#81ecff]/20 bg-[#81ecff]/10 px-6 py-2 text-xs text-[#b8f5ff]">
-            {INTERNAL_MODE_INFO}
-          </div>
-        ) : null}
-
-        <div className="flex flex-1 overflow-hidden">
-          <section className="w-1/3 flex-col overflow-y-auto border-r border-[#47484b]/10 bg-[#0d0e11]">
-            <div className="flex items-center justify-between border-b border-[#47484b]/10 bg-[#181a1d] p-3">
-              <span className="font-mono text-[10px] uppercase text-[#ababae]">Buffer: {executions.length || 0} Traces</span>
-              <span className="font-mono text-[10px] text-[#81ecff]">{loading ? 'SCANNING...' : 'READY'}</span>
-            </div>
-            <div className="divide-y divide-[#47484b]/5">
-              {executions.map((execution) => {
-                const selected = execution.id === selectedExecution?.id;
-                return (
-                  <button
-                    key={execution.id}
-                    type="button"
-                    onClick={() => setSelectedId(execution.id)}
-                    className={`w-full cursor-pointer p-4 text-left transition-colors border-l-2 ${selected ? `bg-[#1e2023] ${decisionBorder(execution.decision)}` : 'border-transparent hover:bg-[#1e2023]'}`}
-                  >
-                    <div className="mb-2 flex items-start justify-between">
-                      <span className={`font-mono text-xs ${selected ? 'text-[#81ecff]' : 'text-[#ababae]'}`}>#{execution.id.slice(0, 10)}</span>
-                      <span className={`font-mono text-[9px] ${decisionTone(execution.decision)}`}>{execution.decision}</span>
-                    </div>
-                    <div className="mb-3 text-[11px] uppercase text-slate-200">{execution.reason || `Agent ${execution.agent_id}`}</div>
-                    <div className="flex items-center justify-between font-mono text-[9px] text-[#ababae]">
-                      <span>LATENCY: {execution.latency_ms}ms</span>
-                      <span>{formatTime(execution.created_at)}</span>
-                    </div>
-                  </button>
-                );
-              })}
-              {!loading && executions.length === 0 && (
-                <div className="p-5">
-                  <div className="rounded-2xl border border-[#47484b]/30 bg-[#121316] p-5">
-                    <p className="text-base font-semibold text-[#f7f6f9]">{EMPTY_STATE_TITLE}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">{EMPTY_STATE_BODY}</p>
-
-                    <div className="mt-4 flex gap-2">
-                      <Link
-                        href="/dashboard/skills"
-                        className="rounded-xl bg-[#81ecff] px-4 py-3 text-sm font-semibold text-black"
-                      >
-                        Run Auto-Setup
-                      </Link>
-                      <Link
-                        href="/dashboard/skills"
-                        className="rounded-xl border border-[#81ecff]/40 px-4 py-3 text-sm font-semibold text-[#81ecff] hover:bg-[#81ecff]/10"
-                      >
-                        Open Skills
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="flex flex-1 flex-col overflow-hidden bg-[#000000]">
-            <div className="border-b border-[#47484b]/10 p-6">
-              <div className="mb-6 flex items-end justify-between">
-                <div>
-                  <div className="mb-1 font-mono text-[10px] text-[#81ecff]">LATENCY_WATERFALL_MAP</div>
-                  <h2 className="font-headline text-2xl font-bold uppercase tracking-tighter">Trace: {selectedExecution?.id || 'N/A'}</h2>
-                </div>
-                <div className="text-right">
-                  <div className="font-mono text-[10px] text-[#ababae]">TOTAL_EXEC_TIME</div>
-                  <div className="font-mono text-xl text-[#00fe66]">{selectedExecution?.latency_ms ?? 0}ms</div>
-                </div>
+        <div className="space-y-6">
+          <WorkflowPanel eyebrow="Selected trace" title={selectedExecution ? selectedExecution.id : 'No trace selected'}>
+            {selectedExecution ? (
+              <div className="space-y-3">
+                <DecisionExplainer
+                  decision={selectedExecution.decision}
+                  reason={selectedExecution.reason}
+                  policyVersion={selectedExecution.policy_version}
+                  riskScore={relatedLedger?.stability_score ?? null}
+                />
+                <EvidenceRow label="Decision" value={selectedExecution.decision} tone={decisionTone(selectedExecution.decision)} />
+                <EvidenceRow label="Agent" value={selectedExecution.agent_id} />
+                <EvidenceRow label="Latency" value={`${selectedExecution.latency_ms} ms`} tone="blue" />
+                <EvidenceRow label="Policy" value={selectedExecution.policy_version || 'v1'} tone="gold" />
+                <EvidenceRow label="Created" value={formatDate(selectedExecution.created_at)} />
+                <EvidenceRow label="Reason" value={selectedExecution.reason || '-'} />
               </div>
+            ) : (
+              <EmptyState title="No trace selected" body="Select an execution on the left to view evidence" />
+            )}
+          </WorkflowPanel>
 
-              <div className="space-y-4 font-mono">
-                {waterfallSegments(selectedExecution?.latency_ms ?? 0).map((segment) => (
-                  <div key={segment.key} className="grid grid-cols-12 items-center gap-2">
-                    <div className="col-span-3 text-[10px] text-[#ababae]">{segment.key}</div>
-                    <div className="relative col-span-9 h-2 bg-[#181a1d]">
-                      <div className="absolute top-0 h-full bg-[#81ecff] shadow-[0_0_12px_rgba(129,236,255,0.2)]" style={{ left: `${segment.left}%`, width: `${segment.percent}%` }} />
-                      <span className="absolute text-[9px] text-[#ababae]" style={{ left: `${Math.min(segment.left + segment.percent + 0.5, 95)}%` }}>{segment.duration}ms</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <WorkflowPanel eyebrow="Evidence JSON" title="Trace package">
+            <pre className="max-h-[420px] overflow-auto border border-white/10 bg-black/40 p-4 text-xs leading-6 text-slate-200">{payloadJson}</pre>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/dashboard/audit" className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950">Open audit trail</Link>
+              <Link href="/dashboard/policies" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">Adjust policy</Link>
             </div>
-
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex items-center justify-between border-b border-[#47484b]/10 bg-[#121316] px-6 py-3">
-                <div className="flex gap-4">
-                  <button type="button" onClick={() => setActiveTab('payload')} className={`pb-1 text-[10px] font-bold uppercase tracking-widest ${activeTab === 'payload' ? 'border-b-2 border-[#81ecff] text-[#81ecff]' : 'text-[#ababae]'}`}>Payload JSON</button>
-                  <button type="button" onClick={() => setActiveTab('headers')} className={`pb-1 text-[10px] font-bold uppercase tracking-widest ${activeTab === 'headers' ? 'border-b-2 border-[#81ecff] text-[#81ecff]' : 'text-[#ababae]'}`}>Headers</button>
-                  <button type="button" onClick={() => setActiveTab('raw')} className={`pb-1 text-[10px] font-bold uppercase tracking-widest ${activeTab === 'raw' ? 'border-b-2 border-[#81ecff] text-[#81ecff]' : 'text-[#ababae]'}`}>Raw Stream</button>
-                </div>
-                <button className="material-symbols-outlined text-sm text-[#ababae] hover:text-[#f7f6f9]">content_copy</button>
-              </div>
-
-              <div className="flex-1 overflow-auto p-6 font-mono text-[12px] leading-relaxed text-[#81ecff]/80">
-                {activeTab === 'payload' ? <pre>{JSON.stringify(payloadJson, null, 2)}</pre> : null}
-                {activeTab === 'headers' ? <pre>{JSON.stringify(headersJson, null, 2)}</pre> : null}
-                {activeTab === 'raw' ? <pre>{rawStream}</pre> : null}
-              </div>
-            </div>
-          </section>
+          </WorkflowPanel>
         </div>
-
-        <footer className="flex h-8 items-center justify-between border-t border-[#47484b]/10 bg-[#000000] px-6">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 font-mono text-[9px] text-[#ababae]">
-              <span className="text-[#00fe66]">SYS_OK</span>
-              <span>MEM: 12.4GB/32GB</span>
-            </div>
-            <div className="flex items-center gap-2 font-mono text-[9px] text-[#ababae]">
-              <span className="text-[#81ecff]">NET_STABLE</span>
-              <span>RTT: {selectedExecution?.latency_ms ?? 0}ms</span>
-            </div>
-            <div className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-tighter text-[#00fe66]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00fe66]" />
-              PROD_REPLICA_STABLE
-            </div>
-          </div>
-          <div className="font-mono text-[9px] uppercase tracking-widest text-[#ababae]">
-            Last Trace Captured: {formatDate(selectedExecution?.created_at)}
-          </div>
-        </footer>
-      </main>
-    </main>
+      </section>
+    </RuntimeWorkflowPage>
   );
 }

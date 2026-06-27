@@ -1,0 +1,17 @@
+{
+  "extends": "stripe-app.json",
+  "ui_extension": {
+    "content_security_policy": {
+      "connect-src": [
+        "http://localhost:3000/api/"
+      ]
+    }
+  },
+  "post_install_action": {
+    "type": "external",
+    "url": "http://localhost:3000/dashboard/stripe-app"
+  },
+  "constants": {
+    "DSG_API_BASE": "http://localhost:3000"
+  }
+}

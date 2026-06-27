@@ -3,6 +3,22 @@
 ## Scope
 Control Plane deployment on Vercel + dependency readiness checks for DSG Core and Supabase.
 
+## Deterministic gate truth boundary
+
+Current production claim scope allows:
+- live deterministic proof/gate scaffold
+- deterministic TypeScript static-check scaffold metadata
+- policyVersion / constraintSetHash / proofHash / inputHash evidence
+- structured constraint results and replay-protection evidence
+
+Current production claim scope does not allow:
+- external Z3 solver invoked in production
+- enterprise-ready proof system
+- JWT/JWKS auth complete
+- WORM evidence storage complete
+- real cryptographic signing complete
+- third-party certification claims
+
 ## Preconditions
 - Access to Vercel project linked to this repository.
 - Supabase project credentials and migration privileges.
@@ -108,6 +124,42 @@ Use this checklist:
    - temporarily disable `Require Verified Commits` (only with explicit approval).
 5. Redeploy only after commit verification is fixed; otherwise cancellation will repeat.
 
+
+### Emergency bypass with GitHub Actions (no Vercel Git integration)
+If Git integration keeps canceling deployment before build (for example from `Require Verified Commits`), run the manual workflow:
+- **GitHub Actions → `Vercel Production CLI Bypass` → Run workflow**
+- Input `ref` must be `main` (workflow guardrail blocks non-main refs for production).
+- This workflow deploys with Vercel CLI (`vercel pull` + `vercel build` + `vercel deploy --prebuilt --prod`) and does not depend on Vercel Git checks.
+
+Required GitHub repository secrets:
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+Workflow behavior:
+1. Fails fast if required secrets are missing.
+2. Deploys the selected `main` ref to production.
+3. Runs `/api/health` check automatically and requires `ok: true`.
+4. Publishes deployment URL + health endpoint in workflow summary.
+
+After workflow success:
+1. Capture `Deployment URL` and `Health endpoint` from the workflow summary for incident log/audit.
+2. Verify the production alias points to the new deployment (Vercel dashboard or `vercel ls`).
+3. Re-check health endpoint manually:
+
+```bash
+curl -fsSL "<deployment-url>/api/health"
+```
+
+4. Continue with production gate checks (`Production Readiness Check` / `go-no-go`).
+
+#### One-run closeout checklist (recommended)
+Use this when Vercel Git integration keeps returning `CANCELED` before build:
+1. Run **Vercel Production CLI Bypass** on `main`.
+2. Confirm workflow steps complete: `npm ci` → `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`.
+3. Confirm workflow health gate is green (`/api/health` contains `ok: true`).
+4. Record the summary links (`Deployment URL`, `Health endpoint`) in the ticket/incident.
+
 ### CLI-first recovery when deployment is canceled
 If the unverified commit issue cannot be resolved immediately, use Vercel CLI to deploy directly:
 
@@ -161,6 +213,43 @@ Run migrations for the target environment before traffic cutover.
 14. `20260404_runtime_spine_rpc_hardening.sql`
 
 - Validate schema changes via application smoke checks.
+
+**Complete migration order (all 34 files as of 2026-05-15):**
+
+1. `20260323053000_product_loop_scaffold.sql`
+2. `20260323054500_product_loop_rls.sql`
+3. `20260323110000_billing_checkout_flow.sql`
+4. `20260323140000_schema_constraints_hardening.sql`
+5. `20260323141000_rls_policy_hardening.sql`
+6. `20260329120000_trial_signup_flow.sql`
+7. `20260330_monitor_stats.sql`
+8. `20260331_runtime_spine.sql`
+9. `20260331_runtime_spine_rpc.sql`
+10. `20260401093000_batch3_enterprise_identity_rollout.sql`
+11. `20260401120000_enterprise_access_batch2.sql`
+12. `20260401123000_access_requests_org_scope.sql`
+13. `20260401_runtime_rbac.sql`
+14. `20260401_schema_policies_table.sql`
+15. `20260402100000_usage_counters_unique.sql`
+16. `20260402_billing_quota_in_rpc.sql`
+17. `20260404_runtime_spine_rpc_hardening.sql`
+18. `202604110015_create_dsg_app_builder_jobs.sql`
+19. `20260411101500_finance_governance_workflow.sql`
+20. `20260413090000_integration_profiles.sql`
+21. `20260417000000_full_schema_sync.sql`
+22. `20260424010000_finance_governance_control_layer.sql`
+23. `20260426090000_finance_workflow_action_audit_evidence.sql`
+24. `202604261825_agent_model_provider_keys.sql`
+25. `20260426193300_release_gate_entitlements.sql`
+26. `20260429060000_finance_governance_audit_ledger.sql`
+27. `20260430_gateway_managed_connectors.sql`
+28. `20260430_gateway_monitor_events.sql`
+29. `202605040016_create_dsg_governed_memory_layer.sql`
+30. `202605060001_create_dsg_midmarket_governance_autopilot.sql`
+31. `202605060002_create_dsg_agent_command_gate.sql`
+32. `20260507_prepare_governance_event_trigger.sql`
+33. `20260508_governance_decision_events.sql`
+34. `20260512090000_create_agent_gate_settings.sql`
 
 ### One-command runtime RPC + PostgREST cache recovery
 When `rpc_commit` fails because PostgREST cannot find `public.runtime_commit_execution(...)` in schema cache:

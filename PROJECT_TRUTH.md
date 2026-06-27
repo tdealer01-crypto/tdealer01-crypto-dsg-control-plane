@@ -1,6 +1,6 @@
 # PROJECT_TRUTH
 
-Last reviewed: 2026-04-17
+Last reviewed: 2026-05-25
 Mode: active
 Status: merged into main; derived from real repository files only
 
@@ -36,6 +36,14 @@ Use these interpretations unless a newer verified source overrides them:
   - `GET /api/capacity`
   - `POST /api/agent-chat`
 
+Deterministic gate status (live scaffold):
+
+- `GET /api/dsg/v1/policies/manifest`: live
+- `POST /api/dsg/v1/gates/evaluate`: live deterministic gate decision payload
+- `POST /api/dsg/v1/proofs/prove`: live deterministic proof scaffold
+- Current observed gate payload includes `policyVersion`, `constraintSetHash`, `proofHash`, `inputHash`, structured constraint results, and replay-protection fields.
+- Current solver metadata claim boundary: deterministic TypeScript static-check scaffold (`solver.name=static_check`, `solver.version=dsg-deterministic-ts-0.0.0`).
+
 ## Deployment truth
 
 Deployment and production-readiness checks must be grounded in `docs/RUNBOOK_DEPLOY.md`.
@@ -48,31 +56,67 @@ Minimum deployment truth includes:
 - authenticated operator checks must include runtime/control-plane surfaces
 - live E2E against Supabase/staging is part of the intended validation path
 
-## Test baseline resolution (April 17, 2026)
+## Test baseline resolution (May 25, 2026)
 
-The earlier 85-vs-185 mismatch is now resolved in favor of the latest committed evidence set.
+Four historical baselines exist; use the newest committed run as current truth:
 
-- Historical snapshot (valid for April 11, 2026): `85 tests`, `41 test files`, `0 failures`
-- Current authoritative baseline (committed April 17, 2026): `185 tests passed, 3 skipped, 0 failed` and `62 test files passed, 1 skipped, 0 failed`
+| Date | Files | Tests | Status |
+|---|---|---|---|
+| 2026-04-11 | 41 passed | 85 passed | superseded |
+| 2026-04-17 | 62 passed, 1 skipped | 185 passed, 3 skipped | superseded |
+| 2026-05-15 | 77 passed, 2 skipped | 252 passed, 4 skipped | superseded |
+| 2026-05-25 | 125 passed, 4 skipped (129) | 874 passed, 12 skipped (886) | **current** |
 
-Authoritative evidence files:
+Evidence: `npm test` output recorded in this session — 20.44s duration, 0 failures.
 
-- `qa-logs/npm-test-2026-04-17.log`
-- `qa-logs/npm-test.log`
-- `qa-logs/test-summary.md`
-- `docs/STATUS_SNAPSHOT_2026-04-17.md`
+Working rule: treat May 25, 2026 as the current repo baseline until superseded by a newer committed run.
 
-Working rule: preserve older snapshots as historical context, but treat the April 17, 2026 artifact set as the current repo baseline until superseded by a newer committed run.
-
+TypeScript typecheck: **passes with zero errors** (verified 2026-05-25).
 
 ## Production-readiness status boundary
 
+### 🟢 CLOSED — PR #595 Merged & Live on Main (2026-05-25)
+
 Repository test truth and production go-live truth are intentionally separate:
 
-- Test truth (current): April 17, 2026 committed Vitest baseline = `185 passed, 3 skipped, 0 failed`.
-- Go-live truth (current): **not yet complete** until runbook evidence is closed for deployment readiness, env validation, migration apply state, deployed smoke checks, authenticated operator checks, and live staging/E2E validation.
+- Test truth (current): May 25, 2026 committed Vitest baseline = `874 passed, 12 skipped, 0 failed` (125 files passed | 4 skipped).
+- PR #595 (`claude/compliance-pack-main` → `main`) merged via squash, commit `a4ee97a8`. README updated commit `1460e89`.
 
-Do not claim full production readiness from Vitest evidence alone.
+### Smoke check results — 2026-05-25 (final, all green)
+
+| Route | Status | Evidence |
+|---|:---:|---|
+| `GET /` (homepage) | 🟢 HTTP 200 | `curl -s -o /dev/null -w "%{http_code}"` |
+| `GET /api/readiness` | 🟢 HTTP 200 | `curl -s -o /dev/null -w "%{http_code}"` |
+| `GET /compliance-evidence-pack` | 🟢 HTTP 200 | background poller confirmed live |
+| `GET /api/compliance-evidence-pack` | 🟢 HTTP 200 | background poller confirmed live |
+
+### Build fixes applied after PR #595 (all merged to main)
+
+| PR | Fix | Result |
+|---|---|---|
+| Direct push | `tsconfig.json` explicit include list — exclude `packages/` by omission | Vercel TS compile error fixed |
+| PR #596 | `tsconfig.typecheck.json` same explicit include list | `npm run typecheck` 0 errors |
+| PR #597 | `vercel.json` agent crons → daily schedule (Hobby plan limit) | Vercel deploy unblocked, green |
+
+### Audit items closed in PR #595
+
+- 🟢 CLOSED — Compliance Evidence Pack route (`/api/compliance-evidence-pack`)
+- 🟢 CLOSED — Compliance Evidence Pack landing page (`/compliance-evidence-pack`)
+- 🟢 CLOSED — Marketing copy specificity (hero badge, trust bar, CTA)
+- 🟢 CLOSED — P1 unit test coverage: 10 source files (monitor, providers, managed-connectors, commit-rpc, safe-log, audit-export, request-json, policy, planner, approvals)
+- 🟢 CLOSED — Test fixes: orgPlan missing, vi.mocked cast, toMatchObject union, toHaveBeenCalledWith indexing
+
+### Permanent truth boundaries (unchanged)
+
+Do not upgrade beyond scaffold truth without new evidence:
+
+- no external Z3 production-solver invocation claim
+- no JWT/JWKS auth-complete claim
+- no WORM evidence storage complete claim (audit trail is hash-chained in schema; WORM-certified storage not separately certified)
+- no real cryptographic-signing complete claim
+- no third-party certification claim
+- `certificationClaim = false` · `independentAuditClaim = false` per compliance-evidence-pack route footer
 
 ## Working rule for future sessions
 

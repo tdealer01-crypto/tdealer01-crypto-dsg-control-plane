@@ -1,0 +1,369 @@
+================================================================================
+PHASE 8 SETUP INTERACTIVE CHECKLIST
+DSG ONE / ProofGate Control Plane Deployment
+================================================================================
+
+Instructions:
+- Run this checklist script to track your progress through all Phase 8 setup steps
+- Mark each item as complete using [ ] → [x] after you've verified it
+- If a step fails, note the failure and move on to the next section
+- At the end, count your completions to determine GO/NO-GO status
+
+Time to complete: ~45 minutes (manual) + 10 minutes (automated)
+
+================================================================================
+PHASE 1: CREDENTIAL GATHERING (10 min)
+================================================================================
+
+Gather these 11 credentials and save to a secure location (NOT in git)
+
+SUPABASE CREDENTIALS
+  [ ] NEXT_PUBLIC_SUPABASE_URL
+      Source: Supabase Dashboard → Settings → API → Project URL
+      Format: https://xxxxx.supabase.co
+
+  [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
+      Source: Supabase Dashboard → Settings → API → anon public
+      Format: eyJ... (long JWT)
+
+  [ ] SUPABASE_SERVICE_ROLE_KEY
+      Source: Supabase Dashboard → Settings → API → service_role secret
+      Format: eyJ... (long JWT, marked as secret)
+
+STRIPE CREDENTIALS
+  [ ] STRIPE_SECRET_KEY
+      Source: Stripe Dashboard → Developers → API Keys → Secret key
+      Format: sk_test_... or sk_live_...
+      ⚠️  WARNING: This is a secret! Never commit to git.
+
+  [ ] STRIPE_WEBHOOK_SECRET
+      Source: Stripe Dashboard → Webhooks → Create endpoint
+      Format: whsec_... (you'll create the webhook later)
+
+  [ ] STRIPE_PRICE_PRO
+      Source: Stripe Dashboard → Products → Pro pricing tier
+      Format: price_... (long alphanumeric)
+
+  [ ] STRIPE_PRICE_BUSINESS
+      Source: Stripe Dashboard → Products → Business pricing tier
+      Format: price_... (long alphanumeric)
+
+UPSTASH REDIS CREDENTIALS
+  [ ] UPSTASH_REDIS_REST_URL
+      Source: Upstash Console → Database → REST API → URL
+      Format: https://xxxxx.upstash.io
+
+  [ ] UPSTASH_REDIS_REST_TOKEN
+      Source: Upstash Console → Database → REST API → Token
+      Format: long alphanumeric
+
+RESEND CREDENTIALS
+  [ ] RESEND_API_KEY
+      Source: Resend Dashboard → API Keys → Copy any token
+      Format: re_... (long alphanumeric)
+
+GENERATED CREDENTIALS
+  [ ] CRON_SECRET (generate with: openssl rand -hex 32)
+      Format: 64 hex characters
+
+APP IDENTITY
+  [ ] NEXT_PUBLIC_APP_URL = https://tdealer01-crypto-dsg-control-plane.vercel.app
+  [ ] APP_URL = https://tdealer01-crypto-dsg-control-plane.vercel.app
+  [ ] DSG_CORE_MODE = internal
+
+CREATE .env.local FILE
+  [ ] Copy .env.example to .env.local
+      Command: cp .env.example .env.local
+
+  [ ] Fill in all 11 credentials in .env.local
+      Command: nano .env.local (or use your editor)
+
+  [ ] Verify syntax (no errors)
+      Command: bash -n .env.local
+
+  [ ] File is in .gitignore (should be already)
+      Command: grep .env.local .gitignore
+
+✓ PHASE 1 COMPLETE when all items above are checked
+
+================================================================================
+PHASE 2: DEPLOY TO VERCEL (20 min)
+================================================================================
+
+PUSH CODE TO MAIN
+  [ ] Check current branch
+      Command: git branch --show-current
+
+  [ ] Ensure no uncommitted changes
+      Command: git status
+
+  [ ] Pull latest from main
+      Command: git pull origin main
+
+  [ ] Push to main (if you made changes)
+      Command: git push origin main
+
+MONITOR VERCEL DEPLOYMENT
+  [ ] Go to Vercel Dashboard → Deployments
+      URL: https://vercel.com/dashboard
+
+  [ ] Deployment status shows "Ready" (wait 3-5 minutes)
+      Look for: Green checkmark and "Ready" status
+
+  [ ] Note the production URL
+      Example: https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+SET ENVIRONMENT VARIABLES IN VERCEL (13 vars total)
+
+  [ ] Go to Project Settings → Environment Variables
+      URL: https://vercel.com/dashboard → Select project → Settings
+
+  [ ] Set scope to "Production" for all variables
+
+  SUPABASE (3 vars)
+    [ ] NEXT_PUBLIC_SUPABASE_URL
+    [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
+    [ ] SUPABASE_SERVICE_ROLE_KEY
+
+  STRIPE (4 vars)
+    [ ] STRIPE_SECRET_KEY
+    [ ] STRIPE_WEBHOOK_SECRET
+    [ ] STRIPE_PRICE_PRO
+    [ ] STRIPE_PRICE_BUSINESS
+
+  UPSTASH (2 vars)
+    [ ] UPSTASH_REDIS_REST_URL
+    [ ] UPSTASH_REDIS_REST_TOKEN
+
+  RESEND (1 var)
+    [ ] RESEND_API_KEY
+
+  SYSTEM (3 vars)
+    [ ] CRON_SECRET
+    [ ] NEXT_PUBLIC_APP_URL
+    [ ] APP_URL
+
+  DSG (1 var)
+    [ ] DSG_CORE_MODE = "internal"
+
+VERIFY ENV VARS ARE SET
+  [ ] Run: vercel env ls production
+      Check: All 13 variables appear in the list
+
+TRIGGER REBUILD IN VERCEL
+  [ ] Option A: Click "Redeploy" on latest deployment in Vercel UI
+      OR
+      [ ] Option B: Run: vercel --prod
+
+  [ ] Wait for new deployment to show "Ready" status (3-5 minutes)
+
+  [ ] Note new deployment URL (should be same as production alias)
+
+VERIFY HEALTH ENDPOINT
+  [ ] Test health endpoint:
+      Command: curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health | jq .
+      Expected: { "ok": true, ... }
+
+      If this fails → See troubleshooting section in PHASE8_QUICK_START.md
+
+✓ PHASE 2 COMPLETE when:
+  - Vercel deployment status = "Ready"
+  - Health endpoint returns ok: true
+  - All 13 env vars are set in production scope
+
+================================================================================
+PHASE 3: VERIFY & ACTIVATE (15 min)
+================================================================================
+
+RUN SUPABASE MIGRATIONS
+  [ ] Install Supabase CLI
+      Command: npm install -g supabase
+
+  [ ] Login to Supabase
+      Command: supabase login
+
+  [ ] Link to your Supabase project
+      Command: supabase link --project-ref YOUR_PROJECT_REF
+      (Find project ref in Supabase Dashboard → Settings → General)
+
+  [ ] Apply migrations
+      Command: supabase db push
+
+  [ ] Verify migrations were applied
+      Go to Supabase Dashboard → SQL Editor → Run:
+      SELECT * FROM pg_migrations;
+      Should show ~14 migrations in status 'Success'
+
+CONFIGURE SUPABASE AUTH URLS (Manual in Dashboard)
+  [ ] Go to Supabase Dashboard → Authentication → URL Configuration
+
+  [ ] Set Site URL
+      Value: https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+  [ ] Add Redirect URL
+      Value: https://tdealer01-crypto-dsg-control-plane.vercel.app/auth/confirm
+
+  [ ] Click Save
+
+CONFIGURE STRIPE WEBHOOK (Manual in Dashboard)
+  [ ] Go to Stripe Dashboard → Webhooks
+
+  [ ] Click "Create new endpoint"
+      Endpoint URL: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/stripe/webhook
+
+  [ ] Select events to listen for:
+      - customer.subscription.created
+      - customer.subscription.updated
+      - customer.subscription.deleted
+      - invoice.payment_action_required
+      - meter.error_occurred
+
+  [ ] Copy the "Signing secret" (starts with whsec_)
+
+  [ ] Update STRIPE_WEBHOOK_SECRET in Vercel
+      Command: vercel env add STRIPE_WEBHOOK_SECRET production
+      (Paste the signing secret when prompted)
+
+  [ ] Trigger another rebuild in Vercel
+      Command: vercel --prod
+      OR click Redeploy in Vercel UI
+
+RUN AUTOMATED VERIFICATION SCRIPTS
+  [ ] Go/No-Go gate check (comprehensive)
+      Command: npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app
+      Expected: All checks pass with ✅
+
+  [ ] Deployment verification (detailed report)
+      Command: ./scripts/deployment-verification.sh https://tdealer01-crypto-dsg-control-plane.vercel.app
+      Expected: Passed checks > 0, Critical failures = 0
+
+  [ ] Smoke test suite
+      Command: ./scripts/smoke-test-suite.sh https://tdealer01-crypto-dsg-control-plane.vercel.app
+      Expected: TESTS_PASSED > 0, TESTS_FAILED = 0
+
+TEST FIRST LOGIN (Manual)
+  [ ] Open login page
+      URL: https://tdealer01-crypto-dsg-control-plane.vercel.app/login
+
+  [ ] Click "Start Free Trial" tab
+
+  [ ] Enter test email (from your secure vault, NOT in git)
+
+  [ ] Enter workspace name: "DSG Ops"
+
+  [ ] Click "Start free trial"
+
+  [ ] Check email for magic link from noreply@resend.dev
+
+  [ ] Click the magic link in email
+
+  [ ] Verify you're logged in to dashboard
+      Should see: Agents, Policies, Usage, Executions, etc.
+
+✓ PHASE 3 COMPLETE when:
+  - All automated verification scripts pass
+  - Supabase migrations applied successfully
+  - Supabase auth URLs configured
+  - Stripe webhook created and receiving events
+  - First login succeeds with email magic link
+
+================================================================================
+GO / NO-GO STATUS CHECK
+================================================================================
+
+CRITICAL SUCCESS CRITERIA (All must pass)
+  [ ] Vercel deployment status = "Ready"
+  [ ] curl /api/health returns ok: true
+  [ ] curl /api/readiness returns status: ready
+  [ ] curl /api/agent/status returns deployed info
+  [ ] Supabase migrations applied (14 migrations, all Success)
+  [ ] Stripe webhook created and signing secret set
+  [ ] Supabase auth URLs configured
+  [ ] First login succeeds (email magic link works)
+  [ ] npm run go:no-go <url> passes with 0 failures
+  [ ] No critical failures in deployment-verification.sh
+  [ ] No test failures in smoke-test-suite.sh
+
+FINAL STATUS
+
+  If ALL boxes above are checked:
+    ✅ DEPLOYMENT GO STATUS = READY FOR PRODUCTION
+
+    Next steps:
+    1. Document any custom setup in your wiki
+    2. Create first test agent in dashboard
+    3. Monitor logs in Vercel Function Logs
+    4. Set up alerts/monitoring as needed
+    5. Inform team that production is live
+
+  If ANY boxes above are unchecked:
+    ❌ DEPLOYMENT NO-GO STATUS = RESOLVE ISSUES BEFORE PROCEEDING
+
+    Troubleshooting:
+    1. Review PHASE8_QUICK_START.md "Troubleshooting" section
+    2. Check Vercel Function Logs for errors
+    3. Run deployment-verification.sh to get detailed report
+    4. Check specific service dashboards (Stripe, Supabase, Resend, etc.)
+    5. Escalate to appropriate support team if stuck
+
+================================================================================
+COMPLETION SUMMARY
+================================================================================
+
+Count your checked items:
+
+Phase 1 Credential Gathering:     __/19 items checked
+Phase 2 Deploy to Vercel:         __/29 items checked
+Phase 3 Verify & Activate:        __/26 items checked
+GO/NO-GO Criteria:                __/10 items checked
+
+Total completion: __/84 items
+
+Completion percentage:
+  < 80%  = Incomplete, continue setup
+  80-95% = Final steps remaining, finish verification
+  ≥ 95%  = Complete, GO status confirmed
+
+================================================================================
+HELPFUL COMMANDS
+================================================================================
+
+# Test health endpoint
+curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health | jq .
+
+# Test readiness endpoint
+curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/readiness | jq .
+
+# View Vercel environment variables
+vercel env ls production
+
+# Trigger Vercel rebuild
+vercel --prod
+
+# View Supabase migrations status
+# (In Supabase Dashboard → SQL Editor, run: SELECT * FROM pg_migrations;)
+
+# Check Stripe webhook status
+# (In Stripe Dashboard → Webhooks, view endpoint delivery logs)
+
+# Check email delivery
+# (In Resend Dashboard → Emails, search for messages)
+
+================================================================================
+DOCUMENTATION BOOKMARKS
+================================================================================
+
+Quick Start:                       PHASE8_QUICK_START.md
+Full Deployment Runbook:           docs/RUNBOOK_DEPLOY.md
+Operator Setup Checklist:          docs/OPERATOR_SETUP_CHECKLIST.md
+Vercel Environment Setup:          docs/VERCEL_ENV_SETUP.md
+Manual vs Automated Steps:         docs/PHASE8_MANUAL_VS_AUTOMATED.md
+Scripts Reference:                 scripts/SCRIPTS_REFERENCE.md
+This Interactive Checklist:        scripts/phase8-setup-checklist.txt
+
+================================================================================
+Date Created: 2026-06-07
+Last Updated: 2026-06-07
+Status: Setup-Ready
+Use this checklist to track your progress through Phase 8 deployment.
+================================================================================

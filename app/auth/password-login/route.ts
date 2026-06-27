@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
+import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { getSafeNext } from '../../../lib/auth/safe-next';
 import { applyRateLimit, getRateLimitKey } from '../../../lib/security/rate-limit';
 
@@ -40,6 +41,28 @@ export async function POST(request: NextRequest) {
     if (error) {
       redirectToPasswordLogin.searchParams.set('error', 'invalid-credentials');
       return NextResponse.redirect(redirectToPasswordLogin, { status: 302 });
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user?.id && user.email) {
+      const admin = getSupabaseAdmin();
+      const { data: provisionResult, error: provisionError } = await (admin as any).rpc('dsg_provision_user_access', {
+        p_auth_user_id: user.id,
+        p_email: user.email,
+      });
+
+      if (provisionError) {
+        console.error('[password-login] access provisioning failed:', provisionError);
+        redirectToPasswordLogin.searchParams.set('error', 'provision-failed');
+        return NextResponse.redirect(redirectToPasswordLogin, { status: 302 });
+      }
+
+      if (provisionResult?.ok === false && provisionResult?.reason !== 'NO_ACTIVE_INVITE') {
+        console.warn('[password-login] access provisioning returned non-ok:', provisionResult);
+      }
     }
 
     return NextResponse.redirect(new URL(next, request.url), { status: 302 });

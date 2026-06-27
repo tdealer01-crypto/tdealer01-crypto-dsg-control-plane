@@ -1,0 +1,59 @@
+{
+  "app_id": "pics.dsg.governance",
+  "name": "DSG Governance Gate",
+  "description": "Displays ALLOW, BLOCK, or REVIEW policy decisions on payment detail views.",
+  "version": "1.1.6",
+  "homepage": "https://dsg.pics",
+  "support_email": "t.dealer01@dsg.pics",
+  "icons": {
+    "square_64": "./docs/assets/icon-64x64.png",
+    "square_128": "./docs/assets/icon-128x128.png",
+    "square_256": "./docs/assets/icon-256x256.png"
+  },
+  "about": "DSG Platform provides automated risk governance and compliance infrastructure for digital enterprises. The DSG Governance Gate app evaluates policy decisions directly inside your payment detail view, surfacing real-time status details including policy versions, proof references, and clear verification time logs. If the governance service is unreachable, decisions default to REVIEW — never to ALLOW.",
+  "features": [
+    {
+      "name": "Policy decision display",
+      "description": "Each charge opened in the payment detail view shows an ALLOW, BLOCK, or REVIEW decision badge with the reason, rendered inside the Stripe Dashboard app panel."
+    },
+    {
+      "name": "Decision details",
+      "description": "Every decision shows its policy version, proof reference, and evaluation timestamp in the app panel, giving operators a verifiable record for each evaluated charge."
+    },
+    {
+      "name": "Fail-safe behavior",
+      "description": "If the governance API is unreachable or returns an unknown verdict, the panel shows REVIEW instead of ALLOW, so an outage never reads as approval."
+    }
+  ],
+  "distribution_type": "public",
+  "sandbox_install_compatible": true,
+  "stripe_api_access_type": "oauth",
+  "allowed_redirect_uris": [
+    "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/oauth/callback",
+    "https://dsg-stripe-app.vercel.app/api/stripe-app/oauth/callback"
+  ],
+  "permissions": [
+    {
+      "permission": "charge_read",
+      "purpose": "Read charge details to display governance policy decisions in the payment detail view"
+    }
+  ],
+  "ui_extension": {
+    "views": [],
+    "content_security_policy": {
+      "connect-src": [
+        "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/",
+        "https://dsg-stripe-app.vercel.app/api/",
+        "https://api.dsg.pics/v1/"
+      ],
+      "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
+    }
+  },
+  "post_install_action": {
+    "type": "external",
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/stripe-app"
+  },
+  "constants": {
+    "DSG_API_BASE": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+  }
+}

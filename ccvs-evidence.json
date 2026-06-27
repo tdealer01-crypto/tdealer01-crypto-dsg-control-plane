@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "evidence_type": "unit",
+  "severity_level": 1,
+  "subject": [
+    {
+      "name": "repo:local/unknown",
+      "digest": {
+        "sha1": "unknown"
+      }
+    }
+  ],
+  "run": {
+    "repo": "local/unknown",
+    "commit": "unknown",
+    "workflow_run_id": "local-1781495004609",
+    "builder_id": "https://github.com/actions/runner",
+    "invocation_id": "local-1781495004609-1"
+  },
+  "oidc": {
+    "issuer": "https://token.actions.githubusercontent.com",
+    "audience": "ccvs-evidence",
+    "sub": "repo:local/unknown:ref:",
+    "repository": "local/unknown",
+    "ref": ""
+  },
+  "metrics": {
+    "tests_total": 2186,
+    "tests_passed": 2092,
+    "tests_failed": 36,
+    "coverage": {}
+  },
+  "integrity": {
+    "previous_chain_hash": "",
+    "chain_hash": "sha256:2903ac7e281e58ef18b2e94ccacf5bd137afbb1811e7aac76f5febc472d74fad"
+  },
+  "policy_version": "v1",
+  "generated_at": "2026-06-15T03:43:24.612Z"
+}

@@ -579,8 +579,8 @@ begin
     into v_approval
   from public.runtime_approval_requests
   where id = p_request_id
-    and org_id = p_org_id
-    and agent_id = p_agent_id
+    and org_id = public.dsg_text_to_uuid(p_org_id)
+    and agent_id = public.dsg_text_to_uuid(p_agent_id)
   for update;
 
   if not found then
@@ -629,7 +629,7 @@ begin
     select coalesce(uc.executions, 0)
       into v_agent_used
     from public.usage_counters uc
-    where uc.agent_id = p_agent_id
+    where uc.agent_id = public.dsg_text_to_uuid(p_agent_id)
       and uc.billing_period = v_period
     limit 1;
 
@@ -642,7 +642,7 @@ begin
     select coalesce(sum(uc.executions), 0)
       into v_org_used
     from public.usage_counters uc
-    where uc.org_id = p_org_id
+    where uc.org_id = public.dsg_text_to_uuid(p_org_id)
       and uc.billing_period = v_period;
 
     if coalesce(v_org_used, 0) >= p_org_plan_limit then
@@ -653,14 +653,14 @@ begin
   select coalesce(max(rts.truth_sequence), 0) + 1
     into v_truth_sequence
   from public.runtime_truth_states rts
-  where rts.org_id = p_org_id
-    and rts.agent_id = p_agent_id;
+  where rts.org_id = public.dsg_text_to_uuid(p_org_id)
+    and rts.agent_id = public.dsg_text_to_uuid(p_agent_id);
 
   select coalesce(max(rle.ledger_sequence), 0) + 1
     into v_ledger_sequence
   from public.runtime_ledger_entries rle
-  where rle.org_id = p_org_id
-    and rle.agent_id = p_agent_id;
+  where rle.org_id = public.dsg_text_to_uuid(p_org_id)
+    and rle.agent_id = public.dsg_text_to_uuid(p_agent_id);
 
   insert into public.runtime_truth_states (
     org_id,
@@ -856,7 +856,7 @@ begin
   set last_used_at = now(),
       updated_at = now()
   where id = p_agent_id
-    and org_id = p_org_id;
+    and org_id = public.dsg_text_to_uuid(p_org_id);
 
   return query
   select

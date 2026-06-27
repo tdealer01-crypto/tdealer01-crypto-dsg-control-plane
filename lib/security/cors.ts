@@ -21,6 +21,17 @@ function unique(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter(Boolean) as string[]));
 }
 
+function isStrictCors() {
+  return process.env.NODE_ENV === 'production' || process.env.DSG_CORS_STRICT === 'true';
+}
+
+function logBlockedOrigin(origin: string, request: Request) {
+  console.warn('[CORS] Blocked origin', {
+    origin,
+    path: new URL(request.url).pathname,
+  });
+}
+
 export function getAllowedCorsOrigins(): string[] {
   const explicit = String(process.env.DSG_ALLOWED_ORIGINS || '')
     .split(',')
@@ -35,7 +46,13 @@ export function getAllowedCorsOrigins(): string[] {
     ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
     : null;
 
-  return unique([...explicit, appOrigin, vercelOrigin]);
+  const origins = unique([...explicit, appOrigin, vercelOrigin]);
+
+  if (isStrictCors() && origins.length === 0) {
+    console.warn('[CORS] No allowed origins configured in strict mode');
+  }
+
+  return origins;
 }
 
 export function resolveAllowedOrigin(request: Request): string | null {
@@ -43,7 +60,9 @@ export function resolveAllowedOrigin(request: Request): string | null {
   if (!requestOrigin) return null;
 
   const allowed = getAllowedCorsOrigins();
-  return allowed.includes(requestOrigin) ? requestOrigin : null;
+  const allowedOrigin = allowed.find((origin) => origin === requestOrigin) ?? null;
+  if (!allowedOrigin && isStrictCors()) logBlockedOrigin(requestOrigin, request);
+  return allowedOrigin;
 }
 
 export function buildCorsHeaders(

@@ -25,15 +25,15 @@ describe('planGoal — keyword → tool mapping', () => {
     expect(plan.steps[0].params.agent_id).toBe('agt_test_01');
   });
 
-  it('plans checkpoint for "บันทึก agt_prod_01"', () => {
-    const plan = planGoal('บันทึก agt_prod_01');
+  it('plans checkpoint for "checkpoint agt_prod_01"', () => {
+    const plan = planGoal('checkpoint agt_prod_01');
     expect(plan.steps).toHaveLength(2);
     expect(plan.steps[0].toolId).toBe('recovery_validate');
     expect(plan.steps[1].toolId).toBe('checkpoint');
   });
 
-  it('plans capacity for "check โควต้า"', () => {
-    const plan = planGoal('check โควต้า');
+  it('plans capacity for "check quota"', () => {
+    const plan = planGoal('check quota');
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0].toolId).toBe('capacity');
   });
@@ -52,8 +52,8 @@ describe('planGoal — keyword → tool mapping', () => {
     expect(plan.steps[0].params.status).toBe('failed');
   });
 
-  it('plans create_agent for "สร้างเอเจนต์"', () => {
-    const plan = planGoal('สร้างเอเจนต์');
+  it('plans create_agent for "create agent"', () => {
+    const plan = planGoal('create agent');
     expect(plan.steps).toHaveLength(1);
     expect(plan.steps[0].toolId).toBe('create_agent');
     expect(plan.steps[0].params.name).toBe('New Agent');

@@ -1,0 +1,34 @@
+# Task 4: Readiness Check (SIM + optional REAL)
+goal: "Run production readiness check on a URL"
+mode: hybrid
+context:
+  targetUrl: "https://example.com"
+
+steps:
+  - id: navigate-readiness
+    type: navigate
+    rom: readiness-report
+    description: "Load readiness report page"
+
+  - id: fill-url
+    type: fill-form
+    rom: readiness-report
+    form: "readiness-check"
+    data:
+      url: "{{context.targetUrl}}"
+    description: "Enter target URL"
+
+  - id: run-check
+    type: click
+    rom: readiness-report
+    action: "runCheck"
+    verification:
+      type: "keys"
+      keys: ["verdict", "evidenceHash"]
+    description: "Run readiness check"
+
+  - id: extract-result
+    type: extract
+    rom: readiness-report
+    action: "extractResult"
+    description: "Extract readiness results"

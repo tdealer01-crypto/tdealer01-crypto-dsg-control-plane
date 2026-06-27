@@ -7,6 +7,7 @@ import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
 import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
+import { fireWebhook } from '../../../lib/webhooks/deliver';
 
 export const dynamic = 'force-dynamic';
 
@@ -196,20 +197,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Maximum ${MAX_AGENTS_PER_ORG} agents per organization` }, { status: 400, headers });
     }
 
-    const resolvedPolicyId = await resolvePolicyId(orgId, requestedPolicyId);
-    if (!resolvedPolicyId) {
-      return NextResponse.json({ error: 'policy_id is invalid or no policy is available' }, { status: 400, headers });
+    const resolvedPolicyId = requestedPolicyId ? await resolvePolicyId(orgId, requestedPolicyId) : null;
+
+    if (requestedPolicyId && !resolvedPolicyId) {
+      return NextResponse.json({ error: 'policy_id is invalid or not found' }, { status: 400, headers });
     }
 
     const apiKey = buildApiKey();
     const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
-    const agentId = `agt_${randomUUID().replace(/-/g, '')}`;
     const now = new Date().toISOString();
 
     const { data: inserted, error } = await supabase
       .from('agents')
       .insert({
-        id: agentId,
+        id: randomUUID(),
         org_id: orgId,
         name,
         policy_id: resolvedPolicyId,
@@ -226,6 +227,12 @@ export async function POST(request: Request) {
       logServerError(error, 'agents-post');
       return serverErrorResponse({ headers });
     }
+
+    void fireWebhook(orgId, 'agent.created', {
+      agent_id: inserted.id,
+      name: inserted.name,
+      policy_id: inserted.policy_id,
+    });
 
     return NextResponse.json({
       agent_id: inserted.id,

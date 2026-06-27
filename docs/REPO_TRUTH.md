@@ -56,6 +56,19 @@ Internally, it forwards to the current spine execution handler.
 - `POST /api/intent`
 - `POST /api/spine/execute`
 
+### Live deterministic proof/gate scaffold status
+
+- `GET /api/dsg/v1/policies/manifest` is live.
+- `POST /api/dsg/v1/gates/evaluate` is live and returns deterministic gate decision payloads.
+- `POST /api/dsg/v1/proofs/prove` is live as deterministic proof scaffold.
+- Verified payload evidence includes `policyVersion`, `constraintSetHash`, `proofHash`, `inputHash`, structured constraint results, and replay-protection fields.
+- Solver boundary remains deterministic TypeScript static-check scaffold metadata (`static_check`, `dsg-deterministic-ts-0.0.0`).
+
+Claim boundary reminder:
+- do not claim external Z3 production-solver invocation
+- do not claim enterprise-ready proof system
+- do not claim third-party certification or complete production governance platform
+
 These routes reflect the current spine-oriented execution shape in the control-plane repo.
 
 ### Authenticated operator routes
@@ -100,9 +113,9 @@ Suggested recovery flow:
 3. If PR 216 exists remotely, merge/cherry-pick by commit SHA, not PR number label.
 4. If PR 216 does not exist, continue from the latest merged baseline (`#220`) and re-open the missing changes as a new PR.
 
-## Current test baseline (April 17, 2026)
+## Historical baseline (April 17, 2026)
 
-This section is the active baseline for test-status truth in this repository.
+> **Note:** This is a historical snapshot. See `PROJECT_TRUTH.md` for the current test baseline.
 
 - Test files: **62 passed, 1 skipped, 0 failed**
 - Tests: **185 passed, 3 skipped, 0 failed**
@@ -132,6 +145,7 @@ Runbook-aligned status is **not yet closed** from repository evidence alone.
 
 Interpretation:
 - Treat the April 17 test baseline as repository-test truth.
+- Latest attempted live evidence run: `qa-logs/go-live-evidence-2026-05-03.md` (NO-GO due network/proxy and unverified runtime checks).
 - Do **not** mark go-live complete until the runbook evidence above is collected and recorded.
 
 ## Historical production-ready inventory snapshot (April 11, 2026)
@@ -427,5 +441,5 @@ Recommended triage order:
 
 Operational interpretation for this repository:
 
-- The April 11 control-plane inventory remains historically valid for that date; current test baseline is the April 17 committed result (185 passed, 3 skipped; 62 files passed, 1 skipped).
+- The April 11 control-plane inventory remains historically valid for that date; the April 17 historical baseline was 185 passed, 3 skipped; 62 files passed, 1 skipped (see PROJECT_TRUTH.md for current test baseline).
 - A `286/294` merge indicator should be handled as release-process metadata drift until a concrete failing required check is identified.

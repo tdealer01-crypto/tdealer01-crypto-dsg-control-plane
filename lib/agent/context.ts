@@ -1,9 +1,13 @@
+import type { HermesPluginContext } from '../dsg/hermes-plugin';
+
 export type AgentContext = {
   orgId: string;
   role: 'operator' | 'org_admin';
   origin: string;
   authHeader: string;
   cookieHeader: string;
+  approvalToken?: string;
+  hermesProof?: HermesPluginContext['proof'];
 };
 
 export type AgentPlanStep = {

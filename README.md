@@ -1,344 +1,519 @@
-# tdealer01-crypto-dsg-control-plane
+# DSG Control Plane
 
-Production-ready control plane for DSG runtime operations, built with Next.js App Router + Supabase.
+Production AI governance + execution platform for regulated workflows.
 
-This repository is structured to cover end-to-end runtime governance: Auth/SSO, Spine execution, DSG core integration, agent lifecycle, billing, enterprise proof, dashboards, and operational APIs.
-
----
-
-## Test Status (Latest Validated Baseline)
-
-Vitest baseline from the provided validated run:
-
-- **85 tests passed**
-- **41 test files passed**
-- **0 failures**
-
-### Breakdown
-
-| Category | Pass | Fail |
-|---|---:|---:|
-| Unit | 41 | 0 |
-| Integration | 35 | 0 |
-| Failure (negative) | 4 | 0 |
-| Migrations | 5 | 0 |
-| E2E (Playwright) | 0 | 1 *(browser install issue, not a code bug)* |
+Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 ---
 
-## Production-Ready File Inventory
+## Verified Results (evidence-backed)
 
-## 1) Root Config & Entry
-
-| File | Responsibility |
-|---|---|
-| `package.json` | Dependencies & scripts |
-| `tsconfig.json` | TypeScript config |
-| `next.config.js` | Next.js config |
-| `middleware.ts` | Edge middleware (auth/security) |
-| `vitest.config.ts` | Test runner config |
-| `playwright.config.ts` | E2E config |
-| `tailwind.config.js` | Tailwind CSS |
-| `postcss.config.js` | PostCSS |
-| `vercel.json` | Vercel deployment |
-| `.env.example` | Environment template |
+| Check | Result | Notes |
+|-------|--------|-------|
+| TypeScript typecheck | ✅ PASS | `tsc --noEmit` clean |
+| Production health | ✅ PASS | `/api/health` 200, `/api/agent/chat` 200 |
+| Vitest unit + integration | ✅ 82 passed / 0 failed | 54 Accenture 10Q + 28 incidents API |
+| Z3 runtime proofs | ✅ PASS | SHA-256 proof chain in spine/execute |
+| Finance governance actions | ✅ PASS | `tests/integration/api/finance-governance-actions.test.ts` |
+| Spine evidence chain | ⚠️ BLOCKED | Requires live Supabase env in test runner |
+| Stripe webhook | ⚠️ FAIL | Signature error message mismatch (3 tests) |
+| CORS preflight | ⚠️ FAIL | `access-control-allow-origin` header missing (1 test) |
+| CCVS evidence | ✅ PASS | Commit-signed, chain hash `a96fb356...` |
 
 ---
 
-## 2) `app/` — Next.js App Router (Pages & API)
+## Browser Agent (Stripe App Submission Automation)
 
-### Pages
+Automate Stripe app submission with resilient, auditable browser automation:
 
-| Path | Responsibility |
-|---|---|
-| `app/layout.tsx` | Root layout |
-| `app/page.tsx` | Landing page |
-| `app/login/page.tsx` | Login page |
-| `app/password-login/page.tsx` | Password login |
-| `app/signup/page.tsx` | Signup page |
-| `app/pricing/page.tsx` | Pricing page |
-| `app/quickstart/page.tsx` | Quickstart guide |
-| `app/marketplace/page.tsx` | Marketplace |
-| `app/marketplace-ui/page.tsx` | Marketplace UI |
-| `app/app-shell/page.tsx` | App shell |
-| `app/docs/page.tsx` | Docs page |
-| `app/request-access/page.tsx` | Request access |
-| `app/globals.css` | Global styles |
+| Feature | Details |
+|---------|---------|
+| **Orchestration** | 20-step workflow for Stripe dashboard submission |
+| **Handlers** | Navigation, form interaction, verification with error recovery |
+| **Checkpoints** | Save state every 3-5 steps, recover in 2-5 seconds (vs 30+ minutes) |
+| **Audit Trail** | Hash-chained evidence recording compatible with CCVS |
+| **Verification** | Step-level verification with evidence screenshots |
+| **API** | `POST /api/browser/stripe-submission/start` |
 
-### Auth Flow (`app/auth/`)
+**Usage** (Phase 1 - Core Infrastructure):
+```bash
+# Initiate submission
+curl -X POST http://localhost:3000/api/browser/stripe-submission/start \
+  -H "Content-Type: application/json" \
+  -d '{ "submissionData": { ... } }'
 
-- `app/auth/confirm/`
-- `app/auth/continue/`
-- `app/auth/login/`
-- `app/auth/password-login/`
-- `app/auth/signout/`
-- `app/auth/signup/`
+# Response
+{
+  "submissionId": "sub_xxx",
+  "browserbaseSessionId": "session_yyy",
+  "recordingUrl": "https://browserbase.com/sessions/..."
+}
+```
 
-### SSO & Enterprise Proof (`app/sso/`, `app/enterprise-proof/`)
+**Next** (Phase 2 - API Endpoints):
+- `POST /api/browser/stripe-submission/step` - Execute next step
+- `GET /api/browser/stripe-submission/progress/:id` - Track progress
+- Safe DOM manifest integration for element safety
 
-- `app/sso/start/`
-- `app/enterprise-proof/report/`
-- `app/enterprise-proof/start/`
-- `app/enterprise-proof/verified/`
-
-### Dashboard (`app/dashboard/`)
-
-| Path | Responsibility |
-|---|---|
-| `app/dashboard/layout.tsx` | Dashboard layout |
-| `app/dashboard/page.tsx` | Dashboard home |
-| `app/dashboard/error.tsx` | Error boundary |
-| `app/dashboard/agents/` | Agent management |
-| `app/dashboard/audit/` | Audit view |
-| `app/dashboard/billing/` | Billing view |
-| `app/dashboard/capacity/` | Capacity view |
-| `app/dashboard/command-center/` | Command center |
-| `app/dashboard/core-compat/` | Core compat view |
-| `app/dashboard/executions/` | Executions view |
-| `app/dashboard/integration/` | Integration view |
-| `app/dashboard/ledger/` | Ledger view |
-| `app/dashboard/mission/` | Mission view |
-| `app/dashboard/operations/` | Operations view |
-| `app/dashboard/policies/` | Policies view |
-| `app/dashboard/proofs/` | Proofs view |
-| `app/dashboard/replay/` | Replay view |
-| `app/dashboard/settings/` | Settings view |
-| `app/dashboard/skills/` | Skills view |
-
-### API Routes (`app/api/`)
-
-| Path | Responsibility |
-|---|---|
-| `app/api/access/` | Access control |
-| `app/api/adapter-plan/` | Adapter plan |
-| `app/api/agent-chat/` | Agent chat |
-| `app/api/agents/` | Agent CRUD |
-| `app/api/audit/` | Audit API |
-| `app/api/auth/` | Auth API |
-| `app/api/billing/` | Billing/Stripe |
-| `app/api/capacity/` | Capacity API |
-| `app/api/checkpoint/` | Checkpoint API |
-| `app/api/core-compat/` | Core compat |
-| `app/api/core/` | Core API |
-| `app/api/demo/` | Demo API |
-| `app/api/effect-callback/` | Effect callback |
-| `app/api/enterprise-proof/` | Enterprise proof |
-| `app/api/execute/` | **Spine execution** |
-| `app/api/executions/` | Executions list |
-| `app/api/executors/` | Executor dispatch |
-| `app/api/health/` | Health check |
-| `app/api/integration/` | Integration |
-| `app/api/intent/` | **Intent endpoint** |
-| `app/api/ledger/` | Ledger API |
-| `app/api/mcp/` | MCP protocol |
-| `app/api/metrics/` | Metrics |
-| `app/api/onboarding/` | Onboarding |
-| `app/api/policies/` | Policies API |
-| `app/api/proofs/` | Proofs API |
-| `app/api/quickstart/` | Quickstart API |
-| `app/api/replay/` | Replay API |
-| `app/api/runtime-recovery/` | Runtime recovery |
-| `app/api/runtime-summary/` | Runtime summary |
-| `app/api/settings/` | Settings API |
-| `app/api/spine/` | Spine API |
-| `app/api/usage/` | Usage API |
+**Implementation** (`lib/browser-agents/stripe-submission/`):
+- `types.ts` - Type definitions
+- `orchestrator.ts` - Workflow engine
+- `evidence-recorder.ts` - Audit trail with hash chain
+- `checkpoint.ts` - Checkpoint/recovery manager
+- `handlers/step-handler-factory.ts` - Step handlers
 
 ---
 
-## 3) `lib/` — Core Business Logic
+## Stack
 
-### Spine Execution Engine (`lib/spine/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/spine/engine.ts` | Spine engine core |
-| `lib/spine/pipeline.ts` | Plugin pipeline |
-| `lib/spine/plugin.ts` | Plugin interface |
-| `lib/spine/register-defaults.ts` | Default plugin registration |
-| `lib/spine/request.ts` | Request types |
-| `lib/spine/types.ts` | Spine types |
-| `lib/spine/plugins/` | Plugin implementations |
-
-### DSG Core Integration (`lib/dsg-core/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/dsg-core/index.ts` | Entry point / mode switch |
-| `lib/dsg-core/internal.ts` | In-process gate |
-| `lib/dsg-core/remote.ts` | Remote gate call |
-| `lib/dsg-core/types.ts` | Core types |
-
-### Gate (`lib/gate/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/gate/index.ts` | Gate entry |
-| `lib/gate/registry.ts` | Gate registry |
-| `lib/gate/types.ts` | Gate types |
-| `lib/gate/plugins/` | Gate plugins |
-
-### Runtime (`lib/runtime/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/runtime/approval.ts` | Approval flow |
-| `lib/runtime/canonical.ts` | Canonical state |
-| `lib/runtime/checkpoint.ts` | Checkpoint logic |
-| `lib/runtime/gate.ts` | Runtime gate |
-| `lib/runtime/makk8-arbiter.ts` | Makk8 arbiter |
-| `lib/runtime/permissions.ts` | Permissions |
-| `lib/runtime/reconcile.ts` | Reconciliation |
-| `lib/runtime/recovery.ts` | Recovery logic |
-
-### Auth & RBAC (`lib/auth/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/auth/access-policy.ts` | Access policy |
-| `lib/auth/directory-sync.ts` | Directory sync |
-| `lib/auth/guest-access.ts` | Guest access |
-| `lib/auth/jit-provisioning.ts` | JIT provisioning |
-| `lib/auth/login-context.ts` | Login context |
-| `lib/auth/preflight.ts` | Auth preflight |
-| `lib/auth/rbac.ts` | RBAC engine |
-| `lib/auth/require-active-profile.ts` | Profile guard |
-| `lib/auth/require-org-permission.ts` | Org permission guard |
-| `lib/auth/safe-next.ts` | Safe Next.js helpers |
-| `lib/auth/sign-in-events.ts` | Sign-in events |
-| `lib/auth/sso-config.ts` | SSO config |
-
-### Billing (`lib/billing/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/billing/overage-config.ts` | Overage config |
-| `lib/billing/seat-activation.ts` | Seat activation |
-
-### Security (`lib/security/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/security/api-error.ts` | API error handling |
-| `lib/security/audit-export.ts` | Audit export |
-| `lib/security/error-response.ts` | Error response |
-| `lib/security/rate-limit.ts` | Rate limiting |
-| `lib/security/safe-log.ts` | Safe logging |
-
-### Agent Tooling (`lib/agent/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/agent/context.ts` | Agent context |
-| `lib/agent/executor.ts` | Agent executor |
-| `lib/agent/planner.ts` | Agent planner |
-| `lib/agent/tools.ts` | Agent tools |
-
-### Enterprise Proof (`lib/enterprise/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/enterprise/proof-access.ts` | Proof access control |
-| `lib/enterprise/proof-public.ts` | Public proof |
-| `lib/enterprise/proof-runtime.ts` | Runtime proof |
-| `lib/enterprise/proof-types.ts` | Proof types |
-| `lib/enterprise/proof.ts` | Proof core |
-
-### Executors (`lib/executors/`)
-
-| File | Responsibility |
-|---|---|
-| `lib/executors/index.ts` | Executor entry |
-| `lib/executors/browserbase.ts` | Browserbase executor |
-| `lib/executors/social.ts` | Social executor |
-| `lib/executors/types.ts` | Executor types |
-
-### Other Lib Files
-
-| File | Responsibility |
-|---|---|
-| `lib/supabase/` | Supabase client |
-| `lib/onboarding/bootstrap.ts` | Onboarding bootstrap |
-| `lib/makk8/action-data.ts` | Makk8 action data |
-| `lib/agent-auth.ts` | Agent auth |
-| `lib/authz.ts` | Authorization |
-| `lib/core-compat.ts` | Core compatibility |
-| `lib/dsg-core.ts` | DSG core entry |
-| `lib/integration-status.ts` | Integration status |
-| `lib/resend.ts` | Email (Resend) |
-| `lib/stripe-products.ts` | Stripe products |
-| `lib/supabase-server.ts` | Supabase server client |
+- Frontend: Next.js 15, React 18, Tailwind, Motion, Recharts
+- Backend: Next.js Route Handlers (App Router)
+- Runtime + Governance DB: Supabase (Postgres)
+- Auth: Supabase Auth + internal service tokens
+- LLM: OpenRouter (multi-model failover)
+- Billing: Stripe (checkout, webhooks, metered usage)
+- Infra: Vercel, Upstash Redis
+- Testing: Vitest, Playwright, Z3 solver
+- Compliance: DSG Verification, CCVS evidence chain, Safe DOM, Answer Gate
 
 ---
 
-## 4) `components/` — UI Components
+## Environment Variables
 
-| File | Responsibility |
+Required in Vercel / `.env`:
+
+| Variable | Purpose |
 |---|---|
-| `components/GlobalNav.tsx` | Global navigation |
-| `components/LoginForm.tsx` | Login form |
-| `components/audit/entropy-matrix.tsx` | Audit entropy matrix |
-| `components/canvas/EntropyField.tsx` | Canvas entropy field |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role |
+| `NEXT_PUBLIC_APP_URL` | Canonical app URL |
+| `APP_URL` | Server-side base URL |
+| `DSG_ALLOWED_ORIGINS` | CORS allowed origins |
+| `DSG_DEFAULT_POLICY_ID` | Default policy |
+| `DSG_CORE_MODE` | `internal` or `remote` |
+| `DSG_CORE_URL` | Remote DSG Core URL (if remote mode) |
+| `DSG_CORE_API_KEY` | DSG Core API key |
+| `INTERNAL_SERVICE_TOKEN` | Machine-to-machine auth for agent/cron |
+| `OPENROUTER_API_KEY` | OpenRouter API key |
 
----
+Stripe (payments + Stripe App):
 
-## 5) `supabase/` — Database Schema & Migrations
-
-| File | Responsibility |
+| Variable | Purpose |
 |---|---|
-| `supabase/schema.sql` | Full schema |
-| `supabase/migrations/20260323053000_product_loop_scaffold.sql` | Product loop scaffold |
-| `supabase/migrations/20260323054500_product_loop_rls.sql` | RLS policies |
-| `supabase/migrations/20260323110000_billing_checkout_flow.sql` | Billing checkout |
-| `supabase/migrations/20260323140000_schema_constraints_hardening.sql` | Schema hardening |
-| `supabase/migrations/20260323141000_rls_policy_hardening.sql` | RLS hardening |
-| `supabase/migrations/20260330_monitor_stats.sql` | Monitor stats |
-| `supabase/migrations/20260331_runtime_spine.sql` | Runtime spine tables |
-| `supabase/migrations/20260331_runtime_spine_rpc.sql` | Runtime spine RPC |
-| `supabase/migrations/20260401093000_batch3_enterprise_identity_rollout.sql` | Enterprise identity |
-| `supabase/migrations/20260401120000_enterprise_access_batch2.sql` | Enterprise access |
-| `supabase/migrations/20260401_runtime_rbac.sql` | Runtime RBAC |
-| `supabase/migrations/20260401_schema_policies_table.sql` | Policies table |
-| `supabase/migrations/20260402_billing_quota_in_rpc.sql` | Billing quota RPC |
-| `supabase/migrations/20260404_runtime_spine_rpc_hardening.sql` | Spine RPC hardening |
+| `STRIPE_API_KEY` | Stripe secret key |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_CLIENT_ID` | Stripe Connect client ID |
+| `STRIPE_PRICE_PRO` | Pro price ID |
+| `STRIPE_PRICE_BUSINESS` | Business price ID |
+| `STRIPE_METER_ID` | Stripe Meter ID |
 
----
+Optional:
 
-## 6) `scripts/` — Deployment & Ops
-
-| File | Responsibility |
+| Variable | Purpose |
 |---|---|
-| `scripts/check-error-handlers.sh` | Error handler check |
-| `scripts/stripe-setup.ts` | Stripe setup |
-| `scripts/termux-deploy-all-in-one.sh` | Termux deploy |
-| `apply-billing-checkout-flow.sh` | Apply billing migration |
-| `apply-complete-audit-hotfix.sh` | Apply audit hotfix |
-| `set-vercel-runtime-env.sh` | Set Vercel runtime env |
-| `set-vercel-stripe-env.sh` | Set Vercel Stripe env |
+| `UPSTASH_REDIS_URL` | Redis for rate limit / quota |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash auth |
+| `GITHUB_APP_ID` | GitHub App integration |
+| `GITHUB_APP_PRIVATE_KEY` | GitHub App private key |
+| `SENTRY_DSN` | Error tracking |
+| `RESEND_API_KEY` | Email sending |
 
 ---
 
-## 7) `docs/` — Documentation
+## Compliance Status
 
-- `docs/OPERATOR_SETUP_CHECKLIST.md`
-- `docs/PR_REVIEW_PACK_V1_RUNTIME_GAP_2026-03-31.md`
-- `docs/REPO_TRUTH.md`
-- `docs/RUNBOOK_DEPLOY.md`
+### Accenture 10 Critical Questions
+
+| # | Question | Status | Evidence |
+|---|----------|--------|----------|
+| 1 | Agent decides from what? | ⚠️ Partial | Policy manifest + Z3 runtime proof chain + Safe DOM |
+| 2 | Who approves policy? | ⚠️ Partial | Role-based gate (operator, org_admin) + finance approval workflow |
+| 3 | Can audit be traced back? | ⚠️ Partial | Evidence chain + audit API; immutability verified at DB level |
+| 4 | Can logs be deleted? | ✅ VERIFIED | Append-only trigger + REVOKE mutation from anon/auth/service_role |
+| 5 | Prove agent doesn't hallucinate? | ⚠️ Partial | Z3 runtime proof + evidence trail (deterministic scaffold) |
+| 6 | EU AI Act? | ⚠️ Partial | Articles 9/12/13/14 mapped in code; not certified |
+| 7 | ISO 42001? | ⚠️ Partial | Annex A 7.3/9.2 mapped; not certified |
+| 8 | Control evidence? | ⚠️ Partial | Audit trail + access log + evidence pack (fragmented) |
+| 9 | Incident response? | ✅ VERIFIED | Incidents API + playbook + 28 integration tests |
+| 10 | Governance dashboard? | ✅ VERIFIED | `/dashboard/governance` with live data + 10Q status |
+
+Full mapping: [`docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md`](docs/ACCENTURE_10Q_COMPLIANCE_MAPPING.md)
+
+### Control Evidence Location
+
+- Audit schema + RLS policies: `supabase/migrations/20260620043300_harden_audit_logs_append_only.sql`
+- Incidents table (append-only): `supabase/migrations/20260624000000_create_incidents_table.sql`
+- Incident response playbook: `docs/compliance/incident-response-playbook.md`
+- GDPR position paper: `docs/compliance/gdpr-position-paper.md`
+- Evidence bundle: `docs/compliance/bundle/evidence.json` (commit-signed)
+- AIMS documentation: `docs/compliance/iso-42001-aims.md`
+- Z3 runtime proofs: `lib/dsg/logic/z3-runtime-check.ts`
 
 ---
 
-## Summary
+## Database
 
-This is the complete production-ready inventory for `tdealer01-crypto-dsg-control-plane`, covering:
+Supabase Postgres. Migrations under `supabase/migrations/`.
 
-- **Auth & SSO** (magic-link, password, SSO, RBAC, JIT provisioning)
-- **Spine Execution Engine** (intent → gate → ledger pipeline)
-- **DSG Core** (internal + remote safety gate)
-- **Agent Management** (CRUD, key rotation, tools, planner)
-- **Billing** (Stripe checkout, overage, seat activation)
-- **Enterprise Proof** (public + verified runtime proof)
-- **Dashboard** (19 complete views)
-- **API Routes** (33 endpoints)
-- **Database** (14 migrations + schema)
-- **Security** (rate-limit, safe-log, error handling)
+Core tables:
 
-Vitest baseline remains **85/85 tests passed** across **41 test files**, with Playwright E2E failing only on browser download/install constraints (403), not application logic.
+| Table | Purpose |
+|---|---|
+| `users` | Users (`auth_user_id` → Supabase Auth, `org_id`, `role`) |
+| `organizations` | Orgs |
+| `agents` | Agent definitions + policy + quota |
+| `policies` | Policy configs |
+| `executions` | Execution records |
+| `audit_logs` | Audit trail |
+| `usage_events` | Usage events |
+| `usage_counters` | Rolled-up usage |
+| `billing_subscriptions` | Stripe subscription state |
+| `billing_customers` | Stripe customer mapping |
+| `billing_events` | Metered billing events |
+| `trial_signups` | Trial tracking |
+
+Governance + approval:
+
+| Table | Purpose |
+|---|---|
+| `gateway_monitor_events` | Gateway event log |
+| `dsg_governance_decision_events` | DSG decision audit |
+| `dsg_agent_command_gate_decisions` | Agent command gate evidence |
+| `dsg_agent_action_result_receipts` | Action result receipts |
+| `agi_action_audit` | AGI action audit |
+| `user_confirmation_requests` | Human confirmation requests |
+
+Runtime spine:
+
+| Table | Purpose |
+|---|---|
+| `runtime_truth_states` | Canonical state snapshots |
+| `runtime_approval_requests` | Runtime approval requests |
+| `runtime_ledger_entries` | Immutable ledger |
+| `runtime_effects` | Effect tracking |
+| `runtime_checkpoints` | Checkpoints |
+
+Finance governance:
+
+| Table | Purpose |
+|---|---|
+| `finance_workflow_cases` | Finance case records |
+| `finance_workflow_approvals` | Finance approval steps |
+| `finance_workflow_action_events` | Finance action events |
+| `finance_approval_requests` | Finance approval requests |
+| `finance_approval_steps` | Finance approval steps |
+| `finance_approval_decisions` | Finance approval decisions |
+| `finance_exceptions` | Finance exceptions |
+| `finance_evidence_bundles` | Finance evidence |
+| `finance_export_jobs` | Finance exports |
+| `finance_governance_audit_ledger` | Finance audit ledger |
+
+Hermes / memory / skills:
+
+| Table | Purpose |
+|---|---|
+| `hermes_agents` | Hermes agent configs |
+| `hermes_sessions` | Chat sessions |
+| `hermes_session_events` | Session events |
+| `hermes_session_threads` | Session threads |
+| `hermes_memory_stores` | Memory stores |
+| `hermes_memories` | Memory entries |
+| `hermes_vaults` | Secret vaults |
+| `hermes_skills` | Skill metadata |
+| `hermes_environments` | Runtime environments |
+| `hermes_user_profiles` | User profiles |
+| `hermes_webhooks` | Webhooks |
+
+DSG App Builder:
+
+| Table | Purpose |
+|---|---|
+| `dsg_app_builder_jobs` | App builder jobs |
+| `dsg_app_builder_approvals` | App builder approvals |
+| `policies_markdoc` | Markdoc policies |
+| `policy_markdoc_versions` | Policy version history |
+
+Org / access / compliance:
+
+| Table | Purpose |
+|---|---|
+| `org_sso_configs` | SSO config |
+| `directory_sync_configs` | Directory sync |
+| `directory_group_role_mappings` | Group → role mappings |
+| `directory_sync_events` | Sync events |
+| `org_billing_policies` | Org billing policy |
+| `seat_activations` | Seat tracking |
+| `org_onboarding_states` | Onboarding state |
+| `guest_access_grants` | Guest access |
+| `access_requests` | Access requests |
+| `sign_in_events` | Auth events |
+| `safe_dom_manifests` | Safe DOM manifests |
+| `api_keys` | API keys |
+| `webhook_configs` | Webhook configs |
+| `webhook_deliveries` | Webhook deliveries |
+| `notifications` | Notifications |
+| `notification_settings` | Notification prefs |
+| `marketplace_products` | Marketplace listings |
+| `marketplace_checkout_sessions` | Marketplace checkout |
+| `stripe_app_accounts` | Stripe App accounts |
+| `stripe_operation_policies` | Stripe App policies |
+| `stripe_operation_audits` | Stripe App audits |
+| `repair_tickets` | Support tickets |
+| `ticket_messages` | Ticket messages |
+| `ticket_status_history` | Ticket history |
+| `incidents` | Incident response (append-only, RLS-scoped) |
+
+RLS is enforced on governance tables. Org isolation rule:
+`org_id` must derive from `auth.uid()` → `users.auth_user_id`. No client-supplied `org_id` bypass.
+
+---
+
+## API Surface (actually implemented)
+
+Core agent + workflow:
+
+| Route | Purpose |
+|---|---|
+| `POST /api/agent/chat` | Main chat (multi-agent orchestrator) |
+| `POST /api/chat/hermes` | Hermes chat (legacy adapter) |
+| `POST /api/assistant/chat` | Assistant chat |
+| `POST /api/agent/execute` | Agent execution |
+| `GET  /api/agent/status` | Agent status |
+| `GET  /api/agent/preflight` | Preflight check |
+| `POST /api/agent/commands` | Agent commands |
+| `GET  /api/agent/work-sessions` | Work sessions |
+| `GET  /api/agents` | List agents |
+| `GET  /api/agents/[id]` | Agent detail |
+| `POST /api/multi-agent/execute` | Multi-agent execution |
+
+Approval + governance:
+
+| Route | Purpose |
+|---|---|
+| `GET  /api/approval-queue/pending` | Pending approvals |
+| `POST /api/approval-queue/request` | Request approval |
+| `GET  /api/approval-queue/[id]` | Approval detail |
+| `GET  /api/gateway/approvals` | Gateway approval queue |
+| `POST /api/gateway/approvals` | Approve / reject |
+| `GET  /api/finance-governance/approvals` | Finance approvals |
+| `POST /api/finance-governance/submit` | Finance submit |
+| `GET  /api/finance-governance/readiness` | Readiness |
+| `GET  /api/finance-governance/onboarding` | Onboarding |
+| `GET  /api/finance-governance/audit-ledger` | Audit ledger |
+| `POST /api/dsg/agent-command-gate` | Agent command gate |
+| `GET  /api/dsg/evaluate` | Evaluate action |
+| `GET  /api/dsg/history` | History |
+
+Audit + evidence:
+
+| Route | Purpose |
+|---|---|
+| `GET  /api/audit` | Audit records |
+| `GET  /api/audit/export` | Audit export |
+| `GET  /api/audit/matrix` | Evidence matrix |
+| `GET  /api/enterprise-proof` | Enterprise proof |
+| `GET  /api/enterprise-proof/report` | Enterprise report |
+| `GET  /api/compliance-evidence-pack` | Evidence pack |
+| `GET  /api/compliance/export` | Compliance export |
+| `GET  /api/ccvs/evidence-chain` | CCVS evidence chain |
+| `GET  /api/ccvs/compliance-status` | CCVS status |
+
+Execution + gateway:
+
+| Route | Purpose |
+|---|---|
+| `POST /api/execute` | Execute tool |
+| `POST /api/executors/dispatch` | Dispatch executor |
+| `GET  /api/executions` | Execution history |
+| `GET  /api/gateway/connectors` | Connector list |
+| `POST /api/gateway/plan-check` | Plan check |
+| `POST /api/spine/execute` | Spine execute (Safe DOM) |
+| `GET  /api/safe-dom/browserbase` | Safe DOM status |
+| `GET  /api/checkpoint` | Checkpoint |
+| `POST /api/effect-callback` | Effect callback |
+| `GET  /api/replay/[executionId]` | Replay |
+
+Billing + subscription:
+
+| Route | Purpose |
+|---|---|
+| `POST /api/billing/checkout` | Create checkout |
+| `GET  /api/billing/meter-health` | Meter health |
+| `POST /api/billing/webhook` | Stripe webhook |
+| `GET  /api/release-gate/check` | Release gate |
+| `POST /api/release-gate/checkout` | Release checkout |
+| `GET  /api/marketplace/verify` | Marketplace verify |
+| `POST /api/marketplace/checkout` | Marketplace checkout |
+
+Auth + access:
+
+| Route | Purpose |
+|---|---|
+| `POST /api/auth/session` | Session |
+| `POST /api/auth/provision-access` | Provision access |
+| `POST /api/access/request` | Access request |
+| `POST /api/access/review` | Access review |
+
+Hermes:
+
+| Route | Purpose |
+|---|---|
+| `GET  /api/hermes/sessions` | Sessions |
+| `GET  /api/hermes/skills` | Skills |
+| `GET  /api/hermes/agents` | Agents |
+| `GET  /api/hermes/memory-stores` | Memory stores |
+| `GET  /api/hermes/vaults` | Vaults |
+| `GET  /api/hermes/webhooks` | Webhooks |
+| `GET  /api/hermes/environments` | Environments |
+| `POST /api/hermes/enroll` | Enroll |
+| `GET  /api/hermes/chat` | Hermes chat |
+| `GET  /api/hermes/user-profiles` | User profiles |
+
+Marketing + automation:
+
+| Route | Purpose |
+|---|---|
+| `GET  /api/marketing/agent` | Marketing agent |
+| `POST /api/cron/*` | Cron jobs (50+ scheduled tasks) |
+| `GET  /api/quickstart/*` | Quickstart flows |
+| `GET  /api/blog` | Blog |
+| `POST /api/beta-signup` | Beta signup |
+
+Stripe App (under `packages/stripe-app`):
+
+| Route | Purpose |
+|---|---|
+| `POST /api/stripe-app/webhook` | Stripe App webhook |
+| `POST /api/stripe-app/disconnect` | Disconnect |
+| `GET  /api/stripe-app/policies` | Policies |
+| `GET  /api/stripe-app/approvals` | Stripe App approvals |
+| `GET  /api/stripe-app/audit` | Stripe App audit |
+| `POST /api/stripe-app/connect` | Stripe App connect |
+
+|Metered billing ||
+
+### Incident response:
+
+| Route | Purpose |
+|---|---|
+| `GET  /api/incidents` | List incidents (monitor+) |
+| `POST /api/incidents` | Create incident (admin) |
+| `PATCH /api/incidents` | Update incident status (admin) |
+
+Other integration routes: `dsg-bridge/*`, `delegation/*`, `integrations/*`, `github-app/*`, `defi/*`, `playground/*`, `demo/*`, `proof/*`, `readiness/*`, `settings/*`, `support/*`, `incidents/*`.
+
+Full route list: `find app/api -name 'route.ts'`
+
+---
+
+## Library Structure (lib)
+
+Key namespaces:
+
+- `lib/agent*` — Agent execution, context, tools, skills
+- `lib/audit*` — Audit recording, hash chains
+- `lib/auth*` — RBAC, SSO, directory sync, safe redirects
+- `lib/billing*` — Entitlements, metering, quota, reconciliation
+- `lib/ccvs*` — CCVS evidence, compliance matrix, drift detection
+- `lib/dsg*` — Core DSG runtime: gates, planner, memory, safe DOM, answer gate, app builder, brain, context graph, deterministic proof, multi-agent
+- `lib/enterprise*` — Enterprise proof + access
+- `lib/executors*` — Browser, terminal, Android, Browserbase
+- `lib/finance-governance*` — Finance workflow, ledger, readiness
+- `lib/gateway*` — Gateway approval, audit, connectors, executor, policy
+- `lib/governance*` — Decision recorder
+- `lib/hermes*` — Hermes orchestrator, planner, skills, runtime
+- `lib/mcp*` — MCP server + tool schemas
+- `lib/runtime*` — Runtime gates, checkpoint, recovery
+- `lib/spine*` — Spine engine, pipeline, plugins, safe DOM verification
+- `lib/security*` — CORS, rate limit, audit export, secret crypto
+- `lib/stripe-app*` — Stripe App OAuth + deauth
+- `lib/webhooks*` — Webhook delivery
+
+---
+
+## Setup
+
+Prereqs:
+- Node.js 20+
+- Supabase project
+- OpenRouter API key
+- Vercel account (recommended)
+
+1. Clone
+2. `cp .env.example .env.local`
+3. `npm install --no-audit --no-fund --ignore-scripts`
+4. `npx supabase db push` (or apply migrations in Supabase SQL editor)
+5. `npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/database.types.ts`
+6. `npm run db:types` (if using script)
+7. `npm run dev` → http://localhost:3000
+
+Troubleshooting:
+- If Supabase install fails on Android/Termux: use `--ignore-scripts`
+- If DB push fails: run SQL from `supabase/migrations/` via Dashboard → SQL Editor
+- If RLS blocks inserts: check `users` table has `auth_user_id` matching your Supabase Auth user
+
+---
+
+## Testing
+
+| Command | Scope |
+|---|---|
+| `npm run typecheck` | TypeScript |
+| `npm test` | Vitest unit + integration |
+| `npm run test:integration` | Integration only |
+| `npm run test:live:db:required` | Live DB required suites |
+| `npm run test:e2e` | Playwright enterprise-proof + finance-governance |
+| `npm run test:multi-agent` | Multi-agent coordination |
+| `npm run ux:routes` | UX route map verification |
+| `npm run verify:policy` | Policy verification |
+| `npm run benchmark:full` | Full benchmark |
+| `npm run ccvs:pipeline` | Evidence pipeline |
+
+---
+
+## Deployment
+
+- Vercel: `vercel --yes --prod`
+- Env must include production Stripe + Supabase keys
+- `installCommand` in `vercel.json` is `npm ci` (lockfile synced with lucide-react)
+
+---
+
+## Packages
+
+- `packages/stripe-app/` — Stripe App marketplace build
+  - Build: `cd packages/stripe-app && npm run build`
+  - Docs: `packages/stripe-app/docs/`
+
+---
+
+## Known Limitations
+
+1. **Test coverage**: 82 tests passing (54 Accenture 10Q + 28 incidents API). Remaining failures are integration tests requiring live Supabase env vars.
+2. **Z3 proofs**: Runtime SHA-256 proof chain integrated in spine/execute. External Z3 solver not invoked per-request (design-time theorems: 8 UNSAT proofs for policy invariants).
+3. **EU AI Act**: Articles 9/12/13/14 mapped in compliance matrix. Not certified.
+4. **ISO 42001**: Annex A 7.3/9.2 mapped. Not certified; AIMS documentation incomplete.
+5. **Incident response**: API + playbook + 28 integration tests. Production persistence requires Supabase migration application.
+6. **Audit log immutability**: Append-only trigger + REVOKE + RLS verified at DB level. Incidents table migration pending production apply.
+7. **Local dev on Termux/Android**: `next dev` compile hangs for some routes. Use production URL instead.
+
+---
+
+## Key Design Rules
+
+- Org isolation: every row scoped by `org_id`. `org_id` is never trusted from client input.
+- Auth derives org from `auth.uid()` → `users.auth_user_id` → `users.org_id`.
+- High-risk tools require approval token (`gap_*`) before execution.
+- Approval queue uses `audit_token` (`gat_*`) to locate pending review, then returns `approvalToken` on approve.
+- Verification layer enforces ALLOW / REVIEW / BLOCK with evidence hash + record hash.
+- No Russian outputs in assistant/agent prompts.
+- Do not add mock-only routes or in-memory stores to production paths.
+- Compliance evidence is exported via `/api/compliance/export` and `/api/compliance-evidence-pack`.
+
+---
+
+## License
+
+Proprietary. All rights reserved.

@@ -1,9 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
+  "buildCommand": "npm run build",
   "crons": [
     {
-      "path": "/api/health",
+      "path": "/api/cron/flush-meter-outbox",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-meter",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-expired-leases",
       "schedule": "0 3 * * *"
     }
   ]

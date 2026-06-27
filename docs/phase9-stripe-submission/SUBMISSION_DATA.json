@@ -1,0 +1,356 @@
+{
+  "app_metadata": {
+    "app_id": "pics.dsg.governance",
+    "app_name": "DSG Governance Gate",
+    "version": "1.1.5",
+    "distribution_type": "public",
+    "sandbox_install_compatible": true,
+    "submission_date": "2026-06-12"
+  },
+  "app_descriptions": {
+    "about": "DSG Governance Gate displays ALLOW, BLOCK, or REVIEW policy decisions on the Stripe Dashboard payment detail view. Each decision shows its policy version, proof reference, and evaluation time inside the app panel. If the governance service is unreachable, the panel shows REVIEW — never ALLOW.",
+    "about_char_count": 293,
+    "about_max": 1000,
+    "subtitle": "Displays ALLOW, BLOCK, or REVIEW policy decisions on payment detail views.",
+    "subtitle_char_count": 74,
+    "subtitle_max": 80,
+    "key_features": [
+      {
+        "title": "Policy decision display",
+        "title_char_count": 23,
+        "title_max": 80,
+        "description": "Each charge opened in the payment detail view shows an ALLOW, BLOCK, or REVIEW decision badge with the reason, rendered inside the Stripe Dashboard app panel.",
+        "description_char_count": 158,
+        "description_max": 300
+      },
+      {
+        "title": "Decision details",
+        "title_char_count": 16,
+        "title_max": 80,
+        "description": "Every decision shows its policy version, proof reference, and evaluation timestamp in the app panel, giving operators a verifiable record for each evaluated charge.",
+        "description_char_count": 164,
+        "description_max": 300
+      },
+      {
+        "title": "Fail-safe behavior",
+        "title_char_count": 18,
+        "title_max": 80,
+        "description": "If the governance API is unreachable or returns an unknown verdict, the panel shows REVIEW instead of ALLOW, so an outage never reads as approval.",
+        "description_char_count": 146,
+        "description_max": 300
+      }
+    ],
+    "short_description": "Displays ALLOW, BLOCK, or REVIEW policy decisions on payment detail views.",
+    "short_description_char_count": 74,
+    "short_description_max": 140,
+    "long_description": "DSG Governance Gate displays ALLOW, BLOCK, or REVIEW policy decisions on the Stripe Dashboard payment detail view.\n\nHow it works:\n- When you open a payment, the app panel sends the charge ID to the DSG governance API and displays the returned decision.\n- Each decision shows its policy version, proof reference, and evaluation timestamp.\n- If the governance service is unreachable or returns an unknown verdict, the panel shows REVIEW — never ALLOW.\n\nScope:\n- The app renders only inside the Stripe Dashboard app drawer on the payment detail view.\n- The app does not modify charges, payments, or any other Stripe object.\n\nPermissions requested:\n- Read charges, to display the governance decision for the charge you are viewing.",
+    "long_description_char_count": 727,
+    "long_description_max": 4000,
+    "category": "Risk Management"
+  },
+  "contact_info": {
+    "support_email": "t.dealer01@dsg.pics",
+    "support_url": "https://dsg.pics/support",
+    "support_phone": null,
+    "contact_email": "t.dealer01@dsg.pics",
+    "contact_timezone": "US/Eastern"
+  },
+  "legal_urls": {
+    "privacy_policy": "https://dsg.pics/privacy",
+    "terms_of_service": "https://dsg.pics/terms",
+    "user_assistance": "https://dsg.pics/support",
+    "company_homepage": "https://dsg.pics"
+  },
+  "oauth_configuration": {
+    "access_type": "oauth",
+    "redirect_uris": [
+      "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe/oauth/callback",
+      "https://dsg-stripe-app.vercel.app/api/stripe-app/oauth/callback"
+    ]
+  },
+  "permissions": [
+    {
+      "permission": "charge_read",
+      "purpose": "Read charge details to display governance policy decisions in the payment detail view",
+      "required": true
+    }
+  ],
+  "webhook_configuration": {
+    "webhook_endpoint": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/stripe/webhook/events",
+    "signature_verification": true,
+    "events": [
+      "charge.created",
+      "charge.updated",
+      "charge.failed"
+    ]
+  },
+  "assets": {
+    "icon": {
+      "file": "docs/phase9-stripe-submission/assets/icon-1200x1200.png",
+      "format": "PNG",
+      "size": "1200x1200",
+      "background": "Transparent or solid color",
+      "required": true
+    },
+    "screenshots": [
+      {
+        "file": "docs/phase9-stripe-submission/assets/screenshot-1-dashboard-integration.png",
+        "title": "Dashboard Integration",
+        "description": "App integrated in Stripe Dashboard charge detail view",
+        "dimensions": "1200x800",
+        "format": "PNG",
+        "order": 1,
+        "required": true
+      },
+      {
+        "file": "docs/phase9-stripe-submission/assets/screenshot-2-governance-gate.png",
+        "title": "Governance Gate Decision",
+        "description": "Governance gate evaluation result (PASS/REVIEW/BLOCK)",
+        "dimensions": "1200x800",
+        "format": "PNG",
+        "order": 2,
+        "required": true
+      },
+      {
+        "file": "docs/phase9-stripe-submission/assets/screenshot-3-audit-trail.png",
+        "title": "Decision Audit Log",
+        "description": "Decision audit log with verifiable records and timestamps",
+        "dimensions": "1200x800",
+        "format": "PNG",
+        "order": 3,
+        "required": true
+      },
+      {
+        "file": "docs/phase9-stripe-submission/assets/screenshot-4-policy-config.png",
+        "title": "Policy Configuration",
+        "description": "Policy management interface",
+        "dimensions": "1200x800",
+        "format": "PNG",
+        "order": 4,
+        "required": false
+      },
+      {
+        "file": "docs/phase9-stripe-submission/assets/screenshot-5-approval-workflow.png",
+        "title": "Approval Workflow",
+        "description": "Multi-approval workflow UI",
+        "dimensions": "1200x800",
+        "format": "PNG",
+        "order": 5,
+        "required": false
+      }
+    ],
+    "legal_documents": [
+      {
+        "file": "docs/phase9-stripe-submission/assets/privacy-policy.pdf",
+        "type": "Privacy Policy",
+        "required": false
+      },
+      {
+        "file": "docs/phase9-stripe-submission/assets/terms-of-service.pdf",
+        "type": "Terms of Service",
+        "required": false
+      }
+    ]
+  },
+  "ui_extensions": {
+    "views": [
+      {
+        "viewport": "stripe.dashboard.payment.detail",
+        "component": "ChargeGate",
+        "description": "Governance gate in payment detail view"
+      }
+    ],
+    "content_security_policy": {
+      "connect-src": [
+        "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/",
+        "https://dsg-stripe-app.vercel.app/api/",
+        "https://api.dsg.pics/v1/"
+      ],
+      "purpose": "Connect to DSG governance API for policy evaluation and audit recording"
+    }
+  },
+  "post_install_action": {
+    "type": "external",
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/stripe-app"
+  },
+  "submission_checklist": {
+    "pre_submission": [
+      {
+        "item": "App icon exists and meets specifications (1200x1200 PNG)",
+        "status": "pending"
+      },
+      {
+        "item": "3 or more screenshots captured and saved",
+        "status": "pending"
+      },
+      {
+        "item": "Short description under 140 characters",
+        "status": "pending"
+      },
+      {
+        "item": "Long description under 4000 characters",
+        "status": "pending"
+      },
+      {
+        "item": "Support email configured and monitored",
+        "status": "pending"
+      },
+      {
+        "item": "Privacy policy URL is live and accessible",
+        "status": "pending"
+      },
+      {
+        "item": "Terms of Service URL is live and accessible",
+        "status": "pending"
+      },
+      {
+        "item": "OAuth redirect URIs are correct and tested",
+        "status": "pending"
+      },
+      {
+        "item": "Webhook endpoint is publicly accessible",
+        "status": "pending"
+      },
+      {
+        "item": "Webhook endpoint can verify Stripe signatures",
+        "status": "pending"
+      }
+    ],
+    "dashboard_submission": [
+      {
+        "step": "Open https://dashboard.stripe.com/apps",
+        "status": "pending"
+      },
+      {
+        "step": "Click 'Create an app'",
+        "status": "pending"
+      },
+      {
+        "step": "Fill app name: 'DSG Governance Gate'",
+        "status": "pending"
+      },
+      {
+        "step": "Select category: 'Risk Management'",
+        "status": "pending"
+      },
+      {
+        "step": "Enter short description (138/140 chars)",
+        "status": "pending"
+      },
+      {
+        "step": "Enter long description (915/4000 chars)",
+        "status": "pending"
+      },
+      {
+        "step": "Upload icon (1200x1200 PNG)",
+        "status": "pending"
+      },
+      {
+        "step": "Upload 3-5 screenshots",
+        "status": "pending"
+      },
+      {
+        "step": "Configure OAuth redirect URIs",
+        "status": "pending"
+      },
+      {
+        "step": "Select 5 permissions",
+        "status": "pending"
+      },
+      {
+        "step": "Add webhook endpoint URL",
+        "status": "pending"
+      },
+      {
+        "step": "Select 11 webhook events",
+        "status": "pending"
+      },
+      {
+        "step": "Enter support email",
+        "status": "pending"
+      },
+      {
+        "step": "Enter privacy policy URL",
+        "status": "pending"
+      },
+      {
+        "step": "Enter terms of service URL",
+        "status": "pending"
+      },
+      {
+        "step": "Review all information",
+        "status": "pending"
+      },
+      {
+        "step": "Click 'Submit for Review'",
+        "status": "pending"
+      },
+      {
+        "step": "Confirm submission popup",
+        "status": "pending"
+      },
+      {
+        "step": "Screenshot confirmation page",
+        "status": "pending"
+      },
+      {
+        "step": "Check email for Stripe confirmation",
+        "status": "pending"
+      }
+    ]
+  },
+  "timeline": {
+    "submission_target_date": "2026-06-07",
+    "estimated_review_start": "2026-06-07",
+    "estimated_approval_range": {
+      "minimum_days": 1,
+      "maximum_days": 43,
+      "typical_days": 7
+    },
+    "key_milestones": {
+      "day_0": "Submission sent",
+      "day_1_5": "Stripe reviews assets and legal docs",
+      "day_5_10": "Stripe tests OAuth and webhooks",
+      "day_10_20": "Possible change requests",
+      "day_20_30": "Final review if changes requested",
+      "day_30_43": "Approval or rejection"
+    }
+  },
+  "common_issues": [
+    {
+      "issue": "Webhook endpoint verification pending after 5 minutes",
+      "resolution": "Verify endpoint is publicly accessible, check CORS headers, review Stripe webhook logs"
+    },
+    {
+      "issue": "Stripe requests more description detail",
+      "resolution": "Expand long description with specific use cases and customer benefits"
+    },
+    {
+      "issue": "Icon appears blurry or unclear",
+      "resolution": "Ensure icon is exactly 1200x1200, has good contrast, uses clean lines"
+    },
+    {
+      "issue": "Screenshot quality is poor",
+      "resolution": "Retake screenshots at recommended 1200x800 resolution, ensure content is clearly visible"
+    },
+    {
+      "issue": "Stripe questions OAuth implementation",
+      "resolution": "Provide test account, explain OAuth flow, offer live demo"
+    }
+  ],
+  "success_criteria": {
+    "submission_complete": {
+      "dashboard_form_submitted": false,
+      "confirmation_email_received": false,
+      "app_in_review_queue": false,
+      "webhook_verified": false,
+      "all_assets_uploaded": false
+    },
+    "approval_complete": {
+      "approved_email_received": false,
+      "app_live_in_marketplace": false,
+      "discovery_enabled": false,
+      "merchant_installation_enabled": false
+    }
+  }
+}

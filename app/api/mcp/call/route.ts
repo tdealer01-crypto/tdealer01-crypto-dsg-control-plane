@@ -1,127 +1,73 @@
 import { NextResponse } from 'next/server';
-import { resolveAgentFromApiKey } from '../../../../lib/agent-auth';
-import { requireRuntimeAccess, type RuntimeAccessResult } from '../../../../lib/authz-runtime';
-import { requireInternalService } from '../../../../lib/auth/internal-service';
-import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
-import { handleApiError } from '../../../../lib/security/api-error';
-import { getSupabaseAdmin } from '../../../../lib/supabase-server';
-import { issueSpineIntent, executeSpineIntent } from '../../../../lib/spine/engine';
+import { requireOrgRole } from '../../../../lib/authz';
+import { executeSpineIntent, issueSpineIntent } from '../../../../lib/spine/engine';
 import { normalizeSpinePayload } from '../../../../lib/spine/request';
 
-const MCP_RATE_LIMIT = 30;
-const MCP_RATE_WINDOW_MS = 60_000;
+export const dynamic = 'force-dynamic';
+
+function bearerToken(request: Request) {
+  const header = request.headers.get('authorization') || '';
+  if (!header.startsWith('Bearer ')) return '';
+  return header.slice(7).trim();
+}
 
 export async function POST(request: Request) {
-  try {
-    const rateLimit = await applyRateLimit({
-      key: getRateLimitKey(request, 'mcp-call'),
-      limit: MCP_RATE_LIMIT,
-      windowMs: MCP_RATE_WINDOW_MS,
-    });
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        { status: 429, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
-      );
-    }
-    const internal = requireInternalService(request);
+  const access = await requireOrgRole(['operator', 'org_admin']);
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
+  }
 
-    const access: RuntimeAccessResult = internal.ok
-      ? {
-          ok: true,
-          orgId: internal.orgId,
-          actorType: 'internal_service',
-          grantedRoles: [],
-          agentId: internal.agentId,
-          workspaceId: internal.workspaceId,
-          executionId: internal.executionId,
-        }
-      : await requireRuntimeAccess(request, 'mcp_call');
-
-    if (!access.ok) {
-      return NextResponse.json(
-        { error: access.error },
-        { status: access.status, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
-      );
-    }
-
-    const body = await request.json().catch(() => null);
-
-    const payload = normalizeSpinePayload({
-      agent_id: body?.agent_id,
-      action: body?.action || 'mcp-call',
-      input: body?.payload ?? {},
-      context: {
-        source: 'mcp',
-      },
-    });
-
-    if (!payload.agentId) {
-      return NextResponse.json(
-        { error: 'agent_id is required' },
-        { status: 400, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
-      );
-    }
-
-    const authHeader = request.headers.get('authorization') || '';
-    const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-
-    const resolvedAgent = internal.ok
-      ? await getSupabaseAdmin()
-          .from('agents')
-          .select('id, org_id, policy_id, status, monthly_limit')
-          .eq('id', request.headers.get('x-agent-id'))
-          .eq('org_id', internal.orgId)
-          .maybeSingle()
-      : apiKey
-        ? { data: await resolveAgentFromApiKey(payload.agentId, apiKey), error: null }
-        : { data: null, error: null };
-
-    if (!resolvedAgent.data) {
-      return NextResponse.json(
-        { error: 'Invalid agent identity' },
-        { status: 401, headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
-      );
-    }
-
-    const intentResult = await issueSpineIntent({
-      orgId: access.orgId,
-      apiKey: internal.ok ? `internal:${internal.service}` : apiKey,
-      payload,
-    });
-
-    if (!intentResult.ok) {
-      return NextResponse.json(intentResult.body, {
-        status: intentResult.status,
-        headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT),
-      });
-    }
-
-    const executeResult = await executeSpineIntent({
-      orgId: access.orgId,
-      apiKey: internal.ok ? `internal:${internal.service}` : apiKey,
-      payload,
-    });
-
-    if (!executeResult.ok) {
-      return NextResponse.json(executeResult.body, {
-        status: executeResult.status,
-        headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT),
-      });
-    }
-
+  const apiKey = bearerToken(request);
+  if (!apiKey) {
     return NextResponse.json(
       {
-        runtime: executeResult.body,
-        dispatch: {
-          tool_name: body?.tool_name || 'unknown-tool',
-          dispatched: executeResult.body?.decision === 'ALLOW',
-          bypass_prevented: true,
-        },
+        ok: false,
+        error: 'MCP_CALL_API_KEY_REQUIRED',
+        message: 'MCP runtime calls require Authorization: Bearer <agent API key>. Use the Dashboard agent API key or Command Center UI before executing runtime tools.',
+        nextStep: 'Create or select an active agent, copy its API key, then retry with a Bearer token.',
       },
-      { headers: buildRateLimitHeaders(rateLimit, MCP_RATE_LIMIT) }
+      { status: 401 },
     );
-  } catch (error) {
-    return handleApiError('api/mcp/call', error);
   }
+
+  const body = await request.json().catch(() => null);
+  const payload = normalizeSpinePayload({
+    agent_id: body?.agent_id,
+    action: body?.action || body?.tool_name || 'mcp-call',
+    input: body?.payload || {},
+    context: {
+      source: 'mcp-call',
+      tool_name: body?.tool_name || 'mcp_call',
+    },
+  });
+
+  if (!payload.agentId) {
+    return NextResponse.json({ ok: false, error: 'agent_id is required' }, { status: 400 });
+  }
+
+  const issued = await issueSpineIntent({
+    orgId: access.orgId,
+    apiKey,
+    payload,
+  });
+
+  if (!issued.ok) {
+    return NextResponse.json({ ok: false, ...issued.body }, { status: issued.status });
+  }
+
+  const executed = await executeSpineIntent({
+    orgId: access.orgId,
+    apiKey,
+    payload,
+  });
+
+  return NextResponse.json(
+    {
+      ok: executed.ok,
+      intent: issued.body,
+      result: executed.body,
+      truthBoundary: 'MCP call executed through the DSG runtime spine with the provided agent API key. This is internal runtime evidence, not external certification.',
+    },
+    { status: executed.status },
+  );
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const submit = vi.fn();
 const applyAction = vi.fn();
+const getOrg = vi.fn();
 
 vi.mock('../../../lib/finance-governance/repository', () => ({
   FinanceGovernanceRepository: vi.fn().mockImplementation(() => ({
@@ -10,11 +11,21 @@ vi.mock('../../../lib/finance-governance/repository', () => ({
   })),
 }));
 
+vi.mock('../../../lib/server/getOrg', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/server/getOrg')>();
+  return {
+    ...actual,
+    getOrg,
+  };
+});
+
 describe('finance governance action routes', () => {
   beforeEach(() => {
     vi.resetModules();
     submit.mockReset();
     applyAction.mockReset();
+    getOrg.mockReset();
+    getOrg.mockResolvedValue('org-test');
     submit.mockImplementation(async (_orgId: string, caseId: string) => ({ ok: true, action: 'submit', caseId, nextStatus: 'pending' }));
     applyAction.mockImplementation(async (_orgId: string, approvalId: string, action: string) => ({ ok: true, action, approvalId, nextStatus: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'escalated' }));
   });
@@ -24,7 +35,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-org-id': 'org-test' },
+      headers: { 'Content-Type': 'application/json', 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
       body: JSON.stringify({ caseId: 'case-001' }),
     });
 
@@ -37,12 +48,46 @@ describe('finance governance action routes', () => {
     expect(body.nextStatus).toBe('pending');
   });
 
+  it('denies generic approval actions when actor role is not allowed', async () => {
+    const { POST } = await import('../../../app/api/finance-governance/approvals/route');
+
+    const request = new Request('http://localhost/api/finance-governance/approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-actor-role': 'viewer', 'x-org-plan': 'enterprise' },
+      body: JSON.stringify({ approvalId: 'APR-1004', action: 'approve' }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('role_not_allowed');
+    expect(applyAction).not.toHaveBeenCalled();
+  });
+
+  it('applies generic approval actions only after finance governance access passes', async () => {
+    const { POST } = await import('../../../app/api/finance-governance/approvals/route');
+
+    const request = new Request('http://localhost/api/finance-governance/approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
+      body: JSON.stringify({ approvalId: 'APR-1005', action: 'reject' }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.action).toBe('reject');
+    expect(applyAction).toHaveBeenCalledWith('org-test', 'APR-1005', 'reject');
+  });
+
   it('approves an approval item', async () => {
     const { POST } = await import('../../../app/api/finance-governance/approvals/[id]/approve/route');
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1001/approve', {
       method: 'POST',
-      headers: { 'x-org-id': 'org-test' },
+      headers: { 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'APR-1001' }) });
@@ -59,7 +104,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1002/reject', {
       method: 'POST',
-      headers: { 'x-org-id': 'org-test' },
+      headers: { 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'APR-1002' }) });
@@ -76,7 +121,7 @@ describe('finance governance action routes', () => {
 
     const request = new Request('http://localhost/api/finance-governance/approvals/APR-1003/escalate', {
       method: 'POST',
-      headers: { 'x-org-id': 'org-test' },
+      headers: { 'x-org-id': 'org-test', 'x-actor-role': 'finance_approver', 'x-org-plan': 'enterprise' },
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'APR-1003' }) });

@@ -28,21 +28,44 @@ async function callJson(
 
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (path === '/api/readiness' && response.status >= 500) {
+      return {
+        ready: false,
+        status: 'deployment_error',
+        warning: 'Readiness returned 500. Please inspect the deployment and Vercel logs before executing agents.',
+        error: String(json.error || 'readiness failed'),
+      };
+    }
     throw new Error(String(json.error || `Tool call failed (${path})`));
   }
 
   return json;
 }
 
+function requiredAgentId(params: Record<string, unknown>) {
+  const agentId = String(params.agent_id || '').trim();
+  if (!agentId) {
+    throw new Error('agent_id is required and cannot be empty');
+  }
+  return agentId;
+}
+
+function omitEmptyPolicy<T extends Record<string, unknown>>(payload: T) {
+  if (payload.policy_id === '' || payload.policy_id === 'default' || payload.policy_id === undefined) {
+    delete payload.policy_id;
+  }
+  return payload;
+}
+
 export const DSG_TOOLS: AgentTool[] = [
   {
     id: 'readiness',
     name: 'Check System Readiness',
-    description: 'Fetch readiness, health, entropy, alerts, and billing state.',
+    description: 'Fetch deployment readiness from /api/readiness with a safe warning fallback on server errors.',
     parameters: {},
     riskLevel: 'read',
     requiredRole: 'monitor',
-    execute: async (_params, context) => callJson(context, '/api/core/monitor', { method: 'GET' }),
+    execute: async (_params, context) => callJson(context, '/api/readiness', { method: 'GET' }),
   },
   {
     id: 'execute_action',
@@ -59,7 +82,7 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/mcp/call', {
         method: 'POST',
         body: JSON.stringify({
-          agent_id: params.agent_id,
+          agent_id: requiredAgentId(params),
           action: params.action,
           payload: params.payload || {},
           tool_name: 'agent-chat',
@@ -68,28 +91,52 @@ export const DSG_TOOLS: AgentTool[] = [
   },
   {
     id: 'browser_navigate',
-    name: 'Browser Navigate & Extract',
-    description: 'Navigate to a target URL through Browserbase executor.',
+    name: 'Browser Navigate (Browserbase)',
+    description: 'Open a URL in a Browserbase cloud browser with full JS rendering. Returns session live-view URL + HTTP-fetched text content.',
     parameters: {
-      agent_id: { type: 'string', required: true, description: 'Target agent ID' },
-      url: { type: 'string', required: true, description: 'Target URL to open' },
-      extract: { type: 'string', required: false, description: 'Extraction instruction or selector' },
+      url: { type: 'string', required: true, description: 'HTTPS URL to open' },
+      extract: { type: 'string', required: false, description: 'What to extract or look for on the page' },
     },
-    riskLevel: 'critical',
-    requiredRole: 'execute',
-    execute: async (params, context) =>
-      callJson(context, '/api/mcp/call', {
-        method: 'POST',
-        body: JSON.stringify({
-          agent_id: params.agent_id,
-          action: 'browser.navigate',
-          payload: {
-            url: params.url,
-            extract: params.extract,
-          },
-          tool_name: 'browser_navigate',
-        }),
-      }),
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params) => {
+      const url = String(params.url ?? '');
+      if (!url.startsWith('https://')) return { ok: false, error: 'only https:// URLs allowed' };
+
+      let httpContent = '';
+      try {
+        const r = await fetch(url, { headers: { 'user-agent': 'DSG-Agent/1.0' }, signal: AbortSignal.timeout(10_000) });
+        const raw = await r.text();
+        httpContent = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+      } catch {
+        httpContent = '(HTTP fetch failed)';
+      }
+
+      const apiKey = process.env.BROWSERBASE_API_KEY;
+      const projectId = process.env.BROWSERBASE_PROJECT_ID;
+      if (!apiKey || !projectId) {
+        return { ok: true, provider: 'http-fallback', url, content: httpContent, note: 'Browserbase not configured — returned HTTP fetch result' };
+      }
+
+      try {
+        const res = await fetch('https://api.browserbase.com/v1/sessions', {
+          method: 'POST',
+          headers: { 'x-bb-api-key': apiKey, 'content-type': 'application/json' },
+          body: JSON.stringify({ projectId, startUrl: url, keepAlive: false }),
+        });
+        const session = await res.json() as { id?: string; liveUrl?: string };
+        return {
+          ok: true,
+          provider: 'browserbase',
+          sessionId: session.id,
+          liveUrl: session.liveUrl ?? `https://www.browserbase.com/sessions/${session.id}`,
+          httpContent,
+          note: 'Cloud browser session created. liveUrl for live view. httpContent is HTTP-fetched text.',
+        };
+      } catch (err) {
+        return { ok: true, provider: 'http-fallback', url, content: httpContent, error: err instanceof Error ? err.message : 'browserbase failed' };
+      }
+    },
   },
   {
     id: 'telegram_send',
@@ -106,7 +153,7 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/mcp/call', {
         method: 'POST',
         body: JSON.stringify({
-          agent_id: params.agent_id,
+          agent_id: requiredAgentId(params),
           action: 'social.telegram.send',
           payload: {
             chat_id: params.chat_id,
@@ -126,7 +173,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'read',
     requiredRole: 'runtime_summary',
     execute: async (params, context) =>
-      callJson(context, `/api/runtime-summary?org_id=${encodeURIComponent(context.orgId)}&agent_id=${encodeURIComponent(String(params.agent_id || ''))}`, {
+      callJson(context, `/api/runtime-summary?org_id=${encodeURIComponent(context.orgId)}&agent_id=${encodeURIComponent(requiredAgentId(params))}`, {
         method: 'GET',
       }),
   },
@@ -142,7 +189,7 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/checkpoint', {
         method: 'POST',
-        body: JSON.stringify({ org_id: context.orgId, agent_id: params.agent_id }),
+        body: JSON.stringify({ org_id: context.orgId, agent_id: requiredAgentId(params) }),
       }),
   },
   {
@@ -157,7 +204,7 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/runtime-recovery', {
         method: 'POST',
-        body: JSON.stringify({ org_id: context.orgId, agent_id: params.agent_id }),
+        body: JSON.stringify({ org_id: context.orgId, agent_id: requiredAgentId(params) }),
       }),
   },
   {
@@ -200,7 +247,7 @@ export const DSG_TOOLS: AgentTool[] = [
     description: 'Create a new agent with one-time API key return.',
     parameters: {
       name: { type: 'string', required: true, description: 'Agent name' },
-      policy_id: { type: 'string', required: true, description: 'Policy ID' },
+      policy_id: { type: 'string', required: false, description: 'Policy ID; omit/null for backend default' },
       monthly_limit: { type: 'number', required: false, description: 'Monthly execution limit' },
     },
     riskLevel: 'write',
@@ -208,7 +255,7 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/agents', {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(omitEmptyPolicy({ ...params })),
       }),
   },
   {
@@ -217,7 +264,7 @@ export const DSG_TOOLS: AgentTool[] = [
     description: 'Create a chatbot-ready agent with safe defaults for interactive usage.',
     parameters: {
       name: { type: 'string', required: false, description: 'Agent name (default: Chatbot Agent)' },
-      policy_id: { type: 'string', required: false, description: 'Policy ID (default policy if omitted)' },
+      policy_id: { type: 'string', required: false, description: 'Policy ID; omit/null for backend default' },
       monthly_limit: { type: 'number', required: false, description: 'Monthly execution limit (default: 50000)' },
     },
     riskLevel: 'write',
@@ -225,11 +272,11 @@ export const DSG_TOOLS: AgentTool[] = [
     execute: async (params, context) =>
       callJson(context, '/api/agents', {
         method: 'POST',
-        body: JSON.stringify({
+        body: JSON.stringify(omitEmptyPolicy({
           name: String(params.name || 'Chatbot Agent'),
-          policy_id: params.policy_id ? String(params.policy_id) : undefined,
+          policy_id: params.policy_id ? String(params.policy_id) : null,
           monthly_limit: Number(params.monthly_limit || 50000),
-        }),
+        })),
       }),
   },
   {
@@ -355,7 +402,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'read',
     requiredRole: 'execute',
     execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, { method: 'GET' }),
+      callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}`, { method: 'GET' }),
   },
   {
     id: 'update_agent',
@@ -365,21 +412,18 @@ export const DSG_TOOLS: AgentTool[] = [
       agent_id: { type: 'string', required: true, description: 'Agent ID' },
       name: { type: 'string', required: false, description: 'New name' },
       status: { type: 'string', required: false, description: 'active or disabled' },
-      policy_id: { type: 'string', required: false, description: 'New policy ID' },
+      policy_id: { type: 'string', required: false, description: 'New policy ID; omit/null for backend default' },
       monthly_limit: { type: 'number', required: false, description: 'New monthly limit' },
     },
     riskLevel: 'write',
     requiredRole: 'execute',
-    execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, {
+    execute: async (params, context) => {
+      const { agent_id: _agentId, ...patch } = params;
+      return callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          name: params.name,
-          status: params.status,
-          policy_id: params.policy_id,
-          monthly_limit: params.monthly_limit,
-        }),
-      }),
+        body: JSON.stringify(omitEmptyPolicy(patch)),
+      });
+    },
   },
   {
     id: 'rotate_agent_key',
@@ -391,7 +435,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'critical',
     requiredRole: 'execute',
     execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}/rotate-key`, {
+      callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}/rotate-key`, {
         method: 'POST',
       }),
   },
@@ -405,7 +449,7 @@ export const DSG_TOOLS: AgentTool[] = [
     riskLevel: 'critical',
     requiredRole: 'execute',
     execute: async (params, context) =>
-      callJson(context, `/api/agents/${encodeURIComponent(String(params.agent_id || ''))}`, {
+      callJson(context, `/api/agents/${encodeURIComponent(requiredAgentId(params))}`, {
         method: 'DELETE',
       }),
   },
@@ -429,5 +473,110 @@ export const DSG_TOOLS: AgentTool[] = [
       callJson(context, '/api/setup/auto', {
         method: 'POST',
       }),
+  },
+
+  // ── Code execution (via Hermes Brain) ─────────────────────────────────────
+  {
+    id: 'write_code_file',
+    name: 'Write Code File',
+    description: 'Write a code file into the sandbox (/tmp/dsg-code/). Secret injection is blocked.',
+    parameters: {
+      filename: { type: 'string', required: true, description: 'Filename (e.g. script.py, index.js)' },
+      content: { type: 'string', required: true, description: 'File content' },
+      language: { type: 'string', required: false, description: 'Language hint (node | python3 | bash)' },
+    },
+    riskLevel: 'write',
+    requiredRole: 'operator',
+    execute: async (params, context) =>
+      callJson(context, '/api/dsg/code/write', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+  },
+  {
+    id: 'run_code',
+    name: 'Run Code (Hermes Brain)',
+    description: 'Execute inline code or a sandbox file through the Hermes Brain governance gate. Supports node, python3, bash. Returns stdout.',
+    parameters: {
+      runtime: { type: 'string', required: true, description: 'node | python3 | bash' },
+      code: { type: 'string', required: false, description: 'Inline code to run' },
+      file: { type: 'string', required: false, description: 'Filename already in /tmp/dsg-code/ to run' },
+    },
+    riskLevel: 'critical',
+    requiredRole: 'org_admin',
+    execute: async (params, context) => {
+      const runtime = String(params.runtime ?? 'node') as 'node' | 'python3' | 'bash';
+      const code = typeof params.code === 'string' ? params.code : undefined;
+      const file = typeof params.file === 'string' ? params.file : undefined;
+      const input = code
+        ? `Run this ${runtime} code: ${code.slice(0, 200)}`
+        : `Run file ${file ?? '(unknown)'} with ${runtime}`;
+      return callJson(context, '/api/dsg/brain/execute', {
+        method: 'POST',
+        body: JSON.stringify({ input, code, filename: file, runtime }),
+      });
+    },
+  },
+
+  // ── Compliance & delivery proof ───────────────────────────────────────────
+  {
+    id: 'get_compliance_status',
+    name: 'CCVS Compliance Status',
+    description: 'Get live CCVS compliance status — mutation score, claim gates, evidence chain.',
+    parameters: {
+      run_id: { type: 'string', required: false, description: 'Optional CI run ID for a specific report' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) => {
+      const qs = params.run_id ? `?run_id=${encodeURIComponent(String(params.run_id))}` : '';
+      return callJson(context, `/api/ccvs/compliance-status${qs}`);
+    },
+  },
+  {
+    id: 'get_delivery_proof',
+    name: 'Delivery Proof Scan',
+    description: 'Run a live Delivery Proof scan — checks readiness, health, auth gates on production.',
+    parameters: {
+      production_url: { type: 'string', required: false, description: 'Production URL to scan (defaults to this deployment)' },
+      readiness_path: { type: 'string', required: false, description: 'Readiness path (default: /api/readiness)' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params, context) =>
+      callJson(context, '/api/delivery-proof/scan', {
+        method: 'POST',
+        body: JSON.stringify({
+          production_url: params.production_url ?? context.origin,
+          readiness_path: params.readiness_path ?? '/api/readiness',
+        }),
+      }),
+  },
+
+  // ── Web fetch ─────────────────────────────────────────────────────────────
+  {
+    id: 'fetch_url',
+    name: 'Fetch URL',
+    description: 'Fetch a public HTTPS URL and return text content (no JS rendering). Fast and lightweight.',
+    parameters: {
+      url: { type: 'string', required: true, description: 'HTTPS URL to fetch' },
+      selector: { type: 'string', required: false, description: 'Optional keyword to search in the response' },
+    },
+    riskLevel: 'read',
+    requiredRole: 'monitor',
+    execute: async (params) => {
+      const url = String(params.url ?? '');
+      if (!url.startsWith('https://')) return { ok: false, error: 'only https:// URLs allowed' };
+      try {
+        const r = await fetch(url, { headers: { 'user-agent': 'DSG-Agent/1.0' }, signal: AbortSignal.timeout(10_000) });
+        const text = await r.text();
+        const trimmed = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4000);
+        const selector = typeof params.selector === 'string' ? params.selector : '';
+        const found = selector ? trimmed.toLowerCase().includes(selector.toLowerCase()) : null;
+        return { ok: r.ok, status: r.status, content: trimmed, found, url };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'fetch failed' };
+      }
+    },
   },
 ];

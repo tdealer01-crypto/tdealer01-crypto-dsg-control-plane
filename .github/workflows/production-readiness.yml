@@ -1,10 +1,13 @@
 name: Production Readiness Check
-# Required repository secrets:
+# Required repository secrets for full offline verification:
 # - VERCEL_TOKEN
 # - VERCEL_ORG_ID
 # - VERCEL_PROJECT_ID
 # - SUPABASE_DB_PASSWORD
 # - SUPABASE_PROJECT_REF
+#
+# Runtime readiness is verified through /api/finance-governance/readiness
+# (authoritative gate) and /api/readiness (basic env/config check).
 
 on:
   push:
@@ -26,18 +29,18 @@ jobs:
         run: |
           if [ -n "${{ secrets.VERCEL_TOKEN }}" ] && [ -n "${{ secrets.VERCEL_ORG_ID }}" ] && [ -n "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
             echo "has_vercel=true" >> $GITHUB_OUTPUT
-            echo "✓ Vercel secrets available"
+            echo "✓ Vercel management secrets available"
           else
             echo "has_vercel=false" >> $GITHUB_OUTPUT
-            echo "⚠ Vercel secrets missing — env-var-check will be skipped"
+            echo "⚠ Vercel management secrets missing — offline env-var-check will be skipped"
           fi
 
           if [ -n "${{ secrets.SUPABASE_DB_PASSWORD }}" ] && [ -n "${{ secrets.SUPABASE_PROJECT_REF }}" ]; then
             echo "has_supabase=true" >> $GITHUB_OUTPUT
-            echo "✓ Supabase secrets available"
+            echo "✓ Supabase migration secrets available"
           else
             echo "has_supabase=false" >> $GITHUB_OUTPUT
-            echo "⚠ Supabase secrets missing — db-migration-check will be skipped"
+            echo "⚠ Supabase migration secrets missing — db-migration-check will be skipped"
           fi
 
   env-var-check:
@@ -66,13 +69,27 @@ jobs:
       - name: Check CRITICAL variables
         id: check_critical
         run: |
-          CRITICAL_VARS="NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY DSG_CORE_MODE"
+          CRITICAL_VARS="NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DSG_CORE_MODE"
           MISSING=""
           for var in $CRITICAL_VARS; do
             if ! grep -q "^${var}=" .env.check || grep -q "^${var}=$" .env.check; then
               MISSING="$MISSING $var"
             fi
           done
+
+          HAS_ANON=false
+          if grep -q "^NEXT_PUBLIC_SUPABASE_ANON_KEY=" .env.check && ! grep -q "^NEXT_PUBLIC_SUPABASE_ANON_KEY=$" .env.check; then
+            HAS_ANON=true
+          fi
+
+          HAS_PUBLISHABLE=false
+          if grep -q "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=" .env.check && ! grep -q "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$" .env.check; then
+            HAS_PUBLISHABLE=true
+          fi
+
+          if [ "$HAS_ANON" = "false" ] && [ "$HAS_PUBLISHABLE" = "false" ]; then
+            MISSING="$MISSING NEXT_PUBLIC_SUPABASE_ANON_KEY|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          fi
 
           if [ -z "$MISSING" ]; then
             echo "status=pass" >> $GITHUB_OUTPUT
@@ -187,6 +204,8 @@ jobs:
     needs: preflight-secrets-check
     outputs:
       health_status: ${{ steps.health.outputs.status }}
+      readiness_status: ${{ steps.readiness.outputs.status }}
+      finance_readiness_status: ${{ steps.finance_readiness.outputs.status }}
       monitor_status: ${{ steps.monitor.outputs.status }}
       usage_status: ${{ steps.usage.outputs.status }}
     steps:
@@ -214,6 +233,10 @@ jobs:
               else
                 echo "⚠ HTTP 200 but ok != true (attempt $i)"
               fi
+            elif [ "$HTTP_CODE" = "429" ]; then
+              echo "status=rate_limited" >> $GITHUB_OUTPUT
+              echo "⚠ /api/health is rate limited (HTTP 429). Non-fatal."
+              exit 0
             else
               echo "⚠ HTTP $HTTP_CODE (attempt $i/$MAX_RETRIES)"
             fi
@@ -226,6 +249,38 @@ jobs:
           echo "status=fail" >> $GITHUB_OUTPUT
           echo "✗ Health check failed after $MAX_RETRIES attempts"
           exit 1
+
+      - name: Check /api/readiness
+        id: readiness
+        continue-on-error: true
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          HTTP_CODE=$(curl -sS -o /tmp/readiness.json -w "%{http_code}" --max-time 15 "${BASE_URL}/api/readiness" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ] && jq -e '.ok == true' /tmp/readiness.json > /dev/null 2>&1; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ Readiness check passed"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "⚠ Readiness check non-blocking fail (HTTP $HTTP_CODE) — see /api/finance-governance/readiness for authoritative status"
+            cat /tmp/readiness.json || true
+          fi
+
+      - name: Check /api/finance-governance/readiness
+        id: finance_readiness
+        run: |
+          BASE_URL="https://tdealer01-crypto-dsg-control-plane.vercel.app"
+          HTTP_CODE=$(curl -sS -o /tmp/finance_readiness.json -w "%{http_code}" --max-time 15 "${BASE_URL}/api/finance-governance/readiness" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "200" ] && jq -e '.ok == true' /tmp/finance_readiness.json > /dev/null 2>&1; then
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "✓ Finance readiness check passed"
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "✗ Finance readiness check failed (HTTP $HTTP_CODE)"
+            cat /tmp/finance_readiness.json || true
+            exit 1
+          fi
 
       - name: Check /api/core/monitor
         id: monitor
@@ -241,6 +296,9 @@ jobs:
           elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
             echo "status=auth_required" >> $GITHUB_OUTPUT
             echo "⚠ Core monitor requires authentication (HTTP $HTTP_CODE) — expected for unauthenticated CI"
+          elif [ "$HTTP_CODE" = "429" ]; then
+            echo "status=rate_limited" >> $GITHUB_OUTPUT
+            echo "⚠ Core monitor rate limited (HTTP 429)"
           else
             echo "status=fail" >> $GITHUB_OUTPUT
             echo "✗ Core monitor HTTP $HTTP_CODE"
@@ -259,6 +317,9 @@ jobs:
           elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
             echo "status=auth_required" >> $GITHUB_OUTPUT
             echo "⚠ Usage endpoint requires authentication (HTTP $HTTP_CODE)"
+          elif [ "$HTTP_CODE" = "429" ]; then
+            echo "status=rate_limited" >> $GITHUB_OUTPUT
+            echo "⚠ Usage endpoint rate limited (HTTP 429)"
           else
             echo "status=fail" >> $GITHUB_OUTPUT
             echo "✗ Usage endpoint HTTP $HTTP_CODE"
@@ -272,7 +333,9 @@ jobs:
 
           | Endpoint | Status |
           |----------|--------|
-          | /api/health | ${{ steps.health.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
+          | /api/health | ${{ steps.health.outputs.status == 'pass' && '✅ Pass' || steps.health.outputs.status == 'rate_limited' && '⚠️ Rate Limited' || '❌ Fail' }} |
+          | /api/readiness | ${{ steps.readiness.outputs.status == 'pass' && '✅ Pass' || '⚠️ Non-blocking' }} |
+          | /api/finance-governance/readiness | ${{ steps.finance_readiness.outputs.status == 'pass' && '✅ Pass' || '❌ Fail' }} |
           | /api/core/monitor | ${{ steps.monitor.outputs.status == 'ready' && '✅ Ready' || steps.monitor.outputs.status == 'auth_required' && '🔒 Auth Required' || '⚠️ ' }}${{ steps.monitor.outputs.status }} |
           | /api/usage | ${{ steps.usage.outputs.status == 'pass' && '✅ Pass' || steps.usage.outputs.status == 'auth_required' && '🔒 Auth Required' || '⚠️ ' }}${{ steps.usage.outputs.status }} |
           EOF
@@ -289,28 +352,56 @@ jobs:
           # Production Readiness Summary
 
           ## Secrets
-          - Vercel: ${{ needs.preflight-secrets-check.outputs.has_vercel == 'true' && '✅ Available' || '⚠️ Missing' }}
-          - Supabase: ${{ needs.preflight-secrets-check.outputs.has_supabase == 'true' && '✅ Available' || '⚠️ Missing' }}
+          - Vercel management: ${{ needs.preflight-secrets-check.outputs.has_vercel == 'true' && '✅ Available' || '⚠️ Missing / offline check skipped' }}
+          - Supabase migration: ${{ needs.preflight-secrets-check.outputs.has_supabase == 'true' && '✅ Available' || '⚠️ Missing / migration check skipped' }}
 
           ## Environment Variables
-          ${{ needs.env-var-check.result == 'skipped' && '⏭️ Skipped (no Vercel secrets)' || '' }}
+          ${{ needs.env-var-check.result == 'skipped' && '⏭️ Skipped (no Vercel management secrets). Runtime env verified by /api/finance-governance/readiness.' || '' }}
           - CRITICAL: ${{ needs.env-var-check.outputs.critical_status == 'pass' && '✅ Pass' || needs.env-var-check.result == 'skipped' && '⏭️ Skipped' || '❌ Fail' }}
           - REQUIRED: ${{ needs.env-var-check.outputs.required_status == 'pass' && '✅ Pass' || needs.env-var-check.result == 'skipped' && '⏭️ Skipped' || '⚠️ Warn' }}
           - BILLING: ${{ needs.env-var-check.outputs.billing_status == 'pass' && '✅ Pass' || needs.env-var-check.result == 'skipped' && '⏭️ Skipped' || '⚠️ Warn' }}
 
           ## Database
-          - Migration Status: ${{ needs.db-migration-check.result == 'success' && '✅ Pass' || needs.db-migration-check.result == 'skipped' && '⏭️ Skipped (no Supabase secrets)' || '⚠️ Check logs' }}
+          - Migration Status: ${{ needs.db-migration-check.result == 'success' && '✅ Pass' || needs.db-migration-check.result == 'skipped' && '⏭️ Skipped (no Supabase migration secrets)' || '⚠️ Check logs' }}
 
           ## Health Checks
-          - /api/health: ${{ needs.health-check.outputs.health_status == 'pass' && '✅ Healthy' || '❌ Down' }}
+          - /api/health: ${{ needs.health-check.outputs.health_status == 'pass' && '✅ Healthy' || needs.health-check.outputs.health_status == 'rate_limited' && '⚠️ Rate limited, non-fatal' || '❌ Down' }}
+          - /api/readiness (informational): ${{ needs.health-check.outputs.readiness_status == 'pass' && '✅ Pass' || '⚠️ Non-blocking' }}
+          - /api/finance-governance/readiness (authoritative gate): ${{ needs.health-check.outputs.finance_readiness_status == 'pass' && '✅ Ready' || '❌ Not Ready' }}
           - /api/core/monitor: ${{ needs.health-check.outputs.monitor_status }}
           - /api/usage: ${{ needs.health-check.outputs.usage_status }}
 
           ## Overall Status
-          ${{ needs.health-check.outputs.health_status == 'pass' && (needs.env-var-check.result == 'success' || needs.env-var-check.result == 'skipped') && '### ✅ Production Ready' || '### ⚠️ Review Required' }}
+          ${{ needs.health-check.outputs.finance_readiness_status == 'pass' && (needs.env-var-check.result == 'success' || needs.env-var-check.result == 'skipped') && (needs.db-migration-check.result == 'success' || needs.db-migration-check.result == 'skipped') && '### ✅ Production Runtime Ready' || '### ⚠️ Review Required' }}
 
           Generated: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EOF
+
+      - name: Enforce production readiness gate
+        run: |
+          if [ "${{ needs.preflight-secrets-check.outputs.has_vercel }}" = "true" ] && [ "${{ needs.env-var-check.result }}" != "success" ]; then
+            echo "env-var-check is not success while Vercel management secrets are configured"
+            exit 1
+          fi
+
+          if [ "${{ needs.preflight-secrets-check.outputs.has_supabase }}" = "true" ] && [ "${{ needs.db-migration-check.result }}" != "success" ]; then
+            echo "db-migration-check is not success while Supabase migration secrets are configured"
+            exit 1
+          fi
+
+          # /api/readiness is informational — transient Supabase timeouts do not block the gate.
+          # /api/finance-governance/readiness is the authoritative runtime gate.
+          if [ "${{ needs.health-check.outputs.finance_readiness_status }}" != "pass" ]; then
+            echo "/api/finance-governance/readiness is not pass"
+            exit 1
+          fi
+
+          if [ "${{ needs.health-check.outputs.health_status }}" = "fail" ]; then
+            echo "/api/health is fail"
+            exit 1
+          fi
+
+          echo "Production readiness gate passed"
 
       - name: Create issue on scheduled failure
         if: github.event_name == 'schedule' && (needs.preflight-secrets-check.result == 'failure' || needs.env-var-check.result == 'failure' || needs.db-migration-check.result == 'failure' || needs.health-check.result == 'failure')

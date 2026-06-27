@@ -1,31 +1,23 @@
 import { NextResponse } from "next/server";
-import { createClient } from "../../../lib/supabase/server";
+import { requireRuntimeAccess } from "../../../lib/authz-runtime";
+import { getSupabaseAdmin } from "../../../lib/supabase-server";
 import { logServerError, serverErrorResponse } from "../../../lib/security/error-response";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Match the sibling read routes (/api/executions, /api/audit): a
+    // server-verified runtime access check + the service-role admin client
+    // scoped by org_id. The previous cookie-SSR client ran the audit_logs
+    // query under RLS as the `authenticated` role, which failed and surfaced
+    // as a generic 500 to callers such as the Hermes "Proof list" tool.
+    const access = await requireRuntimeAccess(request, "executions_read");
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("org_id, is_active")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile?.org_id || !profile.is_active) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const supabase = getSupabaseAdmin();
 
     const url = new URL(request.url);
     const limit = Math.min(Number(url.searchParams.get("limit") || "20"), 100);
@@ -40,7 +32,7 @@ export async function GET(request: Request) {
         evidence,
         created_at
       `)
-      .eq("org_id", profile.org_id)
+      .eq("org_id", access.orgId)
       .order("created_at", { ascending: false })
       .limit(limit);
 

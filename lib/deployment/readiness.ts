@@ -1,0 +1,158 @@
+import { getDSGCoreConfig, getDSGCoreHealth } from '../dsg-core';
+import { checkFinanceGovernanceReadiness } from '../finance-governance/readiness';
+import { getSupabaseAdmin } from '../supabase-server';
+
+type CheckResult = {
+  ok: boolean;
+  detail?: string;
+};
+
+export type ReadinessReport = {
+  ok: boolean;
+  checks: {
+    env: CheckResult;
+    nextAuthSecret: CheckResult;
+    supabaseServiceRole: CheckResult;
+    dsgCoreConfig: CheckResult;
+    dsgCoreHealth: CheckResult;
+    financeGovernanceSurface: CheckResult;
+    financeGovernanceBackend: CheckResult;
+  };
+  timestamp: string;
+};
+
+const READINESS_TIMEOUT_MS = 5_000;
+type SupabaseProbeResult = {
+  error: { message?: string } | null;
+};
+
+function buildCheck(ok: boolean, detail?: string): CheckResult {
+  return { ok, ...(detail ? { detail } : {}) };
+}
+
+function parseBooleanFlag(value: string | undefined, fallback: boolean) {
+  if (value == null) return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
+async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = READINESS_TIMEOUT_MS): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+export async function getDeploymentReadiness(): Promise<ReadinessReport> {
+  const requiredEnv = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'DSG_CORE_MODE'];
+  const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+  const envCheck = buildCheck(missingEnv.length === 0, missingEnv.length ? `missing:${missingEnv.join(',')}` : undefined);
+
+  const nextAuthSecret = buildCheck(Boolean(process.env.NEXTAUTH_SECRET), process.env.NEXTAUTH_SECRET ? undefined : 'NEXTAUTH_SECRET missing');
+
+  // Live Supabase probe — informational only, transient timeouts do not affect ok.
+  // Authoritative DB connectivity is verified by /api/finance-governance/readiness.
+  let supabaseServiceRole = buildCheck(false, 'not_checked');
+  try {
+    const admin = getSupabaseAdmin() as any;
+    const probeResult = await withTimeout<SupabaseProbeResult>(
+      admin.from('organizations').select('id').limit(1) as Promise<SupabaseProbeResult>,
+      'supabase_service_role'
+    );
+    const error = probeResult.error;
+    supabaseServiceRole = buildCheck(!error, error?.message);
+  } catch (error) {
+    supabaseServiceRole = buildCheck(false, error instanceof Error ? error.message : 'supabase_unreachable');
+  }
+
+  let dsgCoreConfig = buildCheck(false, 'not_checked');
+  // Live DSG core health probe — informational only, does not affect ok.
+  let dsgCoreHealth = buildCheck(false, 'not_checked');
+
+  try {
+    const config = getDSGCoreConfig();
+    const missingRemoteUrl = config.mode === 'remote' && !config.url;
+    dsgCoreConfig = buildCheck(!missingRemoteUrl, missingRemoteUrl ? 'DSG_CORE_URL missing for remote mode' : undefined);
+
+    try {
+      const health = await withTimeout(
+        getDSGCoreHealth() as Promise<Record<string, unknown>>,
+        'dsg_core_health'
+      );
+      dsgCoreHealth = buildCheck(Boolean(health.ok), health.ok ? undefined : String(health.error ?? 'core_unreachable'));
+    } catch (healthError) {
+      dsgCoreHealth = buildCheck(false, healthError instanceof Error ? healthError.message : 'dsg_core_unreachable');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'dsg_core_unreachable';
+    dsgCoreConfig = buildCheck(false, message);
+    dsgCoreHealth = buildCheck(false, message);
+  }
+
+  const financeGovernanceEnabled = parseBooleanFlag(process.env.DSG_FINANCE_GOVERNANCE_ENABLED, true);
+  const financeGovernanceSurface = buildCheck(
+    financeGovernanceEnabled,
+    financeGovernanceEnabled ? undefined : 'finance_governance_disabled'
+  );
+
+  // Finance governance backend probe — informational only, does not affect ok.
+  // Use /api/finance-governance/readiness for authoritative finance health.
+  let financeGovernanceBackend = buildCheck(false, 'not_checked');
+  if (financeGovernanceEnabled) {
+    try {
+      const financeReadiness = await withTimeout(
+        checkFinanceGovernanceReadiness(),
+        'finance_governance_backend',
+        7_000
+      );
+      const failedChecks = financeReadiness.checks
+        .filter((check) => check.required && !check.ok)
+        .map((check) => `${check.name}:${check.message ?? 'failed'}`);
+      financeGovernanceBackend = buildCheck(
+        financeReadiness.ok,
+        failedChecks.length ? failedChecks.join(';') : undefined
+      );
+    } catch (error) {
+      financeGovernanceBackend = buildCheck(
+        false,
+        error instanceof Error ? error.message : 'finance_governance_backend_unreachable'
+      );
+    }
+  } else {
+    financeGovernanceBackend = buildCheck(true, 'skipped:finance_governance_disabled');
+  }
+
+  const checks = {
+    env: envCheck,
+    nextAuthSecret,
+    supabaseServiceRole,
+    dsgCoreConfig,
+    dsgCoreHealth,
+    financeGovernanceSurface,
+    financeGovernanceBackend,
+  };
+
+  // Production readiness is fail-closed: a green release gate requires the
+  // environment, service-role DB probe, DSG core, and finance backend to pass.
+  // Local developers can opt out only with READINESS_STRICT=false; production
+  // and preview deploys default to strict checks.
+  const strictReadiness = parseBooleanFlag(process.env.READINESS_STRICT, process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
+  const criticalChecks = strictReadiness
+    ? checks
+    : { env: envCheck, nextAuthSecret, dsgCoreConfig, financeGovernanceSurface };
+
+  return {
+    ok: Object.values(criticalChecks).every((check) => check.ok),
+    checks,
+    timestamp: new Date().toISOString(),
+  };
+}

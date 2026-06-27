@@ -3,6 +3,9 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
+import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
+import { fulfillSubscription, revokeSubscription } from '../../../../lib/billing/fulfillment';
+import { REVOKED_STATUSES } from '../../../../lib/billing/entitlements';
 
 export const dynamic = 'force-dynamic';
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
@@ -51,6 +54,32 @@ function toIso(value: number | null | undefined) {
   return new Date(value * 1000).toISOString();
 }
 
+async function lookupRefCode(supabase: SupabaseAdmin, email: string | null): Promise<string | null> {
+  if (!email) return null;
+
+  const { data: signup } = await (supabase as any)
+    .from('trial_signups')
+    .select('ref_code')
+    .eq('email', email)
+    .not('ref_code', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (signup?.ref_code) return String(signup.ref_code);
+
+  const { data: accessReq } = await (supabase as any)
+    .from('access_requests')
+    .select('ref_code')
+    .eq('email', email)
+    .not('ref_code', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return accessReq?.ref_code ? String(accessReq.ref_code) : null;
+}
+
 async function resolveOrgIdByEmail(supabase: SupabaseAdmin, email: string | null) {
   if (!email) return null;
 
@@ -81,7 +110,7 @@ async function getBillingCustomer(supabase: SupabaseAdmin, stripeCustomerId: str
 }
 
 async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
-  const object = event.data.object as Record<string, unknown>;
+  const object = event.data.object as unknown as Record<string, unknown>;
 
   const stripeCustomerId =
     typeof object?.customer === 'string' ? object.customer : null;
@@ -184,6 +213,66 @@ async function upsertBillingSubscription(supabase: SupabaseAdmin, payload: Billi
   });
 }
 
+async function handleInvoiceEvent(
+  supabase: SupabaseAdmin,
+  event: Stripe.Event,
+  stripe: Stripe
+): Promise<void> {
+  const invoice = event.data.object as Stripe.Invoice;
+  const stripeCustomerId =
+    typeof invoice.customer === 'string' ? invoice.customer : null;
+
+  if (!stripeCustomerId) return;
+
+  // Find the org associated with this customer
+  const { data: billingCustomer } = await supabase
+    .from('billing_customers')
+    .select('org_id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .maybeSingle();
+
+  const orgId = billingCustomer?.org_id ?? null;
+
+  switch (event.type) {
+    case 'invoice.payment_succeeded': {
+      console.log('[billing] invoice.payment_succeeded', {
+        invoiceId: invoice.id,
+        orgId,
+        amountPaid: invoice.amount_paid,
+        periodStart: invoice.period_start,
+        periodEnd: invoice.period_end,
+      });
+      // Metered usage charges are included in this invoice payment
+      // Subscription status is already synced via customer.subscription.updated
+      break;
+    }
+    case 'invoice.payment_failed': {
+      console.warn('[billing] invoice.payment_failed', {
+        invoiceId: invoice.id,
+        orgId,
+        amountDue: invoice.amount_due,
+        attemptCount: invoice.attempt_count,
+        nextPaymentAttempt: invoice.next_payment_attempt,
+      });
+      // Could trigger dunning webhook or alert here
+      break;
+    }
+    case 'invoice.finalized': {
+      console.log('[billing] invoice.finalized', {
+        invoiceId: invoice.id,
+        orgId,
+        amountDue: invoice.amount_due,
+        autoAdvance: invoice.auto_advance,
+      });
+      // Invoice is finalized and ready for payment
+      // This is where metered usage from the billing period is locked in
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const stripe = getStripeClient();
@@ -258,13 +347,23 @@ export async function POST(request: Request) {
             session.subscription
           );
 
-          await upsertBillingSubscription(
-            supabase,
-            subscriptionToRecord(subscription, {
-              orgId,
-              customerEmail,
-            })
-          );
+          const record = subscriptionToRecord(subscription, { orgId, customerEmail });
+          await upsertBillingSubscription(supabase, record);
+
+          // Entitlement: grant plan to org immediately on checkout
+          if (orgId && record.plan_key) {
+            await fulfillSubscription(orgId, record.plan_key, subscription.status);
+          }
+
+          // D0: send trial welcome email
+          if (customerEmail && subscription.trial_end) {
+            void sendTrialWelcome({
+              email: customerEmail,
+              planKey: record.plan_key || 'pro',
+              trialEnd: record.trial_end,
+            });
+          }
+
         }
 
         break;
@@ -274,30 +373,63 @@ export async function POST(request: Request) {
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
+        const prevSubscription = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined;
 
         const stripeCustomerId =
           typeof subscription.customer === 'string'
             ? subscription.customer
             : null;
 
-        const billingCustomer = await getBillingCustomer(
-          supabase,
-          stripeCustomerId
-        );
+        const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
+        const record = subscriptionToRecord(subscription, {
+          orgId: billingCustomer?.org_id || null,
+          customerEmail: billingCustomer?.email || null,
+        });
 
-        await upsertBillingSubscription(
-          supabase,
-          subscriptionToRecord(subscription, {
-            orgId: billingCustomer?.org_id || null,
-            customerEmail: billingCustomer?.email || null,
-          })
-        );
+        await upsertBillingSubscription(supabase, record);
+
+        // Entitlement: keep organizations.plan in sync with subscription state
+        const orgId = record.org_id;
+        if (orgId) {
+          if (REVOKED_STATUSES.has(subscription.status)) {
+            await revokeSubscription(orgId);
+          } else if (record.plan_key) {
+            await fulfillSubscription(orgId, record.plan_key, subscription.status);
+          }
+        }
+
+        // Paid conversion: trialing → active is when money actually exchanges hands.
+        // checkout.session.completed fires at trial start (before payment), so we
+        // track the referral conversion here instead.
+        const prevStatus = prevSubscription?.status;
+        const isPaidConversion =
+          event.type === 'customer.subscription.updated' &&
+          prevStatus === 'trialing' &&
+          subscription.status === 'active';
+
+        if (isPaidConversion && billingCustomer?.email) {
+          void sendUpgradeSuccess({
+            email: billingCustomer.email,
+            planKey: record.plan_key || 'pro',
+            billingInterval: record.billing_interval || 'monthly',
+          });
+
+          const refCode = await lookupRefCode(supabase, billingCustomer.email);
+          if (refCode) {
+            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+          }
+        }
 
         break;
       }
 
       default:
         break;
+    }
+
+    // Handle invoice events for metered billing
+    if (event.type.startsWith('invoice.')) {
+      await handleInvoiceEvent(supabase, event, stripe);
     }
 
     return NextResponse.json({ received: true, type: event.type });

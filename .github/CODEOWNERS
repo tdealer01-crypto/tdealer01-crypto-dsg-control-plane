@@ -1,0 +1,55 @@
+# DSG ONE Protected Ownership Boundary
+#
+# Purpose:
+# Allow partner/product work to move fast while protecting DSG core governance,
+# production execution, audit authority, secrets, and deployment-control surfaces.
+
+# Core DSG governance / runtime / proof authority
+/lib/dsg/core/ @tdealer01-crypto
+/lib/dsg/runtime/ @tdealer01-crypto
+/lib/dsg/gates/ @tdealer01-crypto
+/lib/dsg/audit/ @tdealer01-crypto
+/lib/dsg/evidence/ @tdealer01-crypto
+/lib/dsg/executor/ @tdealer01-crypto
+/lib/dsg/policy/ @tdealer01-crypto
+/lib/dsg/crypto/ @tdealer01-crypto
+/lib/dsg/planning/ @tdealer01-crypto
+/lib/dsg/connectors/ @tdealer01-crypto
+
+# High-risk execution APIs
+/app/api/execute/ @tdealer01-crypto
+/app/api/spine/ @tdealer01-crypto
+/app/api/mcp/ @tdealer01-crypto
+/app/api/gateway/tools/ @tdealer01-crypto
+/app/api/executors/ @tdealer01-crypto
+/app/api/model-provider/ @tdealer01-crypto
+/app/api/setup/ @tdealer01-crypto
+
+# Auth / RBAC / billing / internal service
+/lib/auth/ @tdealer01-crypto
+/lib/billing/ @tdealer01-crypto
+/lib/internal/ @tdealer01-crypto
+/app/api/auth/ @tdealer01-crypto
+/app/api/billing/ @tdealer01-crypto
+/app/api/settings/security/ @tdealer01-crypto
+/app/api/settings/access/ @tdealer01-crypto
+
+# Database, migrations, RLS, deployment, CI
+/supabase/migrations/ @tdealer01-crypto
+/.github/workflows/ @tdealer01-crypto
+/vercel.json @tdealer01-crypto
+/next.config.js @tdealer01-crypto
+/middleware.ts @tdealer01-crypto
+
+# Truth, production claims, runbooks
+/README.md @tdealer01-crypto
+/PROJECT_TRUTH.md @tdealer01-crypto
+/docs/REPO_TRUTH.md @tdealer01-crypto
+/docs/RUNBOOK_DEPLOY.md @tdealer01-crypto
+/docs/ops/ @tdealer01-crypto
+/qa-logs/ @tdealer01-crypto
+
+# Partner-facing surfaces
+/app/ @tdealer01-crypto
+/components/ @tdealer01-crypto
+/docs/partner/ @tdealer01-crypto

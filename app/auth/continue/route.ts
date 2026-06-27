@@ -9,14 +9,11 @@ import { logSignInEvent } from '../../../lib/auth/sign-in-events';
 import {
   applyRateLimit,
   buildRateLimitHeaders,
-  getRateLimitKey,
 } from '../../../lib/security/rate-limit';
 import { getSafeNext } from '../../../lib/auth/safe-next';
 import { validateAuthConfig } from '../../../lib/auth/preflight';
 import { logSecurityEvent, toSafeErrorInfo } from '../../../lib/security/safe-log';
 
-const AUTH_CONTINUE_RATE_LIMIT = 8;
-const AUTH_CONTINUE_RATE_WINDOW_MS = 60 * 1000;
 const AUTH_CONTINUE_EMAIL_RATE_LIMIT = 3;
 const AUTH_CONTINUE_EMAIL_RATE_WINDOW_MS = 60 * 1000;
 
@@ -120,42 +117,12 @@ async function sendMagicLink(
   return { error: null };
 }
 
-async function applyIpRateLimitOrRespond(request: NextRequest) {
-  const requestPathname =
-    request.nextUrl?.pathname ?? new URL(request.url).pathname;
-  const rateLimitKeyBase = `${getRateLimitKey(request, 'auth-continue')}:${requestPathname}`;
-
-  const ipRateLimit = await applyRateLimit({
-    key: rateLimitKeyBase,
-    limit: AUTH_CONTINUE_RATE_LIMIT,
-    windowMs: AUTH_CONTINUE_RATE_WINDOW_MS,
-  });
-
-  const ipRateLimitHeaders = buildRateLimitHeaders(
-    ipRateLimit,
-    AUTH_CONTINUE_RATE_LIMIT
-  );
-
-  if (!ipRateLimit.allowed) {
-    return {
-      ok: false as const,
-      response: buildRateLimitedResponse(ipRateLimitHeaders, ipRateLimit.resetAt),
-    };
-  }
-
-  return {
-    ok: true as const,
-    rateLimitKeyBase,
-    headers: ipRateLimitHeaders,
-  };
-}
-
 async function applyEmailRateLimitOrRespond(
-  email: string,
-  rateLimitKeyBase: string
+  request: NextRequest,
+  email: string
 ) {
   const emailHash = createHash('sha256').update(email).digest('hex');
-  const emailRateLimitKey = `${rateLimitKeyBase}:${emailHash}`;
+  const emailRateLimitKey = `auth-continue-email:${emailHash}`;
 
   const emailRateLimit = await applyRateLimit({
     key: emailRateLimitKey,
@@ -323,7 +290,7 @@ async function handleTrialSignup(args: {
   });
 
   const confirmUrl = new URL('/auth/confirm', getTrustedAppOrigin(args.request));
-  confirmUrl.searchParams.set('next', '/dashboard/skills');
+  confirmUrl.searchParams.set('next', '/dashboard/welcome');
   confirmUrl.searchParams.set('signup', 'trial');
 
   const { error } = await sendMagicLink(
@@ -360,11 +327,6 @@ async function handleTrialSignup(args: {
 }
 
 export async function POST(request: NextRequest) {
-  const ipRateLimit = await applyIpRateLimitOrRespond(request);
-  if (!ipRateLimit.ok) {
-    return ipRateLimit.response;
-  }
-
   const formData = await request.formData();
   const { email, workspaceName, fullName, next, orgSlug } = parseContinueForm(
     request,
@@ -375,13 +337,10 @@ export async function POST(request: NextRequest) {
 
   if (!email) {
     redirectToLogin.searchParams.set('error', 'missing-email');
-    return redirectWithHeaders(redirectToLogin, ipRateLimit.headers);
+    return redirectWithHeaders(redirectToLogin, {});
   }
 
-  const emailRateLimit = await applyEmailRateLimitOrRespond(
-    email,
-    ipRateLimit.rateLimitKeyBase
-  );
+  const emailRateLimit = await applyEmailRateLimitOrRespond(request, email);
   if (!emailRateLimit.ok) {
     return emailRateLimit.response;
   }

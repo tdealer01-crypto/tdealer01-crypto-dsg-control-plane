@@ -17,6 +17,14 @@ type Bucket = { count: number; resetAt: number };
 const memBuckets = new Map<string, Bucket>();
 const MAX_MEM_BUCKETS = 10_000;
 
+function isProduction() {
+  return process.env.NODE_ENV === 'production';
+}
+
+function blockedResult(windowMs: number): RateLimitResult {
+  return { allowed: false, remaining: 0, resetAt: Date.now() + windowMs };
+}
+
 function applyMemoryRateLimit(options: RateLimitOptions): RateLimitResult {
   const now = Date.now();
 
@@ -81,7 +89,7 @@ export async function applyRateLimit(options: RateLimitOptions): Promise<RateLim
 
   if (!limiter) {
     if (!warnedNoRedis) {
-      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback (not effective on serverless)');
+      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback');
       warnedNoRedis = true;
     }
     return applyMemoryRateLimit(options);
@@ -90,7 +98,8 @@ export async function applyRateLimit(options: RateLimitOptions): Promise<RateLim
   try {
     const { success, remaining, reset } = await limiter.limit(options.key);
     return { allowed: success, remaining, resetAt: reset };
-  } catch {
+  } catch (error) {
+    console.error('[rate-limit] Redis limiter error — falling back to in-memory', error);
     return applyMemoryRateLimit(options);
   }
 }
@@ -101,4 +110,8 @@ export function buildRateLimitHeaders(result: RateLimitResult, limit: number) {
     'X-RateLimit-Remaining': String(result.remaining),
     'X-RateLimit-Reset': String(Math.floor(result.resetAt / 1000)),
   };
+}
+
+export function isRateLimiterConfigured(): boolean {
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 }

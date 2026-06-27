@@ -65,6 +65,22 @@ function mockApiError() {
   return { handleApiError };
 }
 
+function mockQuota(allowed = true) {
+  const checkQuota = vi.fn(async () =>
+    allowed
+      ? { allowed: true, used: 0, limit: 10000 }
+      : { allowed: false, used: 10000, limit: 10000, upgradeUrl: 'https://app.dsg.pics/pricing' }
+  );
+  const incrementQuota = vi.fn(async () => undefined);
+
+  vi.doMock('../../../lib/usage/quota', () => ({
+    checkQuota,
+    incrementQuota,
+  }));
+
+  return { checkQuota, incrementQuota };
+}
+
 describe('/api/spine/execute', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -74,6 +90,7 @@ describe('/api/spine/execute', () => {
     const { buildPreflightResponse } = mockCors();
     mockRateLimit();
     mockApiError();
+    mockQuota();
 
     vi.doMock('../../../lib/agent-auth', () => ({
       resolveAgentFromApiKey: vi.fn(),
@@ -106,6 +123,7 @@ describe('/api/spine/execute', () => {
     mockCors();
     mockRateLimit();
     mockApiError();
+    mockQuota();
 
     vi.doMock('../../../lib/agent-auth', () => ({
       resolveAgentFromApiKey: vi.fn(),
@@ -146,6 +164,7 @@ describe('/api/spine/execute', () => {
     mockCors();
     mockRateLimit();
     mockApiError();
+    mockQuota();
 
     vi.doMock('../../../lib/agent-auth', () => ({
       resolveAgentFromApiKey: vi.fn(),
@@ -187,6 +206,7 @@ describe('/api/spine/execute', () => {
     mockCors();
     mockRateLimit();
     mockApiError();
+    mockQuota();
 
     const resolveAgentFromApiKey = vi.fn(async () => null);
 
@@ -231,6 +251,7 @@ describe('/api/spine/execute', () => {
     mockCors();
     mockRateLimit();
     mockApiError();
+    const { incrementQuota } = mockQuota();
 
     const resolveAgentFromApiKey = vi.fn(async () => ({
       id: 'agt_1',
@@ -241,7 +262,7 @@ describe('/api/spine/execute', () => {
     const executeSpineIntent = vi.fn(async () => ({
       ok: true,
       status: 200,
-      body: { request_id: 'req_1', decision: 'ALLOW' },
+      body: { request_id: 'req_1', decision: 'ALLOW', stop_reason: 'NONE' },
     }));
 
     const issueSpineIntent = vi.fn();
@@ -283,7 +304,7 @@ describe('/api/spine/execute', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ request_id: 'req_1', decision: 'ALLOW' });
+    expect(body).toEqual({ request_id: 'req_1', decision: 'ALLOW', stop_reason: 'NONE' });
     expect(resolveAgentFromApiKey).toHaveBeenCalledWith('agt_1', 'dsg_live_good');
     expect(executeSpineIntent).toHaveBeenCalledWith({
       orgId: 'org_1',
@@ -291,12 +312,15 @@ describe('/api/spine/execute', () => {
       payload: expect.objectContaining({ agentId: 'agt_1', action: 'scan' }),
     });
     expect(issueSpineIntent).not.toHaveBeenCalled();
+    // Quota counter incremented on success
+    expect(incrementQuota).toHaveBeenCalledWith('org_1', 'agt_1');
   });
 
   it('issues intent and retries execute when no pending runtime intent exists', async () => {
     mockCors();
     mockRateLimit();
     mockApiError();
+    mockQuota();
 
     const resolveAgentFromApiKey = vi.fn(async () => ({
       id: 'agt_1',
@@ -314,7 +338,7 @@ describe('/api/spine/execute', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        body: { request_id: 'req_2', decision: 'ALLOW' },
+        body: { request_id: 'req_2', decision: 'ALLOW', stop_reason: 'NONE' },
       });
 
     const issueSpineIntent = vi.fn(async () => ({
@@ -360,8 +384,103 @@ describe('/api/spine/execute', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ request_id: 'req_2', decision: 'ALLOW' });
+    expect(body).toEqual({ request_id: 'req_2', decision: 'ALLOW', stop_reason: 'NONE' });
     expect(issueSpineIntent).toHaveBeenCalledOnce();
     expect(executeSpineIntent).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns 402 when quota is exceeded', async () => {
+    mockCors();
+    mockRateLimit();
+    mockApiError();
+    const { checkQuota } = mockQuota(false); // quota exceeded
+
+    const resolveAgentFromApiKey = vi.fn(async () => ({
+      id: 'agt_1',
+      org_id: 'org_1',
+      status: 'active',
+    }));
+    const executeSpineIntent = vi.fn();
+    const issueSpineIntent = vi.fn();
+
+    vi.doMock('../../../lib/agent-auth', () => ({ resolveAgentFromApiKey }));
+    vi.doMock('../../../lib/spine/engine', () => ({ executeSpineIntent, issueSpineIntent }));
+    vi.doMock('../../../lib/spine/request', () => ({
+      normalizeSpinePayload: vi.fn(() => ({
+        agentId: 'agt_1',
+        action: 'scan',
+        input: {},
+        context: {},
+        canonicalRequest: { action: 'scan', input: {}, context: {} },
+      })),
+    }));
+
+    const { POST } = await import('../../../app/api/spine/execute/route');
+
+    const req = new Request('http://localhost/api/spine/execute', {
+      method: 'POST',
+      headers: {
+        origin: 'https://app.example.com',
+        authorization: 'Bearer dsg_live_good',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ agent_id: 'agt_1' }),
+    });
+
+    const res = await POST(req as never);
+    const body = await res.json();
+
+    expect(res.status).toBe(402);
+    expect(body.error).toMatch(/quota exceeded/i);
+    expect(body.upgrade_url).toContain('/pricing');
+    // Spine engine should NOT be called when quota is exceeded
+    expect(executeSpineIntent).not.toHaveBeenCalled();
+    expect(checkQuota).toHaveBeenCalledWith('org_1', 'agt_1');
+  });
+
+  it('returns 403 when agent is not active', async () => {
+    mockCors();
+    mockRateLimit();
+    mockApiError();
+    mockQuota();
+
+    const resolveAgentFromApiKey = vi.fn(async () => ({
+      id: 'agt_1',
+      org_id: 'org_1',
+      status: 'suspended',
+    }));
+
+    vi.doMock('../../../lib/agent-auth', () => ({ resolveAgentFromApiKey }));
+    vi.doMock('../../../lib/spine/engine', () => ({
+      executeSpineIntent: vi.fn(),
+      issueSpineIntent: vi.fn(),
+    }));
+    vi.doMock('../../../lib/spine/request', () => ({
+      normalizeSpinePayload: vi.fn(() => ({
+        agentId: 'agt_1',
+        action: 'scan',
+        input: {},
+        context: {},
+        canonicalRequest: { action: 'scan', input: {}, context: {} },
+      })),
+    }));
+
+    const { POST } = await import('../../../app/api/spine/execute/route');
+
+    const req = new Request('http://localhost/api/spine/execute', {
+      method: 'POST',
+      headers: {
+        origin: 'https://app.example.com',
+        authorization: 'Bearer dsg_live_good',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ agent_id: 'agt_1' }),
+    });
+
+    const res = await POST(req as never);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error).toMatch(/not active/i);
   });
 });

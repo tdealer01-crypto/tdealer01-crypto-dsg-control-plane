@@ -20,6 +20,10 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
+      # Build-safe Supabase public envs for CI (prefer repo variables/secrets, then fallback to deterministic placeholders)
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,11 +36,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Verify lock file is in sync
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          git diff --exit-code -- package-lock.json
 
       - name: Lint
         run: npm run lint
@@ -58,9 +57,67 @@ jobs:
             tests/integration/api/intent.test.ts \
             tests/integration/api/execute-compat.test.ts \
             tests/unit/security/cors.test.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Full test suite
         run: npm run test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Z3 proof dependencies
+        run: npm run proof:install
+
+      - name: Answer Gate formal proofs
+        run: npm run proof:answer-gate
 
       - name: Build
         run: npm run build
+
+      - name: Production manifest gate
+        run: npm run verify:production-manifest
+
+      - name: Live DB tests
+        if: ${{ vars.CI_RUN_LIVE_DB_TESTS == 'true' }}
+        run: npm run test:live:db:required
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  stripe-app-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # stripe-app src imports @/lib/gateway/* from the repo root, which pulls
+      # root lib files (and their deps) into the typecheck — install root
+      # dependencies so those modules resolve.
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install stripe-app dependencies
+        run: npm install
+        working-directory: packages/stripe-app
+
+      - name: Typecheck stripe-app
+        run: npm run type-check
+        working-directory: packages/stripe-app

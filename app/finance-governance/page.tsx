@@ -64,13 +64,13 @@ export default function FinanceGovernancePage() {
       <section className="mx-auto max-w-7xl px-6 pb-16 pt-20">
         <div className="max-w-4xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200 shadow-glow">
-            Finance Governance Control Plane
+            DSG ONE workflow
           </div>
           <h1 className="mt-8 text-5xl font-bold leading-tight md:text-7xl">
-            Control financial approvals with policy, proof, and audit-ready evidence.
+            Finance Governance is one governed workflow under DSG ONE.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-100">
-            DSG helps finance, compliance, and audit teams govern how transactions and supporting documents are submitted, reviewed, approved, escalated, and exported for audit without replacing the ERP.
+            DSG ONE provides runtime governance for high-risk actions. This Finance Governance surface focuses on transaction approvals, exceptions, and evidence workflows without replacing your ERP.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-4">
@@ -83,6 +83,25 @@ export default function FinanceGovernancePage() {
             <Link href="/docs" className="rounded-2xl border border-white/25 bg-slate-900/30 px-6 py-4 text-base font-semibold text-slate-100 transition hover:border-white/40 hover:text-white">
               Read Docs
             </Link>
+          </div>
+
+          {/* Quick-access to live app */}
+          <div className="mt-8 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">Already set up? Open the live app</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/finance-governance/live/approvals" className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/60">
+                Approval Queue →
+              </Link>
+              <Link href="/finance-governance/live" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Live Dashboard →
+              </Link>
+              <Link href="/finance-governance/live/onboarding" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Onboarding →
+              </Link>
+              <Link href="/finance-governance/live/workflow" className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/30">
+                Workflow →
+              </Link>
+            </div>
           </div>
         </div>
 

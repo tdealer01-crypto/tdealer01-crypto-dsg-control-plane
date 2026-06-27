@@ -92,3 +92,31 @@ Go-live remains blocked until RUNBOOK evidence is closed for:
 
 Documentation rule:
 - keep test-baseline truth and production-readiness truth as separate sections so test success is not misread as full cutover completion.
+
+### Decision 008
+Status: accepted
+Type: test-baseline update (May 15, 2026)
+
+The May 15, 2026 Vitest run supersedes the April 17, 2026 baseline.
+
+Current baseline:
+- `77 test files passed, 2 skipped, 0 failed`
+- `252 tests passed, 4 skipped, 0 failed`
+- TypeScript typecheck: zero errors
+
+Authoritative evidence:
+- `qa-logs/npm-test-2026-05-15.log`
+- `qa-logs/test-summary.md`
+
+Also confirmed in this session:
+- No legacy `/api/finance-governance/server-store/` callers exist in app/lib/components/scripts
+- All 34 Supabase migrations are present in `supabase/migrations/` and now listed in `RUNBOOK_DEPLOY.md`
+- Remaining go-live blockers are environment-dependent (Vercel access, production Supabase, direct outbound network) — not code defects
+
+### Decision 009
+Status: accepted
+Type: go-live blocker classification
+
+The 2026-05-03 go-live evidence failures (`CONNECT tunnel failed, response 403`) are confirmed as outbound proxy restrictions of the sandbox execution environment, not application-layer or code defects. They must be re-run from GitHub Actions or a direct-network shell with valid Vercel deployment credentials to produce closeable evidence.
+
+This classification prevents future sessions from treating these network-constrained failures as code bugs to patch.
