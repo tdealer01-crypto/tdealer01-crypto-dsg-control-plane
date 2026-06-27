@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ChevronDown,
   FileCheck,
+  Cpu,
 } from 'lucide-react';
 import { useAppLanguage } from '@/store/useAppLanguage';
 import { languageStore } from '@/store/languageStore';
@@ -18,6 +19,7 @@ import { languageStore } from '@/store/languageStore';
 const PRODUCT_ITEMS_TH = [
   { href: '/delivery-proof',        icon: FileCheck,  title: 'Delivery Proof',       description: 'รายงาน proof สำหรับ agency และ dev team', highlight: true },
   { href: '/proofgate',             icon: Shield,     title: 'ProofGate',             description: 'ชั้นควบคุม runtime ของ AI' },
+  { href: '/dashboard/omniaagent-command-center', icon: Cpu, title: 'OmniAgent Command Center', description: 'ศูนย์ควบคุมแบบรวมสำหรับ AI orchestration' },
   { href: '/enterprise-ready',      icon: Building2,  title: 'Enterprise Ready',      description: 'ตั้งค่า enterprise โดยไม่ต้อง migrate' },
   { href: '/finance-governance',    icon: DollarSign, title: 'Finance Governance',    description: 'ควบคุม payment และการเงิน' },
   { href: '/finance-approval-gate', icon: DollarSign, title: 'Finance Approval Gate', description: 'ระบบอนุมัติ AI payment' },
@@ -29,6 +31,7 @@ const PRODUCT_ITEMS_TH = [
 const PRODUCT_ITEMS_EN = [
   { href: '/delivery-proof',        icon: FileCheck,  title: 'Delivery Proof',       description: 'AI code proof report for agencies & dev teams', highlight: true },
   { href: '/proofgate',             icon: Shield,     title: 'ProofGate',             description: 'Runtime control layer for AI' },
+  { href: '/dashboard/omniaagent-command-center', icon: Cpu, title: 'OmniAgent Command Center', description: 'Unified control plane for AI orchestration' },
   { href: '/enterprise-ready',      icon: Building2,  title: 'Enterprise Ready',      description: 'No-migration enterprise setup' },
   { href: '/finance-governance',    icon: DollarSign, title: 'Finance Governance',    description: 'Payment & finance controls' },
   { href: '/finance-approval-gate', icon: DollarSign, title: 'Finance Approval Gate', description: 'AI payment approval pilot' },
