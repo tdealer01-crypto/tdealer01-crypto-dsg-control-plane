@@ -1,4 +1,5 @@
 import { orchestrateChat, type OrchestratorInput, type OrchestratorResult } from '@/lib/hermes-orchestrator';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,11 +8,11 @@ export async function POST(request: Request) {
   try {
     body = (await request.json().catch(() => ({}))) as typeof body;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
   const message = String(body?.message ?? '').trim();
-  if (!message) return Response.json({ error: 'message is required' }, { status: 400 });
+  if (!message) return Response.json({ error: 'Invalid input' }, { status: 400 });
 
   const input: OrchestratorInput = {
     message,
@@ -22,16 +23,7 @@ export async function POST(request: Request) {
   try {
     result = await orchestrateChat(input);
   } catch (err) {
-    const reason = err instanceof Error ? err.message : 'Unknown error';
-    return Response.json(
-      {
-        ok: false,
-        error: 'orchestration_failed',
-        reason,
-        response: `Hermes Orchestrator error: ${reason}`,
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/hermes/chat', err, { status: 500 });
   }
 
   const status = result.ok ? 200 : 502;
