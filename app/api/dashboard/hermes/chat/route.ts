@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,37 +42,54 @@ async function evaluateGovernancePolicy(
 }
 
 async function generateAgentResponse(message: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    throw new Error('Claude API key not configured. Set ANTHROPIC_API_KEY environment variable.');
+    throw new Error('OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable.');
   }
-
-  const client = new Anthropic({ apiKey });
 
   const systemPrompt = `You are Hermes, a helpful AI governance agent that helps users understand policies and make decisions.
 You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  const response = await client.messages.create({
-    model: 'claude-opus-4-1',
-    max_tokens: 500,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: message,
-      },
-    ],
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'qwen/qwen-3-coder:free',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: message,
+        },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    }),
   });
 
-  const content = response.content[0];
-  if (content.type === 'text') {
-    return content.text;
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenRouter API error: ${response.status} ${error}`);
   }
 
-  throw new Error('Invalid response from Claude API');
+  const data = (await response.json()) as {
+    choices: Array<{ message: { content: string } }>;
+  };
+
+  if (data.choices && data.choices[0] && data.choices[0].message) {
+    return data.choices[0].message.content;
+  }
+
+  throw new Error('Invalid response from OpenRouter API');
 }
 
 export async function POST(request: NextRequest) {
@@ -169,7 +185,7 @@ export async function POST(request: NextRequest) {
 
     if (errorMessage.includes('API key')) {
       return NextResponse.json(
-        { error: 'Claude API key not configured', message: errorMessage },
+        { error: 'OpenRouter API key not configured', message: errorMessage },
         { status: 503 },
       );
     }
