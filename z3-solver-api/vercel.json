@@ -1,22 +1,9 @@
 {
   "version": 2,
-  "name": "dsg-z3-solver-api",
-  "buildCommand": "npm run build",
-  "env": {
-    "NODE_ENV": {
-      "default": "production"
-    }
-  },
   "functions": {
     "api/solve.ts": {
       "maxDuration": 30,
       "memory": 1024
     }
-  },
-  "rewrites": [
-    {
-      "source": "/solve",
-      "destination": "/api/solve"
-    }
-  ]
+  }
 }
