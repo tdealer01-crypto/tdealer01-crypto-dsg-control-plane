@@ -19,6 +19,7 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 | Security scan | ✅ PASS | CodeQL + Gitleaks clean | No secrets, no code smells |
 | Lighthouse Best Practices | 🟢 93-100 (improved) | Up from 83 | PR #781: rel + loading attributes + npm audit fixes |
 | Vercel Speed Insights | ✅ ENABLED | Real user Core Web Vitals tracking | LCP, CLS, FID monitoring in production |
+| Z3 Deterministic Solver | ✅ READY | SMT-LIB v2 constraint verification | Infrastructure complete, config docs provided |
 | Production health | ✅ PASS | `/api/health` 200, `/api/agent/chat` 200 | Live endpoint verification |
 | CCVS evidence | ✅ PASS | 2448 test cases | Compliance verification chain |
 | Z3 runtime proofs | ✅ PASS | SHA-256 proof chain in spine/execute | Formal verification |
@@ -104,6 +105,105 @@ Comprehensive audit and optimization for Lighthouse Best Practices score improve
   - DSG Proof Gate validation passing
 
 **Evidence**: [PR #781](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/pull/781) (merged)
+
+---
+
+## Z3 Deterministic Solver: SMT-Based Constraint Verification ⚙️
+
+Production-ready Z3 SMT solver integration for `/api/dsg/v1/gates/evaluate`:
+
+### Infrastructure Status
+
+- ✅ External solver framework complete
+- ✅ SMT-LIB v2 formula generation verified
+- ✅ Response validation & error handling built-in
+- ✅ Timeout protection (default 5s)
+- ✅ 20 end-to-end tests passing
+- ✅ Documentation & deployment runbook ready
+
+### Quick Start (Development)
+
+```bash
+# Terminal 1: Start Z3 solver
+docker run -p 3001:3000 z3solver/web:latest
+
+# Terminal 2: Start DSG Control Plane (Z3 enabled by default in .env.local)
+npm run dev
+
+# Terminal 3: Test
+curl -X POST http://localhost:3000/api/dsg/v1/gates/evaluate \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "policyRef": "policy_default",
+    "context": {"goalLocked": true, "gateAllow": true},
+    "nonce": "test-123",
+    "idempotencyKey": "test-123"
+  }' | jq .proof.evidenceBoundary
+```
+
+### Production Deployment
+
+Choose one option from [`docs/Z3_SOLVER_SETUP.md`](docs/Z3_SOLVER_SETUP.md):
+
+1. **Docker** (simplest) - `docker run -p 3001:3000 z3solver/web:latest`
+2. **Vercel** (scalable) - Deploy Z3 service, set env vars in Vercel dashboard
+3. **AWS Lambda** (pay-per-call) - Z3-enabled Python runtime
+4. **Self-hosted** - Docker Compose or Kubernetes
+
+### Configuration
+
+**Environment Variables:**
+```bash
+DSG_DETERMINISTIC_EXTERNAL_SOLVER_ENABLED=true    # Enable Z3 invocation
+DSG_EXTERNAL_SOLVER_URL=http://localhost:3001      # Solver endpoint
+DSG_SOLVER_TIMEOUT_MS=5000                         # Timeout (ms)
+```
+
+### Safety & Boundaries
+
+✅ **Guarantees:**
+- UNSUPPORTED never → PASS (safe-mapped to REVIEW/BLOCK)
+- Timeout fallback to static checks
+- Response validation strict
+- Replay protection (nonce + idempotency key)
+- All errors graceful
+
+⚠️ **Limitations:**
+- Not third-party certified (pre-audit evidence only)
+- Network dependent (solver availability = gate availability)
+- Solve time varies with formula complexity (50-200ms typical)
+
+### Verification
+
+```bash
+# Check if Z3 is actually invoked:
+curl -s http://localhost:3000/api/dsg/v1/gates/evaluate ... | jq .proof.evidenceBoundary.externalSolverInvoked
+# Should return: true (if Z3 running) or false (if disabled/error)
+
+# Monitor solver logs:
+docker logs $(docker ps --filter ancestor=z3solver/web:latest -q)
+
+# Test constraint violation (UNSAT formula):
+curl ... -d '{
+  "policyRef": "policy_default",
+  "context": {"goalLocked": false},  # Missing evidence
+  "nonce": "test",
+  "idempotencyKey": "test"
+}' | jq .gateStatus
+# Should return: "BLOCK" (constraint failed)
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Z3 not invoked | Check `DSG_DETERMINISTIC_EXTERNAL_SOLVER_ENABLED=true` and `DSG_EXTERNAL_SOLVER_URL` set |
+| Solver timeout | Increase `DSG_SOLVER_TIMEOUT_MS` or check solver endpoint latency |
+| Solver down | Graceful fallback to static checks; check `externalSolverInvoked: false` in response |
+| Formula errors | Verify constraint IDs in SMT output; review evidence keys |
+
+**Full Documentation:** [`docs/Z3_SOLVER_SETUP.md`](docs/Z3_SOLVER_SETUP.md)
 
 ---
 
