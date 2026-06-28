@@ -11,14 +11,14 @@ FAIL=0
 
 test_case() {
   local name=$1
-  local formula=$2
+  local smt2=$2
   local expect_sat=$3
 
   echo -n "Test: $name ... "
 
   response=$(curl -s -X POST "$SOLVER_URL" \
     -H "Content-Type: application/json" \
-    -d "{\"formula\": \"$formula\", \"timeout\": 5000}")
+    -d "{\"smt2\": \"$smt2\", \"timeout_ms\": 5000}")
 
   satisfiable=$(echo "$response" | grep -o '"satisfiable":[^,}]*' | cut -d: -f2)
 
@@ -39,19 +39,19 @@ echo "Running tests against: $SOLVER_URL"
 echo ""
 
 # Test 1: Simple SAT
-test_case "Simple SAT" "(declare-fun x () Int) (assert (> x 5))" "true"
+test_case "Simple SAT" "(set-logic QF_LIA) (declare-fun x () Int) (assert (> x 5)) (check-sat)" "true"
 
 # Test 2: Simple UNSAT
-test_case "Simple UNSAT" "(declare-fun x () Int) (assert (> x 5)) (assert (<= x 5))" "false"
+test_case "Simple UNSAT" "(set-logic QF_LIA) (declare-fun x () Int) (assert (> x 5)) (assert (<= x 5)) (check-sat)" "false"
 
 # Test 3: Boolean formula SAT
-test_case "Boolean SAT" "(declare-fun p () Bool) (assert p)" "true"
+test_case "Boolean SAT" "(set-logic QF_UF) (declare-fun p () Bool) (assert p) (check-sat)" "true"
 
 # Test 4: Boolean formula UNSAT
-test_case "Boolean UNSAT" "(declare-fun p () Bool) (assert p) (assert (not p))" "false"
+test_case "Boolean UNSAT" "(set-logic QF_UF) (declare-fun p () Bool) (assert p) (assert (not p)) (check-sat)" "false"
 
 # Test 5: Complex arithmetic SAT
-test_case "Arithmetic SAT" "(declare-fun x () Int) (declare-fun y () Int) (assert (= (+ x y) 10)) (assert (> x 0))" "true"
+test_case "Arithmetic SAT" "(set-logic QF_LIA) (declare-fun x () Int) (declare-fun y () Int) (assert (= (+ x y) 10)) (assert (> x 0)) (check-sat)" "true"
 
 echo ""
 echo "=============================="
