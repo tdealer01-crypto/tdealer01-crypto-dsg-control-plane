@@ -2,17 +2,20 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { Z3 } from 'z3-solver';
 
 interface SolveRequest {
-  formula: string;
-  timeout?: number;
+  smt2: string;
+  timeout_ms?: number;
+  nonce?: string;
 }
 
 interface SolveResponse {
+  status: 'sat' | 'unsat' | 'unknown';
   satisfiable: boolean;
-  model?: Record<string, string>;
-  unsatCore?: string[];
-  smtLibHash?: string;
+  model?: Array<{ name: string; value: string }>;
+  unsatisfiable_core?: string[];
+  solver_version: string;
+  time_ms: number;
+  smt2_hash: string;
   error?: string;
-  timestamp: string;
 }
 
 export default async (req: VercelRequest, res: VercelResponse) => {
@@ -29,11 +32,20 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { formula, timeout = 5000 }: SolveRequest = req.body;
+  const startMs = Date.now();
 
-    if (!formula || typeof formula !== 'string') {
-      return res.status(400).json({ error: 'Invalid formula' });
+  try {
+    const { smt2, timeout_ms = 5000 }: SolveRequest = req.body;
+
+    if (!smt2 || typeof smt2 !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid SMT-LIB v2 formula',
+        status: 'unknown',
+        satisfiable: false,
+        solver_version: '4.12.2',
+        time_ms: Date.now() - startMs,
+        smt2_hash: '',
+      });
     }
 
     const { init } = await Z3.create();
@@ -43,7 +55,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     // Parse and add formula to solver
     try {
-      const parsed = ctx.parseString(formula);
+      const parsed = ctx.parseString(smt2);
       if (parsed) {
         for (const assertion of parsed) {
           solver.add(assertion);
@@ -52,34 +64,43 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     } catch (parseError) {
       return res.status(400).json({
         error: 'Invalid SMT-LIB v2 formula',
-        details: String(parseError),
-        timestamp: new Date().toISOString(),
+        status: 'unknown',
+        satisfiable: false,
+        solver_version: '4.12.2',
+        time_ms: Date.now() - startMs,
+        smt2_hash: hashFormula(smt2),
       });
     }
 
     // Set timeout
-    solver.setParam('timeout', timeout);
+    solver.setParam('timeout', timeout_ms);
 
     // Check satisfiability
     const result = solver.check();
-    const satisfiable = result.toString() === 'sat';
+    const statusStr = result.toString();
+    const satisfiable = statusStr === 'sat';
 
     const response: SolveResponse = {
+      status: (statusStr === 'sat' ? 'sat' : statusStr === 'unsat' ? 'unsat' : 'unknown') as 'sat' | 'unsat' | 'unknown',
       satisfiable,
-      timestamp: new Date().toISOString(),
-      smtLibHash: hashFormula(formula),
+      solver_version: '4.12.2',
+      time_ms: Date.now() - startMs,
+      smt2_hash: hashFormula(smt2),
     };
 
     if (satisfiable) {
       const model = solver.model();
-      const modelObj: Record<string, string> = {};
+      const modelArray: Array<{ name: string; value: string }> = [];
 
       try {
         const decls = model.decls();
         for (const decl of decls) {
-          modelObj[decl.name().toString()] = model.eval(decl, true).toString();
+          modelArray.push({
+            name: decl.name().toString(),
+            value: model.eval(decl, true).toString(),
+          });
         }
-        response.model = modelObj;
+        response.model = modelArray;
       } catch (e) {
         // Model extraction failed, but result is still valid
       }
@@ -87,7 +108,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       // Try to extract unsat core
       try {
         const core = solver.unsatCore();
-        response.unsatCore = core.map((e: any) => e.toString());
+        response.unsatisfiable_core = core.map((e: any) => e.toString());
       } catch (e) {
         // Unsat core extraction not available
       }
@@ -96,9 +117,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     return res.status(200).json(response);
   } catch (error) {
     return res.status(500).json({
-      error: 'Solver error',
-      details: String(error),
-      timestamp: new Date().toISOString(),
+      error: 'Solver error: ' + String(error),
+      status: 'unknown',
+      satisfiable: false,
+      solver_version: '4.12.2',
+      time_ms: Date.now() - startMs,
+      smt2_hash: '',
     });
   }
 };
