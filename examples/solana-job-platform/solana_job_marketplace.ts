@@ -14,7 +14,7 @@ import { SolanaClient } from "../../lib/solana/client";
 // Types
 // ---------------------------------------------------------------------------
 
-interface JobListing {
+export interface JobListing {
   id: string;
   platform: Platform;
   title: string;
@@ -28,13 +28,13 @@ interface JobListing {
   createdAt: string;
 }
 
-interface Reward {
+export interface Reward {
   amount: number;
-  currency: "SOL" | "USDC" | "BONK";
+  currency: "SOL" | "USDC" | "BONK" | "USD";
   usdEstimate: number;
 }
 
-interface AgentProfile {
+export interface AgentProfile {
   agentId: string;
   walletAddress: string;
   reputation: number;
@@ -46,7 +46,7 @@ interface AgentProfile {
   lastActive: string;
 }
 
-interface JobExecution {
+export interface JobExecution {
   jobId: string;
   agentId: string;
   startedAt: string;
@@ -58,13 +58,13 @@ interface JobExecution {
   txSignature?: string;
 }
 
-interface MarketplaceData {
+export interface MarketplaceData {
   profiles: AgentProfile[];
   executions: JobExecution[];
   earnings: EarningsRecord[];
 }
 
-interface EarningsRecord {
+export interface EarningsRecord {
   jobId: string;
   agentId: string;
   amount: number;
@@ -73,7 +73,7 @@ interface EarningsRecord {
   timestamp: string;
 }
 
-type Platform =
+export type Platform =
   | "github-bounties"
   | "solana-bounties"
   | "immunefi"
@@ -81,7 +81,7 @@ type Platform =
   | "upwork-solana"
   | "dsg-internal";
 
-type JobCategory =
+export type JobCategory =
   | "smart-contract-audit"
   | "frontend-dev"
   | "backend-api"
@@ -91,10 +91,10 @@ type JobCategory =
   | "data-analysis"
   | "devops";
 
-type Difficulty = "easy" | "medium" | "hard" | "expert";
-type JobStatus = "open" | "claimed" | "in-progress" | "review" | "completed" | "expired";
-type ExecutionStatus = "claimed" | "working" | "submitted" | "verified" | "paid" | "failed";
-type AgentTier = "bronze" | "silver" | "gold" | "platinum";
+export type Difficulty = "easy" | "medium" | "hard" | "expert";
+export type JobStatus = "open" | "claimed" | "in-progress" | "review" | "completed" | "expired";
+export type ExecutionStatus = "claimed" | "working" | "submitted" | "verified" | "paid" | "failed";
+export type AgentTier = "bronze" | "silver" | "gold" | "platinum";
 
 // ---------------------------------------------------------------------------
 // Constants
