@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { PostHog } from 'posthog-node';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -420,15 +421,7 @@ export async function POST(
       { status: 400 }
     );
   } catch (error) {
-    console.error(`[Revenue API] Error:`, error);
-
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/revenue', error);
   }
 }
 

@@ -55,12 +55,13 @@ test.describe('Marketplace', () => {
 
   test('marketplace submit API: rejects unauthenticated POST', async () => {
     const api = await request.newContext({ ignoreHTTPSErrors: true });
-    const res = await api.post('/marketplace/submit', {
+    // The submit form posts to the products API; an unauthenticated POST must
+    // be rejected (401/403), rate-limited (429), or otherwise refused — not 200.
+    const res = await api.post('/api/marketplace/products', {
       data: { name: 'Test Product', price: 9.99, description: 'A test', category: 'SaaS' },
     });
 
-    // Should be 401 (unauthorized), 404 (not found), or 405 (method not allowed) — not 500
-    expect([400, 401, 403, 404, 405]).toContain(res.status());
+    expect([400, 401, 403, 404, 405, 429]).toContain(res.status());
 
     await api.dispose();
   });

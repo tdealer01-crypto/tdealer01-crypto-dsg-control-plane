@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,10 +61,6 @@ export async function POST(
       { status: 200, headers: corsHeaders }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json(
-      { error: message },
-      { status: 500, headers: corsHeaders }
-    );
+    return handleApiError('api/conversations/end', err, { headers: corsHeaders });
   }
 }

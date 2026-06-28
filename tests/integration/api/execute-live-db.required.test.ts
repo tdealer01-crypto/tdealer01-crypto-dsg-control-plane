@@ -10,7 +10,9 @@ import {
 } from '../helpers/supabase-test-factory';
 
 const hasLiveEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-const describeLive = hasLiveEnv ? describe : describe.skip;
+// Live-DB suites only run when explicitly opted in (dedicated test:live:db scripts).
+const runLiveDb = process.env.RUN_LIVE_DB_TESTS === 'true';
+const describeLive = hasLiveEnv && runLiveDb ? describe : describe.skip;
 
 function executeRequest(fixture: SupabaseTestFixture, input: unknown = { message: 'live-db-test' }) {
   return new Request('http://localhost/api/execute', {

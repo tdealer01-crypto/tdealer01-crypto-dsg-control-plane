@@ -94,7 +94,7 @@ async function browserCheck(url: string) {
       mode: 'browser',
       ok: true,
       skipped: true,
-      reason: err instanceof Error ? err.message : 'browser_unavailable',
+      reason: err instanceof Error ? err.name : 'browser_unavailable',
       latencyMs: Date.now() - startedAt,
     };
   }

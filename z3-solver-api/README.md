@@ -44,7 +44,7 @@ The Z3 Solver API expects SMT-LIB v2 format constraints:
   "model": [
     { "name": "x", "value": "6" }
   ],
-  "solver_version": "4.12.2",
+  "solver_version": "4.16.0",
   "time_ms": 45,
   "smt2_hash": "abc123def456"
 }
@@ -60,7 +60,7 @@ The Z3 Solver API expects SMT-LIB v2 format constraints:
     "(and true true)",
     "(not (> x 5))"
   ],
-  "solver_version": "4.12.2",
+  "solver_version": "4.16.0",
   "time_ms": 32,
   "smt2_hash": "abc123def456"
 }
@@ -72,7 +72,7 @@ The Z3 Solver API expects SMT-LIB v2 format constraints:
 - **satisfiable** (boolean): True if formula is satisfiable (SAT)
 - **model** (array): Variable assignments when SAT (array of `{name, value}` objects)
 - **unsatisfiable_core** (array): Core assumptions that make formula UNSAT
-- **solver_version** (string): Z3 solver version used (e.g., "4.12.2")
+- **solver_version** (string): Z3 solver version used (e.g., "4.16.0")
 - **time_ms** (number): Solver execution time in milliseconds
 - **smt2_hash** (string): Hash of input formula for verification
 - **error** (string, optional): Error message if solver failed
@@ -81,7 +81,7 @@ The Z3 Solver API expects SMT-LIB v2 format constraints:
 
 ### Prerequisites
 - Vercel account
-- Node.js 18.x
+- Node.js 20.x
 
 ### Deploy to Vercel
 
@@ -106,7 +106,7 @@ After deploying this Z3 Solver API to Vercel, configure the main DSG Control Pla
    DSG_EXTERNAL_SOLVER_URL=https://z3-solver-api-XXXXX.vercel.app/api/solve
    DSG_SOLVER_TIMEOUT_MS=5000
    DSG_DETERMINISTIC_SOLVER_NAME=z3
-   DSG_DETERMINISTIC_SOLVER_VERSION=4.12.2
+   DSG_DETERMINISTIC_SOLVER_VERSION=4.16.0
    ```
    Replace `z3-solver-api-XXXXX` with your actual Vercel project domain.
 3. Redeploy the main DSG Control Plane app to activate the configuration
