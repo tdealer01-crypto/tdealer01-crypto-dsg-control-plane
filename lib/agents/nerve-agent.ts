@@ -6,6 +6,7 @@
  */
 
 import { SolanaClient } from '../solana/client';
+import { agentProfileManager } from '../supabase/agent-profile';
 import type {
   JobListing,
   AgentProfile,
@@ -71,6 +72,20 @@ export class NerveAgent {
         txSignature: signature,
         timestamp: new Date().toISOString(),
       };
+
+      // Persist to Supabase
+      try {
+        await agentProfileManager.recordEarnings({
+          job_id: job.id,
+          agent_id: profile.agentId,
+          amount: job.reward.amount,
+          currency: job.reward.currency,
+          tx_signature: signature,
+        });
+        console.log(`[${this.agentName}] ✅ Earnings persisted to Supabase`);
+      } catch (err) {
+        console.warn(`[${this.agentName}] ⚠️ Failed to persist earnings:`, err);
+      }
 
       console.log(`[${this.agentName}] ✅ Payment successful: ${signature.substring(0, 20)}...`);
 
@@ -138,12 +153,30 @@ export class NerveAgent {
       `[${this.agentName}] Reputation: ${oldReputation} → ${newReputation} (change: ${reputationChange >= 0 ? '+' : ''}${reputationChange})`,
     );
 
+    // Persist to Supabase asynchronously (non-blocking)
+    this.persistReputationUpdate(profile.agentId, reputationChange).catch((err) => {
+      console.warn(`[${this.agentName}] ⚠️ Failed to persist reputation update:`, err);
+    });
+
     return {
       newReputation,
       reputationChange,
       newTier,
       tierChanged,
     };
+  }
+
+  /**
+   * Persist reputation update to Supabase
+   */
+  private async persistReputationUpdate(agentId: string, reputationChange: number): Promise<void> {
+    try {
+      await agentProfileManager.updateReputation(agentId, reputationChange);
+      console.log(`[${this.agentName}] ✅ Reputation persisted to Supabase`);
+    } catch (err) {
+      console.error(`[${this.agentName}] Failed to persist reputation:`, err);
+      throw err;
+    }
   }
 
   /**

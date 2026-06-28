@@ -5304,6 +5304,136 @@ export type Database = {
           },
         ]
       }
+      agent_profiles: {
+        Row: {
+          id: string
+          agent_id: string
+          wallet_address: string
+          skills: string[]
+          reputation: number
+          tier: "bronze" | "silver" | "gold" | "platinum"
+          completed_jobs: number
+          total_earnings: number
+          last_active: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          wallet_address: string
+          skills?: string[]
+          reputation?: number
+          tier?: "bronze" | "silver" | "gold" | "platinum"
+          completed_jobs?: number
+          total_earnings?: number
+          last_active?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          wallet_address?: string
+          skills?: string[]
+          reputation?: number
+          tier?: "bronze" | "silver" | "gold" | "platinum"
+          completed_jobs?: number
+          total_earnings?: number
+          last_active?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      earnings_records: {
+        Row: {
+          id: string
+          job_id: string
+          agent_id: string
+          amount: number
+          currency: string
+          tx_signature: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          agent_id: string
+          amount: number
+          currency: string
+          tx_signature: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          agent_id?: string
+          amount?: number
+          currency?: string
+          tx_signature?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_agent_id"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_profiles"
+            referencedColumns: ["agent_id"]
+          }
+        ]
+      }
+      job_executions: {
+        Row: {
+          id: string
+          job_id: string
+          agent_id: string
+          status: "submitted" | "verified" | "paid" | "failed"
+          deliverable: string | null
+          proof_hash: string | null
+          quality_score: number | null
+          tx_signature: string | null
+          started_at: string
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          agent_id: string
+          status: "submitted" | "verified" | "paid" | "failed"
+          deliverable?: string | null
+          proof_hash?: string | null
+          quality_score?: number | null
+          tx_signature?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          agent_id?: string
+          status?: "submitted" | "verified" | "paid" | "failed"
+          deliverable?: string | null
+          proof_hash?: string | null
+          quality_score?: number | null
+          tx_signature?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_agent_id"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_profiles"
+            referencedColumns: ["agent_id"]
+          }
+        ]
+      }
     }
     Views: {
       policy_versions: {
