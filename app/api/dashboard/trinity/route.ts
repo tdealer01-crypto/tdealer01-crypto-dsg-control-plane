@@ -63,7 +63,7 @@ export async function GET() {
   const metrics = data ? calculateDashboardMetrics(data) : {
     totalEarnings: 0,
     completedJobs: 0,
-    successRate: 0,
+    successRate: '0',
     tier: 'Bronze',
     reputation: 0,
     lastUpdate: new Date().toISOString(),
