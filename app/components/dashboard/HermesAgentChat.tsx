@@ -195,7 +195,7 @@ export function HermesAgentChat() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="flex flex-col h-full min-h-[600px] bg-gradient-to-b from-slate-50 to-white rounded-lg overflow-hidden border border-slate-200">
       <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 bg-white">
         <MessageCircle className="w-6 h-6 text-blue-600" />
         <div>
