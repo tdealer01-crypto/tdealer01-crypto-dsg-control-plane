@@ -133,8 +133,8 @@ describe('Hermes Dashboard UI', () => {
     // Client-side component
     expect(content).toContain('use client');
 
-    // Auth check
-    expect(content).toContain('/api/auth/session');
+    // Auth check (uses Supabase auth)
+    expect(content).toContain('supabase.auth.getUser');
 
     // Chat component
     expect(content).toContain('HermesAgentChat');

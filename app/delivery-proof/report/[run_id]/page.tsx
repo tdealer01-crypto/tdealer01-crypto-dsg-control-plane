@@ -255,6 +255,7 @@ export default async function DeliveryProofReportPage({ params }: { params: Prom
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(window.location.href)}`}
                     alt={`QR code for ${report.run_id}`}
+                    loading="lazy"
                     className="block"
                     width={120}
                     height={120}
@@ -273,6 +274,7 @@ export default async function DeliveryProofReportPage({ params }: { params: Prom
                   <a
                     href={`/api/ccvs/evidence-chain?run_id=${encodeURIComponent(report.run_id!)}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="text-xs text-emerald-300 hover:underline mx-auto"
                   >
                     View Evidence Chain
@@ -281,6 +283,7 @@ export default async function DeliveryProofReportPage({ params }: { params: Prom
                   <a
                     href={`/api/compliance-evidence-pack/annex4?run_id=${encodeURIComponent(report.run_id!)}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="text-xs text-emerald-300 hover:underline mx-auto"
                   >
                     View Annex IV Mapping
