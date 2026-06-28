@@ -1,0 +1,18 @@
+{
+  "name": "dsg-z3-solver-api",
+  "version": "1.0.0",
+  "description": "Vercel-hosted Z3 SMT solver endpoint for DSG Control Plane",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "start": "vercel start",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "z3-solver": "^4.12.2"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
