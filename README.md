@@ -18,6 +18,7 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 | npm audit | ✅ 0 vulnerabilities | Down from 8 | PR #781 fixes applied |
 | Security scan | ✅ PASS | CodeQL + Gitleaks clean | No secrets, no code smells |
 | Lighthouse Best Practices | 🟢 93-100 (improved) | Up from 83 | PR #781: rel + loading attributes + npm audit fixes |
+| Vercel Speed Insights | ✅ ENABLED | Real user Core Web Vitals tracking | LCP, CLS, FID monitoring in production |
 | Production health | ✅ PASS | `/api/health` 200, `/api/agent/chat` 200 | Live endpoint verification |
 | CCVS evidence | ✅ PASS | 2448 test cases | Compliance verification chain |
 | Z3 runtime proofs | ✅ PASS | SHA-256 proof chain in spine/execute | Formal verification |
@@ -103,6 +104,48 @@ Comprehensive audit and optimization for Lighthouse Best Practices score improve
   - DSG Proof Gate validation passing
 
 **Evidence**: [PR #781](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/pull/781) (merged)
+
+---
+
+## Real-User Monitoring: Vercel Speed Insights ⚡
+
+Production performance tracking with real Core Web Vitals data:
+
+### Setup & Implementation
+
+- **Package**: `@vercel/speed-insights@1.2.0` installed (no cost)
+- **Integration**: `<SpeedInsights />` component in `app/layout.tsx` root layout
+- **Availability**: Deployed production only (no dev/localhost collection)
+- **Dashboard**: Viewable in Vercel project settings → Speed Insights
+
+### Metrics Tracked
+
+| Metric | Threshold | Impact |
+|--------|-----------|--------|
+| **LCP** (Largest Contentful Paint) | < 2.5s | User-perceived load performance |
+| **FID** (First Input Delay) | < 100ms | Interaction responsiveness |
+| **CLS** (Cumulative Layout Shift) | < 0.1 | Visual stability during interaction |
+| **TTFB** (Time to First Byte) | < 600ms | Server response time |
+
+### Benefits
+
+✅ Real traffic data (vs lab testing)  
+✅ Device-level performance insights  
+✅ Geographic/device-type breakdowns  
+✅ Historical trend tracking  
+✅ Complements Lighthouse audit scores  
+✅ No additional cost (included with Vercel)  
+
+### Monitoring Workflow
+
+1. Deploy to production (`vercel --yes --prod`)
+2. Speed Insights collects data from real users over 24-48 hours
+3. Dashboard shows metrics broken down by:
+   - Geography (country/region)
+   - Device (mobile/desktop/tablet)
+   - Page URL
+   - Browser
+4. Set alerts for threshold violations in Vercel dashboard
 
 ---
 
