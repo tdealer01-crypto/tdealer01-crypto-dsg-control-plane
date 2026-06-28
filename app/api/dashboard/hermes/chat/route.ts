@@ -42,12 +42,22 @@ async function evaluateGovernancePolicy(
   return decisions[Math.floor(Math.random() * decisions.length)];
 }
 
+// Honest limited-mode reply used when the LLM backend is unavailable, so the
+// dashboard remains usable instead of surfacing a hard error.
+function limitedModeReply(reason: string): string {
+  return [
+    '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
+    `(${reason})`,
+    '',
+    'To enable full conversational replies, configure OPENROUTER_API_KEY for this deployment.',
+  ].join('\n');
+}
+
 async function generateAgentResponse(message: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    const err = new Error('OpenRouter API key not configured');
-    throw err;
+    return limitedModeReply('LLM not configured');
   }
 
   const systemPrompt = `You are Hermes, a helpful AI governance agent that helps users understand policies and make decisions.
@@ -55,43 +65,47 @@ You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'qwen/qwen-3-coder:free',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: message,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    }),
-  });
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'qwen/qwen-3-coder:free',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: message,
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
 
-  if (!response.ok) {
-    const error = new Error('OpenRouter API request failed');
-    throw error;
+    if (!response.ok) {
+      return limitedModeReply('LLM upstream error');
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      return content;
+    }
+
+    return limitedModeReply('LLM returned no content');
+  } catch {
+    return limitedModeReply('LLM request failed');
   }
-
-  const data = (await response.json()) as {
-    choices: Array<{ message: { content: string } }>;
-  };
-
-  if (data.choices && data.choices[0] && data.choices[0].message) {
-    return data.choices[0].message.content;
-  }
-
-  throw new Error('Invalid response from OpenRouter API');
 }
 
 export async function POST(request: NextRequest) {

@@ -1,61 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
 import { HermesAgentChat } from '@/app/components/dashboard/HermesAgentChat';
 
+// Authentication is enforced server-side by app/dashboard/hermes/layout.tsx
+// (Supabase SSR cookie session + redirect). The page must NOT re-gate auth with
+// the browser Supabase client: that client stores its session in localStorage,
+// not the SSR cookies, so getUser() returns null even for a logged-in user and
+// the page would redirect-loop to /login (blank/stuck screen).
 export default function HermesPage() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          router.push('/login?next=/dashboard/hermes');
-          return;
-        }
-        setIsAuthenticated(true);
-
-        // Fetch health, agents, and executions data
-        await Promise.all([
-          fetch('/api/health').catch(() => {}),
-          fetch('/api/agents').catch(() => {}),
-          fetch('/api/executions').catch(() => {}),
-        ]);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        router.push('/login?next=/dashboard/hermes');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  if (isLoading) {
-    return (
-      <div className="w-full h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">กำลังโหลด...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
-    <div className="w-full h-screen bg-slate-950 text-slate-100">
+    <div className="w-full h-full min-h-screen bg-slate-950 text-slate-100">
       <div className="flex h-full flex-col">
         {/* Tab Navigation */}
         <div className="border-b border-slate-800">

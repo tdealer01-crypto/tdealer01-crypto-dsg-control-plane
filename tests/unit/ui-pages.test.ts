@@ -126,21 +126,33 @@ describe('Dashboard Page UI', () => {
 });
 
 describe('Hermes Dashboard UI', () => {
-  it('should have tabs and data fetching', async () => {
+  it('should have tabs and render the chat component', async () => {
     const fs = await import('fs');
     const content = fs.readFileSync('./app/dashboard/hermes/page.tsx', 'utf8');
 
     // Client-side component
     expect(content).toContain('use client');
 
-    // Auth check (uses Supabase auth)
-    expect(content).toContain('supabase.auth.getUser');
-
     // Chat component
     expect(content).toContain('HermesAgentChat');
 
     // Dark theme
     expect(content).toContain('bg-slate-950');
+  });
+
+  it('enforces auth server-side in the layout (not via the browser client)', async () => {
+    const fs = await import('fs');
+    const page = fs.readFileSync('./app/dashboard/hermes/page.tsx', 'utf8');
+    const layout = fs.readFileSync('./app/dashboard/hermes/layout.tsx', 'utf8');
+
+    // Auth must be enforced in the server layout via the SSR (cookie) client,
+    // which redirects unauthenticated users.
+    expect(layout).toContain('supabase.auth.getUser');
+    expect(layout).toContain('redirect');
+
+    // The page must NOT re-gate auth with the browser client: that client uses
+    // localStorage, not SSR cookies, and caused a redirect loop (blank screen).
+    expect(page).not.toContain('supabase.auth.getUser');
   });
 });
 
