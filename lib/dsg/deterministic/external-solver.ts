@@ -72,6 +72,7 @@ ${contextAssertions}
 
 /**
  * Invoke external Z3 solver via HTTP.
+ * DSG_EXTERNAL_SOLVER_URL should be set to the full endpoint, e.g., https://z3-solver-api.vercel.app/api/solve
  * Returns null if disabled or fails; returns result if successful.
  */
 export async function invokeExternalSolver(
@@ -94,7 +95,7 @@ export async function invokeExternalSolver(
     const controller = new AbortController();
     const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs + 1000);
 
-    const response = await fetch(`${solverUrl}/solve`, {
+    const response = await fetch(solverUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
