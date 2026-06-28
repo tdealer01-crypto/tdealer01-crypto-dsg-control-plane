@@ -17,11 +17,16 @@ type Credential = {
   source: ModelProviderSource;
 };
 
+// Default to a currently-available free OpenRouter model (the free roster
+// rotates; previously-pinned ids like qwen-2.5-coder-7b:free are no longer
+// served). Each intent stays overridable via its own env var.
+const DEFAULT_FREE_MODEL = process.env.OPENROUTER_MODEL_DEFAULT || 'openai/gpt-oss-120b:free';
+
 const MODEL_BY_INTENT: Record<ModelIntent, { id: string; model: string; maxTokens: number }> = {
-  planning: { id: 'owl-planner', model: process.env.OPENROUTER_MODEL_PLANNING || 'openrouter/owl-alpha', maxTokens: 1200 },
-  reasoning: { id: 'owl-reasoner', model: process.env.OPENROUTER_MODEL_REASONING || 'openrouter/owl-alpha', maxTokens: 1800 },
-  chat: { id: 'owl-chat', model: process.env.OPENROUTER_MODEL_CHAT || 'openrouter/owl-alpha', maxTokens: 1200 },
-  code: { id: 'qwen-coder', model: process.env.OPENROUTER_MODEL_CODE || 'qwen/qwen-2.5-coder-7b-instruct:free', maxTokens: 1200 },
+  planning: { id: 'owl-planner', model: process.env.OPENROUTER_MODEL_PLANNING || DEFAULT_FREE_MODEL, maxTokens: 1200 },
+  reasoning: { id: 'owl-reasoner', model: process.env.OPENROUTER_MODEL_REASONING || DEFAULT_FREE_MODEL, maxTokens: 1800 },
+  chat: { id: 'owl-chat', model: process.env.OPENROUTER_MODEL_CHAT || DEFAULT_FREE_MODEL, maxTokens: 1200 },
+  code: { id: 'qwen-coder', model: process.env.OPENROUTER_MODEL_CODE || DEFAULT_FREE_MODEL, maxTokens: 1200 },
 };
 
 const PROVIDER_TABLE = 'agent_model_provider_keys';
