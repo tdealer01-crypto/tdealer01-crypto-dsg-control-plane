@@ -1,5 +1,17 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { Z3 } from 'z3-solver';
+import { init } from 'z3-solver';
+
+// Minimal request/response shapes compatible with Vercel's Node runtime.
+// Avoids a hard dependency on @vercel/node (provided by the build runtime).
+interface VercelRequest {
+  method?: string;
+  body?: unknown;
+}
+interface VercelResponse {
+  setHeader(name: string, value: string): void;
+  status(code: number): VercelResponse;
+  json(body: unknown): VercelResponse;
+  end(): VercelResponse;
+}
 
 interface SolveRequest {
   smt2: string;
@@ -18,6 +30,31 @@ interface SolveResponse {
   error?: string;
 }
 
+// z3-solver WebAssembly init is expensive; reuse a single Context across invocations.
+let z3ContextPromise: ReturnType<typeof createContext> | null = null;
+
+async function createContext() {
+  const { Context, Z3 } = await init();
+  // Resolve the solver binary version once for the audit trail.
+  let version = '4.16.0';
+  try {
+    const v = Z3.get_version ? Z3.get_version() : undefined;
+    if (v && typeof v === 'object') {
+      version = `${v.major}.${v.minor}.${v.build_number}`;
+    }
+  } catch {
+    // Fall back to the pinned version string.
+  }
+  return { ctx: Context('main'), version };
+}
+
+function getContext() {
+  if (!z3ContextPromise) {
+    z3ContextPromise = createContext();
+  }
+  return z3ContextPromise;
+}
+
 export default async (req: VercelRequest, res: VercelResponse) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,101 +71,123 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
   const startMs = Date.now();
 
+  // Resolve context first so version is always available in responses.
+  let ctx: Awaited<ReturnType<typeof createContext>>['ctx'];
+  let solverVersion = '4.12.2';
   try {
-    const { smt2, timeout_ms = 5000 }: SolveRequest = req.body;
+    const resolved = await getContext();
+    ctx = resolved.ctx;
+    solverVersion = resolved.version;
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Solver init failed: ' + String(error),
+      status: 'unknown',
+      satisfiable: false,
+      solver_version: solverVersion,
+      time_ms: Date.now() - startMs,
+      smt2_hash: '',
+    });
+  }
 
-    if (!smt2 || typeof smt2 !== 'string') {
-      return res.status(400).json({
-        error: 'Invalid SMT-LIB v2 formula',
-        status: 'unknown',
-        satisfiable: false,
-        solver_version: '4.12.2',
-        time_ms: Date.now() - startMs,
-        smt2_hash: '',
-      });
-    }
+  const { smt2, timeout_ms = 5000 } = (req.body ?? {}) as SolveRequest;
 
-    const { init } = await Z3.create();
-    const { Solver, Context } = init();
-    const ctx = Context('main');
-    const solver = new Solver(ctx);
+  if (!smt2 || typeof smt2 !== 'string') {
+    return res.status(400).json({
+      error: 'Invalid SMT-LIB v2 formula: "smt2" must be a non-empty string',
+      status: 'unknown',
+      satisfiable: false,
+      solver_version: solverVersion,
+      time_ms: Date.now() - startMs,
+      smt2_hash: '',
+    });
+  }
 
-    // Parse and add formula to solver
-    try {
-      const parsed = ctx.parseString(smt2);
-      if (parsed) {
-        for (const assertion of parsed) {
-          solver.add(assertion);
-        }
-      }
-    } catch (parseError) {
-      return res.status(400).json({
-        error: 'Invalid SMT-LIB v2 formula',
-        status: 'unknown',
-        satisfiable: false,
-        solver_version: '4.12.2',
-        time_ms: Date.now() - startMs,
-        smt2_hash: hashFormula(smt2),
-      });
-    }
+  const solver = new ctx.Solver();
 
-    // Set timeout
-    solver.setParam('timeout', timeout_ms);
+  // Bound solver wall-clock time. Z3 reads "timeout" in milliseconds.
+  const boundedTimeout = Math.max(1, Math.min(Number(timeout_ms) || 5000, 30000));
+  try {
+    solver.set('timeout', boundedTimeout);
+  } catch {
+    // Older binaries may reject the param name; safe to ignore.
+  }
 
-    // Check satisfiability
-    const result = solver.check();
-    const statusStr = result.toString();
-    const satisfiable = statusStr === 'sat';
-
-    const response: SolveResponse = {
-      status: (statusStr === 'sat' ? 'sat' : statusStr === 'unsat' ? 'unsat' : 'unknown') as 'sat' | 'unsat' | 'unknown',
-      satisfiable,
-      solver_version: '4.12.2',
+  // Parse SMT-LIB v2 into the solver.
+  try {
+    solver.fromString(smt2);
+  } catch (parseError) {
+    return res.status(400).json({
+      error: 'Invalid SMT-LIB v2 formula: ' + String(parseError),
+      status: 'unknown',
+      satisfiable: false,
+      solver_version: solverVersion,
       time_ms: Date.now() - startMs,
       smt2_hash: hashFormula(smt2),
-    };
+    });
+  }
 
-    if (satisfiable) {
-      const model = solver.model();
-      const modelArray: Array<{ name: string; value: string }> = [];
-
-      try {
-        const decls = model.decls();
-        for (const decl of decls) {
-          modelArray.push({
-            name: decl.name().toString(),
-            value: model.eval(decl, true).toString(),
-          });
-        }
-        response.model = modelArray;
-      } catch (e) {
-        // Model extraction failed, but result is still valid
-      }
-    } else {
-      // Try to extract unsat core
-      try {
-        const core = solver.unsatCore();
-        response.unsatisfiable_core = core.map((e: any) => e.toString());
-      } catch (e) {
-        // Unsat core extraction not available
-      }
-    }
-
-    return res.status(200).json(response);
+  // Check satisfiability (async in the WASM binding).
+  let statusStr: string;
+  try {
+    statusStr = await solver.check();
   } catch (error) {
     return res.status(500).json({
       error: 'Solver error: ' + String(error),
       status: 'unknown',
       satisfiable: false,
-      solver_version: '4.12.2',
+      solver_version: solverVersion,
       time_ms: Date.now() - startMs,
-      smt2_hash: '',
+      smt2_hash: hashFormula(smt2),
     });
   }
+
+  const status: SolveResponse['status'] =
+    statusStr === 'sat' ? 'sat' : statusStr === 'unsat' ? 'unsat' : 'unknown';
+
+  const response: SolveResponse = {
+    status,
+    satisfiable: status === 'sat',
+    solver_version: solverVersion,
+    time_ms: Date.now() - startMs,
+    smt2_hash: hashFormula(smt2),
+  };
+
+  if (status === 'sat') {
+    try {
+      const model = solver.model();
+      const modelArray: Array<{ name: string; value: string }> = [];
+      for (const decl of model.decls()) {
+        modelArray.push({
+          name: decl.name().toString(),
+          value: model.get(decl).toString(),
+        });
+      }
+      response.model = modelArray;
+    } catch {
+      // Model extraction is best-effort; the sat result is still valid.
+    }
+  } else if (status === 'unsat') {
+    // Unsat core is best-effort and only populated when assertions are tracked.
+    try {
+      const core = solver.unsatCore();
+      const length = typeof core.length === 'function' ? core.length() : 0;
+      const items: string[] = [];
+      for (let i = 0; i < length; i++) {
+        items.push(core.get(i).toString());
+      }
+      if (items.length > 0) {
+        response.unsatisfiable_core = items;
+      }
+    } catch {
+      // Unsat core extraction not available for this query.
+    }
+  }
+
+  return res.status(200).json(response);
 };
 
 function hashFormula(formula: string): string {
-  // Simple hash for formula tracking
+  // Stable non-cryptographic hash for formula tracking / audit correlation.
   let hash = 0;
   for (let i = 0; i < formula.length; i++) {
     const char = formula.charCodeAt(i);
