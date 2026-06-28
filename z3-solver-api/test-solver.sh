@@ -1,6 +1,8 @@
 #!/bin/bash
+set -euo pipefail
 
 # Z3 Solver API Test Suite
+# Tests the Z3 Solver endpoint with SMT-LIB v2 formulas
 
 echo "🧪 Z3 Solver API Test Suite"
 echo "=============================="
@@ -10,27 +12,35 @@ PASS=0
 FAIL=0
 
 test_case() {
-  local name=$1
-  local smt2=$2
-  local expect_sat=$3
+  local name="$1"
+  local smt2="$2"
+  local expect_sat="$3"
 
   echo -n "Test: $name ... "
 
+  # Escape quotes and backslashes for JSON
+  local escaped_smt2
+  escaped_smt2=$(printf '%s\n' "$smt2" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+  local payload="{\"smt2\": \"${escaped_smt2}\", \"timeout_ms\": 5000}"
+
+  local response
   response=$(curl -s -X POST "$SOLVER_URL" \
     -H "Content-Type: application/json" \
-    -d "{\"smt2\": \"$smt2\", \"timeout_ms\": 5000}")
+    -d "$payload") || true
 
-  satisfiable=$(echo "$response" | grep -o '"satisfiable":[^,}]*' | cut -d: -f2)
+  local satisfiable
+  satisfiable=$(echo "$response" | grep -o '"satisfiable":[^,}]*' | cut -d: -f2 || echo "")
 
-  if [[ "$satisfiable" == "$expect_sat" ]]; then
+  if [ "$satisfiable" = "$expect_sat" ]; then
     echo "✅ PASS"
-    ((PASS++))
+    PASS=$((PASS + 1))
   else
     echo "❌ FAIL"
     echo "  Expected: $expect_sat"
     echo "  Got: $satisfiable"
     echo "  Response: $response"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
   fi
 }
 
@@ -57,7 +67,7 @@ echo ""
 echo "=============================="
 echo "Results: $PASS passed, $FAIL failed"
 
-if [[ $FAIL -eq 0 ]]; then
+if [ "$FAIL" -eq 0 ]; then
   echo "✅ All tests passed!"
   exit 0
 else
