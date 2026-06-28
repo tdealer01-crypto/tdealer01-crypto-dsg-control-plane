@@ -44,7 +44,7 @@ function calculateDashboardMetrics(data: MarketplaceData) {
   const totalExecutions = data.executions?.length ?? 0;
   const successRate = totalExecutions > 0
     ? ((data.executions?.filter(e => e.status === 'paid').length ?? 0) / totalExecutions * 100).toFixed(1)
-    : 0;
+    : '0';
   const tier = profile?.tier ?? 'Bronze';
   const reputation = profile?.reputation ?? 0;
 
