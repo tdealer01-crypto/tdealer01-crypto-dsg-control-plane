@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { orchestrateChat } from '@/lib/hermes-orchestrator';
+import { logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +30,9 @@ export async function POST(request: NextRequest) {
       { status: result.ok ? 200 : 502 }
     );
   } catch (err) {
-    const reason = err instanceof Error ? err.message : 'Unknown error';
+    logApiError('api/agent/chat', err);
     return NextResponse.json(
-      { ok: false, error: 'orchestration_failed', reason, response: `Hermes Orchestrator error: ${reason}` },
+      { ok: false, error: 'orchestration_failed', response: 'Hermes Orchestrator error' },
       { status: 500 }
     );
   }

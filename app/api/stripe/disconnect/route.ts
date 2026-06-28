@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,9 +106,9 @@ export async function POST(request: NextRequest) {
       .eq('stripe_account_id', accountId);
 
     if (error) {
-      console.error('Error updating deauthorization:', error);
+      logApiError('api/stripe/disconnect', error);
       return NextResponse.json(
-        { received: true, error: error.message },
+        { received: true, error: 'update_failed' },
         { status: 200 }
       );
     }

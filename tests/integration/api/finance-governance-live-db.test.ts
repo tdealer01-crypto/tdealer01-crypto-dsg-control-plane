@@ -3,7 +3,10 @@ import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { FinanceGovernanceRepository } from '../../../lib/finance-governance/repository';
 
 const hasSupabaseEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-const describeLive = hasSupabaseEnv ? describe : describe.skip;
+// Live-DB suites only run when explicitly opted in (dedicated test:live:db scripts).
+// Presence of Supabase secrets in the general CI suite must not trigger live runs.
+const runLiveDb = process.env.RUN_LIVE_DB_TESTS === 'true';
+const describeLive = hasSupabaseEnv && runLiveDb ? describe : describe.skip;
 const writeHeaders = {
   'Content-Type': 'application/json',
   'x-actor-role': 'finance_approver',

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalService } from '@/lib/auth/internal-service';
+import { logApiError } from '@/lib/security/api-error';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -262,10 +263,11 @@ async function executeSubagents(
         throw err;
       }
     } catch (err) {
+      logApiError('api/orchestrate/execute', err, { agent_id: subagent.agent_id });
       return {
         agent_id: subagent.agent_id,
         status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: 'subagent_execution_failed',
         result: null,
       };
     }

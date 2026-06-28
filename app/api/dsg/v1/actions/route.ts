@@ -202,7 +202,8 @@ export async function POST(request: NextRequest) {
         actionRecord.result = result;
       } catch (err) {
         actionRecord.status = 'FAILED';
-        actionRecord.error = err instanceof Error ? err.message : String(err);
+        logApiError('api/dsg/v1/actions:execute', err);
+        actionRecord.error = internalErrorMessage();
       }
 
       await (supabase.from('dsg_actions' as any).update({

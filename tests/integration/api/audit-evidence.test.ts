@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 
 const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-const describeLive = hasEnv ? describe : describe.skip;
+// Live-DB suites only run when explicitly opted in (dedicated test:live:db scripts).
+const runLiveDb = process.env.RUN_LIVE_DB_TESTS === 'true';
+const describeLive = hasEnv && runLiveDb ? describe : describe.skip;
 const orgId = 'it-live-audit-evidence';
 const caseId = 'audit-evidence-case';
 
