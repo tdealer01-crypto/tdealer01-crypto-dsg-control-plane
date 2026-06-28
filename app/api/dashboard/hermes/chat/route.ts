@@ -65,6 +65,10 @@ You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
+  // Free OpenRouter model used across the app (lib/agent/llm-router.ts).
+  // Overridable via OPENROUTER_MODEL_CHAT for deployment flexibility.
+  const model = process.env.OPENROUTER_MODEL_CHAT || 'qwen/qwen-2.5-coder-7b-instruct:free';
+
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -73,7 +77,7 @@ Always be respectful and helpful.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen-3-coder:free',
+        model,
         messages: [
           {
             role: 'system',
@@ -90,6 +94,10 @@ Always be respectful and helpful.`;
     });
 
     if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      console.error(
+        `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+      );
       return limitedModeReply('LLM upstream error');
     }
 
