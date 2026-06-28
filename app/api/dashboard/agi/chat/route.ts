@@ -58,6 +58,10 @@ async function generateAgentResponse(message: string): Promise<string> {
 Support Thai language responses.
 Be concise, technical, and helpful.`;
 
+  // Free OpenRouter model used across the app (lib/agent/llm-router.ts).
+  // Overridable via OPENROUTER_MODEL_CHAT for deployment flexibility.
+  const model = process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free';
+
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -65,7 +69,7 @@ Be concise, technical, and helpful.`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'qwen/qwen-3-coder:free',
+      model,
       messages: [
         {
           role: 'system',
@@ -82,6 +86,10 @@ Be concise, technical, and helpful.`;
   });
 
   if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    console.error(
+      `[api/dashboard/agi/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+    );
     const error = new Error('OpenRouter API request failed');
     throw error;
   }
