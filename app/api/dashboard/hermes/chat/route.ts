@@ -67,7 +67,7 @@ Always be respectful and helpful.`;
 
   // Free OpenRouter model used across the app (lib/agent/llm-router.ts).
   // Overridable via OPENROUTER_MODEL_CHAT for deployment flexibility.
-  const model = process.env.OPENROUTER_MODEL_CHAT || 'qwen/qwen-2.5-coder-7b-instruct:free';
+  const model = process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free';
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
