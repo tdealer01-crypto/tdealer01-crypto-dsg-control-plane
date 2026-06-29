@@ -24,7 +24,9 @@ const TRINITY_DASHBOARD = `${BASE}/dashboard/trinity`;
 // (CI environments typically don't have a running dev server)
 const skipTrinityTests = process.env.CI === 'true' && !process.env.PLAYWRIGHT_BASE_URL;
 
-test.describe.skip(skipTrinityTests, 'Trinity Dashboard UI')('Trinity Dashboard UI', () => {
+test.describe('Trinity Dashboard UI', () => {
+  test.skip(!!skipTrinityTests, 'Skipped in CI without PLAYWRIGHT_BASE_URL');
+
   test.beforeEach(async ({ page }) => {
     // Navigate to Trinity Dashboard
     await page.goto(TRINITY_DASHBOARD, { waitUntil: 'networkidle' });
