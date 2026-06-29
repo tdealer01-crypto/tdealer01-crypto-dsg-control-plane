@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { createWebSocketClient, type TrinityWebSocketClient } from '@/lib/websocket/client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -246,9 +247,10 @@ export default function TrinityDashboardPage() {
   const [agentReputation, setAgentReputation] = useState(80);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  // WebSocket state
-  const wsRef = useRef<WebSocket | null>(null);
+  // WebSocket client state
+  const wsClientRef = useRef<TrinityWebSocketClient | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
   // History and job discovery
   const [executionHistory, setExecutionHistory] = useState<ExecutionHistory[]>([]);
@@ -275,110 +277,97 @@ export default function TrinityDashboardPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Setup real-time connection (SSE as fallback, WebSocket as primary)
+  // Setup Production WebSocket with automatic reconnection and SSE fallback
   useEffect(() => {
     let isMounted = true;
 
-    const setupRealtime = async () => {
-      // Try WebSocket first
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/trinity/ws`;
-
+    const setupWebSocket = async () => {
       try {
-        const ws = new WebSocket(wsUrl);
+        // Get WebSocket URL from environment or construct it
+        const wsUrl =
+          process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
+          (() => {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${protocol}//${window.location.host}`;
+          })();
 
-        ws.onopen = () => {
+        console.log('[Trinity] Connecting to WebSocket:', wsUrl);
+
+        // Create WebSocket client with automatic reconnection and SSE fallback
+        const client = createWebSocketClient(wsUrl);
+
+        // Listen for connection status changes
+        const unsubscribeStatus = client.onStatusChange((status) => {
           if (isMounted) {
-            console.log('Trinity WebSocket connected');
-            setWsConnected(true);
-            toast.info('Real-time connection: WebSocket');
-          }
-        };
+            setWsStatus(status);
+            setWsConnected(status === 'connected');
 
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'status') {
-              setSystemStatus(data.payload);
-            } else if (data.type === 'execution_update') {
-              setResult(data.payload);
+            if (status === 'connected') {
+              toast.success('Connected to Trinity real-time updates');
+              // Subscribe to orchestra orchestration updates
+              subscribeToChannels(client);
+            } else if (status === 'disconnected') {
+              toast.warning('Trinity real-time connection lost');
             }
-          } catch (err) {
-            console.error('Failed to parse WebSocket message:', err);
           }
-        };
+        });
 
-        ws.onerror = () => {
-          console.warn('WebSocket error, falling back to SSE');
+        // Connect to WebSocket server
+        await client.connect().catch((err) => {
+          console.warn('[Trinity] WebSocket connection failed, will retry:', err.message);
+          // Client will retry automatically and fallback to SSE if needed
+        });
+
+        if (isMounted) {
+          wsClientRef.current = client;
+        }
+
+        return () => {
+          unsubscribeStatus();
+          client.disconnect();
+        };
+      } catch (err) {
+        console.error('[Trinity] Failed to setup WebSocket:', err);
+        if (isMounted) {
           setWsConnected(false);
-          // Fallback to SSE
-          setupSSE();
-        };
-
-        ws.onclose = () => {
-          if (isMounted) {
-            setWsConnected(false);
-          }
-        };
-
-        wsRef.current = ws;
-      } catch (err) {
-        console.warn('WebSocket not available, using SSE:', err);
-        setupSSE();
+        }
       }
     };
 
-    const setupSSE = async () => {
-      try {
-        const eventSource = new EventSource('/api/trinity/stream');
+    const subscribeToChannels = (client: TrinityWebSocketClient) => {
+      // Subscribe to orchestration updates
+      client.subscribe('trinity:orchestration', (msg) => {
+        if (msg.payload?.status) {
+          setResult((prev) => ({
+            ...prev,
+            ...msg.payload,
+          }));
+        }
+      });
 
-        eventSource.onopen = () => {
-          if (isMounted) {
-            console.log('Trinity SSE connected');
-            setWsConnected(true);
-            toast.info('Real-time connection: SSE');
-          }
-        };
+      // Subscribe to execution results
+      client.subscribe('trinity:executions', (msg) => {
+        if (msg.payload?.executionId) {
+          setResult((prev) => ({
+            ...prev,
+            ...msg.payload,
+          }));
+        }
+      });
 
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'status') {
-              setSystemStatus(data.payload);
-            } else if (data.type === 'execution_update') {
-              setResult(data.payload);
-            }
-          } catch (err) {
-            // Ignore heartbeat messages
-            if (event.data !== ': heartbeat') {
-              console.error('Failed to parse SSE message:', err);
-            }
-          }
-        };
-
-        eventSource.onerror = () => {
-          console.warn('SSE connection failed');
-          if (isMounted) {
-            setWsConnected(false);
-          }
-          eventSource.close();
-        };
-
-        wsRef.current = eventSource as any;
-      } catch (err) {
-        console.error('Failed to setup SSE:', err);
-      }
+      // Subscribe to job discovery updates
+      client.subscribe('trinity:jobs', (msg) => {
+        if (msg.payload?.jobs) {
+          setDiscoveredJobs(msg.payload.jobs);
+        }
+      });
     };
 
-    setupRealtime();
+    const cleanup = setupWebSocket();
 
     return () => {
       isMounted = false;
-      if (wsRef.current) {
-        if ('close' in wsRef.current) {
-          wsRef.current.close();
-        }
-      }
+      cleanup?.then((fn) => fn?.());
     };
   }, [toast]);
 
