@@ -151,18 +151,8 @@ export async function POST(request: Request) {
         responseHeaders
       );
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('[api/payments/process] Payment processing error:', err);
-
-      return jsonWithHeaders(
-        request,
-        {
-          error: 'Payment processing failed',
-          details: errorMessage,
-        },
-        500,
-        responseHeaders
-      );
+      throw err;
     }
   } catch (error) {
     return handleApiError('api/payments/process', error, {
