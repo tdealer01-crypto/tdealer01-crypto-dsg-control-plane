@@ -17,6 +17,7 @@ const PRIMARY = [
 ];
 
 const MORE = [
+  { href: '/dashboard/trinity', label: '🔱 Trinity AI' },
   { href: '/dashboard/command-center', label: 'Command Center' },
   { href: '/dashboard/policies', label: 'Policies' },
   { href: '/dashboard/proofs', label: 'Proofs' },
