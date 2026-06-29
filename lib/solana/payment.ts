@@ -6,8 +6,7 @@
  * Converts dry-run mode to production payments
  */
 
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createTransferInstruction } from '@solana/spl-token';
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { writeLedgerRecord, checkIdempotencyRecord } from './payment-ledger';
 
 export interface PaymentRequest {
