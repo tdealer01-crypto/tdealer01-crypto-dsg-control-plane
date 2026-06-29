@@ -1,27 +1,30 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  // WebSocket upgrade handling
-  // Note: Next.js doesn't natively support WebSocket upgrades in route handlers
-  // This is a placeholder for WebSocket support that would need:
-  // 1. A dedicated WebSocket server (e.g., via Vercel Edge Functions or separate service)
-  // 2. Or using Next.js with a custom server setup
-  // For now, returning a helpful message
-
-  return new Response(
-    JSON.stringify({
-      ok: false,
-      message: 'WebSocket endpoint - connect via browser WebSocket API',
-      endpoint: '/api/trinity/ws',
-    }),
+  return NextResponse.json(
     {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+      ok: false,
+      message: 'WebSocket not directly supported in Next.js route handlers',
+      alternatives: {
+        sse: '/api/trinity/stream (recommended for Next.js)',
+        deployment: 'Use a separate WebSocket server for production deployments',
+        example: 'ws.anthropic.com for Anthropic Managed Agents',
       },
-    }
+      note: 'WebSocket upgrade requires a custom server or cloud worker',
+    },
+    { status: 501 }
   );
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return NextResponse.json(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
