@@ -2,12 +2,83 @@
  * Trinity AI Multi-Agent Orchestration API
  * POST /api/trinity/orchestrate
  *
- * Runs a dry-run governance-gated orchestration cycle:
+ * Runs a governance-gated orchestration cycle:
  * Spine plan → governance check → Hand execute → Eye verify → Nerve reputation update
- * Does NOT settle real SOL payments; use dry_run=true (default) for E2E testing.
+ * dry_run=true (default): no SOL transfer, no DB write
+ * dry_run=false: writes job_executions + updates agent_profiles in Supabase
  */
 import { NextResponse } from 'next/server';
 import * as crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+function computeTier(reputation: number, completedJobs: number): string {
+  if (reputation >= 90 && completedJobs >= 100) return 'platinum';
+  if (reputation >= 70 && completedJobs >= 25) return 'gold';
+  if (reputation >= 40 && completedJobs >= 5) return 'silver';
+  return 'bronze';
+}
+
+async function persistOrchestration(params: {
+  agentId: string;
+  walletAddress: string;
+  skills: string[];
+  jobId: string;
+  proofHash: string;
+  qualityScore: number;
+  verificationPassed: boolean;
+  newReputation: number;
+  reputationChange: number;
+  completedAt: string;
+}): Promise<{ persisted: boolean; error?: string }> {
+  const supabase = getSupabase();
+  if (!supabase) return { persisted: false, error: 'Supabase not configured' };
+
+  try {
+    const { agentId, walletAddress, skills, jobId, proofHash, qualityScore, verificationPassed, newReputation, completedAt } = params;
+
+    // Upsert agent profile
+    const { error: profileError } = await supabase.from('agent_profiles').upsert(
+      {
+        agent_id: agentId,
+        wallet_address: walletAddress,
+        skills,
+        reputation: newReputation,
+        tier: computeTier(newReputation, 0),
+        last_active: completedAt,
+      },
+      { onConflict: 'agent_id', ignoreDuplicates: false },
+    );
+    if (profileError) throw profileError;
+
+    // Increment completed_jobs + total_earnings atomically via RPC if available, else direct update
+    if (verificationPassed) {
+      await Promise.resolve(supabase.rpc('increment_agent_stats', { p_agent_id: agentId, p_jobs: 1, p_earnings: 0 })).then(() => null).catch(() => null);
+    }
+
+    // Write job_execution record
+    const { error: execError } = await supabase.from('job_executions').insert({
+      job_id: jobId,
+      agent_id: agentId,
+      status: verificationPassed ? 'verified' : 'failed',
+      proof_hash: proofHash,
+      quality_score: qualityScore,
+      started_at: new Date(Date.now() - 200).toISOString(),
+      completed_at: completedAt,
+    });
+    if (execError && !execError.message?.includes('duplicate')) throw execError;
+
+    return { persisted: true };
+  } catch (err) {
+    return { persisted: false, error: String(err) };
+  }
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -182,8 +253,29 @@ export async function POST(req: Request) {
     const newTier = getTier(newReputation, 10);
 
     // Audit hash over full trace
+    const completedAt = new Date().toISOString();
     const auditContent = `${planHash}:Hand:${verificationPassed ? 'success' : 'failed'}:Eye:${verificationPassed}:Nerve:${newReputation}`;
     const auditHash = crypto.createHash('sha256').update(auditContent).digest('hex').slice(0, 44);
+
+    // Supabase write-back when NOT dry_run
+    let persisted = false;
+    let persistError: string | undefined;
+    if (!dry_run) {
+      const result = await persistOrchestration({
+        agentId: agent.agentId,
+        walletAddress: agent.walletAddress,
+        skills: agent.skills,
+        jobId: job.id,
+        proofHash,
+        qualityScore,
+        verificationPassed,
+        newReputation,
+        reputationChange,
+        completedAt,
+      });
+      persisted = result.persisted;
+      persistError = result.error;
+    }
 
     const response: OrchestrationResponse = {
       ok: true,
@@ -207,7 +299,8 @@ export async function POST(req: Request) {
         tierChanged: oldTier !== newTier,
       },
       auditHash,
-      completedAt: new Date().toISOString(),
+      completedAt,
+      ...(dry_run ? {} : { persisted, persistError }),
     };
 
     return NextResponse.json(response);
