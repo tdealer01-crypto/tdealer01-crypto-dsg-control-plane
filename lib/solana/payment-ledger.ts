@@ -23,6 +23,20 @@ export interface PaymentLedgerRecord {
 }
 
 /**
+ * Validate Supabase environment variables
+ */
+function validateSupabaseConfig(): { url: string; key: string } {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error('Missing Supabase configuration: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  return { url, key };
+}
+
+/**
  * Write payment record to ledger
  * Called after SOLPaymentProcessor.processPayment() completes
  */
@@ -30,10 +44,19 @@ export async function writeLedgerRecord(
   ledgerRecord: PaymentLedgerRecord
 ): Promise<{ id: string; created_at: string } | null> {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
+    // Validate inputs
+    if (!ledgerRecord.idempotency_key || typeof ledgerRecord.idempotency_key !== 'string') {
+      throw new Error('Invalid idempotency_key');
+    }
+    if (!ledgerRecord.execution_id || typeof ledgerRecord.execution_id !== 'string') {
+      throw new Error('Invalid execution_id');
+    }
+    if (!ledgerRecord.org_id || typeof ledgerRecord.org_id !== 'string') {
+      throw new Error('Invalid org_id');
+    }
+
+    const { url, key } = validateSupabaseConfig();
+    const supabase = createClient(url, key);
 
     const insertPayload: any = {
       execution_id: ledgerRecord.execution_id,

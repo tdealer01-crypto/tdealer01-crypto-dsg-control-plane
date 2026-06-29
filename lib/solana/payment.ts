@@ -79,7 +79,7 @@ export class SOLPaymentProcessor {
       // Check idempotency: return cached result if already processed
       const cached = this.paymentHistory.get(request.idempotencyKey);
       if (cached) {
-        console.log(`[Payment] Idempotent result for ${request.idempotencyKey}`, cached);
+        console.log('[Payment] Idempotent result for', request.idempotencyKey, cached);
         return cached;
       }
 
