@@ -452,10 +452,14 @@ export default function TrinityDashboardPage() {
   const loadExecutionHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
-      const res = await fetch('/api/trinity/history');
+      const res = await fetch('/api/trinity/history?agentId=dashboard-test-agent&limit=20');
       const data = await res.json();
       if (data.ok) {
-        setExecutionHistory(data.history || []);
+        setExecutionHistory(data.executions || data.history || []);
+        // Sync reputation from DB profile if available
+        if (data.profile?.reputation !== undefined) {
+          setAgentReputation(data.profile.reputation);
+        }
       }
     } catch (err) {
       console.error('Failed to load history:', err);
@@ -469,7 +473,24 @@ export default function TrinityDashboardPage() {
       const res = await fetch('/api/trinity/discover?limit=10');
       const data = await res.json();
       if (data.ok && Array.isArray(data.jobs)) {
-        setDiscoveredJobs(data.jobs);
+        // Map API response (reward as object) → JobDiscovery (reward as number)
+        const mapped: JobDiscovery[] = data.jobs.map((j: {
+          id: string; title: string; platform: string; category: string;
+          difficulty: string; deadline: string; status: string; source: 'live' | 'demo';
+          reward: number | { amount: number; currency: string; usdEstimate: number };
+        }) => ({
+          id: j.id,
+          title: j.title,
+          platform: j.platform,
+          category: j.category,
+          difficulty: j.difficulty,
+          deadline: j.deadline,
+          status: j.status,
+          source: j.source,
+          reward: typeof j.reward === 'object' ? j.reward.amount : j.reward,
+          usdEstimate: typeof j.reward === 'object' ? j.reward.usdEstimate : undefined,
+        }));
+        setDiscoveredJobs(mapped);
       }
     } catch (err) {
       console.error('Failed to load jobs:', err);
