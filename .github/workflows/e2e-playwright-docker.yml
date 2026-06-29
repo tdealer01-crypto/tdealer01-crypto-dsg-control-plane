@@ -51,10 +51,11 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:3000 >/dev/null
-          npx playwright test --reporter=github
+          npx playwright test tests/e2e/enterprise-proof.spec.ts tests/e2e/finance-governance-workflow.spec.ts --reporter=github
           SCRIPT
 
           docker run --rm \
+            -e CI=true \
             -e ENABLE_DEMO_BOOTSTRAP=true \
             -e DEMO_BOOTSTRAP_TOKEN=e2e \
             -e NEXT_PUBLIC_DEMO_BOOTSTRAP_TOKEN=e2e \

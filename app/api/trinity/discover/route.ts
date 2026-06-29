@@ -144,31 +144,69 @@ async function fetchGitHubJobs(token: string, limit: number): Promise<JobListing
   }
 }
 
+async function fetchImmunefiJobs(limit: number): Promise<JobListing[]> {
+  try {
+    const res = await fetch('https://immunefi.com/api/bounty/all/', {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const bounties: Record<string, unknown>[] = Array.isArray(data) ? data : (data.bounties ?? data.data ?? []);
+    return bounties.slice(0, limit).map((b: Record<string, unknown>, i: number) => {
+      const maxReward = Number(b.maxReward ?? b.max_reward ?? 0);
+      const solEstimate = maxReward > 0 ? Math.min(maxReward / 150, 1000) : 5.0;
+      return {
+        id: `imf-${b.id ?? b.slug ?? i}`,
+        platform: 'immunefi',
+        title: String(b.project ?? b.name ?? b.title ?? 'Immunefi Bounty'),
+        category: 'security-review',
+        difficulty: maxReward >= 50_000 ? 'expert' : maxReward >= 10_000 ? 'hard' : 'medium',
+        reward: { amount: Math.round(solEstimate * 10) / 10, currency: 'SOL', usdEstimate: maxReward || 750 },
+        deadline: new Date(Date.now() + (14 + i) * 86_400_000).toISOString(),
+        status: 'open',
+        source: 'live' as const,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get('category') ?? '';
   const limit = Math.min(Number(searchParams.get('limit') ?? '8'), 20);
 
   const githubToken = process.env.GITHUB_TOKEN ?? process.env.GITHUB_ACCESS_TOKEN ?? '';
-  const hasCredentials = Boolean(githubToken);
+  const hasGithub = Boolean(githubToken);
 
-  let jobs: JobListing[] = [];
-  let liveCount = 0;
+  // Fetch from all sources in parallel
+  const [githubJobs, immunefiJobs] = await Promise.all([
+    hasGithub ? fetchGitHubJobs(githubToken, limit) : Promise.resolve([]),
+    fetchImmunefiJobs(limit),
+  ]);
 
-  if (hasCredentials) {
-    const liveJobs = await fetchGitHubJobs(githubToken, limit);
-    liveCount = liveJobs.length;
-    jobs = liveJobs.length > 0 ? liveJobs : demoJobs(category || undefined).slice(0, limit);
-  } else {
-    jobs = demoJobs(category || undefined).slice(0, limit);
+  let liveJobs: JobListing[] = [...githubJobs, ...immunefiJobs];
+
+  // Filter by category if requested
+  if (category) {
+    liveJobs = liveJobs.filter((j) => j.category === category);
   }
+
+  const liveCount = liveJobs.length;
+  const jobs = liveCount > 0 ? liveJobs.slice(0, limit) : demoJobs(category || undefined).slice(0, limit);
 
   return NextResponse.json({
     ok: true,
-    live: hasCredentials && liveCount > 0,
-    demo: !hasCredentials || liveCount === 0,
+    live: liveCount > 0,
+    demo: liveCount === 0,
     jobs,
     count: jobs.length,
+    sources: {
+      github: githubJobs.length,
+      immunefi: immunefiJobs.length,
+    },
     category: category || 'all',
     discoveredAt: new Date().toISOString(),
   });
