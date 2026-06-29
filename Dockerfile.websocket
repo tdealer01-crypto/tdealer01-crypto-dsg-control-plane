@@ -1,0 +1,42 @@
+# WebSocket Server Docker Image
+# Production WebSocket server for Trinity AI real-time updates
+
+FROM oven/bun:latest AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+COPY lib/websocket ./lib/websocket
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Production stage
+FROM oven/bun:latest
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
+
+# Copy from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/lib ./lib
+COPY package.json ./
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${WS_PORT:-3001}/health || exit 1
+
+# Environment
+ENV NODE_ENV=production
+ENV WS_PORT=3001
+
+EXPOSE 3001
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start WebSocket server
+CMD ["bun", "lib/websocket/server.ts"]
