@@ -10,13 +10,33 @@
  * - Execution history
  *
  * ทั้งหมด in dry_run mode — ไม่มี real SOL transfers
+ *
+ * NOTE: These tests require a running dev server.
+ * Run `npm run dev` in a separate terminal before running these tests.
+ * In CI, tests are skipped if server is not accessible.
  */
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
 const TRINITY_DASHBOARD = `${BASE}/dashboard/trinity`;
 
+// Check if server is accessible before running tests
+let serverAvailable = false;
+
+test.beforeAll(async () => {
+  try {
+    const response = await fetch(`${BASE}/api/health`, {
+      timeout: 5000,
+    });
+    serverAvailable = response.ok;
+  } catch {
+    serverAvailable = false;
+  }
+});
+
 test.describe('Trinity Dashboard UI', () => {
+  test.skip(!serverAvailable, 'Dev server not running — run "npm run dev" to enable these tests');
+
   test.beforeEach(async ({ page }) => {
     // Navigate to Trinity Dashboard
     await page.goto(TRINITY_DASHBOARD, { waitUntil: 'networkidle' });
