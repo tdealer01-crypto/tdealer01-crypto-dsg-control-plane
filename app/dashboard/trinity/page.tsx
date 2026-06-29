@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { createWebSocketClient, type TrinityWebSocketClient } from '@/lib/websocket/client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,11 +71,6 @@ interface FormErrors {
   jobTitle?: string;
   rewardAmount?: string;
   agentReputation?: string;
-}
-interface ExecuteJobResult {
-  ok: boolean; jobId: string; qualityScore?: number;
-  reputation?: { newReputation: number; reputationChange: number; tierChanged: boolean; newTier: string };
-  persisted?: boolean; error?: string;
 }
 
 const AGENT_COLORS: Record<string, string> = {
@@ -182,17 +178,7 @@ function ExecutionHistoryTable({ history }: { history: ExecutionHistory[] }) {
   );
 }
 
-function JobDiscoveryPanel({
-  jobs,
-  onExecute,
-  executingJobId,
-  executeResults,
-}: {
-  jobs: JobDiscovery[];
-  onExecute: (job: JobDiscovery) => void;
-  executingJobId: string | null;
-  executeResults: Record<string, ExecuteJobResult>;
-}) {
+function JobDiscoveryPanel({ jobs }: { jobs: JobDiscovery[] }) {
   const difficultyColor = (difficulty: string) => {
     if (difficulty === 'hard') return 'bg-red-900/30 text-red-400';
     if (difficulty === 'medium') return 'bg-yellow-900/30 text-yellow-400';
@@ -204,68 +190,37 @@ function JobDiscoveryPanel({
       {jobs.length === 0 ? (
         <p className="text-sm text-slate-400">No jobs discovered yet</p>
       ) : (
-        jobs.map((job) => {
-          const isExecuting = executingJobId === job.id;
-          const execResult = executeResults[job.id];
-          return (
-            <div
-              key={job.id}
-              className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:border-slate-600 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-1">
-                    <span className="text-xs rounded px-2 py-0.5 bg-slate-700 text-slate-300">{job.platform}</span>
-                    <span className={`text-xs rounded px-2 py-0.5 ${difficultyColor(job.difficulty)}`}>
-                      {job.difficulty}
-                    </span>
-                    {job.source === 'demo' && (
-                      <span className="text-xs rounded px-2 py-0.5 bg-blue-900/30 text-blue-400">demo</span>
-                    )}
-                  </div>
-                  <p className="font-medium text-slate-300">{job.title}</p>
-                  <p className="text-xs text-slate-500 mt-1">{job.category} • {job.status}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-amber-400">{job.reward} SOL</p>
-                  {job.usdEstimate && (
-                    <p className="text-xs text-slate-500">${job.usdEstimate.toFixed(0)}</p>
+        jobs.map((job) => (
+          <div
+            key={job.id}
+            className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:border-slate-600 cursor-pointer transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-1">
+                  <span className="text-xs rounded px-2 py-0.5 bg-slate-700 text-slate-300">{job.platform}</span>
+                  <span className={`text-xs rounded px-2 py-0.5 ${difficultyColor(job.difficulty)}`}>
+                    {job.difficulty}
+                  </span>
+                  {job.source === 'demo' && (
+                    <span className="text-xs rounded px-2 py-0.5 bg-blue-900/30 text-blue-400">demo</span>
                   )}
                 </div>
+                <p className="font-medium text-slate-300">{job.title}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {job.category} • {job.status}
+                </p>
               </div>
-              <p className="text-xs text-slate-600 mt-2">Due: {new Date(job.deadline).toLocaleDateString()}</p>
-
-              {execResult && (
-                <div className={`mt-2 rounded px-3 py-1.5 text-xs ${execResult.ok ? 'bg-emerald-900/30 text-emerald-300' : 'bg-red-900/30 text-red-300'}`}>
-                  {execResult.ok ? (
-                    <span>
-                      ✅ Executed
-                      {execResult.reputation && (
-                        <span className="ml-2 text-slate-400">
-                          Rep: <span className="text-emerald-300">{execResult.reputation.newReputation}</span>
-                          {' '}({execResult.reputation.reputationChange >= 0 ? '+' : ''}{execResult.reputation.reputationChange})
-                          {execResult.reputation.tierChanged && <span className="ml-1 text-yellow-300">🎖️ {execResult.reputation.newTier}</span>}
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    <span>❌ {execResult.error ?? 'Failed'}</span>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => onExecute(job)}
-                disabled={isExecuting || executingJobId !== null}
-                className="mt-2 w-full rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-50 transition-colors"
-              >
-                {isExecuting
-                  ? <span className="flex items-center justify-center gap-1"><span className="inline-block animate-spin">⟳</span> Executing…</span>
-                  : '▶ Execute this job'}
-              </button>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-amber-400">{job.reward} SOL</p>
+                {job.usdEstimate && (
+                  <p className="text-xs text-slate-500">${job.usdEstimate.toFixed(0)}</p>
+                )}
+              </div>
             </div>
-          );
-        })
+            <p className="text-xs text-slate-600 mt-2">Due: {new Date(job.deadline).toLocaleDateString()}</p>
+          </div>
+        ))
       )}
     </div>
   );
@@ -292,17 +247,15 @@ export default function TrinityDashboardPage() {
   const [agentReputation, setAgentReputation] = useState(80);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  // WebSocket state
-  const wsRef = useRef<WebSocket | null>(null);
+  // WebSocket client state
+  const wsClientRef = useRef<TrinityWebSocketClient | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
   // History and job discovery
   const [executionHistory, setExecutionHistory] = useState<ExecutionHistory[]>([]);
   const [discoveredJobs, setDiscoveredJobs] = useState<JobDiscovery[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-
-  const [executingJobId, setExecutingJobId] = useState<string | null>(null);
-  const [executeResults, setExecuteResults] = useState<Record<string, ExecuteJobResult>>({});
 
   // Validate form
   const validateForm = (): boolean => {
@@ -324,110 +277,97 @@ export default function TrinityDashboardPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Setup real-time connection (SSE as fallback, WebSocket as primary)
+  // Setup Production WebSocket with automatic reconnection and SSE fallback
   useEffect(() => {
     let isMounted = true;
 
-    const setupRealtime = async () => {
-      // Try WebSocket first
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/trinity/ws`;
-
+    const setupWebSocket = async () => {
       try {
-        const ws = new WebSocket(wsUrl);
+        // Get WebSocket URL from environment or construct it
+        const wsUrl =
+          process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
+          (() => {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${protocol}//${window.location.host}`;
+          })();
 
-        ws.onopen = () => {
+        console.log('[Trinity] Connecting to WebSocket:', wsUrl);
+
+        // Create WebSocket client with automatic reconnection and SSE fallback
+        const client = createWebSocketClient(wsUrl);
+
+        // Listen for connection status changes
+        const unsubscribeStatus = client.onStatusChange((status) => {
           if (isMounted) {
-            console.log('Trinity WebSocket connected');
-            setWsConnected(true);
-            toast.info('Real-time connection: WebSocket');
-          }
-        };
+            setWsStatus(status);
+            setWsConnected(status === 'connected');
 
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'status') {
-              setSystemStatus(data.payload);
-            } else if (data.type === 'execution_update') {
-              setResult(data.payload);
+            if (status === 'connected') {
+              toast.success('Connected to Trinity real-time updates');
+              // Subscribe to orchestra orchestration updates
+              subscribeToChannels(client);
+            } else if (status === 'disconnected') {
+              toast.warning('Trinity real-time connection lost');
             }
-          } catch (err) {
-            console.error('Failed to parse WebSocket message:', err);
           }
-        };
+        });
 
-        ws.onerror = () => {
-          console.warn('WebSocket error, falling back to SSE');
+        // Connect to WebSocket server
+        await client.connect().catch((err) => {
+          console.warn('[Trinity] WebSocket connection failed, will retry:', err.message);
+          // Client will retry automatically and fallback to SSE if needed
+        });
+
+        if (isMounted) {
+          wsClientRef.current = client;
+        }
+
+        return () => {
+          unsubscribeStatus();
+          client.disconnect();
+        };
+      } catch (err) {
+        console.error('[Trinity] Failed to setup WebSocket:', err);
+        if (isMounted) {
           setWsConnected(false);
-          // Fallback to SSE
-          setupSSE();
-        };
-
-        ws.onclose = () => {
-          if (isMounted) {
-            setWsConnected(false);
-          }
-        };
-
-        wsRef.current = ws;
-      } catch (err) {
-        console.warn('WebSocket not available, using SSE:', err);
-        setupSSE();
+        }
       }
     };
 
-    const setupSSE = async () => {
-      try {
-        const eventSource = new EventSource('/api/trinity/stream');
+    const subscribeToChannels = (client: TrinityWebSocketClient) => {
+      // Subscribe to orchestration updates
+      client.subscribe('trinity:orchestration', (msg) => {
+        if (msg.payload?.status) {
+          setResult((prev) => ({
+            ...prev,
+            ...msg.payload,
+          }));
+        }
+      });
 
-        eventSource.onopen = () => {
-          if (isMounted) {
-            console.log('Trinity SSE connected');
-            setWsConnected(true);
-            toast.info('Real-time connection: SSE');
-          }
-        };
+      // Subscribe to execution results
+      client.subscribe('trinity:executions', (msg) => {
+        if (msg.payload?.executionId) {
+          setResult((prev) => ({
+            ...prev,
+            ...msg.payload,
+          }));
+        }
+      });
 
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'status') {
-              setSystemStatus(data.payload);
-            } else if (data.type === 'execution_update') {
-              setResult(data.payload);
-            }
-          } catch (err) {
-            // Ignore heartbeat messages
-            if (event.data !== ': heartbeat') {
-              console.error('Failed to parse SSE message:', err);
-            }
-          }
-        };
-
-        eventSource.onerror = () => {
-          console.warn('SSE connection failed');
-          if (isMounted) {
-            setWsConnected(false);
-          }
-          eventSource.close();
-        };
-
-        wsRef.current = eventSource as any;
-      } catch (err) {
-        console.error('Failed to setup SSE:', err);
-      }
+      // Subscribe to job discovery updates
+      client.subscribe('trinity:jobs', (msg) => {
+        if (msg.payload?.jobs) {
+          setDiscoveredJobs(msg.payload.jobs);
+        }
+      });
     };
 
-    setupRealtime();
+    const cleanup = setupWebSocket();
 
     return () => {
       isMounted = false;
-      if (wsRef.current) {
-        if ('close' in wsRef.current) {
-          wsRef.current.close();
-        }
-      }
+      cleanup?.then((fn) => fn?.());
     };
   }, [toast]);
 
@@ -552,32 +492,6 @@ export default function TrinityDashboardPage() {
       toast.error(message);
     } finally {
       setRunning(false);
-    }
-  }
-
-  async function executeJob(job: JobDiscovery) {
-    setExecutingJobId(job.id);
-    try {
-      const res = await fetch('/api/trinity/execute-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job: {
-            id: job.id, title: job.title, category: job.category,
-            platform: job.platform, rewardAmount: job.reward,
-            rewardCurrency: 'SOL', deadline: job.deadline,
-          },
-          agentId: 'dashboard-test-agent',
-          reputation: agentReputation,
-          skills: [job.category, 'security-review'],
-        }),
-      });
-      const data = await res.json();
-      setExecuteResults((prev) => ({ ...prev, [job.id]: data }));
-    } catch (err) {
-      setExecuteResults((prev) => ({ ...prev, [job.id]: { ok: false, jobId: job.id, error: String(err) } }));
-    } finally {
-      setExecutingJobId(null);
     }
   }
 
@@ -870,12 +784,7 @@ export default function TrinityDashboardPage() {
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-slate-400">
           💼 Discovered Jobs (Mind Agent)
         </h2>
-        <JobDiscoveryPanel
-          jobs={discoveredJobs}
-          onExecute={executeJob}
-          executingJobId={executingJobId}
-          executeResults={executeResults}
-        />
+        <JobDiscoveryPanel jobs={discoveredJobs} />
       </section>
 
       {/* Footer */}

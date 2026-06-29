@@ -1,0 +1,52 @@
+version: '3.8'
+
+# Local development setup for WebSocket server with Redis
+# Usage: docker-compose -f docker-compose.websocket.yml up
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: trinity-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - trinity
+
+  websocket:
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket
+    container_name: trinity-websocket
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      WS_PORT: 3001
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./lib/websocket:/app/lib/websocket
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - trinity
+
+networks:
+  trinity:
+    driver: bridge
+
+volumes:
+  redis-data:
