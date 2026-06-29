@@ -55,10 +55,14 @@ interface ExecutionHistory {
 interface JobDiscovery {
   id: string;
   title: string;
-  reward: number;
+  platform: string;
   category: string;
-  source: string;
+  difficulty: string;
+  reward: number;
+  usdEstimate?: number;
   deadline: string;
+  status: string;
+  source: 'live' | 'demo';
 }
 
 // Form validation
@@ -174,6 +178,12 @@ function ExecutionHistoryTable({ history }: { history: ExecutionHistory[] }) {
 }
 
 function JobDiscoveryPanel({ jobs }: { jobs: JobDiscovery[] }) {
+  const difficultyColor = (difficulty: string) => {
+    if (difficulty === 'hard') return 'bg-red-900/30 text-red-400';
+    if (difficulty === 'medium') return 'bg-yellow-900/30 text-yellow-400';
+    return 'bg-emerald-900/30 text-emerald-400';
+  };
+
   return (
     <div className="space-y-2">
       {jobs.length === 0 ? (
@@ -182,18 +192,32 @@ function JobDiscoveryPanel({ jobs }: { jobs: JobDiscovery[] }) {
         jobs.map((job) => (
           <div
             key={job.id}
-            className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:border-slate-600 cursor-pointer"
+            className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:border-slate-600 cursor-pointer transition-colors"
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-1">
+                  <span className="text-xs rounded px-2 py-0.5 bg-slate-700 text-slate-300">{job.platform}</span>
+                  <span className={`text-xs rounded px-2 py-0.5 ${difficultyColor(job.difficulty)}`}>
+                    {job.difficulty}
+                  </span>
+                  {job.source === 'demo' && (
+                    <span className="text-xs rounded px-2 py-0.5 bg-blue-900/30 text-blue-400">demo</span>
+                  )}
+                </div>
                 <p className="font-medium text-slate-300">{job.title}</p>
-                <p className="text-xs text-slate-500">
-                  {job.category} • {job.source}
+                <p className="text-xs text-slate-500 mt-1">
+                  {job.category} • {job.status}
                 </p>
               </div>
-              <p className="text-sm font-semibold text-amber-400">{job.reward} SOL</p>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-amber-400">{job.reward} SOL</p>
+                {job.usdEstimate && (
+                  <p className="text-xs text-slate-500">${job.usdEstimate.toFixed(0)}</p>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-slate-600 mt-1">Due: {new Date(job.deadline).toLocaleDateString()}</p>
+            <p className="text-xs text-slate-600 mt-2">Due: {new Date(job.deadline).toLocaleDateString()}</p>
           </div>
         ))
       )}
@@ -251,46 +275,109 @@ export default function TrinityDashboardPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Setup WebSocket
+  // Setup real-time connection (SSE as fallback, WebSocket as primary)
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/trinity/ws`;
+    let isMounted = true;
 
-    try {
-      const ws = new WebSocket(wsUrl);
+    const setupRealtime = async () => {
+      // Try WebSocket first
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/trinity/ws`;
 
-      ws.onopen = () => {
-        console.log('Trinity WebSocket connected');
-        setWsConnected(true);
-        toast.info('Real-time connection established');
-      };
+      try {
+        const ws = new WebSocket(wsUrl);
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'status') {
-          setSystemStatus(data.payload);
-        } else if (data.type === 'execution_update') {
-          setResult(data.payload);
-        }
-      };
+        ws.onopen = () => {
+          if (isMounted) {
+            console.log('Trinity WebSocket connected');
+            setWsConnected(true);
+            toast.info('Real-time connection: WebSocket');
+          }
+        };
 
-      ws.onerror = () => {
-        console.error('WebSocket error');
-        setWsConnected(false);
-      };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'status') {
+              setSystemStatus(data.payload);
+            } else if (data.type === 'execution_update') {
+              setResult(data.payload);
+            }
+          } catch (err) {
+            console.error('Failed to parse WebSocket message:', err);
+          }
+        };
 
-      ws.onclose = () => {
-        setWsConnected(false);
-      };
+        ws.onerror = () => {
+          console.warn('WebSocket error, falling back to SSE');
+          setWsConnected(false);
+          // Fallback to SSE
+          setupSSE();
+        };
 
-      wsRef.current = ws;
-    } catch (err) {
-      console.error('Failed to connect WebSocket:', err);
-    }
+        ws.onclose = () => {
+          if (isMounted) {
+            setWsConnected(false);
+          }
+        };
+
+        wsRef.current = ws;
+      } catch (err) {
+        console.warn('WebSocket not available, using SSE:', err);
+        setupSSE();
+      }
+    };
+
+    const setupSSE = async () => {
+      try {
+        const eventSource = new EventSource('/api/trinity/stream');
+
+        eventSource.onopen = () => {
+          if (isMounted) {
+            console.log('Trinity SSE connected');
+            setWsConnected(true);
+            toast.info('Real-time connection: SSE');
+          }
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'status') {
+              setSystemStatus(data.payload);
+            } else if (data.type === 'execution_update') {
+              setResult(data.payload);
+            }
+          } catch (err) {
+            // Ignore heartbeat messages
+            if (event.data !== ': heartbeat') {
+              console.error('Failed to parse SSE message:', err);
+            }
+          }
+        };
+
+        eventSource.onerror = () => {
+          console.warn('SSE connection failed');
+          if (isMounted) {
+            setWsConnected(false);
+          }
+          eventSource.close();
+        };
+
+        wsRef.current = eventSource as any;
+      } catch (err) {
+        console.error('Failed to setup SSE:', err);
+      }
+    };
+
+    setupRealtime();
 
     return () => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.close();
+      isMounted = false;
+      if (wsRef.current) {
+        if ('close' in wsRef.current) {
+          wsRef.current.close();
+        }
       }
     };
   }, [toast]);
@@ -330,10 +417,10 @@ export default function TrinityDashboardPage() {
 
   const loadDiscoveredJobs = useCallback(async () => {
     try {
-      const res = await fetch('/api/trinity/jobs');
+      const res = await fetch('/api/trinity/discover?limit=10');
       const data = await res.json();
-      if (data.ok) {
-        setDiscoveredJobs(data.jobs || []);
+      if (data.ok && Array.isArray(data.jobs)) {
+        setDiscoveredJobs(data.jobs);
       }
     } catch (err) {
       console.error('Failed to load jobs:', err);
