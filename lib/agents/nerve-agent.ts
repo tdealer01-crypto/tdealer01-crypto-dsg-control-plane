@@ -3,9 +3,12 @@
  *
  * Manages agent payments, reputation tracking, and tier progression
  * Part of the 5-agent Trinity system
+ *
+ * Phase 3 Feature 2: Integrated with SOLPaymentProcessor for idempotent payments
  */
 
 import { SolanaClient } from '../solana/client';
+import { getPaymentProcessor, initializePaymentProcessor } from '../solana/payment';
 import { agentProfileManager } from '../supabase/agent-profile';
 import type {
   JobListing,
@@ -39,29 +42,62 @@ export class NerveAgent {
   private readonly REPUTATION_BONUS_QUALITY = 3;
 
   /**
-   * Process payment for completed job
+   * Process payment for completed job with idempotency safeguards (Phase 3 Feature 2)
    */
   async settlePayment(job: JobListing, profile: AgentProfile): Promise<PaymentResult> {
     console.log(`\n[${this.agentName}] Settling payment: ${job.reward.amount} ${job.reward.currency}`);
 
     try {
-      // Initialize Solana client
-      SolanaClient.initializeSolana();
-
-      // Check wallet balance
-      const balance = await SolanaClient.getWalletBalance();
-      console.log(`[${this.agentName}] Wallet balance: ${balance.toFixed(2)} SOL`);
-
-      if (balance < job.reward.amount && job.reward.currency === 'SOL') {
+      // Only support SOL payments through new payment processor
+      if (job.reward.currency !== 'SOL') {
         return {
           success: false,
           amount: job.reward.amount,
-          error: `Insufficient balance. Have ${balance.toFixed(2)} SOL, need ${job.reward.amount}`,
+          error: `Payment currency ${job.reward.currency} not yet supported. Only SOL accepted.`,
         };
       }
 
-      // Execute transfer
-      const signature = await SolanaClient.transferSOL(profile.walletAddress, job.reward.amount);
+      // Initialize payment processor if not already initialized
+      let processor;
+      try {
+        processor = getPaymentProcessor();
+      } catch {
+        // Initialize with treasury wallet (would be configured via env in production)
+        const treasuryWallet = process.env.SOLANA_TREASURY_WALLET || 'So11111111111111111111111111111111111111112';
+        const orgId = process.env.ORG_ID || 'default-org';
+        const solanaEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.devnet.solana.com';
+        const dryRun = process.env.DRY_RUN_PAYMENTS === 'true';
+
+        processor = initializePaymentProcessor(treasuryWallet, orgId, solanaEndpoint, dryRun);
+        console.log(`[${this.agentName}] Initialized payment processor (dryRun: ${dryRun})`);
+      }
+
+      // Generate idempotency key to prevent double-spending
+      const idempotencyKey = `job-${job.id}-agent-${profile.agentId}`;
+
+      // Process payment through SOLPaymentProcessor with idempotency
+      const result = await processor.processPayment({
+        executionId: `exec-job-${job.id}`,
+        agentId: profile.agentId,
+        recipientWallet: profile.walletAddress,
+        amountSOL: job.reward.amount,
+        idempotencyKey,
+        description: `Job payout: ${job.title}`,
+        metadata: {
+          jobId: job.id,
+          jobTitle: job.title,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      if (result.status === 'failed') {
+        console.error(`[${this.agentName}] Payment failed:`, result.error);
+        return {
+          success: false,
+          amount: job.reward.amount,
+          error: result.error || 'Payment processing failed',
+        };
+      }
 
       // Create earnings record
       const earningsRecord: EarningsRecord = {
@@ -69,35 +105,38 @@ export class NerveAgent {
         agentId: profile.agentId,
         amount: job.reward.amount,
         currency: job.reward.currency,
-        txSignature: signature,
-        timestamp: new Date().toISOString(),
+        txSignature: result.transactionSignature,
+        timestamp: result.timestamp,
       };
 
-      // Persist to Supabase
+      // Persist to Supabase (for compatibility with existing agent profile system)
       try {
         await agentProfileManager.recordEarnings({
           job_id: job.id,
           agent_id: profile.agentId,
           amount: job.reward.amount,
           currency: job.reward.currency,
-          tx_signature: signature,
+          tx_signature: result.transactionSignature,
         });
         console.log(`[${this.agentName}] ✅ Earnings persisted to Supabase`);
       } catch (err) {
         console.warn(`[${this.agentName}] ⚠️ Failed to persist earnings:`, err);
+        // Don't fail payment if earnings persistence fails; payment already confirmed in ledger
       }
 
-      console.log(`[${this.agentName}] ✅ Payment successful: ${signature.substring(0, 20)}...`);
+      console.log(
+        `[${this.agentName}] ✅ Payment successful (${result.status}): ${result.transactionSignature.substring(0, 20)}...`,
+      );
 
       return {
         success: true,
-        txSignature: signature,
+        txSignature: result.transactionSignature,
         amount: job.reward.amount,
         earningsRecord,
       };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[${this.agentName}] Payment failed:`, errorMsg);
+      console.error(`[${this.agentName}] Payment processing error:`, errorMsg);
 
       return {
         success: false,
