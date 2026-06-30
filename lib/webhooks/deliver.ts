@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "../supabase-server";
 
-const DELIVERY_TIMEOUT_MS = 5_000;
+const DELIVERY_TIMEOUT_MS = 5_000; // 5 s per-endpoint; fire-and-forget
 
 function parseAndValidateWebhookUrl(raw: string): URL | null {
   let parsed: URL;
