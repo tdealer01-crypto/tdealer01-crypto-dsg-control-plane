@@ -118,7 +118,7 @@ export async function appendAuditEvent(params: {
   jobId: string;
   eventType: string;
   actorId: string;
-  payload?: Record<string, unknown>;
+  payload?: unknown;
 }) {
   if (!params.supabase) return;
   await params.supabase.from('trinity_audit_events').insert({
