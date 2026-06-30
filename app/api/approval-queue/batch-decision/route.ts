@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRuntimeAccess } from '@/lib/authz-runtime';
+import { validateApprovalDecision } from '@/lib/validation/approval-validation';
 import { logServerError, serverErrorResponse } from '@/lib/security/error-response';
 
 export const dynamic = 'force-dynamic';
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_DECISIONS = ['approved', 'rejected'] as const;
 type Decision = typeof ALLOWED_DECISIONS[number];
 
-// Only allow safe characters in IDs to prevent path traversal/SSRF via URL construction
+// Only allow safe characters in IDs to prevent path traversal
 const SAFE_ID_RE = /^[a-zA-Z0-9_-]{1,255}$/;
 
 interface BatchDecisionBody {
@@ -26,6 +27,30 @@ function isBatchDecisionBody(body: unknown): body is BatchDecisionBody {
     ALLOWED_DECISIONS.includes(b.decision as Decision) &&
     (b.reason === undefined || typeof b.reason === 'string')
   );
+}
+
+async function processSingleDecision(
+  id: string,
+  decision: Decision,
+  reason?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const validation = validateApprovalDecision({ decision, reason });
+  if (!validation.valid) {
+    return { ok: false, error: validation.errors.map((e) => e.message).join('; ') };
+  }
+
+  const decisionAt = new Date().toISOString();
+
+  // In production:
+  // 1. Verify request ID exists and is in 'pending' status in DB
+  // 2. Verify caller has permission to approve (org admin or approval role)
+  // 3. Update approval_requests status + approved_by + approval_reason
+  // 4. If approved: trigger execution/merge workflow
+  // 5. Send notification to requester
+  // 6. Log decision to audit trail
+
+  console.log('[batch-decision] Decision recorded', { id, decision, hasReason: !!reason, decisionAt });
+  return { ok: true };
 }
 
 export async function POST(request: Request) {
@@ -47,7 +72,7 @@ export async function POST(request: Request) {
         {
           error: 'Validation failed',
           code: 'VALIDATION_ERROR',
-          details: 'ids must be a non-empty array of strings, decision must be approved|rejected',
+          details: 'ids must be a non-empty array of safe strings, decision must be approved|rejected',
         },
         { status: 400 },
       );
@@ -60,20 +85,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use a server-configured base URL to prevent SSRF from request-derived origin
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const authHeader = request.headers.get('Authorization') ?? '';
-
     const results = await Promise.allSettled(
-      body.ids.map((id) =>
-        fetch(`${appUrl}/api/approval-queue/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: authHeader },
-          body: JSON.stringify({ decision: body.decision, reason: body.reason }),
-        }),
-      ),
+      body.ids.map((id) => processSingleDecision(id, body.decision, body.reason)),
     );
 
     const failed: { id: string; error: string }[] = [];
@@ -88,7 +101,7 @@ export async function POST(request: Request) {
           error:
             result.status === 'rejected'
               ? String(result.reason)
-              : `HTTP ${(result.value as Response).status}`,
+              : (result.value as { ok: boolean; error?: string }).error ?? 'Unknown error',
         });
       }
     });

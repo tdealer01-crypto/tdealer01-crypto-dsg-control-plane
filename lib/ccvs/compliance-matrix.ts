@@ -80,7 +80,7 @@ export const REQUIREMENT_CATALOG: RequirementControl[] = [
     framework: 'ISO 42001',
     article_or_section: 'Annex A 7.3',
     title: 'AI system risk assessment',
-    control_id: 'CTRL-RISK-GATE',
+    control_id: 'CTRL-RISK-ASSESS',
     control_description: 'Risk scoring and decision gate for AI system actions',
     test_file: 'tests/failure/replay-matrix.test.ts',
     test_suite: 'replay-matrix',
