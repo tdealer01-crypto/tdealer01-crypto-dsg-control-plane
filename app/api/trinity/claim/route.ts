@@ -26,33 +26,45 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
     const walletAddress = body.walletAddress || actor.walletAddress || null;
 
-    const { data: ownClaim, error: ownClaimError } = await supabase
+    const { data: current, error: currentError } = await supabase
       .from('trinity_jobs')
-      .update({ claimed_by: actor.actorId, claimed_at: now, worker_wallet_address: walletAddress, status: 'claimed' })
+      .select('id, status, claimed_by, claimed_at')
       .eq('org_id', actor.orgId)
       .eq('id', body.jobId)
-      .or(`claimed_by.is.null,claimed_by.eq.${actor.actorId}`)
-      .in('status', ['discovered', 'claimed'])
-      .select('id, status, claimed_by, claimed_at, worker_wallet_address')
       .maybeSingle();
 
-    if (ownClaimError) {
-      return NextResponse.json({ ok: false, error: ownClaimError.message }, { status: 409 });
+    if (currentError) {
+      return NextResponse.json({ ok: false, error: currentError.message }, { status: 409 });
     }
-
-    if (!ownClaim) {
-      const { data: current } = await supabase
-        .from('trinity_jobs')
-        .select('id, status, claimed_by, claimed_at')
-        .eq('org_id', actor.orgId)
-        .eq('id', body.jobId)
-        .maybeSingle();
-
+    if (!current) {
+      return NextResponse.json({ ok: false, error: 'job not found' }, { status: 404 });
+    }
+    if (current.claimed_by && current.claimed_by !== actor.actorId) {
       return NextResponse.json(
         {
           ok: false,
           error: 'job already claimed or not claimable',
           current,
+        },
+        { status: 409 },
+      );
+    }
+
+    const { data: ownClaim, error: ownClaimError } = await supabase
+      .from('trinity_jobs')
+      .update({ claimed_by: actor.actorId, claimed_at: now, worker_wallet_address: walletAddress, status: 'claimed' })
+      .eq('org_id', actor.orgId)
+      .eq('id', body.jobId)
+      .in('status', ['discovered', 'claimed'])
+      .select('id, status, claimed_by, claimed_at, worker_wallet_address')
+      .maybeSingle();
+
+    if (ownClaimError || !ownClaim) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'job already claimed or not claimable',
+          current: current ?? null,
         },
         { status: 409 },
       );

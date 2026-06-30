@@ -57,11 +57,18 @@ export async function POST(req: Request) {
     const qualityScore = Number(body.qualityScore ?? latestDeliverable.quality_score ?? 0);
     const passed = qualityScore >= threshold;
 
-    await supabase
+    const { data: updatedJob } = await supabase
       .from('trinity_jobs')
       .update({ status: passed ? 'verified' : 'rejected', verified_at: new Date().toISOString() })
       .eq('org_id', actor.orgId)
-      .eq('id', body.jobId);
+      .eq('status', 'submitted')
+      .eq('id', body.jobId)
+      .select('id')
+      .maybeSingle();
+
+    if (!updatedJob) {
+      return NextResponse.json({ ok: false, error: 'job is not in submitted state' }, { status: 409 });
+    }
 
     await supabase
       .from('trinity_deliverables')

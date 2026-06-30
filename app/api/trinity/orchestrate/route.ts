@@ -190,13 +190,23 @@ export async function POST(req: Request) {
         });
 
         if (verificationPassed) {
-          settlement = await settleJob({
-            supabase,
-            orgId: actor.orgId,
-            actorId: actor.actorId,
-            jobId: job.id,
-            idempotencyKey: createHash(`${actor.orgId}:${job.id}:orchestrate`),
-          });
+          const { data: verifyState } = await supabase
+            .from('trinity_jobs')
+            .select('id, status')
+            .eq('org_id', actor.orgId)
+            .eq('id', job.id)
+            .eq('status', 'verified')
+            .maybeSingle();
+
+          settlement = verifyState
+            ? await settleJob({
+                supabase,
+                orgId: actor.orgId,
+                actorId: actor.actorId,
+                jobId: job.id,
+                idempotencyKey: createHash(`${actor.orgId}:${job.id}:orchestrate`),
+              })
+            : { ok: false, status: 'skipped', reason: 'verification state changed before settlement' };
         }
 
         persisted = true;

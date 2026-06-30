@@ -500,7 +500,6 @@ export default function TrinityDashboardPage() {
           'x-trinity-org-id': 'default-org',
           'x-trinity-actor-id': 'dashboard-test-agent',
           'x-trinity-role': 'OWNER',
-          'x-trinity-wallet-address': 'TriNiTy1111111111111111111111111111111111111',
         },
       });
 

@@ -131,18 +131,26 @@ export async function POST(req: Request) {
       { onConflict: 'id' },
     );
 
+    const { data: claimOwner } = await supabase
+      .from('trinity_jobs')
+      .select('claimed_by')
+      .eq('org_id', actor.orgId)
+      .eq('id', job.id)
+      .maybeSingle();
+    if (claimOwner?.claimed_by && claimOwner.claimed_by !== agent.agentId) {
+      return NextResponse.json({ ok: false, error: 'claim lock failed' }, { status: 409 });
+    }
+
     const { data: claimed } = await supabase
       .from('trinity_jobs')
       .update({ status: 'claimed', claimed_by: agent.agentId, claimed_at: now, worker_wallet_address: agent.walletAddress })
       .eq('org_id', actor.orgId)
       .eq('id', job.id)
-      .or(`claimed_by.is.null,claimed_by.eq.${agent.agentId}`)
+      .in('status', ['discovered', 'claimed'])
       .select('id, claimed_by, claimed_at, status')
       .maybeSingle();
 
-    if (!claimed) {
-      return NextResponse.json({ ok: false, error: 'claim lock failed' }, { status: 409 });
-    }
+    if (!claimed) return NextResponse.json({ ok: false, error: 'claim lock failed' }, { status: 409 });
 
     await supabase.from('trinity_jobs').update({ status: 'in_progress' }).eq('org_id', actor.orgId).eq('id', job.id);
 

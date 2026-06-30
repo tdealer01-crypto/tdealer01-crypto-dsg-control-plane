@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.trinity_settlements (
   settled_by text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(org_id, idempotency_key),
-  UNIQUE(org_id, job_id, status)
+  UNIQUE(org_id, job_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_trinity_settlements_org_job ON public.trinity_settlements(org_id, job_id);

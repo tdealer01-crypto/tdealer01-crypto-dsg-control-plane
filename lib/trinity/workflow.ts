@@ -127,7 +127,9 @@ export async function appendAuditEvent(params: {
     event_type: params.eventType,
     actor_id: params.actorId,
     payload: params.payload ?? {},
-    event_hash: createHash(`${params.jobId}:${params.eventType}:${JSON.stringify(params.payload ?? {})}:${Date.now()}`),
+    event_hash: createHash(
+      `${params.jobId}:${params.eventType}:${JSON.stringify(params.payload ?? {})}:${crypto.randomUUID()}`,
+    ),
   });
 }
 
