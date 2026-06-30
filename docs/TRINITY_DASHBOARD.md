@@ -4,7 +4,7 @@
 
 The Trinity AI Dashboard is an interactive UI for controlling the 5-agent multi-agent orchestration system. Phase 2 connects the dashboard to real API endpoints, implements real-time updates, adds comprehensive testing, and polishes the user experience.
 
-**Status**: ✅ Phase 2 Complete (Dashboard UI + Real APIs + E2E Tests)
+**Status**: ✅ Phase 3 in progress (DB-backed lifecycle + settlement path + audit events)
 
 ## Architecture
 
@@ -113,9 +113,10 @@ Displays all 5 Trinity agents and their status:
 
 Refresh button available to reload status on demand.
 
-### 4. Orchestration Execution (Dry-Run)
+### 4. Orchestration Execution (Production Path)
 
-**Dry-run Mode**: All executions are simulated — no real SOL transfers.
+**Production path**: Orchestration can run with `dry_run=false` and persist claim → execute → submit → verify → settle lifecycle.
+Live SOL transfer is controlled by `TRINITY_ENABLE_LIVE_SOL_TRANSFER=true` and wallet configuration.
 
 **Inputs**:
 - Job title
@@ -170,7 +171,7 @@ Refresh button available to reload status on demand.
 }
 ```
 
-### 5. Execution History
+### 5. Execution History (DB-backed)
 
 Displays past orchestration runs:
 
@@ -448,14 +449,12 @@ For production, consider WebSocket when:
 - High-frequency updates required
 - Dedicated WebSocket server available
 
-### Why Dry-Run Only?
+### Why production path still has manual-review fallback?
 
-- ✅ Safe for testing without SOL transfer
-- ✅ Deterministic results for testing
-- ✅ Full governance pipeline validation
-- ✅ Audit trail recording
-
-Live mode with real SOL transfers planned for Phase 3.
+- ✅ Replay-safe idempotency for settlement calls
+- ✅ Controlled fail-safe when wallet/RPC/env is missing
+- ✅ Preserves immutable audit evidence on every transition
+- ✅ Avoids silent payout failures
 
 ### Form Validation Strategy
 
