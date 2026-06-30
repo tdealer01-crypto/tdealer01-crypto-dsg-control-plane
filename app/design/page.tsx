@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import React from 'react';
 import Markdoc from '@markdoc/markdoc';
 import { markdocConfig } from '../../markdoc/config';
 
@@ -28,9 +29,8 @@ export default async function DesignPage() {
     );
   }
 
-  const { createReactComponents } = Markdoc.createReactComponents(markdocConfig);
-  const transformed = Markdoc.transform(content, markdocConfig);
-  const rendered = Markdoc.renderReact(transformed, createReactComponents());
+  const transformed = Markdoc.transform(Markdoc.parse(content), markdocConfig);
+  const rendered = Markdoc.renderers.react(transformed, React, { components: createComponents() });
 
   return (
     <div className="min-h-screen bg-[#07080b] text-white">

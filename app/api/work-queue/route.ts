@@ -13,12 +13,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const baseUrl = new URL(request.url).origin;
+    // Use a server-configured base URL to prevent SSRF from request-derived origin
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const headers = { Authorization: request.headers.get('Authorization') ?? '' };
 
     const [approvalsRes, tasksRes] = await Promise.allSettled([
-      fetch(`${baseUrl}/api/approval-queue/pending?limit=50`, { headers }),
-      fetch(`${baseUrl}/api/tasks?limit=50&status=PENDING`, { headers }),
+      fetch(`${appUrl}/api/approval-queue/pending?limit=50`, { headers }),
+      fetch(`${appUrl}/api/tasks?limit=50&status=PENDING`, { headers }),
     ]);
 
     const approvals =

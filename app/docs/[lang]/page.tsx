@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import React from 'react';
 import Markdoc from '@markdoc/markdoc';
 import { markdocConfig } from '../../../markdoc/config';
 
@@ -7,8 +8,9 @@ const DOCS_DIR = path.join(process.cwd(), 'markdoc', 'docs');
 
 export const dynamic = 'force-dynamic';
 
-export default async function DocsPage({ params }: { params: { lang: string } }) {
-  const lang = params.lang || 'en';
+export default async function DocsPage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang: langParam } = await params;
+  const lang = langParam || 'en';
   const filePath = path.join(DOCS_DIR, lang, 'index.md');
 
   let content: string;
@@ -22,9 +24,8 @@ export default async function DocsPage({ params }: { params: { lang: string } })
     );
   }
 
-  const { createReactComponents } = Markdoc.createReactComponents(markdocConfig);
-  const transformed = Markdoc.transform(content, markdocConfig);
-  const rendered = Markdoc.renderReact(transformed, createReactComponents());
+  const transformed = Markdoc.transform(Markdoc.parse(content), markdocConfig);
+  const rendered = Markdoc.renderers.react(transformed, React, { components: {} });
 
   const availableLangs = [
     { code: 'en', label: '🇬🇧 English' },

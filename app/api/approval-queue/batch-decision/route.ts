@@ -7,6 +7,9 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_DECISIONS = ['approved', 'rejected'] as const;
 type Decision = typeof ALLOWED_DECISIONS[number];
 
+// Only allow safe characters in IDs to prevent path traversal/SSRF via URL construction
+const SAFE_ID_RE = /^[a-zA-Z0-9_-]{1,255}$/;
+
 interface BatchDecisionBody {
   ids: string[];
   decision: Decision;
@@ -19,7 +22,7 @@ function isBatchDecisionBody(body: unknown): body is BatchDecisionBody {
   return (
     Array.isArray(b.ids) &&
     b.ids.length > 0 &&
-    b.ids.every((id) => typeof id === 'string' && id.length <= 255) &&
+    b.ids.every((id) => typeof id === 'string' && SAFE_ID_RE.test(id)) &&
     ALLOWED_DECISIONS.includes(b.decision as Decision) &&
     (b.reason === undefined || typeof b.reason === 'string')
   );
@@ -57,12 +60,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const baseUrl = new URL(request.url).origin;
+    // Use a server-configured base URL to prevent SSRF from request-derived origin
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const authHeader = request.headers.get('Authorization') ?? '';
 
     const results = await Promise.allSettled(
       body.ids.map((id) =>
-        fetch(`${baseUrl}/api/approval-queue/${id}`, {
+        fetch(`${appUrl}/api/approval-queue/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: authHeader },
           body: JSON.stringify({ decision: body.decision, reason: body.reason }),
