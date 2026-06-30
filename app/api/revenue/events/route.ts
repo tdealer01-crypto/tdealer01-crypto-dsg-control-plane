@@ -24,6 +24,7 @@
 import { NextResponse } from 'next/server';
 import { readJsonBody } from '@/lib/security/request-json';
 import { handleApiError } from '@/lib/security/api-error';
+import { requireInternalService } from '@/lib/auth/internal-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,49 +47,59 @@ interface RevenueEvent {
 const eventBuffer: RevenueEvent[] = [];
 
 export async function POST(request: Request) {
-  const parsed = await readJsonBody<RevenueEvent>(request, { maxBytes: 2_048 });
+  try {
+    const auth = requireInternalService(request);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
 
-  if (!parsed.ok) {
-    return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
+    const parsed = await readJsonBody<RevenueEvent>(request, { maxBytes: 2_048 });
+
+    if (!parsed.ok) {
+      return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
+    }
+
+    const event = parsed.value;
+
+    if (!event || !event.type) {
+      return NextResponse.json(
+        { ok: false, error: 'type is required' },
+        { status: 400 }
+      );
+    }
+
+    // Add timestamp if not provided
+    const eventWithTimestamp = {
+      ...event,
+      orgId: event.orgId || auth.orgId,
+      timestamp: event.timestamp || new Date().toISOString(),
+    };
+
+    // Buffer event in memory (Phase 1)
+    eventBuffer.push(eventWithTimestamp);
+
+    // TODO: Phase 2 - Persist to Supabase
+    // const supabase = await createClient();
+    // await supabase.from('revenue_events').insert(eventWithTimestamp);
+
+    // Log to console for debugging
+    console.log('📊 Revenue Event:', {
+      type: event.type,
+      source: event.source || 'unknown',
+      orgId: eventWithTimestamp.orgId || 'anonymous',
+      amount: event.amount ? `$${event.amount}` : 'free',
+      timestamp: eventWithTimestamp.timestamp,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      queued: true,
+      message: 'Event logged for revenue tracking (Phase 1: in-memory buffer)',
+    });
+  } catch (error) {
+    return handleApiError('api/revenue/events:POST', error);
   }
-
-  const event = parsed.value;
-
-  if (!event || !event.type) {
-    return NextResponse.json(
-      { ok: false, error: 'type is required' },
-      { status: 400 }
-    );
-  }
-
-  // Add timestamp if not provided
-  const eventWithTimestamp = {
-    ...event,
-    timestamp: event.timestamp || new Date().toISOString(),
-  };
-
-  // Buffer event in memory (Phase 1)
-  eventBuffer.push(eventWithTimestamp);
-
-  // TODO: Phase 2 - Persist to Supabase
-  // const supabase = await createClient();
-  // await supabase.from('revenue_events').insert(eventWithTimestamp);
-
-  // Log to console for debugging
-  console.log('📊 Revenue Event:', {
-    type: event.type,
-    source: event.source || 'unknown',
-    orgId: event.orgId || 'anonymous',
-    amount: event.amount ? `$${event.amount}` : 'free',
-    timestamp: eventWithTimestamp.timestamp,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-    queued: true,
-    message: 'Event logged for revenue tracking (Phase 1: in-memory buffer)',
-  });
 }
 
 /**
@@ -98,41 +109,49 @@ export async function POST(request: Request) {
  * Phase 2: Replace with Supabase query for historical events
  */
 export async function GET(request: Request) {
-  // Check for authorization in Phase 2
-  const url = new URL(request.url);
-  const format = url.searchParams.get('format') || 'json';
+  try {
+    const auth = requireInternalService(request);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
 
-  if (format === 'csv') {
-    // Return CSV format for export
-    const csv = [
-      'timestamp,type,orgId,userId,planId,amount,currency,source',
-      ...eventBuffer.map((e) =>
-        [
-          e.timestamp,
-          e.type,
-          e.orgId || '',
-          e.userId || '',
-          e.planId || '',
-          e.amount || '',
-          e.currency || '',
-          e.source || '',
-        ].join(',')
-      ),
-    ].join('\n');
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') || 'json';
 
-    return new NextResponse(csv, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename="revenue-events.csv"',
-      },
+    if (format === 'csv') {
+      // Return CSV format for export
+      const csv = [
+        'timestamp,type,orgId,userId,planId,amount,currency,source',
+        ...eventBuffer.map((e) =>
+          [
+            e.timestamp,
+            e.type,
+            e.orgId || '',
+            e.userId || '',
+            e.planId || '',
+            e.amount || '',
+            e.currency || '',
+            e.source || '',
+          ].join(',')
+        ),
+      ].join('\n');
+
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="revenue-events.csv"',
+        },
+      });
+    }
+
+    // JSON format
+    return NextResponse.json({
+      ok: true,
+      count: eventBuffer.length,
+      events: eventBuffer,
+      note: 'Phase 1: Events buffered in memory only. Phase 2 will persist to Supabase.',
     });
+  } catch (error) {
+    return handleApiError('api/revenue/events:GET', error);
   }
-
-  // JSON format
-  return NextResponse.json({
-    ok: true,
-    count: eventBuffer.length,
-    events: eventBuffer,
-    note: 'Phase 1: Events buffered in memory only. Phase 2 will persist to Supabase.',
-  });
 }

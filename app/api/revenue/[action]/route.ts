@@ -7,6 +7,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { PostHog } from 'posthog-node';
 import { handleApiError } from '@/lib/security/api-error';
+import { requireInternalService } from '@/lib/auth/internal-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,13 @@ interface AnalyticsRequest {
   days?: number;
 }
 
+const PROTECTED_REVENUE_ACTIONS = new Set([
+  'analytics-summary',
+  'events',
+  'customers',
+  'simulate-webhook',
+]);
+
 // ========== ROUTE HANDLER ==========
 
 export async function POST(
@@ -48,14 +56,21 @@ export async function POST(
   { params }: { params: Promise<{ action: string }> }
 ) {
   const { action } = await params;
-  const stripe = getStripe();
-  const supabase = getSupabase();
-  const posthog = getPostHog();
 
   try {
+    if (PROTECTED_REVENUE_ACTIONS.has(action)) {
+      const auth = requireInternalService(req);
+      if (!auth.ok) {
+        return NextResponse.json({ error: auth.error }, { status: auth.status });
+      }
+    }
+
     // ========== ACTION: CHECKOUT ==========
 
     if (action === 'checkout') {
+      const stripe = getStripe();
+      const supabase = getSupabase();
+      const posthog = getPostHog();
       const body: CheckoutRequest = await req.json();
       const { plan, email } = body;
 
@@ -163,6 +178,7 @@ export async function POST(
     // ========== ACTION: ANALYTICS SUMMARY ==========
 
     if (action === 'analytics-summary') {
+      const supabase = getSupabase();
       const body: AnalyticsRequest = await req.json();
       const days = body.days || 30;
 
@@ -226,6 +242,7 @@ export async function POST(
     // ========== ACTION: RECENT EVENTS ==========
 
     if (action === 'events') {
+      const supabase = getSupabase();
       const body: AnalyticsRequest = await req.json();
       const days = body.days || 7;
 
@@ -275,6 +292,7 @@ export async function POST(
     // ========== ACTION: CUSTOMER METRICS ==========
 
     if (action === 'customers') {
+      const supabase = getSupabase();
       const body: AnalyticsRequest = await req.json();
       const days = body.days || 30;
 
@@ -328,6 +346,8 @@ export async function POST(
     // ========== ACTION: SIMULATE WEBHOOK ==========
 
     if (action === 'simulate-webhook') {
+      const supabase = getSupabase();
+      const posthog = getPostHog();
       const body = await req.json();
       const { eventType, plan } = body;
 
