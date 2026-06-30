@@ -42,11 +42,24 @@ export class SolanaTransactionExecutor {
   private confirmationTimeout: number = 60000; // 60 seconds default
 
   constructor(config: TransactionConfig) {
+    // Validate RPC endpoint
+    if (!config.rpcEndpoint || typeof config.rpcEndpoint !== 'string') {
+      throw new Error('Invalid RPC endpoint');
+    }
+    try {
+      const url = new URL(config.rpcEndpoint);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw new Error('RPC endpoint must use http or https');
+      }
+    } catch {
+      throw new Error('Invalid RPC endpoint URL');
+    }
+
     this.connection = new Connection(config.rpcEndpoint, 'confirmed');
     this.treasuryKeypair = config.treasuryKeypair;
     this.commitment = config.commitment || 'confirmed';
-    if (config.maxRetries) this.maxRetries = config.maxRetries;
-    if (config.confirmationTimeout) this.confirmationTimeout = config.confirmationTimeout;
+    if (config.maxRetries !== undefined) this.maxRetries = Math.min(Math.max(config.maxRetries, 0), 10);
+    if (config.confirmationTimeout !== undefined) this.confirmationTimeout = Math.max(config.confirmationTimeout, 1000);
   }
 
   /**
@@ -55,8 +68,25 @@ export class SolanaTransactionExecutor {
    */
   async transferSOL(recipientAddress: string, amountSOL: number): Promise<TransactionResult> {
     try {
-      const recipientPubkey = new PublicKey(recipientAddress);
+      // Validate inputs before any cryptographic operations
+      if (!recipientAddress || typeof recipientAddress !== 'string') {
+        throw new Error('Invalid recipient address');
+      }
+      if (typeof amountSOL !== 'number' || amountSOL <= 0 || !Number.isFinite(amountSOL)) {
+        throw new Error('Invalid SOL amount');
+      }
+
+      let recipientPubkey: PublicKey;
+      try {
+        recipientPubkey = new PublicKey(recipientAddress);
+      } catch {
+        throw new Error('Invalid recipient public key format');
+      }
+
       const amountLamports = Math.floor(amountSOL * LAMPORTS_PER_SOL);
+      if (amountLamports <= 0 || amountLamports > Number.MAX_SAFE_INTEGER) {
+        throw new Error('Transfer amount out of valid range');
+      }
 
       console.log(`[SolanaExecutor] Preparing SOL transfer:`);
       console.log(`  From: ${this.treasuryKeypair.publicKey.toString()}`);
@@ -226,53 +256,60 @@ export class SolanaTransactionExecutor {
 
 /**
  * Load treasury keypair from environment
- * Supports base58 encoded private key (recommended for production with Secret Manager)
- *
- * Environment variables:
- * - SOLANA_TREASURY_PRIVATE_KEY: base58-encoded secret key
- * OR
- * - SOLANA_TREASURY_SECRET: JSON stringified secret key array
+ * Environment variables (in priority order):
+ * - SOLANA_TREASURY_SECRET: JSON stringified 64-byte secret key array [0, 1, 2, ...]
+ * - SOLANA_TREASURY_PRIVATE_KEY: Base64-encoded 64-byte secret key (alternative format)
  */
 export function loadTreasuryKeypair(): Keypair {
-  let secretKey: number[] | string | undefined;
+  const jsonSecret = process.env.SOLANA_TREASURY_SECRET;
+  const base64Secret = process.env.SOLANA_TREASURY_PRIVATE_KEY;
 
-  // Try base58 format first (more secure - loaded from Secret Manager)
-  if (process.env.SOLANA_TREASURY_PRIVATE_KEY) {
-    try {
-      // If it looks like base58, convert it
-      const bs58 = require('bs58');
-      const decoded = bs58.decode(process.env.SOLANA_TREASURY_PRIVATE_KEY);
-      secretKey = Array.from(decoded);
-    } catch {
-      // Fallback: treat as raw base58 and let Keypair handle it
-      secretKey = process.env.SOLANA_TREASURY_PRIVATE_KEY;
-    }
-  }
+  let secretKeyBytes: Uint8Array | undefined;
 
-  // Try JSON array format
-  if (!secretKey && process.env.SOLANA_TREASURY_SECRET) {
+  // Try JSON array format first (most common from Solana CLI)
+  if (jsonSecret) {
     try {
-      secretKey = JSON.parse(process.env.SOLANA_TREASURY_SECRET);
+      const parsed = JSON.parse(jsonSecret);
+      if (!Array.isArray(parsed) || parsed.length !== 64) {
+        throw new Error('Secret key array must contain exactly 64 bytes');
+      }
+      // Validate all elements are integers 0-255
+      if (!parsed.every((b: unknown) => typeof b === 'number' && b >= 0 && b <= 255)) {
+        throw new Error('Secret key array contains invalid byte values');
+      }
+      secretKeyBytes = new Uint8Array(parsed);
     } catch (err) {
-      console.error('Failed to parse SOLANA_TREASURY_SECRET:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to parse SOLANA_TREASURY_SECRET: ${errorMsg}`);
     }
   }
 
-  if (!secretKey) {
+  // Try base64 format as fallback
+  if (!secretKeyBytes && base64Secret) {
+    try {
+      const decoded = Buffer.from(base64Secret, 'base64');
+      if (decoded.length !== 64) {
+        throw new Error('Secret key must be exactly 64 bytes');
+      }
+      secretKeyBytes = new Uint8Array(decoded);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to decode SOLANA_TREASURY_PRIVATE_KEY: ${errorMsg}`);
+    }
+  }
+
+  if (!secretKeyBytes) {
     throw new Error(
-      'Treasury private key not found. Set SOLANA_TREASURY_PRIVATE_KEY (base58) or SOLANA_TREASURY_SECRET (JSON array)',
+      'Treasury private key not found. Set SOLANA_TREASURY_SECRET (JSON array) or SOLANA_TREASURY_PRIVATE_KEY (base64)',
     );
   }
 
   try {
-    const keypair = Array.isArray(secretKey)
-      ? Keypair.fromSecretKey(new Uint8Array(secretKey))
-      : Keypair.fromSecretKey(new Uint8Array(Buffer.from(String(secretKey), 'utf-8')));
-
+    const keypair = Keypair.fromSecretKey(secretKeyBytes);
     console.log(`[SolanaExecutor] ✅ Treasury keypair loaded: ${keypair.publicKey.toString()}`);
     return keypair;
   } catch (err) {
-    console.error('Failed to create keypair from secret:', err);
-    throw new Error('Invalid treasury private key format');
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid treasury private key: ${errorMsg}`);
   }
 }
