@@ -9,7 +9,7 @@ const mockSupabase = {
   from: vi.fn(() => ({
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: null, error: null }),
+    single: vi.fn().mockResolvedValue({ data: { id: 'cust_1', email: 'buyer@example.com', plan: 'pro' }, error: null }),
     insert: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     gte: vi.fn().mockReturnThis(),

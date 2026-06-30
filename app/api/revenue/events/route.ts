@@ -49,7 +49,7 @@ const eventBuffer: RevenueEvent[] = [];
 export async function POST(request: Request) {
   try {
     const auth = requireInternalService(request);
-    if (!auth.ok) {
+    if (auth.ok === false) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const auth = requireInternalService(request);
-    if (!auth.ok) {
+    if (auth.ok === false) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 

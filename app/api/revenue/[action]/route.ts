@@ -60,7 +60,7 @@ export async function POST(
   try {
     if (PROTECTED_REVENUE_ACTIONS.has(action)) {
       const auth = requireInternalService(req);
-      if (!auth.ok) {
+      if (auth.ok === false) {
         return NextResponse.json({ error: auth.error }, { status: auth.status });
       }
     }
