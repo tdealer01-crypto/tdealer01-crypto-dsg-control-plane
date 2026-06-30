@@ -22,13 +22,13 @@ describe('public access entry pages', () => {
 
   it('login includes approval-required, sso-required, and not-allowed banners', () => {
     const source = read('app/login/page.tsx');
-    expect(source).toContain("error === 'approval-required'");
-    expect(source).toContain('requires admin approval');
-    expect(source).toContain("error === 'sso-required'");
-    expect(source).toContain('requires single sign-on');
-    expect(source).toContain("error === 'not-allowed'");
-    expect(source).toContain('Request access');
+    expect(source).toContain('error === "approval-required"');
+    expect(source).toContain('ได้รับอนุมัติ');
+    expect(source).toContain('error === "sso-required"');
+    expect(source).toContain('SSO');
+    expect(source).toContain('error === "not-allowed"');
+    expect(source).toContain('request-access');
     expect(source).toContain('Continue with SSO');
-    expect(source).toContain("error === 'invalid-email'");
+    expect(source).toContain('error === "invalid-email"');
   });
 });
