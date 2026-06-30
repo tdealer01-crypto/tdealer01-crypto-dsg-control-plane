@@ -7,32 +7,51 @@ import UsageBar from '../../../components/billing/UsageBar';
 
 type PlanKey = 'pro' | 'business' | 'enterprise';
 type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
+type BillingInterval = 'monthly' | 'yearly';
 
-const PLANS: { key: PlanKey; title: string; price: string; features: string[] }[] = [
+const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; features: string[] }[] = [
   {
     key: 'pro',
     title: 'Pro',
-    price: '$99/mo',
+    monthly: 99,
+    yearly: 79,
     features: ['10,000 executions / mo', '60 req/min gate limit', '10 agents', 'PDF export'],
   },
   {
     key: 'business',
     title: 'Business',
-    price: '$299/mo',
+    monthly: 299,
+    yearly: 239,
     features: ['100,000 executions / mo', '300 req/min gate limit', '50 agents', 'Audit ledger'],
   },
   {
     key: 'enterprise',
     title: 'Enterprise',
-    price: '$799/mo',
+    monthly: 799,
+    yearly: 639,
     features: ['1,000,000 executions / mo', 'Unlimited gates', 'Unlimited agents', 'SLA + support'],
   },
 ];
 
-function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; currentPlan?: string }) {
+const SKILL_BUNDLES = [
+  { id: 'finance_skills', name: 'Finance Governance', monthly: 199 },
+  { id: 'dev_skills', name: 'Dev Automation', monthly: 99 },
+  { id: 'compliance_skills', name: 'Compliance & Legal', monthly: 249 },
+];
+
+function UpgradeCard({
+  plan,
+  currentPlan,
+  interval,
+}: {
+  plan: (typeof PLANS)[number];
+  currentPlan?: string;
+  interval: BillingInterval;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCurrent = typeof currentPlan === 'string' && currentPlan.toLowerCase() === plan.key;
+  const price = interval === 'yearly' ? plan.yearly : plan.monthly;
 
   async function handleUpgrade() {
     setLoading(true);
@@ -41,7 +60,7 @@ function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; curr
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.key, interval: 'monthly' }),
+        body: JSON.stringify({ plan: plan.key, interval }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -67,7 +86,8 @@ function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; curr
           </span>
         )}
       </div>
-      <p className="mt-2 text-3xl font-bold">{plan.price}</p>
+      <p className="mt-2 text-3xl font-bold">${price}/mo</p>
+      {interval === 'yearly' && <p className="mt-1 text-xs text-emerald-300">Billed annually · ${price * 12}/yr</p>}
       <ul className="mt-4 flex flex-col gap-2 text-sm text-slate-300">
         {plan.features.map((f) => (
           <li key={f} className="flex items-center gap-2">
@@ -116,6 +136,19 @@ type Analytics = {
   quota: { pct: number; nudge: NudgeLevel; used: number; limit: number };
 };
 
+type RevenueKpis = {
+  window_days: number;
+  metrics: {
+    trial_to_paid_conversion_pct: number | null;
+    mrr_usd: number;
+    churn_rate_pct: number | null;
+    arpa_usd: number | null;
+    checkout_completion_rate_pct: number | null;
+    active_subscriptions: number;
+    canceled_subscriptions_window: number;
+  };
+};
+
 function formatDate(value?: string | null) {
   if (!value) return '—';
   try { return new Date(value).toLocaleDateString(); }
@@ -133,6 +166,8 @@ export default function BillingPage() {
 function BillingInner() {
   const [usage, setUsage]         = useState<Usage | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [kpis, setKpis]           = useState<RevenueKpis | null>(null);
+  const [interval, setInterval]   = useState<BillingInterval>('monthly');
   const [loading, setLoading]     = useState(true);
   const [toast, setToast]         = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -147,9 +182,11 @@ function BillingInner() {
     Promise.all([
       fetch('/api/usage',            { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
       fetch('/api/usage/analytics',  { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-    ]).then(([u, a]) => {
+      fetch('/api/usage/kpis',       { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    ]).then(([u, a, k]) => {
       setUsage(u);
       setAnalytics(a);
+      setKpis(k);
     }).finally(() => setLoading(false));
   }, [searchParams]);
 
@@ -198,6 +235,15 @@ function BillingInner() {
             />
           ) : null}
         </div>
+        {!loading && quota && quota.nudge !== 'none' && (
+          <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+            {quota.nudge === 'blocked'
+              ? 'Quota reached — upgrade now to unblock executions immediately.'
+              : quota.nudge === 'hard'
+                ? 'Quota is near limit — upgrade now to avoid execution blocks.'
+                : 'Usage is rising — upgrade early for smoother operations.'}
+          </div>
+        )}
 
         {/* KPI cards */}
         <div className="mt-6 grid gap-6 md:grid-cols-4">
@@ -213,6 +259,26 @@ function BillingInner() {
               <div key={card.label} className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
                 <p className="text-sm text-slate-400">{card.label}</p>
                 <p className="mt-3 text-3xl font-semibold">{card.value}</p>
+              </div>
+
+              {/* Revenue KPI */}
+              <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <h2 className="text-xl font-semibold">Revenue KPI (last {kpis?.window_days ?? 30} days)</h2>
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  {[
+                    { label: 'Trial → Paid', value: kpis?.metrics.trial_to_paid_conversion_pct != null ? `${kpis.metrics.trial_to_paid_conversion_pct.toFixed(1)}%` : '—' },
+                    { label: 'MRR', value: kpis ? `US$${kpis.metrics.mrr_usd.toFixed(2)}` : '—' },
+                    { label: 'Churn', value: kpis?.metrics.churn_rate_pct != null ? `${kpis.metrics.churn_rate_pct.toFixed(1)}%` : '—' },
+                    { label: 'ARPA', value: kpis?.metrics.arpa_usd != null ? `US$${kpis.metrics.arpa_usd.toFixed(2)}` : '—' },
+                    { label: 'Checkout completion', value: kpis?.metrics.checkout_completion_rate_pct != null ? `${kpis.metrics.checkout_completion_rate_pct.toFixed(1)}%` : '—' },
+                    { label: 'Active subscriptions', value: kpis ? `${kpis.metrics.active_subscriptions}` : '—' },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                      <p className="text-xs text-slate-400">{item.label}</p>
+                      <p className="mt-2 text-xl font-semibold">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))
           )}
@@ -244,9 +310,38 @@ function BillingInner() {
         <div className="mt-12">
           <h2 className="text-2xl font-semibold">Upgrade Plan</h2>
           <p className="mt-2 text-slate-300">Choose a plan that fits your team&apos;s needs.</p>
+          <div className="mt-4 inline-flex rounded-xl border border-slate-700 bg-slate-900 p-1">
+            {(['monthly', 'yearly'] as BillingInterval[]).map((iv) => (
+              <button
+                key={iv}
+                onClick={() => setInterval(iv)}
+                className={['rounded-lg px-4 py-2 text-sm font-semibold transition', interval === iv ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'].join(' ')}
+              >
+                {iv === 'monthly' ? 'Monthly' : 'Yearly (-20%)'}
+              </button>
+            ))}
+          </div>
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             {PLANS.map((plan) => (
-              <UpgradeCard key={plan.key} plan={plan} currentPlan={usage?.plan} />
+              <UpgradeCard key={plan.key} plan={plan} currentPlan={usage?.plan} interval={interval} />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">Add-on bundles</h2>
+          <p className="mt-2 text-sm text-slate-300">Keep base subscription for recurring revenue and attach bundles for expansion revenue.</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {SKILL_BUNDLES.map((bundle) => (
+              <Link
+                key={bundle.id}
+                href={`/api/billing/checkout?plan=${bundle.id}&interval=${interval}`}
+                className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 transition hover:border-emerald-500/50"
+              >
+                <p className="text-sm font-semibold text-white">{bundle.name}</p>
+                <p className="mt-1 text-xs text-slate-400">US${bundle.monthly}/mo</p>
+                <p className="mt-3 text-xs text-emerald-300">Activate bundle →</p>
+              </Link>
             ))}
           </div>
         </div>

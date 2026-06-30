@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Interval = 'monthly' | 'yearly';
 
@@ -26,28 +26,26 @@ const PLANS = [
     yearly: 79,
     executions: '10,000 / mo',
     featured: false,
-    cta: 'Start Pro trial',
+    cta: 'Start Pro',
     badge: null,
-    features: ['10,000 executions / mo', 'Everything in Trial', 'Approval workflow', 'Email notifications', 'Priority support'],
+    features: ['10,000 executions / mo', 'Finance + approval gate', 'Audit timeline export', 'Email notifications', 'Priority support'],
   },
   {
-    key: 'agency',
-    name: 'Agency',
+    key: 'business',
+    name: 'Business',
     monthly: 299,
-    yearly: 249,
-    executions: 'Unlimited projects',
+    yearly: 239,
+    executions: '100,000 / mo',
     featured: true,
-    cta: 'Get Agency Plan',
-    ctaHref: 'https://buy.stripe.com/fZu00k5La7Pt2fVaak3gk01',
-    badge: 'Best for agencies',
+    cta: 'Start Business',
+    badge: 'Best value',
     features: [
-      'Unlimited proof checks / mo',
+      '100,000 executions / mo',
       'Everything in Pro',
-      'White-label Delivery Proof Report',
-      'Share link per client project',
-      'Multi-project dashboard',
-      'Audit export PDF + JSON',
-      'Priority support',
+      'Team governance workflows',
+      'Higher rate limit + quota',
+      'Audit ledger + evidence export',
+      'Faster support SLA',
     ],
   },
   {
@@ -57,9 +55,9 @@ const PLANS = [
     yearly: 849,
     executions: 'Custom',
     featured: false,
-    cta: 'Start Enterprise pilot',
+    cta: 'Start Enterprise',
     badge: null,
-    features: ['Custom quota', 'Everything in Agency', 'All skill packs', 'Custom skill builder', 'SSO + RBAC', 'SLA 4h + CSM'],
+    features: ['Custom quota + policy limits', 'Everything in Business', 'All skill packs included', 'Custom integrations', 'SSO + RBAC', 'SLA + CSM'],
   },
 ];
 
@@ -102,26 +100,29 @@ function signupHref(planKey: string, interval: Interval) {
   return `/signup?${params.toString()}`;
 }
 
+function loginHref(planKey: string, interval: Interval) {
+  const next = `/pricing?autostart=1&plan=${encodeURIComponent(planKey)}&interval=${encodeURIComponent(interval)}`;
+  return `/login?next=${encodeURIComponent(next)}`;
+}
+
+function isPaidPlan(value: string): value is 'pro' | 'business' | 'enterprise' {
+  return value === 'pro' || value === 'business' || value === 'enterprise';
+}
+
 export default function PricingPage() {
   const [interval, setInterval] = useState<Interval>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoStarted = useRef(false);
 
-  function setError(planKey: string, msg: string) {
-    setErrors((prev) => ({ ...prev, [planKey]: msg }));
-  }
-
-  function clearError(planKey: string) {
+  const handleCheckout = useCallback(async (planKey: string) => {
     setErrors((prev) => {
       const next = { ...prev };
       delete next[planKey];
       return next;
     });
-  }
-
-  async function handleCheckout(planKey: string) {
-    clearError(planKey);
     setLoading(planKey);
     try {
       const res = await fetch('/api/billing/checkout', {
@@ -129,22 +130,33 @@ export default function PricingPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ plan: planKey, interval }),
       });
-      if (res.status === 401) { router.push(signupHref(planKey, interval)); return; }
-      if (res.status === 403) { router.push('/login?next=/dashboard/billing'); return; }
+      if (res.status === 401 || res.status === 403) { router.push(loginHref(planKey, interval)); return; }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(planKey, data?.error || 'Checkout failed — please try again');
+        setErrors((prev) => ({ ...prev, [planKey]: data?.error || 'Checkout failed — please try again' }));
         return;
       }
       const data = await res.json().catch(() => ({}));
       if (data?.url) window.location.href = data.url;
-      else setError(planKey, 'Checkout failed — please try again');
+      else setErrors((prev) => ({ ...prev, [planKey]: 'Checkout failed — please try again' }));
     } catch {
-      setError(planKey, 'Something went wrong');
+      setErrors((prev) => ({ ...prev, [planKey]: 'Something went wrong' }));
     } finally {
       setLoading(null);
     }
-  }
+  }, [interval, router]);
+
+  useEffect(() => {
+    if (autoStarted.current) return;
+    if (searchParams.get('autostart') !== '1') return;
+    const plan = (searchParams.get('plan') || '').toLowerCase();
+    const autoInterval = (searchParams.get('interval') || '').toLowerCase();
+    if (!isPaidPlan(plan)) return;
+    const pickedInterval: Interval = autoInterval === 'yearly' ? 'yearly' : 'monthly';
+    autoStarted.current = true;
+    setInterval(pickedInterval);
+    void handleCheckout(plan);
+  }, [handleCheckout, searchParams]);
 
   return (
     <main className="min-h-screen bg-[#07080a] text-white">
@@ -157,10 +169,10 @@ export default function PricingPage() {
             DSG ONE Pricing
           </p>
           <h1 className="mt-5 text-4xl font-black leading-tight md:text-6xl">
-            Everything in one place
+            Monetize governed AI with clear plans
           </h1>
           <p className="mt-4 text-lg text-slate-400">
-            Subscription plans · Skill pack add-ons · One-click app templates
+            Subscription plans · Skill pack add-ons · Transparent usage-based overage
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
             {[
@@ -181,11 +193,10 @@ export default function PricingPage() {
       <section id="plans" className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-8 flex flex-col items-center gap-4">
           <h2 className="text-2xl font-black">Subscription Plans</h2>
-          <p className="text-sm text-slate-400">Pay for executions, not seats. Every plan includes policy gate, audit ledger, and approval workflow.</p>
-          <p className="text-xs text-emerald-300">
-            🆕 <strong>Agency plan</strong>: white-label Delivery Proof Report + share link per client — ideal สำหรับ agency ที่ใช้ AI ทำงานให้ลูกค้า →{' '}
-            <Link href="/delivery-proof" className="underline hover:text-emerald-200">ดู Delivery Proof</Link>
-          </p>
+          <p className="text-sm text-slate-400">Pay for executions, not seats. Every paid plan includes policy gate, approval workflow, and audit evidence.</p>
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
+            Immediate unlock after checkout: higher execution quota, stronger rate limits, and governed team workflow.
+          </div>
           <div className="inline-flex rounded-xl border border-slate-700 bg-slate-900 p-1">
             {(['monthly', 'yearly'] as Interval[]).map((iv) => (
               <button
@@ -231,15 +242,6 @@ export default function PricingPage() {
                   <Link href={plan.ctaHref!} className="mt-5 rounded-xl border border-emerald-400/40 py-2.5 text-center text-sm font-bold text-emerald-300 hover:bg-emerald-400/10">
                     {plan.cta}
                   </Link>
-                ) : plan.ctaHref ? (
-                  <a
-                    href={plan.ctaHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={['mt-5 block w-full rounded-xl py-2.5 text-center text-sm font-bold transition', plan.featured ? 'bg-emerald-500 text-black hover:bg-emerald-400' : 'border border-white/15 text-slate-100 hover:border-emerald-400/40'].join(' ')}
-                  >
-                    {plan.cta}
-                  </a>
                 ) : (
                   <div className="mt-5">
                     <button
@@ -258,7 +260,16 @@ export default function PricingPage() {
             );
           })}
         </div>
-        <p className="mt-4 text-center text-xs text-slate-600">No credit card required for Trial · Overage $0.001/execution · Cancel anytime</p>
+        <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-300">
+          <p className="font-semibold text-slate-200">What you get immediately when upgrading</p>
+          <ul className="mt-2 grid gap-2 md:grid-cols-2">
+            <li>• New quota is activated right after successful Stripe checkout</li>
+            <li>• Team can continue without execution block at quota edge</li>
+            <li>• Overages are transparent at US$0.001 / execution</li>
+            <li>• Cancel anytime from billing settings</li>
+          </ul>
+        </div>
+        <p className="mt-4 text-center text-xs text-slate-600">No credit card required for Trial · Overage US$0.001/execution · Cancel anytime</p>
       </section>
 
       <hr className="border-white/10" />
