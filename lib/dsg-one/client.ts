@@ -101,16 +101,15 @@ export const dsgOneClient = {
   },
 
   codex: {
-    // Routes to /api/dsg-bridge/codex — uses codex-mini-latest (free tier eligible)
-    run: async (input: string, opts?: { instructions?: string; model?: string; tools?: unknown[]; previousResponseId?: string }) => {
+    // Routes to /api/dsg-bridge/codex — uses OpenRouter free models (no OPENAI_API_KEY needed)
+    run: async (input: string, opts?: { instructions?: string; model?: string; previousResponseId?: string }) => {
       const res = await fetch('/api/dsg-bridge/codex', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           input,
           instructions: opts?.instructions,
-          model: opts?.model ?? 'codex-mini-latest',
-          tools: opts?.tools ?? [{ type: 'code_interpreter' }],
+          model: opts?.model ?? 'deepseek/deepseek-chat-v3-0324:free',
           previous_response_id: opts?.previousResponseId,
         }),
       });

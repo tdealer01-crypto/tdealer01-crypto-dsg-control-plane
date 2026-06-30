@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
-import { logApiError } from '@/lib/security/api-error';
+import { internalErrorMessage, logApiError } from '@/lib/security/api-error';
 import { requireOrgRole } from '@/lib/authz';
 import { getConfirmationStatus, approveConfirmation } from '@/lib/user-confirmation-gate';
 
@@ -82,16 +82,16 @@ export async function POST(
 
     return NextResponse.json({ actionId, status: 'SUCCEEDED', result });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
     logApiError(`api/dsg/v1/actions:${actionId}:execute`, err);
+    const safeMessage = internalErrorMessage();
 
     await (supabase.from('dsg_actions' as any).update({
       status: 'FAILED',
-      error: errorMessage,
+      error: safeMessage,
       updated_at: new Date().toISOString(),
     }).eq('action_id', actionId));
 
-    return NextResponse.json({ actionId, status: 'FAILED', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ actionId, status: 'FAILED', error: safeMessage }, { status: 500 });
   }
 }
 

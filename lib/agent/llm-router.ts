@@ -8,28 +8,34 @@ type ModelSpec = {
   maxTokens: number;
 };
 
+// OpenRouter's free-model roster rotates, so several previously-pinned ids
+// (deepseek-r1-0528, llama-4-scout, qwen-2.5-coder-7b) are no longer served and
+// would 4xx. Default every role to a currently-available free model and allow
+// per-role overrides via env so deployments can re-point without a code change.
+const DEFAULT_FREE_MODEL = process.env.OPENROUTER_MODEL_DEFAULT || 'openai/gpt-oss-120b:free';
+
 const FREE_MODELS: ModelSpec[] = [
   {
     id: 'qwen-planner',
-    openRouterId: 'nousresearch/hermes-3-llama-3.1-405b:free',
+    openRouterId: process.env.OPENROUTER_MODEL_PLANNER || DEFAULT_FREE_MODEL,
     strengths: ['planning', 'tool-selection', 'thai', 'json', 'function-calling'],
     maxTokens: 2048,
   },
   {
     id: 'deepseek-reasoner',
-    openRouterId: 'deepseek/deepseek-r1-0528:free',
+    openRouterId: process.env.OPENROUTER_MODEL_REASONER || DEFAULT_FREE_MODEL,
     strengths: ['reasoning', 'analysis', 'audit', 'proof'],
     maxTokens: 4096,
   },
   {
     id: 'llama-chat',
-    openRouterId: 'meta-llama/llama-4-scout:free',
+    openRouterId: process.env.OPENROUTER_MODEL_CHAT || DEFAULT_FREE_MODEL,
     strengths: ['chat', 'summary', 'explain', 'help'],
     maxTokens: 2048,
   },
   {
     id: 'qwen-coder',
-    openRouterId: 'qwen/qwen-2.5-coder-7b-instruct:free',
+    openRouterId: process.env.OPENROUTER_MODEL_CODE || DEFAULT_FREE_MODEL,
     strengths: ['code', 'json', 'config', 'technical'],
     maxTokens: 2048,
   },
