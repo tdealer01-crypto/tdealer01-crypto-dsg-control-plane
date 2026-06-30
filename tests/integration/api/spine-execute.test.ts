@@ -103,7 +103,7 @@ describe('/api/spine/execute', () => {
       normalizeSpinePayload: vi.fn(),
     }));
 
-    const { OPTIONS } = await import('../../../app/api/spine/execute/route');
+    const { OPTIONS } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'OPTIONS',
@@ -142,7 +142,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',
@@ -183,7 +183,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',
@@ -227,7 +227,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',
@@ -288,7 +288,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',
@@ -368,7 +368,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',
@@ -415,7 +415,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',
@@ -465,7 +465,7 @@ describe('/api/spine/execute', () => {
       })),
     }));
 
-    const { POST } = await import('../../../app/api/spine/execute/route');
+    const { POST } = await import('../../../app/api/execute/route');
 
     const req = new Request('http://localhost/api/spine/execute', {
       method: 'POST',

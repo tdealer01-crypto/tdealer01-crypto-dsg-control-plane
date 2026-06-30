@@ -5,6 +5,7 @@ import { requireOrgRole } from '@/lib/authz';
 import { buildAndPersistManifest, verifySafeDomIntentOrFail, executeVerifiedCommand } from '@/lib/executors/browserbase-safe-dom-integration';
 import type { SafeDomCommand } from '@/lib/executors/browserbase-safe-dom-integration';
 import { verifyAgentInvariants } from '@/lib/dsg/logic/z3-runtime-check';
+import { buildPreflightResponse } from '@/lib/security/cors';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,7 +142,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export const OPTIONS = () => new NextResponse(null, { status: 204 });
+export async function OPTIONS(request: Request) {
+  return buildPreflightResponse(request);
+}
 
 export async function GET(request: NextRequest) {
   const access = await requireOrgRole(['operator', 'org_admin']);

@@ -430,7 +430,7 @@ describe('POST /api/webhooks/stripe (Stripe webhook handler)', () => {
     const body = await res.text();
 
     expect(res.status).toBe(400);
-    expect(body).toContain('Invalid signature');
+    expect(body).toContain('Webhook signature verification failed');
   });
 
   it('returns 200 when Stripe event is processed', async () => {
