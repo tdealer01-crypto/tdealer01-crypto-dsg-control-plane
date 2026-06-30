@@ -40,6 +40,8 @@ interface RevenueKpisResponse {
   }>;
 }
 
+const KPI_WINDOW_DAYS = 30;
+
 function formatCurrency(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return new Intl.NumberFormat('en-US', {
@@ -57,7 +59,7 @@ function formatPercent(value: number | null | undefined) {
 export default function RevenueDashboard() {
   const [stats, setStats] = useState<RevenueStat[]>([]);
   const [conversions, setConversions] = useState<ConversionData[]>([]);
-  const [windowDays, setWindowDays] = useState(30);
+  const [windowDays, setWindowDays] = useState(KPI_WINDOW_DAYS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,8 +67,11 @@ export default function RevenueDashboard() {
     async function fetchMetrics() {
       try {
         setError(null);
-        const res = await fetch('/api/usage/kpis?days=30', { cache: 'no-store' });
-        const data = (await res.json().catch(() => null)) as RevenueKpisResponse | { error?: string } | null;
+        const res = await fetch(`/api/usage/kpis?days=${KPI_WINDOW_DAYS}`, { cache: 'no-store' });
+        const data = (await res.json().catch((parseError) => {
+          console.error('Failed to parse revenue KPI response:', parseError);
+          return null;
+        })) as RevenueKpisResponse | { error?: string } | null;
 
         if (!res.ok || !data || !('ok' in data) || !data.ok) {
           setError((data && 'error' in data && data.error) || 'Unable to load revenue metrics');
