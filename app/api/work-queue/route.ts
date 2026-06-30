@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRuntimeAccess } from '@/lib/authz-runtime';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { logServerError, serverErrorResponse } from '@/lib/security/error-response';
 
 export const dynamic = 'force-dynamic';
@@ -13,34 +14,53 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    // Use a server-configured base URL to prevent SSRF from request-derived origin
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const headers = { Authorization: request.headers.get('Authorization') ?? '' };
+    const supabase = getSupabaseAdmin();
+    const orgId = access.orgId;
 
-    const [approvalsRes, tasksRes] = await Promise.allSettled([
-      fetch(`${appUrl}/api/approval-queue/pending?limit=50`, { headers }),
-      fetch(`${appUrl}/api/tasks?limit=50&status=PENDING`, { headers }),
+    const [approvalsResult, tasksResult] = await Promise.allSettled([
+      supabase
+        .from('runtime_approval_requests')
+        .select('id, agent_id, status, request_payload, created_at, expires_at')
+        .eq('org_id', orgId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('dsg_task_plans')
+        .select('id, job_id, status, tasks, created_at')
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false })
+        .limit(50),
     ]);
 
     const approvals =
-      approvalsRes.status === 'fulfilled' && approvalsRes.value.ok
-        ? ((await approvalsRes.value.json()) as { approvals?: unknown[] }).approvals ?? []
+      approvalsResult.status === 'fulfilled' && !approvalsResult.value.error
+        ? (approvalsResult.value.data ?? []).map((row) => {
+            const payload = row.request_payload as Record<string, unknown> | null;
+            return {
+              id: row.id,
+              agentId: row.agent_id,
+              action: (payload?.action as string) || 'unknown action',
+              status: row.status || 'pending',
+              priority: ((payload?.priority as string) || 'medium') as 'low' | 'medium' | 'high',
+              createdAt: row.created_at,
+              expiresAt: row.expires_at,
+            };
+          })
         : [];
 
     const tasks =
-      tasksRes.status === 'fulfilled' && tasksRes.value.ok
-        ? ((await tasksRes.value.json()) as { tasks?: unknown[] }).tasks ?? []
+      tasksResult.status === 'fulfilled' && !tasksResult.value.error
+        ? (tasksResult.value.data ?? []).map((row) => ({
+            id: row.id,
+            job_id: row.job_id,
+            status: row.status,
+            task_count: Array.isArray(row.tasks) ? row.tasks.length : 0,
+            created_at: row.created_at,
+          }))
         : [];
 
-    type Approval = {
-      priority?: string;
-      expiresAt?: string;
-      [key: string]: unknown;
-    };
-
-    const sortedApprovals = [...(approvals as Approval[])].sort((a, b) => {
+    const sortedApprovals = [...approvals].sort((a, b) => {
       const pa = PRIORITY_SCORE[a.priority ?? 'medium'] ?? 1;
       const pb = PRIORITY_SCORE[b.priority ?? 'medium'] ?? 1;
       if (pa !== pb) return pa - pb;
@@ -49,7 +69,7 @@ export async function GET(request: Request) {
       return ta - tb;
     });
 
-    const totalPending = sortedApprovals.length + (tasks as unknown[]).length;
+    const totalPending = sortedApprovals.length + tasks.length;
 
     const avgSlaMs =
       sortedApprovals.length > 0

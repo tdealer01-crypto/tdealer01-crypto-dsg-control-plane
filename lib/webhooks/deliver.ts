@@ -1,31 +1,6 @@
 import { getSupabaseAdmin } from "../supabase-server";
 
-const DELIVERY_TIMEOUT_MS = 5_000; // 5 s per-endpoint; fire-and-forget
-
-function parseAndValidateWebhookUrl(raw: string): URL | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    return null;
-  }
-  if (parsed.protocol !== "https:") return null;
-  const h = parsed.hostname.toLowerCase();
-  if (
-    h === "localhost" ||
-    h === "127.0.0.1" ||
-    h === "::1" ||
-    h.endsWith(".local") ||
-    h.endsWith(".internal") ||
-    /^10\./.test(h) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
-    /^192\.168\./.test(h) ||
-    /^169\.254\./.test(h)
-  ) {
-    return null;
-  }
-  return parsed;
-}
+const DELIVERY_TIMEOUT_MS = 5_000;
 
 async function deliverToUrl(
   webhookId: string,
@@ -33,18 +8,12 @@ async function deliverToUrl(
   event: string,
   payload: Record<string, unknown>,
 ): Promise<{ status: number; durationMs: number }> {
-  const safeUrl = parseAndValidateWebhookUrl(url);
-  if (!safeUrl) {
-    return { status: 0, durationMs: 0 };
-  }
-
   const start = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
 
   try {
-    // lgtm[js/server-side-request-forgery] - safeUrl is a validated URL object from parseAndValidateWebhookUrl (HTTPS-only, blocks all private/local IP ranges)
-    const res = await fetch(safeUrl, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
