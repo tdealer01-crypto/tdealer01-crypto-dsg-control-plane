@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'Failed to load execution history',
+        error: 'Request could not be completed',
       },
       { status: 500 },
     );
