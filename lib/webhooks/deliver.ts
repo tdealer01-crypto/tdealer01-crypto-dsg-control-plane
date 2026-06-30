@@ -2,14 +2,14 @@ import { getSupabaseAdmin } from "../supabase-server";
 
 const DELIVERY_TIMEOUT_MS = 5_000;
 
-function isSafeWebhookUrl(raw: string): boolean {
+function parseAndValidateWebhookUrl(raw: string): URL | null {
   let parsed: URL;
   try {
     parsed = new URL(raw);
   } catch {
-    return false;
+    return null;
   }
-  if (parsed.protocol !== "https:") return false;
+  if (parsed.protocol !== "https:") return null;
   const h = parsed.hostname.toLowerCase();
   if (
     h === "localhost" ||
@@ -22,9 +22,9 @@ function isSafeWebhookUrl(raw: string): boolean {
     /^192\.168\./.test(h) ||
     /^169\.254\./.test(h)
   ) {
-    return false;
+    return null;
   }
-  return true;
+  return parsed;
 }
 
 async function deliverToUrl(
@@ -33,7 +33,8 @@ async function deliverToUrl(
   event: string,
   payload: Record<string, unknown>,
 ): Promise<{ status: number; durationMs: number }> {
-  if (!isSafeWebhookUrl(url)) {
+  const safeUrl = parseAndValidateWebhookUrl(url);
+  if (!safeUrl) {
     return { status: 0, durationMs: 0 };
   }
 
@@ -42,7 +43,7 @@ async function deliverToUrl(
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(safeUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
