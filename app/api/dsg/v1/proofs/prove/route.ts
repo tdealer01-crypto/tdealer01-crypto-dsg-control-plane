@@ -7,6 +7,10 @@ import {
   getRateLimitKey,
 } from "../../../../../../lib/security/rate-limit";
 import { requireDsgAuth, dsgAuthError } from "../../../../../../lib/dsg/auth/require-dsg-auth";
+import {
+  checkGateEntitlement,
+  recordGateEvaluation,
+} from "../../../../../../lib/dsg/gate-entitlement";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +35,23 @@ export async function POST(request: Request) {
       { status: 429, headers: rateLimitHeaders },
     );
   }
+
+  // ── Entitlement check (metered billing gate) ─────────────────────────────
+  const entitlement = await checkGateEntitlement(caller.orgId);
+  if (!entitlement.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: entitlement.message,
+        requiresUpgrade: true,
+        tier: entitlement.tier,
+        upgradeUrl: entitlement.upgradeUrl,
+      },
+      { status: 402, headers: rateLimitHeaders },
+    );
+  }
+
+  const startMs = Date.now();
 
   const body = (await request
     .json()
@@ -71,6 +92,15 @@ export async function POST(request: Request) {
     idempotencyKey,
     context: body.context,
   });
+
+  // Usage recording for metered billing (fire-and-forget)
+  void recordGateEvaluation(
+    proof.proofId,
+    caller.orgId,
+    'proofs/prove',
+    proof.status,
+    Date.now() - startMs,
+  );
 
   return NextResponse.json(
     {
