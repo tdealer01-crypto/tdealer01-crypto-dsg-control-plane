@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 // OpenRouter free models
@@ -109,14 +109,7 @@ export function AIWizard() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [previewData, setPreviewData] = useState('');
 
-  // Generate preview on config change
-  useEffect(() => {
-    if (currentStep === 4) {
-      generatePreview();
-    }
-  }, [config, currentStep]);
-
-  function generatePreview() {
+  const generatePreview = useCallback(() => {
     if (config.configFormat === 'env') {
       const envContent = `# AI Setup Wizard Configuration
 OPENROUTER_API_KEY=${config.apiKey || '<YOUR_API_KEY>'}
@@ -142,7 +135,14 @@ AI_SETUP_TIMESTAMP=${new Date().toISOString()}`;
       };
       setPreviewData(JSON.stringify(jsonConfig, null, 2));
     }
-  }
+  }, [config.configFormat, config.apiKey, config.selectedModel, config.fallbackModels]);
+
+  // Generate preview on config change
+  useEffect(() => {
+    if (currentStep === 4) {
+      generatePreview();
+    }
+  }, [config, currentStep, generatePreview]);
 
   async function testConnection() {
     if (!config.apiKey) {
