@@ -1,56 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin, parseActorContext } from '@/lib/trinity/workflow';
 
 export const dynamic = 'force-dynamic';
 
+function mapStatus(status: string): 'success' | 'failed' | 'pending' {
+  if (status === 'paid' || status === 'verified') return 'success';
+  if (status === 'rejected' || status === 'settlement_failed') return 'failed';
+  return 'pending';
+}
+
 export async function GET(request: NextRequest) {
   try {
-    // Placeholder: In production, fetch from Supabase
-    // SELECT id, job_title, status, execution_time, created_at, plan_hash
-    // FROM trinity_executions ORDER BY created_at DESC LIMIT 50
+    const actor = parseActorContext(request.headers);
+    const limit = Math.min(Math.max(Number(request.nextUrl.searchParams.get('limit') || '20'), 1), 100);
 
-    const executionHistory = [
-      {
-        id: 'exec-001',
-        job_title: 'Smart Contract Security Audit',
-        status: 'success' as const,
-        execution_time: 2847,
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-        plan_hash: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9',
-      },
-      {
-        id: 'exec-002',
-        job_title: 'Backend API Development',
-        status: 'success' as const,
-        execution_time: 5123,
-        created_at: new Date(Date.now() - 7200000).toISOString(),
-        plan_hash: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0',
-      },
-      {
-        id: 'exec-003',
-        job_title: 'Frontend React Components',
-        status: 'failed' as const,
-        execution_time: 3456,
-        created_at: new Date(Date.now() - 10800000).toISOString(),
-        plan_hash: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1',
-      },
-    ];
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return NextResponse.json({ ok: true, executions: [], count: 0, profile: null, warning: 'Supabase not configured' });
+    }
 
-    return NextResponse.json(
-      {
-        ok: true,
-        history: executionHistory,
-        count: executionHistory.length,
-      },
-      { status: 200 }
-    );
+    const [jobsRes, profileRes] = await Promise.all([
+      supabase
+        .from('trinity_jobs')
+        .select('id, title, status, updated_at, claimed_at, submitted_at')
+        .eq('org_id', actor.orgId)
+        .order('updated_at', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('agent_profiles')
+        .select('agent_id, reputation, completed_jobs, tier')
+        .eq('agent_id', actor.actorId)
+        .maybeSingle(),
+    ]);
+
+    const executions = (jobsRes.data ?? []).map((row) => ({
+      id: row.id,
+      job_title: row.title,
+      status: mapStatus(row.status),
+      execution_time:
+        row.claimed_at && row.submitted_at
+          ? Math.max(0, new Date(row.submitted_at).getTime() - new Date(row.claimed_at).getTime())
+          : 0,
+      created_at: row.updated_at,
+      plan_hash: `${row.id}-plan`,
+      raw_status: row.status,
+    }));
+
+    return NextResponse.json({
+      ok: true,
+      executions,
+      history: executions,
+      count: executions.length,
+      profile: profileRes.data
+        ? {
+            agentId: profileRes.data.agent_id,
+            reputation: profileRes.data.reputation,
+            completedJobs: profileRes.data.completed_jobs,
+            tier: profileRes.data.tier,
+          }
+        : null,
+    });
   } catch (error) {
-    console.error('Failed to load execution history:', error);
     return NextResponse.json(
       {
         ok: false,
-        error: 'Failed to load execution history',
+        error: error instanceof Error ? error.message : 'Failed to load execution history',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
