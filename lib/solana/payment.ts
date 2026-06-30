@@ -106,21 +106,20 @@ export class SOLPaymentProcessor {
       // Validate inputs
       this.validatePaymentRequest(request);
 
-      // Check wallet balance
-      const balance = await this.checkWalletBalance(this.treasuryWallet.toString());
-      if (balance.balanceSOL < request.amountSOL) {
-        throw new Error(
-          `Insufficient balance: ${balance.balanceSOL} SOL available, ${request.amountSOL} SOL required`
-        );
-      }
-
-      // Dry-run mode: simulate payment without real transfer
+      // Dry-run mode: simulate payment without real transfer (skip balance check)
       if (this.dryRun) {
         result.transactionSignature = `dry-run-${request.idempotencyKey}`;
         result.status = 'confirmed';
         console.log(`[Payment] DRY RUN: Would transfer ${request.amountSOL} SOL to ${request.recipientWallet}`);
       } else {
-        // Production mode: execute real transfer
+        // Production mode: check real balance before transfer
+        const balance = await this.checkWalletBalance(this.treasuryWallet.toString());
+        if (balance.balanceSOL < request.amountSOL) {
+          throw new Error(
+            `Insufficient balance: ${balance.balanceSOL} SOL available, ${request.amountSOL} SOL required`
+          );
+        }
+
         result.transactionSignature = await this.executeTransfer(
           request.recipientWallet,
           request.amountSOL,
