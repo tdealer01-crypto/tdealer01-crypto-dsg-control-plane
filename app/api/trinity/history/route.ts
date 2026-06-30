@@ -60,11 +60,11 @@ export async function GET(request: NextRequest) {
           }
         : null,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : 'Failed to load execution history',
+        error: 'Failed to load execution history',
       },
       { status: 500 },
     );
