@@ -8,7 +8,6 @@ import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '@/lib/security/rate-limit';
 import { handleApiError } from '@/lib/security/api-error';
 import { checkQuota, incrementQuota } from '@/lib/usage/quota';
-import { fireWebhook } from '@/lib/webhooks/deliver';
 import { meterExecution } from '@/lib/billing/metered';
 import { verifySafeDomIntentOrPass } from '@/lib/spine/verify-safe-dom-intent';
 import { StopReason } from '@/lib/types/task';
@@ -214,12 +213,6 @@ export async function POST(request: Request) {
     if (result.status >= 200 && result.status < 300) {
       void incrementQuota(orgId, agentId).catch((error) => {
         console.error('[api/execute] incrementQuota failed:', error);
-      });
-      void fireWebhook(orgId, 'execution.completed', {
-        agent_id: agentId,
-        decision: (result.body as Record<string, unknown>)?.decision ?? null,
-      }).catch((error) => {
-        console.error('[api/execute] fireWebhook failed:', error);
       });
       const executionId =
         ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
