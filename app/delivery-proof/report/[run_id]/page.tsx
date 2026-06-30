@@ -187,6 +187,32 @@ export default async function DeliveryProofReportPage({ params }: { params: Prom
             Not a third-party certification or legal compliance guarantee.
           </div>
 
+          {/* Upgrade CTA */}
+          <div className="mt-8 border border-emerald-400/40 bg-emerald-400/10 rounded-2xl p-6">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-emerald-300">Get Certified</p>
+            <h3 className="mt-3 text-2xl font-bold text-emerald-100">
+              Share & Sell This Proof
+            </h3>
+            <p className="mt-2 text-sm text-emerald-200/80">
+              Upgrade to Pro to unlock white-label branding, unlimited scans, and team access.
+              Share this report with clients, auditors, or your team — each view reinforces governance credibility.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <a
+                href="/billing?plan=pro"
+                className="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 hover:bg-emerald-300 transition text-center"
+              >
+                Upgrade to Pro — $99/mo →
+              </a>
+              <a
+                href="/billing?plan=business"
+                className="rounded-xl border border-emerald-300/50 bg-emerald-400/10 px-5 py-3 text-sm font-bold text-emerald-200 hover:bg-emerald-400/20 transition text-center"
+              >
+                Agency Plan — $299/mo →
+              </a>
+            </div>
+          </div>
+
           {/* Viral Share Section */}
           <div className="mt-8 border border-emerald-400/20 bg-emerald-400/5 p-5 rounded-2xl">
             <p className="text-[11px] uppercase tracking-[0.25em] text-emerald-300">Share This Proof</p>
