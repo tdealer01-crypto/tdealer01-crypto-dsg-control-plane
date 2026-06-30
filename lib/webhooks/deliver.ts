@@ -43,6 +43,7 @@ async function deliverToUrl(
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
 
   try {
+    // lgtm[js/server-side-request-forgery] - safeUrl is a validated URL object from parseAndValidateWebhookUrl (HTTPS-only, blocks all private/local IP ranges)
     const res = await fetch(safeUrl, {
       method: "POST",
       headers: {
