@@ -49,6 +49,11 @@ type OnboardingState = {
   next_action?: string;
 };
 
+type WorkQueueSummary = {
+  totalPending: number;
+  approvals: { length: number };
+};
+
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} />;
 }
@@ -105,6 +110,7 @@ export default function DashboardPage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [hermes, setHermes] = useState<HermesHealth | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const [workQueue, setWorkQueue] = useState<WorkQueueSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -119,15 +125,17 @@ export default function DashboardPage() {
         fetch("/api/health", { cache: "no-store" }).then((r) => r.json()),
         fetch("/api/dsg/brain/execute", { cache: "no-store" }).then((r) => r.json()),
         fetch("/api/onboarding/state", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/work-queue", { cache: "no-store" }).then((r) => r.json()),
       ]);
 
-      const [a, e, u, h, hm, ob] = results;
+      const [a, e, u, h, hm, ob, wq] = results;
       if (a.status === "fulfilled") setAgents((a.value?.items ?? []).slice(0, 5));
       if (e.status === "fulfilled") setExecs(e.value?.executions ?? []);
       if (u.status === "fulfilled") setSummary(u.value?.summary ?? u.value ?? null);
       if (h.status === "fulfilled") setHealth(h.value);
       if (hm.status === "fulfilled") setHermes(hm.value);
       if (ob.status === "fulfilled") setOnboarding(ob.value);
+      if (wq.status === "fulfilled") setWorkQueue(wq.value);
     } catch {
       setError("ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
@@ -159,12 +167,12 @@ export default function DashboardPage() {
       icon: "⚙️",
     },
     {
-      label: "สถานะ Core",
-      value: loading ? null : (health?.core_ok ? "ปกติ" : "ผิดปกติ"),
-      sub: health?.core?.version ?? "ไม่ทราบเวอร์ชัน",
-      href: "/api/health",
+      label: "รออนุมัติ",
+      value: loading ? null : String(workQueue?.approvals?.length ?? 0),
+      sub: workQueue?.totalPending ? `งานรวม ${workQueue.totalPending} รายการ` : "ไม่มีงานค้าง",
+      href: "/dashboard/work-queue",
       color: "amber" as const,
-      icon: "🔌",
+      icon: "⏳",
     },
     {
       label: "สถานะฐานข้อมูล",
@@ -174,7 +182,7 @@ export default function DashboardPage() {
       color: "violet" as const,
       icon: "🗄️",
     },
-  ], [activeAgents, agents.length, execs.length, loading, summary, health]);
+  ], [activeAgents, agents.length, execs.length, loading, summary, health, workQueue]);
 
   const systemHealth = useMemo(() => {
     if (loading) return null;
@@ -190,7 +198,7 @@ export default function DashboardPage() {
     { label: "สร้างองค์กร", done: true, href: "/dashboard/settings/go-live", ring: "white" },
     { label: "เชือมต่อตัวแทน", done: Boolean(onboarding?.has_agent), href: "/dashboard/agents", ring: "blue" },
     { label: "รันการดำเนินการครั้งแรก", done: Boolean(onboarding?.first_run_complete), href: "/delivery-proof", ring: "purple" },
-    { label: "เปิดใช้งาน Ring Hermes", done: systemHealth.allGood, href: "/dashboard/hermes" ring: "green" },
+    { label: "เปิดใช้งาน Ring Hermes", done: systemHealth.allGood, href: "/dashboard/hermes", ring: "green" },
   ];
   const doneCount = onboardingSteps.filter((s) => s.done).length;
 
@@ -630,6 +638,9 @@ export default function DashboardPage() {
         {/* ── Quick Links Footer ──────────────────────────────────── */}
         <div className="mt-8 flex flex-wrap gap-2">
           {[
+            { href: "/dashboard/work-queue", label: "📋 Work Queue" },
+            { href: "/dashboard/tasks", label: "📦 Task Plans" },
+            { href: "/dashboard/approvals", label: "✅ อนุมัติ" },
             { href: "/dashboard/audit", label: "บันทึกการตรวจสอบ" },
             { href: "/dashboard/webhooks", label: "Webhooks" },
             { href: "/dashboard/policies", label: "นโยบาย" },

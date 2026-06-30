@@ -78,6 +78,31 @@ export async function PATCH(
     // 6. Log decision to audit trail with SHA-256 hash
     // 7. Track metrics (approval time, decision rate)
 
+    const approvalEvent = {
+      type: 'approval.decided',
+      approval_id: id,
+      decision,
+      decided_at: approvedAt,
+    };
+
+    // Fire-and-forget: notification failure must not fail the decision response
+    Promise.resolve().then(async () => {
+      try {
+        const notifyUrl = process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications`
+          : null;
+        if (notifyUrl) {
+          await fetch(notifyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(approvalEvent),
+          });
+        }
+      } catch {
+        // Intentionally swallowed — notification is best-effort
+      }
+    });
+
     console.log('[approval-decision] Decision recorded', {
       id,
       decision,
