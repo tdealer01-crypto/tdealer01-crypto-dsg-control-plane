@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     console.log('📊 Revenue Event:', {
       type: event.type,
       source: event.source || 'unknown',
-      orgId: eventWithTimestamp.orgId || 'anonymous',
+      orgId: eventWithTimestamp.orgId,
       amount: event.amount ? `$${event.amount}` : 'free',
       timestamp: eventWithTimestamp.timestamp,
     });

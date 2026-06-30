@@ -35,6 +35,23 @@ describe('/api/revenue/events route', () => {
     });
   });
 
+  it('rejects anonymous event reads', async () => {
+    requireInternalServiceMock.mockReturnValue({
+      ok: false,
+      status: 401,
+      error: 'unauthorized_internal_service',
+    });
+
+    const { GET } = await import('../../../app/api/revenue/events/route');
+    const res = await GET(new Request('http://localhost/api/revenue/events'));
+
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: 'unauthorized_internal_service',
+    });
+  });
+
   it('fills orgId from authenticated internal caller', async () => {
     requireInternalServiceMock.mockReturnValue({
       ok: true,
