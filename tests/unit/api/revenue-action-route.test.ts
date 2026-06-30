@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireInternalServiceMock = vi.fn();
@@ -27,6 +28,14 @@ vi.mock('../../../lib/auth/internal-service', () => ({
 }));
 
 describe('/api/revenue/[action] route', () => {
+  function makeRequest(url: string, body: Record<string, unknown>) {
+    return new NextRequest(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -41,11 +50,7 @@ describe('/api/revenue/[action] route', () => {
   it('keeps checkout public', async () => {
     const { POST } = await import('../../../app/api/revenue/[action]/route');
     const res = await POST(
-      new Request('http://localhost/api/revenue/checkout', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ plan: 'pro', email: 'buyer@example.com' }),
-      }) as any,
+      makeRequest('http://localhost/api/revenue/checkout', { plan: 'pro', email: 'buyer@example.com' }),
       { params: Promise.resolve({ action: 'checkout' }) }
     );
 
@@ -62,11 +67,7 @@ describe('/api/revenue/[action] route', () => {
 
     const { POST } = await import('../../../app/api/revenue/[action]/route');
     const res = await POST(
-      new Request('http://localhost/api/revenue/analytics-summary', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ days: 30 }),
-      }) as any,
+      makeRequest('http://localhost/api/revenue/analytics-summary', { days: 30 }),
       { params: Promise.resolve({ action: 'analytics-summary' }) }
     );
 

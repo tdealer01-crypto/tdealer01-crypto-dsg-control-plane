@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     // Add timestamp if not provided
     const eventWithTimestamp = {
       ...event,
-      orgId: event.orgId || auth.orgId,
+      orgId: auth.orgId,
       timestamp: event.timestamp || new Date().toISOString(),
     };
 
