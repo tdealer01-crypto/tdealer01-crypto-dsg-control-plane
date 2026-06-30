@@ -294,7 +294,7 @@ export function HermesAgentChat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="ถามเอเจนต์ หรือพิมพ์คำสั่ง... (Shift+Enter สำหรับขึ้นบรรทัด)"
-            className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+            className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm text-slate-900 placeholder:text-slate-400 bg-white"
             rows={1}
             disabled={isLoading || isStreaming}
           />
