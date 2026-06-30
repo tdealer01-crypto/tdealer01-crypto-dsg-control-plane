@@ -2,12 +2,41 @@ import { getSupabaseAdmin } from "../supabase-server";
 
 const DELIVERY_TIMEOUT_MS = 5_000;
 
+function isSafeWebhookUrl(raw: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  const h = parsed.hostname.toLowerCase();
+  if (
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "::1" ||
+    h.endsWith(".local") ||
+    h.endsWith(".internal") ||
+    /^10\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^169\.254\./.test(h)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function deliverToUrl(
   webhookId: string,
   url: string,
   event: string,
   payload: Record<string, unknown>,
 ): Promise<{ status: number; durationMs: number }> {
+  if (!isSafeWebhookUrl(url)) {
+    return { status: 0, durationMs: 0 };
+  }
+
   const start = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
