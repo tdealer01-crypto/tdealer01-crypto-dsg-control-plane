@@ -78,6 +78,9 @@ BEGIN
 END $$;
 
 -- ── Helper: current-period eval count ────────────────────────────────────────
+-- NOTE: Uses calendar-month boundaries (UTC). Phase 2 should replace this with
+-- subscription-period boundaries from dsg_gate_entitlements.current_period_start /
+-- current_period_end to align with Stripe billing cycles.
 
 CREATE OR REPLACE FUNCTION dsg_gate_evals_this_period(p_org_id TEXT)
 RETURNS INTEGER

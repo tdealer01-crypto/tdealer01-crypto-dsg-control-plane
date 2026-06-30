@@ -184,7 +184,7 @@ export default function PricingPage() {
             </details>
 
             <details className="group cursor-pointer">
-              <summary className="flex items-center justify-between font-semibent text-white hover:text-emerald-300">
+              <summary className="flex items-center justify-between font-semibold text-white hover:text-emerald-300">
                 <span>Can I upgrade or downgrade anytime?</span>
                 <span className="transition group-open:rotate-180">▼</span>
               </summary>
