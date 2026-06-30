@@ -4,6 +4,35 @@
  * 
  * NOTE: Phase 1 uses simplified in-memory checks.
  * Phase 2 will wire to Supabase tables (delivery_proof_scans, delivery_proof_entitlements)
+ * 
+ * API CONTRACT (POST /api/delivery-proof/scan):
+ * 
+ * Success response (200 OK):
+ * {
+ *   ok: true,
+ *   run_id: "dp-{timestamp}-{random}",
+ *   share_url: "https://app.example.com/delivery-proof/report/{run_id}",
+ *   claim_result: "EVIDENCE COMPLETE" | "PRODUCTION BLOCKED",
+ *   checks: [
+ *     { name: string, status: "pass" | "fail" | "skip", detail: string }
+ *   ],
+ *   summary: { pass: number, fail: number, skip: number },
+ *   entitlement: { tier: "free" | "pro_scan" | "unlimited", scansRemaining: number }
+ * }
+ * 
+ * Over-quota error (402 Payment Required):
+ * {
+ *   ok: false,
+ *   error: "Quota exceeded — please upgrade",
+ *   requiresUpgrade: true,
+ *   tier: "free"
+ * }
+ * 
+ * Client should:
+ * - Display entitlement.tier in ScanForm UI
+ * - Show "scans remaining" message when tier is free
+ * - Offer upgrade CTAs when 402 received or scansRemaining <= 1
+ * - Redirect to /billing?plan=pro or /billing?item=delivery_proof_scan_49
  */
 
 export interface DeliveryProofTier {

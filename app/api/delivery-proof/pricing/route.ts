@@ -1,6 +1,31 @@
 /**
  * GET /api/delivery-proof/pricing
+ * 
  * Returns tiered pricing options for delivery proof scans
+ * Public endpoint — no authentication required
+ * 
+ * Response (200 OK):
+ * {
+ *   ok: true,
+ *   tiers: [
+ *     {
+ *       id: "free" | "pro_scan" | "unlimited",
+ *       name: string,
+ *       description: string,
+ *       price: "$0" | "$49" | "$199",
+ *       billingPeriod: "monthly" | "one-time",
+ *       features: string[],
+ *       cta: string (call-to-action text),
+ *       checkoutLink: string (URL to /billing or /delivery-proof)
+ *     }
+ *   ],
+ *   description: "Delivery Proof Scan Pricing — Self-serve lead magnet to enterprise scaling"
+ * }
+ * 
+ * Use cases:
+ * - Populate pricing page at /pricing
+ * - Show upgrade modals in scan result UI
+ * - Display plan features in account settings
  */
 
 import { NextResponse } from 'next/server';
