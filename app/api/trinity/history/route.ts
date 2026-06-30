@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 import { getSupabaseAdmin, parseActorContext } from '@/lib/trinity/workflow';
 
 export const dynamic = 'force-dynamic';
@@ -61,12 +62,6 @@ export async function GET(request: NextRequest) {
         : null,
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : 'Failed to load execution history',
-      },
-      { status: 500 },
-    );
+    return handleApiError('trinity/history', error);
   }
 }

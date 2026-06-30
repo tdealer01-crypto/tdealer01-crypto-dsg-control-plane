@@ -142,7 +142,7 @@ export default function PricingPage() {
 
             <details className="group cursor-pointer">
               <summary className="flex items-center justify-between font-semibold text-white hover:text-emerald-300">
-                <span>What does "unlimited scans" include?</span>
+                <span>What does &ldquo;unlimited scans&rdquo; include?</span>
                 <span className="transition group-open:rotate-180">▼</span>
               </summary>
               <p className="mt-3 text-sm text-slate-400 pl-4">

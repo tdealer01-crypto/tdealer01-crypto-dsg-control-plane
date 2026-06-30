@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 import { appendAuditEvent, assertMutationRole, getSupabaseAdmin, parseActorContext } from '@/lib/trinity/workflow';
 
 export const dynamic = 'force-dynamic';
@@ -81,7 +82,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, jobId: body.jobId, claim: ownClaim });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 403 });
+    return handleApiError('trinity/claim', err, { status: 403 });
   }
 }
