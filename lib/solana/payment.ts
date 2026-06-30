@@ -8,6 +8,7 @@
 
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { writeLedgerRecord, checkIdempotencyRecord } from './payment-ledger';
+import { SolanaTransactionExecutor, loadTreasuryKeypair } from './transaction-executor';
 
 export interface PaymentRequest {
   executionId: string;
@@ -48,6 +49,7 @@ export class SOLPaymentProcessor {
   private orgId: string;
   private paymentHistory: Map<string, PaymentResult> = new Map();
   private walletBalanceCache: Map<string, WalletBalance> = new Map();
+  private transactionExecutor?: SolanaTransactionExecutor;
 
   constructor(
     treasuryWalletAddress: string,
@@ -59,6 +61,25 @@ export class SOLPaymentProcessor {
     this.solanaEndpoint = solanaEndpoint;
     this.orgId = orgId;
     this.dryRun = dryRun;
+
+    // Initialize transaction executor for production mode
+    if (!dryRun) {
+      try {
+        const keypair = loadTreasuryKeypair();
+        this.transactionExecutor = new SolanaTransactionExecutor({
+          rpcEndpoint: solanaEndpoint,
+          treasuryKeypair: keypair,
+          commitment: 'confirmed',
+          maxRetries: 3,
+          confirmationTimeout: 60000,
+        });
+        console.log('[Payment] ✅ Transaction executor initialized for production mode');
+      } catch (err) {
+        console.error('[Payment] ⚠️ Failed to initialize transaction executor:', err);
+        console.error('[Payment] Running in dry-run mode. Set SOLANA_TREASURY_PRIVATE_KEY to enable production transfers.');
+        this.dryRun = true;
+      }
+    }
   }
 
   /**
@@ -85,21 +106,20 @@ export class SOLPaymentProcessor {
       // Validate inputs
       this.validatePaymentRequest(request);
 
-      // Check wallet balance
-      const balance = await this.checkWalletBalance(this.treasuryWallet.toString());
-      if (balance.balanceSOL < request.amountSOL) {
-        throw new Error(
-          `Insufficient balance: ${balance.balanceSOL} SOL available, ${request.amountSOL} SOL required`
-        );
-      }
-
-      // Dry-run mode: simulate payment without real transfer
+      // Dry-run mode: simulate payment without real transfer (skip balance check)
       if (this.dryRun) {
         result.transactionSignature = `dry-run-${request.idempotencyKey}`;
         result.status = 'confirmed';
         console.log(`[Payment] DRY RUN: Would transfer ${request.amountSOL} SOL to ${request.recipientWallet}`);
       } else {
-        // Production mode: execute real transfer
+        // Production mode: check real balance before transfer
+        const balance = await this.checkWalletBalance(this.treasuryWallet.toString());
+        if (balance.balanceSOL < request.amountSOL) {
+          throw new Error(
+            `Insufficient balance: ${balance.balanceSOL} SOL available, ${request.amountSOL} SOL required`
+          );
+        }
+
         result.transactionSignature = await this.executeTransfer(
           request.recipientWallet,
           request.amountSOL,
@@ -143,6 +163,7 @@ export class SOLPaymentProcessor {
 
   /**
    * Check wallet balance before payment
+   * Phase 3 Feature 3: Fetches from real Solana RPC in production mode
    */
   async checkWalletBalance(walletAddress: string): Promise<WalletBalance> {
     // Check cache first
@@ -152,9 +173,19 @@ export class SOLPaymentProcessor {
     }
 
     try {
-      // In production, would fetch from Solana RPC
-      // For now, placeholder implementation
-      const balanceLamports = Math.floor(Math.random() * 100 * LAMPORTS_PER_SOL);
+      let balanceLamports: number;
+
+      if (!this.dryRun && this.transactionExecutor) {
+        // Production mode: fetch from Solana RPC
+        console.log(`[Balance] Fetching balance from Solana RPC: ${walletAddress}`);
+        const balanceSOL = await this.transactionExecutor.getBalance();
+        balanceLamports = Math.floor(balanceSOL * LAMPORTS_PER_SOL);
+      } else {
+        // Dry-run mode: use random balance for testing
+        console.log(`[Balance] DRY RUN MODE - using random balance for ${walletAddress}`);
+        balanceLamports = Math.floor(Math.random() * 100 * LAMPORTS_PER_SOL);
+      }
+
       const balanceSOL = balanceLamports / LAMPORTS_PER_SOL;
 
       const balance: WalletBalance = {
@@ -174,34 +205,47 @@ export class SOLPaymentProcessor {
 
   /**
    * Execute real SOL transfer to recipient
+   * Phase 3 Feature 3: Real transaction execution with confirmation polling
    */
   private async executeTransfer(
     recipientWallet: string,
     amountSOL: number,
     description: string
   ): Promise<string> {
-    // Placeholder for actual Solana transaction execution
-    // In production, would:
-    // 1. Create transaction with transfer instruction
-    // 2. Sign with treasury private key
-    // 3. Submit to Solana network
-    // 4. Poll for confirmation
-    // 5. Return transaction signature
-
-    console.log(`[Transfer] Would execute transfer:`);
+    console.log(`[Transfer] Executing SOL transfer:`);
     console.log(`  From: ${this.treasuryWallet.toString()}`);
     console.log(`  To: ${recipientWallet}`);
     console.log(`  Amount: ${amountSOL} SOL`);
     console.log(`  Description: ${description}`);
 
-    // Generate mock signature for dry-run (88 chars, base58-like)
-    const base58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    const mockSignature = Array(88)
-      .fill(0)
-      .map(() => base58Chars.charAt(Math.floor(Math.random() * base58Chars.length)))
-      .join('');
+    // Dry-run mode: generate mock signature
+    if (this.dryRun || !this.transactionExecutor) {
+      console.log(`[Transfer] DRY RUN MODE - generating mock signature`);
+      const base58Chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+      const mockSignature = Array(88)
+        .fill(0)
+        .map(() => base58Chars.charAt(Math.floor(Math.random() * base58Chars.length)))
+        .join('');
+      return mockSignature;
+    }
 
-    return mockSignature;
+    // Production mode: execute real transaction
+    try {
+      const result = await this.transactionExecutor.transferSOL(recipientWallet, amountSOL);
+
+      if (result.status !== 'confirmed') {
+        throw new Error(
+          `Transaction ${result.status}: ${result.error || 'Unknown error'}`,
+        );
+      }
+
+      console.log(`[Transfer] ✅ Confirmed transaction: ${result.signature}`);
+      return result.signature;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[Transfer] ❌ Real transaction failed:`, errorMsg);
+      throw err;
+    }
   }
 
   /**
