@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { UpgradeCTA } from '../../_components/UpgradeCTA';
 
 export const dynamic = 'force-dynamic';
 
@@ -319,6 +320,9 @@ export default async function DeliveryProofReportPage({ params }: { params: Prom
             </div>
           </div>
 
+
+          {/* Upgrade CTA */}
+          <UpgradeCTA runId={report.run_id || ''} isFreeUser={report.claim_pass_eligible !== true} currentTier="free" />
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/api/compliance-evidence-pack"
