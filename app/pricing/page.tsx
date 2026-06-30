@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 type Interval = 'monthly' | 'yearly';
 
@@ -95,13 +95,10 @@ const PACK_COLOR: Record<string, string> = {
   rose:    'border-rose-500/30 text-rose-300 bg-rose-500/10',
 };
 
-function signupHref(planKey: string, interval: Interval) {
-  const params = new URLSearchParams({ plan: planKey, interval });
-  return `/signup?${params.toString()}`;
-}
-
 function loginHref(planKey: string, interval: Interval) {
-  const next = `/pricing?autostart=1&plan=${encodeURIComponent(planKey)}&interval=${encodeURIComponent(interval)}`;
+  const safePlan = isPaidPlan(String(planKey).toLowerCase()) ? String(planKey).toLowerCase() : 'pro';
+  const safeInterval: Interval = interval === 'yearly' ? 'yearly' : 'monthly';
+  const next = `/pricing?autostart=1&plan=${encodeURIComponent(safePlan)}&interval=${encodeURIComponent(safeInterval)}`;
   return `/login?next=${encodeURIComponent(next)}`;
 }
 
@@ -114,7 +111,6 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
-  const searchParams = useSearchParams();
   const autoStarted = useRef(false);
 
   const handleCheckout = useCallback(async (planKey: string) => {
@@ -130,7 +126,11 @@ export default function PricingPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ plan: planKey, interval }),
       });
-      if (res.status === 401 || res.status === 403) { router.push(loginHref(planKey, interval)); return; }
+      if (res.status === 401 || res.status === 403) {
+        sessionStorage.setItem('dsg_pricing_autostart_checkout', '1');
+        router.push(loginHref(planKey, interval));
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setErrors((prev) => ({ ...prev, [planKey]: data?.error || 'Checkout failed — please try again' }));
@@ -148,15 +148,19 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (autoStarted.current) return;
-    if (searchParams.get('autostart') !== '1') return;
-    const plan = (searchParams.get('plan') || '').toLowerCase();
-    const autoInterval = (searchParams.get('interval') || '').toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('autostart') !== '1') return;
+    if (sessionStorage.getItem('dsg_pricing_autostart_checkout') !== '1') return;
+    const plan = (params.get('plan') || '').toLowerCase();
+    const autoInterval = (params.get('interval') || '').toLowerCase();
     if (!isPaidPlan(plan)) return;
     const pickedInterval: Interval = autoInterval === 'yearly' ? 'yearly' : 'monthly';
     autoStarted.current = true;
+    sessionStorage.removeItem('dsg_pricing_autostart_checkout');
     setInterval(pickedInterval);
+    if (!window.confirm(`Continue checkout for ${plan} (${pickedInterval})?`)) return;
     void handleCheckout(plan);
-  }, [handleCheckout, searchParams]);
+  }, [handleCheckout]);
 
   return (
     <main className="min-h-screen bg-[#07080a] text-white">

@@ -6,10 +6,12 @@ import { handleApiError } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
-const ACTIVE_STATUSES = new Set(['active', 'past_due', 'unpaid']);
-const TRIAL_STAGES = new Set(['trialing', 'active', 'past_due', 'unpaid', 'canceled']);
+const REVENUE_COUNTING_STATUSES = new Set(['active', 'past_due', 'unpaid']);
+const TRIAL_START_STATUSES = new Set(['trialing']);
 const DEFAULT_WINDOW_DAYS = 30;
 const MAX_WINDOW_DAYS = 90;
+const YEARLY_DISCOUNT_MULTIPLIER = 0.8;
+const BILLING_EVENTS_LOOKBACK_DAYS = 56;
 
 const PLAN_PRICE_MONTHLY: Record<string, number> = {
   pro: 99,
@@ -43,7 +45,9 @@ function startOfIsoWeek(input: Date): string {
 
 function toMonthlyAmount(planKey: string | null, interval: string | null): number {
   const base = PLAN_PRICE_MONTHLY[String(planKey || '').toLowerCase()] || 0;
-  return String(interval || '').toLowerCase() === 'yearly' ? Number((base * 0.8).toFixed(2)) : base;
+  return String(interval || '').toLowerCase() === 'yearly'
+    ? Number((base * YEARLY_DISCOUNT_MULTIPLIER).toFixed(2))
+    : base;
 }
 
 export async function GET(request: Request) {
@@ -86,32 +90,42 @@ export async function GET(request: Request) {
     const [{ data: recentSubs }, { data: activeSubs }, { data: billingEvents }] = await Promise.all([
       admin
         .from('billing_subscriptions')
-        .select('status, plan_key, billing_interval, created_at, updated_at')
+        .select('status, plan_key, billing_interval, created_at, updated_at, trial_start')
         .eq('org_id', profile.org_id)
         .gte('created_at', startIso),
       admin
         .from('billing_subscriptions')
-        .select('status, plan_key, billing_interval')
+        .select('status, plan_key, billing_interval, created_at')
         .eq('org_id', profile.org_id),
       admin
         .from('billing_events')
         .select('event_type, created_at, processed_at')
         .eq('org_id', profile.org_id)
-        .gte('created_at', new Date(Date.now() - 56 * 24 * 60 * 60 * 1000).toISOString()),
+        .gte(
+          'created_at',
+          new Date(Date.now() - Math.max(windowDays, BILLING_EVENTS_LOOKBACK_DAYS) * 24 * 60 * 60 * 1000).toISOString()
+        ),
     ]);
 
     const recent = recentSubs || [];
     const allSubs = activeSubs || [];
     const events = billingEvents || [];
 
-    const trialStarts = recent.filter((row) => TRIAL_STAGES.has(String(row.status || '').toLowerCase())).length;
-    const paidActivations = recent.filter((row) => ACTIVE_STATUSES.has(String(row.status || '').toLowerCase())).length;
+    const trialStarts = recent.filter((row) => TRIAL_START_STATUSES.has(String(row.status || '').toLowerCase())).length;
+    const paidActivationsFromTrial = recent.filter((row) => {
+      const status = String(row.status || '').toLowerCase();
+      const trialStart = parseIso(row.trial_start);
+      return REVENUE_COUNTING_STATUSES.has(status) && trialStart >= Date.parse(startIso);
+    }).length;
 
-    const activeRows = allSubs.filter((row) => ACTIVE_STATUSES.has(String(row.status || '').toLowerCase()));
+    const activeRows = allSubs.filter((row) => REVENUE_COUNTING_STATUSES.has(String(row.status || '').toLowerCase()));
     const mrrUsd = Number(activeRows.reduce((sum, row) => sum + toMonthlyAmount(row.plan_key, row.billing_interval), 0).toFixed(2));
     const activeCount = activeRows.length;
     const canceledWindow = recent.filter((row) => String(row.status || '').toLowerCase() === 'canceled').length;
-    const churnDenominator = activeCount + canceledWindow;
+    const activeAtPeriodStart = allSubs.filter((row) => {
+      const status = String(row.status || '').toLowerCase();
+      return REVENUE_COUNTING_STATUSES.has(status) && parseIso(row.created_at) < Date.parse(startIso);
+    }).length;
 
     const checkoutCompleted = events.filter((row) => row.event_type === 'checkout.session.completed').length;
     const checkoutExpired = events.filter((row) => row.event_type === 'checkout.session.expired').length;
@@ -142,7 +156,7 @@ export async function GET(request: Request) {
       const key = startOfIsoWeek(new Date(ts));
       const bucket = weekly.get(key);
       if (!bucket) continue;
-      if (ACTIVE_STATUSES.has(status)) bucket.paid_activations += 1;
+      if (REVENUE_COUNTING_STATUSES.has(status)) bucket.paid_activations += 1;
       if (status === 'canceled') bucket.churned += 1;
     }
 
@@ -150,9 +164,13 @@ export async function GET(request: Request) {
       ok: true,
       window_days: windowDays,
       metrics: {
-        trial_to_paid_conversion_pct: trialStarts > 0 ? Number(((paidActivations / trialStarts) * 100).toFixed(2)) : null,
+        trial_to_paid_conversion_pct: trialStarts > 0
+          ? Number(((paidActivationsFromTrial / trialStarts) * 100).toFixed(2))
+          : null,
         mrr_usd: mrrUsd,
-        churn_rate_pct: churnDenominator > 0 ? Number(((canceledWindow / churnDenominator) * 100).toFixed(2)) : null,
+        churn_rate_pct: activeAtPeriodStart > 0
+          ? Number(((canceledWindow / activeAtPeriodStart) * 100).toFixed(2))
+          : null,
         arpa_usd: activeCount > 0 ? Number((mrrUsd / activeCount).toFixed(2)) : null,
         checkout_completion_rate_pct: checkoutAttempts > 0 ? Number(((checkoutCompleted / checkoutAttempts) * 100).toFixed(2)) : null,
         active_subscriptions: activeCount,

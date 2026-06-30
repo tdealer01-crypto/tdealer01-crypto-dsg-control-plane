@@ -9,12 +9,13 @@ type PlanKey = 'pro' | 'business' | 'enterprise';
 type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
 type BillingInterval = 'monthly' | 'yearly';
 
-const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; features: string[] }[] = [
+const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; yearlyTotal: number; features: string[] }[] = [
   {
     key: 'pro',
     title: 'Pro',
     monthly: 99,
     yearly: 79,
+    yearlyTotal: 948,
     features: ['10,000 executions / mo', '60 req/min gate limit', '10 agents', 'PDF export'],
   },
   {
@@ -22,6 +23,7 @@ const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; fea
     title: 'Business',
     monthly: 299,
     yearly: 239,
+    yearlyTotal: 2868,
     features: ['100,000 executions / mo', '300 req/min gate limit', '50 agents', 'Audit ledger'],
   },
   {
@@ -29,6 +31,7 @@ const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; fea
     title: 'Enterprise',
     monthly: 799,
     yearly: 639,
+    yearlyTotal: 7668,
     features: ['1,000,000 executions / mo', 'Unlimited gates', 'Unlimited agents', 'SLA + support'],
   },
 ];
@@ -87,7 +90,7 @@ function UpgradeCard({
         )}
       </div>
       <p className="mt-2 text-3xl font-bold">${price}/mo</p>
-      {interval === 'yearly' && <p className="mt-1 text-xs text-emerald-300">Billed annually · ${price * 12}/yr</p>}
+      {interval === 'yearly' && <p className="mt-1 text-xs text-emerald-300">Billed annually · ${plan.yearlyTotal}/yr</p>}
       <ul className="mt-4 flex flex-col gap-2 text-sm text-slate-300">
         {plan.features.map((f) => (
           <li key={f} className="flex items-center gap-2">
@@ -168,6 +171,8 @@ function BillingInner() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [kpis, setKpis]           = useState<RevenueKpis | null>(null);
   const [interval, setInterval]   = useState<BillingInterval>('monthly');
+  const [bundleLoading, setBundleLoading] = useState<string | null>(null);
+  const [bundleError, setBundleError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
   const [toast, setToast]         = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -191,6 +196,33 @@ function BillingInner() {
   }, [searchParams]);
 
   const quota = analytics?.quota;
+
+  async function startBundleCheckout(bundleId: string) {
+    setBundleLoading(bundleId);
+    setBundleError(null);
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: bundleId, interval }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setBundleError(data?.error || 'Bundle checkout failed');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setBundleError('Bundle checkout failed');
+    } catch {
+      setBundleError('Bundle checkout failed');
+    } finally {
+      setBundleLoading(null);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -260,28 +292,28 @@ function BillingInner() {
                 <p className="text-sm text-slate-400">{card.label}</p>
                 <p className="mt-3 text-3xl font-semibold">{card.value}</p>
               </div>
-
-              {/* Revenue KPI */}
-              <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-                <h2 className="text-xl font-semibold">Revenue KPI (last {kpis?.window_days ?? 30} days)</h2>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  {[
-                    { label: 'Trial → Paid', value: kpis?.metrics.trial_to_paid_conversion_pct != null ? `${kpis.metrics.trial_to_paid_conversion_pct.toFixed(1)}%` : '—' },
-                    { label: 'MRR', value: kpis ? `US$${kpis.metrics.mrr_usd.toFixed(2)}` : '—' },
-                    { label: 'Churn', value: kpis?.metrics.churn_rate_pct != null ? `${kpis.metrics.churn_rate_pct.toFixed(1)}%` : '—' },
-                    { label: 'ARPA', value: kpis?.metrics.arpa_usd != null ? `US$${kpis.metrics.arpa_usd.toFixed(2)}` : '—' },
-                    { label: 'Checkout completion', value: kpis?.metrics.checkout_completion_rate_pct != null ? `${kpis.metrics.checkout_completion_rate_pct.toFixed(1)}%` : '—' },
-                    { label: 'Active subscriptions', value: kpis ? `${kpis.metrics.active_subscriptions}` : '—' },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                      <p className="text-xs text-slate-400">{item.label}</p>
-                      <p className="mt-2 text-xl font-semibold">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
             ))
           )}
+        </div>
+
+        {/* Revenue KPI */}
+        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">Revenue KPI (last {kpis?.window_days ?? 30} days)</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {[
+              { label: 'Trial → Paid', value: kpis?.metrics.trial_to_paid_conversion_pct != null ? `${kpis.metrics.trial_to_paid_conversion_pct.toFixed(1)}%` : '—' },
+              { label: 'MRR', value: kpis ? `US$${kpis.metrics.mrr_usd.toFixed(2)}` : '—' },
+              { label: 'Churn', value: kpis?.metrics.churn_rate_pct != null ? `${kpis.metrics.churn_rate_pct.toFixed(1)}%` : '—' },
+              { label: 'ARPA', value: kpis?.metrics.arpa_usd != null ? `US$${kpis.metrics.arpa_usd.toFixed(2)}` : '—' },
+              { label: 'Checkout completion', value: kpis?.metrics.checkout_completion_rate_pct != null ? `${kpis.metrics.checkout_completion_rate_pct.toFixed(1)}%` : '—' },
+              { label: 'Active subscriptions', value: kpis ? `${kpis.metrics.active_subscriptions}` : '—' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="mt-2 text-xl font-semibold">{item.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Billing period */}
@@ -333,17 +365,21 @@ function BillingInner() {
           <p className="mt-2 text-sm text-slate-300">Keep base subscription for recurring revenue and attach bundles for expansion revenue.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {SKILL_BUNDLES.map((bundle) => (
-              <Link
+              <button
                 key={bundle.id}
-                href={`/api/billing/checkout?plan=${bundle.id}&interval=${interval}`}
-                className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 transition hover:border-emerald-500/50"
+                onClick={() => void startBundleCheckout(bundle.id)}
+                disabled={bundleLoading !== null}
+                className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-left transition hover:border-emerald-500/50 disabled:opacity-60"
               >
                 <p className="text-sm font-semibold text-white">{bundle.name}</p>
                 <p className="mt-1 text-xs text-slate-400">US${bundle.monthly}/mo</p>
-                <p className="mt-3 text-xs text-emerald-300">Activate bundle →</p>
-              </Link>
+                <p className="mt-3 text-xs text-emerald-300">
+                  {bundleLoading === bundle.id ? 'Redirecting…' : 'Activate bundle →'}
+                </p>
+              </button>
             ))}
           </div>
+          {bundleError && <p className="mt-3 text-xs text-red-400">{bundleError}</p>}
         </div>
       </div>
     </main>
