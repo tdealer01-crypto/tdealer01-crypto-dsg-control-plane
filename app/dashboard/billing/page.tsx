@@ -381,6 +381,98 @@ function BillingInner() {
           </div>
           {bundleError && <p className="mt-3 text-xs text-red-400">{bundleError}</p>}
         </div>
+
+        {/* MCP Subscription Section */}
+        <div className="mt-8 rounded-2xl border border-cyan-600/20 bg-gradient-to-r from-cyan-600/10 to-blue-600/5 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">MCP API Subscription</h2>
+              <p className="mt-2 text-sm text-slate-300">
+                Connect DSG governance to Claude Desktop, Cursor, or any MCP-compatible client
+              </p>
+            </div>
+            <span className="inline-flex rounded-full bg-cyan-600/20 px-3 py-1 text-xs font-semibold text-cyan-300">
+              Developer
+            </span>
+          </div>
+
+          {/* Pricing card */}
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+              <p className="text-sm font-semibold text-white">Per-Developer Subscription</p>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-cyan-300">฿490</span>
+                <span className="text-sm text-slate-400">/month per dev</span>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>Unlimited MCP calls</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>RPC-validated API keys</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>Atomic quota enforcement</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>Usage logs + audit trail</span>
+                </div>
+              </div>
+              <button className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition">
+                Create MCP Key →
+              </button>
+            </div>
+
+            {/* Integration guide */}
+            <div className="rounded-xl border border-slate-700/50 bg-slate-950/30 p-4">
+              <p className="text-sm font-semibold text-white">Quick Setup</p>
+              <div className="mt-3 space-y-2 text-xs text-slate-400">
+                <div className="font-mono">
+                  <p className="text-cyan-400">1. Create MCP API key (see left)</p>
+                  <p className="mt-2 text-cyan-400">2. Configure in claude_desktop_config.json</p>
+                  <p className="mt-2 font-mono text-[0.7rem] text-slate-500">
+                    {`{`}<br/>
+                    {`  "mcpServers": {`}<br/>
+                    {`    "dsg": {`}<br/>
+                    {`      "command": "...",`}<br/>
+                    {`      "env": {`}<br/>
+                    {`        "DSG_API_KEY": "YOUR_MCP_KEY"`}<br/>
+                    {`      }`}<br/>
+                    {`    }`}<br/>
+                    {`  }`}<br/>
+                    {`}`}
+                  </p>
+                </div>
+                <p className="mt-3 text-slate-500">
+                  <a href="https://docs.anthropic.com/en/docs/build-with-claude/mcp" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
+                    Learn about MCP →
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Active keys list */}
+          <div className="mt-6 rounded-lg border border-slate-700/50 bg-slate-950/30 p-4">
+            <p className="text-sm font-semibold text-slate-200">Active MCP Keys</p>
+            <p className="mt-1 text-xs text-slate-500">Your API keys for MCP subscriptions</p>
+            <div className="mt-3 text-center py-8 text-slate-500">
+              <p className="text-sm">No active MCP keys yet</p>
+              <p className="text-xs mt-1">Create one above to get started</p>
+            </div>
+          </div>
+
+          {/* Billing note */}
+          <div className="mt-4 p-3 rounded-lg bg-cyan-600/5 border border-cyan-600/10">
+            <p className="text-xs text-slate-400">
+              <span className="font-semibold text-cyan-300">Monthly billing:</span> Your team can have multiple MCP keys, each billed separately. Keys expire after 30 days and auto-renew.
+            </p>
+          </div>
+        </div>
       </div>
     </main>
   );
