@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
-  "nodeVersion": "24.x",
   "crons": [
     {
       "path": "/api/cron/flush-meter-outbox",
