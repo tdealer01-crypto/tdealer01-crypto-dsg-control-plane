@@ -74,8 +74,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, jobId: body.jobId, contentHash });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 403 });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Request could not be completed' }, { status: 403 });
   }
 }
