@@ -51,6 +51,19 @@ function currentUtcMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+function numericValue(value: number | string | null | undefined, fallback = 0): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  return fallback;
+}
+
 function buildPeriodBounds(period: string, subscription?: Pick<QuotaTier, 'currentPeriodStart' | 'currentPeriodEnd'>): {
   periodStart: string;
   periodEnd: string;
@@ -148,14 +161,14 @@ export async function getQuotaUsage(orgId: string, period = currentUtcMonth()): 
 
   const deliveryProofScans = ((revenueEventsResult.data || []) as Array<{ event_type?: string | null; amount?: number | string | null }>)
     .filter((row) => row.event_type === 'delivery_proof_scan')
-    .reduce((sum, row) => sum + Number(row.amount || 1), 0);
+    .reduce((sum, row) => sum + numericValue(row.amount, 1), 0);
 
   const apiKeyUsage = ((apiKeysResult.data || []) as Array<{ requests_this_month?: number | null }>)
     .reduce((sum, row) => sum + Number(row.requests_this_month || 0), 0);
 
   const mcpRequestsFromEvents = ((revenueEventsResult.data || []) as Array<{ event_type?: string | null; amount?: number | string | null }>)
     .filter((row) => row.event_type === 'mcp_request')
-    .reduce((sum, row) => sum + Number(row.amount || 1), 0);
+    .reduce((sum, row) => sum + numericValue(row.amount, 1), 0);
 
   const mcpRequests = Math.max(apiKeyUsage, mcpRequestsFromEvents);
 

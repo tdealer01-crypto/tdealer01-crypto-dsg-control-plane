@@ -52,6 +52,7 @@ interface RevenueEventRecord {
 }
 
 const KPI_WINDOW_DAYS = 30;
+const WEBHOOK_HEALTH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 function formatCurrency(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
@@ -167,7 +168,7 @@ export default function RevenueDashboard() {
   };
   const lastWebhookEvent = recentEvents.find((event) => event.source.startsWith('stripe.'));
   const webhookHealthy = lastWebhookEvent
-    ? Date.now() - new Date(lastWebhookEvent.createdAt).getTime() < 24 * 60 * 60 * 1000
+    ? Date.now() - new Date(lastWebhookEvent.createdAt).getTime() < WEBHOOK_HEALTH_THRESHOLD_MS
     : false;
 
   return (

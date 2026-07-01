@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
 const constructEventMock = vi.fn();
@@ -53,6 +53,11 @@ describe('POST /api/webhooks/stripe', () => {
         eq: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn().mockResolvedValue({ data: { org_id: 'org_123' }, error: null }),
       }),
+    });
+
+    afterEach(() => {
+      delete process.env.STRIPE_SECRET_KEY;
+      delete process.env.STRIPE_WEBHOOK_SECRET;
     });
     insertRevenueEventMock.mockResolvedValue({ id: 'rev_123' });
     handleBillingWebhookMock.mockResolvedValue(

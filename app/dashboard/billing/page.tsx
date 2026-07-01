@@ -185,7 +185,7 @@ type QuotaUsageResponse = {
 };
 
 function categoryWidth(value: number, limit: number) {
-  if (limit <= 0) return 0;
+  if (limit <= 0 || value <= 0) return 0;
   return Math.max(4, Math.min(100, Math.round((value / limit) * 100)));
 }
 
