@@ -24,6 +24,10 @@
  * HTTP 402 Payment Required
  */
 
+import { reportMeterEvent } from '@/lib/billing/metered';
+import { insertRevenueEvent } from '@/lib/revenue/events';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
+
 // ─── Tier definitions ────────────────────────────────────────────────────────
 
 export interface DsgGateTier {
@@ -99,6 +103,81 @@ export interface GateEntitlementCheck {
   upgradeUrl: string;
 }
 
+type GateEntitlementRow = {
+  org_id: string;
+  tier: 'free' | 'pro' | 'enterprise' | string;
+  evals_per_month: number | null;
+  stripe_customer_id?: string | null;
+};
+
+function monthBoundsUtc(now = new Date()) {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
+function tierSpec(tier: string | null | undefined) {
+  const key = String(tier || 'free').toLowerCase();
+  return DSG_GATE_TIERS[key] || DSG_GATE_TIERS.free;
+}
+
+async function getOrCreateEntitlement(orgId: string): Promise<GateEntitlementRow> {
+  const supabase = getSupabaseAdmin() as any;
+
+  const existing = await supabase
+    .from('dsg_gate_entitlements')
+    .select('org_id,tier,evals_per_month,stripe_customer_id')
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (existing.error) {
+    throw new Error(existing.error.message);
+  }
+
+  if (existing.data) {
+    return existing.data as GateEntitlementRow;
+  }
+
+  const created = await supabase
+    .from('dsg_gate_entitlements')
+    .insert({
+      org_id: orgId,
+      tier: 'free',
+      evals_per_month: DSG_GATE_TIERS.free.evalsPerMonth,
+    })
+    .select('org_id,tier,evals_per_month,stripe_customer_id')
+    .maybeSingle();
+
+  if (created.error || !created.data) {
+    throw new Error(created.error?.message || 'failed_to_create_dsg_gate_entitlement');
+  }
+
+  return created.data as GateEntitlementRow;
+}
+
+async function countEvalsThisPeriod(orgId: string): Promise<number> {
+  const supabase = getSupabaseAdmin() as any;
+
+  const rpcResult = await supabase.rpc('dsg_gate_evals_this_period', { p_org_id: orgId });
+  if (!rpcResult.error && typeof rpcResult.data === 'number') {
+    return rpcResult.data;
+  }
+
+  const { startIso, endIso } = monthBoundsUtc();
+  const countResult = await supabase
+    .from('dsg_gate_usage')
+    .select('id', { head: true, count: 'exact' })
+    .eq('org_id', orgId)
+    .gte('created_at', startIso)
+    .lt('created_at', endIso);
+
+  if (countResult.error) {
+    throw new Error(countResult.error.message);
+  }
+
+  return countResult.count || 0;
+}
+
 /**
  * Check whether an org is allowed to call the DSG gate / proof API.
  *
@@ -108,14 +187,44 @@ export interface GateEntitlementCheck {
 export async function checkGateEntitlement(
   orgId: string | null,
 ): Promise<GateEntitlementCheck> {
-  // Phase 1 — free tier for all authenticated callers
+  if (!orgId) {
+    return {
+      allowed: true,
+      tier: 'free',
+      evalsRemaining: 50,
+      message: 'Free tier — authenticate to unlock higher limits',
+      requiresPayment: false,
+      upgradeUrl: '/pricing#dsg-gate',
+    };
+  }
+
+  try {
+    const entitlement = await getOrCreateEntitlement(orgId);
+    const plan = tierSpec(entitlement.tier);
+    const evalsPerMonth = Number(entitlement.evals_per_month || plan.evalsPerMonth);
+    const used = await countEvalsThisPeriod(orgId);
+    const remaining = Math.max(0, evalsPerMonth - used);
+    const allowed = remaining > 0;
+
+    return {
+      allowed,
+      tier: plan.tier,
+      evalsRemaining: remaining,
+      message: allowed
+        ? `${plan.tier.toUpperCase()} tier — ${remaining} evaluations remaining this period`
+        : 'Quota exceeded — upgrade to DSG Gate Pro',
+      requiresPayment: !allowed,
+      upgradeUrl: '/pricing#dsg-gate',
+    };
+  } catch (error) {
+    console.error('[dsg-gate-entitlement] fallback to free tier:', error);
+  }
+
   return {
     allowed: true,
     tier: 'free',
     evalsRemaining: 50,
-    message: orgId
-      ? 'Free tier — 50 evaluations/month'
-      : 'Free tier — authenticate to unlock higher limits',
+    message: 'Free tier — 50 evaluations/month',
     requiresPayment: false,
     upgradeUrl: '/pricing#dsg-gate',
   };
@@ -139,8 +248,56 @@ export async function recordGateEvaluation(
       `[dsg-gate-usage] evalId=${evalId} org=${orgId ?? 'anonymous'} route=${route} status=${gateStatus} ms=${durationMs}`,
     );
 
-    // TODO Phase 2: Insert into dsg_gate_usage table
-    // TODO Phase 2: Check dsg_gate_entitlements and fire Stripe meter event on overage
+    if (!orgId) {
+      return { recorded: true };
+    }
+
+    const supabase = getSupabaseAdmin() as any;
+    const usageInsert = await supabase
+      .from('dsg_gate_usage')
+      .insert({
+        org_id: orgId,
+        eval_id: evalId,
+        route,
+        gate_status: gateStatus,
+        duration_ms: durationMs,
+        billed: false,
+      })
+      .select('id')
+      .maybeSingle();
+
+    if (usageInsert.error || !usageInsert.data?.id) {
+      throw new Error(usageInsert.error?.message || 'failed_to_insert_dsg_gate_usage');
+    }
+
+    await insertRevenueEvent({
+      orgId,
+      eventType: 'dsg_gate_evaluation',
+      amount: 1,
+      currency: 'USD',
+      source: `dsg_gate:${route}`,
+      metadata: {
+        evalId,
+        gateStatus,
+        durationMs,
+      },
+    });
+
+    const entitlement = await getOrCreateEntitlement(orgId);
+    const limit = Number(entitlement.evals_per_month || tierSpec(entitlement.tier).evalsPerMonth);
+    const used = await countEvalsThisPeriod(orgId);
+    const overage = used > limit;
+
+    if (overage && entitlement.stripe_customer_id) {
+      const meter = await reportMeterEvent(entitlement.stripe_customer_id, orgId, 1, `dsg-gate-${evalId}`);
+      if (meter.ok) {
+        await supabase
+          .from('dsg_gate_usage')
+          .update({ billed: true, meter_event_id: meter.eventId })
+          .eq('id', usageInsert.data.id);
+        return { recorded: true, meterEventId: meter.eventId };
+      }
+    }
 
     return { recorded: true };
   } catch (err) {
