@@ -2,8 +2,8 @@
 
 This guide is focused on webhook setup for production monetization and complements existing references:
 
-- Signature internals: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/docs/STRIPE_WEBHOOK_SIGNATURE_VERIFICATION.md`
-- General webhook testing toolkit: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/docs/WEBHOOK_TESTING_GUIDE.md`
+- Signature internals: `docs/STRIPE_WEBHOOK_SIGNATURE_VERIFICATION.md`
+- General webhook testing toolkit: `docs/WEBHOOK_TESTING_GUIDE.md`
 
 ---
 
@@ -39,7 +39,7 @@ expected = HMAC_SHA256(STRIPE_WEBHOOK_SECRET, signed_payload)
 
 In this repository, billing webhook verification is implemented in:
 
-- `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/app/api/billing/webhook/route.ts`
+- `app/api/billing/webhook/route.ts`
 
 Do not parse JSON before signature verification.
 
@@ -63,7 +63,7 @@ stripe trigger checkout.session.completed
 ### Script-based signed tests
 
 ```bash
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/test-stripe-webhook.sh \
+bash scripts/test-stripe-webhook.sh \
   --url https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/webhook \
   --secret whsec_live_YOUR_SECRET_HERE \
   --event checkout.session.completed
@@ -72,7 +72,7 @@ bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-c
 ### Full production readiness check
 
 ```bash
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/verify-stripe-production.sh
+bash scripts/verify-stripe-production.sh
 ```
 
 ---

@@ -102,7 +102,11 @@ upsert_env() {
   fi
 
   if grep -q "^${key}=" "$ENV_FILE"; then
-    sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+    if sed --version >/dev/null 2>&1; then
+      sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+    else
+      sed -i '' "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+    fi
   else
     printf '\n%s=%s\n' "$key" "$value" >> "$ENV_FILE"
   fi

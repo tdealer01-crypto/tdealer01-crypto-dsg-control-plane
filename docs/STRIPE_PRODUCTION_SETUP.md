@@ -3,10 +3,10 @@
 This guide covers production Stripe key setup for DSG Control Plane Phase 2 monetization.
 It extends existing materials and avoids duplicating low-level webhook/signature docs:
 
-- Existing product setup automation: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/stripe-setup.ts`
-- Existing baseline validator: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/validate-stripe-config.sh`
-- Existing Vercel env helper: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/set-vercel-stripe-env.sh`
-- Existing webhook signature deep dive: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/docs/STRIPE_WEBHOOK_SIGNATURE_VERIFICATION.md`
+- Existing product setup automation: `scripts/stripe-setup.ts`
+- Existing baseline validator: `scripts/validate-stripe-config.sh`
+- Existing Vercel env helper: `set-vercel-stripe-env.sh`
+- Existing webhook signature deep dive: `docs/STRIPE_WEBHOOK_SIGNATURE_VERIFICATION.md`
 
 ---
 
@@ -45,7 +45,7 @@ Use `/api/billing/webhook` for Phase 2 billing lifecycle events.
 - Signing secret value should be treated as production secret
 
 Detailed event setup and troubleshooting are in:
-`/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/docs/STRIPE_WEBHOOK_SETUP.md`
+`docs/STRIPE_WEBHOOK_SETUP.md`
 
 ---
 
@@ -54,7 +54,7 @@ Detailed event setup and troubleshooting are in:
 Run the interactive setup script:
 
 ```bash
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/setup-stripe-production.sh
+bash scripts/setup-stripe-production.sh
 ```
 
 What it does:
@@ -96,7 +96,7 @@ Then redeploy production:
 vercel --prod
 ```
 
-If you already use `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/set-vercel-stripe-env.sh` for Stripe pricing IDs, keep using it; this setup complements that workflow.
+If you already use `set-vercel-stripe-env.sh` for Stripe pricing IDs, keep using it; this setup complements that workflow.
 
 ---
 
@@ -114,7 +114,7 @@ If you already use `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer
 4. Reveal and copy webhook signing secret
 5. Set/update `STRIPE_WEBHOOK_SECRET` in local + Vercel production
 
-For full webhook guide: `/home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/docs/STRIPE_WEBHOOK_SETUP.md`
+For full webhook guide: `docs/STRIPE_WEBHOOK_SETUP.md`
 
 ---
 
@@ -123,7 +123,7 @@ For full webhook guide: `/home/runner/work/tdealer01-crypto-dsg-control-plane/td
 Run production validation:
 
 ```bash
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/verify-stripe-production.sh
+bash scripts/verify-stripe-production.sh
 ```
 
 Validator checks:
@@ -137,8 +137,8 @@ Validator checks:
 Optional existing checks:
 
 ```bash
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/validate-stripe-config.sh
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/test-stripe-webhook.sh --help
+bash scripts/validate-stripe-config.sh
+bash scripts/test-stripe-webhook.sh --help
 ```
 
 ---
@@ -169,5 +169,5 @@ If production key rollout causes issues:
 5. Confirm recovery using:
 
 ```bash
-bash /home/runner/work/tdealer01-crypto-dsg-control-plane/tdealer01-crypto-dsg-control-plane/scripts/verify-stripe-production.sh
+bash scripts/verify-stripe-production.sh
 ```
