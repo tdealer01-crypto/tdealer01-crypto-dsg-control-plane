@@ -180,17 +180,6 @@ async function claimEventProcessing(supabase: SupabaseAdmin, event: Stripe.Event
   return true;
 }
 
-async function markEventProcessed(supabase: SupabaseAdmin, eventId: string) {
-  const { error } = await supabase
-    .from('billing_events')
-    .update({ processed_at: new Date().toISOString() })
-    .eq('stripe_event_id', eventId);
-
-  if (error) {
-    throw error;
-  }
-}
-
 async function releaseEventClaim(supabase: SupabaseAdmin, eventId: string) {
   const { error } = await supabase
     .from('billing_events')
@@ -503,7 +492,6 @@ export async function POST(request: Request) {
         await handleInvoiceEvent(supabase, event, stripe);
       }
 
-      await markEventProcessed(supabase, event.id);
       return NextResponse.json({ received: true, type: event.type });
     } catch (error) {
       try {
