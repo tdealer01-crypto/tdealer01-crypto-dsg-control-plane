@@ -1,0 +1,13 @@
+{
+  "name": "DSG Control Plane",
+  "description": "AI governance platform for regulated workflows",
+  "category": "devtools",
+  "tags": ["ai", "governance", "compliance", "billing"],
+  "support_url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/discussions",
+  "pricing_models": ["free", "subscription"],
+  "free_trial": true,
+  "trial_duration_days": 14,
+  "requires_auth": true,
+  "integrations": ["stripe", "supabase"],
+  "min_github_version": "0.0.1"
+}
