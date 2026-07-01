@@ -181,14 +181,25 @@ async function claimEventProcessing(supabase: SupabaseAdmin, event: Stripe.Event
 }
 
 async function markEventProcessed(supabase: SupabaseAdmin, eventId: string) {
-  await supabase
+  const { error } = await supabase
     .from('billing_events')
     .update({ processed_at: new Date().toISOString() })
     .eq('stripe_event_id', eventId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 async function releaseEventClaim(supabase: SupabaseAdmin, eventId: string) {
-  await supabase.from('billing_events').delete().eq('stripe_event_id', eventId);
+  const { error } = await supabase
+    .from('billing_events')
+    .delete()
+    .eq('stripe_event_id', eventId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 async function upsertBillingCustomer(
