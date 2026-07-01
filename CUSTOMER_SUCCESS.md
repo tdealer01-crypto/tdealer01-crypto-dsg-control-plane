@@ -184,8 +184,8 @@ For customers who have been on Pro or Business for 30+ days:
 
 ## References
 
-- [MARKETPLACE.md](../MARKETPLACE.md) — Full listing documentation
-- [FAQ_MARKETPLACE.md](../FAQ_MARKETPLACE.md) — Common questions and answers
-- [GITHUB_MARKETPLACE_SETUP.md](../GITHUB_MARKETPLACE_SETUP.md) — Listing setup guide
-- [STRIPE_APP_MARKETPLACE.md](../STRIPE_APP_MARKETPLACE.md) — Stripe integration details
-- [docs/MARKETPLACE_ASSETS.md](./MARKETPLACE_ASSETS.md) — Asset creation guide
+- [MARKETPLACE.md](./MARKETPLACE.md) — Full listing documentation
+- [FAQ_MARKETPLACE.md](./FAQ_MARKETPLACE.md) — Common questions and answers
+- [GITHUB_MARKETPLACE_SETUP.md](./GITHUB_MARKETPLACE_SETUP.md) — Listing setup guide
+- [STRIPE_APP_MARKETPLACE.md](./STRIPE_APP_MARKETPLACE.md) — Stripe integration details
+- [docs/MARKETPLACE_ASSETS.md](./docs/MARKETPLACE_ASSETS.md) — Asset creation guide

@@ -193,7 +193,7 @@ For billing issues on any tier, open a GitHub Issue labeled `billing` for faster
 
 ### Where can I find the API documentation?
 
-- API reference: `/docs` on your deployed instance
+- API reference: See the `/docs` page on your deployed instance if enabled, or browse the [docs/](./docs) folder in this repository
 - Pricing API: `GET /api/delivery-proof/pricing` and `GET /api/dsg/v1/pricing`
 - Health check: `GET /api/health`
 - Agent status: `GET /api/agent/status`

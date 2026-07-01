@@ -11,6 +11,8 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 [![GitHub Marketplace](https://img.shields.io/badge/GitHub-Marketplace-blue?logo=github)](https://github.com/marketplace/dsg-control-plane)
 [![Stripe App](https://img.shields.io/badge/Stripe-App%20Marketplace-6772e5?logo=stripe)](https://marketplace.stripe.com/apps/dsg-control-plane)
 
+> **Note**: Marketplace links will be active after listing approval. See [GITHUB_MARKETPLACE_SETUP.md](./GITHUB_MARKETPLACE_SETUP.md) for the submission process.
+
 ### Quick Start (5 Minutes)
 
 1. **Install** from [GitHub Marketplace](https://github.com/marketplace/dsg-control-plane)
