@@ -38,6 +38,44 @@ bash scripts/check-stripe-ready.sh
 - [x] No security issues detected
 - [x] Production environment confirmed ready
 
+### STEP 1.5: Install & Setup Stripe CLI 📝 TODO (OPTIONAL but recommended)
+**Timeline:** 10-15 minutes
+
+**Why:** Using Stripe CLI makes manifest upload faster and more reliable
+
+**Installation:**
+
+macOS:
+```bash
+brew install stripe/stripe-cli/stripe
+```
+
+Linux (Ubuntu):
+```bash
+curl -s https://packages.stripe.dev/api/v1/repos/stripe-cli-deb/gpg.key | sudo apt-key add -
+echo "deb https://packages.stripe.dev/stripe-cli-deb focal main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
+sudo apt-get update && sudo apt-get install stripe
+```
+
+Windows:
+```bash
+scoop install stripe
+```
+
+**Authentication:**
+```bash
+stripe login
+# Follow redirect, confirm access
+stripe accounts list  # Verify authentication
+```
+
+**Verify manifest can be uploaded:**
+```bash
+stripe apps create --manifest packages/stripe-app/stripe-app.json --dry-run
+```
+
+---
+
 ### STEP 2: Prepare Stripe Account 📝 TODO
 **Timeline:** 5-10 minutes
 
@@ -47,6 +85,7 @@ bash scripts/check-stripe-ready.sh
 - [ ] Stripe Dashboard access
 - [ ] Developer role or higher
 - [ ] Access to Apps & Integrations section
+- [ ] (OPTIONAL) Stripe CLI installed and authenticated
 
 **Actions:**
 ```
@@ -55,6 +94,12 @@ bash scripts/check-stripe-ready.sh
 3. Navigate to: Developers → Apps & Integrations
 4. Ensure you're in LIVE MODE (not test)
 5. Note your Account ID (acct_*)
+```
+
+**If using Stripe CLI:**
+```bash
+stripe login
+stripe accounts list
 ```
 
 ### STEP 3: Create/Select App in Stripe Dashboard 📝 TODO

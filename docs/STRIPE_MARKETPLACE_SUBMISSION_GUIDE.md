@@ -443,6 +443,83 @@ curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/ga
 
 ---
 
+## 🔧 Stripe CLI Quick Reference
+
+### Installation
+
+**macOS:**
+```bash
+brew install stripe/stripe-cli/stripe
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+curl -s https://packages.stripe.dev/api/v1/repos/stripe-cli-deb/gpg.key | sudo apt-key add -
+echo "deb https://packages.stripe.dev/stripe-cli-deb focal main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
+sudo apt-get update && sudo apt-get install stripe
+```
+
+**Windows:**
+```bash
+scoop install stripe
+# or
+choco install stripe
+```
+
+### Authentication
+
+**Login:**
+```bash
+stripe login
+# You'll be redirected to https://dashboard.stripe.com/apikeys/confirm_access
+# Confirm access, then CLI is authenticated
+```
+
+**Verify login:**
+```bash
+stripe accounts list  # Should show your Stripe account
+```
+
+### Common Commands for App Submission
+
+**Upload manifest:**
+```bash
+stripe apps create --manifest packages/stripe-app/stripe-app.json
+```
+
+**List your apps:**
+```bash
+stripe apps list
+```
+
+**Get app details:**
+```bash
+stripe apps get pics.dsg.governance
+```
+
+**Listen to webhooks (for testing):**
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks
+```
+
+**Trigger test event:**
+```bash
+stripe trigger charge.created
+```
+
+**Read docs in terminal:**
+```bash
+stripe docs stripe-app-marketplace-guide
+```
+
+### Documentation Links
+- [Install Stripe CLI](https://docs.stripe.com/stripe-cli/install.md)
+- [Use Stripe CLI](https://docs.stripe.com/stripe-cli/use-cli.md)
+- [Stripe CLI Keys](https://docs.stripe.com/stripe-cli/keys.md)
+- [Stripe CLI Reference](https://docs.stripe.com/cli.md)
+
+---
+
 ### STEP 8: Publish (Upon Approval)
 
 Once approved, in Stripe Dashboard:
