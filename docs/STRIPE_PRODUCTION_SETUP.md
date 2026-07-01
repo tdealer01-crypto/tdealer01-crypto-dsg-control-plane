@@ -5,8 +5,12 @@ It extends existing materials and avoids duplicating low-level webhook/signature
 
 - Existing product setup automation: `scripts/stripe-setup.ts`
 - Existing baseline validator: `scripts/validate-stripe-config.sh`
-- Existing Vercel env helper: `set-vercel-stripe-env.sh`
+- Existing Vercel env helper: `./set-vercel-stripe-env.sh`
 - Existing webhook signature deep dive: `docs/STRIPE_WEBHOOK_SIGNATURE_VERIFICATION.md`
+
+Use your own production domain in all endpoint/redirect examples below.
+Example placeholder: `https://YOUR_PRODUCTION_DOMAIN`
+Current repo production URL reference: `https://tdealer01-crypto-dsg-control-plane.vercel.app`
 
 ---
 
@@ -41,7 +45,7 @@ In the same App/OAuth settings page, include:
 ### 1.5 Configure webhook endpoint
 Use `/api/billing/webhook` for Phase 2 billing lifecycle events.
 
-- Endpoint URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/webhook`
+- Endpoint URL (replace with your domain): `https://YOUR_PRODUCTION_DOMAIN/api/billing/webhook`
 - Signing secret value should be treated as production secret
 
 Detailed event setup and troubleshooting are in:
@@ -103,7 +107,7 @@ If you already use `set-vercel-stripe-env.sh` for Stripe pricing IDs, keep using
 ## 4) Webhook Configuration (Stripe → Your App)
 
 1. Dashboard → Developers → Webhooks → **Add endpoint**
-2. URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/webhook`
+2. URL (replace with your domain): `https://YOUR_PRODUCTION_DOMAIN/api/billing/webhook`
 3. Subscribe required events:
    - `checkout.session.completed`
    - `customer.subscription.created`

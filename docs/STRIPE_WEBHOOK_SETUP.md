@@ -5,6 +5,9 @@ This guide is focused on webhook setup for production monetization and complemen
 - Signature internals: `docs/STRIPE_WEBHOOK_SIGNATURE_VERIFICATION.md`
 - General webhook testing toolkit: `docs/WEBHOOK_TESTING_GUIDE.md`
 
+Replace `https://YOUR_PRODUCTION_DOMAIN` with your actual production domain.
+Current repo production URL reference: `https://tdealer01-crypto-dsg-control-plane.vercel.app`
+
 ---
 
 ## 1) Create webhook endpoint in Stripe Dashboard
@@ -13,7 +16,7 @@ This guide is focused on webhook setup for production monetization and complemen
 2. Open **Developers → Webhooks**.
 3. Click **Add endpoint**.
 4. Endpoint URL:
-   - Production: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/webhook`
+   - Production: `https://YOUR_PRODUCTION_DOMAIN/api/billing/webhook`
 5. Click **Select events** and subscribe to:
    - `checkout.session.completed`
    - `customer.subscription.created`
@@ -64,7 +67,7 @@ stripe trigger checkout.session.completed
 
 ```bash
 bash scripts/test-stripe-webhook.sh \
-  --url https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/webhook \
+  --url https://YOUR_PRODUCTION_DOMAIN/api/billing/webhook \
   --secret whsec_live_YOUR_SECRET_HERE \
   --event checkout.session.completed
 ```

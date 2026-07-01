@@ -102,11 +102,14 @@ upsert_env() {
   fi
 
   if grep -q "^${key}=" "$ENV_FILE"; then
-    if sed --version >/dev/null 2>&1; then
-      sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-    else
-      sed -i '' "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-    fi
+    local tmp_file
+    tmp_file="$(mktemp)"
+    awk -v k="$key" -v v="$value" -F= '
+      BEGIN { OFS="=" }
+      $1 == k { print k, v; next }
+      { print $0 }
+    ' "$ENV_FILE" > "$tmp_file"
+    mv "$tmp_file" "$ENV_FILE"
   else
     printf '\n%s=%s\n' "$key" "$value" >> "$ENV_FILE"
   fi
@@ -145,8 +148,9 @@ OUTPUT
 
 main() {
   require_cmd curl
-  require_cmd sed
+  require_cmd awk
   require_cmd grep
+  require_cmd mktemp
 
   echo -e "${BLUE}Stripe Production Setup${NC}"
   echo "Repository: ${ROOT_DIR}"
@@ -159,15 +163,15 @@ main() {
   stripe_webhook="$(prompt_hidden 'STRIPE_WEBHOOK_SECRET (whsec_live_*)')"
   stripe_client_id="$(prompt_hidden 'NEXT_PUBLIC_STRIPE_CLIENT_ID (ca_*)')"
 
-  validate_regex "$stripe_secret" '^(sk_live|rk_live)_[A-Za-z0-9_]+' 'STRIPE_SECRET_KEY'
-  validate_regex "$stripe_publishable" '^pk_live_[A-Za-z0-9_]+' 'STRIPE_PUBLISHABLE_KEY'
-  validate_regex "$stripe_webhook" '^whsec_live_[A-Za-z0-9_]+' 'STRIPE_WEBHOOK_SECRET'
-  validate_regex "$stripe_client_id" '^ca_[A-Za-z0-9_]+' 'NEXT_PUBLIC_STRIPE_CLIENT_ID'
+  validate_regex "$stripe_secret" '^(sk_live|rk_live)_[A-Za-z0-9]{20,128}$' 'STRIPE_SECRET_KEY'
+  validate_regex "$stripe_publishable" '^pk_live_[A-Za-z0-9]{20,128}$' 'STRIPE_PUBLISHABLE_KEY'
+  validate_regex "$stripe_webhook" '^whsec_live_[A-Za-z0-9]{20,128}$' 'STRIPE_WEBHOOK_SECRET'
+  validate_regex "$stripe_client_id" '^ca_[A-Za-z0-9]{8,64}$' 'NEXT_PUBLIC_STRIPE_CLIENT_ID'
   log_ok "Key format validation passed"
 
   test_secret_key_connectivity "$stripe_secret"
   test_publishable_key_connectivity "$stripe_publishable"
-  log_ok "Webhook secret format validation passed"
+  log_ok "Webhook secret format validated"
 
   backup_env
 

@@ -67,10 +67,10 @@ check_required_vars() {
 }
 
 check_key_formats() {
-  [[ "${STRIPE_SECRET_KEY:-}" =~ ^(sk_live|rk_live)_[A-Za-z0-9_]+$ ]] && ok "STRIPE_SECRET_KEY format valid" || fail "STRIPE_SECRET_KEY format invalid"
-  [[ "${STRIPE_PUBLISHABLE_KEY:-}" =~ ^pk_live_[A-Za-z0-9_]+$ ]] && ok "STRIPE_PUBLISHABLE_KEY format valid" || fail "STRIPE_PUBLISHABLE_KEY format invalid"
-  [[ "${STRIPE_WEBHOOK_SECRET:-}" =~ ^whsec_live_[A-Za-z0-9_]+$ ]] && ok "STRIPE_WEBHOOK_SECRET format valid" || fail "STRIPE_WEBHOOK_SECRET format invalid"
-  [[ "${NEXT_PUBLIC_STRIPE_CLIENT_ID:-}" =~ ^ca_[A-Za-z0-9_]+$ ]] && ok "NEXT_PUBLIC_STRIPE_CLIENT_ID format valid" || fail "NEXT_PUBLIC_STRIPE_CLIENT_ID format invalid"
+  [[ "${STRIPE_SECRET_KEY:-}" =~ ^(sk_live|rk_live)_[A-Za-z0-9]{20,128}$ ]] && ok "STRIPE_SECRET_KEY format valid" || fail "STRIPE_SECRET_KEY format invalid"
+  [[ "${STRIPE_PUBLISHABLE_KEY:-}" =~ ^pk_live_[A-Za-z0-9]{20,128}$ ]] && ok "STRIPE_PUBLISHABLE_KEY format valid" || fail "STRIPE_PUBLISHABLE_KEY format invalid"
+  [[ "${STRIPE_WEBHOOK_SECRET:-}" =~ ^whsec_live_[A-Za-z0-9]{20,128}$ ]] && ok "STRIPE_WEBHOOK_SECRET format valid" || fail "STRIPE_WEBHOOK_SECRET format invalid"
+  [[ "${NEXT_PUBLIC_STRIPE_CLIENT_ID:-}" =~ ^ca_[A-Za-z0-9]{8,64}$ ]] && ok "NEXT_PUBLIC_STRIPE_CLIENT_ID format valid" || fail "NEXT_PUBLIC_STRIPE_CLIENT_ID format invalid"
 }
 
 stripe_api_call() {
@@ -128,7 +128,7 @@ check_webhook_reachability_and_signature() {
   webhook_url="$(resolve_webhook_url)"
   info "Webhook URL: ${webhook_url}"
 
-  payload="{\"id\":\"evt_verify_$(date +%s)\",\"object\":\"event\",\"type\":\"stripe.production.verify\",\"data\":{\"object\":{\"id\":\"obj_verify\"}}}"
+  payload="{\"id\":\"evt_testprobe_$(date +%s)\",\"object\":\"event\",\"api_version\":\"2026-05-27.dahlia\",\"created\":$(date +%s),\"livemode\":true,\"type\":\"payment_intent.created\",\"data\":{\"object\":{\"id\":\"pi_testprobe_$(date +%s)\",\"object\":\"payment_intent\",\"status\":\"requires_payment_method\"}}}"
   signature="$(generate_signature "$payload" "$STRIPE_WEBHOOK_SECRET")"
 
   response="$(curl -sS -X POST "$webhook_url" \
