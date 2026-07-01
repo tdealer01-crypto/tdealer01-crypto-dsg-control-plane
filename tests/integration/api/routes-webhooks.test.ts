@@ -476,6 +476,14 @@ describe('POST /api/webhooks/stripe (Stripe webhook handler)', () => {
         }),
       })),
     }));
+
+    vi.doMock('@/lib/revenue/events', () => ({
+      insertRevenueEvent: vi.fn(async () => ({ id: 'rev_123' })),
+    }));
+
+    vi.doMock('@/app/api/billing/webhook/route', () => ({
+      POST: vi.fn(async () => new Response(JSON.stringify({ received: true }), { status: 200 })),
+    }));
     
     // Mock the Supabase RPC calls
     vi.doMock('../../../lib/dsg/server/supabase-rpc', () => ({
