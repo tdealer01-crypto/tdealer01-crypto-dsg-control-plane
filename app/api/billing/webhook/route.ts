@@ -137,6 +137,60 @@ async function recordEvent(supabase: SupabaseAdmin, event: Stripe.Event) {
   );
 }
 
+function isDuplicateEventError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+  const message =
+    'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
+
+  return (
+    code === '23505' ||
+    /duplicate key/i.test(message) ||
+    /unique constraint/i.test(message)
+  );
+}
+
+async function claimEventProcessing(supabase: SupabaseAdmin, event: Stripe.Event) {
+  const object = event.data.object as unknown as Record<string, unknown>;
+
+  const stripeCustomerId =
+    typeof object?.customer === 'string' ? object.customer : null;
+
+  const stripeSubscriptionId =
+    typeof object?.subscription === 'string'
+      ? object.subscription
+      : object?.object === 'subscription' && typeof object?.id === 'string'
+        ? object.id
+        : null;
+
+  const { error } = await supabase.from('billing_events').insert({
+    stripe_event_id: event.id,
+    event_type: event.type,
+    stripe_customer_id: stripeCustomerId,
+    stripe_subscription_id: stripeSubscriptionId,
+    payload: event as unknown as Json,
+    processed_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    if (isDuplicateEventError(error)) return false;
+    throw error;
+  }
+
+  return true;
+}
+
+async function markEventProcessed(supabase: SupabaseAdmin, eventId: string) {
+  await supabase
+    .from('billing_events')
+    .update({ processed_at: new Date().toISOString() })
+    .eq('stripe_event_id', eventId);
+}
+
+async function releaseEventClaim(supabase: SupabaseAdmin, eventId: string) {
+  await supabase.from('billing_events').delete().eq('stripe_event_id', eventId);
+}
+
 async function upsertBillingCustomer(
   supabase: SupabaseAdmin,
   payload: {
@@ -297,142 +351,160 @@ export async function POST(request: Request) {
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     const supabase = getSupabaseAdmin();
 
-    await recordEvent(supabase, event);
-
-    // Cleanup placeholder records when real Stripe data arrives
-    if (event.type === 'checkout.session.completed') {
-      const checkoutSession = event.data.object as Stripe.Checkout.Session;
-      const placeholderOrgId =
-        checkoutSession.metadata?.org_id ||
-        (await resolveOrgIdByEmail(
-          supabase,
-          checkoutSession.customer_details?.email || checkoutSession.customer_email || null
-        ));
-      if (placeholderOrgId) {
-        await supabase
-          .from('billing_subscriptions')
-          .delete()
-          .eq('org_id', placeholderOrgId)
-          .like('stripe_subscription_id', 'placeholder_%');
-        await supabase
-          .from('billing_customers')
-          .delete()
-          .eq('org_id', placeholderOrgId)
-          .like('stripe_customer_id', 'placeholder_%');
-      }
+    const claimed = await claimEventProcessing(supabase, event);
+    if (!claimed) {
+      return NextResponse.json({ received: true, type: event.type, duplicate: true });
     }
 
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
+    try {
+      await recordEvent(supabase, event);
 
-        const stripeCustomerId =
-          typeof session.customer === 'string' ? session.customer : null;
-        const customerEmail =
-          session.customer_details?.email || session.customer_email || null;
-
-        const explicitOrgId = session.metadata?.org_id || null;
-        const orgId =
-          explicitOrgId || (await resolveOrgIdByEmail(supabase, customerEmail));
-
-        await upsertBillingCustomer(supabase, {
-          stripe_customer_id: stripeCustomerId,
-          org_id: orgId,
-          email: customerEmail,
-          name: session.customer_details?.name || null,
-        });
-
-        if (typeof session.subscription === 'string') {
-          const subscription = await stripe.subscriptions.retrieve(
-            session.subscription
-          );
-
-          const record = subscriptionToRecord(subscription, { orgId, customerEmail });
-          await upsertBillingSubscription(supabase, record);
-
-          // Entitlement: grant plan to org immediately on checkout
-          if (orgId && record.plan_key) {
-            await fulfillSubscription(orgId, record.plan_key, subscription.status);
-          }
-
-          // D0: send trial welcome email
-          if (customerEmail && subscription.trial_end) {
-            void sendTrialWelcome({
-              email: customerEmail,
-              planKey: record.plan_key || 'pro',
-              trialEnd: record.trial_end,
-            });
-          }
-
+      // Cleanup placeholder records when real Stripe data arrives
+      if (event.type === 'checkout.session.completed') {
+        const checkoutSession = event.data.object as Stripe.Checkout.Session;
+        const placeholderOrgId =
+          checkoutSession.metadata?.org_id ||
+          (await resolveOrgIdByEmail(
+            supabase,
+            checkoutSession.customer_details?.email || checkoutSession.customer_email || null
+          ));
+        if (placeholderOrgId) {
+          await supabase
+            .from('billing_subscriptions')
+            .delete()
+            .eq('org_id', placeholderOrgId)
+            .like('stripe_subscription_id', 'placeholder_%');
+          await supabase
+            .from('billing_customers')
+            .delete()
+            .eq('org_id', placeholderOrgId)
+            .like('stripe_customer_id', 'placeholder_%');
         }
-
-        break;
       }
 
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const prevSubscription = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined;
+      switch (event.type) {
+        case 'checkout.session.completed': {
+          const session = event.data.object as Stripe.Checkout.Session;
 
-        const stripeCustomerId =
-          typeof subscription.customer === 'string'
-            ? subscription.customer
-            : null;
+          const stripeCustomerId =
+            typeof session.customer === 'string' ? session.customer : null;
+          const customerEmail =
+            session.customer_details?.email || session.customer_email || null;
 
-        const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
-        const record = subscriptionToRecord(subscription, {
-          orgId: billingCustomer?.org_id || null,
-          customerEmail: billingCustomer?.email || null,
-        });
+          const explicitOrgId = session.metadata?.org_id || null;
+          const orgId =
+            explicitOrgId || (await resolveOrgIdByEmail(supabase, customerEmail));
 
-        await upsertBillingSubscription(supabase, record);
-
-        // Entitlement: keep organizations.plan in sync with subscription state
-        const orgId = record.org_id;
-        if (orgId) {
-          if (REVOKED_STATUSES.has(subscription.status)) {
-            await revokeSubscription(orgId);
-          } else if (record.plan_key) {
-            await fulfillSubscription(orgId, record.plan_key, subscription.status);
-          }
-        }
-
-        // Paid conversion: trialing → active is when money actually exchanges hands.
-        // checkout.session.completed fires at trial start (before payment), so we
-        // track the referral conversion here instead.
-        const prevStatus = prevSubscription?.status;
-        const isPaidConversion =
-          event.type === 'customer.subscription.updated' &&
-          prevStatus === 'trialing' &&
-          subscription.status === 'active';
-
-        if (isPaidConversion && billingCustomer?.email) {
-          void sendUpgradeSuccess({
-            email: billingCustomer.email,
-            planKey: record.plan_key || 'pro',
-            billingInterval: record.billing_interval || 'monthly',
+          await upsertBillingCustomer(supabase, {
+            stripe_customer_id: stripeCustomerId,
+            org_id: orgId,
+            email: customerEmail,
+            name: session.customer_details?.name || null,
           });
 
-          const refCode = await lookupRefCode(supabase, billingCustomer.email);
-          if (refCode) {
-            void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+          if (typeof session.subscription === 'string') {
+            const subscription = await stripe.subscriptions.retrieve(
+              session.subscription
+            );
+
+            const record = subscriptionToRecord(subscription, { orgId, customerEmail });
+            await upsertBillingSubscription(supabase, record);
+
+            // Entitlement: grant plan to org immediately on checkout
+            if (orgId && record.plan_key) {
+              await fulfillSubscription(orgId, record.plan_key, subscription.status);
+            }
+
+            // D0: send trial welcome email
+            if (customerEmail && subscription.trial_end) {
+              void sendTrialWelcome({
+                email: customerEmail,
+                planKey: record.plan_key || 'pro',
+                trialEnd: record.trial_end,
+              });
+            }
+
           }
+
+          break;
         }
 
-        break;
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as Stripe.Subscription;
+          const prevSubscription = event.data.previous_attributes as Partial<Stripe.Subscription> | undefined;
+
+          const stripeCustomerId =
+            typeof subscription.customer === 'string'
+              ? subscription.customer
+              : null;
+
+          const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
+          const record = subscriptionToRecord(subscription, {
+            orgId: billingCustomer?.org_id || null,
+            customerEmail: billingCustomer?.email || null,
+          });
+
+          await upsertBillingSubscription(supabase, record);
+
+          // Entitlement: keep organizations.plan in sync with subscription state
+          const orgId = record.org_id;
+          if (orgId) {
+            if (REVOKED_STATUSES.has(subscription.status)) {
+              await revokeSubscription(orgId);
+            } else if (record.plan_key) {
+              await fulfillSubscription(orgId, record.plan_key, subscription.status);
+            }
+          }
+
+          // Paid conversion: trialing → active is when money actually exchanges hands.
+          // checkout.session.completed fires at trial start (before payment), so we
+          // track the referral conversion here instead.
+          const prevStatus = prevSubscription?.status;
+          const isPaidConversion =
+            event.type === 'customer.subscription.updated' &&
+            prevStatus === 'trialing' &&
+            subscription.status === 'active';
+
+          if (isPaidConversion && billingCustomer?.email) {
+            void sendUpgradeSuccess({
+              email: billingCustomer.email,
+              planKey: record.plan_key || 'pro',
+              billingInterval: record.billing_interval || 'monthly',
+            });
+
+            const refCode = await lookupRefCode(supabase, billingCustomer.email);
+            if (refCode) {
+              void (supabase as any).rpc('increment_referral_conversions', { p_code: refCode }).maybeSingle();
+            }
+          }
+
+          break;
+        }
+
+        default:
+          break;
       }
 
-      default:
-        break;
-    }
+      // Handle invoice events for metered billing
+      if (event.type.startsWith('invoice.')) {
+        await handleInvoiceEvent(supabase, event, stripe);
+      }
 
-    // Handle invoice events for metered billing
-    if (event.type.startsWith('invoice.')) {
-      await handleInvoiceEvent(supabase, event, stripe);
+      await markEventProcessed(supabase, event.id);
+      return NextResponse.json({ received: true, type: event.type });
+    } catch (error) {
+      try {
+        await releaseEventClaim(supabase, event.id);
+      } catch (cleanupError) {
+        logApiError('api/billing/webhook', cleanupError, {
+          stage: 'release-event-claim',
+          stripeEventId: event.id,
+        });
+      }
+      throw error;
     }
-
-    return NextResponse.json({ received: true, type: event.type });
   } catch (error) {
     logApiError('api/billing/webhook', error, { stage: 'unhandled' });
     return NextResponse.json(
