@@ -1,4 +1,4 @@
-# TL;DR - Get Live in 30 Minutes
+# TL;DR - Submit in ~30 Minutes (if assets are already prepared)
 
 ## Part 1: Assets (10 mins)
 1. Get these files ready:
@@ -30,9 +30,9 @@
 6. Click Submit
 7. ✅ Done! Wait 1-3 days for approval
 
-## Timeline to Revenue
+## Estimated Timeline to Marketplace Availability
+> Note: Revenue is not guaranteed and depends on installs and paid conversion.
 - ✅ Today: Submit (30 mins)
-- ⏳ 2-5 days: GitHub approves
-- ⏳ 1-3 days: Stripe approves
-- 🎉 Week 2: Both live on marketplace
-- 💰 Week 2+: Revenue flowing in
+- ⏳ 1-5 days: Approval windows in progress (Stripe 1-3 days, GitHub 2-5 days)
+- 🎉 Within ~1 week: Both may be live on marketplace if approved
+- 💰 Week 2+: No guaranteed revenue; results depend on installs, activation, and paid conversion

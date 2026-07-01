@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-01T03:50:00Z",
+  "timestamp": "2026-07-01T04:46:44Z",
   "repositories": {
     "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
   },
@@ -7,20 +7,20 @@
     "pr_815_eslint": "OPEN (not merged)",
     "pr_820_phase2": "MERGED ✓",
     "pr_821_docs": "MERGED ✓",
-    "pr_822_assets": "NOT_FOUND (GitHub API 404)",
+    "pr_822_assets": "UNVERIFIED (manual check required)",
     "production_health": "NOT_VERIFIED_IN_THIS_RUN",
     "revenue_system": "NOT_VERIFIED_IN_THIS_RUN"
   },
   "marketplace": {
     "github": {
-      "status": "READY_TO_SUBMIT",
+      "status": "BLOCKED_PENDING_PR_822_AND_ASSETS",
       "submission_template": "MARKETPLACE_SUBMISSION_GITHUB.md",
       "expected_approval_days": "2-5",
       "assets_required": 6,
       "pricing_tiers": 4
     },
     "stripe": {
-      "status": "READY_TO_SUBMIT",
+      "status": "BLOCKED_PENDING_ASSETS",
       "submission_template": "MARKETPLACE_SUBMISSION_STRIPE.md",
       "expected_approval_days": "1-3",
       "assets_required": 6,
@@ -31,8 +31,8 @@
     "today": "Submit both (30 mins)",
     "days_2_5": "GitHub approval",
     "days_1_3": "Stripe approval",
-    "week_2": "Both LIVE on marketplace",
-    "week_2_plus": "Revenue flowing"
+    "week_1": "Within ~1 week both may be live if approvals complete",
+    "week_2_plus": "Revenue is not guaranteed; depends on installs and paid conversion"
   },
   "next_actions": [
     "1. Prepare logo (100x100px PNG)",
