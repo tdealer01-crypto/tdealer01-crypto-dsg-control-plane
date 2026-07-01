@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0",
+  "name": "dsg-governance",
+  "displayName": "DSG Governance Control Plane",
+  "description": "AI Governance Control Plane that makes every Agent decision provable, auditable, and replayable — Deterministic Safety Gate (Z3/SMT), Cryptographic Proof, Replayable Governance, Compliance Evidence Pack, and Hermes Controlled Executor. Built for VC, CTO, Enterprise Buyer, and Governance Team standards.",
+  "version": "1.0.0",
+  "author": "DSG Team",
+  "license": "MIT",
+  "homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "category": "governance",
+  "keywords": [
+    "ai-governance",
+    "deterministic-gate",
+    "compliance",
+    "audit",
+    "replay",
+    "hermes",
+    "z3",
+    "policy-as-code",
+    "cryptographic-proof",
+    "enterprise"
+  ],
+  "skills": [
+    {
+      "name": "dsg-action-layer-ged",
+      "path": "../skills/dsg-action-layer-ged",
+      "description": "Primary governance skill — studio-style control layer: plan, deterministic gate, permission verdict, browser-first execution after approval. Covers Deterministic Safety Gate, Replayable Governance, Compliance Evidence, Runtime Lifecycle, and Hermes Executor."
+    },
+    {
+      "name": "dsg-github-marketplace-action-controller",
+      "path": "../skills/dsg-github-marketplace-action-controller",
+      "description": "Package DSG gates and proofs as reusable GitHub Marketplace Actions with deterministic GO/NO-GO validation, audit proof, and secure deploy checks."
+    },
+    {
+      "name": "dsg-multi-governance-orchestrator",
+      "path": "../skills/dsg-multi-governance-orchestrator",
+      "description": "Multi-source governance orchestration: UI trust upgrades, action-layer permission gates, deterministic execution, marketplace/enterprise cutover, architecture pages, and production GO/NO-GO validation."
+    }
+  ],
+  "pricing": {
+    "free": {
+      "description": "50 gate evaluations / month",
+      "upgradeUrl": "/pricing#dsg-gate"
+    },
+    "pro": {
+      "priceUsd": 99,
+      "billingPeriod": "monthly",
+      "description": "5 000 gate evaluations / month + compliance bundle access"
+    },
+    "enterprise": {
+      "priceUsd": 499,
+      "billingPeriod": "monthly",
+      "description": "Unlimited evals + SLA + Hermes executor access"
+    }
+  },
+  "endpoints": {
+    "gateEvaluate": "POST /api/dsg/v1/gates/evaluate",
+    "proofProve": "POST /api/dsg/v1/proofs/prove",
+    "policyManifest": "GET /api/dsg/v1/policies/manifest",
+    "pricing": "GET /api/dsg/v1/pricing",
+    "health": "GET /api/health",
+    "agentStatus": "GET /api/agent/status"
+  }
+}

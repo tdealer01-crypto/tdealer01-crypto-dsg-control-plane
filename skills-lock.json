@@ -1,6 +1,21 @@
 {
   "version": 1,
   "skills": {
+    "dsg-action-layer-ged": {
+      "source": "project",
+      "sourceType": "local",
+      "computedHash": "345d9e9848aeeb7b98aceb5c98f679817b74a8ad142848707201ab6914ac71f3"
+    },
+    "dsg-github-marketplace-action-controller": {
+      "source": "project",
+      "sourceType": "local",
+      "computedHash": "d6edafa8533545b2fe498b1f9962681db66b6bac3ea33c00a6d37e01f11bf0c0"
+    },
+    "dsg-multi-governance-orchestrator": {
+      "source": "project",
+      "sourceType": "local",
+      "computedHash": "b05559ce2153c152a7e173e44d15f48c060708c942fc867077fd3c7a1f54cda1"
+    },
     "stripe-best-practices": {
       "source": "docs.stripe.com",
       "sourceType": "well-known",
