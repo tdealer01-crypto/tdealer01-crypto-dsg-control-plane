@@ -107,12 +107,22 @@ export async function recordDeliveryProofScan(
   checksTotal: number,
 ): Promise<{ scanRecorded: boolean; meterEventId?: string; error?: string }> {
   try {
-    // Phase 1: Just log for now
     console.log(`[delivery-proof-scan] ${runId} | org=${orgId || 'anonymous'} | url=${productionUrl} | result=${claimResult}`);
 
-    // TODO Phase 2: Insert into delivery_proof_scans table
-    // TODO Phase 2: Check delivery_proof_entitlements and fire Stripe meter event if needed
-    
+    if (orgId) {
+      const { logQuotaConsumption } = await import('@/lib/database/quotas');
+      await logQuotaConsumption(orgId, 'delivery_proof_scan', 1, {
+        source: '/api/delivery-proof/scan',
+        metadata: {
+          runId,
+          productionUrl,
+          claimResult,
+          checksPass,
+          checksTotal,
+        },
+      });
+    }
+
     return {
       scanRecorded: true,
       meterEventId: undefined,

@@ -40,6 +40,17 @@ interface RevenueKpisResponse {
   }>;
 }
 
+interface RevenueEventRecord {
+  id: string;
+  createdAt: string;
+  eventType: string;
+  planId: string | null;
+  amount: number | null;
+  currency: string;
+  source: string;
+  metadata: Record<string, unknown> | null;
+}
+
 const KPI_WINDOW_DAYS = 30;
 
 function formatCurrency(value: number | null | undefined) {
@@ -59,6 +70,7 @@ function formatPercent(value: number | null | undefined) {
 export default function RevenueDashboard() {
   const [stats, setStats] = useState<RevenueStat[]>([]);
   const [conversions, setConversions] = useState<ConversionData[]>([]);
+  const [recentEvents, setRecentEvents] = useState<RevenueEventRecord[]>([]);
   const [windowDays, setWindowDays] = useState(KPI_WINDOW_DAYS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,16 +79,25 @@ export default function RevenueDashboard() {
     async function fetchMetrics() {
       try {
         setError(null);
-        const res = await fetch(`/api/usage/kpis?days=${KPI_WINDOW_DAYS}`, { cache: 'no-store' });
-        const data = (await res.json().catch((parseError) => {
+        const [metricsRes, eventsRes] = await Promise.all([
+          fetch(`/api/usage/kpis?days=${KPI_WINDOW_DAYS}`, { cache: 'no-store' }),
+          fetch('/api/revenue/events?limit=12', { cache: 'no-store' }),
+        ]);
+
+        const data = (await metricsRes.json().catch((parseError) => {
           console.error('Failed to parse revenue KPI response:', parseError);
           return null;
         })) as RevenueKpisResponse | { error?: string } | null;
+        const eventsData = (await eventsRes.json().catch((parseError) => {
+          console.error('Failed to parse revenue events response:', parseError);
+          return null;
+        })) as { ok?: boolean; events?: RevenueEventRecord[] } | null;
 
-        if (!res.ok || !data || !('ok' in data) || !data.ok) {
+        if (!metricsRes.ok || !data || !('ok' in data) || !data.ok) {
           setError((data && 'error' in data && data.error) || 'Unable to load revenue metrics');
           setStats([]);
           setConversions([]);
+          setRecentEvents([]);
           return;
         }
 
@@ -123,11 +144,13 @@ export default function RevenueDashboard() {
 
         setStats(liveStats);
         setConversions(liveConversions);
+        setRecentEvents(eventsData?.ok ? eventsData.events ?? [] : []);
       } catch (error) {
         console.error('Failed to fetch revenue metrics:', error);
         setError('Unable to load revenue metrics');
         setStats([]);
         setConversions([]);
+        setRecentEvents([]);
       } finally {
         setLoading(false);
       }
@@ -142,6 +165,10 @@ export default function RevenueDashboard() {
     cyan: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-200',
     purple: 'border-purple-400/30 bg-purple-400/10 text-purple-200',
   };
+  const lastWebhookEvent = recentEvents.find((event) => event.source.startsWith('stripe.'));
+  const webhookHealthy = lastWebhookEvent
+    ? Date.now() - new Date(lastWebhookEvent.createdAt).getTime() < 24 * 60 * 60 * 1000
+    : false;
 
   return (
     <main className="min-h-screen bg-[#07080a] text-white">
@@ -240,6 +267,65 @@ export default function RevenueDashboard() {
               </p>
             </div>
           )}
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] mb-12">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+            <h2 className="text-2xl font-semibold">Stripe Webhook Status</h2>
+            <div className="mt-6 flex items-center gap-3">
+              <span className={`inline-flex h-3 w-3 rounded-full ${webhookHealthy ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <p className="text-sm text-slate-300">
+                {webhookHealthy ? 'Webhook activity seen in the last 24 hours' : 'No recent Stripe webhook event recorded'}
+              </p>
+            </div>
+            <div className="mt-6 rounded-xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
+              <p>Latest event: <span className="text-white">{lastWebhookEvent?.eventType ?? '—'}</span></p>
+              <p className="mt-2">Received: <span className="text-white">{lastWebhookEvent ? new Date(lastWebhookEvent.createdAt).toLocaleString() : '—'}</span></p>
+              <p className="mt-2">Source: <span className="text-white">{lastWebhookEvent?.source ?? '—'}</span></p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+            <h2 className="text-2xl font-semibold">Recent Revenue Events</h2>
+            <p className="mt-1 text-slate-400">Persisted Supabase events from upgrades, scans, keys, and Stripe webhooks</p>
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400">
+                    <th className="px-4 py-3 text-left font-semibold">Event</th>
+                    <th className="px-4 py-3 text-left font-semibold">Source</th>
+                    <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                    <th className="px-4 py-3 text-right font-semibold">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentEvents.length > 0 ? (
+                    recentEvents.map((event) => (
+                      <tr key={event.id} className="border-b border-white/5 hover:bg-white/5 transition">
+                        <td className="px-4 py-4">
+                          <p className="font-medium text-white">{event.eventType}</p>
+                          <p className="text-xs text-slate-500">{event.planId || '—'}</p>
+                        </td>
+                        <td className="px-4 py-4 text-slate-400">{event.source}</td>
+                        <td className="px-4 py-4 text-right text-slate-300">
+                          {typeof event.amount === 'number' ? `${event.currency} ${event.amount.toFixed(2)}` : '—'}
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-400">
+                          {new Date(event.createdAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                        No recent revenue events stored for this org.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         {/* Implementation roadmap */}
