@@ -4,12 +4,12 @@
     "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
   },
   "status": {
-    "pr_815_eslint": "MERGED ✓",
+    "pr_815_eslint": "OPEN (not merged)",
     "pr_820_phase2": "MERGED ✓",
     "pr_821_docs": "MERGED ✓",
-    "pr_822_assets": "MERGING...",
-    "production_health": "LIVE ✓",
-    "revenue_system": "ACTIVE ✓"
+    "pr_822_assets": "NOT_FOUND (GitHub API 404)",
+    "production_health": "NOT_VERIFIED_IN_THIS_RUN",
+    "revenue_system": "NOT_VERIFIED_IN_THIS_RUN"
   },
   "marketplace": {
     "github": {
