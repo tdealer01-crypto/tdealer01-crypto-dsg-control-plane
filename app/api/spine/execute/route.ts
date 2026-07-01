@@ -6,6 +6,7 @@ import { normalizeSpinePayload } from '../../../../lib/spine/request';
 import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/security/cors';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
+import { logQuotaConsumption } from '../../../../lib/database/quotas';
 import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { meterExecution } from '../../../../lib/billing/metered';
@@ -275,6 +276,15 @@ export async function POST(request: Request) {
         randomUUID();
       void meterExecution(orgId, 1, executionId).catch((error) => {
         console.error('[api/spine/execute] meterExecution failed:', error);
+      });
+      void logQuotaConsumption(orgId, 'api_execution', 1, {
+        source: '/api/spine/execute',
+        metadata: {
+          agentId,
+          executionId,
+        },
+      }).catch((error) => {
+        console.error('[api/spine/execute] logQuotaConsumption failed:', error);
       });
     }
 

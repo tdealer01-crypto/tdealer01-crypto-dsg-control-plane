@@ -1,35 +1,25 @@
-/**
- * POST /api/revenue/events
- * 
- * Logs payment and monetization events for revenue tracking.
- * Used to track conversions from free → paid for various revenue streams:
- * - Delivery Proof scan upgrades
- * - API quota gate upgrades
- * - MCP subscription activations
- * - Skills bundle purchases
- * 
- * Event schema:
- * {
- *   type: 'delivery_proof_upgrade' | 'api_quota_upgrade' | 'mcp_subscription' | 'skills_purchase' | 'stripe_checkout',
- *   orgId: string,
- *   userId?: string,
- *   planId?: string,
- *   amount?: number,
- *   currency?: string,
- *   source: string (e.g. '/delivery-proof', '/api/execute', '/dashboard/billing'),
- *   metadata?: Record<string, any>
- * }
- */
-
 import { NextResponse } from 'next/server';
-import { readJsonBody } from '@/lib/security/request-json';
-import { handleApiError } from '@/lib/security/api-error';
 import { requireInternalService } from '@/lib/auth/internal-service';
+import { requireActiveProfile } from '@/lib/auth/require-active-profile';
+import { listRevenueEvents, insertRevenueEvent } from '@/lib/revenue/events';
+import { handleApiError } from '@/lib/security/api-error';
+import { readJsonBody } from '@/lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
-interface RevenueEvent {
-  type: 'delivery_proof_upgrade' | 'api_quota_upgrade' | 'mcp_subscription' | 'skills_purchase' | 'stripe_checkout' | 'stripe_webhook';
+type RevenueEventRequest = {
+  type:
+    | 'delivery_proof_upgrade'
+    | 'api_quota_upgrade'
+    | 'mcp_subscription'
+    | 'skills_purchase'
+    | 'stripe_checkout'
+    | 'stripe_webhook'
+    | 'delivery_proof_scan'
+    | 'api_execution'
+    | 'mcp_request'
+    | 'subscription_canceled'
+    | 'invoice_payment_succeeded';
   orgId?: string;
   userId?: string;
   planId?: string;
@@ -37,14 +27,29 @@ interface RevenueEvent {
   currency?: string;
   source?: string;
   metadata?: Record<string, unknown>;
-  timestamp?: string;
-}
+};
 
-/**
- * Simple in-memory event buffer (Phase 1)
- * Phase 2: Persist to Supabase revenue_events table
- */
-const eventBuffer: RevenueEvent[] = [];
+async function resolveReadAccess(request: Request): Promise<
+  | { ok: true; orgId: string }
+  | { ok: false; status: number; error: string }
+> {
+  const authHeader = request.headers.get('authorization');
+
+  if (authHeader?.startsWith('Bearer ')) {
+    const internal = requireInternalService(request);
+    if (internal.ok) {
+      return { ok: true, orgId: internal.orgId };
+    }
+    return internal;
+  }
+
+  const profile = await requireActiveProfile();
+  if (!profile.ok) {
+    return profile;
+  }
+
+  return { ok: true, orgId: profile.orgId };
+}
 
 export async function POST(request: Request) {
   try {
@@ -53,85 +58,63 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const parsed = await readJsonBody<RevenueEvent>(request, { maxBytes: 2_048 });
-
+    const parsed = await readJsonBody<RevenueEventRequest>(request, { maxBytes: 8_192 });
     if (!parsed.ok) {
       return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
     }
 
     const event = parsed.value;
-
-    if (!event || !event.type) {
-      return NextResponse.json(
-        { ok: false, error: 'type is required' },
-        { status: 400 }
-      );
+    if (!event?.type) {
+      return NextResponse.json({ ok: false, error: 'type is required' }, { status: 400 });
     }
 
-    // Add timestamp if not provided
-    const eventWithTimestamp = {
-      ...event,
+    const saved = await insertRevenueEvent({
       orgId: auth.orgId,
-      timestamp: event.timestamp || new Date().toISOString(),
-    };
-
-    // Buffer event in memory (Phase 1)
-    eventBuffer.push(eventWithTimestamp);
-
-    // TODO: Phase 2 - Persist to Supabase
-    // const supabase = await createClient();
-    // await supabase.from('revenue_events').insert(eventWithTimestamp);
-
-    // Log to console for debugging
-    console.log('📊 Revenue Event:', {
-      type: event.type,
-      source: event.source || 'unknown',
-      orgId: eventWithTimestamp.orgId,
-      amount: event.amount ? `$${event.amount}` : 'free',
-      timestamp: eventWithTimestamp.timestamp,
+      userId: event.userId ?? null,
+      eventType: event.type,
+      planId: event.planId ?? null,
+      amount: typeof event.amount === 'number' ? event.amount : null,
+      currency: event.currency || 'USD',
+      source: event.source || auth.service || 'internal-service',
+      metadata: event.metadata ?? null,
     });
 
     return NextResponse.json({
       ok: true,
-      eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      queued: true,
-      message: 'Event logged for revenue tracking (Phase 1: in-memory buffer)',
+      eventId: saved.id,
+      queued: false,
+      message: 'Event persisted to revenue_events',
     });
   } catch (error) {
     return handleApiError('api/revenue/events:POST', error);
   }
 }
 
-/**
- * GET /api/revenue/events
- * Returns buffered events (Phase 1 only)
- * 
- * Phase 2: Replace with Supabase query for historical events
- */
 export async function GET(request: Request) {
   try {
-    const auth = requireInternalService(request);
-    if (auth.ok === false) {
-      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    const access = await resolveReadAccess(request);
+    if (access.ok === false) {
+      return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
     const url = new URL(request.url);
     const format = url.searchParams.get('format') || 'json';
+    const limit = Number(url.searchParams.get('limit') || 50);
+    const events = await listRevenueEvents(access.orgId, { limit: Number.isFinite(limit) ? limit : 50 });
 
     if (format === 'csv') {
-      // Return CSV format for export
       const csv = [
-        'timestamp,type,orgId,userId,planId,amount,currency,source',
-        ...eventBuffer.map((e) =>
+        'createdAt,eventType,orgId,userId,planId,amount,currency,source',
+        ...events.map((event) =>
           [
-            e.timestamp,
-            e.type,
-            e.orgId || '',
-            e.userId || '',
-            e.planId || '',
-            e.amount || '',
-            e.currency || '',
-            e.source || '',
+            event.createdAt,
+            event.eventType,
+            event.orgId,
+            event.userId || '',
+            event.planId || '',
+            event.amount ?? '',
+            event.currency,
+            event.source,
           ].join(',')
         ),
       ].join('\n');
@@ -144,12 +127,10 @@ export async function GET(request: Request) {
       });
     }
 
-    // JSON format
     return NextResponse.json({
       ok: true,
-      count: eventBuffer.length,
-      events: eventBuffer,
-      note: 'Phase 1: Events buffered in memory only. Phase 2 will persist to Supabase.',
+      count: events.length,
+      events,
     });
   } catch (error) {
     return handleApiError('api/revenue/events:GET', error);
