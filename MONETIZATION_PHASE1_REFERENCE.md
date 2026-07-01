@@ -56,13 +56,14 @@ New page at `/dashboard/revenue` showing:
 
 New API endpoint at `/api/revenue/events`:
 
-**POST** to log events:
+**POST** to log events (internal service auth required):
 ```bash
 curl -X POST https://your-domain.com/api/revenue/events \
+  -H "Authorization: ******" \
+  -H "x-org-id: org_123" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "delivery_proof_upgrade",
-    "orgId": "org_123",
     "planId": "pro",
     "amount": 49,
     "currency": "USD",
@@ -72,10 +73,14 @@ curl -X POST https://your-domain.com/api/revenue/events \
 
 **GET** to retrieve buffered events:
 ```bash
-curl https://your-domain.com/api/revenue/events
+curl https://your-domain.com/api/revenue/events \
+  -H "Authorization: ******" \
+  -H "x-org-id: org_123"
 # Returns JSON array of all logged events
 
-curl https://your-domain.com/api/revenue/events?format=csv
+curl https://your-domain.com/api/revenue/events?format=csv \
+  -H "Authorization: ******" \
+  -H "x-org-id: org_123"
 # Returns CSV export
 ```
 
@@ -163,11 +168,15 @@ curl https://your-domain.com/api/revenue/events?format=csv
 ```bash
 # Test POST
 curl -X POST http://localhost:3000/api/revenue/events \
+  -H "Authorization: ******" \
+  -H "x-org-id: test_org" \
   -H "Content-Type: application/json" \
-  -d '{"type":"delivery_proof_upgrade","orgId":"test_org","amount":49,"source":"/delivery-proof"}'
+  -d '{"type":"delivery_proof_upgrade","amount":49,"source":"/delivery-proof"}'
 
 # Check events
-curl http://localhost:3000/api/revenue/events
+curl http://localhost:3000/api/revenue/events \
+  -H "Authorization: ******" \
+  -H "x-org-id: test_org"
 ```
 
 ---
@@ -226,10 +235,10 @@ All addressed in Phase 2 roadmap.
 A: Not yet. That's the entitlement check. Phase 1 shows CTA in the report after scan completes.
 
 **Q: Where do revenue events go?**  
-A: Currently buffered in-memory. POST creates event, GET retrieves from buffer. Persisted to Supabase in Phase 2.
+A: Currently buffered in-memory. Authorized internal-service POST creates an event, and authorized GET retrieves it from the buffer. Persisted to Supabase in Phase 2.
 
 **Q: Can I manually trigger revenue events for testing?**  
-A: Yes! POST to `/api/revenue/events` with any event type to test the logger.
+A: Yes — but only with an internal-service bearer token plus the `x-org-id` header, so anonymous callers cannot write or export revenue events.
 
 **Q: How do I link MCP checkout to actual checkout flow?**  
 A: Already wired to existing `/billing?item=delivery_proof_scan_49` pattern. Stripe price IDs configured in env vars.
