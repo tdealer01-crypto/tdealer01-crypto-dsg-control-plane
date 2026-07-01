@@ -120,7 +120,7 @@ describe('POST /api/webhooks/stripe', () => {
 
     expect(res.status).toBe(503);
     await expect(res.json()).resolves.toEqual(
-      expect.objectContaining({ error: 'Missing STRIPE_WEBHOOK_SECRET' })
+      expect.objectContaining({ error: 'Webhook processing unavailable' })
     );
   });
 });

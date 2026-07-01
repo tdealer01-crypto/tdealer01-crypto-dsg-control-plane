@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { POST as handleBillingWebhook } from '@/app/api/billing/webhook/route';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { insertRevenueEvent } from '@/lib/revenue/events';
-import { logApiError } from '@/lib/security/api-error';
+import { isMissingEnvConfigError, logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,12 +213,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, received: true, type: event.type });
   } catch (err) {
     logApiError('api/webhooks/stripe POST', err, { bodyLength: body.length });
-    const message = err instanceof Error ? err.message : 'Webhook processing failed';
-    const status =
-      message.includes('STRIPE_WEBHOOK_SECRET') || message.includes('STRIPE_SECRET_KEY')
-        ? 503
-        : 500;
+    const isConfigError = isMissingEnvConfigError(err, ['STRIPE_WEBHOOK_SECRET', 'STRIPE_SECRET_KEY']);
+    const status = isConfigError ? 503 : 500;
+    const safeMessage = isConfigError
+      ? 'Webhook processing unavailable'
+      : 'Webhook processing failed';
 
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: safeMessage }, { status });
   }
 }

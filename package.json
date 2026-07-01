@@ -22,6 +22,7 @@
     "verify:live-env": "node scripts/verify-live-env.mjs all",
     "verify:security-headers": "node scripts/verify-production-security-headers.mjs",
     "verify:policy": "bash scripts/verify-policy.sh",
+    "marketplace:screenshots": "./scripts/with-playwright-chromium.sh node scripts/capture-marketplace-screenshots.mjs",
     "test:e2e": "./scripts/with-playwright-chromium.sh playwright test tests/e2e/enterprise-proof.spec.ts tests/e2e/finance-governance-workflow.spec.ts",
     "screenshot": "./scripts/with-playwright-chromium.sh node scripts/capture-screenshot.mjs",
     "test:e2e:install": "playwright install --with-deps chromium",
