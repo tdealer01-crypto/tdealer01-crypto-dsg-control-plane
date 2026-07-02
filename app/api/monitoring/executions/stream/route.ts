@@ -11,41 +11,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { broadcastExecutionUpdate } from '@/lib/monitoring/broadcast-utils';
 
 export const dynamic = 'force-dynamic';
-
-interface ExecutionUpdate {
-  execution_id: string;
-  agent_id: string;
-  status: string;
-  total_tokens: number;
-  total_cost_usd: number;
-  start_time: string;
-  end_time?: string;
-  timestamp: string;
-}
-
-// In-memory client registry (in production, use Redis)
-const clients = new Map<string, Set<WebSocket>>();
-
-/**
- * Broadcast execution update to all subscribed clients
- */
-export function broadcastExecutionUpdate(update: ExecutionUpdate) {
-  const agentClients = clients.get(update.agent_id);
-  if (!agentClients) return;
-
-  const message = JSON.stringify(update);
-  agentClients.forEach((ws) => {
-    try {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
-      }
-    } catch (error) {
-      console.error('Failed to send execution update:', error);
-    }
-  });
-}
 
 export async function GET(request: NextRequest) {
   // Note: Next.js 15 does not have native WebSocket support in route handlers
