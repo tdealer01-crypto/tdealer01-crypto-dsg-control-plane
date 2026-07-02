@@ -59,17 +59,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Get user profile to verify org
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('id, org_id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (!userProfile?.org_id) {
+    // Verify user ID exists
+    if (!user.id) {
       return NextResponse.json(
-        { error: 'User must have an organization' },
-        { status: 403, headers: corsHeaders }
+        { error: 'Unauthorized' },
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -151,25 +145,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Store seller in Supabase with pending KYC status
     const { data: seller, error: insertError } = await (supabase as any)
-      .from('marketplace_sellers')
+      .from('sellers')
       .insert({
-        org_id: userProfile.org_id,
-        user_id: userProfile.id,
+        user_id: user.id,
         business_name: business_name.trim(),
-        email: email.trim(),
-        country: country.toUpperCase(),
         stripe_account_id: stripeAccount.id,
-        account_link_url: accountLink.url,
+        kyc_account_link_url: accountLink.url,
         kyc_status: 'pending',
-        stripe_dashboard_type: 'express',
-        stripe_account_created_at: new Date(stripeAccount.created * 1000),
-        metadata: {
-          stripe_response: {
-            account_id: stripeAccount.id,
-            charges_enabled: stripeAccount.charges_enabled || false,
-            payouts_enabled: stripeAccount.payouts_enabled || false,
-          },
-        },
       })
       .select()
       .single();
@@ -188,26 +170,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
       throw insertError;
     }
-
-    // Log seller onboarding event
-    await (supabase as any)
-      .from('marketplace_seller_events')
-      .insert({
-        seller_id: seller.id,
-        org_id: userProfile.org_id,
-        event_type: 'onboarding_initiated',
-        new_status: 'pending',
-        metadata: {
-          stripe_account_id: stripeAccount.id,
-          account_link_created: true,
-        },
-      })
-      .catch((err) => {
-        logApiError('Failed to log seller event', err, {
-          seller_id: seller.id,
-        });
-        // Don't fail the request if logging fails
-      });
 
     const response: OnboardResponse = {
       seller_id: seller.id,

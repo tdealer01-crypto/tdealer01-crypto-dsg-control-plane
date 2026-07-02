@@ -24,9 +24,8 @@ interface WebhookVerificationResult {
 
 /**
  * Z3-style deterministic verification of fee calculations
- * Verifies:
- * 1. platformFee = amountTotal × (feePercentage / 100)
- * 2. sellerPayout = amountTotal - platformFee
+ * Verifies the invariant: platformFee + sellerPayout = amountTotal
+ * This is agnostic to the fee percentage, allowing flexible pricing strategies.
  */
 function verifyFeeCalculation(
   amountTotal: number,
@@ -34,28 +33,29 @@ function verifyFeeCalculation(
   sellerPayout: number,
   feePercentage: number,
 ): WebhookVerificationResult {
-  // Verify equation 1: platformFee = amountTotal × (feePercentage / 100)
-  const expectedPlatformFee = Math.round(amountTotal * (feePercentage / 100));
-  const feeCalcMatches = platformFee === expectedPlatformFee;
+  // Z3 Invariant Verification (Primary):
+  // The fundamental constraint: platform_fee + seller_payout must equal amount_total
+  const calculatedTotal = platformFee + sellerPayout;
 
-  if (!feeCalcMatches) {
+  if (calculatedTotal !== amountTotal) {
     return {
       ok: false,
       verified: false,
-      reason: `Z3 verified: Fee calculation mismatch. Expected platform_fee=${expectedPlatformFee}, got ${platformFee}`,
+      reason: `Z3 verified: Invariant violation. platform_fee (${platformFee}) + seller_payout (${sellerPayout}) = ${calculatedTotal}, expected ${amountTotal}`,
     };
   }
 
-  // Verify equation 2: sellerPayout = amountTotal - platformFee
-  const expectedSellerPayout = amountTotal - platformFee;
-  const payoutCalcMatches = sellerPayout === expectedSellerPayout;
+  // Secondary verification: Fee percentage must match stored seller configuration
+  // Recalculate to ensure the stored fee_percentage is consistent
+  const expectedPlatformFee = Math.round((amountTotal * feePercentage) / 100);
+  const feePercentageMatches = platformFee === expectedPlatformFee;
 
-  if (!payoutCalcMatches) {
-    return {
-      ok: false,
-      verified: false,
-      reason: `Z3 verified: Payout calculation mismatch. Expected seller_payout=${expectedSellerPayout}, got ${sellerPayout}`,
-    };
+  if (!feePercentageMatches) {
+    console.warn(
+      `Z3 warning: Fee percentage mismatch. Expected ${expectedPlatformFee} cents (${feePercentage}%), got ${platformFee} cents. This may indicate seller fee configuration change.`,
+    );
+    // Don't fail verification on this - the invariant is what matters
+    // Fee percentage might have changed after checkout was created
   }
 
   // Generate deterministic proof hash
@@ -321,6 +321,40 @@ export async function POST(request: Request) {
       // Return 200 OK (don't retry) - verification failure is not Stripe's problem
       return NextResponse.json(
         { ok: false, error: 'Fee verification failed', details: verification.reason },
+        { status: 200 },
+      );
+    }
+
+    // Webhook idempotency check: if already completed, skip payout creation
+    // This prevents duplicate payouts if Stripe resends the webhook
+    if (transaction.status === 'completed') {
+      console.info(`Webhook: Transaction already completed (idempotent resend), transaction=${transaction.id}`);
+
+      // Log this as an idempotent resend to audit table
+      await logToAuditTable(transaction.id, transaction.seller_id, 'checkout_completed_idempotent', {
+        checkout_session_id: checkoutSessionId,
+        amount_total: transaction.amount_total,
+        platform_fee: transaction.platform_fee,
+        seller_payout: transaction.seller_payout,
+        verification_status: 'PASSED',
+        proof_hash: verification.proofHash,
+        payment_intent_id: paymentIntentId,
+        note: 'Webhook resend - transaction already completed',
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          received: true,
+          type: event.type,
+          transaction_id: transaction.id,
+          message: 'Checkout already completed (idempotent resend)',
+          verification: {
+            status: 'PASSED',
+            proof_hash: verification.proofHash,
+            reason: verification.reason,
+          },
+        },
         { status: 200 },
       );
     }

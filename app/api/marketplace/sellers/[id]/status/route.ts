@@ -56,26 +56,12 @@ export async function GET(
       );
     }
 
-    // Get user profile to verify org
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('org_id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (!userProfile?.org_id) {
-      return NextResponse.json(
-        { error: 'User must have an organization' },
-        { status: 403, headers: corsHeaders }
-      );
-    }
-
-    // Fetch seller from database
+    // Fetch seller from database (verify user owns this seller)
     const { data: seller, error: fetchError } = await (supabase as any)
-      .from('marketplace_sellers')
+      .from('sellers')
       .select('*')
       .eq('id', sellerId)
-      .eq('org_id', userProfile.org_id)
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (fetchError) {
@@ -98,7 +84,7 @@ export async function GET(
           seller_id: seller.id,
           kyc_status: 'pending',
           verified: false,
-          account_link_url: seller.account_link_url,
+          account_link_url: seller.kyc_account_link_url,
           charges_enabled: false,
           payouts_enabled: false,
         } as StatusResponse,
@@ -123,10 +109,10 @@ export async function GET(
       // Update seller in DB if KYC just became verified
       if (seller.kyc_status !== 'verified') {
         await (supabase as any)
-          .from('marketplace_sellers')
+          .from('sellers')
           .update({
             kyc_status: 'verified',
-            verified_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .eq('id', seller.id)
           .catch((err) => {
@@ -134,26 +120,6 @@ export async function GET(
               seller_id: seller.id,
             });
             // Don't fail the request if update fails
-          });
-
-        // Log verification event
-        await (supabase as any)
-          .from('marketplace_seller_events')
-          .insert({
-            seller_id: seller.id,
-            org_id: userProfile.org_id,
-            event_type: 'kyc_verified',
-            previous_status: seller.kyc_status,
-            new_status: 'verified',
-            metadata: {
-              stripe_verification_time: new Date().toISOString(),
-            },
-          })
-          .catch((err) => {
-            logApiError('Failed to log seller verification event', err, {
-              seller_id: seller.id,
-            });
-            // Don't fail the request if logging fails
           });
       }
     } else if (seller.kyc_status === 'pending' && stripeAccount.requirements) {
@@ -165,7 +131,7 @@ export async function GET(
       seller_id: seller.id,
       kyc_status: updatedKycStatus,
       verified: isVerified,
-      account_link_url: seller.account_link_url,
+      account_link_url: seller.kyc_account_link_url,
       charges_enabled: stripeAccount.charges_enabled || false,
       payouts_enabled: stripeAccount.payouts_enabled || false,
     };
