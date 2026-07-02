@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { MetricsSummary } from "@/components/monitoring";
 
 type Agent = {
   agent_id: string;
@@ -296,6 +297,16 @@ export default function DashboardPage() {
               </Link>
             );
           })}
+        </div>
+
+        {/* ── Monitoring Metrics (NEW - Phase 2) ─────────────────── */}
+        <div className="mt-8">
+          <p className="mb-4 text-[10px] uppercase tracking-[0.25em] text-slate-500">
+            📊 Agent Monitoring Metrics
+          </p>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+            <MetricsSummary period="month" autoRefresh={true} />
+          </div>
         </div>
 
         {/* ── Products Grid ──────────────────────────────────────── */}

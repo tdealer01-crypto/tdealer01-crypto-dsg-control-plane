@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AgentCostCard } from "@/components/monitoring";
 
 interface Agent {
   id: string;
@@ -167,7 +168,15 @@ export default function AgentsPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-2">
+                <div className="mt-6 mb-6">
+                  <AgentCostCard
+                    agentId={agent.id}
+                    dailyLimit={500}
+                    monthlyLimit={10000}
+                  />
+                </div>
+
+                <div className="flex gap-2">
                   <button
                     onClick={() => router.push(`/dashboard/agents/${encodeURIComponent(agent.id)}/permissions`)}
                     className="flex-1 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-100"
