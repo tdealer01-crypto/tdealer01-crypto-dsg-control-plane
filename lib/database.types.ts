@@ -5749,6 +5749,81 @@ export type Database = {
         }
         Relationships: []
       }
+      monitoring_alerts: {
+        Row: {
+          alert_id: string
+          org_id: string
+          agent_id: string
+          alert_type: string
+          severity: string
+          status: string
+          title: string
+          message: string
+          metadata: Json | null
+          created_at: string
+          acknowledged_at: string | null
+          resolved_at: string | null
+        }
+        Insert: {
+          alert_id?: string
+          org_id: string
+          agent_id: string
+          alert_type: string
+          severity: string
+          status?: string
+          title: string
+          message: string
+          metadata?: Json | null
+          created_at?: string
+          acknowledged_at?: string | null
+          resolved_at?: string | null
+        }
+        Update: {
+          alert_id?: string
+          org_id?: string
+          agent_id?: string
+          alert_type?: string
+          severity?: string
+          status?: string
+          title?: string
+          message?: string
+          metadata?: Json | null
+          created_at?: string
+          acknowledged_at?: string | null
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
+      monitoring_webhooks: {
+        Row: {
+          webhook_id: string
+          org_id: string
+          url: string
+          channel: string
+          secret: string | null
+          enabled: boolean
+          created_at: string
+        }
+        Insert: {
+          webhook_id?: string
+          org_id: string
+          url: string
+          channel: string
+          secret?: string | null
+          enabled?: boolean
+          created_at?: string
+        }
+        Update: {
+          webhook_id?: string
+          org_id?: string
+          url?: string
+          channel?: string
+          secret?: string | null
+          enabled?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       policy_versions: {
