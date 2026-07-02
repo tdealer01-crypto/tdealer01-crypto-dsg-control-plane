@@ -2,7 +2,7 @@
   "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
   "name": "DSG Governance Gate",
-  "version": "1.1.6",
+  "version": "2.6.1",
   "icon": "./icon.png",
   "description": "DSG Platform provides automated risk governance and compliance infrastructure for digital enterprises. The DSG Governance Gate Stripe app evaluates policy decisions directly inside your payment detail view, surfacing real-time status details including policy versions, proof references, and clear verification time logs.",
   "shortDescription": "Real-time governance and compliance status on payment details",

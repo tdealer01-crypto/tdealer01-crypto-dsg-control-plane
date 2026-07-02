@@ -56,6 +56,11 @@ export function toSafeErrorResponse(status = 500) {
   return { error: 'Request failed' };
 }
 
+export function isMissingEnvConfigError(error: unknown, envVarNames: string[]) {
+  if (!(error instanceof Error)) return false;
+  return envVarNames.some((name) => error.message.includes(name));
+}
+
 export function logApiError(route: string, error: unknown, details?: Record<string, unknown>) {
   console.error(`[${route}]`, {
     error: redactSensitive(error),

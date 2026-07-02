@@ -211,6 +211,8 @@ function BillingInner() {
   const [interval, setInterval]   = useState<BillingInterval>('monthly');
   const [bundleLoading, setBundleLoading] = useState<string | null>(null);
   const [bundleError, setBundleError] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
   const [toast, setToast]         = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -264,6 +266,24 @@ function BillingInner() {
     }
   }
 
+  async function openBillingPortal() {
+    setPortalLoading(true);
+    setPortalError(null);
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) {
+        setPortalError(data?.error || 'Billing portal unavailable');
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setPortalError('Billing portal unavailable');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
       {/* Checkout success toast */}
@@ -288,11 +308,21 @@ function BillingInner() {
             <Link href="/pricing" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600">
               Change Plan
             </Link>
+            <button
+              onClick={openBillingPortal}
+              disabled={portalLoading}
+              className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {portalLoading ? 'Opening Portal…' : 'Manage Billing'}
+            </button>
             <Link href="/dashboard" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600">
               Dashboard
             </Link>
           </div>
         </div>
+        {portalError && (
+          <p className="mt-3 text-sm text-amber-300">{portalError}</p>
+        )}
 
         {/* Usage bar — real quota data */}
         <div className="mt-8">

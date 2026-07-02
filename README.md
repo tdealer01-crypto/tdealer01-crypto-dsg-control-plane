@@ -6,6 +6,57 @@ Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 ---
 
+## GitHub Marketplace
+
+[![GitHub Marketplace](https://img.shields.io/badge/GitHub-Marketplace-blue?logo=github)](https://github.com/marketplace/dsg-control-plane)
+[![Stripe App](https://img.shields.io/badge/Stripe-App%20Marketplace-6772e5?logo=stripe)](https://marketplace.stripe.com/apps/dsg-control-plane)
+
+> **Note**: Marketplace links will be active after listing approval. See [GITHUB_MARKETPLACE_SETUP.md](./GITHUB_MARKETPLACE_SETUP.md) for the submission process.
+
+### Quick Start (5 Minutes)
+
+1. **Install** from [GitHub Marketplace](https://github.com/marketplace/dsg-control-plane)
+2. **Deploy** to Vercel — one-click deployment
+3. **Connect** Supabase + Stripe keys via environment variables
+4. **Access** your governance dashboard at `/dashboard`
+
+No migration required. Works with any existing repository.
+
+### Pricing
+
+| Tier | Price | Key Features |
+|------|-------|-------------|
+| **Free** | $0/month | 1 Delivery Proof scan/month, 50 DSG Gate evals/month |
+| **Pro** | $49/month | Unlimited scans, priority support, 14-day free trial |
+| **Business** | $199/month | Unlimited + compliance exports, 14-day free trial |
+| **Enterprise** | Custom | SLA + dedicated support + custom integrations |
+| **MCP Subscription** | ฿490/month | Developer tools — MCP protocol, CLI, API quota |
+
+14-day free trial on all paid tiers. No credit card required to start.
+
+### Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| Tests passing | 2501 ✅ |
+| TypeScript typecheck | ✅ PASS |
+| Build | ✅ PASS |
+| Production health | ✅ PASS |
+| Security scan | ✅ PASS |
+
+### Documentation
+
+| Document | Description |
+|----------|-------------|
+| [MARKETPLACE.md](./MARKETPLACE.md) | Full marketplace listing details |
+| [GITHUB_MARKETPLACE_SETUP.md](./GITHUB_MARKETPLACE_SETUP.md) | Step-by-step listing setup |
+| [STRIPE_APP_MARKETPLACE.md](./STRIPE_APP_MARKETPLACE.md) | Stripe App integration |
+| [FAQ_MARKETPLACE.md](./FAQ_MARKETPLACE.md) | Common questions and answers |
+| [CUSTOMER_SUCCESS.md](./CUSTOMER_SUCCESS.md) | Post-launch playbook |
+| [docs/MARKETPLACE_ASSETS.md](./docs/MARKETPLACE_ASSETS.md) | Asset creation guide |
+
+---
+
 ## Verified Results (evidence-backed)
 
 ### Production Quality Metrics (Latest)
