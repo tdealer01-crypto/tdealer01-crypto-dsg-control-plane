@@ -66,9 +66,11 @@ Keep responses concise but informative.
 Always be respectful and helpful.`;
 
   // Primary model overridable via env; fallback chain handles upstream 429s.
+  // Note: 'meta-llama/llama-4-maverick:free' was removed — OpenRouter now
+  // 404s it ("this model is unavailable for free"); its own error response
+  // points to the paid slug, which we don't want to silently switch to.
   const models = [
     process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
-    'meta-llama/llama-4-maverick:free',
     'google/gemma-3-27b-it:free',
     'deepseek/deepseek-chat-v3-0324:free',
   ];

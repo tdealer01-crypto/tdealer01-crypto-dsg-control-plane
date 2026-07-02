@@ -5,19 +5,64 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+function normalizePrivateKeyPem(rawPem: string): string {
+  let pem = rawPem.trim();
+
+  // Env vars pasted with surrounding quotes (common when copy-pasted into
+  // Vercel's UI or a .env file with `KEY="-----BEGIN..."`).
+  if (
+    (pem.startsWith('"') && pem.endsWith('"')) ||
+    (pem.startsWith("'") && pem.endsWith("'"))
+  ) {
+    pem = pem.slice(1, -1).trim();
+  }
+
+  // Normalize CRLF and literal "\n" escape sequences to real newlines.
+  pem = pem.replace(/\r\n/g, '\n').replace(/\\n/g, '\n').trim();
+
+  return pem;
+}
+
 function createAppJWT(): string {
   const appId = process.env.GITHUB_APP_ID ?? '';
   const rawPem = process.env.GITHUB_APP_PRIVATE_KEY ?? '';
   console.log('[DSG] createAppJWT: appId=', appId || 'MISSING', 'pemPresent=', Boolean(rawPem));
   if (!appId || !rawPem) throw new Error('github_app_not_configured');
-  const privateKey = rawPem.replace(/\\n/g, '\n');
+
+  const privateKey = normalizePrivateKeyPem(rawPem);
+
+  const hasBeginMarker = /-----BEGIN (RSA )?PRIVATE KEY-----/.test(privateKey);
+  const hasEndMarker = /-----END (RSA )?PRIVATE KEY-----/.test(privateKey);
+  if (!hasBeginMarker || !hasEndMarker) {
+    // Fail fast with a diagnostic that never leaks key material, instead of
+    // letting OpenSSL throw an opaque "DECODER routines::unsupported" error.
+    console.error(
+      '[DSG] createAppJWT: GITHUB_APP_PRIVATE_KEY is not a valid PEM after normalization.',
+      'length=', privateKey.length,
+      'hasBeginMarker=', hasBeginMarker,
+      'hasEndMarker=', hasEndMarker,
+      'startsWithDash=', privateKey.startsWith('-----'),
+    );
+    throw new Error('github_app_private_key_malformed');
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })).toString('base64url');
   const data = `${header}.${payload}`;
   const signer = createSign('RSA-SHA256');
   signer.update(data);
-  return `${data}.${signer.sign(privateKey, 'base64url')}`;
+
+  try {
+    return `${data}.${signer.sign(privateKey, 'base64url')}`;
+  } catch (err) {
+    console.error(
+      '[DSG] createAppJWT: RSA sign failed after PEM validation passed —',
+      'key may be wrong algorithm/format (expected PKCS#1 or PKCS#8 RSA key).',
+      String(err),
+    );
+    throw new Error('github_app_private_key_sign_failed');
+  }
 }
 
 async function getInstallationToken(installationId: number): Promise<string> {
