@@ -50,7 +50,7 @@ const GATE_PRICING_TIERS: PricingTier[] = [
     billingPeriod: 'monthly',
     features: DSG_GATE_TIERS.pro.features,
     cta: 'Upgrade to Pro',
-    checkoutLink: '/billing?plan=dsg_gate_pro',
+    checkoutLink: '/dashboard/billing?plan=pro',
     highlight: true,
   },
   {
@@ -61,7 +61,7 @@ const GATE_PRICING_TIERS: PricingTier[] = [
     billingPeriod: 'monthly',
     features: DSG_GATE_TIERS.enterprise.features,
     cta: 'Contact Sales',
-    checkoutLink: '/billing?plan=dsg_gate_enterprise',
+    checkoutLink: '/dashboard/billing?plan=enterprise',
   },
 ];
 
