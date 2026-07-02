@@ -1,0 +1,111 @@
+name: Set Stripe Price Env Vars
+
+on:
+  # Manual workflow to sync Stripe price ID env vars into Vercel production.
+  # Price IDs are public identifiers (exposed in Checkout URLs), not secrets.
+  # Requires repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
+  # After this succeeds, redeploy production (push to main or dispatch
+  # vercel-prod-cli-bypass.yml) so the new env vars take effect.
+  workflow_dispatch:
+    inputs:
+      stripe_product_id:
+        description: 'Primary Stripe product ID'
+        required: true
+        default: 'prod_UoShjFSjPBdVRM'
+      price_pro_monthly:
+        description: 'STRIPE_PRICE_PRO_MONTHLY'
+        required: true
+        default: 'price_1TopmZCVpjxFKlKT18ljNI84'
+      price_pro_yearly:
+        description: 'STRIPE_PRICE_PRO_YEARLY'
+        required: true
+        default: 'price_1TopmiCVpjxFKlKT0EVZwCps'
+      price_business_monthly:
+        description: 'STRIPE_PRICE_BUSINESS_MONTHLY'
+        required: true
+        default: 'price_1TopmsCVpjxFKlKTdpm128OG'
+      price_business_yearly:
+        description: 'STRIPE_PRICE_BUSINESS_YEARLY'
+        required: true
+        default: 'price_1Topn0CVpjxFKlKTvxKJUsff'
+      price_enterprise_monthly:
+        description: 'STRIPE_PRICE_ENTERPRISE_MONTHLY'
+        required: true
+        default: 'price_1TopnACVpjxFKlKT36Pe7Zmu'
+      price_enterprise_yearly:
+        description: 'STRIPE_PRICE_ENTERPRISE_YEARLY'
+        required: true
+        default: 'price_1TopnICVpjxFKlKTqHhjKzhR'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: set-stripe-price-env
+  cancel-in-progress: false
+
+jobs:
+  set-env:
+    name: Sync Stripe price IDs to Vercel production env
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate required secrets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          missing=0
+          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!key}" ]; then
+              echo "Missing secret: $key"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Set Stripe price env vars
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          STRIPE_PRODUCT_ID: ${{ github.event.inputs.stripe_product_id }}
+          STRIPE_PRICE_PRO_MONTHLY: ${{ github.event.inputs.price_pro_monthly }}
+          STRIPE_PRICE_PRO_YEARLY: ${{ github.event.inputs.price_pro_yearly }}
+          STRIPE_PRICE_BUSINESS_MONTHLY: ${{ github.event.inputs.price_business_monthly }}
+          STRIPE_PRICE_BUSINESS_YEARLY: ${{ github.event.inputs.price_business_yearly }}
+          STRIPE_PRICE_ENTERPRISE_MONTHLY: ${{ github.event.inputs.price_enterprise_monthly }}
+          STRIPE_PRICE_ENTERPRISE_YEARLY: ${{ github.event.inputs.price_enterprise_yearly }}
+        run: bash set-vercel-stripe-env.sh
+
+      - name: Summary
+        run: |
+          {
+            echo "### Stripe price env vars synced to Vercel production"
+            echo ""
+            echo "| Env var | Value |"
+            echo "|---|---|"
+            echo "| STRIPE_PRODUCT_ID | ${{ github.event.inputs.stripe_product_id }} |"
+            echo "| STRIPE_PRICE_PRO_MONTHLY | ${{ github.event.inputs.price_pro_monthly }} |"
+            echo "| STRIPE_PRICE_PRO_YEARLY | ${{ github.event.inputs.price_pro_yearly }} |"
+            echo "| STRIPE_PRICE_BUSINESS_MONTHLY | ${{ github.event.inputs.price_business_monthly }} |"
+            echo "| STRIPE_PRICE_BUSINESS_YEARLY | ${{ github.event.inputs.price_business_yearly }} |"
+            echo "| STRIPE_PRICE_ENTERPRISE_MONTHLY | ${{ github.event.inputs.price_enterprise_monthly }} |"
+            echo "| STRIPE_PRICE_ENTERPRISE_YEARLY | ${{ github.event.inputs.price_enterprise_yearly }} |"
+            echo ""
+            echo "Next step: redeploy production so new env vars take effect."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -196,6 +196,30 @@ npm run go:no-go
 - Need executable evidence for all eight end-user outcome steps.
 - Need user-facing quickstart/start-trial UI patch applied outside the connector safety block or through a smaller trusted patch path.
 
+## Stripe Billing Setup Status (2026-07-02)
+
+**Stripe account:** `acct_1Tnbl5CVpjxFKlKT` (dsg-one, Inc.) — live mode
+
+### Live products and prices created (verified via Stripe API, 2026-07-02)
+
+| Product | Product ID | Monthly price | Yearly price |
+|---|---|---|---|
+| DSG Gate Pro | `prod_UoShjFSjPBdVRM` | `price_1TopmZCVpjxFKlKT18ljNI84` ($99) | `price_1TopmiCVpjxFKlKT0EVZwCps` ($891) |
+| DSG Business | `prod_UoShvctIby9bne` | `price_1TopmsCVpjxFKlKTdpm128OG` ($199) | `price_1Topn0CVpjxFKlKTvxKJUsff` ($1,791) |
+| DSG Gate Enterprise | `prod_UoShgcJUricUgc` | `price_1TopnACVpjxFKlKT36Pe7Zmu` ($499) | `price_1TopnICVpjxFKlKTqHhjKzhR` ($4,491) |
+
+Pricing source: live `/api/dsg/v1/pricing` and `/api/delivery-proof/pricing` responses (Pro $99/mo, Business = Delivery Proof Unlimited $199/mo, Enterprise $499/mo). Yearly = 9 × monthly (25% discount), matching the skills-bundle convention in `app/api/billing/checkout/route.ts`.
+
+### Production env var status (probed 2026-07-02)
+
+- `STRIPE_SECRET_KEY` — present (marketplace onboard route returns 401 auth error, not 500 config error)
+- `STRIPE_WEBHOOK_SECRET` — present (webhook routes return 400 invalid-signature, not 503 config error)
+- `STRIPE_PRICE_*` — sync pending via `.github/workflows/set-stripe-price-env.yml` (defaults contain the live price IDs above)
+
+### Known correction
+
+`set-vercel-stripe-env.sh` previously defaulted to price IDs from a different Stripe account (`price_...KCAFwxVQo9...`). Those would fail with "No such price" under the current `STRIPE_SECRET_KEY`. Defaults now point at the live prices above.
+
 ## Revenue-readiness blockers resolution (2026-07-02)
 
 - ✓ Stripe test checkout evidence: Live endpoints deployed, webhook handler verified
