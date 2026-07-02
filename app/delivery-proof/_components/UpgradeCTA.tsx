@@ -24,7 +24,7 @@ export function UpgradeCTA({ isFreeUser = true, currentTier = 'free', runId }: U
       period: 'one-time',
       description: 'Get 1 additional scan',
       features: ['1 more scan', 'Priority support', 'Webhook integration'],
-      href: '/billing?item=delivery_proof_scan_49',
+      href: '/dashboard/billing?item=delivery_proof_scan_49',
       primary: false,
     },
     {
@@ -34,7 +34,7 @@ export function UpgradeCTA({ isFreeUser = true, currentTier = 'free', runId }: U
       period: '/month',
       description: 'Unlimited scans + team access',
       features: ['Unlimited scans', 'Team access (5 users)', 'White-label reports', 'API key management'],
-      href: '/billing?plan=business',
+      href: '/dashboard/billing?plan=business',
       primary: true,
     },
   ];
