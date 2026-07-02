@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 interface ExecutionUpdate {
   execution_id: string;
   agent_id: string;
-  status: 'running' | 'success' | 'failure' | 'blocked';
+  status: string;
   total_tokens: number;
   total_cost_usd: number;
   start_time: string;
@@ -72,5 +72,3 @@ export async function GET(request: NextRequest) {
     { status: 426 }
   );
 }
-
-export { broadcastExecutionUpdate };
