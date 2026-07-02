@@ -34,12 +34,12 @@ export function AdvancedFilters({
   const [activeFilterCount, setActiveFilterCount] = useState(0);
 
   const updateFilter = (key: keyof FilterConfig, value: any) => {
-    const newFilters = { ...filters };
+    const newFilters: FilterConfig = { ...filters };
 
     if (value === null || value === undefined || value === '') {
       delete newFilters[key];
     } else {
-      newFilters[key] = value;
+      (newFilters as any)[key] = value;
     }
 
     setFilters(newFilters);
