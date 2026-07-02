@@ -214,7 +214,7 @@ Pricing source: live `/api/dsg/v1/pricing` and `/api/delivery-proof/pricing` res
 
 - `STRIPE_SECRET_KEY` — present (marketplace onboard route returns 401 auth error, not 500 config error)
 - `STRIPE_WEBHOOK_SECRET` — present (webhook routes return 400 invalid-signature, not 503 config error)
-- `STRIPE_PRICE_*` — sync pending via `.github/workflows/set-stripe-price-env.yml` (defaults contain the live price IDs above)
+- `STRIPE_PRICE_*` — **blocked in CI**: `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` are not configured as repo or `production`-environment secrets (verified by two failed runs of `set-stripe-price-env.yml`, 2026-07-02). Workaround shipped: `app/api/billing/checkout/route.ts` now carries the live price IDs above as in-code fallbacks (env vars still take precedence). The workflow remains usable once someone adds the Vercel secrets.
 
 ### Known correction
 
