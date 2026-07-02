@@ -75,7 +75,7 @@ const PRICING_PAGES: PricingTier[] = [
       'Advanced remediation tips',
     ],
     cta: 'Buy Single Scan',
-    checkoutLink: '/billing?item=delivery_proof_scan_49',
+    checkoutLink: '/dashboard/billing?item=delivery_proof_scan_49',
   },
   {
     id: 'unlimited',
@@ -94,7 +94,7 @@ const PRICING_PAGES: PricingTier[] = [
       'API key management',
     ],
     cta: 'Start 14-day Trial',
-    checkoutLink: '/billing?plan=business',
+    checkoutLink: '/dashboard/billing?plan=business',
   },
 ];
 

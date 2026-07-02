@@ -80,7 +80,10 @@ function UpgradeCard({
   }
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-6">
+    <div
+      id={`plan-${plan.key}`}
+      className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-6 scroll-mt-24"
+    >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{plan.title}</h3>
         {isCurrent && (
@@ -222,6 +225,16 @@ function BillingInner() {
     if (searchParams.get('checkout') === 'success') {
       setToast('Subscription activated — your new quota is live.');
       setTimeout(() => setToast(null), 6000);
+    }
+
+    // Deep-link from /pricing: ?plan=pro|business|enterprise scrolls to that card.
+    const requestedPlan = searchParams.get('plan');
+    if (requestedPlan) {
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`plan-${requestedPlan}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
     }
 
     Promise.all([
