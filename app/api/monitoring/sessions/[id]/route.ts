@@ -23,7 +23,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get execution
     const { data: execution, error: execError } = await supabase

@@ -9,12 +9,25 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useExecutions } from '@/hooks/useMonitoring';
-import { formatDistanceToNow } from 'date-fns';
 
 interface ExecutionListProps {
   agentId?: string;
   limit?: number;
   autoRefresh?: boolean;
+}
+
+function formatTimeAgo(dateString: string): string {
+  const now = new Date();
+  const past = new Date(dateString);
+  const secondsAgo = Math.floor((now.getTime() - past.getTime()) / 1000);
+
+  if (secondsAgo < 60) return `${secondsAgo}s ago`;
+  const minutesAgo = Math.floor(secondsAgo / 60);
+  if (minutesAgo < 60) return `${minutesAgo}m ago`;
+  const hoursAgo = Math.floor(minutesAgo / 60);
+  if (hoursAgo < 24) return `${hoursAgo}h ago`;
+  const daysAgo = Math.floor(hoursAgo / 24);
+  return `${daysAgo}d ago`;
 }
 
 export function ExecutionList({
@@ -119,7 +132,7 @@ export function ExecutionList({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {formatDistanceToNow(new Date(execution.created_at), { addSuffix: true })}
+                      {formatTimeAgo(execution.created_at)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-gray-600">
                       {execution.total_tokens?.toLocaleString() || '-'}

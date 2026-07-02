@@ -35,7 +35,7 @@ function getPeriodDays(period: string): number {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;

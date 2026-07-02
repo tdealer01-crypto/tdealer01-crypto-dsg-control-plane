@@ -15,11 +15,18 @@ type ToolCallInsert = Database['public']['Tables']['monitoring_tool_calls']['Ins
 type TokenUsageInsert = Database['public']['Tables']['monitoring_token_usage']['Insert'];
 
 export class MonitoringEmitter {
-  private supabase = createClient();
+  private supabasePromise: Promise<any> | null = null;
   private executionId: string | null = null;
 
   constructor(executionId?: string) {
     this.executionId = executionId || null;
+  }
+
+  private async getSupabase() {
+    if (!this.supabasePromise) {
+      this.supabasePromise = createClient();
+    }
+    return this.supabasePromise;
   }
 
   /**
@@ -49,7 +56,8 @@ export class MonitoringEmitter {
         metadata: data.metadata || {},
       };
 
-      const { data: result, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: result, error } = await supabase
         .from('monitoring_executions')
         .insert([execution])
         .select()
@@ -85,11 +93,11 @@ export class MonitoringEmitter {
         execution_id: this.executionId as any,
         event_type: eventType as any,
         timestamp: new Date().toISOString(),
-        actor_id: 'system',
-        metadata,
+        data: metadata || null,
       };
 
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { error } = await supabase
         .from('monitoring_events')
         .insert([event]);
 
@@ -123,13 +131,12 @@ export class MonitoringEmitter {
       const toolCall: ToolCallInsert = {
         execution_id: this.executionId as any,
         tool_name: toolName,
-        tool_input: toolInput,
-        risk_level: riskLevel as any,
-        approval_status: 'auto-approved' as any,
-        metadata,
+        input: toolInput,
+        status: 'pending' as any,
       };
 
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data, error } = await supabase
         .from('monitoring_tool_calls')
         .insert([toolCall])
         .select('tool_call_id')
@@ -157,14 +164,14 @@ export class MonitoringEmitter {
     approvalStatus: 'approved' | 'rejected' = 'approved'
   ): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { error } = await supabase
         .from('monitoring_tool_calls')
         .update({
-          tool_output: toolOutput,
-          approval_status: approvalStatus as any,
-          completed_at: new Date().toISOString(),
+          output: toolOutput,
+          status: approvalStatus as any,
         })
-        .eq('tool_call_id', toolCallId);
+        .eq('call_id', toolCallId);
 
       if (error) {
         console.warn('Failed to complete tool call:', error.message);
@@ -195,14 +202,14 @@ export class MonitoringEmitter {
     try {
       const tokenUsage: TokenUsageInsert = {
         execution_id: this.executionId as any,
-        model_name: modelName,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
+        total_tokens: inputTokens + outputTokens,
         cost_usd: costUsd,
-        timestamp: new Date().toISOString(),
       };
 
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data, error } = await supabase
         .from('monitoring_token_usage')
         .insert([tokenUsage])
         .select('token_id')
@@ -230,7 +237,8 @@ export class MonitoringEmitter {
    */
   private async updateExecutionTokens(executionId: string): Promise<void> {
     try {
-      const { data: tokens, error: queryError } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: tokens, error: queryError } = await supabase
         .from('monitoring_token_usage')
         .select('input_tokens, output_tokens')
         .eq('execution_id', executionId);
@@ -242,7 +250,8 @@ export class MonitoringEmitter {
       const totalInput = tokens.reduce((sum, row) => sum + (row.input_tokens || 0), 0);
       const totalOutput = tokens.reduce((sum, row) => sum + (row.output_tokens || 0), 0);
 
-      await this.supabase
+      const updateSupabase = await this.getSupabase();
+      await updateSupabase
         .from('monitoring_executions')
         .update({
           input_tokens: totalInput,
@@ -267,7 +276,8 @@ export class MonitoringEmitter {
     }
 
     try {
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { error } = await supabase
         .from('monitoring_executions')
         .update({
           status: status as any,

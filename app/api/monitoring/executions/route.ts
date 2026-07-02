@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -32,30 +32,9 @@ export async function GET(request: NextRequest) {
     // Build query
     let query = supabase
       .from('monitoring_executions')
-      .select(
-        `
-        execution_id,
-        agent_id,
-        user_id,
-        start_time,
-        end_time,
-        status,
-        input_tokens,
-        output_tokens,
-        total_tokens,
-        model_name,
-        total_cost_usd,
-        error_message,
-        metadata,
-        created_at
-      `,
-        { count: 'exact' }
-      )
-      .order('created_at', { ascending: false })
-      .limit(limit)
-      .offset(offset);
+      .select('*', { count: 'exact' });
 
-    // Apply filters
+    // Apply filters first
     if (agentId) {
       query = query.eq('agent_id', agentId);
     }
@@ -66,7 +45,10 @@ export async function GET(request: NextRequest) {
       query = query.eq('user_id', userId);
     }
 
-    const { data, count, error } = await query;
+    // Then apply ordering and pagination
+    const { data, count, error } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error('Failed to fetch executions:', error);

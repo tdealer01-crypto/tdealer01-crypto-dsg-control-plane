@@ -5563,6 +5563,192 @@ export type Database = {
           }
         ]
       }
+      monitoring_executions: {
+        Row: {
+          execution_id: string
+          agent_id: string
+          user_id: string | null
+          org_id: string
+          start_time: string
+          end_time: string | null
+          status: string
+          input_tokens: number
+          output_tokens: number
+          total_tokens: number
+          model_name: string | null
+          total_cost_usd: number
+          error_message: string | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          execution_id?: string
+          agent_id: string
+          user_id?: string | null
+          org_id: string
+          start_time?: string
+          end_time?: string | null
+          status?: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          model_name?: string | null
+          total_cost_usd?: number
+          error_message?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          execution_id?: string
+          agent_id?: string
+          user_id?: string | null
+          org_id?: string
+          start_time?: string
+          end_time?: string | null
+          status?: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          model_name?: string | null
+          total_cost_usd?: number
+          error_message?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_events: {
+        Row: {
+          event_id: string
+          execution_id: string
+          event_type: string
+          timestamp: string
+          data: Json | null
+          created_at: string
+        }
+        Insert: {
+          event_id?: string
+          execution_id: string
+          event_type: string
+          timestamp?: string
+          data?: Json | null
+          created_at?: string
+        }
+        Update: {
+          event_id?: string
+          execution_id?: string
+          event_type?: string
+          timestamp?: string
+          data?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_tool_calls: {
+        Row: {
+          call_id: string
+          execution_id: string
+          tool_name: string
+          input: Json | null
+          output: Json | null
+          status: string
+          duration_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          call_id?: string
+          execution_id: string
+          tool_name: string
+          input?: Json | null
+          output?: Json | null
+          status?: string
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          call_id?: string
+          execution_id?: string
+          tool_name?: string
+          input?: Json | null
+          output?: Json | null
+          status?: string
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_token_usage: {
+        Row: {
+          usage_id: string
+          execution_id: string
+          input_tokens: number
+          output_tokens: number
+          total_tokens: number
+          cost_usd: number
+          created_at: string
+        }
+        Insert: {
+          usage_id?: string
+          execution_id: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          cost_usd?: number
+          created_at?: string
+        }
+        Update: {
+          usage_id?: string
+          execution_id?: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          cost_usd?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_monthly_metrics: {
+        Row: {
+          metric_id: string
+          org_id: string
+          agent_id: string
+          year_month: string
+          total_executions: number
+          successful_executions: number
+          failed_executions: number
+          total_tokens_used: number
+          total_cost_usd: number
+          success_rate_percent: number
+          created_at: string
+        }
+        Insert: {
+          metric_id?: string
+          org_id: string
+          agent_id: string
+          year_month: string
+          total_executions?: number
+          successful_executions?: number
+          failed_executions?: number
+          total_tokens_used?: number
+          total_cost_usd?: number
+          success_rate_percent?: number
+          created_at?: string
+        }
+        Update: {
+          metric_id?: string
+          org_id?: string
+          agent_id?: string
+          year_month?: string
+          total_executions?: number
+          successful_executions?: number
+          failed_executions?: number
+          total_tokens_used?: number
+          total_cost_usd?: number
+          success_rate_percent?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       policy_versions: {
