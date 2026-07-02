@@ -1,11 +1,20 @@
 name: Set Stripe Price Env Vars
 
 on:
-  # Manual workflow to sync Stripe price ID env vars into Vercel production.
+  # Sync Stripe price ID env vars into Vercel production.
   # Price IDs are public identifiers (exposed in Checkout URLs), not secrets.
   # Requires repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
   # After this succeeds, redeploy production (push to main or dispatch
   # vercel-prod-cli-bypass.yml) so the new env vars take effect.
+  #
+  # push trigger: runs automatically (using set-vercel-stripe-env.sh defaults)
+  # when this workflow or the env script changes on the billing setup branch.
+  push:
+    branches:
+      - claude/stripe-projects-cli-j34gfp
+    paths:
+      - .github/workflows/set-stripe-price-env.yml
+      - set-vercel-stripe-env.sh
   workflow_dispatch:
     inputs:
       stripe_product_id:
@@ -99,13 +108,13 @@ jobs:
             echo ""
             echo "| Env var | Value |"
             echo "|---|---|"
-            echo "| STRIPE_PRODUCT_ID | ${{ github.event.inputs.stripe_product_id }} |"
-            echo "| STRIPE_PRICE_PRO_MONTHLY | ${{ github.event.inputs.price_pro_monthly }} |"
-            echo "| STRIPE_PRICE_PRO_YEARLY | ${{ github.event.inputs.price_pro_yearly }} |"
-            echo "| STRIPE_PRICE_BUSINESS_MONTHLY | ${{ github.event.inputs.price_business_monthly }} |"
-            echo "| STRIPE_PRICE_BUSINESS_YEARLY | ${{ github.event.inputs.price_business_yearly }} |"
-            echo "| STRIPE_PRICE_ENTERPRISE_MONTHLY | ${{ github.event.inputs.price_enterprise_monthly }} |"
-            echo "| STRIPE_PRICE_ENTERPRISE_YEARLY | ${{ github.event.inputs.price_enterprise_yearly }} |"
+            echo "| STRIPE_PRODUCT_ID | ${{ github.event.inputs.stripe_product_id || 'script default' }} |"
+            echo "| STRIPE_PRICE_PRO_MONTHLY | ${{ github.event.inputs.price_pro_monthly || 'script default' }} |"
+            echo "| STRIPE_PRICE_PRO_YEARLY | ${{ github.event.inputs.price_pro_yearly || 'script default' }} |"
+            echo "| STRIPE_PRICE_BUSINESS_MONTHLY | ${{ github.event.inputs.price_business_monthly || 'script default' }} |"
+            echo "| STRIPE_PRICE_BUSINESS_YEARLY | ${{ github.event.inputs.price_business_yearly || 'script default' }} |"
+            echo "| STRIPE_PRICE_ENTERPRISE_MONTHLY | ${{ github.event.inputs.price_enterprise_monthly || 'script default' }} |"
+            echo "| STRIPE_PRICE_ENTERPRISE_YEARLY | ${{ github.event.inputs.price_enterprise_yearly || 'script default' }} |"
             echo ""
             echo "Next step: redeploy production so new env vars take effect."
           } >> "$GITHUB_STEP_SUMMARY"
