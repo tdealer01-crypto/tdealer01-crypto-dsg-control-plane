@@ -58,6 +58,9 @@ jobs:
     name: Sync Stripe price IDs to Vercel production env
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # VERCEL_* secrets are scoped to the "production" GitHub environment
+    # (same as vercel-prod-cli-bypass.yml), not repo-level secrets.
+    environment: production
     steps:
       - name: Validate required secrets
         env:
