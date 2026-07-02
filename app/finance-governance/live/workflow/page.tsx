@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { financeGovernanceFetch } from '../request';
-import { createClient } from '../../../../lib/supabase/client';
 
 type WorkspaceSummaryResponse = {
   workspace: {
@@ -62,7 +61,6 @@ export default function FinanceGovernanceLiveWorkflowPage() {
   const [error, setError] = useState('');
   const [banner, setBanner] = useState<ActionBanner | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [unauthenticated, setUnauthenticated] = useState(false);
 
   const refreshData = useCallback(async (showRefreshing = false) => {
     try {
@@ -101,44 +99,7 @@ export default function FinanceGovernanceLiveWorkflowPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function guardedLoad() {
-      // /api/cases (and the other finance-governance endpoints below) always
-      // return 401 for a logged-out visitor. Checking the session client-side
-      // first avoids firing calls that are guaranteed to fail and show up as
-      // noise in production error logs (was 138 distinct users / 140 errors).
-      //
-      // Fail-open by design: if the Supabase browser client can't be created
-      // (e.g. NEXT_PUBLIC_SUPABASE_* env vars aren't set, such as in CI/e2e)
-      // or the session check itself throws, we fall through to the original
-      // unguarded behavior instead of blocking the page. Only a *confirmed*
-      // "no user" response skips the fetch — this is what broke e2e tests
-      // last time (guard tried to detect CI via unprefixed process.env.CI,
-      // which client components can't read).
-      try {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getUser();
-
-        if (cancelled) return;
-
-        if (!data.user) {
-          setUnauthenticated(true);
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Supabase not configured / check failed — behave exactly as before.
-      }
-
-      if (!cancelled) void refreshData(false);
-    }
-
-    void guardedLoad();
-
-    return () => {
-      cancelled = true;
-    };
+    void refreshData(false);
   }, [refreshData]);
 
   async function runSubmit() {
@@ -205,24 +166,6 @@ export default function FinanceGovernanceLiveWorkflowPage() {
     } finally {
       setBusyKey(null);
     }
-  }
-
-  if (unauthenticated) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-6 py-16 text-white">
-        <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">Live workflow</p>
-        <h1 className="mt-4 text-3xl font-bold">Sign in to view this workflow</h1>
-        <p className="mt-4 text-slate-300">
-          This page reads live finance-governance cases and approvals scoped to your organization. Sign in to continue.
-        </p>
-        <a
-          href="/login"
-          className="mt-6 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-emerald-950 hover:bg-emerald-400"
-        >
-          Sign in
-        </a>
-      </main>
-    );
   }
 
   return (
