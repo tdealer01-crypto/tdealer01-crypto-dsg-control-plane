@@ -326,9 +326,7 @@ export async function POST(request: Request) {
     }
 
     // Update transaction status to 'completed'
-    const statusUpdated = await updateTransactionStatus(transaction.id, 'completed', {
-      updated_at: new Date().toISOString(),
-    });
+    const statusUpdated = await updateTransactionStatus(transaction.id, 'completed');
 
     if (!statusUpdated) {
       console.error(`Webhook: Failed to update transaction status for transaction=${transaction.id}`);

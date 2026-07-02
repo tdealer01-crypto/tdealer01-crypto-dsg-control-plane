@@ -57,9 +57,9 @@ export function calculateCheckoutFees(
     );
   }
 
-  if (seller_payout_cents <= 0) {
+  if (seller_payout_cents < 0) {
     throw new Error(
-      `Postcondition violated: seller_payout_cents=${seller_payout_cents} <= 0`,
+      `Postcondition violated: seller_payout_cents=${seller_payout_cents} < 0`,
     );
   }
 
