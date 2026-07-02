@@ -4950,6 +4950,135 @@ export type Database = {
           },
         ]
       }
+      seller_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          seller_id: string
+          status: string
+          stripe_payout_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          seller_id: string
+          status?: string
+          stripe_payout_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          seller_id?: string
+          status?: string
+          stripe_payout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_payouts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_transactions: {
+        Row: {
+          amount_total: number
+          checkout_session_id: string
+          created_at: string
+          customer_email: string
+          id: string
+          platform_fee: number
+          seller_id: string
+          seller_payout: number
+          status: string
+        }
+        Insert: {
+          amount_total: number
+          checkout_session_id: string
+          created_at?: string
+          customer_email: string
+          id?: string
+          platform_fee: number
+          seller_id: string
+          seller_payout: number
+          status?: string
+        }
+        Update: {
+          amount_total?: number
+          checkout_session_id?: string
+          created_at?: string
+          customer_email?: string
+          id?: string
+          platform_fee?: number
+          seller_id?: string
+          seller_payout?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_transactions_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sellers: {
+        Row: {
+          business_name: string
+          created_at: string
+          fee_percentage: number
+          id: string
+          kyc_account_link_url: string | null
+          kyc_status: string
+          payout_schedule: string
+          stripe_account_id: string | null
+          stripe_dashboard_access: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          kyc_account_link_url?: string | null
+          kyc_status?: string
+          payout_schedule?: string
+          stripe_account_id?: string | null
+          stripe_dashboard_access?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          kyc_account_link_url?: string | null
+          kyc_status?: string
+          payout_schedule?: string
+          stripe_account_id?: string | null
+          stripe_dashboard_access?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sellers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
