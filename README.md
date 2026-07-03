@@ -122,6 +122,104 @@ All executions are gated by 5 Spine policy constraints:
 
 ---
 
+## Solana Integration (Phase 3 Feature 3)
+
+Real blockchain transaction execution for native SOL transfers with confirmation polling and audit trails.
+
+**Status:** ✅ Production-ready for devnet/testnet testing
+
+### Features
+
+- **Real SOL Transfers**: Direct Solana blockchain transactions via `SystemProgram.transfer`
+- **Confirmation Polling**: 60-second timeout with block height validation (256-block window)
+- **Transaction Signing**: Treasury keypair management via secure environment variables
+- **Audit Trail**: Immutable Supabase ledger with idempotency checking
+- **Graceful Degradation**: Automatic dry-run fallback if keypair unavailable
+- **Production Commitment**: Support for processed/confirmed/finalized commitment levels
+
+### Quick Start
+
+**1. Environment Setup**
+```bash
+# Set in .env or GitHub Secrets
+SOLANA_RPC_ENDPOINT=https://api.devnet.solana.com
+SOLANA_TREASURY_PRIVATE_KEY=<base64-64-byte-key>
+# OR
+SOLANA_TREASURY_SECRET=[array,of,64,bytes]
+```
+
+**2. Generate Treasury Keypair**
+```bash
+solana-keygen new --outfile treasury.json
+cat treasury.json | jq '.[]'  # Copy as SOLANA_TREASURY_SECRET
+```
+
+**3. Fund Treasury (Devnet)**
+```bash
+solana airdrop 10 <public_key> --url devnet
+```
+
+**4. Execute Transfer**
+```bash
+curl -X POST http://localhost:3000/api/execute \
+  -H "Authorization: Bearer API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "agent_123",
+    "action": {
+      "type": "transfer_sol",
+      "recipient": "recipient_wallet",
+      "amount": 1.5
+    }
+  }'
+```
+
+### Architecture
+
+```
+API Request → SOLPaymentProcessor → SolanaTransactionExecutor → Solana RPC → Confirmation Polling → Supabase Ledger
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/execute` | POST | Execute SOL transfer (production or dry-run) |
+| `/api/spine/execute` | POST | Runtime governance gate + execute |
+
+### Deployment Stages
+
+| Stage | Network | Status | Next |
+|-------|---------|--------|------|
+| 🟢 Devnet | devnet.solana.com | Testing | Testnet validation |
+| 🟡 Testnet | testnet.solana.com | Planned | Production prep |
+| 🔴 Mainnet | mainnet-beta.solana.com | Future | Gradual rollout |
+
+### Documentation
+
+- 📖 **[Full Integration Guide](./docs/SOLANA_INTEGRATION.md)** - Setup, usage, troubleshooting
+- 📋 **[Completion Checklist](./PHASE3_FEATURE3_COMPLETION.md)** - Remaining tasks & metrics
+- 🔧 **[Environment Variables](./.env.example)** - SOLANA_* configuration
+
+### CI/CD Hooks
+
+Automated tests run on every commit to `lib/solana/**`:
+- ✅ Unit tests (transaction executor, payment processor)
+- ✅ Integration tests (payment ledger, idempotency)
+- ✅ Security checks (no hardcoded secrets)
+- ✅ Devnet smoke tests (when secrets configured)
+- ✅ Code quality (TypeScript, no console.log)
+
+**Workflow:** `.github/workflows/test-solana-integration.yml`
+
+### Known Limitations
+
+1. Block height window: 256 blocks (~30 seconds)
+2. Confirmation timeout: 60 seconds (configurable)
+3. Pre-existing npm transitive deps have minor vulnerabilities (not in code path)
+
+---
+
 ## Site Navigation & Accessibility Map
 
 ### Primary Navigation (Main Header)
