@@ -1,4 +1,4 @@
-# @dsg-one/sdk
+# dsg-one-sdk
 
 TypeScript client for the **DSG ONE** (Deterministic Security Gateway) governed execution API.
 
@@ -7,11 +7,11 @@ TypeScript client for the **DSG ONE** (Deterministic Security Gateway) governed 
 ## Installation
 
 ```bash
-npm install @dsg-one/sdk
+npm install dsg-one-sdk
 # or
-yarn add @dsg-one/sdk
+yarn add dsg-one-sdk
 # or
-pnpm add @dsg-one/sdk
+pnpm add dsg-one-sdk
 ```
 
 Requires Node.js 18+
@@ -19,7 +19,7 @@ Requires Node.js 18+
 ## Quick Start
 
 ```typescript
-import { DsgOneClient } from "@dsg-one/sdk";
+import { DsgOneClient } from "dsg-one-sdk";
 
 // Initialize with your API key (format: dsg_live_...)
 const client = new DsgOneClient({ 
@@ -178,7 +178,7 @@ await client.deleteAgent("agent_abc123");
 ## Error Handling
 
 ```typescript
-import { DsgOneError } from "@dsg-one/sdk";
+import { DsgOneError } from "dsg-one-sdk";
 
 try {
   await client.execute({ ... });

@@ -1,154 +1,92 @@
-import { randomUUID } from 'crypto';
+type RpcResult = {
+  data: unknown;
+  error: { message?: string } | null;
+};
 
-type SupabaseAdminLike = {
+type SupabaseAdminLoose = {
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>;
   from: (table: string) => any;
 };
 
 export type EnsuredWorkspaceProfile = {
-  user_id?: string | null;
+  id?: string | null;
   auth_user_id: string;
   email: string | null;
   org_id: string;
   is_active: boolean;
-  role?: string | null;
 };
 
-function workspaceName(email: string | null) {
-  return email ? `${email} Workspace` : 'DSG Owner Workspace';
+export type EnsureUserWorkspaceResult =
+  | { ok: true; profile: EnsuredWorkspaceProfile; bootstrapped: boolean }
+  | { ok: false; status: number; error: string };
+
+export type EnsureUserWorkspaceSuccess = Extract<EnsureUserWorkspaceResult, { ok: true }>;
+export type EnsureUserWorkspaceFailure = Extract<EnsureUserWorkspaceResult, { ok: false }>;
+
+export function isWorkspaceFailure(
+  result: EnsureUserWorkspaceResult
+): result is EnsureUserWorkspaceFailure {
+  return result.ok === false;
 }
 
-function ignorableSchemaError(error: unknown) {
-  const message = String((error as { message?: string })?.message || '').toLowerCase();
-  return (
-    message.includes('could not find') ||
-    message.includes('does not exist') ||
-    message.includes('schema cache') ||
-    message.includes('column')
-  );
-}
-
-async function bestEffortUpsert(admin: SupabaseAdminLike, table: string, payload: Record<string, unknown>, onConflict: string) {
-  const { error } = await admin.from(table).upsert(payload, { onConflict });
-  if (error && !ignorableSchemaError(error)) {
-    return { ok: false as const, error };
-  }
-  return { ok: true as const };
+function errorMessage(error: unknown) {
+  return String((error as { message?: string } | null)?.message || 'unknown error');
 }
 
 export async function ensureUserWorkspace(
-  admin: SupabaseAdminLike,
+  admin: unknown,
   input: { authUserId: string; email?: string | null }
-): Promise<
-  | { ok: true; profile: EnsuredWorkspaceProfile; created: boolean }
-  | { ok: false; status: number; error: string }
-> {
-  const email = input.email || null;
+): Promise<EnsureUserWorkspaceResult> {
+  if (!input.authUserId) {
+    return { ok: false, status: 401, error: 'missing_auth_user' };
+  }
 
-  const { data: existing, error: readError } = await admin
+  const client = admin as SupabaseAdminLoose;
+
+  const { data: ensuredOrgId, error: rpcError } = await client.rpc(
+    'dsg_ensure_workspace_for_auth_user',
+    {
+      p_auth_user_id: input.authUserId,
+      p_email: input.email || null,
+    }
+  );
+
+  if (rpcError || !ensuredOrgId) {
+    return {
+      ok: false,
+      status: 500,
+      error: `workspace_bootstrap_failed: ${errorMessage(rpcError)}`,
+    };
+  }
+
+  const { data: profile, error: profileError } = await client
     .from('users')
-    .select('id, auth_user_id, email, org_id, is_active, role')
+    .select('id, auth_user_id, email, org_id, is_active')
     .eq('auth_user_id', input.authUserId)
     .maybeSingle();
 
-  if (readError && !ignorableSchemaError(readError)) {
-    return { ok: false, status: 500, error: `profile_lookup_failed: ${readError.message}` };
-  }
-
-  const orgId = existing?.org_id || randomUUID();
-  const resolvedEmail = existing?.email || email;
-
-  const orgPayload = {
-    id: orgId,
-    name: workspaceName(resolvedEmail),
-    plan: 'trial',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  for (const table of ['organizations', 'orgs']) {
-    const result = await bestEffortUpsert(admin, table, orgPayload, 'id');
-    if (!result.ok) {
-      return { ok: false, status: 500, error: `org_bootstrap_failed: ${result.error.message}` };
-    }
-  }
-
-  let userId = existing?.id || null;
-
-  if (existing) {
-    const updatePayload: Record<string, unknown> = {
-      org_id: orgId,
-      is_active: true,
+  if (profileError) {
+    return {
+      ok: false,
+      status: 500,
+      error: `workspace_profile_lookup_failed: ${errorMessage(profileError)}`,
     };
-
-    if (!existing.email && resolvedEmail) updatePayload.email = resolvedEmail;
-    if (!existing.role) updatePayload.role = 'owner';
-
-    const { error: updateError } = await admin
-      .from('users')
-      .update(updatePayload)
-      .eq('auth_user_id', input.authUserId);
-
-    if (updateError) {
-      return { ok: false, status: 500, error: `profile_update_failed: ${updateError.message}` };
-    }
-  } else {
-    const { data: inserted, error: insertError } = await admin
-      .from('users')
-      .insert({
-        auth_user_id: input.authUserId,
-        email: resolvedEmail,
-        org_id: orgId,
-        is_active: true,
-        role: 'owner',
-      })
-      .select('id')
-      .maybeSingle();
-
-    if (insertError) {
-      return { ok: false, status: 500, error: `profile_insert_failed: ${insertError.message}` };
-    }
-
-    userId = inserted?.id || null;
   }
 
-  if (userId) {
-    await bestEffortUpsert(
-      admin,
-      'user_org_roles',
-      {
-        org_id: orgId,
-        user_id: userId,
-        role: 'owner',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      'org_id,user_id,role'
-    );
-
-    await bestEffortUpsert(
-      admin,
-      'runtime_roles',
-      {
-        org_id: orgId,
-        user_id: userId,
-        role: 'org_admin',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      'org_id,user_id,role'
-    );
+  const orgId = String(profile?.org_id || ensuredOrgId || '');
+  if (!orgId) {
+    return { ok: false, status: 500, error: 'workspace_bootstrap_missing_org_id' };
   }
 
   return {
     ok: true,
-    created: !existing || !existing.org_id || !existing.is_active,
+    bootstrapped: !profile?.org_id || profile?.is_active !== true,
     profile: {
-      user_id: userId,
-      auth_user_id: input.authUserId,
-      email: resolvedEmail,
+      id: profile?.id || null,
+      auth_user_id: String(profile?.auth_user_id || input.authUserId),
+      email: (profile?.email || input.email || null) as string | null,
       org_id: orgId,
       is_active: true,
-      role: existing?.role || 'owner',
     },
   };
 }

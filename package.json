@@ -17,11 +17,12 @@
     "test:failure": "vitest run tests/failure",
     "test:migrations": "vitest run tests/migrations",
     "test:coverage": "vitest run --coverage",
-    "test:live:db": "vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
-    "test:live:db:required": "node scripts/verify-live-env.mjs live-db && vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
+    "test:live:db": "RUN_LIVE_DB_TESTS=true vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
+    "test:live:db:required": "node scripts/verify-live-env.mjs live-db && RUN_LIVE_DB_TESTS=true vitest run tests/integration/api/finance-governance-live-db.test.ts tests/integration/api/audit-evidence.test.ts tests/integration/api/execute-live-db.required.test.ts tests/integration/api/live-db-supabase.required.test.ts",
     "verify:live-env": "node scripts/verify-live-env.mjs all",
     "verify:security-headers": "node scripts/verify-production-security-headers.mjs",
     "verify:policy": "bash scripts/verify-policy.sh",
+    "marketplace:screenshots": "./scripts/with-playwright-chromium.sh node scripts/capture-marketplace-screenshots.mjs",
     "test:e2e": "./scripts/with-playwright-chromium.sh playwright test tests/e2e/enterprise-proof.spec.ts tests/e2e/finance-governance-workflow.spec.ts",
     "screenshot": "./scripts/with-playwright-chromium.sh node scripts/capture-screenshot.mjs",
     "test:e2e:install": "playwright install --with-deps chromium",
@@ -69,28 +70,33 @@
     "@markdoc/next.js": "^0.5.0",
     "@octokit/rest": "^22.0.1",
     "@sentry/nextjs": "^10.48.0",
+    "@solana/web3.js": "^1.98.4",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.99.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ethers": "^6.16.0",
     "lucide-react": "^0.460.0",
     "motion": "^12.40.0",
     "next": "^15.5.18",
+    "posthog-node": "^5.38.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "recharts": "^3.8.1",
+    "redis": "^4.7.0",
     "stripe": "^16.12.0",
-    "tailwind-merge": "^2.6.1"
+    "tailwind-merge": "^2.6.1",
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
-    "@types/node": "^20.17.0",
+    "@types/node": "^24.0.0",
     "@types/react": "^18.2.79",
     "@vitest/coverage-v8": "^3.2.6",
     "autoprefixer": "^10.4.19",
@@ -104,11 +110,15 @@
     "webdriverio": "^9.28.0",
     "z3-solver": "^4.16.0"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "overrides": {
     "qs": "^6.15.2",
     "ws": "^8.20.1",
     "postcss": "^8.5.15",
     "esbuild": ">=0.25.0",
     "form-data": ">=4.0.6"
-  }
+  },
+  "version": "2.6.1"
 }

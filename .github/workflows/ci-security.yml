@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Lockfile guard (deterministic install)
@@ -37,12 +37,28 @@ jobs:
         run: |
           find . -path './node_modules' -prune -o -name '*.sh' -print0 | xargs -0 -r shellcheck || true
 
-      - name: Gitleaks (scan final commit)
+      - name: Gitleaks (scan all commits in PR / last commit on push)
         run: |
           set -euo pipefail
-          GITLEAKS_LOG_OPTS="-1 HEAD"
+          # On pull_request: scan every new commit since the merge-base with main
+          # On push to main: scan the single new commit only
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+            GITLEAKS_LOG_OPTS="${BASE}..${HEAD}"
+            echo "PR mode: scanning commits ${BASE:0:8}..${HEAD:0:8}"
+          else
+            GITLEAKS_LOG_OPTS="-1 HEAD"
+            echo "Push mode: scanning last commit only"
+          fi
           echo "Running gitleaks with log opts: ${GITLEAKS_LOG_OPTS}"
-          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect --source=/repo --config=/repo/.gitleaks.toml --log-opts="${GITLEAKS_LOG_OPTS}" --redact --report-format=json --report-path=/repo/gitleaks-report.json
+          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:v8.24.3 detect \
+            --source=/repo \
+            --config=/repo/.gitleaks.toml \
+            --log-opts="${GITLEAKS_LOG_OPTS}" \
+            --redact \
+            --report-format=json \
+            --report-path=/repo/gitleaks-report.json
 
       - name: Upload gitleaks report
         if: always()

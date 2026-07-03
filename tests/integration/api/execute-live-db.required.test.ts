@@ -4,12 +4,15 @@ import {
   cleanupExecutionFixture,
   countRows,
   createExecutionFixture,
+  waitForCountRows,
   getSupabaseTestAdmin,
   type SupabaseTestFixture,
 } from '../helpers/supabase-test-factory';
 
 const hasLiveEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-const describeLive = hasLiveEnv ? describe : describe.skip;
+// Live-DB suites only run when explicitly opted in (dedicated test:live:db scripts).
+const runLiveDb = process.env.RUN_LIVE_DB_TESTS === 'true';
+const describeLive = hasLiveEnv && runLiveDb ? describe : describe.skip;
 
 function executeRequest(fixture: SupabaseTestFixture, input: unknown = { message: 'live-db-test' }) {
   return new Request('http://localhost/api/execute', {
@@ -72,9 +75,9 @@ describeLive('/api/execute live Supabase required gate', () => {
       }),
     );
 
-    const executionCount = await countRows(supabase, 'executions', { org_id: fixture.orgId, agent_id: fixture.agentId });
-    const auditCount = await countRows(supabase, 'audit_logs', { org_id: fixture.orgId, agent_id: fixture.agentId });
-    const usageCount = await countRows(supabase, 'usage_events', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    const executionCount = await waitForCountRows(supabase, 'executions', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    const auditCount = await waitForCountRows(supabase, 'audit_logs', { org_id: fixture.orgId, agent_id: fixture.agentId });
+    const usageCount = await waitForCountRows(supabase, 'usage_events', { org_id: fixture.orgId, agent_id: fixture.agentId });
 
     expect(executionCount).toBeGreaterThanOrEqual(1);
     expect(auditCount).toBeGreaterThanOrEqual(1);

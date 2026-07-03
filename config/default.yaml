@@ -1,0 +1,84 @@
+app:
+  name: DSG ONE / ProofGate Control Plane
+  environment: development
+  port: 3000
+  host: localhost
+  logLevel: info
+
+supabase:
+  url: ${NEXT_PUBLIC_SUPABASE_URL}
+  anonKey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+  serviceRoleKey: ${SUPABASE_SERVICE_ROLE_KEY}
+  projectId: ${SUPABASE_PROJECT_ID}
+
+auth:
+  mode: supabase-ssr
+  session:
+    maxAge: 86400
+    updateAge: 3600
+
+api:
+  cors:
+    allowOrigins: ${DSG_ALLOWED_ORIGINS}
+    allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowHeaders:
+      - Content-Type
+      - Authorization
+  rateLimit:
+    enabled: true
+    window: 1m
+    maxRequests: 100
+
+governance:
+  policy:
+    default: policy_default
+    strict: true
+  approval:
+    required: false
+    domains: ${APPROVAL_REQUIRED_DOMAINS}
+
+stripe:
+  clientId: ${NEXT_PUBLIC_STRIPE_CLIENT_ID}
+  secretKey: ${STRIPE_SECRET_KEY}
+  webhookSecret: ${STRIPE_WEBHOOK_SECRET}
+  priceIdPro: ${STRIPE_PRICE_PRO}
+  priceIdBusiness: ${STRIPE_PRICE_BUSINESS}
+  meterId: ${STRIPE_METER_ID}
+  overageRateUsd: 0.001
+
+billing:
+  currency: USD
+  timezone: UTC
+  trialDays: 14
+
+features:
+  demoBootstrap: false
+  hermesAI: true
+  financeGovernance: true
+  ccvs: true
+
+integrations:
+  github:
+    appId: ${GITHUB_APP_ID}
+    webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
+  openrouter:
+    enabled: true
+    apiKey: ${OPENROUTER_API_KEY}
+
+ai:
+  preferredLanguage: en
+  supportedLanguages:
+    - en
+    - th
+    - zh
+    - ja
+    - es
+    - fr
+    - de
+    - ko
+  defaultModel: claude-3-5-sonnet-20241022

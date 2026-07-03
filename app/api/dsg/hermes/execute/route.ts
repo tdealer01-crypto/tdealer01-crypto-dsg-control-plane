@@ -147,7 +147,7 @@ async function executeStep(step: AgentPlanStep, context: AgentContext): Promise<
       id: step.id,
       toolId: step.toolId,
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.name : 'step_execution_failed',
     };
   }
 }
@@ -271,7 +271,7 @@ export async function POST(req: NextRequest) {
         });
         send({ type: "done" });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Hermes execution failed";
+        const message = error instanceof Error ? error.name : "Hermes execution failed";
         send({ type: "assistant_reply", reply: `Hermes error: ${message}`, model: "hermes-error", decision: "REVIEW" });
         send({ type: "done" });
       } finally {

@@ -37,6 +37,19 @@ export interface ComplianceMatrix {
 
 export const REQUIREMENT_CATALOG: RequirementControl[] = [
   {
+    requirement_id: 'EU-AI-ACT-ART9',
+    framework: 'EU AI Act',
+    article_or_section: 'Article 9',
+    title: 'Risk management system',
+    control_id: 'CTRL-RISK-GATE',
+    control_description: 'Continuous risk management throughout AI lifecycle; risk scoring and decision gate for all agent actions',
+    test_file: 'tests/unit/spine/pipeline-approval.test.ts',
+    test_suite: 'pipeline-approval',
+    evidence_type: 'integration',
+    min_severity_level: 2,
+    mutation_required: true,
+  },
+  {
     requirement_id: 'EU-AI-ACT-ART14',
     framework: 'EU AI Act',
     article_or_section: 'Article 14',
@@ -67,7 +80,7 @@ export const REQUIREMENT_CATALOG: RequirementControl[] = [
     framework: 'ISO 42001',
     article_or_section: 'Annex A 7.3',
     title: 'AI system risk assessment',
-    control_id: 'CTRL-RISK-GATE',
+    control_id: 'CTRL-AI-RISK-ASSESSMENT',
     control_description: 'Risk scoring and decision gate for AI system actions',
     test_file: 'tests/failure/replay-matrix.test.ts',
     test_suite: 'replay-matrix',

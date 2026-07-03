@@ -189,6 +189,7 @@ export default function ExplorePage() {
                       <img
                         src={article.image}
                         alt={article.title}
+                        loading="lazy"
                         className="w-full h-full object-cover rounded-[--radius-lg] group-hover:scale-110 transition-transform duration-500"
                       />
                     </div>

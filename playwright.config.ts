@@ -14,6 +14,7 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    ignoreHTTPSErrors: true,
     storageState: hasE2ETestCredentials ? 'playwright/.auth/storageState.json' : undefined,
     ...(chromiumExecutablePath ? { launchOptions: { executablePath: chromiumExecutablePath } } : {}),
   },

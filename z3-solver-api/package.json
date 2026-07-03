@@ -1,0 +1,16 @@
+{
+  "name": "z3-solver-api",
+  "version": "1.0.0",
+  "description": "Z3 SMT Solver API for DSG Deterministic Gates",
+  "main": "api/solve.ts",
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "bash test-solver.sh"
+  },
+  "dependencies": {
+    "z3-solver": "^4.16.0"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

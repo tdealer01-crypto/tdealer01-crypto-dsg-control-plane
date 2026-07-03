@@ -17,6 +17,7 @@ const PRIMARY = [
 ];
 
 const MORE = [
+  { href: '/dashboard/trinity', label: '🔱 Trinity AI' },
   { href: '/dashboard/command-center', label: 'Command Center' },
   { href: '/dashboard/policies', label: 'Policies' },
   { href: '/dashboard/proofs', label: 'Proofs' },
@@ -34,6 +35,7 @@ const MORE = [
   { href: '/marketplace/skills', label: 'Skills Marketplace' },
   { href: '/dashboard/referrals', label: 'Referrals' },
   { href: '/app-shell', label: 'App Shell' },
+  { href: '/dashboard/hermes/agents', label: 'Multi-Agent' },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {

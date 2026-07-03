@@ -4,15 +4,23 @@ import { applyRateLimit, getRateLimitKey, buildRateLimitHeaders } from '../../..
 
 export const dynamic = 'force-dynamic';
 
-const OPENAI_BASE = 'https://api.openai.com/v1';
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+
+// Free code-capable models via OpenRouter — tried in order on 429.
+const FREE_MODELS = [
+  process.env.OPENROUTER_MODEL_CODEX || 'deepseek/deepseek-chat-v3-0324:free',
+  'meta-llama/llama-4-maverick:free',
+  'google/gemma-3-27b-it:free',
+  'deepseek/deepseek-r1-0528:free',
+];
 
 function sse(payload: unknown) {
   return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
 // POST /api/dsg-bridge/codex
-// Streams responses from OpenAI codex-mini-latest via Responses API (SSE).
-// Uses OPENAI_API_KEY already set in Vercel — free-tier eligible.
+// Streams responses from OpenRouter free models (chat completions SSE).
+// Uses OPENROUTER_API_KEY — no paid OpenAI key required.
 export async function POST(request: Request) {
   const rl = await applyRateLimit({
     key: getRateLimitKey(request, 'dsg-codex'),
@@ -23,9 +31,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'rate_limit_exceeded' }, { status: 429 });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ ok: false, error: 'OPENAI_API_KEY not configured' }, { status: 503 });
+    return NextResponse.json({ ok: false, error: 'OPENROUTER_API_KEY not configured' }, { status: 503 });
   }
 
   const supabase = await createClient();
@@ -39,99 +47,110 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'input is required' }, { status: 400 });
   }
 
-  const payload = {
-    model: body.model ?? 'codex-mini-latest',
-    input: body.input,
-    instructions: body.instructions ?? 'You are a DSG governance and audit agent. Reply in the same language as the user.',
-    stream: true,
-    tools: body.tools ?? [{ type: 'code_interpreter' }],
-    ...(body.previous_response_id ? { previous_response_id: body.previous_response_id } : {}),
-  };
+  const systemPrompt = body.instructions
+    ?? 'You are a DSG governance and audit agent. Reply in the same language as the user.';
 
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
-      let responseId: string | null = null;
+      const enqueue = (payload: unknown) =>
+        controller.enqueue(encoder.encode(sse(payload)));
 
-      try {
-        const res = await fetch(`${OPENAI_BASE}/responses`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(payload),
-        });
+      for (const model of FREE_MODELS) {
+        try {
+          const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: body.input },
+              ],
+              stream: true,
+              max_tokens: body.max_tokens ?? 1000,
+              temperature: body.temperature ?? 0.7,
+            }),
+          });
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
-          controller.enqueue(encoder.encode(sse({ type: 'error', error: (err as any).error?.message ?? 'OpenAI error' })));
-          controller.close();
-          return;
-        }
+          if (res.status === 429) {
+            const detail = await res.text().catch(() => '');
+            console.error(
+              `[dsg-bridge/codex] OpenRouter 429 for "${model}", trying next: ${detail.slice(0, 200)}`,
+            );
+            continue;
+          }
 
-        const reader = res.body?.getReader();
-        if (!reader) {
-          controller.enqueue(encoder.encode(sse({ type: 'error', error: 'no_stream' })));
-          controller.close();
-          return;
-        }
+          if (!res.ok) {
+            const detail = await res.text().catch(() => '');
+            console.error(
+              `[dsg-bridge/codex] OpenRouter ${res.status} for "${model}": ${detail.slice(0, 300)}`,
+            );
+            enqueue({ type: 'error', error: `LLM error ${res.status}` });
+            controller.close();
+            return;
+          }
 
-        const dec = new TextDecoder();
-        let buf = '';
+          const reader = res.body?.getReader();
+          if (!reader) {
+            enqueue({ type: 'error', error: 'no_stream' });
+            controller.close();
+            return;
+          }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += dec.decode(value, { stream: true });
+          const dec = new TextDecoder();
+          let buf = '';
+          let fullContent = '';
 
-          const lines = buf.split('\n');
-          buf = lines.pop() ?? '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
 
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const raw = line.slice(6).trim();
-            if (raw === '[DONE]') continue;
+            const lines = buf.split('\n');
+            buf = lines.pop() ?? '';
 
-            try {
-              const event = JSON.parse(raw) as Record<string, unknown>;
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const raw = line.slice(6).trim();
+              if (raw === '[DONE]') continue;
 
-              // Capture response ID for multi-turn
-              if (event.type === 'response.created' && typeof event.response === 'object') {
-                responseId = (event.response as any)?.id ?? null;
+              try {
+                const chunk = JSON.parse(raw) as Record<string, unknown>;
+                const delta = (chunk as any).choices?.[0]?.delta?.content;
+                if (typeof delta === 'string' && delta) {
+                  fullContent += delta;
+                  enqueue({ type: 'token', content: delta, model });
+                }
+              } catch {
+                // skip malformed SSE lines
               }
-
-              // Stream text deltas to client
-              if (event.type === 'response.output_text.delta') {
-                controller.enqueue(encoder.encode(sse({
-                  type: 'token',
-                  content: (event as any).delta ?? '',
-                  model: 'codex-mini-latest',
-                })));
-              }
-
-              // Done event
-              if (event.type === 'response.completed') {
-                controller.enqueue(encoder.encode(sse({
-                  type: 'done',
-                  responseId,
-                  model: 'codex-mini-latest',
-                })));
-              }
-            } catch {
-              // skip malformed SSE lines
             }
           }
+
+          // Emit done with a synthetic responseId so the widget can track turns.
+          enqueue({
+            type: 'done',
+            responseId: `or-${Date.now()}`,
+            model,
+          });
+          controller.close();
+          return;
+        } catch (err) {
+          console.error(`[dsg-bridge/codex] Unexpected error for "${model}":`, err);
+          enqueue({ type: 'error', error: 'stream_error' });
+          controller.close();
+          return;
         }
-      } catch (err) {
-        controller.enqueue(encoder.encode(sse({
-          type: 'error',
-          error: err instanceof Error ? 'Internal server error' : 'stream_error',
-        })));
-      } finally {
-        controller.close();
       }
+
+      // All models exhausted
+      enqueue({ type: 'error', error: 'All models rate-limited — try again later' });
+      controller.close();
     },
   });
 

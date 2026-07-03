@@ -455,6 +455,35 @@ describe('POST /api/webhooks/stripe (Stripe webhook handler)', () => {
         },
       })),
     }));
+
+    // Ensure Supabase calls don't depend on env-backed admin client in tests
+    vi.doMock('@/lib/supabase-server', () => ({
+      getSupabaseAdmin: vi.fn(() => ({
+        from: vi.fn().mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({}),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            catch: vi.fn().mockResolvedValue({}),
+          }),
+          insert: vi.fn().mockReturnValue({
+            catch: vi.fn().mockResolvedValue({}),
+          }),
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+        }),
+      })),
+    }));
+
+    vi.doMock('@/lib/revenue/events', () => ({
+      insertRevenueEvent: vi.fn(async () => ({ id: 'rev_123' })),
+    }));
+
+    vi.doMock('@/app/api/billing/webhook/route', () => ({
+      POST: vi.fn(async () => new Response(JSON.stringify({ received: true }), { status: 200 })),
+    }));
     
     // Mock the Supabase RPC calls
     vi.doMock('../../../lib/dsg/server/supabase-rpc', () => ({

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const result = await dsgOneClient.ai.gateway(session.access_token, {
-    model: body.model ?? 'codex-mini-latest',
+    model: body.model ?? 'deepseek/deepseek-chat-v3-0324:free',
     messages: body.messages,
     tools: body.tools,
     temperature: body.temperature,

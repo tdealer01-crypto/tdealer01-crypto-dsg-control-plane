@@ -1,201 +1,262 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useRef, useEffect } from 'react';
 
-type Step = 'pending' | 'reviewing' | 'approved' | 'rejected';
+type Message = { role: 'user' | 'assistant'; content: string };
 
-const SAMPLE_REQUEST = {
-  id: 'req-demo-8f2a',
-  agent: 'FinanceAgent v2.1',
-  action: 'Process vendor payment — $48,500 USD',
-  vendor: 'Acme Cloud Services',
-  policy: 'payments > $10,000 require human approval',
-  riskScore: 72,
-  submittedAt: '2026-05-16T09:14:22Z',
-  evidence: {
-    inputHash: 'sha256:a3f8e2c1d4b7...',
-    policyVersion: 'policy-v3.2.1',
-    agentId: 'agent_finance_001',
-    requestId: 'req-demo-8f2a',
-  },
-};
+const QUICK_ACTIONS = [
+  { label: '🔍 ตรวจสอบระบบ', message: 'readiness check' },
+  { label: '👥 ดู Agents', message: 'list agents' },
+  { label: '📊 ดู Executions', message: 'show recent executions' },
+  { label: '💰 ดูความจุ', message: 'check capacity' },
+  { label: '🛡 สั่งงานผิดกฎ (ลอง)', message: 'delete all user records' },
+];
 
-function AuditLine({ text, delay }: { text: string; delay: string }) {
-  return (
-    <div className="animate-fade-in font-mono text-xs text-emerald-300" style={{ animationDelay: delay }}>
-      <span className="text-slate-500">{new Date().toISOString().slice(11, 19)}Z</span>{' '}
-      {text}
-    </div>
-  );
-}
+const GATE_QUICK = [
+  { label: '1. Declare Session', action: 'declare' },
+  { label: '2. Gate Action (ALLOW)', action: 'allow' },
+  { label: '3. Gate Action (BLOCK)', action: 'block' },
+];
 
 export default function DemoPage() {
-  const [step, setStep] = useState<Step>('pending');
-  const [comment, setComment] = useState('');
+  const [tab, setTab] = useState<'chat' | 'gate'>('chat');
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'assistant', content: 'สวัสดีครับ ผมคือ DSG Agent พร้อมช่วยเหลื้อคุณ\n\nลองถามคำถาม หรือกดปุ่มด้านล่างเพื่อเริ่มต้นใช้งาน' },
+  ]);
+  const [input, setInput] = useState('');
+  const [sessionId, setSessionId] = useState('demo-' + Math.random().toString(36).slice(2, 10));
+  const [declared, setDeclared] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  function approve() {
-    setStep('reviewing');
-    setTimeout(() => setStep('approved'), 1200);
-  }
-  function reject() {
-    setStep('reviewing');
-    setTimeout(() => setStep('rejected'), 1200);
-  }
-  function reset() {
-    setStep('pending');
-    setComment('');
-  }
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (msg: string) => {
+    if (!msg.trim()) return;
+    setMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    setInput('');
+
+    try {
+      const res = await fetch('/api/try/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg }),
+      });
+      const data = await res.json();
+      const response = data.response || data.error || 'Sorry, I could not answer that.';
+      setMessages((prev) => [...prev, { role: 'assistant', content: response }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠️ ไม่สามารถเชื่อมต่อได้' }]);
+    }
+  };
+
+  const handleGate = async (action: 'declare' | 'allow' | 'block') => {
+    if (action === 'declare') {
+      setMessages((prev) => [...prev, { role: 'user', content: 'Declare Session: read database, send email' }]);
+      try {
+        const res = await fetch('/api/try/gate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            declared_actions: ['read database', 'send email', 'update user record'],
+            ttl_minutes: 30,
+          }),
+        });
+        const data = await res.json();
+        const content = data.ok
+          ? `✅ Session declared!\nStamp: ${data.declaration_stamp}\nActions: ${data.declared_actions.join(', ')}\nTTL: ${data.ttl_minutes} นาที`
+          : `❌ ${data.error}`;
+        setMessages((prev) => [...prev, { role: 'assistant', content }]);
+        setDeclared(true);
+      } catch {
+        setMessages((prev) => [...prev, { role: 'assistant', content: '❌ ไม่สามารถเชื่อมต่อได้' }]);
+      }
+    } else if (action === 'allow') {
+      setMessages((prev) => [...prev, { role: 'user', content: 'send email to customer@example.com' }]);
+      try {
+        const res = await fetch('/api/try/gate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, action: 'send email to customer@example.com' }),
+        });
+        const data = await res.json();
+        const content = data.decision === 'ALLOW'
+          ? `✅ ${data.decision}\nStamp: ${data.stamp}\nStamps issued: ${data.session_state?.stamps_issued}`
+          : `❌ ${data.decision}\nReason: ${data.reason}`;
+        setMessages((prev) => [...prev, { role: 'assistant', content }]);
+      } catch {
+        setMessages((prev) => [...prev, { role: 'assistant', content: '❌ ไม่สามารถเชื่อมต่อได้' }]);
+      }
+    } else if (action === 'block') {
+      setMessages((prev) => [...prev, { role: 'user', content: 'delete all user records' }]);
+      try {
+        const res = await fetch('/api/try/gate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, action: 'delete all user records' }),
+        });
+        const data = await res.json();
+        const content = data.decision === 'BLOCK'
+          ? `🛡️ ${data.decision}\nReason: ${data.reason}\n\n💡 Agent Guidance:\n${data.agent_guidance?.suggested_llm_prompt}`
+          : `✅ ${data.decision}\nStamp: ${data.stamp}`;
+        setMessages((prev) => [...prev, { role: 'assistant', content }]);
+      } catch {
+        setMessages((prev) => [...prev, { role: 'assistant', content: '❌ ไม่สามารถเชื่อมต่อได้' }]);
+      }
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-12 text-slate-100">
-      <div className="mx-auto max-w-3xl">
-        <p className="text-center text-xs uppercase tracking-widest text-emerald-400">Interactive Demo</p>
-        <h1 className="mt-2 text-center text-3xl font-black md:text-4xl">
-          AI asks for approval — you decide
-        </h1>
-        <p className="mt-3 text-center text-slate-400">
-          This is a live simulation of DSG ONE&apos;s approval workflow. No login required.
-        </p>
-
-        {/* Request card */}
-        <div className="mt-10 rounded-2xl border border-slate-700 bg-slate-900 p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500">Approval Request</p>
-              <p className="mt-1 text-lg font-bold text-white">{SAMPLE_REQUEST.action}</p>
-              <p className="mt-1 text-sm text-slate-400">
-                Agent: <span className="text-slate-200">{SAMPLE_REQUEST.agent}</span> ·{' '}
-                Vendor: <span className="text-slate-200">{SAMPLE_REQUEST.vendor}</span>
-              </p>
-            </div>
-            <div className={[
-              'shrink-0 rounded-xl px-3 py-1 text-xs font-bold',
-              step === 'pending' ? 'bg-amber-500/20 text-amber-300' :
-              step === 'reviewing' ? 'bg-blue-500/20 text-blue-300' :
-              step === 'approved' ? 'bg-emerald-500/20 text-emerald-300' :
-              'bg-rose-500/20 text-rose-300',
-            ].join(' ')}>
-              {step === 'reviewing' ? 'Processing…' : step.toUpperCase()}
-            </div>
+    <div className="flex h-screen flex-col bg-[#07080b] text-white">
+      {/* Header */}
+      <header className="flex items-center justify-between border-b border-white/10 px-6 py-3">
+        <div className="flex items-center gap-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 text-sm font-bold text-black">
+            DSG
           </div>
-
-          <div className="mt-4 grid gap-2 rounded-xl bg-slate-950 p-4 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Policy triggered</span>
-              <span className="text-slate-300">{SAMPLE_REQUEST.policy}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Risk score</span>
-              <span className={SAMPLE_REQUEST.riskScore > 60 ? 'font-bold text-amber-300' : 'text-emerald-300'}>
-                {SAMPLE_REQUEST.riskScore}/100
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Input hash</span>
-              <span className="font-mono text-slate-400">{SAMPLE_REQUEST.evidence.inputHash}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Policy version</span>
-              <span className="font-mono text-slate-400">{SAMPLE_REQUEST.evidence.policyVersion}</span>
-            </div>
+          <div>
+            <h1 className="text-sm font-semibold">DSG ONE Demo</h1>
+            <p className="text-[10px] text-slate-500">Interactive AI Control Plane</p>
           </div>
-
-          {/* Actions */}
-          {step === 'pending' && (
-            <>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a review comment (optional)…"
-                rows={2}
-                className="mt-4 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
-              />
-              <div className="mt-3 flex gap-3">
-                <button
-                  onClick={approve}
-                  className="flex-1 rounded-xl bg-emerald-500 py-3 text-sm font-bold text-black hover:bg-emerald-400"
-                >
-                  ✅ Approve Payment
-                </button>
-                <button
-                  onClick={reject}
-                  className="flex-1 rounded-xl border border-rose-500/40 bg-rose-500/10 py-3 text-sm font-bold text-rose-300 hover:bg-rose-500/20"
-                >
-                  ❌ Reject
-                </button>
-              </div>
-            </>
-          )}
-
-          {step === 'reviewing' && (
-            <div className="mt-4 text-center text-sm text-slate-400 animate-pulse">
-              Writing to audit ledger…
-            </div>
-          )}
-
-          {/* Result */}
-          {(step === 'approved' || step === 'rejected') && (
-            <div className={[
-              'mt-4 rounded-xl border p-4',
-              step === 'approved' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/10',
-            ].join(' ')}>
-              <p className="font-bold">
-                {step === 'approved' ? '✅ Payment approved and queued' : '❌ Payment rejected'}
-              </p>
-              {comment && <p className="mt-1 text-sm text-slate-400">Comment: &quot;{comment}&quot;</p>}
-
-              <div className="mt-4 space-y-1.5 rounded-xl bg-slate-950 p-3">
-                <p className="mb-2 text-[10px] uppercase tracking-widest text-slate-500">Audit Trail — Live</p>
-                <AuditLine text={`[GATE] policy=payments-over-10k triggered for ${SAMPLE_REQUEST.id}`} delay="0ms" />
-                <AuditLine text={`[APPROVAL] decision=${step.toUpperCase()} reviewer=demo-user`} delay="200ms" />
-                <AuditLine text={`[LEDGER] entry written hash=sha256:${Math.random().toString(16).slice(2, 18)}`} delay="400ms" />
-                <AuditLine text={`[EVIDENCE] bundle signed policyVersion=${SAMPLE_REQUEST.evidence.policyVersion}`} delay="600ms" />
-                <AuditLine text={`[NOTIFY] ${step === 'approved' ? 'payment queued for execution' : 'agent blocked, workflow halted'}`} delay="800ms" />
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <button onClick={reset} className="rounded-xl border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:border-slate-500">
-                  Try again
-                </button>
-                <Link
-                  href="/request-access"
-                  className="flex-1 rounded-xl bg-emerald-500 px-4 py-2 text-center text-sm font-bold text-black hover:bg-emerald-400"
-                >
-                  Use this in my org — Start Free Trial →
-                </Link>
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* Feature bullets */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          {[
-            { icon: '🔒', title: 'Every AI action gated', body: 'Policies block high-risk actions before execution' },
-            { icon: '📋', title: 'Tamper-proof audit trail', body: 'Every decision signed and hashed in the ledger' },
-            { icon: '⚡', title: 'Real-time notifications', body: 'Approvers get email + dashboard alerts instantly' },
-          ].map((f) => (
-            <div key={f.title} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <p className="text-2xl">{f.icon}</p>
-              <p className="mt-2 font-bold">{f.title}</p>
-              <p className="mt-1 text-sm text-slate-400">{f.body}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-10 text-center">
-          <Link
-            href="/request-access"
-            className="inline-block rounded-2xl bg-emerald-500 px-8 py-4 text-base font-bold text-black hover:bg-emerald-400"
+        <div className="flex gap-1 rounded-xl bg-white/5 p-1">
+          <button
+            onClick={() => setTab('chat')}
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
+              tab === 'chat' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white'
+            }`}
           >
-            Start Free Trial — No credit card required
-          </Link>
-          <p className="mt-3 text-xs text-slate-500">
-            Trial includes 1,000 executions · 14-day free · Upgrade anytime
-          </p>
+            💬 Chat
+          </button>
+          <button
+            onClick={() => setTab('gate')}
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
+              tab === 'gate' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            🛡️ Gate
+          </button>
         </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col overflow-hidden p-4">
+        {/* Tabs Content */}
+        {tab === 'chat' ? (
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Messages */}
+            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              {messages.map((msg, i) => (
+                <div key={i} className={msg.role === 'user' ? 'ml-auto max-w-[80%]' : 'max-w-[80%]'}>
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-emerald-500/20 text-emerald-100'
+                        : 'border border-white/10 bg-white/[0.03] text-slate-200'
+                    }`}
+                  >
+                    <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mt-3 flex gap-2 overflow-x-auto py-1">
+              {QUICK_ACTIONS.map((qa) => (
+                <button
+                  key={qa.label}
+                  onClick={() => sendMessage(qa.message)}
+                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10"
+                >
+                  {qa.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Input */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+              className="mt-3 flex gap-2"
+            >
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="ถามคำถามหรือสั่งงาน..."
+                className="flex-1 rounded-xl border border-white/10 bg-[#0a0c12] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-400/50"
+              />
+              <button
+                type="submit"
+                className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+              >
+                ส่ง
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Gate Status */}
+            <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-500">Session ID</span>
+                  <code className="ml-2 rounded bg-white/10 px-2 py-0.5 text-xs text-emerald-300">{sessionId}</code>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  declared ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                }`}>
+                  {declared ? '✅ Active' : '⏳ Not declared'}
+                </span>
+              </div>
+            </div>
+
+            {/* Gate Messages */}
+            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              {messages.length === 1 && !declared && (
+                <div className="text-center text-sm text-slate-500">
+                  <p>🛡️ DSG Gate Demo</p>
+                  <p className="mt-2">กดปุ่มด้านล่างเพื่อเริ่มต้นใช้งาน</p>
+                </div>
+              )}
+              {messages.slice(1).map((msg, i) => (
+                <div key={i} className={msg.role === 'user' ? 'ml-auto max-w-[80%]' : 'max-w-[80%]'}>
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-blue-500/20 text-blue-100'
+                        : msg.content.includes('✅') || msg.content.includes('Stamp')
+                          ? 'border border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                          : msg.content.includes('🛡️') || msg.content.includes('❌')
+                            ? 'border border-rose-400/30 bg-rose-400/10 text-rose-200'
+                            : 'border border-white/10 bg-white/[0.03] text-slate-200'
+                    }`}
+                  >
+                    <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Gate Quick Actions */}
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2 overflow-x-auto py-1">
+                {GATE_QUICK.map((qa) => (
+                  <button
+                    key={qa.action}
+                    onClick={() => handleGate(qa.action as 'declare' | 'allow' | 'block')}
+                    disabled={qa.action !== 'declare' && !declared}
+                    className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 disabled:opacity-30"
+                  >
+                    {qa.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </main>
+    </div>
   );
 }

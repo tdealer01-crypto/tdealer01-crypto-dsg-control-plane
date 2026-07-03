@@ -1,0 +1,74 @@
+name: E2E Production Health Check
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run every 15 minutes to catch production regressions early
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health:
+    name: Production Health & E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run infrastructure health checks
+        run: npx playwright test tests/e2e/infrastructure.spec.ts --reporter=list
+        env:
+          PLAYWRIGHT_BASE_URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+          SKIP_TUNNEL_HEALTH: 'true'
+
+      - name: Run API auth guard tests (no credentials needed)
+        run: |
+          npx playwright test \
+            tests/e2e/audit.spec.ts \
+            tests/e2e/pdf-export.spec.ts \
+            tests/e2e/hermes-chat.spec.ts \
+            tests/e2e/hermes-sessions.spec.ts \
+            --reporter=list
+        env:
+          PLAYWRIGHT_BASE_URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+      - name: Run public page smoke tests
+        run: |
+          npx playwright test \
+            tests/e2e/marketplace.spec.ts \
+            tests/e2e/support.spec.ts \
+            --reporter=list
+        env:
+          PLAYWRIGHT_BASE_URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-production-failure-${{ github.run_id }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

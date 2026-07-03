@@ -1,9 +1,110 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '../../../lib/supabase/server';
+import { requireActiveProfile } from '../../../lib/auth/require-active-profile';
+import { checkDeliveryProofEntitlement } from '../../../lib/delivery-proof/entitlement';
 
 export const dynamic = 'force-dynamic';
 
 function generatedAt() {
   return new Date().toLocaleString('en-GB', { timeZone: 'UTC', hour12: false }) + ' UTC';
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+interface CustomerCheck {
+  name?: string;
+  status?: string;
+  detail?: string;
+}
+
+interface CustomerReport {
+  run_id: string;
+  claim_pass_eligible: boolean | null;
+  requirements_pass: number | null;
+  requirements_total: number | null;
+  last_ci_run: string | null;
+  updated_at: string | null;
+  matrix_json: { checks?: CustomerCheck[]; production_url?: string } | null;
+}
+
+async function fetchCustomerReport(runId: string): Promise<CustomerReport | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('delivery_proof_reports')
+      .select('run_id, claim_pass_eligible, requirements_pass, requirements_total, last_ci_run, updated_at, matrix_json')
+      .eq('run_id', runId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as unknown as CustomerReport;
+  } catch {
+    return null;
+  }
+}
+
+/** Paid Delivery-Proof tiers unlock the per-customer evidence section. */
+async function isEntitledToCustomerEvidence(): Promise<boolean> {
+  try {
+    const profile = await requireActiveProfile();
+    if (!profile.ok) return false;
+    const entitlement = await checkDeliveryProofEntitlement(profile.orgId);
+    return entitlement.tier !== 'free';
+  } catch {
+    return false;
+  }
+}
+
+function renderCustomerSection(report: CustomerReport): string {
+  const claim = report.claim_pass_eligible === true
+    ? '<span style="color:#16a34a;font-weight:800">EVIDENCE COMPLETE ✓</span>'
+    : report.claim_pass_eligible === false
+      ? '<span style="color:#dc2626;font-weight:800">PRODUCTION BLOCKED ✗</span>'
+      : '<span style="color:#64748b;font-weight:800">PENDING</span>';
+  const checks = Array.isArray(report.matrix_json?.checks) ? report.matrix_json!.checks! : [];
+  const checkRows = checks.map((c) => `
+    <tr>
+      <td style="font-weight:600">${escapeHtml(c.name)}</td>
+      <td style="text-align:center;font-weight:700;color:${c.status === 'pass' ? '#16a34a' : c.status === 'fail' ? '#dc2626' : '#64748b'}">${escapeHtml((c.status ?? 'skip').toUpperCase())}</td>
+      <td style="font-size:11px;color:#334155">${escapeHtml(c.detail)}</td>
+    </tr>`).join('');
+
+  return `
+<!-- Section 0: Customer Deployment Evidence -->
+<div class="section">
+  <div class="section-num">Customer Evidence</div>
+  <div class="section-title">Customer Deployment Evidence — run ${escapeHtml(report.run_id)}</div>
+  <p style="font-size:11px;color:#64748b;margin-bottom:12px">
+    Live probe results for <strong style="color:#0f172a">${escapeHtml(report.matrix_json?.production_url ?? 'n/a')}</strong>
+    · Claim result: ${claim}
+    · Requirements: ${escapeHtml(report.requirements_pass ?? 'n/a')}/${escapeHtml(report.requirements_total ?? 'n/a')}
+    · Scanned: ${escapeHtml(report.last_ci_run ?? report.updated_at ?? 'n/a')}
+  </p>
+  <table>
+    <thead><tr><th>Probe</th><th style="text-align:center">Result</th><th>Detail</th></tr></thead>
+    <tbody>${checkRows || '<tr><td colspan="3" style="color:#64748b">No probe detail recorded for this run.</td></tr>'}</tbody>
+  </table>
+  <p style="font-size:10px;color:#94a3b8;margin-top:8px">
+    This section is generated from the persisted delivery-proof scan for the requested run_id.
+    It is live-endpoint probe evidence, not a code audit.
+  </p>
+</div>`;
+}
+
+function renderUpgradeBanner(runId: string): string {
+  return `
+<div class="disclaimer-banner" style="background:#ecfdf5;border-color:#6ee7b7;border-left-color:#059669;color:#065f46">
+  <strong style="color:#065f46">Customer Deployment Evidence — Upgrade Required</strong>
+  A delivery-proof scan (run ${escapeHtml(runId)}) was requested for inclusion in this pack, but per-customer
+  evidence sections are part of the paid Delivery-Proof tiers. Sign in with a Pro or Unlimited plan to embed
+  your own deployment evidence in this document.
+  <a href="/delivery-proof" style="color:#047857;font-weight:700">Upgrade at /delivery-proof →</a>
+</div>`;
 }
 
 const POLICY_THEOREMS = [
@@ -91,8 +192,28 @@ const ISO_CONTROLS = [
   { ref: 'A.10.1', title: 'Continual Improvement', control: 'Test coverage enforced as monotonically non-decreasing. 874 automated tests prevent regression in governance logic.' },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   const now = generatedAt();
+
+  // Optional per-customer evidence: ?run_id=<delivery-proof run>
+  // No run_id → static pack, identical to previous behavior.
+  let customerSection = '';
+  try {
+    const runId = new URL(request.url).searchParams.get('run_id');
+    if (runId) {
+      if (await isEntitledToCustomerEvidence()) {
+        const report = await fetchCustomerReport(runId);
+        customerSection = report
+          ? renderCustomerSection(report)
+          : renderUpgradeBanner(runId).replace('Upgrade Required', 'Run Not Found')
+              .replace(/A delivery-proof scan[^<]*/, `No persisted delivery-proof report exists for run ${escapeHtml(runId)}. Run a new scan at /delivery-proof to generate one. `);
+      } else {
+        customerSection = renderUpgradeBanner(runId);
+      }
+    }
+  } catch {
+    customerSection = '';
+  }
 
   const theoremRows = POLICY_THEOREMS.map(t => `
     <tr>
@@ -401,7 +522,7 @@ export async function GET() {
   <strong style="margin-top:6px;display:block">independentAuditClaim = false</strong> — Evidence has not been independently verified by an accredited third-party auditor.
   Source code and all test files are publicly available for independent reproduction. Contact DSG ONE for an evidence review session.
 </div>
-
+${customerSection}
 <!-- Section 1: System Identity -->
 <div class="section">
   <div class="section-num">Section 1</div>

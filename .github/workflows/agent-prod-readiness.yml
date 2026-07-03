@@ -1,0 +1,93 @@
+name: Agent — Production Readiness
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: read
+
+jobs:
+  prod-readiness-agent:
+    if: github.event.workflow_run.conclusion == 'failure' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    name: Production Readiness Check
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        id: build
+        continue-on-error: true
+        run: npm run build
+
+      - name: Type Check
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Check Deployment Config
+        id: config
+        continue-on-error: true
+        run: |
+          echo "Checking Vercel configuration..."
+          test -f vercel.json && echo "VERCEL_JSON=present" >> $GITHUB_OUTPUT || echo "VERCEL_JSON=missing" >> $GITHUB_OUTPUT
+          echo "Checking environment variable documentation..."
+          test -f .env.example && echo "ENV_DOCS=present" >> $GITHUB_OUTPUT || echo "ENV_DOCS=missing" >> $GITHUB_OUTPUT
+
+      - name: Report Production Readiness
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const buildStatus = '${{ steps.build.outcome }}' === 'success' ? '✅' : '❌';
+            const typeStatus = '${{ steps.typecheck.outcome }}' === 'success' ? '✅' : '❌';
+            const configStatus = '${{ steps.config.outputs.VERCEL_JSON }}' === 'present' ? '✅' : '❌';
+
+            let message = '## 🚀 Production Readiness Agent Report\n\n';
+            message += '### Build Status\n';
+            message += `- Next.js Build: ${buildStatus}\n`;
+            message += `- TypeScript Check: ${typeStatus}\n`;
+            message += `- Vercel Config: ${configStatus}\n`;
+            message += '\n### Production Criteria\n';
+
+            const allReady = '${{ steps.build.outcome }}' === 'success' &&
+                           '${{ steps.typecheck.outcome }}' === 'success' &&
+                           '${{ steps.config.outputs.VERCEL_JSON }}' === 'present';
+
+            if (allReady) {
+              message += '✅ **READY FOR PRODUCTION**\n';
+              message += '- All builds passing\n';
+              message += '- TypeScript types verified\n';
+              message += '- Deployment config present\n';
+            } else {
+              message += '❌ **NOT READY FOR PRODUCTION**\n';
+              message += '- Fix build errors before deployment\n';
+              message += '- Resolve type errors\n';
+              message += '- Verify deployment configuration\n';
+            }
+
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

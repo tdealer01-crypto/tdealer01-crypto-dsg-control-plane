@@ -1,0 +1,90 @@
+name: Agent — Test & QA Runner
+
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types: [completed]
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "tests/**"
+      - "lib/**"
+      - "app/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+
+jobs:
+  test-qa-agent:
+    if: github.event.workflow_run.conclusion == 'failure' || github.event.pull_request.action != null
+    runs-on: ubuntu-latest
+    name: Test & QA Analysis
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Unit Tests
+        id: unit
+        continue-on-error: true
+        run: npm run test:unit
+
+      - name: Run Integration Tests
+        id: integration
+        continue-on-error: true
+        run: npm run test:integration
+
+      - name: Run Failure Tests
+        id: failure
+        continue-on-error: true
+        run: npm run test:failure
+
+      - name: Calculate Coverage
+        id: coverage
+        continue-on-error: true
+        run: npm run test:coverage
+
+      - name: Report Test Results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const unitStatus = '${{ steps.unit.outcome }}' === 'success' ? '✅' : '❌';
+            const integrationStatus = '${{ steps.integration.outcome }}' === 'success' ? '✅' : '❌';
+            const failureStatus = '${{ steps.failure.outcome }}' === 'success' ? '✅' : '❌';
+
+            let message = '## 🧪 Test & QA Agent Report\n\n';
+            message += '### Test Results\n';
+            message += `- Unit Tests: ${unitStatus}\n`;
+            message += `- Integration Tests: ${integrationStatus}\n`;
+            message += `- Failure/Adversarial Tests: ${failureStatus}\n`;
+            message += '\n### Recommendation\n';
+
+            const allPass = '${{ steps.unit.outcome }}' === 'success' &&
+                          '${{ steps.integration.outcome }}' === 'success' &&
+                          '${{ steps.failure.outcome }}' === 'success';
+
+            if (allPass) {
+              message += 'All tests passing ✅ - Safe to merge';
+            } else {
+              message += 'Test failures detected - Review and fix before merge';
+            }
+
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

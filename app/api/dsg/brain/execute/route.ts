@@ -18,6 +18,7 @@ import { createShellExecutor } from "@/lib/dsg/brain/shell-executor";
 import { evaluateAction } from "@/lib/dsg/evaluate-action";
 import { describeModelConfig } from "@/lib/dsg/brain/model-config";
 import { DSG_HERMES_TOOLS } from "@/lib/dsg/brain/hermes-nous-provider";
+import { callHermesAPIResilient, formatHermesError } from "@/lib/dsg/brain/hermes-api-resilient";
 
 interface ExecuteRequest {
   input: string;
@@ -45,51 +46,111 @@ interface ExecuteResponse {
 }
 
 /**
- * Call Anthropic API to generate a plan from input.
- * Uses server-side ANTHROPIC_API_KEY only (never exposed).
+ * Call LLM API to generate a plan from input.
+ * Supports Anthropic and OpenRouter (with resilient retry + fallback to free models).
  */
 async function generatePlanWithLLM(
   input: string,
-  model: string
+  model: string,
+  provider: string
 ): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
+  // Provider: Anthropic
+  if (provider === 'anthropic') {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error("ANTHROPIC_API_KEY not configured");
+    }
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: `You are a planning agent. Generate a concise, actionable plan for the following request. Return only the plan text, no explanation.\n\nRequest: ${input}`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Anthropic API error: ${response.status} ${err}`);
+    }
+
+    const data = (await response.json()) as {
+      content: Array<{ type: string; text?: string }>;
+    };
+    const content = data.content?.[0];
+    if (content?.type === "text" && content.text) {
+      return content.text;
+    }
+
+    throw new Error("No text content in Anthropic response");
   }
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      messages: [
+  // Provider: OpenRouter with Hermes (resilient with retry + fallback)
+  if (provider === 'nous-hermes') {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY not configured");
+    }
+
+    const systemPrompt = `You are a planning agent for deterministic governance.
+Generate a concise, actionable execution plan.
+Return only the plan text, no explanation.
+Format as:
+Step 1: [command] - [reason]
+Step 2: [command] - [reason]
+...`;
+
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: `Generate plan for: ${input}` },
+    ];
+
+    const headers = {
+      'HTTP-Referer': 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+      'X-Title': 'DSG ONE ProofGate',
+    };
+
+    try {
+      // Use resilient caller with retry + fallback to free models
+      const response = await callHermesAPIResilient(
+        'https://openrouter.ai/api/v1',
+        `Bearer ${apiKey}`,
+        messages,
+        [], // No tools for simple planning
+        model,
+        1024,
+        headers,
         {
-          role: "user",
-          content: `You are a planning agent. Generate a concise, actionable plan for the following request. Return only the plan text, no explanation.\n\nRequest: ${input}`,
-        },
-      ],
-    }),
-  });
+          maxRetries: 3,
+          initialDelayMs: 1000,
+          enableFallback: true, // Enable automatic fallback to free models
+        }
+      );
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Anthropic API error: ${response.status} ${err}`);
+      const choice = response.choices?.[0];
+      if (choice?.message?.content) {
+        return choice.message.content;
+      }
+
+      throw new Error("No content in OpenRouter response");
+    } catch (err) {
+      const formatted = formatHermesError(err);
+      throw new Error(`OpenRouter API error: ${formatted}`);
+    }
   }
 
-  const data = (await response.json()) as {
-    content: Array<{ type: string; text?: string }>;
-  };
-  const content = data.content?.[0];
-  if (content?.type === "text" && content.text) {
-    return content.text;
-  }
-
-  throw new Error("No text content in Anthropic response");
+  throw new Error(`Unknown provider: ${provider}`);
 }
 
 /**
@@ -138,10 +199,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExecuteRespon
     // 2. Initialize Hermes Plugin
     const hermes = createHermesPlugin();
 
-    // 3. Generate plan using configured LLM (Anthropic or NousResearch Hermes)
+    // 3. Generate plan using configured LLM (Anthropic or NousResearch Hermes with resilience)
     let canonicalPlan: string;
     try {
-      canonicalPlan = await generatePlanWithLLM(input, config.model);
+      canonicalPlan = await generatePlanWithLLM(input, config.model, config.provider);
     } catch (err) {
       return NextResponse.json(
         {
