@@ -7,7 +7,7 @@
  * Free models are cached for 1 hour to avoid excessive API calls.
  */
 
-interface OpenRouterModel {
+export interface OpenRouterModel {
   id: string;
   name: string;
   description: string;

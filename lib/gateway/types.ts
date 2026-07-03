@@ -155,57 +155,57 @@ export interface GatewayConfig {
 // ---------------------------------------------------------------------------
 
 export type GatewayRiskLevel = 'low' | 'medium' | 'high' | 'critical';
-export type GatewayExecutionMode = 'sync' | 'async' | 'batch';
 
-export interface GatewayDecision {
-  approved: boolean;
-  reason: string;
-  risk_level: GatewayRiskLevel;
-  confidence: number;
-  constraints?: Record<string, any>;
-}
+export type GatewayExecutionMode = 'monitor' | 'gateway' | 'critical';
 
-export type GatewayToolProvider = 'native' | 'external' | 'user';
+export type GatewayDecision = 'allow' | 'block' | 'review' | 'ask_more_info';
 
-export interface GatewayToolRegistryEntry {
-  tool_id: string;
+export type GatewayToolProvider = 'zapier' | 'mock' | 'custom_http';
+
+export type GatewayToolRegistryEntry = {
   name: string;
   provider: GatewayToolProvider;
-  version: string;
-  capabilities: string[];
-  risk_level: GatewayRiskLevel;
-  requires_approval: boolean;
-  metadata?: Record<string, any>;
-}
+  action: string;
+  risk: GatewayRiskLevel;
+  executionMode: GatewayExecutionMode;
+  requiresApproval: boolean;
+  description: string;
+  connectorId?: string;
+  endpointUrl?: string;
+  authHeaders?: Record<string, string>;
+};
 
-export interface GatewayToolRequest {
-  request_id: string;
-  agent_id: string;
-  tool_id: string;
-  method: string;
-  parameters: Record<string, any>;
-  timestamp: string;
-  request_context?: Record<string, any>;
-}
+export type GatewayToolRequest = {
+  orgId: string;
+  actorId: string;
+  actorRole: string;
+  orgPlan: string;
+  planId?: string;
+  toolName: string;
+  action: string;
+  input: Record<string, unknown>;
+  approvalToken?: string;
+};
 
-export interface GatewayToolProviderResult {
-  provider: GatewayToolProvider;
-  status: 'success' | 'failure' | 'pending';
-  result?: any;
+export type GatewayToolProviderResult = {
+  ok: boolean;
+  provider: string;
+  toolName: string;
+  action: string;
+  target?: string;
+  result?: Record<string, unknown>;
   error?: string;
-  latency_ms: number;
-  timestamp: string;
-}
+};
 
-export interface GatewayToolExecutionResult {
-  request_id: string;
+export type GatewayToolExecutionResult = {
+  ok: boolean;
   decision: GatewayDecision;
-  provider_result: GatewayToolProviderResult;
-  execution_mode: GatewayExecutionMode;
-  traces?: Array<{
-    stage: string;
-    duration_ms: number;
-    details?: Record<string, any>;
-  }>;
-  timestamp: string;
-}
+  reason?: string;
+  registryEntry?: GatewayToolRegistryEntry;
+  providerResult?: GatewayToolProviderResult;
+  audit: {
+    committed: boolean;
+    requestHash: string;
+    recordHash: string;
+  };
+};
