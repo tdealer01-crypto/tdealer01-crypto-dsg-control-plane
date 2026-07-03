@@ -31,7 +31,7 @@ const clients = new Map<string, Set<WebSocket>>();
 /**
  * Broadcast execution update to all subscribed clients
  */
-export function broadcastExecutionUpdate(update: ExecutionUpdate) {
+function broadcastExecutionUpdate(update: ExecutionUpdate) {
   const agentClients = clients.get(update.agent_id);
   if (!agentClients) return;
 
