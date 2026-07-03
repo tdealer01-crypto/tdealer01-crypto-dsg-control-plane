@@ -264,11 +264,7 @@ export class GatewayService {
         processed: false,
       });
     } catch (error) {
-<<<<<<< HEAD
       console.error('Failed to handle webhook from channel:', channel, error);
-=======
-      console.error(`Failed to handle webhook from ${channel}:`, error);
->>>>>>> c3abc49 (Phase 4: Multi-Channel Gateway Foundation - Trinity AI Integration Start)
     }
   }
 
