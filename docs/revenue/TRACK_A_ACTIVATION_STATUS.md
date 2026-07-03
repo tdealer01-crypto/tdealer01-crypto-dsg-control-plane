@@ -34,7 +34,13 @@ Core:
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_APP_URL`
 
-สถานะ: **not verified** — Vercel MCP ในเซสชันนี้ไม่มี tool อ่านรายชื่อ env; ตรวจใน Vercel Dashboard → Settings → Environment Variables
+สถานะ (อัปเดต 2026-07-03 18:05 UTC — พิสูจน์จากพฤติกรรม production จริง ไม่ใช่การอ่านค่า):
+- ✅ `CRON_SECRET` — cron endpoints ตอบ 401 (fail-closed พร้อม secret; ถ้าไม่มีจะ 503)
+- ✅ `SUPABASE_SERVICE_ROLE_KEY` + Supabase URL/anon — `/api/agent/status` db:true, `/api/readiness` supabaseServiceRole ok
+- ✅ NextAuth secret — `/api/readiness` nextAuthSecret ok
+- ✅ `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` — webhook ตอบ 400 invalid_signature (ถึงขั้นตรวจ signature = มี secret)
+- ⏳ `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `GITHUB_TOKEN`, `TELEGRAM_*`, `MARKETING_OUTREACH_MODE` — ไม่มี public probe; จะพิสูจน์ตัวเองเมื่อ cron รอบแรกรันหลัง merge #849 (ดู `marketing_agent_runs`/`leads`); `MARKETING_OUTREACH_MODE` ไม่ตั้ง = default `queue` ปลอดภัยอยู่แล้ว
+- ✅ Production รัน main HEAD (`666e14b2`) — deploy pipeline หายป่วยแล้ว
 
 ## ⚠️ สองบัญชี Stripe — อย่าสับสน
 
