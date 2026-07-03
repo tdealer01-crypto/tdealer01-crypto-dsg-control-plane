@@ -5,31 +5,19 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { ensureUserWorkspace, isWorkspaceFailure } from '../../../../lib/auth/ensure-user-workspace';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
+// Pricing/plan definitions live in the shared catalog — the single source
+// of truth for every price shown or charged (lib/billing/pricing-catalog.ts).
+import {
+  GATE_PLANS as PLAN_CONFIG,
+  SKILLS_BUNDLES as SKILLS_BUNDLE_CONFIG,
+  isSkillsBundle,
+  getPriceId,
+  type PlanKey,
+  type SkillsBundleKey,
+  type BillingInterval,
+} from '../../../../lib/billing/pricing-catalog';
 
 export const dynamic = 'force-dynamic';
-
-type PlanKey = 'pro' | 'business' | 'enterprise';
-type SkillsBundleKey = 'finance_skills' | 'dev_skills' | 'compliance_skills' | 'ops_skills' | 'enterprise_skills';
-type BillingInterval = 'monthly' | 'yearly';
-
-const PLAN_CONFIG: Record<PlanKey, { trialDays: number; priceEnv: Record<BillingInterval, string> }> = {
-  pro:        { trialDays: 14, priceEnv: { monthly: 'STRIPE_PRICE_PRO_MONTHLY',        yearly: 'STRIPE_PRICE_PRO_YEARLY' } },
-  business:   { trialDays: 14, priceEnv: { monthly: 'STRIPE_PRICE_BUSINESS_MONTHLY',   yearly: 'STRIPE_PRICE_BUSINESS_YEARLY' } },
-  enterprise: { trialDays: 30, priceEnv: { monthly: 'STRIPE_PRICE_ENTERPRISE_MONTHLY', yearly: 'STRIPE_PRICE_ENTERPRISE_YEARLY' } },
-};
-
-// Skills bundles use inline price_data (no pre-created Stripe price IDs needed)
-const SKILLS_BUNDLE_CONFIG: Record<SkillsBundleKey, { name: string; amountMonthly: number; amountYearly: number }> = {
-  finance_skills:    { name: 'DSG Finance Governance Pack',  amountMonthly: 19900, amountYearly: 179100 },
-  dev_skills:        { name: 'DSG Dev Automation Pack',      amountMonthly:  9900, amountYearly:  89100 },
-  compliance_skills: { name: 'DSG Compliance & Legal Pack',  amountMonthly: 24900, amountYearly: 224100 },
-  ops_skills:        { name: 'DSG Operations Pack',          amountMonthly: 14900, amountYearly: 134100 },
-  enterprise_skills: { name: 'DSG Enterprise Bundle',        amountMonthly: 59900, amountYearly: 539100 },
-};
-
-function isSkillsBundle(plan: string): plan is SkillsBundleKey {
-  return plan in SKILLS_BUNDLE_CONFIG;
-}
 
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -51,35 +39,6 @@ function normalizeInterval(value: unknown): BillingInterval {
   const interval = String(value || 'monthly').toLowerCase();
   if (interval === 'year' || interval === 'yearly') return 'yearly';
   return 'monthly';
-}
-
-function getLegacyMonthlyPriceId(plan: PlanKey) {
-  if (plan === 'pro') return process.env.STRIPE_PRICE_PRO || '';
-  if (plan === 'business') return process.env.STRIPE_PRICE_BUSINESS || '';
-  return '';
-}
-
-// Live price IDs in Stripe account acct_1Tnbl5CVpjxFKlKT (dsg-one, Inc.), created 2026-07-02.
-// Price IDs are public identifiers (visible in Checkout URLs), not secrets.
-// STRIPE_PRICE_* env vars always take precedence when set.
-const DEFAULT_PRICE_IDS: Record<PlanKey, Record<BillingInterval, string>> = {
-  pro:        { monthly: 'price_1TopmZCVpjxFKlKT18ljNI84', yearly: 'price_1TopmiCVpjxFKlKT0EVZwCps' },
-  business:   { monthly: 'price_1TopmsCVpjxFKlKTdpm128OG', yearly: 'price_1Topn0CVpjxFKlKTvxKJUsff' },
-  enterprise: { monthly: 'price_1TopnACVpjxFKlKT36Pe7Zmu', yearly: 'price_1TopnICVpjxFKlKTqHhjKzhR' },
-};
-
-function getPriceId(plan: PlanKey, interval: BillingInterval) {
-  const envName = PLAN_CONFIG[plan].priceEnv[interval];
-  const configured = process.env[envName] || '';
-
-  if (configured) return configured;
-
-  if (interval === 'monthly') {
-    const legacy = getLegacyMonthlyPriceId(plan);
-    if (legacy) return legacy;
-  }
-
-  return DEFAULT_PRICE_IDS[plan][interval];
 }
 
 type CheckoutProfileResult =
