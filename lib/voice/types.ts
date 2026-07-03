@@ -16,12 +16,14 @@ export interface VoiceConfig {
   deepgram_api_key?: string;
   assembly_api_key?: string;
   openai_api_key?: string;
+  google_api_key?: string;
   picovoice_access_key?: string;
+  elevenlabs_voice_id?: string;
   voice_id?: string;
   model?: string;
-  sample_rate: number;
-  channels: number;
-  enable_wake_words: boolean;
+  sample_rate?: number;
+  channels?: number;
+  enable_wake_words?: boolean;
   wake_words?: string[];
 }
 
@@ -36,6 +38,7 @@ export interface SpeechToTextResult {
   text: string;
   confidence?: number;
   language?: string;
+  duration?: number;
   duration_ms?: number;
   speaker_id?: string;
 }
@@ -52,8 +55,9 @@ export interface TextToSpeechRequest {
 export interface TextToSpeechResult {
   audio: Buffer;
   format: AudioFormat;
-  duration_ms: number;
-  sample_rate: number;
+  duration?: number;
+  duration_ms?: number;
+  sample_rate?: number;
 }
 
 export interface VoiceMessage {

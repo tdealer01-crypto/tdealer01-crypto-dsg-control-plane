@@ -83,11 +83,26 @@ export class VoiceService {
   private async deepgramSTT(request: SpeechToTextRequest): Promise<SpeechToTextResult> {
     try {
       const formData = new FormData();
+      let audioBlob: Blob;
+
       if (request.audio instanceof Buffer) {
-        formData.append('audio', new Blob([request.audio]), 'audio');
+        audioBlob = new Blob([request.audio]);
+      } else if (request.audio instanceof Blob) {
+        audioBlob = request.audio;
+      } else if (request.audio instanceof ReadableStream) {
+        const chunks: Uint8Array[] = [];
+        const reader = request.audio.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        audioBlob = new Blob(chunks);
       } else {
-        formData.append('audio', request.audio);
+        audioBlob = new Blob([request.audio as any]);
       }
+
+      formData.append('audio', audioBlob, 'audio');
 
       const response = await fetch('https://api.deepgram.com/v1/listen', {
         method: 'POST',
@@ -160,11 +175,26 @@ export class VoiceService {
   private async openaiSTT(request: SpeechToTextRequest): Promise<SpeechToTextResult> {
     try {
       const formData = new FormData();
+      let audioBlob: Blob;
+
       if (request.audio instanceof Buffer) {
-        formData.append('file', new Blob([request.audio]), 'audio.mp3');
+        audioBlob = new Blob([request.audio]);
+      } else if (request.audio instanceof Blob) {
+        audioBlob = request.audio;
+      } else if (request.audio instanceof ReadableStream) {
+        const chunks: Uint8Array[] = [];
+        const reader = request.audio.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        audioBlob = new Blob(chunks);
       } else {
-        formData.append('file', request.audio);
+        audioBlob = new Blob([request.audio as any]);
       }
+
+      formData.append('file', audioBlob, 'audio.mp3');
       formData.append('model', 'whisper-1');
       formData.append('language', request.language || 'en');
 
