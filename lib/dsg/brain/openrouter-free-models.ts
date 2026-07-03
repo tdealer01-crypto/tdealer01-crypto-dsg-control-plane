@@ -38,18 +38,19 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
  * Never exposes API key in response.
  */
 async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
+  // The models listing endpoint is public — send Authorization only when a key exists.
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY not configured');
+  const headers: Record<string, string> = {
+    'HTTP-Referer': 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+    'X-Title': 'DSG ONE ProofGate',
+  };
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
   const response = await fetch('https://openrouter.ai/api/v1/models', {
     method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
-      'X-Title': 'DSG ONE ProofGate',
-    },
+    headers,
   });
 
   if (!response.ok) {
