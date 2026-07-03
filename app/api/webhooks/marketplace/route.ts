@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { syncMarketplaceSubscription } from '@/lib/marketplace/subscription-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,11 +115,16 @@ async function handlePurchaseChange(
   // Log to database
   await logMarketplaceEvent(action, account, plan, payload);
 
-  // You can add more logic here:
-  // - Update user subscription status
-  // - Grant/revoke access
-  // - Send notification emails
-  // - Update usage limits
+  // Sync subscription state (billing_subscriptions + organizations.plan).
+  // Unlinked accounts stay logged in marketplace_events and can be replayed
+  // after the org admin links their GitHub account.
+  const sync = await syncMarketplaceSubscription({
+    action,
+    githubAccountId: account.id,
+    githubLogin: account.login,
+    planName: plan.name,
+    billingCycle: billing_cycle,
+  });
 
   console.log('Marketplace event processed:', {
     action,
@@ -126,6 +132,7 @@ async function handlePurchaseChange(
     plan: plan.name,
     billing_cycle,
     unit_count,
+    sync,
   });
 }
 
