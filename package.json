@@ -81,7 +81,7 @@
     "lucide-react": "^0.460.0",
     "motion": "^12.40.0",
     "next": "^15.5.18",
-    "posthog-node": "^5.38.5",
+    "posthog-node": "^5.39.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "recharts": "^3.8.1",
