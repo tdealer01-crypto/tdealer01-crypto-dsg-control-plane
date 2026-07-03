@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { VoiceService } from '@/lib/voice/voice-service';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,15 +101,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Synthesize error:', error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to synthesize audio',
-      },
-      { status: 500 }
-    );
+    return handleApiError('/api/voice/synthesize POST', error);
   }
 }

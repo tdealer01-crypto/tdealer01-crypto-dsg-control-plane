@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { VoiceService } from '@/lib/voice/voice-service';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,15 +102,6 @@ export async function POST(request: NextRequest) {
       language: language || 'en',
     });
   } catch (error) {
-    console.error('Transcribe error:', error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to transcribe audio',
-      },
-      { status: 500 }
-    );
+    return handleApiError('/api/voice/transcribe POST', error);
   }
 }

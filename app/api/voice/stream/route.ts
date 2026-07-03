@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { VoiceService } from '@/lib/voice/voice-service';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 600; // 10 minutes max for streaming
@@ -122,14 +123,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Stream error:', error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to establish stream',
-      },
-      { status: 500 }
-    );
+    return handleApiError('/api/voice/stream GET', error);
   }
 }
 
@@ -212,15 +206,6 @@ export async function POST(request: NextRequest) {
       duration: result.duration,
     });
   } catch (error) {
-    console.error('Stream POST error:', error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to process audio chunk',
-      },
-      { status: 500 }
-    );
+    return handleApiError('/api/voice/stream POST', error);
   }
 }

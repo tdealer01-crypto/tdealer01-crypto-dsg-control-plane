@@ -264,7 +264,7 @@ export class GatewayService {
         processed: false,
       });
     } catch (error) {
-      console.error(`Failed to handle webhook from ${channel}:`, error);
+      console.error('Failed to handle webhook from channel:', channel, error);
     }
   }
 

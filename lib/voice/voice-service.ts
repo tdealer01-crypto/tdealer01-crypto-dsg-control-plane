@@ -240,10 +240,15 @@ export class VoiceService {
    */
   private async elevenLabsTTS(request: TextToSpeechRequest): Promise<TextToSpeechResult> {
     try {
-      const voiceId = request.voice_id || this.config.voice_id || '21m00Tcm4TlvDq8ikWAM';
+      const requestedVoiceId = request.voice_id || this.config.voice_id || '21m00Tcm4TlvDq8ikWAM';
+      // Voice IDs are caller-supplied; restrict to ElevenLabs' alphanumeric ID
+      // format so the value cannot alter the request URL (SSRF/path injection).
+      const voiceId = /^[A-Za-z0-9]{1,64}$/.test(requestedVoiceId)
+        ? requestedVoiceId
+        : '21m00Tcm4TlvDq8ikWAM';
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,
         {
           method: 'POST',
           headers: {
