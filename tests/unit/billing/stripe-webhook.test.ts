@@ -39,17 +39,36 @@ const mockSendUpgradeSuccess = vi.mocked(sendUpgradeSuccess);
 const mockFulfill = vi.mocked(fulfillSubscription);
 const mockRevoke = vi.mocked(revokeSubscription);
 
-function makeSupabaseAdmin() {
-  const fromMock = vi.fn().mockReturnValue({
-    upsert: vi.fn().mockResolvedValue({ error: null }),
-    delete: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    like: vi.fn().mockResolvedValue({ error: null }),
-    select: vi.fn().mockReturnThis(),
-    not: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+function makeSupabaseAdmin(options?: { insertError?: unknown }) {
+  const insertError = options?.insertError ?? null;
+  const fromMock = vi.fn().mockImplementation((table: string) => {
+    if (table === 'billing_events') {
+      return {
+        insert: vi.fn().mockResolvedValue({ error: insertError }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      };
+    }
+
+    return {
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      like: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    };
   });
   return { from: fromMock };
 }
@@ -143,20 +162,38 @@ describe('POST /api/billing/webhook', () => {
     mockStripeInstance.webhooks.constructEvent.mockReturnValue(event as any);
 
     const adminMock = makeSupabaseAdmin();
-    adminMock.from.mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      delete: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      like: vi.fn().mockResolvedValue({ error: null }),
-      select: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
-        error: null,
-      }),
-      not: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      rpc: vi.fn().mockReturnThis(),
+    adminMock.from.mockImplementation((table: string) => {
+      if (table === 'billing_events') {
+        return {
+          insert: vi.fn().mockResolvedValue({ error: null }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+
+      return {
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        like: vi.fn().mockResolvedValue({ error: null }),
+        select: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
+          error: null,
+        }),
+        not: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        rpc: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      };
     });
     mockGetAdmin.mockReturnValue(adminMock as any);
 
@@ -177,6 +214,48 @@ describe('POST /api/billing/webhook', () => {
     const body = await res.json();
     expect(body.received).toBe(true);
     expect(body.type).toBe('payment_intent.created');
+  });
+
+  it('returns 200 duplicate:true and skips side effects for replayed events', async () => {
+    const subscription = {
+      id: 'sub_1',
+      customer: 'cus_1',
+      status: 'active',
+      items: { data: [{ price: { id: 'price_pro', product: 'prod_1' } }] },
+      metadata: { plan_key: 'pro', billing_interval: 'monthly' },
+      cancel_at_period_end: false,
+      current_period_start: 1700000000,
+      current_period_end: 1702592000,
+      trial_start: null,
+      trial_end: null,
+    };
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_duplicate',
+      type: 'customer.subscription.updated',
+      data: { object: subscription, previous_attributes: {} },
+    } as any);
+
+    mockGetAdmin.mockReturnValue(
+      makeSupabaseAdmin({
+        insertError: {
+          code: '23505',
+          message: 'duplicate key value violates unique constraint',
+        },
+      }) as any
+    );
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual(
+      expect.objectContaining({
+        received: true,
+        type: 'customer.subscription.updated',
+        duplicate: true,
+      })
+    );
+    expect(mockFulfill).not.toHaveBeenCalled();
+    expect(mockRevoke).not.toHaveBeenCalled();
+    expect(mockSendUpgradeSuccess).not.toHaveBeenCalled();
   });
 
   it('calls fulfillSubscription when subscription.updated is active', async () => {
@@ -200,21 +279,38 @@ describe('POST /api/billing/webhook', () => {
     mockStripeInstance.webhooks.constructEvent.mockReturnValue(event as any);
 
     const adminMock = makeSupabaseAdmin();
-    adminMock.from.mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      delete: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      like: vi.fn().mockResolvedValue({ error: null }),
-      select: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
-        error: null,
-      }),
-      not: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      rpc: vi.fn().mockReturnThis(),
+    adminMock.from.mockImplementation((table: string) => {
+      if (table === 'billing_events') {
+        return {
+          insert: vi.fn().mockResolvedValue({ error: null }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+
+      return {
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        like: vi.fn().mockResolvedValue({ error: null }),
+        select: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
+          error: null,
+        }),
+        not: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+        rpc: vi.fn().mockReturnThis(),
+      };
     });
     mockGetAdmin.mockReturnValue(adminMock as any);
 
@@ -244,21 +340,38 @@ describe('POST /api/billing/webhook', () => {
     mockStripeInstance.webhooks.constructEvent.mockReturnValue(event as any);
 
     const adminMock = makeSupabaseAdmin();
-    adminMock.from.mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      delete: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      like: vi.fn().mockResolvedValue({ error: null }),
-      select: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
-        error: null,
-      }),
-      not: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      rpc: vi.fn().mockReturnThis(),
+    adminMock.from.mockImplementation((table: string) => {
+      if (table === 'billing_events') {
+        return {
+          insert: vi.fn().mockResolvedValue({ error: null }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+
+      return {
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        like: vi.fn().mockResolvedValue({ error: null }),
+        select: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { stripe_customer_id: 'cus_1', org_id: 'org-1', email: 'test@example.com', name: 'Test' },
+          error: null,
+        }),
+        not: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+        rpc: vi.fn().mockReturnThis(),
+      };
     });
     mockGetAdmin.mockReturnValue(adminMock as any);
 

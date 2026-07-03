@@ -42,6 +42,17 @@ interface ExecutionResult {
   auditHash: string;
   completedAt: string;
   error?: string;
+  settlement?: {
+    status?: string;
+    txSignature?: string;
+    reason?: string;
+  };
+  trinity?: {
+    bounty_program?: string;
+    exploit_cid?: string | null;
+    severity?: string;
+    reward_amount?: number;
+  };
 }
 
 interface ExecutionHistory {
@@ -392,7 +403,13 @@ export default function TrinityDashboardPage() {
   const loadExecutionHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
-      const res = await fetch('/api/trinity/history?agentId=dashboard-test-agent&limit=20');
+      const res = await fetch('/api/trinity/history?agentId=dashboard-test-agent&limit=20', {
+        headers: {
+          'x-trinity-org-id': 'default-org',
+          'x-trinity-actor-id': 'dashboard-test-agent',
+          'x-trinity-role': 'OWNER',
+        },
+      });
       const data = await res.json();
       if (data.ok) {
         setExecutionHistory(data.executions || data.history || []);
@@ -410,7 +427,13 @@ export default function TrinityDashboardPage() {
 
   const loadDiscoveredJobs = useCallback(async () => {
     try {
-      const res = await fetch('/api/trinity/discover?limit=10');
+      const res = await fetch('/api/trinity/discover?limit=10', {
+        headers: {
+          'x-trinity-org-id': 'default-org',
+          'x-trinity-actor-id': 'dashboard-test-agent',
+          'x-trinity-role': 'OWNER',
+        },
+      });
       const data = await res.json();
       if (data.ok && Array.isArray(data.jobs)) {
         // Map API response (reward as object) → JobDiscovery (reward as number)
@@ -457,9 +480,8 @@ export default function TrinityDashboardPage() {
       const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       const res = await fetch('/api/trinity/orchestrate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dry_run: true,
+          dry_run: false,
           job: {
             title: jobTitle,
             category: jobCategory,
@@ -473,6 +495,12 @@ export default function TrinityDashboardPage() {
             skills: [jobCategory, 'security-review', 'testing'],
           },
         }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-trinity-org-id': 'default-org',
+          'x-trinity-actor-id': 'dashboard-test-agent',
+          'x-trinity-role': 'OWNER',
+        },
       });
 
       const data = await res.json();
@@ -510,7 +538,7 @@ export default function TrinityDashboardPage() {
           <div>
             <h1 className="text-2xl font-bold text-white">Trinity AI System</h1>
             <p className="text-sm text-slate-400">
-              Multi-Agent Orchestration • DSG Governance • Dry-Run Mode
+              Multi-Agent Orchestration • DSG Governance • End-to-End Workflow
               {wsConnected && <span className="ml-2 text-xs text-emerald-400">● Real-time Connected</span>}
             </p>
           </div>
@@ -564,7 +592,7 @@ export default function TrinityDashboardPage() {
         {/* Input Form */}
         <section className="rounded-xl border border-slate-700 bg-slate-800/40 p-6">
           <h2 className="mb-5 text-sm font-semibold uppercase tracking-widest text-slate-400">
-            Run Orchestration (Dry-Run)
+            Run Orchestration (Production Path)
           </h2>
 
           <div className="space-y-4">
@@ -691,7 +719,7 @@ export default function TrinityDashboardPage() {
                     : 'bg-red-900/30 text-red-300'
                 }`}
               >
-                {result.ok ? '✅ Orchestration complete (dry-run)' : `❌ ${result.error ?? 'Blocked'}`}
+                {result.ok ? '✅ Orchestration complete (live workflow)' : `❌ ${result.error ?? 'Blocked'}`}
               </div>
 
               <div>
@@ -755,6 +783,20 @@ export default function TrinityDashboardPage() {
                 <p className="mb-1 text-xs text-slate-500">Audit Hash</p>
                 <p className="font-mono text-xs text-amber-300 break-all">{result.auditHash}</p>
               </div>
+
+              {result.settlement && (
+                <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+                  <p className="mb-2 text-xs font-medium text-emerald-400">💸 Settlement</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <span className="text-slate-400">Status</span>
+                    <span className="text-slate-200">{result.settlement.status ?? 'unknown'}</span>
+                    <span className="text-slate-400">Tx Signature</span>
+                    <span className="break-all text-slate-200">{result.settlement.txSignature ?? 'pending'}</span>
+                    <span className="text-slate-400">Reason</span>
+                    <span className="text-slate-200">{result.settlement.reason ?? '-'}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -789,7 +831,7 @@ export default function TrinityDashboardPage() {
 
       {/* Footer */}
       <p className="mt-6 text-center text-xs text-slate-600">
-        All executions are dry-run only — no real SOL transfers are made from this dashboard
+        Live settlement requires configured wallet/RPC and TRINITY_ENABLE_LIVE_SOL_TRANSFER=true
       </p>
     </div>
   );

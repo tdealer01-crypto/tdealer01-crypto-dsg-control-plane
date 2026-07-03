@@ -56,14 +56,29 @@ export function toSafeErrorResponse(status = 500) {
   return { error: 'Request failed' };
 }
 
-export function logApiError(route: string, error: unknown, details?: Record<string, unknown>) {
-  console.error(`[${route}]`, {
+export function isMissingEnvConfigError(error: unknown, envVarNames: string[]) {
+  if (!(error instanceof Error)) return false;
+  return envVarNames.some((name) => error.message.includes(name));
+}
+
+export function logApiError(route: string, error: unknown, details?: Record<string, unknown>, status = 500) {
+  const payload = {
     error: redactSensitive(error),
     ...(details ? redactSensitive(details) as Record<string, unknown> : {}),
-  });
+  };
 
-  if (error instanceof Error) {
-    Sentry.captureException(error, { tags: { route }, extra: details });
+  // 4xx is an expected client condition (not logged in, bad input, not
+  // found, etc.) — it is not a server incident. Logging every one of these
+  // as an "error" is what produced large, misleading error-log counts (e.g.
+  // /api/cases showing 100+ "errors" that were really just anonymous
+  // visitors hitting an auth-gated endpoint). Only 5xx is a real failure.
+  if (status >= 500) {
+    console.error(`[${route}]`, payload);
+    if (error instanceof Error) {
+      Sentry.captureException(error, { tags: { route }, extra: details });
+    }
+  } else {
+    console.warn(`[${route}]`, payload);
   }
 }
 
@@ -76,8 +91,16 @@ export function handleApiError(
     headers?: HeadersInit;
   },
 ) {
-  const status = options?.status ?? 500;
-  logApiError(route, error, options?.details);
+  // If the caller didn't specify a status, infer it from a known error
+  // shape (e.g. OrgAuthError carries its own `.status`) instead of always
+  // defaulting to 500 — returning 500 for what is really a 401 both hides
+  // the true condition from the client and miscounts it as a server error.
+  const inferredStatus =
+    error && typeof error === 'object' && 'status' in error && typeof (error as { status?: unknown }).status === 'number'
+      ? (error as { status: number }).status
+      : 500;
+  const status = options?.status ?? inferredStatus;
+  logApiError(route, error, options?.details, status);
   return NextResponse.json(toSafeErrorResponse(status), {
     status,
     headers: options?.headers,

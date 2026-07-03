@@ -65,55 +65,70 @@ You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  // Free OpenRouter model used across the app (lib/agent/llm-router.ts).
-  // Overridable via OPENROUTER_MODEL_CHAT for deployment flexibility.
-  const model = process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free';
+  // Primary model overridable via env; fallback chain handles upstream 429s.
+  // Note: 'meta-llama/llama-4-maverick:free' was removed — OpenRouter now
+  // 404s it ("this model is unavailable for free"); its own error response
+  // points to the paid slug, which we don't want to silently switch to.
+  const models = [
+    process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
+    'google/gemma-3-27b-it:free',
+    'deepseek/deepseek-chat-v3-0324:free',
+  ];
 
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-    });
+  for (const model of models) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt,
+            },
+            {
+              role: 'user',
+              content: message,
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      console.error(
-        `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
-      );
-      return limitedModeReply('LLM upstream error');
+      if (response.status === 429) {
+        const detail = await response.text().catch(() => '');
+        console.error(
+          `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+        );
+        continue;
+      }
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        console.error(
+          `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+        );
+        return limitedModeReply('LLM upstream error');
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+      return limitedModeReply('LLM returned no content');
+    } catch {
+      return limitedModeReply('LLM request failed');
     }
-
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-
-    const content = data.choices?.[0]?.message?.content;
-    if (content) {
-      return content;
-    }
-
-    return limitedModeReply('LLM returned no content');
-  } catch {
-    return limitedModeReply('LLM request failed');
   }
+
+  return limitedModeReply('LLM upstream error');
 }
 
 export async function POST(request: NextRequest) {

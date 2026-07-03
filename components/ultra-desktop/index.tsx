@@ -435,7 +435,7 @@ function usePipelineStage(action: ReturnType<typeof useUltraBackend>['actions'][
       default:
         setStage('IDLE');
     }
-  }, [action?.status, action?.actionId]);
+  }, [action?.status, action?.actionId, action]);
   return stage;
 }
 

@@ -7,32 +7,54 @@ import UsageBar from '../../../components/billing/UsageBar';
 
 type PlanKey = 'pro' | 'business' | 'enterprise';
 type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
+type BillingInterval = 'monthly' | 'yearly';
 
-const PLANS: { key: PlanKey; title: string; price: string; features: string[] }[] = [
+const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; yearlyTotal: number; features: string[] }[] = [
   {
     key: 'pro',
     title: 'Pro',
-    price: '$99/mo',
+    monthly: 99,
+    yearly: 79,
+    yearlyTotal: 948,
     features: ['10,000 executions / mo', '60 req/min gate limit', '10 agents', 'PDF export'],
   },
   {
     key: 'business',
     title: 'Business',
-    price: '$299/mo',
+    monthly: 299,
+    yearly: 239,
+    yearlyTotal: 2868,
     features: ['100,000 executions / mo', '300 req/min gate limit', '50 agents', 'Audit ledger'],
   },
   {
     key: 'enterprise',
     title: 'Enterprise',
-    price: '$799/mo',
+    monthly: 799,
+    yearly: 639,
+    yearlyTotal: 7668,
     features: ['1,000,000 executions / mo', 'Unlimited gates', 'Unlimited agents', 'SLA + support'],
   },
 ];
 
-function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; currentPlan?: string }) {
+const SKILL_BUNDLES = [
+  { id: 'finance_skills', name: 'Finance Governance', monthly: 199 },
+  { id: 'dev_skills', name: 'Dev Automation', monthly: 99 },
+  { id: 'compliance_skills', name: 'Compliance & Legal', monthly: 249 },
+];
+
+function UpgradeCard({
+  plan,
+  currentPlan,
+  interval,
+}: {
+  plan: (typeof PLANS)[number];
+  currentPlan?: string;
+  interval: BillingInterval;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCurrent = typeof currentPlan === 'string' && currentPlan.toLowerCase() === plan.key;
+  const price = interval === 'yearly' ? plan.yearly : plan.monthly;
 
   async function handleUpgrade() {
     setLoading(true);
@@ -41,7 +63,7 @@ function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; curr
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.key, interval: 'monthly' }),
+        body: JSON.stringify({ plan: plan.key, interval }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -58,7 +80,10 @@ function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; curr
   }
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-6">
+    <div
+      id={`plan-${plan.key}`}
+      className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-6 scroll-mt-24"
+    >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{plan.title}</h3>
         {isCurrent && (
@@ -67,7 +92,8 @@ function UpgradeCard({ plan, currentPlan }: { plan: (typeof PLANS)[number]; curr
           </span>
         )}
       </div>
-      <p className="mt-2 text-3xl font-bold">{plan.price}</p>
+      <p className="mt-2 text-3xl font-bold">${price}/mo</p>
+      {interval === 'yearly' && <p className="mt-1 text-xs text-emerald-300">Billed annually · ${plan.yearlyTotal}/yr</p>}
       <ul className="mt-4 flex flex-col gap-2 text-sm text-slate-300">
         {plan.features.map((f) => (
           <li key={f} className="flex items-center gap-2">
@@ -116,6 +142,56 @@ type Analytics = {
   quota: { pct: number; nudge: NudgeLevel; used: number; limit: number };
 };
 
+type RevenueKpis = {
+  window_days: number;
+  metrics: {
+    trial_to_paid_conversion_pct: number | null;
+    mrr_usd: number;
+    churn_rate_pct: number | null;
+    arpa_usd: number | null;
+    checkout_completion_rate_pct: number | null;
+    active_subscriptions: number;
+    canceled_subscriptions_window: number;
+  };
+};
+
+type QuotaUsageResponse = {
+  ok: boolean;
+  tier: {
+    key: string;
+    billingInterval: string | null;
+    limit: number;
+    status: string;
+  };
+  usage: {
+    period: string;
+    used: number;
+    remaining: number;
+    limit: number;
+    resetDate: string;
+    exhausted: boolean;
+    breakdown: {
+      deliveryProofScans: number;
+      apiExecutions: number;
+      mcpRequests: number;
+    };
+  };
+  activeKeys: Array<{
+    id: string;
+    name: string;
+    prefix: string;
+    createdAt: string;
+    currentMonthlyUsage: number;
+    nextBillingDate: string | null;
+    status: string;
+  }>;
+};
+
+function categoryWidth(value: number, limit: number) {
+  if (limit <= 0 || value <= 0) return 0;
+  return Math.max(4, Math.min(100, Math.round((value / limit) * 100)));
+}
+
 function formatDate(value?: string | null) {
   if (!value) return '—';
   try { return new Date(value).toLocaleDateString(); }
@@ -133,6 +209,13 @@ export default function BillingPage() {
 function BillingInner() {
   const [usage, setUsage]         = useState<Usage | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [kpis, setKpis]           = useState<RevenueKpis | null>(null);
+  const [quotaUsage, setQuotaUsage] = useState<QuotaUsageResponse | null>(null);
+  const [interval, setInterval]   = useState<BillingInterval>('monthly');
+  const [bundleLoading, setBundleLoading] = useState<string | null>(null);
+  const [bundleError, setBundleError] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
   const [toast, setToast]         = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -144,16 +227,75 @@ function BillingInner() {
       setTimeout(() => setToast(null), 6000);
     }
 
+    // Deep-link from /pricing: ?plan=pro|business|enterprise scrolls to that card.
+    const requestedPlan = searchParams.get('plan');
+    if (requestedPlan) {
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`plan-${requestedPlan}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+
     Promise.all([
       fetch('/api/usage',            { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
       fetch('/api/usage/analytics',  { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-    ]).then(([u, a]) => {
+      fetch('/api/usage/kpis',       { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      fetch('/api/quotas/usage',     { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    ]).then(([u, a, k, q]) => {
       setUsage(u);
       setAnalytics(a);
+      setKpis(k);
+      setQuotaUsage(q);
     }).finally(() => setLoading(false));
   }, [searchParams]);
 
   const quota = analytics?.quota;
+
+  async function startBundleCheckout(bundleId: string) {
+    setBundleLoading(bundleId);
+    setBundleError(null);
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: bundleId, interval }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setBundleError(data?.error || 'Bundle checkout failed');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setBundleError('Bundle checkout failed');
+    } catch {
+      setBundleError('Bundle checkout failed');
+    } finally {
+      setBundleLoading(null);
+    }
+  }
+
+  async function openBillingPortal() {
+    setPortalLoading(true);
+    setPortalError(null);
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) {
+        setPortalError(data?.error || 'Billing portal unavailable');
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setPortalError('Billing portal unavailable');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
@@ -179,11 +321,21 @@ function BillingInner() {
             <Link href="/pricing" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600">
               Change Plan
             </Link>
+            <button
+              onClick={openBillingPortal}
+              disabled={portalLoading}
+              className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {portalLoading ? 'Opening Portal…' : 'Manage Billing'}
+            </button>
             <Link href="/dashboard" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600">
               Dashboard
             </Link>
           </div>
         </div>
+        {portalError && (
+          <p className="mt-3 text-sm text-amber-300">{portalError}</p>
+        )}
 
         {/* Usage bar — real quota data */}
         <div className="mt-8">
@@ -198,6 +350,52 @@ function BillingInner() {
             />
           ) : null}
         </div>
+        {!loading && quota && quota.nudge !== 'none' && (
+          <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+            {quota.nudge === 'blocked'
+              ? 'Quota reached — upgrade now to unblock executions immediately.'
+              : quota.nudge === 'hard'
+                ? 'Quota is near limit — upgrade now to avoid execution blocks.'
+                : 'Usage is rising — upgrade early for smoother operations.'}
+          </div>
+        )}
+
+        {!loading && quotaUsage && (
+          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Quota Usage Breakdown</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Period {quotaUsage.usage.period} · resets {formatDate(quotaUsage.usage.resetDate)}
+                </p>
+              </div>
+              <p className="text-sm text-slate-300">
+                {quotaUsage.usage.used.toLocaleString()} used · {quotaUsage.usage.remaining.toLocaleString()} remaining
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {[
+                ['API executions', quotaUsage.usage.breakdown.apiExecutions, 'bg-emerald-500'],
+                ['Delivery Proof scans', quotaUsage.usage.breakdown.deliveryProofScans, 'bg-cyan-500'],
+                ['MCP requests', quotaUsage.usage.breakdown.mcpRequests, 'bg-amber-400'],
+              ].map(([label, value, color]) => (
+                <div key={String(label)}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-300">{label}</span>
+                    <span className="text-slate-400">{Number(value).toLocaleString()}</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className={`h-full rounded-full ${color}`}
+                      style={{ width: `${categoryWidth(Number(value), quotaUsage.usage.limit)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* KPI cards */}
         <div className="mt-6 grid gap-6 md:grid-cols-4">
@@ -216,6 +414,26 @@ function BillingInner() {
               </div>
             ))
           )}
+        </div>
+
+        {/* Revenue KPI */}
+        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">Revenue KPI (last {kpis?.window_days ?? 30} days)</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {[
+              { label: 'Trial → Paid', value: kpis?.metrics.trial_to_paid_conversion_pct != null ? `${kpis.metrics.trial_to_paid_conversion_pct.toFixed(1)}%` : '—' },
+              { label: 'MRR', value: kpis ? `US$${kpis.metrics.mrr_usd.toFixed(2)}` : '—' },
+              { label: 'Churn', value: kpis?.metrics.churn_rate_pct != null ? `${kpis.metrics.churn_rate_pct.toFixed(1)}%` : '—' },
+              { label: 'ARPA', value: kpis?.metrics.arpa_usd != null ? `US$${kpis.metrics.arpa_usd.toFixed(2)}` : '—' },
+              { label: 'Checkout completion', value: kpis?.metrics.checkout_completion_rate_pct != null ? `${kpis.metrics.checkout_completion_rate_pct.toFixed(1)}%` : '—' },
+              { label: 'Active subscriptions', value: kpis ? `${kpis.metrics.active_subscriptions}` : '—' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="mt-2 text-xl font-semibold">{item.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Billing period */}
@@ -244,10 +462,165 @@ function BillingInner() {
         <div className="mt-12">
           <h2 className="text-2xl font-semibold">Upgrade Plan</h2>
           <p className="mt-2 text-slate-300">Choose a plan that fits your team&apos;s needs.</p>
+          <div className="mt-4 inline-flex rounded-xl border border-slate-700 bg-slate-900 p-1">
+            {(['monthly', 'yearly'] as BillingInterval[]).map((iv) => (
+              <button
+                key={iv}
+                onClick={() => setInterval(iv)}
+                className={['rounded-lg px-4 py-2 text-sm font-semibold transition', interval === iv ? 'bg-emerald-500 text-black' : 'text-slate-400 hover:text-white'].join(' ')}
+              >
+                {iv === 'monthly' ? 'Monthly' : 'Yearly (-20%)'}
+              </button>
+            ))}
+          </div>
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             {PLANS.map((plan) => (
-              <UpgradeCard key={plan.key} plan={plan} currentPlan={usage?.plan} />
+              <UpgradeCard key={plan.key} plan={plan} currentPlan={usage?.plan} interval={interval} />
             ))}
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">Add-on bundles</h2>
+          <p className="mt-2 text-sm text-slate-300">Keep base subscription for recurring revenue and attach bundles for expansion revenue.</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {SKILL_BUNDLES.map((bundle) => (
+              <button
+                key={bundle.id}
+                onClick={() => void startBundleCheckout(bundle.id)}
+                disabled={bundleLoading !== null}
+                className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-left transition hover:border-emerald-500/50 disabled:opacity-60"
+              >
+                <p className="text-sm font-semibold text-white">{bundle.name}</p>
+                <p className="mt-1 text-xs text-slate-400">US${bundle.monthly}/mo</p>
+                <p className="mt-3 text-xs text-emerald-300">
+                  {bundleLoading === bundle.id ? 'Redirecting…' : 'Activate bundle →'}
+                </p>
+              </button>
+            ))}
+          </div>
+          {bundleError && <p className="mt-3 text-xs text-red-400">{bundleError}</p>}
+        </div>
+
+        {/* MCP Subscription Section */}
+        <div className="mt-8 rounded-2xl border border-cyan-600/20 bg-gradient-to-r from-cyan-600/10 to-blue-600/5 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">MCP API Subscription</h2>
+              <p className="mt-2 text-sm text-slate-300">
+                Connect DSG governance to Claude Desktop, Cursor, or any MCP-compatible client
+              </p>
+            </div>
+            <span className="inline-flex rounded-full bg-cyan-600/20 px-3 py-1 text-xs font-semibold text-cyan-300">
+              Developer
+            </span>
+          </div>
+
+          {/* Pricing card */}
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+              <p className="text-sm font-semibold text-white">Per-Developer Subscription</p>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-cyan-300">฿490</span>
+                <span className="text-sm text-slate-400">/month per dev</span>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>Unlimited MCP calls</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>RPC-validated API keys</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>Atomic quota enforcement</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className="text-cyan-400">✓</span>
+                  <span>Usage logs + audit trail</span>
+                </div>
+              </div>
+              <button className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition">
+                Create MCP Key →
+              </button>
+            </div>
+
+            {/* Integration guide */}
+            <div className="rounded-xl border border-slate-700/50 bg-slate-950/30 p-4">
+              <p className="text-sm font-semibold text-white">Quick Setup</p>
+              <div className="mt-3 space-y-2 text-xs text-slate-400">
+                <div className="font-mono">
+                  <p className="text-cyan-400">1. Create MCP API key (see left)</p>
+                  <p className="mt-2 text-cyan-400">2. Configure in claude_desktop_config.json</p>
+                  <p className="mt-2 font-mono text-[0.7rem] text-slate-500">
+                    {`{`}<br/>
+                    {`  "mcpServers": {`}<br/>
+                    {`    "dsg": {`}<br/>
+                    {`      "command": "...",`}<br/>
+                    {`      "env": {`}<br/>
+                    {`        "DSG_API_KEY": "YOUR_MCP_KEY"`}<br/>
+                    {`      }`}<br/>
+                    {`    }`}<br/>
+                    {`  }`}<br/>
+                    {`}`}
+                  </p>
+                </div>
+                <p className="mt-3 text-slate-500">
+                  <a href="https://docs.anthropic.com/en/docs/build-with-claude/mcp" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
+                    Learn about MCP →
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Active keys list */}
+          <div className="mt-6 rounded-lg border border-slate-700/50 bg-slate-950/30 p-4">
+            <p className="text-sm font-semibold text-slate-200">Active MCP Keys</p>
+            <p className="mt-1 text-xs text-slate-500">Current org keys with usage synced into the quota dashboard</p>
+            {loading ? (
+              <div className="mt-3 py-8 text-center text-slate-500">Loading keys…</div>
+            ) : quotaUsage?.activeKeys?.length ? (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-500">
+                      <th className="px-2 py-2 font-medium">Key</th>
+                      <th className="px-2 py-2 font-medium">Created</th>
+                      <th className="px-2 py-2 font-medium">Monthly usage</th>
+                      <th className="px-2 py-2 font-medium">Next billing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotaUsage.activeKeys.map((key) => (
+                      <tr key={key.id} className="border-b border-slate-900/80 text-slate-300">
+                        <td className="px-2 py-3">
+                          <p className="font-medium text-white">{key.name}</p>
+                          <p className="text-xs text-slate-500">{key.prefix}</p>
+                        </td>
+                        <td className="px-2 py-3">{formatDate(key.createdAt)}</td>
+                        <td className="px-2 py-3">{key.currentMonthlyUsage.toLocaleString()}</td>
+                        <td className="px-2 py-3">{formatDate(key.nextBillingDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="mt-3 text-center py-8 text-slate-500">
+                <p className="text-sm">No active MCP keys yet</p>
+                <p className="text-xs mt-1">Create one above to get started</p>
+              </div>
+            )}
+          </div>
+
+          {/* Billing note */}
+          <div className="mt-4 p-3 rounded-lg bg-cyan-600/5 border border-cyan-600/10">
+            <p className="text-xs text-slate-400">
+              <span className="font-semibold text-cyan-300">Monthly billing:</span> Your team can have multiple MCP keys, each billed separately. Keys expire after 30 days and auto-renew.
+            </p>
           </div>
         </div>
       </div>

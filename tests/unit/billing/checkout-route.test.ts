@@ -114,6 +114,7 @@ describe('POST /api/billing/checkout', () => {
     const createCall = mockStripeInstance.checkout.sessions.create.mock.calls[0][0];
     expect(createCall.line_items[0].price).toBe('price_pro_monthly');
     expect(createCall.subscription_data.trial_period_days).toBe(14);
+    expect(createCall.payment_method_types).toBeUndefined();
   });
 
   it('normalizes unknown plan to pro', async () => {

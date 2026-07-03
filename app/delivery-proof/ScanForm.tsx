@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useAppLanguage } from '@/store/useAppLanguage';
 
 interface CheckItem { name: string; status: 'pass' | 'fail' | 'skip'; detail: string; }
-interface ScanResult { ok: boolean; run_id?: string; claim_result?: string; checks?: CheckItem[]; error?: string; }
+interface EntitlementInfo { tier: string; scansRemaining: number; }
+interface ScanResult { ok: boolean; run_id?: string; claim_result?: string; checks?: CheckItem[]; error?: string; entitlement?: EntitlementInfo; requiresUpgrade?: boolean; }
 
 const STATUS_CLS: Record<string, string> = {
   pass: 'border-emerald-400/20 bg-emerald-400/5 text-emerald-100',
@@ -135,6 +136,47 @@ export default function ScanForm() {
 
       {result && (
         <div className="mt-5 space-y-4">
+          {/* Tier and entitlement info */}
+          {result.entitlement && (
+            <div className={`rounded-lg border px-4 py-2.5 text-sm ${
+              result.entitlement.tier === 'free'
+                ? 'border-amber-400/30 bg-amber-400/10 text-amber-200'
+                : result.entitlement.tier === 'pro_scan'
+                ? 'border-blue-400/30 bg-blue-400/10 text-blue-200'
+                : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+            }`}>
+              <p className="font-semibold">
+                {result.entitlement.tier === 'free' && `📋 Free tier — ${result.entitlement.scansRemaining} scan${result.entitlement.scansRemaining !== 1 ? 's' : ''} remaining this month`}
+                {result.entitlement.tier === 'pro_scan' && `⭐ Pro Scan — ${result.entitlement.scansRemaining} scan${result.entitlement.scansRemaining !== 1 ? 's' : ''} remaining`}
+                {result.entitlement.tier === 'unlimited' && `✨ Unlimited — Scan as much as you want`}
+              </p>
+              {result.entitlement.scansRemaining <= 1 && result.entitlement.tier === 'free' && (
+                <p className="mt-1 text-xs opacity-80">
+                  Upgrade for more scans →{' '}
+                  <a href="/billing?plan=pro" className="font-semibold underline hover:opacity-80">
+                    Pro ($99/mo)
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
+
+          {result.requiresUpgrade && (
+            <div className="rounded-lg border border-red-400/30 bg-red-500/5 px-4 py-2.5 text-sm text-red-200">
+              <p className="font-semibold">📊 Scan limit reached</p>
+              <p className="mt-1 text-xs opacity-80">
+                Upgrade to{' '}
+                <a href="/billing?plan=pro" className="font-semibold underline hover:opacity-80">
+                  Pro ($99/mo)
+                </a>{' '}
+                for unlimited scans, or{' '}
+                <a href="/billing?item=delivery_proof_scan_49" className="font-semibold underline hover:opacity-80">
+                  buy a single scan ($49)
+                </a>
+              </p>
+            </div>
+          )}
+
           {/* Claim badge */}
           {claimResult && (
             <div className={`inline-flex rounded-full border px-4 py-1.5 text-xs font-bold uppercase ${claimCls}`}>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
 import DecisionExplainer from '../../../components/DecisionExplainer';
+import { ExecutionList } from '@/components/monitoring';
 
 type Execution = {
   id: string;
@@ -225,6 +226,14 @@ export default function ExecutionsPage() {
             </div>
           </WorkflowPanel>
         </div>
+      </section>
+
+      <section className="mt-8 border-t border-white/10 pt-8">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-slate-100">⚙️ Execution Monitoring Metrics</h2>
+          <p className="mt-2 text-sm text-slate-400">Token usage, cost tracking, and execution performance</p>
+        </div>
+        <ExecutionList limit={20} autoRefresh />
       </section>
     </RuntimeWorkflowPage>
   );

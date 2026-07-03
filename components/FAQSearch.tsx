@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/Input';
 
 interface FAQEntry {
@@ -40,25 +40,7 @@ export function FAQSearch({ isAdmin = false, onEdit, onDelete }: FAQSearchProps)
     fetchFAQ();
   }, []);
 
-  useEffect(() => {
-    filterEntries();
-  }, [searchQuery, selectedCategory, entries]);
-
-  const fetchFAQ = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/support/faq');
-      if (!response.ok) throw new Error('Failed to fetch FAQ');
-      const data = await response.json();
-      setEntries(data.entries || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load FAQ');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filterEntries = () => {
+  const filterEntries = useCallback(() => {
     let filtered = entries;
 
     if (selectedCategory !== 'all') {
@@ -75,6 +57,24 @@ export function FAQSearch({ isAdmin = false, onEdit, onDelete }: FAQSearchProps)
     }
 
     setFilteredEntries(filtered);
+  }, [entries, selectedCategory, searchQuery]);
+
+  useEffect(() => {
+    filterEntries();
+  }, [searchQuery, selectedCategory, entries, filterEntries]);
+
+  const fetchFAQ = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/support/faq');
+      if (!response.ok) throw new Error('Failed to fetch FAQ');
+      const data = await response.json();
+      setEntries(data.entries || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load FAQ');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {

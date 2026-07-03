@@ -58,51 +58,67 @@ async function generateAgentResponse(message: string): Promise<string> {
 Support Thai language responses.
 Be concise, technical, and helpful.`;
 
-  // Free OpenRouter model used across the app (lib/agent/llm-router.ts).
-  // Overridable via OPENROUTER_MODEL_CHAT for deployment flexibility.
-  const model = process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free';
+  // Primary model overridable via env; fallback chain handles upstream 429s.
+  const models = [
+    process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
+    'meta-llama/llama-4-maverick:free',
+    'google/gemma-3-27b-it:free',
+    'deepseek/deepseek-chat-v3-0324:free',
+  ];
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: message,
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.8,
-    }),
-  });
+  for (const model of models) {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: message,
+          },
+        ],
+        max_tokens: 1000,
+        temperature: 0.8,
+      }),
+    });
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    console.error(
-      `[api/dashboard/agi/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
-    );
-    const error = new Error('OpenRouter API request failed');
-    throw error;
+    if (response.status === 429) {
+      const detail = await response.text().catch(() => '');
+      console.error(
+        `[api/dashboard/agi/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+      );
+      continue;
+    }
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      console.error(
+        `[api/dashboard/agi/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+      );
+      const error = new Error('OpenRouter API request failed');
+      throw error;
+    }
+
+    const data = (await response.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
+
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
+    }
+
+    throw new Error('Invalid response from OpenRouter API');
   }
 
-  const data = (await response.json()) as {
-    choices: Array<{ message: { content: string } }>;
-  };
-
-  if (data.choices && data.choices[0] && data.choices[0].message) {
-    return data.choices[0].message.content;
-  }
-
-  throw new Error('Invalid response from OpenRouter API');
+  throw new Error('OpenRouter API request failed — all models rate-limited');
 }
 
 export async function POST(request: NextRequest) {

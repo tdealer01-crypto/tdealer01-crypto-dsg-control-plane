@@ -1,0 +1,62 @@
+{
+  "name": "dsg-control-plane-marketplace",
+  "displayName": "DSG Governance Control Plane — Claude Code Plugin Marketplace",
+  "description": "Official plugin marketplace for the DSG AI Governance Control Plane. Packages Deterministic Safety Gate, Replayable Governance, Compliance Evidence Pack, Runtime Governance, and Hermes Controlled Executor as distributable Claude Code skills.\n\nPitch: Cloudflare = Control Plane of the Internet. Datadog = Control Plane of Observability. DSG = Control Plane of AI Governance.",
+  "version": "1.0.0",
+  "maintainer": "tdealer01-crypto",
+  "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "plugins": [
+    {
+      "name": "dsg-governance",
+      "displayName": "DSG Governance Control Plane",
+      "description": "AI Governance Control Plane — every Agent decision provable, auditable, and replayable with Deterministic Gate (Z3/SMT), Cryptographic Proof, Compliance Evidence Pack, and Hermes Controlled Executor.",
+      "version": "1.0.0",
+      "source": "./",
+      "category": "governance",
+      "tags": ["ai-governance", "deterministic", "compliance", "audit", "replay", "enterprise"],
+      "readme": "./README.md",
+      "skills": [
+        {
+          "name": "dsg-action-layer-ged",
+          "description": "Primary governance action layer — turns any user goal into an explainable plan, deterministic decision flow, permission verdicts, and browser-first execution after approval.",
+          "triggerPhrases": [
+            "gate this action",
+            "evaluate policy",
+            "check governance",
+            "get a proof",
+            "replay decision",
+            "audit trail",
+            "compliance evidence",
+            "hermes execute",
+            "controlled execution",
+            "DSG gate"
+          ]
+        },
+        {
+          "name": "dsg-github-marketplace-action-controller",
+          "description": "Package and publish DSG gates as GitHub Marketplace Actions with GO/NO-GO validation and audit proof.",
+          "triggerPhrases": [
+            "publish DSG action",
+            "github marketplace action",
+            "package governance",
+            "DSG github action",
+            "deploy governance action"
+          ]
+        },
+        {
+          "name": "dsg-multi-governance-orchestrator",
+          "description": "Multi-source governance for M1/M2 milestones, marketplace/enterprise cutover, and production GO/NO-GO validation.",
+          "triggerPhrases": [
+            "DSG multi",
+            "M1 cutover",
+            "M2 hardening",
+            "marketplace cutover",
+            "architecture page",
+            "production GO/NO-GO",
+            "governance orchestration"
+          ]
+        }
+      ]
+    }
+  ]
+}
