@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 600; // 10 minutes max for streaming
+export const maxDuration = 300; // Vercel hobby plan caps serverless maxDuration at 300s
 
 export async function GET(request: NextRequest) {
   try {
