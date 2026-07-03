@@ -59,13 +59,27 @@ function getLegacyMonthlyPriceId(plan: PlanKey) {
   return '';
 }
 
+// Live price IDs in Stripe account acct_1Tnbl5CVpjxFKlKT (dsg-one, Inc.), created 2026-07-02.
+// Price IDs are public identifiers (visible in Checkout URLs), not secrets.
+// STRIPE_PRICE_* env vars always take precedence when set.
+const DEFAULT_PRICE_IDS: Record<PlanKey, Record<BillingInterval, string>> = {
+  pro:        { monthly: 'price_1TopmZCVpjxFKlKT18ljNI84', yearly: 'price_1TopmiCVpjxFKlKT0EVZwCps' },
+  business:   { monthly: 'price_1TopmsCVpjxFKlKTdpm128OG', yearly: 'price_1Topn0CVpjxFKlKTvxKJUsff' },
+  enterprise: { monthly: 'price_1TopnACVpjxFKlKT36Pe7Zmu', yearly: 'price_1TopnICVpjxFKlKTqHhjKzhR' },
+};
+
 function getPriceId(plan: PlanKey, interval: BillingInterval) {
   const envName = PLAN_CONFIG[plan].priceEnv[interval];
   const configured = process.env[envName] || '';
 
   if (configured) return configured;
-  if (interval === 'monthly') return getLegacyMonthlyPriceId(plan);
-  return '';
+
+  if (interval === 'monthly') {
+    const legacy = getLegacyMonthlyPriceId(plan);
+    if (legacy) return legacy;
+  }
+
+  return DEFAULT_PRICE_IDS[plan][interval];
 }
 
 type CheckoutProfileResult =

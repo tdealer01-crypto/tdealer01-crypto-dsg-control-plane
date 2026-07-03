@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -49,16 +49,21 @@ function verifyWebhookSignature(payload: string, signature: string): boolean {
   const secret = process.env.GITHUB_MARKETPLACE_WEBHOOK_SECRET;
 
   if (!secret) {
-    console.warn('Missing GITHUB_MARKETPLACE_WEBHOOK_SECRET - webhook verification disabled');
-    return true; // Allow in development/testing
+    console.warn('Missing GITHUB_MARKETPLACE_WEBHOOK_SECRET - rejecting webhook (fail closed)');
+    return false;
   }
 
   const hash = createHmac('sha256', secret)
     .update(payload)
     .digest('hex');
 
-  const expectedSignature = `sha256=${hash}`;
-  return signature === expectedSignature;
+  const expectedSignature = Buffer.from(`sha256=${hash}`);
+  const receivedSignature = Buffer.from(signature);
+
+  if (expectedSignature.length !== receivedSignature.length) {
+    return false;
+  }
+  return timingSafeEqual(expectedSignature, receivedSignature);
 }
 
 /**
@@ -141,6 +146,13 @@ export async function POST(request: Request) {
         { error: 'Invalid signature' },
         { status: 401 }
       );
+    }
+
+    // GitHub sends a `ping` event when the webhook is created/tested.
+    // Its payload has no action/marketplace_purchase, so answer before validation.
+    const githubEvent = request.headers.get('x-github-event');
+    if (githubEvent === 'ping') {
+      return NextResponse.json({ success: true, event: 'ping' }, { status: 200 });
     }
 
     // Parse payload
