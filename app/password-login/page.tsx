@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function PasswordLoginPage() {
+  return (
+    <Suspense>
+      <PasswordLoginInner />
+    </Suspense>
+  );
+}
+
+function PasswordLoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);

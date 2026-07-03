@@ -109,7 +109,7 @@ function makeSpineRequest(
 }
 
 async function loadPost() {
-  const mod = await import("../../../app/api/execute/route");
+  const mod = await import("../../../app/api/spine/execute/route");
   return mod.POST;
 }
 

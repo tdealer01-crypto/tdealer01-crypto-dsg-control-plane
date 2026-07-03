@@ -43,7 +43,7 @@ describe('Delegation Permission Gate', () => {
       expect(decision.reason).toBe('LOW_RISK_ACTION_ALLOWED');
     });
 
-    it('should REVIEW MEDIUM risk action that is in allowedActions', () => {
+    it('should ALLOW MEDIUM risk action that is in allowedActions', () => {
       const step: AgentWorkStep = {
         stepId: 'step_002',
         tool: 'browser',
@@ -53,8 +53,8 @@ describe('Delegation Permission Gate', () => {
       };
 
       const decision = checkDelegationPermission(delegation, step);
-      expect(decision.decision).toBe('REVIEW');
-      expect(decision.reason).toBe('MEDIUM_RISK_REQUIRES_AUDIT_TRAIL');
+      expect(decision.decision).toBe('ALLOW');
+      expect(decision.reason).toBe('MEDIUM_RISK_AUTO_ALLOWED_WITH_AUDIT');
       expect(decision.evidenceRequired).toContain('audit_log');
     });
 

@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAppLanguage } from '@/store/useAppLanguage';
-import { SLACountdown } from '@/components/ui/SLACountdown';
 
 const APPROVALS_T = {
   th: {
@@ -139,20 +138,9 @@ export default function ApprovalsPage() {
   };
 
   const pendingCount = approvals.filter((a) => a.status === 'pending').length;
-
-  const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-
-  const filteredApprovals = useMemo(() => {
-    const base = filter === 'all' ? approvals : approvals.filter((a) => a.status === filter);
-    return [...base].sort((a, b) => {
-      if (a.status === 'pending' && b.status !== 'pending') return -1;
-      if (b.status === 'pending' && a.status !== 'pending') return 1;
-      const pa = PRIORITY_RANK[a.priority] ?? 1;
-      const pb = PRIORITY_RANK[b.priority] ?? 1;
-      if (pa !== pb) return pa - pb;
-      return new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime();
-    });
-  }, [approvals, filter]);
+  const filteredApprovals = filter === 'all'
+    ? approvals
+    : approvals.filter((a) => a.status === filter);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -318,16 +306,11 @@ export default function ApprovalsPage() {
                       </details>
                     )}
 
-                    {/* SLA Countdown */}
+                    {/* Expiry Warning */}
                     {approval.status === 'pending' && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">{t.expires}:</span>
-                        <SLACountdown
-                          expiresAt={approval.expiresAt}
-                          status={approval.status}
-                          createdAt={approval.createdAt}
-                        />
-                      </div>
+                      <p className="text-xs text-red-600 font-semibold">
+                        {t.expires}: {new Date(approval.expiresAt).toLocaleString()}
+                      </p>
                     )}
                   </div>
 

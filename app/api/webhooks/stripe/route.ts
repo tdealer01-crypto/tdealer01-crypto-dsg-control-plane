@@ -1,154 +1,224 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { POST as handleBillingWebhook } from '@/app/api/billing/webhook/route';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
-import { logApiError } from '@/lib/security/api-error';
+import { insertRevenueEvent } from '@/lib/revenue/events';
+import { isMissingEnvConfigError, logApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
-// Stripe webhook signature verification
-const getSigningSecret = (): string | null => {
-  return process.env.STRIPE_WEBHOOK_SECRET || null;
+type RevenueWebhookEventType =
+  | 'stripe_checkout'
+  | 'mcp_subscription'
+  | 'subscription_canceled'
+  | 'invoice_payment_succeeded'
+  | 'stripe_webhook';
+
+type EventContext = {
+  orgId: string | null;
+  userId: string | null;
+  planId: string | null;
+  amount: number | null;
+  eventType: RevenueWebhookEventType;
+  source: string;
 };
 
+function getStripeClient(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('Missing STRIPE_SECRET_KEY');
+  }
+
+  return new Stripe(secretKey);
+}
+
+function getWebhookSecret(): string {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error('Missing STRIPE_WEBHOOK_SECRET');
+  }
+
+  return webhookSecret;
+}
+
+function centsToUsd(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Number((value / 100).toFixed(2));
+}
+
+function extractMetadataValue(input: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+async function resolveOrgIdFromCustomerId(customerId: string | null): Promise<string | null> {
+  if (!customerId) {
+    return null;
+  }
+
+  const supabase = getSupabaseAdmin();
+  const result = await (supabase as any)
+    .from('billing_customers')
+    .select('org_id')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle();
+
+  if (result.error || !result.data?.org_id) {
+    return null;
+  }
+
+  return String(result.data.org_id);
+}
+
+async function buildEventContext(event: Stripe.Event): Promise<EventContext> {
+  const object = event.data.object as unknown as Record<string, unknown>;
+  const metadata = (object.metadata && typeof object.metadata === 'object'
+    ? object.metadata
+    : {}) as Record<string, unknown>;
+  const objectType = String(object.object || '');
+
+  const customerId =
+    typeof object.customer === 'string'
+      ? object.customer
+      : typeof object.customer === 'object' && object.customer && 'id' in object.customer
+        ? String((object.customer as { id?: unknown }).id || '')
+        : null;
+
+  const orgIdFromMetadata = extractMetadataValue(metadata, 'org_id', 'orgId');
+  const orgId = orgIdFromMetadata || await resolveOrgIdFromCustomerId(customerId);
+  const userId = extractMetadataValue(metadata, 'user_id', 'userId');
+
+  switch (event.type) {
+    case 'checkout.session.completed':
+      return {
+        orgId,
+        userId,
+        planId: extractMetadataValue(metadata, 'plan_id', 'planId', 'plan_key'),
+        amount: centsToUsd(object.amount_total),
+        eventType: 'stripe_checkout',
+        source: 'stripe.checkout.session.completed',
+      };
+    case 'customer.subscription.created':
+      return {
+        orgId,
+        userId,
+        planId:
+          extractMetadataValue(metadata, 'plan_id', 'planId', 'plan_key') ||
+          (objectType === 'subscription'
+            ? extractMetadataValue(object as Record<string, unknown>, 'id')
+            : null),
+        amount: null,
+        eventType: 'mcp_subscription',
+        source: 'stripe.customer.subscription.created',
+      };
+    case 'customer.subscription.deleted':
+      return {
+        orgId,
+        userId,
+        planId: extractMetadataValue(metadata, 'plan_id', 'planId', 'plan_key'),
+        amount: null,
+        eventType: 'subscription_canceled',
+        source: 'stripe.customer.subscription.deleted',
+      };
+    case 'invoice.payment_succeeded':
+      return {
+        orgId,
+        userId,
+        planId: extractMetadataValue(metadata, 'plan_id', 'planId', 'plan_key'),
+        amount: centsToUsd(object.amount_paid),
+        eventType: 'invoice_payment_succeeded',
+        source: 'stripe.invoice.payment_succeeded',
+      };
+    default:
+      return {
+        orgId,
+        userId,
+        planId: extractMetadataValue(metadata, 'plan_id', 'planId', 'plan_key'),
+        amount: centsToUsd(object.amount_total ?? object.amount_paid ?? object.amount),
+        eventType: 'stripe_webhook',
+        source: `stripe.${event.type}`,
+      };
+  }
+}
+
+async function persistWebhookEvent(event: Stripe.Event) {
+  const context = await buildEventContext(event);
+  if (!context.orgId) {
+    return null;
+  }
+
+  return insertRevenueEvent({
+    orgId: context.orgId,
+    userId: context.userId,
+    planId: context.planId,
+    amount: context.amount,
+    currency: 'USD',
+    source: context.source,
+    eventType: context.eventType,
+    metadata: {
+      stripe_event_id: event.id,
+      stripe_event_type: event.type,
+      payload: event,
+    },
+  });
+}
+
 export async function POST(request: Request) {
+  const signature = request.headers.get('stripe-signature');
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
+  }
+
+  let body = '';
+
   try {
-    const body = await request.text();
-    const signature = request.headers.get('stripe-signature');
+    const stripe = getStripeClient();
+    const webhookSecret = getWebhookSecret();
 
-    if (!signature) {
-      return NextResponse.json(
-        { error: 'Missing signature' },
-        { status: 400 }
-      );
-    }
+    body = await request.text();
 
-    const signingSecret = getSigningSecret();
-    if (!signingSecret) {
-      return NextResponse.json(
-        { error: 'Webhook not configured' },
-        { status: 503 }
-      );
-    }
-
-    let event;
-
-    const stripe = new Stripe(signingSecret);
+    let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, signingSecret);
-    } catch (sigErr: any) {
-      return NextResponse.json(
-        { error: `Webhook signature verification failed: ${sigErr?.message ?? ''}` },
-        { status: 400 }
-      );
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    } catch {
+      return new NextResponse('Invalid signature', { status: 400 });
     }
 
-    const admin = getSupabaseAdmin();
+    await persistWebhookEvent(event);
 
-    // Handle different event types
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object, admin);
-        break;
-
-      case 'charge.refunded':
-        await handleChargeRefunded(event.data.object, admin);
-        break;
-
-      case 'charge.dispute.created':
-        await handleDisputeCreated(event.data.object, admin);
-        break;
-    }
-
-    return NextResponse.json({ ok: true, received: true });
-  } catch (err) {
-    logApiError('api/webhooks/stripe POST', err, {});
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 500 }
-    );
-  }
-}
-
-async function handleCheckoutCompleted(session: any, admin: any) {
-  try {
-    // Update checkout session status
-    await admin
-      .from('marketplace_checkout_sessions')
-      .update({
-        status: 'completed',
-        stripe_payment_intent_id: session.payment_intent,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('stripe_session_id', session.id)
-      .catch(() => {
-        // Table might not exist yet, ignore
-      });
-
-    const { data: checkoutSession } = await admin
-      .from('marketplace_checkout_sessions')
-      .select('*')
-      .eq('stripe_session_id', session.id)
-      .maybeSingle()
-      .catch(() => ({ data: null }));
-
-    if (checkoutSession) {
-      await admin
-        .from('marketplace_payment_audit')
-        .insert({
-          product_id: checkoutSession.product_id,
-          org_id: checkoutSession.org_id,
-          user_id: checkoutSession.user_id,
-          stripe_session_id: session.id,
-          event_type: 'payment_completed',
-          amount_cents: checkoutSession.amount_cents,
-          metadata: { customer_email: session.customer_email },
-        })
-        .catch(() => {
-          // Audit table might not exist yet
-        });
-    }
-  } catch (err) {
-    console.error('Error handling checkout completion:', err);
-  }
-}
-
-async function handleChargeRefunded(charge: any, admin: any) {
-  try {
-    // Log refund to audit trail
-    await admin
-      .from('marketplace_payment_audit')
-      .insert({
-        stripe_session_id: charge.payment_intent,
-        event_type: 'payment_refunded',
-        amount_cents: charge.amount_refunded,
-        metadata: { reason: charge.refund_reason, charge_id: charge.id },
-      })
-      .catch(() => {
-        // Audit table might not exist
-      });
-  } catch (err) {
-    console.error('Error handling charge refund:', err);
-  }
-}
-
-async function handleDisputeCreated(dispute: any, admin: any) {
-  try {
-    // Log dispute to audit trail
-    await admin
-      .from('marketplace_payment_audit')
-      .insert({
-        event_type: 'payment_dispute',
-        amount_cents: dispute.amount,
-        metadata: {
-          dispute_id: dispute.id,
-          reason_code: dispute.reason,
-          status: dispute.status,
+    const delegatedResponse = await handleBillingWebhook(
+      new Request(request.url, {
+        method: 'POST',
+        headers: {
+          'content-type': request.headers.get('content-type') || 'text/plain',
+          'stripe-signature': signature,
         },
+        body,
       })
-      .catch(() => {
-        // Audit table might not exist
-      });
+    );
+
+    if (!delegatedResponse.ok) {
+      return delegatedResponse;
+    }
+
+    return NextResponse.json({ ok: true, received: true, type: event.type });
   } catch (err) {
-    console.error('Error handling dispute:', err);
+    logApiError('api/webhooks/stripe POST', err, { bodyLength: body.length });
+    const isConfigError = isMissingEnvConfigError(err, ['STRIPE_WEBHOOK_SECRET', 'STRIPE_SECRET_KEY']);
+    const status = isConfigError ? 503 : 500;
+    const safeMessage = isConfigError
+      ? 'Webhook processing unavailable'
+      : 'Webhook processing failed';
+
+    return NextResponse.json({ error: safeMessage }, { status });
   }
 }

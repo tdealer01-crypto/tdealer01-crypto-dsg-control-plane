@@ -12,6 +12,7 @@ import { readJsonBody } from '../../../../lib/security/request-json';
 import { createClient } from '../../../../lib/supabase/server';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { requireActiveProfile } from '../../../../lib/auth/require-active-profile';
+import { checkDeliveryProofEntitlement, recordDeliveryProofScan, type EntitlementCheck } from '../../../../lib/delivery-proof/entitlement';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,6 +114,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'production_url must be a valid URL' }, { status: 400 });
   }
 
+  // Check entitlement for authenticated user
+  let orgId: string | null = null;
+  let entitlementCheck: EntitlementCheck | null = null;
+
+  try {
+    const profile = await requireActiveProfile();
+    if (profile.ok) {
+      orgId = profile.orgId;
+      entitlementCheck = await checkDeliveryProofEntitlement(orgId);
+
+      // If not allowed, return 402 Payment Required
+      if (!entitlementCheck.allowed) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: entitlementCheck.message,
+            requiresUpgrade: true,
+            tier: entitlementCheck.tier,
+          },
+          { status: 402 },
+        );
+      }
+    }
+  } catch {
+    // Unauthenticated is OK — check as free tier
+    const freeCheck = await checkDeliveryProofEntitlement(null);
+    if (!freeCheck.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: freeCheck.message,
+          requiresUpgrade: true,
+        },
+        { status: 402 },
+      );
+    }
+    entitlementCheck = freeCheck;
+  }
+
   const checks: CheckResult[] = [];
 
   // 1. Homepage
@@ -143,6 +183,16 @@ export async function POST(request: Request) {
   const runId = generateRunId();
   await saveReport(runId, checks, eligible, base);
 
+  // Record scan usage and metered billing
+  const recordResult = await recordDeliveryProofScan(
+    runId,
+    orgId,
+    base,
+    eligible ? 'EVIDENCE COMPLETE' : 'PRODUCTION BLOCKED',
+    passCount,
+    checks.filter((c) => c.status !== 'skip').length,
+  );
+
   // Fire webhook if caller is authenticated (best-effort).
   void (async () => {
     try {
@@ -152,7 +202,9 @@ export async function POST(request: Request) {
           run_id: runId,
           production_url: base,
           claim_result: eligible ? 'EVIDENCE COMPLETE' : 'PRODUCTION BLOCKED',
-          pass: checks.filter((c) => c.status === 'pass').length,
+          pass: passCount,
+          tier: entitlementCheck?.tier,
+          metered: recordResult.meterEventId ? true : false,
         });
       }
     } catch {
@@ -175,5 +227,11 @@ export async function POST(request: Request) {
     claim_result: eligible ? 'EVIDENCE COMPLETE' : 'PRODUCTION BLOCKED',
     checks,
     summary: { pass: passCount, fail: failCount, skip: checks.filter((c) => c.status === 'skip').length },
+    entitlement: entitlementCheck
+      ? {
+          tier: entitlementCheck.tier,
+          scansRemaining: entitlementCheck.scansRemaining,
+        }
+      : undefined,
   });
 }

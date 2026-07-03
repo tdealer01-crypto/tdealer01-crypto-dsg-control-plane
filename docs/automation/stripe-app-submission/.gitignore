@@ -1,0 +1,27 @@
+# Configuration files with sensitive data
+SUBMISSION_DATA.json
+.env
+.env.local
+.env.*.local
+
+# Generated output directories
+submission_screenshots_*/
+/screenshots
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+submission_log.txt

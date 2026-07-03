@@ -1,11 +1,19 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type ConnectionStatus = 'idle' | 'connecting' | 'success' | 'error';
 
 export default function StripeConnectPage() {
+  return (
+    <Suspense>
+      <StripeConnectInner />
+    </Suspense>
+  );
+}
+
+function StripeConnectInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
@@ -15,17 +23,7 @@ export default function StripeConnectPage() {
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (code && state) {
-      // OAuth callback - exchange code for token
-      handleOAuthCallback(code, state);
-    } else if (errorParam) {
-      setStatus('error');
-      setErrorMessage(`OAuth error: ${errorParam}`);
-    }
-  }, [code, state, errorParam]);
-
-  const handleOAuthCallback = async (code: string, state: string) => {
+  const handleOAuthCallback = useCallback(async (code: string, state: string) => {
     setStatus('connecting');
     try {
       const response = await fetch('/api/stripe-app/oauth/callback', {
@@ -49,7 +47,17 @@ export default function StripeConnectPage() {
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Failed to connect Stripe account');
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    if (code && state) {
+      // OAuth callback - exchange code for token
+      handleOAuthCallback(code, state);
+    } else if (errorParam) {
+      setStatus('error');
+      setErrorMessage(`OAuth error: ${errorParam}`);
+    }
+  }, [code, state, errorParam, handleOAuthCallback]);
 
   const handleConnectClick = () => {
     setStatus('connecting');

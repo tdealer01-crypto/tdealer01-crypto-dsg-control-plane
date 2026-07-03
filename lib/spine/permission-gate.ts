@@ -17,7 +17,7 @@ import { isDelegationValid } from '../delegation/delegation-service';
  * Map risk levels to required confirmation steps.
  *
  * LOW: Auto-allowed if action is in allowedActions
- * MEDIUM: Requires audit trail; can proceed with logging
+ * MEDIUM: Auto-allowed with mandatory audit trail
  * HIGH: Requires user confirmation
  * CRITICAL: Always requires user confirmation; may need escalation
  */
@@ -37,7 +37,7 @@ const RISK_CONFIRMATION_LEVELS: Record<string, number> = {
  * 3. Check action is in allowedActions or is generic-allowed → ALLOW/REVIEW/BLOCK based on risk
  * 4. Check risk level:
  *    - LOW: ALLOW (if allowed)
- *    - MEDIUM: REVIEW (audit required, but can proceed)
+ *    - MEDIUM: ALLOW (audit required, auto-run)
  *    - HIGH: requires explicit user confirmation
  *    - CRITICAL: always requires confirmation, may escalate
  * 5. Return decision with reason and evidence requirements
@@ -121,11 +121,11 @@ export function checkDelegationPermission(
     };
   }
 
-  // MEDIUM risk: review (audit trail required, but can proceed)
+  // MEDIUM risk: auto-allow with required audit evidence
   if (step.risk === 'MEDIUM' && !requiresConfirm) {
     return {
-      decision: 'REVIEW',
-      reason: 'MEDIUM_RISK_REQUIRES_AUDIT_TRAIL',
+      decision: 'ALLOW',
+      reason: 'MEDIUM_RISK_AUTO_ALLOWED_WITH_AUDIT',
       evidence: {
         risk: step.risk,
         action: step.action,

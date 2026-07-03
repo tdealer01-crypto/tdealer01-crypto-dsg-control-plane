@@ -4950,6 +4950,135 @@ export type Database = {
           },
         ]
       }
+      seller_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          seller_id: string
+          status: string
+          stripe_payout_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          seller_id: string
+          status?: string
+          stripe_payout_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          seller_id?: string
+          status?: string
+          stripe_payout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_payouts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_transactions: {
+        Row: {
+          amount_total: number
+          checkout_session_id: string
+          created_at: string
+          customer_email: string
+          id: string
+          platform_fee: number
+          seller_id: string
+          seller_payout: number
+          status: string
+        }
+        Insert: {
+          amount_total: number
+          checkout_session_id: string
+          created_at?: string
+          customer_email: string
+          id?: string
+          platform_fee: number
+          seller_id: string
+          seller_payout: number
+          status?: string
+        }
+        Update: {
+          amount_total?: number
+          checkout_session_id?: string
+          created_at?: string
+          customer_email?: string
+          id?: string
+          platform_fee?: number
+          seller_id?: string
+          seller_payout?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_transactions_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sellers: {
+        Row: {
+          business_name: string
+          created_at: string
+          fee_percentage: number
+          id: string
+          kyc_account_link_url: string | null
+          kyc_status: string
+          payout_schedule: string
+          stripe_account_id: string | null
+          stripe_dashboard_access: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          kyc_account_link_url?: string | null
+          kyc_status?: string
+          payout_schedule?: string
+          stripe_account_id?: string | null
+          stripe_dashboard_access?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          kyc_account_link_url?: string | null
+          kyc_status?: string
+          payout_schedule?: string
+          stripe_account_id?: string | null
+          stripe_dashboard_access?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sellers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -5303,6 +5432,397 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      agent_profiles: {
+        Row: {
+          id: string
+          agent_id: string
+          wallet_address: string
+          skills: string[]
+          reputation: number
+          tier: "bronze" | "silver" | "gold" | "platinum"
+          completed_jobs: number
+          total_earnings: number
+          last_active: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          wallet_address: string
+          skills?: string[]
+          reputation?: number
+          tier?: "bronze" | "silver" | "gold" | "platinum"
+          completed_jobs?: number
+          total_earnings?: number
+          last_active?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          wallet_address?: string
+          skills?: string[]
+          reputation?: number
+          tier?: "bronze" | "silver" | "gold" | "platinum"
+          completed_jobs?: number
+          total_earnings?: number
+          last_active?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      earnings_records: {
+        Row: {
+          id: string
+          job_id: string
+          agent_id: string
+          amount: number
+          currency: string
+          tx_signature: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          agent_id: string
+          amount: number
+          currency: string
+          tx_signature: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          agent_id?: string
+          amount?: number
+          currency?: string
+          tx_signature?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_agent_id"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_profiles"
+            referencedColumns: ["agent_id"]
+          }
+        ]
+      }
+      job_executions: {
+        Row: {
+          id: string
+          job_id: string
+          agent_id: string
+          status: "submitted" | "verified" | "paid" | "failed"
+          deliverable: string | null
+          proof_hash: string | null
+          quality_score: number | null
+          tx_signature: string | null
+          started_at: string
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          agent_id: string
+          status: "submitted" | "verified" | "paid" | "failed"
+          deliverable?: string | null
+          proof_hash?: string | null
+          quality_score?: number | null
+          tx_signature?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          agent_id?: string
+          status?: "submitted" | "verified" | "paid" | "failed"
+          deliverable?: string | null
+          proof_hash?: string | null
+          quality_score?: number | null
+          tx_signature?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_agent_id"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_profiles"
+            referencedColumns: ["agent_id"]
+          }
+        ]
+      }
+      monitoring_executions: {
+        Row: {
+          execution_id: string
+          agent_id: string
+          user_id: string | null
+          org_id: string
+          start_time: string
+          end_time: string | null
+          status: string
+          input_tokens: number
+          output_tokens: number
+          total_tokens: number
+          model_name: string | null
+          total_cost_usd: number
+          error_message: string | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          execution_id?: string
+          agent_id: string
+          user_id?: string | null
+          org_id: string
+          start_time?: string
+          end_time?: string | null
+          status?: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          model_name?: string | null
+          total_cost_usd?: number
+          error_message?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          execution_id?: string
+          agent_id?: string
+          user_id?: string | null
+          org_id?: string
+          start_time?: string
+          end_time?: string | null
+          status?: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          model_name?: string | null
+          total_cost_usd?: number
+          error_message?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_events: {
+        Row: {
+          event_id: string
+          execution_id: string
+          event_type: string
+          timestamp: string
+          data: Json | null
+          created_at: string
+        }
+        Insert: {
+          event_id?: string
+          execution_id: string
+          event_type: string
+          timestamp?: string
+          data?: Json | null
+          created_at?: string
+        }
+        Update: {
+          event_id?: string
+          execution_id?: string
+          event_type?: string
+          timestamp?: string
+          data?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_tool_calls: {
+        Row: {
+          call_id: string
+          execution_id: string
+          tool_name: string
+          input: Json | null
+          output: Json | null
+          status: string
+          duration_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          call_id?: string
+          execution_id: string
+          tool_name: string
+          input?: Json | null
+          output?: Json | null
+          status?: string
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          call_id?: string
+          execution_id?: string
+          tool_name?: string
+          input?: Json | null
+          output?: Json | null
+          status?: string
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_token_usage: {
+        Row: {
+          usage_id: string
+          execution_id: string
+          input_tokens: number
+          output_tokens: number
+          total_tokens: number
+          cost_usd: number
+          created_at: string
+        }
+        Insert: {
+          usage_id?: string
+          execution_id: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          cost_usd?: number
+          created_at?: string
+        }
+        Update: {
+          usage_id?: string
+          execution_id?: string
+          input_tokens?: number
+          output_tokens?: number
+          total_tokens?: number
+          cost_usd?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_monthly_metrics: {
+        Row: {
+          metric_id: string
+          org_id: string
+          agent_id: string
+          year_month: string
+          total_executions: number
+          successful_executions: number
+          failed_executions: number
+          total_tokens_used: number
+          total_cost_usd: number
+          success_rate_percent: number
+          created_at: string
+        }
+        Insert: {
+          metric_id?: string
+          org_id: string
+          agent_id: string
+          year_month: string
+          total_executions?: number
+          successful_executions?: number
+          failed_executions?: number
+          total_tokens_used?: number
+          total_cost_usd?: number
+          success_rate_percent?: number
+          created_at?: string
+        }
+        Update: {
+          metric_id?: string
+          org_id?: string
+          agent_id?: string
+          year_month?: string
+          total_executions?: number
+          successful_executions?: number
+          failed_executions?: number
+          total_tokens_used?: number
+          total_cost_usd?: number
+          success_rate_percent?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      monitoring_alerts: {
+        Row: {
+          alert_id: string
+          org_id: string
+          agent_id: string
+          alert_type: string
+          severity: string
+          status: string
+          title: string
+          message: string
+          metadata: Json | null
+          created_at: string
+          acknowledged_at: string | null
+          resolved_at: string | null
+        }
+        Insert: {
+          alert_id?: string
+          org_id: string
+          agent_id: string
+          alert_type: string
+          severity: string
+          status?: string
+          title: string
+          message: string
+          metadata?: Json | null
+          created_at?: string
+          acknowledged_at?: string | null
+          resolved_at?: string | null
+        }
+        Update: {
+          alert_id?: string
+          org_id?: string
+          agent_id?: string
+          alert_type?: string
+          severity?: string
+          status?: string
+          title?: string
+          message?: string
+          metadata?: Json | null
+          created_at?: string
+          acknowledged_at?: string | null
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
+      monitoring_webhooks: {
+        Row: {
+          webhook_id: string
+          org_id: string
+          url: string
+          channel: string
+          secret: string | null
+          enabled: boolean
+          created_at: string
+        }
+        Insert: {
+          webhook_id?: string
+          org_id: string
+          url: string
+          channel: string
+          secret?: string | null
+          enabled?: boolean
+          created_at?: string
+        }
+        Update: {
+          webhook_id?: string
+          org_id?: string
+          url?: string
+          channel?: string
+          secret?: string | null
+          enabled?: boolean
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
@@ -50,20 +50,7 @@ export function TicketDetail({ ticketId }: TicketDetailProps) {
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetchTicket();
-    fetchMessages();
-    // Poll for new messages every 3 seconds
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
-  }, [ticketId]);
-
-  useEffect(() => {
-    // Scroll to bottom when messages change
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const fetchTicket = async () => {
+  const fetchTicket = useCallback(async () => {
     try {
       const response = await fetch(`/api/support/tickets/${ticketId}`);
       if (!response.ok) throw new Error('Failed to fetch ticket');
@@ -74,9 +61,9 @@ export function TicketDetail({ ticketId }: TicketDetailProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [ticketId]);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const response = await fetch(`/api/support/tickets/${ticketId}/messages`);
       if (!response.ok) throw new Error('Failed to fetch messages');
@@ -85,7 +72,20 @@ export function TicketDetail({ ticketId }: TicketDetailProps) {
     } catch (err) {
       console.error('Failed to fetch messages:', err);
     }
-  };
+  }, [ticketId]);
+
+  useEffect(() => {
+    fetchTicket();
+    fetchMessages();
+    // Poll for new messages every 3 seconds
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [ticketId, fetchTicket, fetchMessages]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

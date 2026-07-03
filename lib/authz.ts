@@ -1,6 +1,7 @@
 import { createClient } from './supabase/server';
 import { getSupabaseAdmin } from './supabase-server';
 import { isMissingRelationError } from './supabase/resolve-policy';
+import { internalErrorMessage, logApiError } from './security/api-error';
 
 export type RuntimeRole = 'org_admin' | 'operator' | 'reviewer' | 'runtime_auditor' | 'billing_admin';
 
@@ -20,6 +21,7 @@ function isMissingRuntimeRolesError(error: { message?: string; code?: string | n
 }
 
 export async function requireOrgRole(requiredRoles: RuntimeRole[]){
+ try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,10 +53,11 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[]){
     .maybeSingle();
 
   if (profile.error) {
+    logApiError('lib/authz/requireOrgRole:profile', profile.error);
     return {
       ok: false as const,
       status: 500,
-      error: profile.error.message,
+      error: internalErrorMessage(),
     };
   }
 
@@ -115,10 +118,11 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[]){
       };
     }
 
+    logApiError('lib/authz/requireOrgRole:runtime_roles', runtimeRolesResult.error);
     return {
       ok: false as const,
       status: 500,
-      error: runtimeRolesResult.error.message,
+      error: internalErrorMessage(),
     };
   }
 
@@ -160,4 +164,14 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[]){
     authUserId: String(user.id),
     grantedRoles: effectiveRolesList as RuntimeRole[],
   };
+ } catch (error) {
+  // Fail closed: any failure to construct the Supabase client or resolve the
+  // session (e.g. missing env, network error) must deny access, never 500.
+  logApiError('lib/authz/requireOrgRole', error);
+  return {
+    ok: false as const,
+    status: 401,
+    error: 'Unauthorized',
+  };
+ }
 }

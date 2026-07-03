@@ -77,6 +77,8 @@ function ChargeGateInner({ extensionContext }: { extensionContext?: ExtensionCon
       return;
     }
 
+    let cancelled = false;
+
     try {
       setLoading(true);
       const res = await fetch(`${DSG_API_BASE}/api/stripe-app/gateway/evaluate`, {
@@ -90,24 +92,36 @@ function ChargeGateInner({ extensionContext }: { extensionContext?: ExtensionCon
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as GatewayDecision | null;
+      let raw: Partial<GatewayDecision> | null = null;
+      try {
+        raw = (await res.json()) as Partial<GatewayDecision> | null;
+      } catch (parseErr) {
+        throw new Error(`Failed to parse response: ${parseErr instanceof Error ? parseErr.message : 'Invalid JSON'}`);
+      }
+      const verdict =
+        raw?.decision === 'ALLOW' || raw?.decision === 'BLOCK' || raw?.decision === 'REVIEW'
+          ? raw.decision
+          : 'REVIEW';
 
-      if (data?.decision) {
+      if (!cancelled) {
         setDecision({
-          decision: data.decision,
-          reason: data.reason ?? 'No reason provided — held for review',
-          proof: data.proof,
-          policy_version: data.policy_version,
-          evaluated_at: data.evaluated_at ?? new Date().toISOString(),
-          approval_id: data.approval_id,
+          decision: verdict,
+          reason: typeof raw?.reason === 'string' && raw.reason.length > 0
+            ? raw.reason
+            : 'No reason provided — held for review',
+          proof: typeof raw?.proof === 'string' ? raw.proof : undefined,
+          policy_version: typeof raw?.policy_version === 'string' ? raw.policy_version : undefined,
+          evaluated_at: typeof raw?.evaluated_at === 'string' ? raw.evaluated_at : undefined,
         });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      setFetchError(msg);
-      setDecision({ decision: 'REVIEW', reason: 'DSG unavailable — held for review' });
+      if (!cancelled) {
+        setFetchError(msg);
+        setDecision({ decision: 'REVIEW', reason: 'DSG unavailable — held for review' });
+      }
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
   };
 

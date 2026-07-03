@@ -75,14 +75,7 @@ function LoginInner() {
   useEffect(() => {
     const error = searchParams.get("error") || undefined;
     const message = searchParams.get("message") || undefined;
-    if (message === "check-email") setNotice({ type: "success", message: "ส่งลิงก์กู้คืนแล้ว! กรุณาตรวจสอบอีเมลของคุณ" });
-    else if (error === "approval-required") setNotice({ type: "error", message: "Workspace นี้ต้องได้รับอนุมัติจากผู้ดูแลก่อนเข้าสู่ระบบ" });
-    else if (error === "sso-required") setNotice({ type: "error", message: "องค์กรนี้กำหนดให้เข้าสู่ระบบผ่าน SSO เท่านั้น" });
-    else if (error === "not-allowed") setNotice({ type: "error", message: "บัญชีของคุณไม่ได้รับอนุญาตให้เข้าถึง workspace นี้" });
-    else if (error === "invalid-email") setNotice({ type: "error", message: "รูปแบบอีเมลไม่ถูกต้อง กรุณาใส่อีเมลธุรกิจที่ถูกต้อง" });
-    else if (error === "too-many-attempts") setNotice({ type: "error", message: "คุณพยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอ 60 วินาทีแล้วลองใหม่" });
-    else if (error) setNotice({ type: "error", message: "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง" });
-    else setNotice(null);
+    setNotice(getNotice(error, message));
   }, [searchParams]);
 
   const handleSSOClick = useCallback(() => {
@@ -90,13 +83,13 @@ function LoginInner() {
     router.push(`/api/auth/sso?next=${encodeURIComponent(next)}`);
   }, [router, searchParams]);
 
-  const noticeIcons: Record<string, string> = {
+  const noticeIcons = {
     error: "❌",
     success: "✅",
     info: "ℹ️",
   };
 
-  const noticeStyles: Record<string, string> = {
+  const noticeStyles = {
     error: "border-red-500/30 bg-red-500/10 text-red-200",
     success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
     info: "border-blue-500/30 bg-blue-500/10 text-blue-200",

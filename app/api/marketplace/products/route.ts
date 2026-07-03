@@ -65,13 +65,22 @@ export async function POST(request: Request) {
     );
   }
 
+  // Resolve the authenticated user first, failing closed to 401 if the
+  // Supabase client cannot be constructed (e.g. auth not configured).
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  let user: Awaited<ReturnType<Awaited<ReturnType<typeof createClient>>['auth']['getUser']>>['data']['user'];
   try {
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-
-    if (error || !user) {
+    supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
     }
+    user = data.user;
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
+  }
+
+  try {
 
     const { data: userProfile } = await supabase
       .from('users')

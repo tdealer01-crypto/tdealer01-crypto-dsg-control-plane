@@ -54,8 +54,10 @@ coverage/
 __pycache__
 .env*
 
+# Solana job platform generated data
+examples/solana-job-platform/marketplace-data.json
+
 # Local secret/runtime files - never commit
-.env.local
 .env.production.local
 .env.stripe-prices.local
 .stripe-env
@@ -65,3 +67,9 @@ dsg-complete-stripe-github-env.sh
 dsg-final-env-local-only.sh
 .stripe/
 .vercel
+
+# Stripe Projects — never commit vault or cache
+.projects/cache
+.projects/vault
+.projects/state.test.json
+.projects/state.local.test.json

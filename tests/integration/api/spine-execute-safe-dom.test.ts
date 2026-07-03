@@ -69,7 +69,7 @@ function request(body: unknown, headers: Record<string, string> = {}) {
 
 async function loadPost() {
   vi.resetModules();
-  const mod = await import('../../../app/api/execute/route');
+  const mod = await import('../../../app/api/spine/execute/route');
   return mod.POST;
 }
 

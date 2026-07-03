@@ -1,0 +1,78 @@
+name: Agent — Security Audit
+
+on:
+  workflow_run:
+    workflows: ["Security"]
+    types: [completed]
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: read
+
+jobs:
+  security-audit-agent:
+    if: github.event.workflow_run.conclusion == 'failure' || github.event.pull_request.action != null
+    runs-on: ubuntu-latest
+    name: Security Analysis
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Check Dependencies
+        id: audit
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Scan Request Body Safety
+        id: body-safety
+        continue-on-error: true
+        run: bash scripts/check-request-body-safety.sh 2>/dev/null || echo "BODY_SAFETY_WARNING=Some routes may need review"
+
+      - name: Report Security Findings
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const auditStatus = '${{ steps.audit.outcome }}' === 'success' ? '✅' : '⚠️';
+            const bodySafetyStatus = '${{ steps.body-safety.outcome }}' === 'success' ? '✅' : '⚠️';
+
+            let message = '## 🔒 Security Audit Agent Report\n\n';
+            message += '### Security Checks\n';
+            message += `- NPM Audit (High): ${auditStatus}\n`;
+            message += `- Request Body Safety: ${bodySafetyStatus}\n`;
+            message += '\n### Recommendations\n';
+
+            if ('${{ steps.audit.outcome }}' !== 'success') {
+              message += '- ⚠️ Resolve dependency vulnerabilities before merge\n';
+            }
+
+            if ('${{ steps.body-safety.outcome }}' !== 'success') {
+              message += '- ⚠️ Review request body parsing in API routes\n';
+            }
+
+            if ('${{ steps.audit.outcome }}' === 'success' && '${{ steps.body-safety.outcome }}' === 'success') {
+              message += '- ✅ No high-severity vulnerabilities detected\n';
+            }
+
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

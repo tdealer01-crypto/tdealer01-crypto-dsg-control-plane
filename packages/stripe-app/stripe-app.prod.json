@@ -10,7 +10,7 @@
     "square_128": "./docs/assets/icon-128x128.png",
     "square_256": "./docs/assets/icon-256x256.png"
   },
-  "about": "DSG Governance Gate displays ALLOW, BLOCK, or REVIEW policy decisions on the Stripe Dashboard payment detail view. Each decision shows its policy version, proof reference, and evaluation time inside the app panel. If the governance service is unreachable, the panel shows REVIEW — never ALLOW.",
+  "about": "DSG Platform provides automated risk governance and compliance infrastructure for digital enterprises. The DSG Governance Gate app evaluates policy decisions directly inside your payment detail view, surfacing real-time status details including policy versions, proof references, and clear verification time logs. If the governance service is unreachable, decisions default to REVIEW — never to ALLOW.",
   "features": [
     {
       "name": "Policy decision display",

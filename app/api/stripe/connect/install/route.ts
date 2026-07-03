@@ -10,6 +10,7 @@ const STATE_COOKIE = 'dsg_stripe_connect_state';
 const MODE_COOKIE = 'dsg_stripe_connect_mode';
 const USER_COOKIE = 'dsg_stripe_connect_user_id';
 const STATE_MAX_AGE_SECONDS = 30 * 60;
+
 type StripeStatePayload = {
   nonce: string;
   mode: StripeInstallMode;
