@@ -3,7 +3,7 @@
  * ควบคุม Dashboard ด้วยคำสั่งภาษาไทย
  */
 
-import { PageAgent } from 'page-agent';
+import { PageAgent } from './index';
 
 export interface PageAgentConfig {
   apiKey: string;
@@ -23,10 +23,13 @@ export class ThaiDashboardAgent {
   }> = [];
 
   constructor(config: PageAgentConfig) {
+    const model = config.model || 'claude-3-5-sonnet-20241022';
+    const baseURL = config.baseURL || 'https://api.anthropic.com/v1';
+
     this.config = {
-      model: config.model || 'gpt-4-turbo',
-      baseURL: config.baseURL || 'https://api.openai.com/v1',
-      ...config,
+      model,
+      apiKey: config.apiKey,
+      baseURL,
     };
   }
 
