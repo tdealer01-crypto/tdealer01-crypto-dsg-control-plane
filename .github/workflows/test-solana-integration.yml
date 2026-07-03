@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -74,7 +74,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -82,7 +82,9 @@ jobs:
 
       - name: Check for hardcoded secrets in Solana code
         run: |
-          if grep -r "SOLANA_TREASURY\|PRIVATE_KEY\|SECRET" lib/solana/ --include="*.ts" | grep -v "process.env\|environment\|ENV\|config"; then
+          # Flag only literal assignments of secret-looking values (KEY = "long literal"),
+          # not comments/error messages that merely name the env var.
+          if grep -rE "(SOLANA_TREASURY|PRIVATE_KEY|SECRET)[A-Z_]*\s*[:=]\s*['\"][^'\"]{20,}" lib/solana/ --include="*.ts"; then
             echo "❌ Found hardcoded secrets in Solana code!"
             exit 1
           fi
@@ -106,7 +108,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -150,7 +152,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies

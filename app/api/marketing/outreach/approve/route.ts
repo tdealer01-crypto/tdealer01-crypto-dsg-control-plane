@@ -12,6 +12,7 @@ import { readJsonBody } from '../../../../../lib/security/request-json';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
 import { requireActiveProfile } from '../../../../../lib/auth/require-active-profile';
 import { sendGitHubLeadOutreach } from '../../../../../lib/email/sales';
+import { logApiError } from '../../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +110,9 @@ export async function POST(request: Request) {
         .eq('source', 'github-signal');
       results.push({ id, status: 'sent' });
     } catch (err) {
-      results.push({ id, status: 'error', error: err instanceof Error ? err.message : 'send failed' });
+      // Detail stays server-side; response carries a generic marker only.
+      logApiError('api/marketing/outreach/approve', err);
+      results.push({ id, status: 'error', error: 'send failed' });
     }
   }
 
