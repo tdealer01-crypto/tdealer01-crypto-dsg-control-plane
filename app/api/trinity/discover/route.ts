@@ -3,6 +3,97 @@ import { appendAuditEvent, getSupabaseAdmin, normalizeSeverity, parseActorContex
 
 export const dynamic = 'force-dynamic';
 
+async function rankJobsWithLLM(jobs: JobListing[]): Promise<JobListing[]> {
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+
+  // Skip ranking if no LLM configured or too few jobs
+  if ((!openrouterKey && !nvidiaKey) || jobs.length === 0) {
+    return jobs;
+  }
+
+  const systemPrompt = `You are Trinity Mind Agent. Rank the given jobs by relevance and solvability.
+Return a JSON array with job IDs ordered by priority (highest first).
+Output ONLY the JSON array, nothing else.`;
+
+  const jobSummary = jobs
+    .map((j) => `${j.id}: ${j.title} (${j.category}, ${j.difficulty})`)
+    .join('\n');
+
+  const userPrompt = `Rank these jobs by priority:\n${jobSummary}`;
+
+  try {
+    // Try OpenRouter first
+    if (openrouterKey) {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-4o-mini:free',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 200,
+          temperature: 0.3,
+        }),
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          const ranked = JSON.parse(content) as string[];
+          const jobMap = new Map(jobs.map((j) => [j.id, j]));
+          return ranked.filter((id) => jobMap.has(id)).map((id) => jobMap.get(id)!);
+        }
+      }
+    }
+
+    // Fallback to NVIDIA
+    if (nvidiaKey) {
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${nvidiaKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.NVIDIA_MODEL_CHAT || 'nvidia/nemotron-3-ultra-550b-a55b',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 200,
+          temperature: 0.3,
+          top_p: 1,
+        }),
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          const ranked = JSON.parse(content) as string[];
+          const jobMap = new Map(jobs.map((j) => [j.id, j]));
+          return ranked.filter((id) => jobMap.has(id)).map((id) => jobMap.get(id)!);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Trinity] Job ranking error:', err);
+  }
+
+  return jobs;
+}
+
 interface JobListing {
   id: string;
   external_id: string;
@@ -104,6 +195,9 @@ export async function GET(req: Request) {
 
   let jobs = [...githubJobs, ...immunefiJobs];
   if (category) jobs = jobs.filter((j) => j.category === category);
+
+  // Rank jobs with LLM Mind Agent if available
+  jobs = await rankJobsWithLLM(jobs);
 
   const supabase = getSupabaseAdmin();
   if (supabase && jobs.length > 0) {

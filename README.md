@@ -1,10 +1,8 @@
 # 🔐 DSG: Deterministic Execution & Governance
-Building deterministic AI execution with formal verification. 
-Core: Z3 SMT solver, CCVS evidence chains
+
 > **Formal Proof. Evidence-Backed. Production-Ready.**
 
 **Production AI governance + execution platform for regulated workflows.**
-
 ```
 ┌─────────────────────────────────────────┐
 │  🎯 Gate Before Execute                 │

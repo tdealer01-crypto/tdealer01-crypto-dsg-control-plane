@@ -1,6 +1,14 @@
+/**
+ * NVIDIA NGC Model Chat API
+ * POST /api/models/nvidia/chat
+ *
+ * Unified endpoint for NVIDIA NGC hosted LLM models
+ * Supports model selection, streaming, and structured responses
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/security/api-error';
-import { readJsonBody } from '@/lib/security/request-json';
+import { selectNGCModel, buildNGCRequest } from '@/lib/nvidia/ngc-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,21 +18,26 @@ interface NvidiaMessage {
 }
 
 interface NvidiaChatRequest {
-  model?: string;
   messages: NvidiaMessage[];
+  model?: string;
+  max_tokens?: number;
   temperature?: number;
   top_p?: number;
-  max_tokens?: number;
-  seed?: number;
-  stream?: boolean;
 }
 
 async function callNvidiaAPI(
-  apiKey: string,
-  payload: NvidiaChatRequest,
-  stream: boolean = true,
-): Promise<Response> {
-  const model = payload.model || 'nvidia/nemotron-3-ultra-550b-a55b';
+  messages: NvidiaMessage[],
+  modelId?: string,
+  options?: { maxTokens?: number; temperature?: number; topP?: number },
+): Promise<string> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('NVIDIA_API_KEY not configured');
+  }
+
+  const model = selectNGCModel(modelId);
+  const payload = buildNGCRequest(model.id, messages as Array<{ role: string; content: string }>, options);
 
   const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',
@@ -32,100 +45,61 @@ async function callNvidiaAPI(
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      messages: payload.messages,
-      temperature: payload.temperature ?? 1,
-      top_p: payload.top_p ?? 1,
-      max_tokens: payload.max_tokens ?? 1024,
-      seed: payload.seed,
-      stream,
-    }),
+    body: JSON.stringify(payload),
   });
 
-  return response;
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`NVIDIA API error: ${response.status} ${detail.slice(0, 200)}`);
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('NVIDIA API returned no content');
+  }
+
+  return content;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.NVIDIA_API_KEY;
+    const body = (await request.json()) as NvidiaChatRequest;
+    const { messages, model, max_tokens, temperature, top_p } = body;
 
-    if (!apiKey) {
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
-        { error: 'NVIDIA_API_KEY not configured' },
-        { status: 500 },
-      );
-    }
-
-    const bodyResult = await readJsonBody<NvidiaChatRequest>(request, { maxBytes: 512_000 });
-    if (!bodyResult.ok) {
-      return NextResponse.json(
-        { error: bodyResult.error },
-        { status: bodyResult.status },
-      );
-    }
-
-    const body = bodyResult.value;
-    if (!body) {
-      return NextResponse.json(
-        { error: 'Invalid request body' },
+        { error: 'Invalid messages array' },
         { status: 400 },
       );
     }
 
-    const { messages, model, temperature, top_p, max_tokens, seed, stream = true } = body;
+    const response = await callNvidiaAPI(messages, model, {
+      maxTokens: max_tokens,
+      temperature,
+      topP: top_p,
+    });
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'messages array is required' },
-        { status: 400 },
-      );
-    }
-
-    const response = await callNvidiaAPI(
-      apiKey,
-      {
-        model,
-        messages,
-        temperature,
-        top_p,
-        max_tokens,
-        seed,
-      },
-      stream,
-    );
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error(
-        `[api/models/nvidia/chat] NVIDIA API error ${response.status}:`,
-        errorData.slice(0, 500),
-      );
-      return handleApiError(
-        new Error(`NVIDIA API error: ${response.status}`),
-        response.status,
-      );
-    }
-
-    if (stream && response.body) {
-      return new Response(response.body, {
-        status: response.status,
-        headers: {
-          'content-type': 'text/event-stream; charset=utf-8',
-          'cache-control': 'no-cache, no-transform',
-          'connection': 'keep-alive',
-        },
-      });
-    }
-
-    return new Response(response.body, {
-      status: response.status,
-      headers: {
-        'content-type': response.headers.get('content-type') ?? 'application/json',
-      },
+    return NextResponse.json({
+      ok: true,
+      content: response,
+      model: selectNGCModel(model).id,
     });
   } catch (error) {
-    console.error('[api/models/nvidia/chat] error:', error);
-    return handleApiError(error);
+    return handleApiError('api/models/nvidia/chat', error, {
+      status: error instanceof Error && error.message.includes('API key') ? 503 : 500,
+    });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    service: 'nvidia-ngc-api',
+    description: 'NVIDIA NGC Model Chat Endpoint',
+    models: ['nemotron-3-ultra-550b', 'nemotron-3-8b', 'llama-2-70b', 'mistral-7b'],
+  });
 }

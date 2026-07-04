@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { handleApiError } from '@/lib/security/api-error';
+import { selectNGCModel } from '@/lib/nvidia/ngc-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,33 +45,21 @@ async function evaluateGovernancePolicy(
 
 // Honest limited-mode reply used when the LLM backend is unavailable, so the
 // dashboard remains usable instead of surfacing a hard error.
-function limitedModeReply(reason: string, language: string = 'en'): string {
-  const messages = {
-    en: {
-      main: '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
-      config: 'To enable full conversational replies, configure OPENROUTER_API_KEY or NVIDIA_API_KEY for this deployment.',
-    },
-    th: {
-      main: '⚠️ เฮอร์มีสกำลังทำงานในโหมดจำกัด — แบ็กเอนด LLM ไม่พร้อมใช้งานในขณะนี้',
-      config: 'เพื่อเปิดใช้งานการตอบกลับเต็มรูปแบบ ให้กำหนดค่า OPENROUTER_API_KEY หรือ NVIDIA_API_KEY สำหรับการปรับใช้นี้',
-    },
-  };
-
-  const msg = messages[language as keyof typeof messages] || messages.en;
+function limitedModeReply(reason: string): string {
   return [
-    msg.main,
+    '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
     `(${reason})`,
     '',
-    msg.config,
+    'To enable full conversational replies, configure OPENROUTER_API_KEY for this deployment.',
   ].join('\n');
 }
 
-async function generateAgentResponse(message: string, language: string = 'en'): Promise<string> {
+async function generateAgentResponse(message: string): Promise<string> {
   const openrouterKey = process.env.OPENROUTER_API_KEY;
   const nvidiaKey = process.env.NVIDIA_API_KEY;
 
   if (!openrouterKey && !nvidiaKey) {
-    return limitedModeReply('No LLM configured', language);
+    return limitedModeReply('LLM not configured');
   }
 
   const systemPrompt = `You are Hermes, a helpful AI governance agent that helps users understand policies and make decisions.
@@ -78,75 +67,10 @@ You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  // Try OpenRouter first if available
-  if (openrouterKey) {
-    const models = [
-      process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
-      'google/gemma-3-27b-it:free',
-      'deepseek/deepseek-chat-v3-0324:free',
-    ];
-
-    for (const model of models) {
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openrouterKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              {
-                role: 'system',
-                content: systemPrompt,
-              },
-              {
-                role: 'user',
-                content: message,
-              },
-            ],
-            max_tokens: 500,
-            temperature: 0.7,
-          }),
-        });
-
-        if (response.status === 429) {
-          const detail = await response.text().catch(() => '');
-          console.error(
-            `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
-          );
-          continue;
-        }
-
-        if (!response.ok) {
-          const detail = await response.text().catch(() => '');
-          console.error(
-            `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
-          );
-          continue;
-        }
-
-        const data = (await response.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-        };
-
-        const content = data.choices?.[0]?.message?.content;
-        if (content) return content;
-      } catch (error) {
-        console.error(
-          `[api/dashboard/hermes/chat] OpenRouter error for model "${model}":`,
-          error,
-        );
-      }
-    }
-  }
-
-  // Fallback to NVIDIA if available
+  // Try NGC models first if NVIDIA API is configured
   if (nvidiaKey) {
-    const nvidiaModel = process.env.NVIDIA_MODEL_CHAT || 'nvidia/nemotron-3-ultra-550b-a55b';
-
     try {
+      const ngcModel = selectNGCModel();
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -154,16 +78,10 @@ Always be respectful and helpful.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: nvidiaModel,
+          model: ngcModel.id,
           messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: message,
-            },
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
           ],
           max_tokens: 500,
           temperature: 0.7,
@@ -175,26 +93,82 @@ Always be respectful and helpful.`;
         const data = (await response.json()) as {
           choices?: Array<{ message?: { content?: string } }>;
         };
-
         const content = data.choices?.[0]?.message?.content;
-        if (content) return content;
+        if (content) {
+          console.log('[Hermes] NGC model response:', ngcModel.displayName);
+          return content;
+        }
       } else {
         const detail = await response.text().catch(() => '');
-        console.error(
-          `[api/dashboard/hermes/chat] NVIDIA ${response.status}: ${detail.slice(0, 300)}`,
-        );
+        console.warn(`[Hermes] NGC fallback (${response.status}): ${detail.slice(0, 200)}`);
       }
-    } catch (error) {
-      console.error('[api/dashboard/hermes/chat] NVIDIA error:', error);
+    } catch (err) {
+      console.warn('[Hermes] NGC error, trying OpenRouter:', err);
     }
   }
 
-  return limitedModeReply('All LLM backends unavailable', language);
+  // Fallback to OpenRouter
+  if (!openrouterKey) {
+    return limitedModeReply('OpenRouter API key not configured');
+  }
+
+  const models = [
+    process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
+    'google/gemma-3-27b-it:free',
+    'deepseek/deepseek-chat-v3-0324:free',
+  ];
+
+  for (const model of models) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
+
+      if (response.status === 429) {
+        const detail = await response.text().catch(() => '');
+        console.error(
+          `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+        );
+        continue;
+      }
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        console.error(
+          `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+        );
+        continue;
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+    } catch {
+      continue;
+    }
+  }
+
+  return limitedModeReply('All LLM backends unavailable');
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const language = request.headers.get('accept-language')?.split(',')[0]?.startsWith('th') ? 'th' : 'en';
     const supabase = await createClient();
     const {
       data: { user },
@@ -222,7 +196,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const responseText = await generateAgentResponse(message, language);
+    const responseText = await generateAgentResponse(message);
     const decision = await evaluateGovernancePolicy(message);
 
     const encoder = new TextEncoder();
