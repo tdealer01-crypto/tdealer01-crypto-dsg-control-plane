@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  dsg-hpc-verification:
+    build:
+      context: .
+      dockerfile: Dockerfile.hpc-verification
+    image: dsg-hpc-verification:26.3
+    container_name: dsg-hpc-verification
+
+    # Enable GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [compute]
+
+    environment:
+      # Z3 Configuration
+      Z3_AVAILABLE: 'true'
+
+      # CUDA Configuration
+      CUDA_VISIBLE_DEVICES: '0'
+
+      # Evidence output directory
+      EVIDENCE_OUTPUT: '/workspace/evidence-output'
+
+      # Verification mode (production|staging|development)
+      VERIFICATION_MODE: 'development'
+
+    volumes:
+      - .:/workspace
+      - ./evidence-output:/workspace/evidence-output
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    networks:
+      - dsg-network
+
+    # Keep container running for interactive verification
+    stdin_open: true
+    tty: true
+
+    # Timeout for long-running proofs
+    stop_grace_period: 60s
+
+networks:
+  dsg-network:
+    driver: bridge

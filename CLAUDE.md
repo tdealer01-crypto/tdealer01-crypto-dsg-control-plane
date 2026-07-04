@@ -290,6 +290,46 @@ Minimum evidence before GO:
 
 If any required live evidence is absent, status is `NO-GO`, `pending`, or `not verified`.
 
+### Formal proof and HPC verification
+
+For deterministic gate / formal proof changes, use HPC verification to prove Z3 constraints:
+
+```bash
+# Local Z3 verification (requires Python + z3-solver)
+npm run verify:policy:hpc:local
+
+# Docker-containerized verification (requires Docker)
+npm run verify:policy:hpc:docker
+
+# docker-compose persistent environment
+npm run verify:policy:hpc:compose
+
+# Parallel CCVS evidence pipeline (L1-L5 in parallel)
+npm run ccvs:hpc-parallel
+```
+
+**HPC Verification Approach:**
+
+1. **Container-based**: Z3 SMT solver runs in NVIDIA HPC container for reproducibility
+2. **Evidence-ready**: Outputs JSON proof artifacts suitable for L4/L5 CCVS evidence
+3. **No external solver requirement**: `/api/dsg/v1/gates/evaluate` does NOT invoke external Z3; HPC verification is optional proof support only
+4. **Parallel execution**: CCVS L1-L5 evidence can run in parallel for faster verification
+5. **CI/CD integration**: GitHub Actions workflow `verify-hpc.yml` automates Z3 formal proof on push/PR
+
+**Expected output:**
+
+```json
+{
+  "schema": "ccvs-makk8-z3-proof-v1",
+  "summary": {
+    "samma_verified": true,
+    "micha_detected": true,
+    "formal_proof_ok": true
+  },
+  "cases": [...]
+}
+```
+
 ---
 
 ## 7. Core API and route conventions

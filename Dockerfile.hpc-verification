@@ -1,0 +1,52 @@
+# NVIDIA HPC Container for DSG Formal Verification
+# Base: NVIDIA HPC (includes CUDA, compilers, MPI)
+# Purpose: Containerized Z3 SMT verification, CCVS evidence generation, deterministic gate proofs
+
+FROM nvcr.io/nvidia/nvhpc:26.3-devel-cuda_multi-ubuntu22.04
+
+LABEL maintainer="DSG Control Plane"
+LABEL description="NVIDIA HPC + Z3 Formal Verification Environment"
+
+# Install Node.js 20.x and Python3 for both verification paths
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    git \
+    python3-pip \
+    python3-dev \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Z3 SMT Solver (for formal proof verification)
+RUN pip3 install --no-cache-dir \
+    z3-solver \
+    sympy \
+    jsonschema
+
+# Install Node.js dependencies (for SMT2 benchmarking and CCVS pipeline)
+RUN npm install -g npm@latest
+
+WORKDIR /workspace
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install npm dependencies
+RUN npm ci --quiet
+
+# Copy verification scripts
+COPY scripts/ ./scripts/
+COPY lib/ ./lib/
+
+# Create evidence output directory
+RUN mkdir -p /workspace/evidence-output
+
+# Set NVIDIA runtime defaults
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Default entrypoint: verification suite
+ENTRYPOINT ["bash", "-c"]
+CMD ["echo 'DSG HPC Verification Container Ready'"]
