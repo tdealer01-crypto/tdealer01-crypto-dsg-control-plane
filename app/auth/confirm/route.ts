@@ -7,6 +7,7 @@ import { ensureSeatActivatedForUser } from '../../../lib/billing/seat-activation
 import { bootstrapOrgStarterState } from '../../../lib/onboarding/bootstrap';
 import { getSafeNext } from '../../../lib/auth/safe-next';
 import { sendTelegram } from '../../../lib/marketing/mcp-tools';
+import { linkGithubMarketplaceAccount } from '../../../lib/marketplace/account-link';
 
 const TRIAL_DAYS = 14;
 
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
 
   const { data: pendingSignup, error: pendingSignupError } = await admin
     .from('trial_signups')
-    .select('id, workspace_name, full_name, status')
+    .select('id, workspace_name, full_name, status, github_account_id, github_login, installation_id')
     .eq('email', normalizedEmail)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
@@ -132,7 +133,9 @@ export async function GET(request: NextRequest) {
   const nowIso = now.toISOString();
   const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  const orgId = `org_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
+  // organizations.id is a native uuid column — must be a real UUID, not a
+  // prefixed string, or the insert below is rejected by Postgres.
+  const orgId = randomUUID();
   const orgSlug = slugifyWorkspace(String(pendingSignup.workspace_name));
 
   const { error: orgError } = await admin.from('organizations').insert({
@@ -236,6 +239,15 @@ export async function GET(request: NextRequest) {
     .from('trial_signups')
     .update({ status: 'completed', completed_at: nowIso })
     .eq('id', pendingSignup.id);
+
+  if (pendingSignup.github_account_id) {
+    await linkGithubMarketplaceAccount({
+      orgId,
+      githubAccountId: Number(pendingSignup.github_account_id),
+      githubLogin: String(pendingSignup.github_login || ''),
+      installationId: pendingSignup.installation_id ? Number(pendingSignup.installation_id) : null,
+    }).catch((err) => console.error('[auth-confirm] github marketplace link failed:', err));
+  }
 
   await ensureSeatActivatedForUser({
     orgId,

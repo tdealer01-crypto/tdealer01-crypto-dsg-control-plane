@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireInternalService } from '@/lib/auth/internal-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,12 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const corsHeaders = buildCorsHeaders(request);
+
+  const internalAccess = requireInternalService(request);
+  if (!internalAccess.ok) {
+    const failure = internalAccess as any;
+    return NextResponse.json({ error: failure.error }, { status: failure.status, headers: corsHeaders });
+  }
 
   try {
     const body = await request.json() as {

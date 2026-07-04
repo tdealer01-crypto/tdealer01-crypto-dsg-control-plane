@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { requireInternalService } from '../../auth/internal-service';
 
 export function getAppBuilderDb() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,9 +12,22 @@ export function getAppBuilderDb() {
   return createClient(url, key);
 }
 
-export function getDevSmokeAppBuilderContext(req: Request) {
-  const workspaceId = req.headers.get('x-dsg-workspace-id');
-  const actorId = req.headers.get('x-dsg-actor-id');
+/**
+ * Resolves workspaceId/actorId from a verified internal-service Bearer
+ * token, not from caller-supplied headers directly — getAppBuilderDb() uses
+ * SUPABASE_SERVICE_ROLE_KEY (full RLS bypass), so trusting an unauthenticated
+ * x-dsg-workspace-id header here would let any caller read/write any
+ * workspace's app-builder jobs.
+ */
+export function getAuthorizedAppBuilderContext(req: Request) {
+  const access = requireInternalService(req);
+  if (!access.ok) {
+    const failure = access as any;
+    throw new Error(failure.error);
+  }
+
+  const workspaceId = access.workspaceId;
+  const actorId = access.agentId ?? access.service;
 
   if (!workspaceId) throw new Error('WORKSPACE_ID_REQUIRED');
   if (!actorId) throw new Error('ACTOR_ID_REQUIRED');

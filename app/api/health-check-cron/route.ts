@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { buildHealthReport } from '../../../lib/health/report';
+import { getDeploymentReadiness } from '../../../lib/deployment/readiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,22 +22,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_APP_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+    // Call the underlying health/readiness logic directly instead of an
+    // HTTP round-trip to this same server's own /api/health and
+    // /api/readiness routes — that self-fetch pattern added avoidable
+    // latency and contended for the server's own request-handling capacity.
+    const [healthResult, readinessResult] = await Promise.all([
+      buildHealthReport(),
+      getDeploymentReadiness(),
+    ]);
 
-    // Check /api/health endpoint
-    const healthResponse = await fetch(`${baseUrl}/api/health`, {
-      headers: { 'User-Agent': 'DSG-HealthCheck-Cron' },
-    });
-
-    // Check /api/readiness endpoint
-    const readinessResponse = await fetch(`${baseUrl}/api/readiness`, {
-      headers: { 'User-Agent': 'DSG-HealthCheck-Cron' },
-    });
-
-    const healthOk = healthResponse.ok;
-    const readinessOk = readinessResponse.ok;
+    const healthOk = healthResult.status === 200;
+    const readinessOk = readinessResult.ok;
     const overallStatus = healthOk && readinessOk ? 'healthy' : 'degraded';
 
     const logEntry = {
@@ -44,11 +41,11 @@ export async function GET(request: NextRequest) {
       status: overallStatus,
       health: {
         ok: healthOk,
-        status: healthResponse.status,
+        status: healthResult.status,
       },
       readiness: {
         ok: readinessOk,
-        status: readinessResponse.status,
+        status: readinessOk ? 200 : 503,
       },
       launchWindow: {
         targetDate: '2026-06-10T00:00:00Z',

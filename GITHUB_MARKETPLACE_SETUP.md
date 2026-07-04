@@ -10,6 +10,14 @@ GitHub Marketplace allows you to share apps and actions with the GitHub communit
 
 **Expected timeline**: 2–5 business days for review and approval.
 
+> **This is a separate GitHub App from the existing "DSG Control Plane" (`agent-apps`)
+> listing.** That earlier listing wraps the Claude Code governance-gate plugin
+> (`.claude-plugin/marketplace.json`) and uses its own webhook (`/api/github-app/webhook`)
+> and one-time manifest-creation callback (`/api/github-app/callback`) — do not point this
+> new App's settings at those routes, and do not edit them for this listing's needs.
+> This guide is for the SaaS Control Plane platform (Trinity, Finance Governance, Stripe
+> billing, revenue KPIs) billed through GitHub Marketplace purchases.
+
 ---
 
 ## Prerequisites
@@ -33,17 +41,28 @@ Before starting, have the following ready:
    - URL: `https://github.com/settings/apps`
 2. Click **"New GitHub App"**
 3. Fill in the required fields:
-   - **App name**: `DSG Control Plane`
+   - **App name**: `DSG Control Plane` (or a distinct name if `DSG Control Plane` is
+     already taken by the existing `agent-apps` listing on this account)
    - **Homepage URL**: `https://tdealer01-crypto-dsg-control-plane.vercel.app`
-   - **Webhook URL**: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/github`
-   - **Callback URL** (for OAuth): `https://tdealer01-crypto-dsg-control-plane.vercel.app/auth/callback`
-4. Set required **permissions**:
+   - **Webhook URL**: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/marketplace`
+   - **Callback URL** (for OAuth): `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/github-app/marketplace/callback`
+4. Under **"Identifying and authorizing users"**, check **"Request user authorization (OAuth) during installation"**
+   if you want installers to be signed in / auto-provisioned (this repo's callback route assumes this is checked).
+5. Set required **permissions**:
    - Repository: Read-only (contents, metadata)
    - Actions: Read (for CI integration)
-5. Set **"Where can this GitHub App be installed?"** to `Any account`
-6. Click **"Create GitHub App"**
+6. Set **"Where can this GitHub App be installed?"** to `Any account`
+7. Click **"Create GitHub App"**
 
-> Note: Save the App ID and generate a private key — these are needed for webhook verification.
+> Note: Save the App ID, Client ID, Client Secret, and generate a private key — these are
+> needed for webhook verification and the OAuth callback. Set them as:
+> - `GITHUB_MARKETPLACE_WEBHOOK_SECRET` — the Webhook secret
+> - `GITHUB_MARKETPLACE_OAUTH_CLIENT_ID` — the Client ID
+> - `GITHUB_MARKETPLACE_OAUTH_CLIENT_SECRET` — the Client secret
+>
+> These are distinct env vars from `GITHUB_APP_ID`/`GITHUB_APP_PRIVATE_KEY`/
+> `GITHUB_APP_WEBHOOK_SECRET`, which belong to the other, already-installed
+> governance-gate App — do not reuse or overwrite those.
 
 ---
 
@@ -63,7 +82,7 @@ Before starting, have the following ready:
 | Field | Value |
 |-------|-------|
 | **Listing name** | DSG Control Plane |
-| **Short description** | AI governance platform with real-time monitoring, compliance automation, and integrated revenue tracking |
+| **Short description** | AI governance platform with real-time monitoring, compliance automation, and integrated revenue tracking. ISO 42001, NIST AI RMF, and EU AI Act ready — deterministic policy gates with cryptographic proof. |
 | **Category** | Developer Tools |
 | **Secondary category** | Continuous Integration / Delivery |
 | **Support URL** | `https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/discussions` |
@@ -99,8 +118,10 @@ Screenshot requirements:
 ### 3.4 Short Description (160–280 characters)
 
 ```
-AI governance platform with real-time monitoring, compliance automation, and integrated revenue tracking. ISO 42001, NIST AI RMF, EU AI Act ready.
+AI governance platform with real-time monitoring, compliance automation, and integrated revenue tracking. ISO 42001, NIST AI RMF, and EU AI Act ready — deterministic policy gates with cryptographic proof.
 ```
+
+(204 characters — verified with a character count, not eyeballed; the previous draft was 146 characters, under the 160 minimum stated above.)
 
 ### 3.5 Long Description (1000–2000 characters)
 

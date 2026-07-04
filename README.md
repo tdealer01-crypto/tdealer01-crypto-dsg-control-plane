@@ -15,7 +15,7 @@
 
 **Live Demo:** https://tdealer01-crypto-dsg-control-plane.vercel.app
 
-**Latest:** ✅ NVIDIA HPC Formal Verification (PR #857 merged)
+**Latest:** ✅ NVIDIA HPC Formal Verification (PR #857 merged) · ✅ Full API auth audit — closed 4 unauthenticated mutation-route gaps + cross-org data leak, added CI auth-coverage gate (PR #858 merged, PR #859 in review — see [Security Audit: API Routes](#security-audit-api-routes-2026-07-04) below)
 
 ---
 
@@ -51,7 +51,7 @@ No migration required. Works with any existing repository.
 
 | Metric | Value |
 |--------|-------|
-| Tests passing | 2501 ✅ |
+| Tests passing | 2895 ✅ (64 skipped, 0 failed) |
 | TypeScript typecheck | ✅ PASS |
 | Build | ✅ PASS |
 | Production health | ✅ PASS |
@@ -79,15 +79,47 @@ No migration required. Works with any existing repository.
 |-------|--------|-------|----------|
 | TypeScript typecheck | ✅ PASS | `tsc --noEmit` clean | All modules type-safe |
 | Build | ✅ PASS | `npm run build` successful | Next.js production build ready |
-| Tests | ✅ 2501 PASS | 0 failures | All unit + integration suites passing |
+| Tests | ✅ 2895 PASS | 0 failures, 64 skipped | All unit + integration suites passing (`npm run test`, 2026-07-04) |
 | npm audit | ✅ 0 vulnerabilities | Down from 8 | PR #781 fixes applied |
 | Security scan | ✅ PASS | CodeQL + Gitleaks clean | No secrets, no code smells |
 | Lighthouse Best Practices | 🟢 93-100 (improved) | Up from 83 | PR #781: rel + loading attributes + npm audit fixes |
 | Vercel Speed Insights | ✅ ENABLED | Real user Core Web Vitals tracking | LCP, CLS, FID monitoring in production |
 | Production health | ✅ PASS | `/api/health` 200, `/api/agent/chat` 200 | Live endpoint verification |
-| CCVS evidence | ✅ PASS | 2501 test cases | Compliance verification chain |
+| CCVS evidence | ✅ PASS | 2959 test cases (CI-reported) | Compliance verification chain |
+| API route auth coverage | ✅ PASS | 260 static-scan checks, 0 known gaps | `tests/unit/security/api-route-auth-coverage.test.ts` (PR #859) |
 | Z3 runtime proofs | ✅ PASS | SHA-256 proof chain in spine/execute | Formal verification |
 | Thai PageAgent | ✅ PASS | All components + API route working | PR #850: Core integration deployed |
+
+---
+
+## Security Audit: API Routes (2026-07-04)
+
+Full audit of all 411 `app/api/**/route.ts` files for mutation routes (POST/PUT/PATCH/DELETE) with no auth check, done in two PRs.
+
+### PR #858 (merged into `main`)
+
+- Closed a real cross-org data leak: `public.payment_summary` and `public.monitoring_monthly_metrics` were `SECURITY DEFINER` Supabase views granting `SELECT` to `anon`/`authenticated`, bypassing org-scoped RLS. Fixed with `security_invoker = true`; applied live and confirmed via Supabase security advisors (0 ERROR-level findings after fix).
+- Applied a Trinity workflow migration (`trinity_jobs`, `trinity_deliverables`, `trinity_settlements`, `trinity_audit_events`) that existed in the repo but had never been applied to the live database.
+- Fixed a CI workflow bug (`verify-hpc.yml`) that made the "Z3 Formal Proof + CCVS Evidence" check fail on every run regardless of proof result.
+- Fixed a hardcoded dead WebSocket URL on `/dsg/executions` and broken hotlinked images on `/dsg/explore`, found via a full 185-page UI crawl.
+
+### PR #859 (in review — not yet merged)
+
+Static-scanned all 411 API route files, iteratively narrowed to 4 confirmed unauthenticated mutation routes by reading source:
+
+| Route | Issue | Fix |
+|---|---|---|
+| `/api/stripe-app/gateway/evaluate`, `/api/stripe-app/gate/evaluate` | No auth at all; wrote to `stripe_operation_audits` for any caller-supplied `stripe_account_id` | Gated with `requireInternalService()` |
+| `/api/gateway/plan-check` | Took `orgId`/`actorId`/`actorRole` from caller-supplied headers with zero verification, wrote `gateway_monitor_events` under that identity | Gated with `requireOrgPermission('org.execute')`, matching sibling `/api/gateway/tools/execute` |
+| `/api/dsg/app-builder/jobs` (+3 sub-routes) | `getDevSmokeAppBuilderContext()` trusted raw headers while the DB client used `SUPABASE_SERVICE_ROLE_KEY` (full RLS bypass) | Renamed to `getAuthorizedAppBuilderContext()`, gated with `requireInternalService()` |
+
+Also fixed a crash bug (`gateway/evaluate`'s catch block re-read an already-consumed request body, so its "fail-closed" error path itself threw) and a reliability issue (`/api/health-check-cron` was making HTTP round-trips to its own `/api/health`/`/api/readiness` routes instead of calling the logic in-process).
+
+Added `tests/unit/security/api-route-auth-coverage.test.ts` — a static-scan regression test (runs automatically in existing CI) that fails if a future mutation route ships with no detected auth pattern and isn't explicitly allowlisted as intentionally public. Also added `.github/workflows/api-route-smoke-test.yml`, a live smoke test hitting every static GET route against a production build.
+
+**Verification:** `npm run typecheck` clean, `npm run test` 2895 passed / 64 skipped / 0 failed, all 4 fixed routes manually confirmed live to reject unauthenticated requests.
+
+**Status:** PR #859 is open and in CI at the time of this update — not yet merged to `main`. See [PR #859](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/pull/859) for current state.
 
 ---
 
