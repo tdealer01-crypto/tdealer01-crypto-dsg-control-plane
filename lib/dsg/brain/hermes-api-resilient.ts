@@ -106,9 +106,21 @@ async function makeApiCall(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => response.statusText);
-    const error = new Error(`API error ${response.status}: ${errText}`);
+
+    // Provide helpful error message for auth failures
+    let errorMessage = `API error ${response.status}`;
+    if (response.status === 401) {
+      errorMessage = 'OpenRouter authentication failed (HTTP 401). Check that OPENROUTER_API_KEY is valid and the account exists.';
+    } else if (response.status === 403) {
+      errorMessage = 'OpenRouter access forbidden (HTTP 403). The API key may lack required permissions.';
+    } else {
+      errorMessage += ': ' + errText;
+    }
+
+    const error = new Error(errorMessage);
     (error as any).statusCode = response.status;
     (error as any).errorText = errText;
+    (error as any).isAuthError = response.status === 401 || response.status === 403;
     throw error;
   }
 
@@ -237,6 +249,15 @@ export async function callHermesAPIResilient(
     totalAttempts: errors.length,
     errors: errors.map((e) => ({ model: e.model, statusCode: e.statusCode, attempt: e.attempt })),
   });
+
+  // Check if this is an auth error — if so, provide clearer message
+  const hasAuthError = errors.some((e) => e.statusCode === 401 || e.statusCode === 403);
+  if (hasAuthError) {
+    throw new Error(
+      'OpenRouter API authentication failed. Ensure OPENROUTER_API_KEY is set correctly and the account is active. ' +
+      `Status: ${lastError?.message || 'unknown'}`,
+    );
+  }
 
   throw new Error(
     `Hermes API exhausted all retries and fallbacks (${errors.length} attempts). ` +

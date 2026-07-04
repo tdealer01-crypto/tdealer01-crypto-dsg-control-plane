@@ -75,10 +75,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         logApiError('api/setup/test-openrouter', new Error('Invalid API key'), { status: 401 });
         return NextResponse.json(
           {
-            error: 'Unauthorized',
+            error: 'Authentication failed: Invalid OpenRouter API key or account not found. Verify your API key at https://openrouter.ai/settings/keys',
             statusCode: 401,
+            details: 'HTTP 401 Unauthorized - Check that your API key is valid and the account is active',
           },
           { status: 401 }
+        );
+      }
+
+      if (testResponse.status === 403) {
+        logApiError('api/setup/test-openrouter', new Error('Access forbidden'), { status: 403 });
+        return NextResponse.json(
+          {
+            error: 'Access forbidden: Your API key may lack the required permissions',
+            statusCode: 403,
+            details: 'HTTP 403 Forbidden - Check your account permissions at https://openrouter.ai/settings',
+          },
+          { status: 403 }
         );
       }
 
@@ -86,8 +99,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         logApiError('api/setup/test-openrouter', new Error('Model not found'), { status: 404, model });
         return NextResponse.json(
           {
-            error: 'Not found',
+            error: 'Model not found',
             statusCode: 404,
+            details: `The model "${model}" is not available on OpenRouter. Check available models at https://openrouter.ai/models`,
           },
           { status: 404 }
         );
@@ -98,6 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         {
           error: 'API request failed',
           statusCode: testResponse.status,
+          details: await testResponse.text().catch(() => 'See OpenRouter status at https://status.openrouter.ai'),
         },
         { status: testResponse.status }
       );

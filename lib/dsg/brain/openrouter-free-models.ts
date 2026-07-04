@@ -132,8 +132,18 @@ export async function getModelFallbackList(primaryModel: string): Promise<string
 
 /**
  * Parse OpenRouter error to determine if we should retry with fallback.
+ *
+ * Note: 401/403 errors are permanent authentication failures and should not
+ * trigger fallback (all models use the same API key). These should be surfaced
+ * to the user as configuration issues.
  */
 export function shouldFallbackOnError(statusCode: number, errorText: string): boolean {
+  // 401: Unauthorized / Invalid API key — permanent, don't retry
+  if (statusCode === 401) return false;
+
+  // 403: Forbidden / Insufficient permissions — permanent, don't retry
+  if (statusCode === 403) return false;
+
   // 429: Rate limited / quota exceeded
   if (statusCode === 429) return true;
 

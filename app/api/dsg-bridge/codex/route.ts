@@ -87,10 +87,26 @@ export async function POST(request: Request) {
 
           if (!res.ok) {
             const detail = await res.text().catch(() => '');
-            console.error(
-              `[dsg-bridge/codex] OpenRouter ${res.status} for "${model}": ${detail.slice(0, 300)}`,
-            );
-            enqueue({ type: 'error', error: `LLM error ${res.status}` });
+
+            // Handle auth errors specifically
+            if (res.status === 401) {
+              console.error('[dsg-bridge/codex] OpenRouter 401: Invalid API key or account not found');
+              enqueue({
+                type: 'error',
+                error: 'OpenRouter authentication failed. Check your OPENROUTER_API_KEY configuration.',
+              });
+            } else if (res.status === 403) {
+              console.error('[dsg-bridge/codex] OpenRouter 403: Access forbidden');
+              enqueue({
+                type: 'error',
+                error: 'OpenRouter access denied. Your API key may lack required permissions.',
+              });
+            } else {
+              console.error(
+                `[dsg-bridge/codex] OpenRouter ${res.status} for "${model}": ${detail.slice(0, 300)}`,
+              );
+              enqueue({ type: 'error', error: `LLM error ${res.status}` });
+            }
             controller.close();
             return;
           }
