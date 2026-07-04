@@ -2,9 +2,12 @@
 
 Complete documentation for all environment variables required for DSG Control Plane deployment on Vercel with Stripe integration.
 
-**Status**: Setup-ready  
-**Last Updated**: 2026-06-07  
-**Scope**: 11 production environment variables with acquisition and format specifications
+**Status**: Setup-ready
+**Last Updated**: 2026-07-04
+**Verified against**: actual `process.env.*` reads in `app/` and `lib/` (grep-audited, not guessed) — see note below
+**Scope**: production environment variables with acquisition and format specifications
+
+> **2026-07-04 correction**: an earlier version of this table used variable names (`STRIPE_API_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_OAUTH_CLIENT_ID`, `STRIPE_OAUTH_CLIENT_SECRET`, `UPSTASH_REDIS_URL`) that the running code never reads. Setting env vars under those old names has no effect. The table below matches what the code actually reads.
 
 ---
 
@@ -12,82 +15,60 @@ Complete documentation for all environment variables required for DSG Control Pl
 
 | Variable | Type | Required | Format | Source |
 |----------|------|----------|--------|--------|
-| `STRIPE_API_KEY` | Secret | Yes | `sk_live_*` | Stripe Dashboard |
-| `STRIPE_PUBLISHABLE_KEY` | Public | Yes | `pk_live_*` | Stripe Dashboard |
+| `STRIPE_SECRET_KEY` | Secret | Yes | `sk_live_*` | Stripe Dashboard |
 | `STRIPE_WEBHOOK_SECRET` | Secret | Yes | `whsec_*` | Stripe Webhooks |
-| `STRIPE_OAUTH_CLIENT_ID` | Public | Yes | Client ID | Stripe OAuth Apps |
-| `STRIPE_OAUTH_CLIENT_SECRET` | Secret | Yes | OAuth Secret | Stripe OAuth Apps |
+| `NEXT_PUBLIC_STRIPE_CLIENT_ID` | Public | Only if using Stripe Connect install flow | `ca_*` | Stripe Dashboard → Apps |
+| `STRIPE_CLIENT_SECRET` | Secret | Only if using Stripe Connect install flow | OAuth Secret | Stripe Dashboard → Apps |
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | `https://*.supabase.co` | Supabase Dashboard |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Base64 string | Supabase API Keys |
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret | Yes | Base64 string | Supabase API Keys |
-| `UPSTASH_REDIS_URL` | Secret | Yes | `redis://default:*@*:6379` | Upstash Console |
-| `DSG_API_KEY` | Secret | Yes | API key | DSG Control Plane |
+| `UPSTASH_REDIS_REST_URL` | Secret | Recommended (rate limiting) | `https://*.upstash.io` | Upstash Console → REST API |
+| `UPSTASH_REDIS_REST_TOKEN` | Secret | Recommended (rate limiting) | Long token string | Upstash Console → REST API |
+| `DSG_API_KEY` | Secret | Yes (or `DSG_CORE_API_KEY`) | API key | DSG Control Plane |
 | `NODE_ENV` | Public | Yes | `production` | Configuration |
+
+Live check anytime, no guessing: `GET /api/setup/status` reports `true`/`false` per category (Supabase/Stripe/Anthropic/GitHub) from the running production deployment.
 
 ---
 
 ## Detailed Variable Documentation
 
-### STRIPE_API_KEY
+### STRIPE_SECRET_KEY
 
-**Purpose**: Secret API key for server-side Stripe API calls (payments, customers, invoices)
+**Purpose**: Secret API key for server-side Stripe API calls (checkout sessions, payments, customers, invoices). Read via `process.env.STRIPE_SECRET_KEY` in 20+ routes across `app/api/billing/**`, `app/api/marketplace/**`, `app/api/webhooks/**`, `lib/stripe-products.ts`, `lib/billing/**`.
 
 **Type**: Secret *(store in Vercel Production environment only)*
 
-**Format**: Stripe Live Secret Key (50+ characters, starts with `sk_live_`)
+**Format**: Stripe Live Secret Key (starts with `sk_live_`)
 
 **Where to Get**:
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Click **Developers** (left sidebar)
 3. Click **API Keys**
-4. Under **Secret Keys**, you will see:
-   - Publishable key (starts with `pk_`)
-   - Secret key (starts with `sk_`)
-5. Copy the **Secret Key** (the one starting with `sk_live_`)
-6. Click the copy icon to copy to clipboard
+4. Under **Secret Keys**, copy the key starting with `sk_live_` (or `sk_test_` for sandbox)
 
 **Security Notes**:
 - ✓ Never expose in client-side code
 - ✓ Only set in Vercel **Production** environment
 - ✓ Rotate keys periodically (Stripe allows creating new restricted keys)
 - ✓ Use restricted keys when possible (with limited scopes)
+- Sandbox/test-mode calls use `STRIPE_SANDBOX_SECRET_KEY` instead (see `lib/stripe-app/oauth-config.ts`)
 
 **Example**:
 ```
-STRIPE_API_KEY=[YOUR_STRIPE_SECRET_KEY_STARTS_WITH_sk_live_]
+STRIPE_SECRET_KEY=[YOUR_STRIPE_SECRET_KEY_STARTS_WITH_sk_live_]
 ```
 
 **Validation**: Must start with `sk_live_` for production or `sk_test_` for testing
 
+**Note on price IDs**: `app/api/billing/checkout/route.ts` also has hardcoded fallback price IDs for pro/business/enterprise plans that are verified-live in the connected Stripe account, so checkout works even before `STRIPE_PRICE_*` env vars are set. Setting `STRIPE_PRICE_PRO_MONTHLY`/`_YEARLY`, `STRIPE_PRICE_BUSINESS_MONTHLY`/`_YEARLY`, `STRIPE_PRICE_ENTERPRISE_MONTHLY`/`_YEARLY` (or the legacy `STRIPE_PRICE_PRO`/`STRIPE_PRICE_BUSINESS`) overrides those defaults but is optional.
+
 ---
 
-### STRIPE_PUBLISHABLE_KEY
+### STRIPE_PUBLISHABLE_KEY (not currently required)
 
-**Purpose**: Public key for client-side Stripe operations (Checkout, Payment Methods, embedded forms)
-
-**Type**: Public *(safe to expose in frontend)*
-
-**Format**: Stripe Live Publishable Key (50+ characters, starts with `pk_live_`)
-
-**Where to Get**:
-
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
-2. Click **Developers** → **API Keys**
-3. Under **Publishable Keys**, copy the key starting with `pk_live_`
-
-**Security Notes**:
-- ✓ OK to include in client-side JavaScript
-- ✓ OK to expose in HTML/browser
-- ✓ Cannot be used to access funds or sensitive data
-- ✓ Used for Stripe.js initialization
-
-**Example**:
-```
-STRIPE_PUBLISHABLE_KEY=[YOUR_STRIPE_PUBLISHABLE_KEY_STARTS_WITH_pk_live_]
-```
-
-**Validation**: Must start with `pk_live_` for production or `pk_test_` for testing
+No route in this codebase reads `process.env.STRIPE_PUBLISHABLE_KEY` (grep-verified against `app/` and `lib/`). Checkout uses redirect-based Stripe Checkout Sessions (`stripe.checkout.sessions.create`), which does not need a publishable key server- or client-side. The only reference in the repo is a static display list in `app/marketplace/deploy/page.tsx`. Do not spend time setting this unless you add Stripe.js/Elements to the client.
 
 ---
 
@@ -104,7 +85,7 @@ STRIPE_PUBLISHABLE_KEY=[YOUR_STRIPE_PUBLISHABLE_KEY_STARTS_WITH_pk_live_]
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Click **Developers** → **Webhooks**
 3. Click on your endpoint (if exists) or **Add Endpoint**
-   - URL: `https://your-deployment.vercel.app/api/webhook/stripe`
+   - URL: `https://your-deployment.vercel.app/api/webhooks/stripe` (per `.env.example`; `app/api/billing/webhook` and `app/api/stripe/webhook` also read the same `STRIPE_WEBHOOK_SECRET` if you register additional endpoints there)
    - Events: Select all relevant events (charge.*, customer.*, invoice.*)
 4. Click the endpoint
 5. Under **Signing secret**, click **Reveal**
@@ -135,57 +116,41 @@ STRIPE_WEBHOOK_SECRET=[YOUR_WEBHOOK_SIGNING_SECRET_STARTS_WITH_whsec_]
 
 ---
 
-### STRIPE_OAUTH_CLIENT_ID
+### NEXT_PUBLIC_STRIPE_CLIENT_ID
 
-**Purpose**: OAuth application client ID for Stripe Connect (connecting merchant Stripe accounts)
+**Purpose**: Client ID for the DSG Governance Gate Stripe App install/connect flow. Read via `resolveStripeClientId()` in `lib/stripe-app/oauth-config.ts` as `process.env.STRIPE_CONNECT_CLIENT_ID || process.env.NEXT_PUBLIC_STRIPE_CLIENT_ID` (sandbox mode uses `STRIPE_SANDBOX_CONNECT_CLIENT_ID` / `NEXT_PUBLIC_STRIPE_SANDBOX_CLIENT_ID` instead).
 
 **Type**: Public
 
-**Format**: Client ID from OAuth app settings (20-30 characters)
+**Format**: Client ID (starts with `ca_`)
 
 **Where to Get**:
 
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
-2. Click **Settings** (gear icon, bottom left)
-3. Click **Connected applications** or **OAuth Connected Apps**
-4. Find your application or create one:
-   - Click **Create application**
-   - Name: Your application name
-   - Type: Select your use case
-5. Copy the **Client ID** from the application settings
+1. Go to [Stripe Dashboard](https://dashboard.stripe.com) → Settings → Apps → your app
+2. Copy the **Client ID**
+
+**Required only if** you're using the Stripe App install/Connect flow (`app/api/stripe-app/oauth/**`, `app/api/stripe/connect/install`). Not required for plain checkout/billing.
 
 **Example**:
 ```
-STRIPE_OAUTH_CLIENT_ID=ca_aBcDeFgHiJkLmNoPqRsTuVwXyZ123456789
+NEXT_PUBLIC_STRIPE_CLIENT_ID=ca_aBcDeFgHiJkLmNoPqRsTuVwXyZ123456789
 ```
-
-**Used For**: Stripe Connect flow for merchant onboarding
 
 ---
 
-### STRIPE_OAUTH_CLIENT_SECRET
+### STRIPE_CLIENT_SECRET
 
-**Purpose**: OAuth secret for Stripe Connect (must be kept confidential)
+**Purpose**: Documented in `.env.example` for server-side OAuth token exchange (code → access_token) for the Stripe App install flow.
 
 **Type**: Secret *(store in Vercel Production environment only)*
 
-**Format**: Long alphanumeric string (40+ characters)
+**Where to Get**: Stripe Dashboard → Settings → Apps → your app → Client Secret
 
-**Where to Get**:
-
-1. Same as above (Stripe Settings → Connected applications)
-2. Click your application
-3. Under **Credentials**, copy the **Client Secret**
-4. Keep this secret—never expose in frontend
-
-**Security Notes**:
-- ✓ Store only in server-side environment variables
-- ✓ Never log or expose in error messages
-- ✓ Rotate if compromised
+**Verification note**: grep of `app/api/stripe-app/oauth/callback/route.ts` shows the current callback verifies a signed HMAC state (`STRIPE_CONNECT_STATE_SECRET` / `NEXTAUTH_SECRET` / `AUTH_SECRET`) and resolves the account secret key directly — it does not currently perform an explicit `client_secret` code-exchange call. Set this only if you are implementing/maintaining that exchange; it is not read anywhere else in the codebase today.
 
 **Example**:
 ```
-STRIPE_OAUTH_CLIENT_SECRET=oauth_secret_live_1234567890abcdefghijklmnopqrstuvwxyzABC
+STRIPE_CLIENT_SECRET=[YOUR_STRIPE_APP_CLIENT_SECRET]
 ```
 
 ---
@@ -287,43 +252,31 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 
 ---
 
-### UPSTASH_REDIS_URL
+### UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 
-**Purpose**: Redis connection string for rate limiting, caching, and session storage
+**Purpose**: Upstash REST API credentials for rate limiting. Read via `process.env.UPSTASH_REDIS_REST_URL` and `process.env.UPSTASH_REDIS_REST_TOKEN` in `lib/security/rate-limit.ts`. **Only these two REST-style vars are read** — the plain `UPSTASH_REDIS_URL` (`redis://...`) connection-string format is never read anywhere in this codebase; setting it has no effect.
 
 **Type**: Secret *(store in Vercel Production environment only)*
 
-**Format**: `redis://default:{PASSWORD}@{HOST}:{PORT}`
+**Format**: `UPSTASH_REDIS_REST_URL=https://{name}.upstash.io`, `UPSTASH_REDIS_REST_TOKEN={token}`
 
 **Where to Get**:
 
 1. Go to [Upstash Console](https://console.upstash.com)
-2. Click **Redis** → Your Database
-3. Click **Connect**
-4. Select **REST API** or **Redis CLI**
-5. For **Redis CLI**, copy the **REDIS_URL** (format: `redis://...`)
-6. This is the full connection string including password
+2. Click **Redis** → your database → **Connect**
+3. Select **REST API** tab (not "Redis CLI"/ioredis)
+4. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` exactly as shown
 
 **Example**:
 ```
-UPSTASH_REDIS_URL=redis://default:ae123bcde456fgh789ijklmno@us1-happy-hamster-123456.upstash.io:6379
+UPSTASH_REDIS_REST_URL=https://us1-happy-hamster-123456.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AbCdEf123...
 ```
 
-**Components**:
-- `default` = username
-- `ae123bcde456fgh789ijklmno` = password
-- `us1-happy-hamster-123456` = host
-- `6379` = port
-
 **Security Notes**:
-- ✓ Includes password—store securely
+- ✓ Token grants full access to the Redis database — store securely
 - ✓ Only set in Vercel **Production** environment
-- ✓ Used by `@upstash/redis` npm package
-
-**Alternative Usage**:
-- If you prefer REST API instead of Redis protocol:
-  - Use environment variables: `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-  - But the Redis URL approach is more common
+- If unset, `lib/security/rate-limit.ts` logs a warning and falls back to in-memory rate limiting (works, but does not share state across serverless instances)
 
 ---
 
@@ -399,8 +352,9 @@ These are not required for basic deployment but enable additional features:
 | `DSG_CORE_URL` | URL to remote DSG Core | `https://...` |
 | `APP_URL` | Server-side canonical app URL | `https://...` |
 | `NEXT_PUBLIC_APP_URL` | Client-side canonical app URL | `https://...` |
-| `STRIPE_PRICE_PRO` | Stripe price ID for Pro plan | Stripe price ID |
-| `STRIPE_PRICE_BUSINESS` | Stripe price ID for Business plan | Stripe price ID |
+| `STRIPE_PRICE_PRO_MONTHLY` / `_YEARLY` | Stripe price ID for Pro plan (or legacy `STRIPE_PRICE_PRO` for monthly) | Stripe price ID |
+| `STRIPE_PRICE_BUSINESS_MONTHLY` / `_YEARLY` | Stripe price ID for Business plan (or legacy `STRIPE_PRICE_BUSINESS` for monthly) | Stripe price ID |
+| `STRIPE_PRICE_ENTERPRISE_MONTHLY` / `_YEARLY` | Stripe price ID for Enterprise plan | Stripe price ID |
 | `OVERAGE_RATE_USD` | Metered billing overage rate | Decimal (e.g., `0.001`) |
 | `ACCESS_MODE` | Access control mode | `strict`, `open`, etc. |
 
@@ -412,17 +366,20 @@ These are not required for basic deployment but enable additional features:
 
 Use this checklist:
 
-- [ ] `STRIPE_API_KEY` - from Stripe Dashboard
-- [ ] `STRIPE_PUBLISHABLE_KEY` - from Stripe Dashboard
+- [ ] `STRIPE_SECRET_KEY` - from Stripe Dashboard
 - [ ] `STRIPE_WEBHOOK_SECRET` - from Stripe Webhooks
-- [ ] `STRIPE_OAUTH_CLIENT_ID` - from Stripe OAuth Apps
-- [ ] `STRIPE_OAUTH_CLIENT_SECRET` - from Stripe OAuth Apps
+- [ ] `NEXT_PUBLIC_STRIPE_CLIENT_ID` / `STRIPE_CLIENT_SECRET` - only if using the Stripe App install flow
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` - from Supabase Settings
 - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` - from Supabase API Keys
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` - from Supabase API Keys
-- [ ] `UPSTASH_REDIS_URL` - from Upstash Console
-- [ ] `DSG_API_KEY` - from DSG Control Plane
+- [ ] `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - from Upstash Console (REST API tab)
+- [ ] `DSG_API_KEY` (or `DSG_CORE_API_KEY`) - from DSG Control Plane
 - [ ] `NODE_ENV` - set to `production`
+
+After setting these, verify live (no guessing) with:
+```bash
+curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/setup/status
+```
 
 ### 2. Add to Vercel
 
@@ -542,6 +499,5 @@ For issues:
 
 ---
 
-**Status**: Setup-ready  
-**Last verified**: 2026-06-07  
-**Scope**: 11 production environment variables with detailed specifications
+**Status**: Setup-ready
+**Last verified against code**: 2026-07-04 (grep-audited `process.env.*` reads in `app/` and `lib/`)
