@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { sendGitHubLeadFollowup } from '../../../../lib/email/sales';
 import { requireCronAuth } from '../../../../lib/security/cron-auth';
+import { getOutreachMode } from '../../../../lib/marketing/outreach-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,16 @@ const FOLLOWUP_WINDOW_DAYS = 10;
 export async function GET(request: Request) {
   const auth = requireCronAuth(request, 'lead-followup');
   if (!auth.ok) return auth.response;
+
+  // Follow-up emails obey the same outbound policy as cold outreach:
+  // only MARKETING_OUTREACH_MODE=auto sends without human approval.
+  const outreachMode = getOutreachMode();
+  if (outreachMode !== 'auto') {
+    return NextResponse.json(
+      { ok: true, sent: 0, skipped: 0, mode: outreachMode, note: 'outbound email gated — set MARKETING_OUTREACH_MODE=auto to enable follow-ups' },
+      { headers: auth.headers },
+    );
+  }
 
   const supabase = getSupabaseAdmin();
   const now = new Date();

@@ -30,6 +30,7 @@
 
 import { NextResponse } from 'next/server';
 import { DELIVERY_PROOF_TIERS } from '../../../../lib/delivery-proof/entitlement';
+import { DELIVERY_PROOF_PRICING } from '../../../../lib/billing/pricing-catalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ const PRICING_PAGES: PricingTier[] = [
     id: 'free',
     name: 'Free',
     description: 'Start proving your AI governance',
-    price: '$0',
+    price: DELIVERY_PROOF_PRICING.free.label,
     billingPeriod: 'monthly',
     features: [
       '1 scan per month',
@@ -65,7 +66,7 @@ const PRICING_PAGES: PricingTier[] = [
     id: 'pro_scan',
     name: 'Pro Scan',
     description: 'For agencies & SaaS teams',
-    price: '$49',
+    price: DELIVERY_PROOF_PRICING.pro_scan.label,
     billingPeriod: 'one-time',
     features: [
       '1 additional scan (one-time)',
@@ -81,7 +82,7 @@ const PRICING_PAGES: PricingTier[] = [
     id: 'unlimited',
     name: 'Unlimited',
     description: 'Unlimited delivery proof scans',
-    price: '$199',
+    price: DELIVERY_PROOF_PRICING.unlimited.label,
     billingPeriod: 'monthly',
     features: [
       'Unlimited scans per month',

@@ -14,6 +14,22 @@
     {
       "path": "/api/cron/cleanup-expired-leases",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/github-leads",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-agent",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/lead-followup",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 9 * * 1"
     }
   ]
 }

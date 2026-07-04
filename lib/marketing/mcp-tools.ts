@@ -3,6 +3,7 @@
 
 import { getSupabaseAdmin } from '../supabase-server';
 import { sendGitHubLeadOutreach } from '../email/sales';
+import { getOutreachMode } from './outreach-policy';
 
 // ─── Tool schema definitions (Claude tool_use format) ────────────────────────
 
@@ -154,6 +155,31 @@ export async function executeTool(
         email: string; framework: string; github_repo: string; github_stars?: number;
       };
       if (!email || !framework || !github_repo) return { error: 'Missing required params' };
+
+      const mode = getOutreachMode();
+      if (mode === 'off') {
+        return { error: 'Outreach disabled (MARKETING_OUTREACH_MODE=off)' };
+      }
+      if (mode === 'queue') {
+        const { error: queueErr } = await (admin as any)
+          .from('outreach_approvals')
+          .insert({
+            lead_email: email,
+            framework,
+            github_repo,
+            github_stars: Number(github_stars) || 0,
+          });
+        if (queueErr && queueErr.code !== '23505') {
+          return { error: `Queue failed: ${String(queueErr.message ?? queueErr)}` };
+        }
+        return {
+          ok: true,
+          queued: true,
+          email,
+          note: 'Draft queued for human approval (MARKETING_OUTREACH_MODE=queue); approve via POST /api/marketing/outreach/approve.',
+        };
+      }
+
       try {
         await sendGitHubLeadOutreach({
           email,

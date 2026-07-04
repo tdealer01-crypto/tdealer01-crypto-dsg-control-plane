@@ -1,3 +1,8 @@
+> **[CORRECTION 2026-07-03]** ราคาในเอกสารนี้บางส่วนล้าสมัย (Agency $299 / Enterprise $999 ไม่ตรงกับระบบจริง)
+> แหล่งความจริงเดียวของราคาปัจจุบันคือ `lib/billing/pricing-catalog.ts`
+> (pro $99/mo, business $199/mo, enterprise $499/mo + skills bundles + delivery-proof tiers)
+> เอกสารนี้คงไว้เป็นบริบทประวัติศาสตร์ — อย่าใช้อ้างอิงราคา
+
 # DSG ONE — Packages, Pricing, Marketplace, and Stripe Map
 
 Date: 2026-06-20
