@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { handleApiError } from '@/lib/security/api-error';
+import { selectNGCModel } from '@/lib/nvidia/ngc-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,9 +55,10 @@ function limitedModeReply(reason: string): string {
 }
 
 async function generateAgentResponse(message: string): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
 
-  if (!apiKey) {
+  if (!openrouterKey && !nvidiaKey) {
     return limitedModeReply('LLM not configured');
   }
 
@@ -65,10 +67,51 @@ You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  // Primary model overridable via env; fallback chain handles upstream 429s.
-  // Note: 'meta-llama/llama-4-maverick:free' was removed — OpenRouter now
-  // 404s it ("this model is unavailable for free"); its own error response
-  // points to the paid slug, which we don't want to silently switch to.
+  // Try NGC models first if NVIDIA API is configured
+  if (nvidiaKey) {
+    try {
+      const ngcModel = selectNGCModel();
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${nvidiaKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: ngcModel.id,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+          top_p: 1,
+        }),
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          console.log('[Hermes] NGC model response:', ngcModel.displayName);
+          return content;
+        }
+      } else {
+        const detail = await response.text().catch(() => '');
+        console.warn(`[Hermes] NGC fallback (${response.status}): ${detail.slice(0, 200)}`);
+      }
+    } catch (err) {
+      console.warn('[Hermes] NGC error, trying OpenRouter:', err);
+    }
+  }
+
+  // Fallback to OpenRouter
+  if (!openrouterKey) {
+    return limitedModeReply('OpenRouter API key not configured');
+  }
+
   const models = [
     process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
     'google/gemma-3-27b-it:free',
@@ -80,20 +123,14 @@ Always be respectful and helpful.`;
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${openrouterKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model,
           messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: message,
-            },
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
           ],
           max_tokens: 500,
           temperature: 0.7,
@@ -113,7 +150,7 @@ Always be respectful and helpful.`;
         console.error(
           `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
         );
-        return limitedModeReply('LLM upstream error');
+        continue;
       }
 
       const data = (await response.json()) as {
@@ -122,13 +159,12 @@ Always be respectful and helpful.`;
 
       const content = data.choices?.[0]?.message?.content;
       if (content) return content;
-      return limitedModeReply('LLM returned no content');
     } catch {
-      return limitedModeReply('LLM request failed');
+      continue;
     }
   }
 
-  return limitedModeReply('LLM upstream error');
+  return limitedModeReply('All LLM backends unavailable');
 }
 
 export async function POST(request: NextRequest) {
