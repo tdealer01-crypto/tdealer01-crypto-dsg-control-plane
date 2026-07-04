@@ -1,262 +1,362 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from "react";
 
-type Message = { role: 'user' | 'assistant'; content: string };
+interface GateRequest {
+  user_id: string;
+  org_id: string;
+  intent: string;
+  context?: Record<string, any>;
+}
 
-const QUICK_ACTIONS = [
-  { label: '🔍 ตรวจสอบระบบ', message: 'readiness check' },
-  { label: '👥 ดู Agents', message: 'list agents' },
-  { label: '📊 ดู Executions', message: 'show recent executions' },
-  { label: '💰 ดูความจุ', message: 'check capacity' },
-  { label: '🛡 สั่งงานผิดกฎ (ลอง)', message: 'delete all user records' },
-];
-
-const GATE_QUICK = [
-  { label: '1. Declare Session', action: 'declare' },
-  { label: '2. Gate Action (ALLOW)', action: 'allow' },
-  { label: '3. Gate Action (BLOCK)', action: 'block' },
-];
+interface GateResponse {
+  ok: boolean;
+  decision: "allow" | "review" | "block";
+  audit_id: string;
+  proof_hash: string;
+  constraint_hash: string;
+  input_hash: string;
+  message?: string;
+  usage?: {
+    used: number;
+    limit: number;
+    remaining: number;
+  };
+  quota_exceeded?: boolean;
+  upgrade_url?: string;
+}
 
 export default function DemoPage() {
-  const [tab, setTab] = useState<'chat' | 'gate'>('chat');
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'สวัสดีครับ ผมคือ DSG Agent พร้อมช่วยเหลื้อคุณ\n\nลองถามคำถาม หรือกดปุ่มด้านล่างเพื่อเริ่มต้นใช้งาน' },
-  ]);
-  const [input, setInput] = useState('');
-  const [sessionId, setSessionId] = useState('demo-' + Math.random().toString(36).slice(2, 10));
-  const [declared, setDeclared] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [request, setRequest] = useState<GateRequest>({
+    user_id: "user_accenture_demo",
+    org_id: "org_accenture_th",
+    intent: "Approve loan application LOAN-2026-0042 for customer CUST-8891",
+    context: {
+      amount: 500000,
+      currency: "THB",
+      risk_level: "medium",
+      department: "retail_banking",
+    },
+  });
+  const [response, setResponse] = useState<GateResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastLatency, setLastLatency] = useState<number | null>(null);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
-
-  const sendMessage = async (msg: string) => {
-    if (!msg.trim()) return;
-    setMessages((prev) => [...prev, { role: 'user', content: msg }]);
-    setInput('');
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    setResponse(null);
+    const start = performance.now();
 
     try {
-      const res = await fetch('/api/try/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg }),
+      const res = await fetch("/api/dsg/v1/gates/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
       });
+
+      const latency = performance.now() - start;
+      setLastLatency(latency);
+
       const data = await res.json();
-      const response = data.response || data.error || 'Sorry, I could not answer that.';
-      setMessages((prev) => [...prev, { role: 'assistant', content: response }]);
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', content: '⚠️ ไม่สามารถเชื่อมต่อได้' }]);
+      if (!res.ok) {
+        setError(data.error || `HTTP ${res.status}`);
+        setResponse(data);
+      } else {
+        setResponse(data);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGate = async (action: 'declare' | 'allow' | 'block') => {
-    if (action === 'declare') {
-      setMessages((prev) => [...prev, { role: 'user', content: 'Declare Session: read database, send email' }]);
-      try {
-        const res = await fetch('/api/try/gate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: sessionId,
-            declared_actions: ['read database', 'send email', 'update user record'],
-            ttl_minutes: 30,
-          }),
-        });
-        const data = await res.json();
-        const content = data.ok
-          ? `✅ Session declared!\nStamp: ${data.declaration_stamp}\nActions: ${data.declared_actions.join(', ')}\nTTL: ${data.ttl_minutes} นาที`
-          : `❌ ${data.error}`;
-        setMessages((prev) => [...prev, { role: 'assistant', content }]);
-        setDeclared(true);
-      } catch {
-        setMessages((prev) => [...prev, { role: 'assistant', content: '❌ ไม่สามารถเชื่อมต่อได้' }]);
-      }
-    } else if (action === 'allow') {
-      setMessages((prev) => [...prev, { role: 'user', content: 'send email to customer@example.com' }]);
-      try {
-        const res = await fetch('/api/try/gate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId, action: 'send email to customer@example.com' }),
-        });
-        const data = await res.json();
-        const content = data.decision === 'ALLOW'
-          ? `✅ ${data.decision}\nStamp: ${data.stamp}\nStamps issued: ${data.session_state?.stamps_issued}`
-          : `❌ ${data.decision}\nReason: ${data.reason}`;
-        setMessages((prev) => [...prev, { role: 'assistant', content }]);
-      } catch {
-        setMessages((prev) => [...prev, { role: 'assistant', content: '❌ ไม่สามารถเชื่อมต่อได้' }]);
-      }
-    } else if (action === 'block') {
-      setMessages((prev) => [...prev, { role: 'user', content: 'delete all user records' }]);
-      try {
-        const res = await fetch('/api/try/gate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId, action: 'delete all user records' }),
-        });
-        const data = await res.json();
-        const content = data.decision === 'BLOCK'
-          ? `🛡️ ${data.decision}\nReason: ${data.reason}\n\n💡 Agent Guidance:\n${data.agent_guidance?.suggested_llm_prompt}`
-          : `✅ ${data.decision}\nStamp: ${data.stamp}`;
-        setMessages((prev) => [...prev, { role: 'assistant', content }]);
-      } catch {
-        setMessages((prev) => [...prev, { role: 'assistant', content: '❌ ไม่สามารถเชื่อมต่อได้' }]);
-      }
-    }
+  const handlePreset = (preset: GateRequest) => {
+    setRequest(preset);
   };
+
+  const presets: { label: string; request: GateRequest }[] = [
+    {
+      label: "✅ Allow: Low-risk loan approval",
+      request: {
+        user_id: "user_accenture_demo",
+        org_id: "org_accenture_th",
+        intent: "Approve loan application LOAN-2026-0042 for customer CUST-8891",
+        context: { amount: 50000, currency: "THB", risk_level: "low", department: "retail_banking" },
+      },
+    },
+    {
+      label: "⚠️ Review: High-value transaction",
+      request: {
+        user_id: "user_accenture_demo",
+        org_id: "org_accenture_th",
+        intent: "Transfer 50,000,000 THB to external account EXT-9999",
+        context: { amount: 50000000, currency: "THB", risk_level: "critical", department: "treasury" },
+      },
+    },
+    {
+      label: "🚫 Block: Unauthorized access attempt",
+      request: {
+        user_id: "user_unknown",
+        org_id: "org_accenture_th",
+        intent: "Delete production database backup",
+        context: { resource: "prod-db-backup", action: "delete", department: "it_ops" },
+      },
+    },
+    {
+      label: "💰 Cost check: AI model invocation",
+      request: {
+        user_id: "user_accenture_demo",
+        org_id: "org_accenture_th",
+        intent: "Invoke GPT-4 for financial report generation",
+        context: { model: "gpt-4", estimated_tokens: 50000, department: "analytics" },
+      },
+    },
+  ];
+
+  const curl = `curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(request).replace(/'/g, "\\'")}'`;
 
   return (
-    <div className="flex h-screen flex-col bg-[#07080b] text-white">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-white/10 px-6 py-3">
-        <div className="flex items-center gap-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 text-sm font-bold text-black">
-            DSG
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold">DSG ONE Demo</h1>
-            <p className="text-[10px] text-slate-500">Interactive AI Control Plane</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <p className="text-xs uppercase tracking-[0.25em] text-emerald-300 mb-3">Live Demo</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            DSG Gate API — Deterministic AI Governance
+          </h1>
+          <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+            Same input → Same decision, always. Cryptographic proof per evaluation.
+            Try the live API below — it&apos;s running on production.
+          </p>
         </div>
-        <div className="flex gap-1 rounded-xl bg-white/5 p-1">
-          <button
-            onClick={() => setTab('chat')}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
-              tab === 'chat' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            💬 Chat
-          </button>
-          <button
-            onClick={() => setTab('gate')}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
-              tab === 'gate' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            🛡️ Gate
-          </button>
-        </div>
-      </header>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col overflow-hidden p-4">
-        {/* Tabs Content */}
-        {tab === 'chat' ? (
-          <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Messages */}
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              {messages.map((msg, i) => (
-                <div key={i} className={msg.role === 'user' ? 'ml-auto max-w-[80%]' : 'max-w-[80%]'}>
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm ${
-                      msg.role === 'user'
-                        ? 'bg-emerald-500/20 text-emerald-100'
-                        : 'border border-white/10 bg-white/[0.03] text-slate-200'
-                    }`}
-                  >
-                    <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="mt-3 flex gap-2 overflow-x-auto py-1">
-              {QUICK_ACTIONS.map((qa) => (
-                <button
-                  key={qa.label}
-                  onClick={() => sendMessage(qa.message)}
-                  className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10"
-                >
-                  {qa.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Input */}
-            <form
-              onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-              className="mt-3 flex gap-2"
-            >
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="ถามคำถามหรือสั่งงาน..."
-                className="flex-1 rounded-xl border border-white/10 bg-[#0a0c12] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-400/50"
-              />
+        {/* Preset Buttons */}
+        <div className="mb-8">
+          <p className="text-sm text-slate-400 mb-4">Quick Presets (Thai Banking Context)</p>
+          <div className="flex flex-wrap gap-3">
+            {presets.map((p, i) => (
               <button
-                type="submit"
-                className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                key={i}
+                onClick={() => handlePreset(p.request)}
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-300 hover:bg-white/10 hover:border-white/20 transition"
               >
-                ส่ง
+                {p.label}
               </button>
-            </form>
+            ))}
           </div>
-        ) : (
-          <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Gate Status */}
-            <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-500">Session ID</span>
-                  <code className="ml-2 rounded bg-white/10 px-2 py-0.5 text-xs text-emerald-300">{sessionId}</code>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  declared ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
-                }`}>
-                  {declared ? '✅ Active' : '⏳ Not declared'}
-                </span>
-              </div>
-            </div>
+        </div>
 
-            {/* Gate Messages */}
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              {messages.length === 1 && !declared && (
-                <div className="text-center text-sm text-slate-500">
-                  <p>🛡️ DSG Gate Demo</p>
-                  <p className="mt-2">กดปุ่มด้านล่างเพื่อเริ่มต้นใช้งาน</p>
-                </div>
+        {/* Main Grid */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Request Panel */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <span className="text-emerald-400">▶</span>
+              Request
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">User ID</label>
+                <input
+                  type="text"
+                  value={request.user_id}
+                  onChange={(e) => setRequest({ ...request, user_id: e.target.value })}
+                  className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-2 text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Org ID</label>
+                <input
+                  type="text"
+                  value={request.org_id}
+                  onChange={(e) => setRequest({ ...request, org_id: e.target.value })}
+                  className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-2 text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Intent (Action)</label>
+                <textarea
+                  value={request.intent}
+                  onChange={(e) => setRequest({ ...request, intent: e.target.value })}
+                  rows={3}
+                  className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-2 text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Context (JSON)</label>
+                <textarea
+                  value={JSON.stringify(request.context, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      setRequest({ ...request, context: JSON.parse(e.target.value) });
+                    } catch { /* ignore invalid JSON */ }
+                  }}
+                  rows={6}
+                  className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-2 text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none resize-none font-mono text-sm"
+                />
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-emerald-400 text-emerald-950 font-bold hover:bg-emerald-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Evaluating..." : "Evaluate Gate"}
+              </button>
+
+              {/* cURL Example */}
+              <details className="mt-6 group cursor-pointer">
+                <summary className="flex items-center justify-between font-semibold text-slate-300 hover:text-white">
+                  <span>cURL Command</span>
+                  <span className="transition group-open:rotate-180">▼</span>
+                </summary>
+                <pre className="mt-3 overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-emerald-300 font-mono whitespace-pre">
+{curl}
+</pre>
+              </details>
+            </div>
+          </div>
+
+          {/* Response Panel */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <span className="text-emerald-400">■</span>
+              Response
+              {lastLatency && (
+                <span className="text-xs text-slate-500 ml-auto">{lastLatency.toFixed(1)}ms</span>
               )}
-              {messages.slice(1).map((msg, i) => (
-                <div key={i} className={msg.role === 'user' ? 'ml-auto max-w-[80%]' : 'max-w-[80%]'}>
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm ${
-                      msg.role === 'user'
-                        ? 'bg-blue-500/20 text-blue-100'
-                        : msg.content.includes('✅') || msg.content.includes('Stamp')
-                          ? 'border border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
-                          : msg.content.includes('🛡️') || msg.content.includes('❌')
-                            ? 'border border-rose-400/30 bg-rose-400/10 text-rose-200'
-                            : 'border border-white/10 bg-white/[0.03] text-slate-200'
-                    }`}
-                  >
-                    <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+            </h2>
+
+            {error && !response && (
+              <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-4 text-rose-300">
+                Error: {error}
+              </div>
+            )}
+
+            {response && (
+              <div className="space-y-4">
+                {/* Decision Badge */}
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold ${
+                  response.decision === "allow"
+                    ? "bg-emerald-400/20 text-emerald-300 border border-emerald-400/30"
+                    : response.decision === "review"
+                    ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                    : "bg-rose-400/20 text-rose-300 border border-rose-400/30"
+                }`}>
+                  <span className="text-lg">{response.decision === "allow" ? "✅" : response.decision === "review" ? "⚠️" : "🚫"}</span>
+                  <span className="uppercase tracking-wider">{response.decision}</span>
+                </div>
+
+                {/* Audit Info */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-black/40 p-3 border border-white/10">
+                    <div className="text-xs text-slate-500">Audit ID</div>
+                    <div className="font-mono text-sm text-emerald-300 break-all">{response.audit_id}</div>
+                  </div>
+                  <div className="rounded-xl bg-black/40 p-3 border border-white/10">
+                    <div className="text-xs text-slate-500">Decision</div>
+                    <div className="font-mono text-sm text-white capitalize">{response.decision}</div>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Gate Quick Actions */}
-            <div className="mt-3 space-y-2">
-              <div className="flex gap-2 overflow-x-auto py-1">
-                {GATE_QUICK.map((qa) => (
-                  <button
-                    key={qa.action}
-                    onClick={() => handleGate(qa.action as 'declare' | 'allow' | 'block')}
-                    disabled={qa.action !== 'declare' && !declared}
-                    className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 disabled:opacity-30"
-                  >
-                    {qa.label}
-                  </button>
-                ))}
+                {/* Proof Hashes */}
+                <div className="rounded-xl bg-black/40 p-3 border border-white/10">
+                  <div className="text-xs text-slate-500 mb-2">Cryptographic Proof Chain</div>
+                  <div className="space-y-1 text-xs font-mono">
+                    <div className="flex gap-2"><span className="text-slate-500 w-24">Input:</span><span className="text-emerald-300">{response.input_hash?.slice(0, 32)}...</span></div>
+                    <div className="flex gap-2"><span className="text-slate-500 w-24">Constraint:</span><span className="text-violet-300">{response.constraint_hash?.slice(0, 32)}...</span></div>
+                    <div className="flex gap-2"><span className="text-slate-500 w-24">Proof:</span><span className="text-amber-300">{response.proof_hash?.slice(0, 32)}...</span></div>
+                  </div>
+                </div>
+
+                {/* Usage / Quota */}
+                {response.usage && (
+                  <div className="rounded-xl bg-black/40 p-3 border border-white/10">
+                    <div className="text-xs text-slate-500 mb-2">Quota Usage</div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-white">Used: <span className="text-emerald-300">{response.usage.used}</span></span>
+                      <span className="text-slate-400">Limit: <span className="text-white">{response.usage.limit}</span></span>
+                      <span className="text-emerald-400">Remaining: {response.usage.remaining}</span>
+                    </div>
+                    <div className="mt-2 h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-400 transition-all" style={{ width: `${(response.usage.used / response.usage.limit) * 100}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Quota Exceeded */}
+                {response.quota_exceeded && (
+                  <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-amber-300">
+                    <p>Quota exceeded. <a href={response.upgrade_url} className="underline hover:text-amber-200">Upgrade to continue</a></p>
+                  </div>
+                )}
+
+                {/* Raw JSON */}
+                <details className="group cursor-pointer mt-2">
+                  <summary className="flex items-center justify-between font-semibold text-slate-300 hover:text-white">
+                    <span>Raw JSON Response</span>
+                    <span className="transition group-open:rotate-180">▼</span>
+                  </summary>
+                  <pre className="mt-3 overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-slate-300 font-mono whitespace-pre">
+{JSON.stringify(response, null, 2)}
+</pre>
+                </details>
               </div>
+            )}
+
+            {!response && !loading && !error && (
+              <div className="text-center py-12 text-slate-500">
+                <div className="text-4xl mb-3">🛡️</div>
+                <p>Click "Evaluate Gate" to see the deterministic decision</p>
+                <p className="text-xs mt-2">Every evaluation returns: decision + audit_id + proof hashes</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Architecture Note */}
+        <div className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+          <h3 className="text-lg font-bold text-white mb-3">How It Works (Production Architecture)</h3>
+          <div className="grid gap-4 md:grid-cols-4 text-sm">
+            <div className="rounded-xl bg-black/40 p-4 border border-white/10">
+              <div className="text-emerald-400 mb-1">1. Input Hash</div>
+              <div className="text-slate-400">SHA-256(request) — immutable fingerprint</div>
+            </div>
+            <div className="rounded-xl bg-black/40 p-4 border border-white/10">
+              <div className="text-violet-400 mb-1">2. Policy Evaluation</div>
+              <div className="text-slate-400">Z3 SMT solver checks 8 theorems</div>
+            </div>
+            <div className="rounded-xl bg-black/40 p-4 border border-white/10">
+              <div className="text-amber-400 mb-1">3. Proof Generation</div>
+              <div className="text-slate-400">Formal verification → proof_hash</div>
+            </div>
+            <div className="rounded-xl bg-black/40 p-4 border border-white/10">
+              <div className="text-cyan-400 mb-1">4. Audit Chain</div>
+              <div className="text-slate-400">recordHash → bundleHash (WORM)</div>
             </div>
           </div>
-        )}
+        </div>
       </div>
+
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.__DEMO_REQUEST__ = ${JSON.stringify(request, null, 2)};
+            window.__DEMO_CURL__ = \`curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/dsg/v1/gates/evaluate \\\\
+  -H "Content-Type: application/json" \\\\
+  -d '${JSON.stringify(request).replace(/'/g, "\\'")}'\`;
+          `,
+        }}
+      />
     </div>
   );
 }
