@@ -149,9 +149,11 @@ evidence-output/
 
 ### NVIDIA HPC Container
 
-- Base: `nvcr.io/nvidia/nvhpc:26.3-devel-cuda_multi-ubuntu22.04`
-- Includes: Z3 SMT solver, Python 3, Node.js, CUDA toolkit, MPI libraries
-- Environment: GPU-accelerated constraint solving (optional)
+- **Base:** `nvcr.io/nvidia/nvhpc:26.3-devel-cuda_multi-ubuntu22.04` ([NGC Catalog](https://ngc.nvidia.com/catalog/containers/nvidia-hpc))
+- **Updated:** March 31, 2026
+- **Includes:** Z3 SMT solver, Python 3, Node.js, CUDA 13.1/12.9/12.8, cuBLAS, cuFFT, NCCL, HPC-X, MPI libraries
+- **Multiarch:** x86_64 and Arm (aarch64) support
+- **GPU Support:** Turing (sm75), Ampere (sm80), Hopper (sm90), Blackwell (sm100)
 
 ### Documentation
 

@@ -40,6 +40,33 @@ This guide explains how to use NVIDIA HPC containers to perform **formal Z3 proo
 
 ---
 
+## NVIDIA HPC SDK Container Reference
+
+**Official NGC Catalog:** [NVIDIA HPC SDK](https://ngc.nvidia.com/catalog/containers/nvidia-hpc)
+
+- **Base Image:** `nvcr.io/nvidia/nvhpc:26.3-devel-cuda_multi-ubuntu22.04`
+- **Updated:** March 31, 2026
+- **Multiarch Support:** Yes (Arm aarch64 + x86_64)
+- **Compressed Size:** 15.06 GB
+
+### Included Components
+
+- **Compilers:** NVC++/NVFORTRAN/NVC/NVCC (C++17, Fortran 2003, OpenACC, OpenMP)
+- **GPU Libraries:** cuBLAS, cuSOLVER, cuSPARSE, cuFFT, cuTENSOR, cuRAND, Thrust, CUB
+- **MPI & Collective Comms:** HPC-X, NCCL, NVSHMEM
+- **Profiling Tools:** NVIDIA Nsight Systems, Nsight Compute
+- **SMT Solver:** Z3 (via `pip install z3-solver`)
+
+### System Requirements (from NGC Catalog)
+
+- **GPU:** Turing (sm75), Ampere (sm80), Hopper (sm90), or Blackwell (sm100)
+- **CUDA Driver:** >= 525.60.13
+- **Docker:** 19.03+ (with `--gpus` support) or Singularity 3.4.1+
+- **CUDA Versions Supported:** 12.0, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.8, 12.9, 13.0, 13.1
+  - `cuda_multi` images auto-select based on installed driver
+
+---
+
 ## Quick Start
 
 ### Prerequisites
