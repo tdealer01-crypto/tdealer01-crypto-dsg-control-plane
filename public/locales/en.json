@@ -1,0 +1,65 @@
+{
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "governance": "Governance",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "common": {
+    "welcome": "Welcome to DSG",
+    "hermes": "Hermes AI Assistant",
+    "limitedMode": "⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.",
+    "configure": "To enable full conversational replies, configure OPENROUTER_API_KEY or NVIDIA_API_KEY for this deployment.",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit"
+  },
+  "hero": {
+    "title": "Prove Your AI Policy Works — Formally",
+    "subtitle": "Formal Proof. Evidence-Backed. Production-Ready.",
+    "description": "Production AI governance + execution platform for regulated workflows."
+  },
+  "features": {
+    "formalProof": "Formal Proof",
+    "formalProofDesc": "Z3 SMT solver verifies policy constraints mathematically",
+    "enterpriseSpeed": "Enterprise Speed",
+    "enterpriseSpeedDesc": "Parallel L1-L5 evidence pipeline in 444ms",
+    "compliance": "CCVS Compliance",
+    "complianceDesc": "Complete evidence chain for regulatory audit",
+    "deterministic": "100% Deterministic",
+    "deterministicDesc": "Same input always produces identical proof",
+    "noBreakingChanges": "Zero Breaking Changes",
+    "noBreakingChangesDesc": "Opt-in framework, works with existing systems",
+    "auditReady": "Audit Ready",
+    "auditReadyDesc": "Evidence-backed execution trails"
+  },
+  "pipeline": {
+    "title": "CCVS Evidence Pipeline (L1-L5)",
+    "l1": "L1: Unit Proof",
+    "l1Time": "137ms",
+    "l2": "L2: Integration",
+    "l2Time": "55ms",
+    "l3": "L3: Adversarial",
+    "l3Time": "68ms",
+    "l4": "L4: Proof",
+    "l4Time": "107ms",
+    "l5": "L5: Provenance",
+    "l5Time": "77ms",
+    "total": "Total: 444ms"
+  },
+  "stats": {
+    "testsTitle": "Tests Passing",
+    "testsValue": "2,699",
+    "vulnerabilitiesTitle": "Security Issues",
+    "vulnerabilitiesValue": "0",
+    "speedTitle": "Evidence Speed",
+    "speedValue": "444ms",
+    "determinismTitle": "Determinism",
+    "determinismValue": "100%"
+  }
+}

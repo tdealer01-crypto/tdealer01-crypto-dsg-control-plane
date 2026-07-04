@@ -44,21 +44,33 @@ async function evaluateGovernancePolicy(
 
 // Honest limited-mode reply used when the LLM backend is unavailable, so the
 // dashboard remains usable instead of surfacing a hard error.
-function limitedModeReply(reason: string): string {
+function limitedModeReply(reason: string, language: string = 'en'): string {
+  const messages = {
+    en: {
+      main: '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
+      config: 'To enable full conversational replies, configure OPENROUTER_API_KEY or NVIDIA_API_KEY for this deployment.',
+    },
+    th: {
+      main: '⚠️ เฮอร์มีสกำลังทำงานในโหมดจำกัด — แบ็กเอนด LLM ไม่พร้อมใช้งานในขณะนี้',
+      config: 'เพื่อเปิดใช้งานการตอบกลับเต็มรูปแบบ ให้กำหนดค่า OPENROUTER_API_KEY หรือ NVIDIA_API_KEY สำหรับการปรับใช้นี้',
+    },
+  };
+
+  const msg = messages[language as keyof typeof messages] || messages.en;
   return [
-    '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
+    msg.main,
     `(${reason})`,
     '',
-    'To enable full conversational replies, configure OPENROUTER_API_KEY or NVIDIA_API_KEY for this deployment.',
+    msg.config,
   ].join('\n');
 }
 
-async function generateAgentResponse(message: string): Promise<string> {
+async function generateAgentResponse(message: string, language: string = 'en'): Promise<string> {
   const openrouterKey = process.env.OPENROUTER_API_KEY;
   const nvidiaKey = process.env.NVIDIA_API_KEY;
 
   if (!openrouterKey && !nvidiaKey) {
-    return limitedModeReply('No LLM configured');
+    return limitedModeReply('No LLM configured', language);
   }
 
   const systemPrompt = `You are Hermes, a helpful AI governance agent that helps users understand policies and make decisions.
@@ -177,11 +189,12 @@ Always be respectful and helpful.`;
     }
   }
 
-  return limitedModeReply('All LLM backends unavailable');
+  return limitedModeReply('All LLM backends unavailable', language);
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const language = request.headers.get('accept-language')?.split(',')[0]?.startsWith('th') ? 'th' : 'en';
     const supabase = await createClient();
     const {
       data: { user },
@@ -209,7 +222,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const responseText = await generateAgentResponse(message);
+    const responseText = await generateAgentResponse(message, language);
     const decision = await evaluateGovernancePolicy(message);
 
     const encoder = new TextEncoder();

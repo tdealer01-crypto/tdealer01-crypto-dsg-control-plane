@@ -7,6 +7,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import GlobalNav from '../components/GlobalNav';
 import PublicChatWidget from '../components/PublicChatWidget';
 import { ToastProvider } from '../components/ToastProvider';
+import { LanguageProvider } from '@/lib/i18n/language-context';
 
 export const metadata: Metadata = {
   title: 'DSG ONE — ProofGate Runtime Control Plane',
@@ -17,13 +18,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <ToastProvider>
-          <GlobalNav />
-          {children}
-          <PublicChatWidget />
-          <Analytics />
-          <SpeedInsights />
-        </ToastProvider>
+        <LanguageProvider>
+          <ToastProvider>
+            <GlobalNav />
+            {children}
+            <PublicChatWidget />
+            <Analytics />
+            <SpeedInsights />
+          </ToastProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
