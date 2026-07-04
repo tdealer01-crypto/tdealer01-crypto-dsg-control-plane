@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import SystemStatus from './SystemStatus';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 const productFlow = [
   ['Create AI System', 'Register owner, model, impact level, environment, and allowed action boundary.'],
@@ -59,6 +60,8 @@ export default function ProofGatePage() {
           </div>
         </div>
       </section>
+
+      <AnalyticsDashboard />
 
       <section className="mx-auto max-w-7xl px-6 py-14">
         <p className="dsg-chip">Seven-step product flow</p>
