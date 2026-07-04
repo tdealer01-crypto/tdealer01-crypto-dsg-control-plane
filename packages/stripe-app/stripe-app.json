@@ -10,7 +10,13 @@
   "websiteUrl": "https://dsg.pics",
   "supportEmail": "support@dsg.pics",
   "ui_extension": {
-    "views": [],
+    "views": [
+      {
+        "name": "payment.detail",
+        "title": "DSG Governance Gate",
+        "description": "Policy evaluation and compliance status for payment events"
+      }
+    ],
     "content_security_policy": {
       "connect-src": [
         "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/",

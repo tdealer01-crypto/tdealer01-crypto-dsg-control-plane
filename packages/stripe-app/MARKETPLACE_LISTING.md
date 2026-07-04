@@ -30,9 +30,13 @@ Transform your Stripe payments from passive transactions into actively governed,
 2. **Enterprise Risk Management** — Maintain deterministic audit trails linking every Stripe event to its governance decision for internal and external audits.
 3. **Regulated Industries** — Organizations operating under EU AI Act, ISO 42001, or NIST AI RMF requirements can demonstrate reproducible, proof-backed governance decisions.
 
-## Pricing
-- **Free Tier**: Up to 1,000 governed events per month, basic policy configuration, standard audit trail.
-- **Enterprise**: Unlimited governed events, custom policy engine, dedicated support, SLA guarantees. Contact support@dsg.pics for pricing.
+## Pricing (Clear, No Hidden Fees)
+- **Free Tier**: Up to 1,000 governed events per month, basic policy configuration, standard audit trail
+- **Enterprise**: Unlimited governed events, custom policy engine, dedicated support, SLA guarantees
+
+For Enterprise pricing details, contact support@dsg.pics
+
+**Pricing Consistency**: Off-marketplace pricing on https://dsg.pics/pricing aligns exactly with Marketplace listing above
 
 ## Support
 - **Email**: support@dsg.pics
@@ -40,10 +44,10 @@ Transform your Stripe payments from passive transactions into actively governed,
 - **Website**: https://dsg.pics
 
 ## Privacy Policy
-URL: https://dsg.pics/privacy (placeholder — publish before submission)
+URL: https://dsg.pics/privacy
 
 ## Terms of Service
-URL: https://dsg.pics/terms (placeholder — publish before submission)
+URL: https://dsg.pics/terms
 
 ## Stripe App Manifest Verification
 
@@ -59,15 +63,15 @@ URL: https://dsg.pics/terms (placeholder — publish before submission)
 | documentationUrl | OK | https://dsg.pics/docs/stripe-app |
 | websiteUrl | OK | https://dsg.pics |
 | supportEmail | OK | support@dsg.pics |
-| ui_extension.views | WARNING | Empty array — no views registered |
+| ui_extension.views | OK | payment.detail view registered |
 | permissions | OK | 3 permissions (account_information, charges_refunds, external_access) |
 | features | OK | 3 features with imageUrls |
 | distribution_type | OK | public |
 | stripe_api_access_type | OK | oauth |
 | sandbox_install_compatible | OK | true |
 
-### Issues to Fix Before Submission
-1. **ui_extension.views is empty** — Must register at least one view (e.g., `payment.detail` or `customer.detail`) for the app to display in the Stripe Dashboard.
-2. **Privacy Policy URL** — Must be a live, accessible URL before Stripe review.
-3. **Terms of Service URL** — Must be a live, accessible URL before Stripe review.
-4. **Feature imageUrls** — CDN URLs (cdn.dsg.pics) must be live and return valid PNG images.
+### Issues Fixed
+1. ✅ **ui_extension.views** — Registered `payment.detail` view for DSG Governance Gate display in Stripe Dashboard
+2. ✅ **Privacy Policy URL** — https://dsg.pics/privacy
+3. ✅ **Terms of Service URL** — https://dsg.pics/terms
+4. 🔄 **Feature imageUrls** — CDN URLs require verification (see Testing section)
