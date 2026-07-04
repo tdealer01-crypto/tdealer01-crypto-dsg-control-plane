@@ -175,6 +175,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExecuteRe
       { status: 200 }
     );
   } catch (error) {
+    // ERROR_HANDLER_EXEMPT: errorMessage is logged server-side only (console.error below);
+    // the client response uses a fixed generic message, never error.message.
     const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
 
     console.error('[PageAgent] Execution error:', errorMessage);
@@ -182,7 +184,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExecuteRe
     return NextResponse.json<ExecuteResponse>(
       {
         success: false,
-        error: errorMessage,
+        error: 'เกิดข้อผิดพลาดในการประมวลผลคำสั่ง',
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
