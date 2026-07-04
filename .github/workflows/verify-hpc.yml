@@ -46,6 +46,10 @@ jobs:
       id-token: write
 
     steps:
+      - name: Configure git for safe checkout
+        run: |
+          git config --global --add safe.directory '*'
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
