@@ -2,6 +2,8 @@
 
 Official color specifications for DSG branding across all media.
 
+![DSG Brand Palette](./dsg-brand-palette.png)
+
 ## Primary Colors
 
 | Color | Name | Hex | RGB | CMYK | Usage |
