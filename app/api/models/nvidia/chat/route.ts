@@ -23,7 +23,7 @@ async function callNvidiaAPI(
   payload: NvidiaChatRequest,
   stream: boolean = true,
 ): Promise<Response> {
-  const model = payload.model || 'nvidia/llama2-70b';
+  const model = payload.model || 'z-ai/glm-5.2';
 
   const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',

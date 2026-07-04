@@ -133,7 +133,7 @@ Always be respectful and helpful.`;
   // Fallback to NVIDIA API if available
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   if (nvidiaKey) {
-    const nvidiaModel = process.env.NVIDIA_MODEL_CHAT || 'nvidia/llama2-70b';
+    const nvidiaModel = process.env.NVIDIA_MODEL_CHAT || 'z-ai/glm-5.2';
 
     try {
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
