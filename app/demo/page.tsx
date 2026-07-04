@@ -131,7 +131,7 @@ export default function DemoPage() {
           </h1>
           <p className="text-lg text-slate-300 max-w-2xl mx-auto">
             Same input → Same decision, always. Cryptographic proof per evaluation.
-            Try the live API below — it&apos;s running on production.
+            Try the live API below — it's running on production.
           </p>
         </div>
 
