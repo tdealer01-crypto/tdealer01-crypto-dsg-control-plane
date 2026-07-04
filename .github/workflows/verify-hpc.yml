@@ -49,9 +49,11 @@ jobs:
       - name: Configure git for safe checkout
         run: |
           git config --global --add safe.directory '*'
-          # Remove orphan submodule references that cause post-cleanup failures
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
+          # Pre-emptively remove orphan submodule references before checkout
+          git config --global --remove-section submodule.sync.ai 2>/dev/null || true
+          git config --global --remove-section modules 2>/dev/null || true
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -138,14 +140,22 @@ jobs:
       - name: Clean git submodule state
         if: always()
         run: |
+          # Suppress post-cleanup submodule errors by preventing submodule iteration
+          # Set git config to skip submodule operations
+          git config --global submodule.recurse false 2>/dev/null || true
           # Remove orphan submodule references before GitHub Actions post-cleanup
           git config --global --remove-section submodule.sync.ai 2>/dev/null || true
           git config --file .git/config --remove-section submodule.sync.ai 2>/dev/null || true
           # Remove entire git submodule config to prevent post-cleanup errors
           rm -f .git/modules/sync.ai/.git 2>/dev/null || true
           rm -rf .git/modules/sync.ai 2>/dev/null || true
-          # Clear git module cache
+          # Clear git module cache at both levels
+          git config --global --remove-section modules 2>/dev/null || true
           git config --file .git/config --remove-section modules 2>/dev/null || true
+          # Remove .gitmodules entry if it exists
+          git rm -f .gitmodules 2>/dev/null || true
+          # Ensure any cached submodule config is cleared
+          find .git -name "config" -exec sed -i '/\[submodule/,/^\[/d' {} \; 2>/dev/null || true
 
       - name: Set status check
         if: always()
