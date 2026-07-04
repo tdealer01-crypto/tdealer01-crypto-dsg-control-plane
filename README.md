@@ -1,8 +1,22 @@
-# DSG Control Plane
+# 🔐 DSG: Deterministic Execution & Governance
 
-Production AI governance + execution platform for regulated workflows.
+> **Formal Proof. Evidence-Backed. Production-Ready.**
 
-Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
+**Production AI governance + execution platform for regulated workflows.**
+
+```
+┌─────────────────────────────────────────┐
+│  🎯 Gate Before Execute                 │
+│  📊 Proof Generation (Z3 SMT Solver)     │
+│  🔐 Deterministic Governance             │
+│  ✅ CCVS L1-L5 Evidence Chain            │
+│  ⚡ Enterprise Performance (444ms)       │
+└─────────────────────────────────────────┘
+```
+
+**Live Demo:** https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+**Latest:** ✅ NVIDIA HPC Formal Verification (PR #857 merged)
 
 ---
 
