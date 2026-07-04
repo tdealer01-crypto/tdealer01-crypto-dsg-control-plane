@@ -112,7 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         {
           error: 'API request failed',
           statusCode: testResponse.status,
-          details: await testResponse.text().catch(() => 'See OpenRouter status at https://status.openrouter.ai'),
+          details: 'Check OpenRouter status at https://status.openrouter.ai',
         },
         { status: testResponse.status }
       );
