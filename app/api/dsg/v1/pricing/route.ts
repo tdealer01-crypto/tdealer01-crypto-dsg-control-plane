@@ -16,6 +16,7 @@
 
 import { NextResponse } from 'next/server';
 import { DSG_GATE_TIERS } from '../../../../../lib/dsg/gate-entitlement';
+import { GATE_PLANS } from '../../../../../lib/billing/pricing-catalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ const GATE_PRICING_TIERS: PricingTier[] = [
     id: 'pro',
     name: 'Pro',
     description: DSG_GATE_TIERS.pro.description,
-    price: '$99',
+    price: `$${GATE_PLANS.pro.displayMonthlyUsd}`,
     billingPeriod: 'monthly',
     features: DSG_GATE_TIERS.pro.features,
     cta: 'Upgrade to Pro',
@@ -57,7 +58,7 @@ const GATE_PRICING_TIERS: PricingTier[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: DSG_GATE_TIERS.enterprise.description,
-    price: '$499',
+    price: `$${GATE_PLANS.enterprise.displayMonthlyUsd}`,
     billingPeriod: 'monthly',
     features: DSG_GATE_TIERS.enterprise.features,
     cta: 'Contact Sales',

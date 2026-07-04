@@ -1,3 +1,17 @@
+/**
+ * @deprecated — NOT the canonical Stripe webhook.
+ *
+ * The canonical, full billing webhook is `app/api/billing/webhook/route.ts`
+ * (signature-verified, idempotent via billing_events, fulfills/revokes
+ * organizations.plan, handles invoices + referrals). This route is a narrow
+ * legacy "release gate" sync that only writes `release_gate_entitlements`
+ * with a hardcoded plan='pro'.
+ *
+ * Keep the Stripe Dashboard webhook endpoint pointed at /api/billing/webhook.
+ * This route is kept (not deleted) so any still-configured endpoint keeps
+ * returning 2xx instead of erroring; do not add new logic here.
+ * Decision recorded in docs/revenue/TRACK_A_ACTIVATION_STATUS.md (2026-07-03).
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
