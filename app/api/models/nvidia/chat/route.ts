@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/security/api-error';
+import { readJsonBody } from '@/lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json() as NvidiaChatRequest;
+    const bodyResult = await readJsonBody<NvidiaChatRequest>(request, { maxBytes: 512_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status },
+      );
+    }
+
+    const body = bodyResult.value;
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 },
+      );
+    }
+
     const { messages, model, temperature, top_p, max_tokens, seed, stream = true } = body;
 
     if (!messages || !Array.isArray(messages)) {
