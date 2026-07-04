@@ -131,7 +131,7 @@ export default function DemoPage() {
           </h1>
           <p className="text-lg text-slate-300 max-w-2xl mx-auto">
             Same input → Same decision, always. Cryptographic proof per evaluation.
-            Try the live API below — it's running on production.
+            Try the live API below — it&apos;s running on production.
           </p>
         </div>
 
@@ -316,7 +316,7 @@ export default function DemoPage() {
             {!response && !loading && !error && (
               <div className="text-center py-12 text-slate-500">
                 <div className="text-4xl mb-3">🛡️</div>
-                <p>Click 'Evaluate Gate' to see the deterministic decision</p>
+                <p>Click "Evaluate Gate" to see the deterministic decision</p>
                 <p className="text-xs mt-2">Every evaluation returns: decision + audit_id + proof hashes</p>
               </div>
             )}
