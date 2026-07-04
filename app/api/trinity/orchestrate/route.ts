@@ -4,6 +4,8 @@
  *
  * dry_run=true (default): deterministic simulation only
  * dry_run=false: DB-backed flow + verification + settlement attempt
+ *
+ * Integrated with NVIDIA/OpenRouter LLM for AI-powered deliverable generation
  */
 import { NextResponse } from 'next/server';
 import {
@@ -40,7 +42,102 @@ interface OrchestrationRequest {
   dry_run?: boolean;
 }
 
-function generateDeliverable(category: string, title: string): string {
+async function generateDeliverableWithLLM(category: string, title: string): Promise<string> {
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+
+  // Fallback to basic generation if no LLM configured
+  if (!openrouterKey && !nvidiaKey) {
+    return `# ${title}\n\nCategory: ${category}\n\n- Scope checked\n- Deliverable produced\n- Proof refs linked`;
+  }
+
+  const systemPrompt = `You are Trinity Hand Agent. Generate a professional deliverable for the given job.
+Keep it concise but comprehensive.
+Include scope verification, deliverable details, and proof references.`;
+
+  const userPrompt = `Generate a deliverable for this job:
+Title: ${title}
+Category: ${category}
+
+Provide a markdown formatted deliverable that shows:
+1. Scope analysis
+2. Deliverable details
+3. Quality metrics
+4. Proof/verification references`;
+
+  // Try OpenRouter first
+  if (openrouterKey) {
+    const models = [
+      process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-4o-mini:free',
+      'google/gemma-3-27b-it:free',
+    ];
+
+    for (const model of models) {
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openrouterKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            max_tokens: 300,
+            temperature: 0.7,
+          }),
+        });
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            choices?: Array<{ message?: { content?: string } }>;
+          };
+          const content = data.choices?.[0]?.message?.content;
+          if (content) return content;
+        }
+      } catch (err) {
+        console.error('[Trinity] OpenRouter error:', err);
+      }
+    }
+  }
+
+  // Fallback to NVIDIA
+  if (nvidiaKey) {
+    try {
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${nvidiaKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.NVIDIA_MODEL_CHAT || 'nvidia/nemotron-3-ultra-550b-a55b',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 300,
+          temperature: 0.7,
+          top_p: 1,
+        }),
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      }
+    } catch (err) {
+      console.error('[Trinity] NVIDIA error:', err);
+    }
+  }
+
+  // Final fallback to deterministic generation
   return `# ${title}\n\nCategory: ${category}\n\n- Scope checked\n- Deliverable produced\n- Proof refs linked`;
 }
 
@@ -115,7 +212,7 @@ export async function POST(req: Request) {
     }
 
     const startMs = Date.now();
-    const deliverable = generateDeliverable(job.category, job.title);
+    const deliverable = await generateDeliverableWithLLM(job.category, job.title);
     const qualityScore = scoreQuality(deliverable, job.category);
     const proofHash = createHash(`${deliverable}:${job.id}`);
     const executionTimeMs = Date.now() - startMs;
