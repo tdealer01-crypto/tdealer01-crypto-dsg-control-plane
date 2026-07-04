@@ -138,9 +138,14 @@ jobs:
       - name: Clean git submodule state
         if: always()
         run: |
-          # Remove orphan submodule references before post-cleanup
+          # Remove orphan submodule references before GitHub Actions post-cleanup
           git config --global --remove-section submodule.sync.ai 2>/dev/null || true
           git config --file .git/config --remove-section submodule.sync.ai 2>/dev/null || true
+          # Remove entire git submodule config to prevent post-cleanup errors
+          rm -f .git/modules/sync.ai/.git 2>/dev/null || true
+          rm -rf .git/modules/sync.ai 2>/dev/null || true
+          # Clear git module cache
+          git config --file .git/config --remove-section modules 2>/dev/null || true
 
       - name: Set status check
         if: always()
