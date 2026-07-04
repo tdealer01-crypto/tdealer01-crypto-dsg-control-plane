@@ -49,6 +49,9 @@ jobs:
       - name: Configure git for safe checkout
         run: |
           git config --global --add safe.directory '*'
+          # Remove orphan submodule references that cause post-cleanup failures
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -131,6 +134,13 @@ jobs:
           name: hpc-verification-evidence
           path: evidence-output/
           retention-days: 30
+
+      - name: Clean git submodule state
+        if: always()
+        run: |
+          # Remove orphan submodule references before post-cleanup
+          git config --global --remove-section submodule.sync.ai 2>/dev/null || true
+          git config --file .git/config --remove-section submodule.sync.ai 2>/dev/null || true
 
       - name: Set status check
         if: always()
