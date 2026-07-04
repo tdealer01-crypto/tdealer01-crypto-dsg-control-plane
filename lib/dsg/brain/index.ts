@@ -8,5 +8,6 @@ export * from "./hash-utils";
 export * from "./plan-attempt";
 export * from "./controlled-executor";
 export * from "./conformance-gate";
+export * from "./tool-executor";
 export * from "./hermes-plugin";
 export * from "./credential-broker";
