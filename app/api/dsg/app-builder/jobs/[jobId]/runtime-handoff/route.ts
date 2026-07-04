@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAppBuilderRuntimeHandoff } from '@/lib/dsg/app-builder/runtime-handoff';
-import { getAppBuilderDb, getDevSmokeAppBuilderContext } from '@/lib/dsg/app-builder/server-context';
+import { getAppBuilderDb, getAuthorizedAppBuilderContext } from '@/lib/dsg/app-builder/server-context';
 import { getAppBuilderJob } from '@/lib/dsg/server/repositories/app-builder-repository';
 
 export async function POST(
@@ -9,7 +9,7 @@ export async function POST(
 ) {
   try {
     const { jobId } = await context.params;
-    const ctx = getDevSmokeAppBuilderContext(req);
+    const ctx = getAuthorizedAppBuilderContext(req);
     const db = getAppBuilderDb();
     const job = await getAppBuilderJob({ db, ...ctx }, jobId);
     const data = createAppBuilderRuntimeHandoff(job);
