@@ -132,37 +132,6 @@ jobs:
           path: evidence-output/
           retention-days: 30
 
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const z3Result = JSON.parse(fs.readFileSync('evidence-output/ccvs-makk8-z3-proof.json', 'utf8'));
-            const summary = z3Result.summary;
-
-            const body = `## 🔐 HPC Formal Verification Results
-
-            **Z3 SMT Solver Status**
-            - SAMMA baseline: ${summary.samma_verified ? '✅' : '❌'}
-            - MICHA detection: ${summary.micha_detected ? '✅' : '❌'}
-            - Formal proof: ${summary.formal_proof_ok ? '✅ PASS' : '❌ FAIL'}
-
-            **Evidence Chain**
-            - Proof artifacts generated and stored
-            - All verification paths completed
-            - Deterministic hashes verified
-
-            Evidence artifacts: [Download](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
       - name: Set status check
         if: always()
         run: |
