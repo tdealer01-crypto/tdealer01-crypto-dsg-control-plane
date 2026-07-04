@@ -83,11 +83,61 @@ export function initDsgClient() {
 export async function gatewayCheckStripeOperation(
   request: StripeOperationRequest
 ): Promise<StripeOperationDecision> {
-  // TODO: Implement gateway check
-  // 1. Fetch policies from cache (Redis)
-  // 2. Evaluate policies against request
-  // 3. Call DSG gateway executor if needed
-  // 4. Return decision
+  const supabase = getSupabase();
+
+  // Fetch enabled policies for this Stripe account
+  const { data: policies, error } = await supabase
+    .from('stripe_operation_policies')
+    .select('*')
+    .eq('stripe_account_id', request.stripe_account_id)
+    .eq('enabled', true)
+    .order('priority', { ascending: true });
+
+  if (error) {
+    console.error('[Gateway] Failed to fetch policies:', error.message);
+    return {
+      decision: 'REVIEW',
+      reason: `Policy fetch failed: ${error.message}`,
+    };
+  }
+
+  if (!policies || policies.length === 0) {
+    return {
+      decision: 'ALLOW',
+      reason: 'No active policies — default allow',
+    };
+  }
+
+  // Evaluate each policy in priority order
+  for (const policy of policies) {
+    const conditions = policy.conditions as Record<string, unknown>;
+    const action = policy.action as 'allow' | 'block' | 'review';
+
+    // Amount threshold check
+    if (conditions.amount_threshold && typeof conditions.amount_threshold === 'number') {
+      const threshold = Number(conditions.amount_threshold);
+      if (typeof request.amount_cents === 'number' && request.amount_cents > threshold * 100) {
+        return {
+          decision: action.toUpperCase() as 'ALLOW' | 'BLOCK' | 'REVIEW',
+          reason: `Amount ${request.amount_cents / 100} exceeds threshold ${threshold}`,
+          policy_id: policy.id,
+        };
+      }
+    }
+
+    // Customer allowlist
+    const ctx = request.context || {};
+    if (conditions.customer_allowlist && Array.isArray(conditions.customer_allowlist)) {
+      const customerId = ctx.customer_id as string | undefined;
+      if (customerId && !conditions.customer_allowlist.includes(customerId)) {
+        return {
+          decision: 'BLOCK',
+          reason: 'Customer not in allowlist',
+          policy_id: policy.id,
+        };
+      }
+    }
+  }
 
   return {
     decision: 'ALLOW',
@@ -111,8 +161,21 @@ export async function recordStripeDecision(
   decision: string,
   dsgDecisionId?: string
 ): Promise<void> {
-  // TODO: Insert into stripe_operation_audits table
-  // Links Stripe event to DSG decision for compliance evidence
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from('stripe_operation_audits')
+    .insert({
+      stripe_event_id: stripeEventId,
+      stripe_object_id: stripeObjectId,
+      operation_type: operationType,
+      decision,
+      dsg_decision_id: dsgDecisionId || null,
+      created_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('[Audit] Failed to record decision:', error.message);
+  }
 }
 
 /**
@@ -122,8 +185,18 @@ export async function recordStripeDecision(
  * @returns 'open' (allow on failure) or 'closed' (block on failure)
  */
 export async function getFailSafeMode(stripeAccountId: string): Promise<'open' | 'closed'> {
-  // TODO: Query stripe_app_accounts for fail_safe_mode
-  return 'open'; // default
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('stripe_app_accounts')
+    .select('fail_safe_mode')
+    .eq('stripe_account_id', stripeAccountId)
+    .single();
+
+  if (error || !data) {
+    return 'open'; // default fail_open when account not found or error
+  }
+
+  return (data.fail_safe_mode as 'open' | 'closed') || 'open';
 }
 
 /**
