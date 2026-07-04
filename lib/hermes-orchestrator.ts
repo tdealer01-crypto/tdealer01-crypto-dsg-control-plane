@@ -67,6 +67,18 @@ async function callOpenRouter(model: string, messages: Array<Record<string, unkn
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
+
+    // Provide clearer error message for auth failures
+    if (response.status === 401) {
+      throw new Error(
+        'OpenRouter authentication error (HTTP 401): Check that OPENROUTER_API_KEY is valid and the account exists.',
+      );
+    } else if (response.status === 403) {
+      throw new Error(
+        'OpenRouter access forbidden (HTTP 403): The API key may lack required permissions.',
+      );
+    }
+
     throw new Error('OpenRouter ' + response.status + ': ' + text.slice(0, 200));
   }
 
