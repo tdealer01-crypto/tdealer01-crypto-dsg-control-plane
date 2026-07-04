@@ -5132,7 +5132,10 @@ export type Database = {
           created_at: string
           email: string
           full_name: string | null
+          github_account_id: number | null
+          github_login: string | null
           id: string
+          installation_id: number | null
           ref_code: string | null
           status: string
           workspace_name: string
@@ -5142,7 +5145,10 @@ export type Database = {
           created_at?: string
           email: string
           full_name?: string | null
+          github_account_id?: number | null
+          github_login?: string | null
           id?: string
+          installation_id?: number | null
           ref_code?: string | null
           status?: string
           workspace_name: string
@@ -5152,7 +5158,10 @@ export type Database = {
           created_at?: string
           email?: string
           full_name?: string | null
+          github_account_id?: number | null
+          github_login?: string | null
           id?: string
+          installation_id?: number | null
           ref_code?: string | null
           status?: string
           workspace_name?: string
