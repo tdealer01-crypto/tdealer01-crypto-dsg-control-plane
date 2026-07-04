@@ -121,7 +121,12 @@ export default function ExecutionsPage() {
 
     try {
       setError(null);
-      const wsUrl = 'ws://localhost:8080/ws';
+      const wsUrl =
+        process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
+        (() => {
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          return `${protocol}//${window.location.host}/ws`;
+        })();
       const ws = new WebSocket(wsUrl);
 
       ws.addEventListener('open', () => {

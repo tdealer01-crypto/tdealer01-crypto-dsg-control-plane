@@ -69,7 +69,7 @@ jobs:
 
       - name: Install Z3 SMT Solver
         run: |
-          pip install --no-cache-dir z3-solver sympy jsonschema
+          pip install z3-solver sympy jsonschema
           python3 -c "import z3; print(f'Z3 version: {z3.get_version_string()}')"
 
       - name: Set up Node.js

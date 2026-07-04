@@ -12,7 +12,6 @@ interface NewsArticle {
   category: string;
   title: string;
   subtitle: string;
-  image: string;
   readTime: number;
   date: string;
   featured?: boolean;
@@ -25,7 +24,6 @@ const newsData: NewsArticle[] = [
     category: 'Breakthroughs',
     title: 'Multimodal AI Models Reach New Reasoning Capabilities',
     subtitle: 'Latest models demonstrate 95% accuracy on complex reasoning benchmarks',
-    image: 'https://images.unsplash.com/photo-1677442d019cecf48d4802a321e3e8a6?w=1200&h=600&fit=crop',
     readTime: 8,
     date: '2 hours ago',
     featured: true,
@@ -36,7 +34,6 @@ const newsData: NewsArticle[] = [
     category: 'Research',
     title: 'Graph Neural Networks Transform Drug Discovery',
     subtitle: 'New computational approach accelerates molecular identification',
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop',
     readTime: 6,
     date: '4 hours ago',
     gradient: 'purple-to-navy',
@@ -46,7 +43,6 @@ const newsData: NewsArticle[] = [
     category: 'Trends',
     title: 'Enterprise AI Adoption Accelerates in 2026',
     subtitle: '78% of Fortune 500 now implement AI solutions',
-    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop',
     readTime: 5,
     date: '6 hours ago',
     gradient: 'cyan-to-blue',
@@ -56,7 +52,6 @@ const newsData: NewsArticle[] = [
     category: 'Research',
     title: 'Self-Supervised Learning Reduces Training Data by 60%',
     subtitle: 'Breakthrough enables efficient AI model development',
-    image: 'https://images.unsplash.com/photo-1526374965328-7f5ae4e8e598?w=600&h=400&fit=crop',
     readTime: 7,
     date: '8 hours ago',
     gradient: 'blue-to-navy',
@@ -66,7 +61,6 @@ const newsData: NewsArticle[] = [
     category: 'Breakthroughs',
     title: 'Quantum AI Hybrid Systems Show Promise',
     subtitle: 'Combining quantum and classical computing for optimization',
-    image: 'https://images.unsplash.com/photo-1639762681033-6461854d8c73?w=600&h=400&fit=crop',
     readTime: 9,
     date: '10 hours ago',
     gradient: 'purple-to-navy',
@@ -118,15 +112,8 @@ export default function ExplorePage() {
         {featuredArticle && (
           <div className="mb-[--space-12]">
             <div className="relative overflow-hidden rounded-[--radius-2xl] group">
-              {/* Banner Image */}
-              <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 overflow-hidden">
-                <img
-                  src={featuredArticle.image}
-                  alt={featuredArticle.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#000] via-transparent to-transparent" />
-              </div>
+              {/* Banner */}
+              <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 overflow-hidden bg-gradient-to-br from-blue-600/30 via-blue-900/40 to-slate-900/60" />
 
               {/* Content Overlay */}
               <div
@@ -184,16 +171,6 @@ export default function ExplorePage() {
                   <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="relative z-10 flex flex-col h-full">
-                    {/* Image */}
-                    <div className="relative h-40 mb-[--space-4] rounded-[--radius-lg] overflow-hidden -m-[--space-4] mb-[--space-4] px-[--space-4] pt-[--space-4]">
-                      <img
-                        src={article.image}
-                        alt={article.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover rounded-[--radius-lg] group-hover:scale-110 transition-transform duration-500"
-                      />
-                    </div>
-
                     {/* Badge & Meta */}
                     <div className="flex items-center justify-between mb-[--space-3]">
                       <Badge
