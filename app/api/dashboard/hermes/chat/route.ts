@@ -49,42 +49,101 @@ function limitedModeReply(reason: string): string {
     '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
     `(${reason})`,
     '',
-    'To enable full conversational replies, configure OPENROUTER_API_KEY for this deployment.',
+    'To enable full conversational replies, configure OPENROUTER_API_KEY or NVIDIA_API_KEY for this deployment.',
   ].join('\n');
 }
 
 async function generateAgentResponse(message: string): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    return limitedModeReply('LLM not configured');
-  }
-
   const systemPrompt = `You are Hermes, a helpful AI governance agent that helps users understand policies and make decisions.
 You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  // Primary model overridable via env; fallback chain handles upstream 429s.
-  // Note: 'meta-llama/llama-4-maverick:free' was removed — OpenRouter now
-  // 404s it ("this model is unavailable for free"); its own error response
-  // points to the paid slug, which we don't want to silently switch to.
-  const models = [
-    process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
-    'google/gemma-3-27b-it:free',
-    'deepseek/deepseek-chat-v3-0324:free',
-  ];
+  // Try OpenRouter first if available
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  if (openrouterKey) {
+    // Primary model overridable via env; fallback chain handles upstream 429s.
+    // Note: 'meta-llama/llama-4-maverick:free' was removed — OpenRouter now
+    // 404s it ("this model is unavailable for free"); its own error response
+    // points to the paid slug, which we don't want to silently switch to.
+    const models = [
+      process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
+      'google/gemma-3-27b-it:free',
+      'deepseek/deepseek-chat-v3-0324:free',
+    ];
 
-  for (const model of models) {
+    for (const model of models) {
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openrouterKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt,
+              },
+              {
+                role: 'user',
+                content: message,
+              },
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+          }),
+        });
+
+        if (response.status === 429) {
+          const detail = await response.text().catch(() => '');
+          console.error(
+            `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+          );
+          continue;
+        }
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          console.error(
+            `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+          );
+          // Continue to next model or fallback
+          continue;
+        }
+
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } catch (error) {
+        console.error(
+          `[api/dashboard/hermes/chat] OpenRouter error for model "${model}":`,
+          error,
+        );
+        // Continue to next model or fallback
+      }
+    }
+  }
+
+  // Fallback to NVIDIA API if available
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  if (nvidiaKey) {
+    const nvidiaModel = process.env.NVIDIA_MODEL_CHAT || 'nvidia/llama2-70b';
+
     try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${nvidiaKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model,
+          model: nvidiaModel,
           messages: [
             {
               role: 'system',
@@ -97,38 +156,33 @@ Always be respectful and helpful.`;
           ],
           max_tokens: 500,
           temperature: 0.7,
+          top_p: 1,
         }),
       });
 
-      if (response.status === 429) {
+      if (response.ok) {
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } else {
         const detail = await response.text().catch(() => '');
         console.error(
-          `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+          `[api/dashboard/hermes/chat] NVIDIA ${response.status}: ${detail.slice(0, 300)}`,
         );
-        continue;
       }
-
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '');
-        console.error(
-          `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
-        );
-        return limitedModeReply('LLM upstream error');
-      }
-
-      const data = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-
-      const content = data.choices?.[0]?.message?.content;
-      if (content) return content;
-      return limitedModeReply('LLM returned no content');
-    } catch {
-      return limitedModeReply('LLM request failed');
+    } catch (error) {
+      console.error('[api/dashboard/hermes/chat] NVIDIA error:', error);
     }
   }
 
-  return limitedModeReply('LLM upstream error');
+  if (!openrouterKey && !nvidiaKey) {
+    return limitedModeReply('No LLM configured');
+  }
+
+  return limitedModeReply('All LLM backends unavailable');
 }
 
 export async function POST(request: NextRequest) {
