@@ -1,6 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+/* eslint-disable react/no-unescaped-entities */
+
+import { useEffect, useState } from 'react';
 
 interface GateRequest {
   user_id: string;
