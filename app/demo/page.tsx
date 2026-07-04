@@ -316,7 +316,7 @@ export default function DemoPage() {
             {!response && !loading && !error && (
               <div className="text-center py-12 text-slate-500">
                 <div className="text-4xl mb-3">🛡️</div>
-                <p>Click "Evaluate Gate" to see the deterministic decision</p>
+                <p>Click 'Evaluate Gate' to see the deterministic decision</p>
                 <p className="text-xs mt-2">Every evaluation returns: decision + audit_id + proof hashes</p>
               </div>
             )}
