@@ -267,6 +267,7 @@ export default function TrinityDashboardPage() {
   const [executionHistory, setExecutionHistory] = useState<ExecutionHistory[]>([]);
   const [discoveredJobs, setDiscoveredJobs] = useState<JobDiscovery[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(false);
 
   // Validate form
   const validateForm = (): boolean => {
@@ -462,14 +463,49 @@ export default function TrinityDashboardPage() {
 
   useEffect(() => {
     const initializeData = async () => {
-      await Promise.all([
-        loadStatus(),
-        loadExecutionHistory(),
-        loadDiscoveredJobs(),
-      ]);
+      setStatusLoading(true);
+      setHistoryLoading(true);
+      setJobsLoading(true);
+
+      try {
+        const [statusRes, historyRes, jobsRes] = await Promise.all([
+          fetch('/api/trinity/status'),
+          fetch('/api/trinity/history?agentId=dashboard-test-agent&limit=20', {
+            headers: {
+              'x-trinity-org-id': 'default-org',
+              'x-trinity-actor-id': 'dashboard-test-agent',
+            },
+          }),
+          fetch('/api/trinity/jobs?org_id=default-org'),
+        ]);
+
+        if (statusRes.ok) {
+          const data = await statusRes.json();
+          setSystemStatus(data);
+        }
+
+        if (historyRes.ok) {
+          const data = await historyRes.json();
+          if (data.ok && data.executions) {
+            setExecutionHistory(data.executions);
+          }
+        }
+
+        if (jobsRes.ok) {
+          const data = await jobsRes.json();
+          if (data.ok && data.jobs) {
+            setDiscoveredJobs(data.jobs);
+          }
+        }
+      } finally {
+        setStatusLoading(false);
+        setHistoryLoading(false);
+        setJobsLoading(false);
+      }
     };
+
     initializeData();
-  }, [loadStatus, loadExecutionHistory, loadDiscoveredJobs]);
+  }, []);
 
   async function runOrchestration() {
     if (!validateForm()) {
