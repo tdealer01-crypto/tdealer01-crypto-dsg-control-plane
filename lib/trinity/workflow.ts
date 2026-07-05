@@ -208,7 +208,7 @@ export async function settleJob(params: {
   });
 
   return {
-    ok: status === 'paid',
+    ok: false,
     status,
     txSignature,
     idempotencyKey,
