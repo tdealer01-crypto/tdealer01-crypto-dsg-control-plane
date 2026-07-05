@@ -267,6 +267,7 @@ export default function TrinityDashboardPage() {
   const [executionHistory, setExecutionHistory] = useState<ExecutionHistory[]>([]);
   const [discoveredJobs, setDiscoveredJobs] = useState<JobDiscovery[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(false);
 
   // Validate form
   const validateForm = (): boolean => {
