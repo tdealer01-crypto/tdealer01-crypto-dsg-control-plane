@@ -14,10 +14,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect('/login?next=/dashboard');
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="border-b border-slate-800 bg-slate-950/80">
@@ -28,15 +24,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </Link>
           <DashboardNav />
           <div className="hidden shrink-0 text-right lg:block">
-            <p className="text-xs text-slate-500">Signed in as</p>
-            <p className="max-w-[160px] truncate text-xs font-medium text-slate-300">{user.email}</p>
+            <p className="text-xs text-slate-500">
+              {user ? 'Signed in as' : 'Not signed in'}
+            </p>
+            <p className="max-w-[160px] truncate text-xs font-medium text-slate-300">
+              {user?.email ?? 'guest'}
+            </p>
           </div>
         </div>
       </div>
       <AutoSetupTrigger />
-      <NudgeBanner />
+      {user && <NudgeBanner />}
       {children}
-      <AgentChatWidget />
+      {user && <AgentChatWidget />}
     </div>
   );
 }
