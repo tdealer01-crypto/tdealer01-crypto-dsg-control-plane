@@ -461,9 +461,14 @@ export default function TrinityDashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadStatus();
-    loadExecutionHistory();
-    loadDiscoveredJobs();
+    const initializeData = async () => {
+      await Promise.all([
+        loadStatus(),
+        loadExecutionHistory(),
+        loadDiscoveredJobs(),
+      ]);
+    };
+    initializeData();
   }, [loadStatus, loadExecutionHistory, loadDiscoveredJobs]);
 
   async function runOrchestration() {
@@ -558,13 +563,13 @@ export default function TrinityDashboardPage() {
         {statusError && (
           <p className="mb-4 rounded-lg bg-red-900/30 px-4 py-2 text-sm text-red-400">{statusError}</p>
         )}
-        {statusLoading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {statusLoading || !systemStatus ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5 min-h-32">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-800" />
+              <div key={i} className="h-24 rounded-xl bg-slate-800/50 border border-slate-700" />
             ))}
           </div>
-        ) : systemStatus ? (
+        ) : (
           <>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
               {Object.entries(systemStatus.agents).map(([name, info]) => (
@@ -584,7 +589,7 @@ export default function TrinityDashboardPage() {
               <span className="ml-auto">Checked: {new Date(systemStatus.checkedAt).toLocaleTimeString()}</span>
             </div>
           </>
-        ) : null}
+        )}
       </section>
 
       {/* Main Grid */}
