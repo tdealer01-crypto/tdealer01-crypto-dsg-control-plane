@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSafeNext } from './lib/auth/safe-next';
 
 function isProtectedPath(pathname: string) {
+  if (pathname === '/dashboard/trinity') {
+    return false;
+  }
   return (
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
