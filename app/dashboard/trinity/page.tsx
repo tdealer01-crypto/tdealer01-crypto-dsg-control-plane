@@ -70,11 +70,40 @@ interface JobDiscovery {
   platform: string;
   category: string;
   difficulty: string;
-  reward: number;
+  rewardSol: number;
   usdEstimate?: number;
   deadline: string;
   status: string;
   source: 'live' | 'demo';
+}
+
+// ...
+
+function normalizeJob(raw: Record<string, unknown>): JobDiscovery {
+  const reward = raw.reward;
+  let rewardSol = 0;
+  let usdEstimate: number | undefined;
+
+  if (typeof reward === 'object' && reward !== null) {
+    const obj = reward as Record<string, unknown>;
+    rewardSol = Number(obj.amount ?? 0);
+    usdEstimate = obj.usdEstimate !== undefined ? Number(obj.usdEstimate) : undefined;
+  } else {
+    rewardSol = Number(reward ?? 0);
+  }
+
+  return {
+    id: String(raw.id ?? ''),
+    title: String(raw.title ?? ''),
+    platform: String(raw.platform ?? ''),
+    category: String(raw.category ?? ''),
+    difficulty: String(raw.difficulty ?? ''),
+    deadline: String(raw.deadline ?? ''),
+    status: String(raw.status ?? ''),
+    source: typeof raw.source === 'string' && (raw.source === 'live' || raw.source === 'demo') ? raw.source : 'live',
+    rewardSol,
+    usdEstimate,
+  };
 }
 
 // Form validation
@@ -223,7 +252,7 @@ function JobDiscoveryPanel({ jobs }: { jobs: JobDiscovery[] }) {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-amber-400">{job.reward} SOL</p>
+                <p className="text-sm font-semibold text-amber-400">{job.rewardSol} SOL</p>
                 {job.usdEstimate && (
                   <p className="text-xs text-slate-500">${job.usdEstimate.toFixed(0)}</p>
                 )}
@@ -437,23 +466,7 @@ export default function TrinityDashboardPage() {
       });
       const data = await res.json();
       if (data.ok && Array.isArray(data.jobs)) {
-        // Map API response (reward as object) → JobDiscovery (reward as number)
-        const mapped: JobDiscovery[] = data.jobs.map((j: {
-          id: string; title: string; platform: string; category: string;
-          difficulty: string; deadline: string; status: string; source: 'live' | 'demo';
-          reward: number | { amount: number; currency: string; usdEstimate: number };
-        }) => ({
-          id: j.id,
-          title: j.title,
-          platform: j.platform,
-          category: j.category,
-          difficulty: j.difficulty,
-          deadline: j.deadline,
-          status: j.status,
-          source: j.source,
-          reward: typeof j.reward === 'object' ? j.reward.amount : j.reward,
-          usdEstimate: typeof j.reward === 'object' ? j.reward.usdEstimate : undefined,
-        }));
+        const mapped: JobDiscovery[] = data.jobs.map((j: Record<string, unknown>) => normalizeJob(j));
         setDiscoveredJobs(mapped);
       }
     } catch (err) {
@@ -493,8 +506,9 @@ export default function TrinityDashboardPage() {
 
         if (jobsRes.ok) {
           const data = await jobsRes.json();
-          if (data.ok && data.jobs) {
-            setDiscoveredJobs(data.jobs);
+          if (data.ok && Array.isArray(data.jobs)) {
+            const mapped = data.jobs.map((j: Record<string, unknown>) => normalizeJob(j));
+            setDiscoveredJobs(mapped);
           }
         }
       } finally {
