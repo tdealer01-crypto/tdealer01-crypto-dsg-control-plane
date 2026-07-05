@@ -35,6 +35,14 @@ function extractBearerToken(request: Request): string | null {
   return token.length > 0 ? token : null;
 }
 
+function runNonBlockingSideEffect(name: string, effect: () => unknown | Promise<unknown>) {
+  void Promise.resolve()
+    .then(effect)
+    .catch((error) => {
+      console.warn(`Non-blocking execute side effect failed: ${name}`, error);
+    });
+}
+
 export async function OPTIONS(request: Request) {
   return buildPreflightResponse(request);
 }
@@ -130,17 +138,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // Count executions only on success (2xx)
+    // Count executions only on success (2xx). Non-critical side effects must not break the request path.
     if (result.status >= 200 && result.status < 300) {
-      void incrementQuota(orgId, agentId);
-      void fireWebhook(orgId, 'execution.completed', {
-        agent_id: agentId,
-        decision: (result.body as Record<string, unknown>)?.decision ?? null,
-      });
+      runNonBlockingSideEffect('incrementQuota', () => incrementQuota(orgId, agentId));
+      runNonBlockingSideEffect('fireWebhook', () =>
+        fireWebhook(orgId, 'execution.completed', {
+          agent_id: agentId,
+          decision: (result.body as Record<string, unknown>)?.decision ?? null,
+        })
+      );
       const executionId =
         ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
         randomUUID();
-      void meterExecution(orgId, 1, executionId);
+      runNonBlockingSideEffect('meterExecution', () => meterExecution(orgId, 1, executionId));
     }
 
     return NextResponse.json(result.body, {
