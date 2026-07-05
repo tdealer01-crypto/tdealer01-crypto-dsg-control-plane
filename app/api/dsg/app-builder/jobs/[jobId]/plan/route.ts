@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createDeterministicAppBuilderPrd } from '@/lib/dsg/app-builder/prd-generator';
 import { createAppBuilderProposedPlan } from '@/lib/dsg/app-builder/plan-generator';
 import { gateAppBuilderPlan } from '@/lib/dsg/app-builder/gate';
-import { getAppBuilderDb, getDevSmokeAppBuilderContext } from '@/lib/dsg/app-builder/server-context';
+import { getAppBuilderDb, getAuthorizedAppBuilderContext } from '@/lib/dsg/app-builder/server-context';
 import {
   attachAppBuilderPlan,
   getAppBuilderJob,
@@ -14,7 +14,7 @@ export async function POST(
 ) {
   try {
     const { jobId } = await context.params;
-    const ctx = getDevSmokeAppBuilderContext(req);
+    const ctx = getAuthorizedAppBuilderContext(req);
     const db = getAppBuilderDb();
     const repoCtx = { db, ...ctx };
     const job = await getAppBuilderJob(repoCtx, jobId);

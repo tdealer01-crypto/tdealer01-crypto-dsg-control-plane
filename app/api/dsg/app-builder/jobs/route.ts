@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { lockAppBuilderGoal } from '@/lib/dsg/app-builder/goal-lock';
-import { getAppBuilderDb, getDevSmokeAppBuilderContext } from '@/lib/dsg/app-builder/server-context';
+import { getAppBuilderDb, getAuthorizedAppBuilderContext } from '@/lib/dsg/app-builder/server-context';
 import type { AppBuilderGoalInput } from '@/lib/dsg/app-builder/model';
 import {
   createAppBuilderJob,
@@ -9,7 +9,7 @@ import {
 
 export async function GET(req: Request) {
   try {
-    const ctx = getDevSmokeAppBuilderContext(req);
+    const ctx = getAuthorizedAppBuilderContext(req);
     const db = getAppBuilderDb();
     const data = await listAppBuilderJobs({ db, ...ctx });
     return NextResponse.json({ ok: true, data });
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const ctx = getDevSmokeAppBuilderContext(req);
+    const ctx = getAuthorizedAppBuilderContext(req);
     const db = getAppBuilderDb();
     const rawGoal = (await req.json()) as AppBuilderGoalInput;
     const lockedGoal = lockAppBuilderGoal(rawGoal);

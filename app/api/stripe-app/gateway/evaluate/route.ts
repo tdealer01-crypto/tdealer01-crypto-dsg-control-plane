@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createHash, randomBytes } from 'crypto';
 import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { requireInternalService } from '@/lib/auth/internal-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -269,8 +270,15 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const corsHeaders = buildCorsHeaders(request);
 
+  const internalAccess = requireInternalService(request);
+  if (!internalAccess.ok) {
+    const failure = internalAccess as any;
+    return NextResponse.json({ error: failure.error }, { status: failure.status, headers: corsHeaders });
+  }
+
+  let body: EvaluateRequest = {} as EvaluateRequest;
   try {
-    const body = await request.json() as EvaluateRequest;
+    body = await request.json() as EvaluateRequest;
 
     if (!body.stripe_account_id) {
       return NextResponse.json({ error: 'Missing stripe_account_id' }, { status: 400, headers: corsHeaders });
@@ -398,7 +406,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('Gateway evaluate error:', err);
     const errorDecisionId = generateDecisionId();
-    const errorApprovalId = (await request.json() as EvaluateRequest)?.stripe_event_id || errorDecisionId;
+    const errorApprovalId = body.stripe_event_id || errorDecisionId;
 
     return NextResponse.json({
       decision: 'REVIEW',
