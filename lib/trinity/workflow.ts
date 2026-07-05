@@ -178,42 +178,15 @@ export async function settleJob(params: {
     return { ok: false, status: 'failed' as const, reason: 'job not found' };
   }
 
-  let status: 'paid' | 'pending_manual_review' | 'failed' = 'pending_manual_review';
+  let status: 'pending_manual_review' | 'failed' = 'pending_manual_review';
   let txSignature: string | null = null;
-  let reason: string | null = null;
+  let reason: string | null = 'pending_manual_review';
 
-  try {
-    const canTransfer =
-      process.env.TRINITY_ENABLE_LIVE_SOL_TRANSFER === 'true' &&
-      job.reward_currency === 'SOL' &&
-      Boolean(job.worker_wallet_address);
-
-    if (canTransfer) {
-      txSignature = await transferSOL(job.worker_wallet_address as string, Number(job.reward_amount));
-      status = 'paid';
-      await supabase
-        .from('trinity_jobs')
-        .update({ status: 'paid', tx_signature: txSignature, settled_at: new Date().toISOString() })
-        .eq('org_id', orgId)
-        .eq('id', jobId);
-    } else {
-      status = 'pending_manual_review';
-      reason = 'live transfer disabled or wallet missing';
-      await supabase
-        .from('trinity_jobs')
-        .update({ status: 'pending_settlement_review' })
-        .eq('org_id', orgId)
-        .eq('id', jobId);
-    }
-  } catch (err) {
-    status = 'failed';
-    reason = err instanceof Error ? err.message : String(err);
-    await supabase
-      .from('trinity_jobs')
-      .update({ status: 'settlement_failed' })
-      .eq('org_id', orgId)
-      .eq('id', jobId);
-  }
+  await supabase
+    .from('trinity_jobs')
+    .update({ status: 'pending_settlement_review' })
+    .eq('org_id', orgId)
+    .eq('id', jobId);
 
   await supabase.from('trinity_settlements').insert({
     org_id: orgId,

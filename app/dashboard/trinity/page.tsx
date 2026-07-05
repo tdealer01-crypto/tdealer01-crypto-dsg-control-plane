@@ -283,6 +283,7 @@ export default function TrinityDashboardPage() {
   // Form state
   const [jobTitle, setJobTitle] = useState('Smart Contract Security Audit');
   const [jobCategory, setJobCategory] = useState('smart-contract-audit');
+  const [jobSeverity, setJobSeverity] = useState('medium');
   const [rewardAmount, setRewardAmount] = useState(2.0);
   const [agentReputation, setAgentReputation] = useState(80);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -543,6 +544,7 @@ export default function TrinityDashboardPage() {
             rewardAmount,
             rewardCurrency: 'SOL',
             deadline,
+            severity: jobSeverity,
           },
           agent: {
             agentId: 'dashboard-test-agent',
@@ -681,6 +683,20 @@ export default function TrinityDashboardPage() {
                     {cat}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-slate-400">Severity</label>
+              <select
+                value={jobSeverity}
+                onChange={(e) => setJobSeverity(e.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white focus:border-violet-500 focus:outline-none"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
               </select>
             </div>
 
