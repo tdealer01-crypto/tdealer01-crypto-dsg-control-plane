@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
       agentResult = {
         action: 'rag_query',
-        answer: response.choices?.[0]?.message?.content || response.choices?.[0]?.text || '',
+        answer: response.choices?.[0]?.message?.content || '',
         citations: response.citations,
         usage: response.usage,
       };
