@@ -1,0 +1,163 @@
+name: DSG Deploy & Governance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '22.x'
+
+jobs:
+  # 1. Type Check & Lint
+  typecheck:
+    name: TypeCheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+
+  # 2. Unit Tests
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:unit
+
+  # 3. Integration Tests
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:integration
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+
+  # 3b. Agent OS Deterministic Tests
+  test-agent-os:
+    name: Agent OS Deterministic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test -- tests/integration/agent-os-deterministic.test.ts
+
+  # 4. Z3 Proof Generation & Verification
+  z3-gate:
+    name: Z3 Gate Verification
+    runs-on: ubuntu-latest
+    needs: [typecheck, test-unit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Run Z3 Gate
+        run: |
+          npx tsx scripts/z3-gate.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+  # 5. Security Audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - name: Run Snyk
+        uses: snyk/actions/node@master
+        with:
+          command: test
+          args: --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # 6. Build & Deploy to Vercel
+  deploy-vercel:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: [typecheck, test-unit, test-integration, test-agent-os, z3-gate, security]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # 7. Post-Deploy Verification
+  verify-deploy:
+    name: Verify Production Deploy
+    runs-on: ubuntu-latest
+    needs: deploy-vercel
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for deploy
+        run: sleep 30
+      - name: Health check
+        run: |
+          curl -f https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health || exit 1
+      - name: Run Z3 Gate on production
+        run: |
+          npx tsx scripts/z3-gate-verify.ts --env=production
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+  # 8. Notify
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [verify-deploy]
+    if: always()
+    steps:
+      - name: Notify Telegram
+        if: env.TELEGRAM_BOT_TOKEN != ''
+        run: |
+          STATUS="${{ needs.verify-deploy.result }}"
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="🚀 DSG Deploy: $STATUS - https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
