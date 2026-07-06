@@ -3,12 +3,14 @@ import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
 import { insertRevenueEvent } from '@/lib/revenue/events';
+import { ragClient } from '@/lib/rag/nvidia-client';
+import type { Json } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
 type AgentRunRequest = {
   goal: string;
-  taskType?: 'checkout' | 'revenue_event' | 'webhook_sim';
+  taskType?: 'checkout' | 'revenue_event' | 'webhook_sim' | 'rag_query' | 'rag_search';
   payload?: Record<string, unknown>;
 };
 
@@ -87,6 +89,41 @@ export async function POST(request: Request) {
         interval,
         checkoutUrl,
       };
+    } else if (taskType === 'rag_query') {
+      const query = String(payload.query || goal);
+      const collection = payload.collection ? String(payload.collection) : undefined;
+      const topK = typeof payload.top_k === 'number' ? payload.top_k : 5;
+
+      const response = await ragClient.generate({
+        messages: [{ role: 'user', content: query }],
+        collection_name: collection,
+        top_k: topK,
+        temperature: 0.7,
+        max_tokens: 1024,
+      });
+
+      agentResult = {
+        action: 'rag_query',
+        answer: response.choices?.[0]?.message?.content || response.choices?.[0]?.text || '',
+        citations: response.citations,
+        usage: response.usage,
+      };
+    } else if (taskType === 'rag_search') {
+      const query = String(payload.query || goal);
+      const collection = payload.collection ? String(payload.collection) : undefined;
+      const topK = typeof payload.top_k === 'number' ? payload.top_k : 10;
+
+      const results = await ragClient.search({
+        query,
+        collection_name: collection,
+        top_k: topK,
+      });
+
+      agentResult = {
+        action: 'rag_search',
+        results: results.results || [],
+        total_results: results.total_results || 0,
+      };
     } else {
       agentResult = {
         action: 'noop',
@@ -102,7 +139,11 @@ export async function POST(request: Request) {
       amount: 0,
       currency: 'USD',
       source,
-      metadata: { goal, taskType, agentResult },
+      metadata: { 
+        goal, 
+        taskType, 
+        agentResult: agentResult as Record<string, Json> 
+      },
     } as const;
 
     const admin = getSupabaseAdmin();
