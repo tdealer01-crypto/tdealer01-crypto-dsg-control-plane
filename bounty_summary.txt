@@ -1,0 +1,10 @@
+[2026-07-07T02:29:57.447456] Immunefi Programs Summary:
+  Total programs: 260
+  Programs with fixed rewards: 144
+  Total fixed reward pool: $4,579,650
+  Top 5 programs by reward:
+    Unnamed: $500,000
+    Unnamed: $500,000
+    Unnamed: $245,000
+    Unnamed: $192,000
+    Unnamed: $146,000
