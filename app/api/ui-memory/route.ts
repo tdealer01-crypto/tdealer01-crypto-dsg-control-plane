@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../lib/authz';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import type { Json } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       user_id: access.userId,
       page_key: pageKey,
       memory_key: memoryKey,
-      payload,
+      payload: payload as Json,
     }, { onConflict: 'org_id,user_id,page_key,memory_key' })
     .select('updated_at')
     .single();
