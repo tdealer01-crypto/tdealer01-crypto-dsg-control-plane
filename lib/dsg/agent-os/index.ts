@@ -5,24 +5,24 @@
  * All components produce deterministic evidence hashes for audit trails.
  */
 
+import { agentRegistry } from './registry';
+import { eventBus } from './event-bus';
+import { sharedMemory } from './memory';
+import { multiModelRouter } from './router';
+import { executiveHierarchy } from './executive';
+
 export * from './registry';
 export * from './event-bus';
 export * from './memory';
 export * from './router';
 export * from './executive';
 
-// Re-export singletons from their respective modules
+// Re-export singletons
 export { agentRegistry } from './registry';
 export { eventBus } from './event-bus';
 export { sharedMemory } from './memory';
 export { multiModelRouter } from './router';
 export { executiveHierarchy } from './executive';
-
-import { agentRegistry } from './registry';
-import { eventBus } from './event-bus';
-import { sharedMemory } from './memory';
-import { multiModelRouter } from './router';
-import { executiveHierarchy } from './executive';
 
 /**
  * Initialize the full Agent OS stack.

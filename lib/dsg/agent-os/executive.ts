@@ -38,6 +38,7 @@ export interface ExecutiveDecision {
   confidence: number; // 0-1
   requiresGateApproval: boolean;
   gateDecision?: 'ALLOW' | 'BLOCK' | 'REVIEW';
+  z3ProofHash?: string;
   evidenceHash: string;
   createdAt: string;
   executedAt?: string;
@@ -74,9 +75,16 @@ class ExecutiveHierarchy {
   private executives = new Map<string, ExecutiveAgent>();
   private decisions = new Map<string, ExecutiveDecision>();
   private gateEndpoint = '/api/dsg/agents/security-gate';
+  private initialized = false;
 
   constructor() {
+    // Don't initialize executives automatically - use lazy initialization
+  }
+
+  private ensureInitialized(): void {
+    if (this.initialized) return;
     this.initializeExecutives();
+    this.initialized = true;
   }
 
   /**
@@ -245,6 +253,7 @@ class ExecutiveHierarchy {
    * Get executive by role.
    */
   getExecutiveByRole(role: ExecutiveRole): ExecutiveAgent | undefined {
+    this.ensureInitialized();
     for (const executive of this.executives.values()) {
       if (executive.executiveRole === role) return executive;
     }
@@ -255,6 +264,7 @@ class ExecutiveHierarchy {
    * Get all executives.
    */
   getExecutives(): ExecutiveAgent[] {
+    this.ensureInitialized();
     return Array.from(this.executives.values());
   }
 
@@ -483,6 +493,7 @@ class ExecutiveHierarchy {
     decisionsExecuted: number;
     decisionsBlocked: number;
   } {
+    this.ensureInitialized();
     const agentsByExecutive: Record<ExecutiveRole, number> = { ceo: 0, coo: 0, cto: 0 };
     let totalAgents = 0;
 
@@ -521,6 +532,7 @@ class ExecutiveHierarchy {
     requiredCapabilities?: ModelCapability[];
     preferredExecutive?: ExecutiveRole;
   }): Promise<{ agentId: string; routingDecision: RoutingDecision }> {
+    this.ensureInitialized();
     // Determine which executive should handle this
     let executive: ExecutiveAgent;
     if (input.preferredExecutive) {
@@ -536,33 +548,35 @@ class ExecutiveHierarchy {
       }
     }
 
-    // Find best available agent in executive's department
+    // Find best available agent in executive's department (exclude executive agents themselves)
+    const executiveIds = new Set(this.executives.keys());
     const availableAgents = executive.departmentAgents
       .map((id) => agentRegistry.get(id))
-      .filter((a): a is AgentInstance => a !== undefined && (a.status === 'idle' || a.status === 'active'));
+      .filter((a): a is AgentInstance => a !== undefined && (a.status === 'idle' || a.status === 'active') && !executiveIds.has(a.id));
 
     if (availableAgents.length === 0) {
-      // Fall back to any available agent in registry
-      const allAvailable = agentRegistry.getAvailable(input.taskType);
-      if (allAvailable.length === 0) {
-        throw new Error('No available agents for task');
-      }
-      // Route via multi-model router
-      const routingDecision = await multiModelRouter.route({
-        agentId: allAvailable[0].id,
-        taskType: input.taskType,
-        estimatedInputTokens: input.estimatedInputTokens,
-        estimatedOutputTokens: input.estimatedOutputTokens,
-        maxCostUsd: input.maxCostUsd,
-        maxLatencyMs: input.maxLatencyMs,
-        requiredCapabilities: input.requiredCapabilities,
-      });
-      return { agentId: allAvailable[0].id, routingDecision };
-    }
+          // Fall back to any available agent in registry
+          const allAvailable = agentRegistry.getAvailable(input.taskType);
+          if (allAvailable.length === 0) {
+            throw new Error('No available agents for task');
+          }
+          // Route via multi-model router
+          const routingDecision = await multiModelRouter.route({
+            agentId: allAvailable[allAvailable.length - 1].id,
+            taskType: input.taskType,
+            estimatedInputTokens: input.estimatedInputTokens,
+            estimatedOutputTokens: input.estimatedOutputTokens,
+            maxCostUsd: input.maxCostUsd,
+            maxLatencyMs: input.maxLatencyMs,
+            requiredCapabilities: input.requiredCapabilities,
+          });
+          return { agentId: allAvailable[allAvailable.length - 1].id, routingDecision };
+        }
 
     // Select agent with matching capabilities
     const capableAgents = availableAgents.filter((a) => a.capabilities.includes(input.taskType));
-    const targetAgent = capableAgents.length > 0 ? capableAgents[0] : availableAgents[0];
+    // Prefer the most recently assigned agent (last in departmentAgents)
+    const targetAgent = capableAgents.length > 0 ? capableAgents[capableAgents.length - 1] : availableAgents[availableAgents.length - 1];
 
     // Get routing decision for model selection
     const routingDecision = await multiModelRouter.route({
@@ -628,18 +642,21 @@ export const executiveHierarchy = new ExecutiveHierarchy();
 
 /**
  * Convenience: get CEO agent
+ */
 export function getCEO(): ExecutiveAgent | undefined {
   return executiveHierarchy.getExecutiveByRole('ceo');
 }
 
 /**
  * Convenience: get COO agent
+ */
 export function getCOO(): ExecutiveAgent | undefined {
   return executiveHierarchy.getExecutiveByRole('coo');
 }
 
 /**
  * Convenience: get CTO agent
+ */
 export function getCTO(): ExecutiveAgent | undefined {
   return executiveHierarchy.getExecutiveByRole('cto');
 }
