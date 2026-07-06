@@ -5833,6 +5833,78 @@ export type Database = {
         }
         Relationships: []
       }
+      revenue_events: {
+        Row: {
+          id: string
+          created_at: string
+          org_id: string
+          user_id: string | null
+          event_type: string
+          plan_id: string | null
+          amount: number | null
+          currency: string
+          source: string
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          org_id: string
+          user_id?: string | null
+          event_type: string
+          plan_id?: string | null
+          amount?: number | null
+          currency?: string
+          source: string
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          org_id?: string
+          user_id?: string | null
+          event_type?: string
+          plan_id?: string | null
+          amount?: number | null
+          currency?: string
+          source?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      dsg_ui_memory: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string
+          page_key: string
+          memory_key: string
+          payload: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          user_id: string
+          page_key: string
+          memory_key?: string
+          payload?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string
+          page_key?: string
+          memory_key?: string
+          payload?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       policy_versions: {
