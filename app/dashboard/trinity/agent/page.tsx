@@ -2,17 +2,27 @@
 
 import { useState } from 'react';
 
+const TASK_TYPES = [
+  'checkout',
+  'revenue_event',
+  'webhook_sim',
+  'rag_query',
+  'rag_search',
+] as const;
+
+type TaskType = typeof TASK_TYPES[number];
+
 type AgentResult = {
   ok: boolean;
   goal?: string;
-  taskType?: string;
+  taskType?: TaskType;
   agentResult?: Record<string, unknown>;
   error?: string;
 };
 
 export default function TrinityAgentPage() {
   const [goal, setGoal] = useState('');
-  const [taskType, setTaskType] = useState<'checkout' | 'revenue_event' | 'webhook_sim'>('revenue_event');
+  const [taskType, setTaskType] = useState<TaskType>('revenue_event');
   const [payload, setPayload] = useState('{"amount":0}');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AgentResult | null>(null);
@@ -56,10 +66,13 @@ export default function TrinityAgentPage() {
         <select
           className="w-full rounded border border-slate-700 bg-slate-900 p-2 text-sm"
           value={taskType}
-          onChange={(e) => setTaskType(e.target.value as AgentResult['taskType'])}
+          onChange={(e) => setTaskType(e.target.value as TaskType)}
         >
-          <option value="revenue_event">revenue_event: บันทึกtyr revenue ลงระบบ</option>
+          <option value="revenue_event">revenue_event: บันทึก revenue ลงระบบ</option>
           <option value="checkout">checkout: สร้างลิงก์ชำระเงิน</option>
+          <option value="webhook_sim">webhook_sim: จำลอง webhook event</option>
+          <option value="rag_query">rag_query: ถาม RAG agent</option>
+          <option value="rag_search">rag_search: ค้นหาเอกสาร</option>
         </select>
 
         <label className="text-sm text-slate-300">📦 Payload (JSON)</label>
