@@ -40,6 +40,13 @@ export async function middleware(request: NextRequest) {
   } as RequestInit & { duplex: 'half' });
   requestWithId.headers.set('x-request-id', requestId);
 
+requestWithId.headers.set('x-request-id', requestId);
+
+  // Allow public access to pricing page
+  if (request.nextUrl.pathname === '/pricing') {
+    return stamp(NextResponse.next({ request: requestWithId }));
+  }
+
   let response = NextResponse.next({ request: requestWithId });
 
   // Helper: stamp correlation + timing headers on any response
