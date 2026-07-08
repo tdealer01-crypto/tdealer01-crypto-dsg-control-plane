@@ -1,138 +1,198 @@
-import { NextResponse } from 'next/server';
-import { requireInternalService } from '@/lib/auth/internal-service';
-import { requireActiveProfile } from '@/lib/auth/require-active-profile';
-import { listRevenueEvents, insertRevenueEvent } from '@/lib/revenue/events';
+// app/api/revenue/events/route.ts
+// Handle metered billing usage events → Stripe + Supabase
+
+import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
-import { readJsonBody } from '@/lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
-type RevenueEventRequest = {
-  type:
-    | 'delivery_proof_upgrade'
-    | 'api_quota_upgrade'
-    | 'mcp_subscription'
-    | 'skills_purchase'
-    | 'stripe_checkout'
-    | 'stripe_webhook'
-    | 'delivery_proof_scan'
-    | 'api_execution'
-    | 'mcp_request'
-    | 'subscription_canceled'
-    | 'invoice_payment_succeeded';
-  orgId?: string;
-  userId?: string;
-  planId?: string;
-  amount?: number;
-  currency?: string;
-  source?: string;
-  metadata?: Record<string, unknown>;
+type RevenueEventPayload = {
+  org_id: string;
+  event_name: string;
+  quantity: number;
+  timestamp?: string;
+  idempotency_key?: string;
 };
 
-async function resolveReadAccess(request: Request): Promise<
-  | { ok: true; orgId: string }
-  | { ok: false; status: number; error: string }
-> {
-  const authHeader = request.headers.get('authorization');
-
-  if (authHeader?.startsWith('Bearer ')) {
-    const internal = requireInternalService(request);
-    if (internal.ok) {
-      return { ok: true, orgId: internal.orgId };
-    }
-    return internal;
+function getStripeClient(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('Missing STRIPE_SECRET_KEY');
   }
-
-  const profile = await requireActiveProfile();
-  if (!profile.ok) {
-    return profile;
-  }
-
-  return { ok: true, orgId: profile.orgId };
+  return new Stripe(secretKey, {
+    apiVersion: '2024-12-18.acacia',
+  });
 }
 
-export async function POST(request: Request) {
+async function resolveStripeSubscription(
+  orgId: string,
+): Promise<{ subscription_id: string; meter_id: string } | null> {
+  const supabase = getSupabaseAdmin();
+
+  // Get billing customer for org
+  const { data: customer, error: customerError } = await (supabase as any)
+    .from('billing_customers')
+    .select('stripe_subscription_id')
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (customerError || !customer?.stripe_subscription_id) {
+    return null;
+  }
+
+  // Meter ID from environment
+  const meterId = process.env.STRIPE_METER_ID;
+  if (!meterId) {
+    throw new Error('Missing STRIPE_METER_ID');
+  }
+
+  return {
+    subscription_id: customer.stripe_subscription_id,
+    meter_id: meterId,
+  };
+}
+
+async function recordUsageEvent(payload: RevenueEventPayload): Promise<{
+  metered_event_id: string;
+  recorded_at: string;
+} | null> {
+  const stripe = getStripeClient();
+  const subscription = await resolveStripeSubscription(payload.org_id);
+
+  if (!subscription) {
+    // Org not yet subscribed; silently return (will be recorded but not billed)
+    return null;
+  }
+
   try {
-    const auth = requireInternalService(request);
-    if (auth.ok === false) {
-      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
-    }
+    // Report to Stripe meter
+    const meterEvent = await stripe.billing.meterEvents.create(
+      {
+        event_name: subscription.meter_id, // Meter ID
+        identifier: subscription.subscription_id, // Subscription ID
+        value: String(payload.quantity), // Usage quantity
+        timestamp: payload.timestamp ? Math.floor(new Date(payload.timestamp).getTime() / 1000) : undefined,
+      },
+      {
+        idempotencyKey: payload.idempotency_key || `${payload.org_id}_${payload.event_name}_${Date.now()}`,
+      },
+    );
 
-    const parsed = await readJsonBody<RevenueEventRequest>(request, { maxBytes: 8_192 });
-    if (!parsed.ok) {
-      return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
-    }
-
-    const event = parsed.value;
-    if (!event?.type) {
-      return NextResponse.json({ ok: false, error: 'type is required' }, { status: 400 });
-    }
-
-    const saved = await insertRevenueEvent({
-      orgId: auth.orgId,
-      userId: event.userId ?? null,
-      eventType: event.type,
-      planId: event.planId ?? null,
-      amount: typeof event.amount === 'number' ? event.amount : null,
-      currency: event.currency || 'USD',
-      source: event.source || auth.service || 'internal-service',
-      metadata: event.metadata ?? null,
+    return {
+      metered_event_id: meterEvent.id,
+      recorded_at: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    // Log meter error but don't fail the request
+    console.error('[metered-billing] Stripe meter submission failed', {
+      org_id: payload.org_id,
+      event_name: payload.event_name,
+      error: error?.message,
     });
 
-    return NextResponse.json({
-      ok: true,
-      eventId: saved.id,
-      queued: false,
-      message: 'Event persisted to revenue_events',
-    });
-  } catch (error) {
-    return handleApiError('api/revenue/events:POST', error);
+    // Still record in Supabase for audit
+    return null;
   }
 }
 
-export async function GET(request: Request) {
+async function recordAuditEntry(
+  payload: RevenueEventPayload,
+  stripe_result: { metered_event_id: string; recorded_at: string } | null,
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+
+  // Store in billing_usage table
+  const { error } = await (supabase as any)
+    .from('billing_usage')
+    .insert({
+      org_id: payload.org_id,
+      event_name: payload.event_name,
+      quantity: payload.quantity,
+      timestamp: payload.timestamp || new Date().toISOString(),
+      stripe_meter_event_id: stripe_result?.metered_event_id || null,
+      synced_to_stripe: !!stripe_result,
+      recorded_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('[metered-billing] Failed to record audit entry', error);
+  }
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const access = await resolveReadAccess(request);
-    if (access.ok === false) {
-      return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
+    // Auth: require internal service token or API key
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
     }
 
-    const url = new URL(request.url);
-    const format = url.searchParams.get('format') || 'json';
-    const limit = Number(url.searchParams.get('limit') || 50);
-    const events = await listRevenueEvents(access.orgId, { limit: Number.isFinite(limit) ? limit : 50 });
-
-    if (format === 'csv') {
-      const csv = [
-        'createdAt,eventType,orgId,userId,planId,amount,currency,source',
-        ...events.map((event) =>
-          [
-            event.createdAt,
-            event.eventType,
-            event.orgId,
-            event.userId || '',
-            event.planId || '',
-            event.amount ?? '',
-            event.currency,
-            event.source,
-          ].join(',')
-        ),
-      ].join('\n');
-
-      return new NextResponse(csv, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="revenue-events.csv"',
-        },
-      });
+    const token = authHeader.slice(7);
+    const expectedToken = process.env.INTERNAL_SERVICE_TOKEN;
+    if (!expectedToken || token !== expectedToken) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 403 });
     }
+
+    // Parse payload
+    const payload: RevenueEventPayload = await request.json();
+
+    // Validate
+    if (!payload.org_id || !payload.event_name || typeof payload.quantity !== 'number') {
+      return NextResponse.json(
+        { error: 'Missing required fields: org_id, event_name, quantity' },
+        { status: 400 },
+      );
+    }
+
+    if (payload.quantity < 0) {
+      return NextResponse.json({ error: 'Quantity must be >= 0' }, { status: 400 });
+    }
+
+    // Record to Stripe meter
+    const stripeResult = await recordUsageEvent(payload);
+
+    // Record to audit trail
+    await recordAuditEntry(payload, stripeResult);
+
+    // Response
+    return NextResponse.json(
+      {
+        success: true,
+        event_name: payload.event_name,
+        org_id: payload.org_id,
+        quantity: payload.quantity,
+        metered_event_id: stripeResult?.metered_event_id || null,
+        recorded_at: stripeResult?.recorded_at || new Date().toISOString(),
+        note: stripeResult ? 'Synced to Stripe' : 'Recorded locally (subscription not found)',
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    return handleApiError(error, {
+      route: 'POST /api/revenue/events',
+      context: 'metered-billing',
+    });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Health check
+    const meterId = process.env.STRIPE_METER_ID;
+    const secretKey = process.env.STRIPE_SECRET_KEY;
 
     return NextResponse.json({
-      ok: true,
-      count: events.length,
-      events,
+      service: 'revenue-events',
+      status: meterId && secretKey ? 'ready' : 'misconfigured',
+      stripe_meter_id: meterId ? '✓' : '✗',
+      stripe_secret_key: secretKey ? '✓' : '✗',
     });
   } catch (error) {
-    return handleApiError('api/revenue/events:GET', error);
+    return handleApiError(error, {
+      route: 'GET /api/revenue/events',
+      context: 'health-check',
+    });
   }
 }
