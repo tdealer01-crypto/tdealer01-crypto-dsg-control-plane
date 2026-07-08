@@ -247,10 +247,10 @@ function subscriptionToRecord(
     customer_email: extras.customerEmail,
     status: subscription.status,
     plan_key: subscription.metadata?.plan_key || derived?.planKey || null,
+ const firstItem = subscription.items?.data?.[0];
     billing_interval:
       subscription.metadata?.billing_interval || derived?.billingInterval || null,
     price_id: priceId,
-    const firstItem = subscription.items?.data?.[0];
 
  product_id: productId,
  cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
