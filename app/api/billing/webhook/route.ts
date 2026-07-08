@@ -250,12 +250,14 @@ function subscriptionToRecord(
     billing_interval:
       subscription.metadata?.billing_interval || derived?.billingInterval || null,
     price_id: priceId,
-    product_id: productId,
-    cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-    current_period_start: toIso(subscription.current_period_start),
-    current_period_end: toIso(subscription.current_period_end),
-    trial_start: toIso(subscription.trial_start),
-    trial_end: toIso(subscription.trial_end),
+    const firstItem = subscription.items?.data?.[0];
+
+ product_id: productId,
+ cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+ current_period_start: toIso(firstItem?.current_period_start?? null),
+ current_period_end: toIso(firstItem?.current_period_end?? null),
+ trial_start: toIso((subscription as any).trial_start?? firstItem?.trial_start?? null),
+ trial_end: toIso((subscription as any).trial_end?? firstItem?.trial_end?? null),
     metadata: subscription.metadata || {},
     updated_at: new Date().toISOString(),
   };
