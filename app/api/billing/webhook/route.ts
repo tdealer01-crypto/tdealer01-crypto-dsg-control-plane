@@ -224,6 +224,7 @@ function subscriptionToRecord(
   }
 ) {
   const item = subscription.items.data[0];
+  const firstItem = subscription.items?.data?.[0];
   const priceId = item?.price?.id || null;
 
   const productValue = item?.price?.product;
@@ -247,7 +248,6 @@ function subscriptionToRecord(
     customer_email: extras.customerEmail,
     status: subscription.status,
     plan_key: subscription.metadata?.plan_key || derived?.planKey || null,
- const firstItem = subscription.items?.data?.[0];
     billing_interval:
       subscription.metadata?.billing_interval || derived?.billingInterval || null,
     price_id: priceId,
