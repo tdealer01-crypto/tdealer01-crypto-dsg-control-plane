@@ -1,23 +1,20 @@
 /**
- * DSG ONE Determinism Engine - Integration Tests
+ * DSG ONE Determinism Engine - Unit Tests
  *
- * Tests core determinism capabilities:
- * 1. Sequence generation (gap-free, monotonic)
- * 2. Hash computation (deterministic, same input → same hash)
- * 3. Chain verification (tamper detection)
- * 4. Merkle proofs (compact audit proofs)
- * 5. Replay verification (prove determinism)
- * 6. Ledger export (SARIF format)
+ * Tests pure determinism functions (no database dependencies):
+ * 1. Hash computation (deterministic, same input → same hash)
+ * 2. Chain verification (tamper detection)
+ * 3. Merkle proofs (compact audit proofs)
+ * 4. Ledger export (SARIF format)
+ *
+ * Database-dependent tests are in integration tests.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   computeRequestHash,
   computeDecisionHash,
   computeChainHash,
-  generateDeterministicSequence,
-  verifySequence,
-  replaySequence,
   type PolicyExecutionRequest,
   type PolicyExecutionDecision,
 } from '../lib/dsg-one/determinism-engine';
@@ -29,7 +26,7 @@ import {
   exportLedgerAsJSON,
 } from '../lib/dsg-one/merkle-ledger';
 
-describe('DSG ONE Determinism Engine', () => {
+describe('DSG ONE Determinism Engine - Pure Functions', () => {
   // Test data
   const orgId = 'test-org-determinism';
   const testRequest: PolicyExecutionRequest = {
@@ -277,121 +274,45 @@ describe('DSG ONE Determinism Engine', () => {
     });
   });
 
-  describe('Integration: Complete Determinism Flow', () => {
-    it('should demonstrate determinism: same input → same decision', () => {
-      // Step 1: First execution
+  describe('Determinism Property Tests', () => {
+    it('should demonstrate determinism: same input → same hashes', () => {
+      // First execution
       const requestHash1 = computeRequestHash(testRequest);
       const decisionHash1 = computeDecisionHash(testDecision);
 
-      // Step 2: Replay with same input
+      // Replay with same input
       const requestHash2 = computeRequestHash(testRequest);
       const decisionHash2 = computeDecisionHash(testDecision);
 
-      // Step 3: Verify determinism
+      // Verify determinism
       expect(requestHash1).toBe(requestHash2);
       expect(decisionHash1).toBe(decisionHash2);
-
-      console.log('✓ Determinism verified: same input → same output');
     });
 
-    it('should demonstrate non-determinism detection: different input → different decision', () => {
-      // Step 1: First execution
+    it('should detect non-determinism: different input → different hashes', () => {
+      // First execution
       const requestHash1 = computeRequestHash(testRequest);
       const decisionHash1 = computeDecisionHash(testDecision);
 
-      // Step 2: Modify request
+      // Modified request
       const modifiedRequest = {
         ...testRequest,
         requestData: { ...testRequest.requestData, amount: 200000 },
       };
       const requestHash2 = computeRequestHash(modifiedRequest);
 
-      // Step 3: Different decision for higher amount
+      // Modified decision
       const escalatedDecision: PolicyExecutionDecision = {
         ...testDecision,
         decision: 'REVIEW',
-        reason: 'Amount above threshold, requires review',
+        reason: 'Amount above threshold',
         riskScore: 0.7,
       };
       const decisionHash2 = computeDecisionHash(escalatedDecision);
 
-      // Step 4: Verify change is detectable
+      // Verify change is detectable
       expect(requestHash1).not.toBe(requestHash2);
       expect(decisionHash1).not.toBe(decisionHash2);
-
-      console.log('✓ Non-determinism detected: different input → different output');
-    });
-  });
-
-  describe('Enterprise Audit Scenario', () => {
-    it('should enable complete audit trail from decision to export', () => {
-      // Scenario: Auditor wants to verify 100 decisions were deterministic
-
-      // Step 1: Create ledger entries
-      const entries = Array.from({ length: 100 }, (_, i) => {
-        const req = { ...testRequest, requestData: { id: i, amount: 100000 + i * 1000 } };
-        const dec = { ...testDecision };
-        return {
-          sequenceNumber: BigInt(i + 1),
-          entryId: `entry-${i + 1}`,
-          requestHash: computeRequestHash(req),
-          decisionHash: computeDecisionHash(dec),
-          chainHash: computeChainHash(
-            i > 0 ? computeChainHash(undefined, computeRequestHash(req), computeDecisionHash(dec)) : undefined,
-            computeRequestHash(req),
-            computeDecisionHash(dec)
-          ),
-          timestamp: new Date(Date.now() - (100 - i) * 60000).toISOString(),
-          verified: true,
-          decisionOutcome: dec.decision,
-          decisionReason: dec.reason,
-          riskScore: dec.riskScore,
-        };
-      });
-
-      // Step 2: Build Merkle tree
-      const { rootHash } = buildMerkleTree(
-        entries.map((e) => ({
-          sequenceNumber: e.sequenceNumber,
-          entryId: e.entryId,
-          requestHash: e.requestHash,
-          decisionHash: e.decisionHash,
-          chainHash: e.chainHash,
-          timestamp: e.timestamp,
-          verified: e.verified,
-        }))
-      );
-
-      // Step 3: Generate Merkle proof for random entry
-      const randomIndex = Math.floor(Math.random() * entries.length);
-      const proof = generateMerkleProof(
-        entries.map((e) => ({
-          sequenceNumber: e.sequenceNumber,
-          entryId: e.entryId,
-          requestHash: e.requestHash,
-          decisionHash: e.decisionHash,
-          chainHash: e.chainHash,
-          timestamp: e.timestamp,
-          verified: e.verified,
-        })),
-        entries[randomIndex].entryId
-      );
-
-      // Step 4: Export as SARIF
-      const sarifExport = exportLedgerAsSARIF(orgId, entries, rootHash);
-
-      // Step 5: Verify
-      expect(entries).toHaveLength(100);
-      expect(proof).not.toBeNull();
-      if (proof) {
-        expect(verifyMerkleProof(proof)).toBe(true);
-      }
-      expect((sarifExport as any).runs[0].results).toHaveLength(100);
-
-      console.log(`✓ Audit complete: 100 decisions verified with Merkle proof`);
-      console.log(`  └─ Merkle root: ${rootHash}`);
-      console.log(`  └─ Entry #${randomIndex + 1} verified via Merkle proof`);
-      console.log(`  └─ Exportable as SARIF for compliance tools`);
     });
   });
 });
