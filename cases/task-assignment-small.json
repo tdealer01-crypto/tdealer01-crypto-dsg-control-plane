@@ -1,0 +1,110 @@
+{
+  "name": "Small Task Assignment (5 tasks × 3 agents)",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Process Payment",
+      "domain": "financial",
+      "operation": "transfer",
+      "target": "account-001",
+      "dataSensitivity": "high",
+      "externalEffect": true,
+      "reversibility": "reversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": true,
+      "priority": 2
+    },
+    {
+      "id": "task-2",
+      "name": "Audit Log Entry",
+      "domain": "compliance",
+      "operation": "write",
+      "target": "log-db",
+      "dataSensitivity": "medium",
+      "externalEffect": false,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": false,
+      "priority": 3
+    },
+    {
+      "id": "task-3",
+      "name": "Update Policy",
+      "domain": "policy",
+      "operation": "update",
+      "target": "policy-engine",
+      "dataSensitivity": "high",
+      "externalEffect": true,
+      "reversibility": "reversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": true,
+      "priority": 1
+    },
+    {
+      "id": "task-4",
+      "name": "Generate Report",
+      "domain": "reporting",
+      "operation": "generate",
+      "target": "report-service",
+      "dataSensitivity": "low",
+      "externalEffect": false,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": false,
+      "priority": 2
+    },
+    {
+      "id": "task-5",
+      "name": "Send Notification",
+      "domain": "communication",
+      "operation": "send",
+      "target": "notification-queue",
+      "dataSensitivity": "low",
+      "externalEffect": true,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": false,
+      "hasRollback": false,
+      "priority": 3
+    }
+  ],
+  "agentCapacities": [
+    {
+      "agentId": 1,
+      "maxConcurrentTasks": 2,
+      "maxTotalTasks": 3,
+      "resourceAvailable": {
+        "cpu": 4,
+        "memory": 8
+      }
+    },
+    {
+      "agentId": 2,
+      "maxConcurrentTasks": 2,
+      "maxTotalTasks": 2,
+      "resourceAvailable": {
+        "cpu": 2,
+        "memory": 4
+      }
+    },
+    {
+      "agentId": 3,
+      "maxConcurrentTasks": 3,
+      "maxTotalTasks": 2,
+      "resourceAvailable": {
+        "cpu": 2,
+        "memory": 4
+      }
+    }
+  ],
+  "edges": []
+}

@@ -127,13 +127,12 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('GET /api/dsg-one/determinism/export failed:', errorMessage);
+    console.error('GET /api/dsg-one/determinism/export failed:', error instanceof Error ? error.stack : error);
 
     return NextResponse.json(
       {
         ok: false,
-        error: errorMessage,
+        error: 'Failed to export determinism evidence',
       },
       { status: 500 }
     );

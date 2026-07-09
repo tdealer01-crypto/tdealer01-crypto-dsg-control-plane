@@ -114,10 +114,11 @@ export async function POST(request: NextRequest) {
 
     return json({ ok: true, command }, command.executionState === 'blocked' ? 200 : 202);
   } catch (error) {
+    console.error('[agent-commands] Command rejected:', error instanceof Error ? error.stack : error);
     return json({
       ok: false,
       error: 'COMMAND_REJECTED',
-      message: error instanceof Error ? error.message : 'Invalid command request',
+      message: 'Invalid command request',
     }, 400);
   }
 }

@@ -1,0 +1,29 @@
+{
+  "name": "Medium Task Assignment (15 tasks × 6 agents)",
+  "tasks": [
+    {"id": "task-1", "name": "Process Payment A", "domain": "financial", "operation": "transfer", "target": "acct-1", "dataSensitivity": "high", "externalEffect": true, "reversibility": "reversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": true, "priority": 1},
+    {"id": "task-2", "name": "Process Payment B", "domain": "financial", "operation": "transfer", "target": "acct-2", "dataSensitivity": "high", "externalEffect": true, "reversibility": "reversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": true, "priority": 2},
+    {"id": "task-3", "name": "Audit Log 1", "domain": "compliance", "operation": "write", "target": "log-1", "dataSensitivity": "medium", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 2},
+    {"id": "task-4", "name": "Audit Log 2", "domain": "compliance", "operation": "write", "target": "log-2", "dataSensitivity": "medium", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 3},
+    {"id": "task-5", "name": "Update Policy A", "domain": "policy", "operation": "update", "target": "policy-1", "dataSensitivity": "high", "externalEffect": true, "reversibility": "reversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": true, "priority": 1},
+    {"id": "task-6", "name": "Update Policy B", "domain": "policy", "operation": "update", "target": "policy-2", "dataSensitivity": "high", "externalEffect": true, "reversibility": "reversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": true, "priority": 2},
+    {"id": "task-7", "name": "Generate Report 1", "domain": "reporting", "operation": "generate", "target": "report-1", "dataSensitivity": "low", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 2},
+    {"id": "task-8", "name": "Generate Report 2", "domain": "reporting", "operation": "generate", "target": "report-2", "dataSensitivity": "low", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 3},
+    {"id": "task-9", "name": "Send Notification 1", "domain": "communication", "operation": "send", "target": "notif-1", "dataSensitivity": "low", "externalEffect": true, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": false, "hasRollback": false, "priority": 2},
+    {"id": "task-10", "name": "Send Notification 2", "domain": "communication", "operation": "send", "target": "notif-2", "dataSensitivity": "low", "externalEffect": true, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": false, "hasRollback": false, "priority": 3},
+    {"id": "task-11", "name": "Verify Compliance 1", "domain": "compliance", "operation": "read", "target": "verify-1", "dataSensitivity": "medium", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 2},
+    {"id": "task-12", "name": "Verify Compliance 2", "domain": "compliance", "operation": "read", "target": "verify-2", "dataSensitivity": "medium", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 3},
+    {"id": "task-13", "name": "Archive Records", "domain": "data-management", "operation": "archive", "target": "archive", "dataSensitivity": "high", "externalEffect": false, "reversibility": "reversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": true, "priority": 2},
+    {"id": "task-14", "name": "Backup Database", "domain": "infrastructure", "operation": "backup", "target": "db-backup", "dataSensitivity": "high", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": true, "hasRollback": false, "priority": 1},
+    {"id": "task-15", "name": "Monitor Health", "domain": "operations", "operation": "monitor", "target": "health-check", "dataSensitivity": "low", "externalEffect": false, "reversibility": "irreversible", "userAuthorized": true, "planAllowed": true, "hasFreshEvidence": false, "hasRollback": false, "priority": 3}
+  ],
+  "agentCapacities": [
+    {"agentId": 1, "maxConcurrentTasks": 3, "maxTotalTasks": 3, "resourceAvailable": {"cpu": 8, "memory": 16}},
+    {"agentId": 2, "maxConcurrentTasks": 2, "maxTotalTasks": 3, "resourceAvailable": {"cpu": 4, "memory": 8}},
+    {"agentId": 3, "maxConcurrentTasks": 3, "maxTotalTasks": 3, "resourceAvailable": {"cpu": 4, "memory": 8}},
+    {"agentId": 4, "maxConcurrentTasks": 2, "maxTotalTasks": 2, "resourceAvailable": {"cpu": 2, "memory": 4}},
+    {"agentId": 5, "maxConcurrentTasks": 3, "maxTotalTasks": 2, "resourceAvailable": {"cpu": 2, "memory": 4}},
+    {"agentId": 6, "maxConcurrentTasks": 2, "maxTotalTasks": 2, "resourceAvailable": {"cpu": 2, "memory": 4}}
+  ],
+  "edges": []
+}

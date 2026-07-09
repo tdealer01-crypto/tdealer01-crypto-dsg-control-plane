@@ -108,13 +108,12 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('POST /api/dsg-one/determinism/record failed:', errorMessage);
+    console.error('POST /api/dsg-one/determinism/record failed:', error instanceof Error ? error.stack : error);
 
     return NextResponse.json(
       {
         ok: false,
-        error: errorMessage,
+        error: 'Failed to record decision in ledger',
       },
       { status: 500 }
     );

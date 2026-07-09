@@ -32,10 +32,11 @@ export async function POST(request: NextRequest) {
       next: 'Owner approves this plan once on the device, then the agent runs allowed steps until done or blocked.',
     }, { status: 201 });
   } catch (error) {
+    console.error('[work-sessions] Plan creation failed:', error instanceof Error ? error.stack : error);
     return NextResponse.json({
       ok: false,
       error: 'WORK_SESSION_PLAN_FAILED',
-      message: error instanceof Error ? error.message : 'Could not create work session plan',
+      message: 'Could not create work session plan',
     }, { status: 400 });
   }
 }

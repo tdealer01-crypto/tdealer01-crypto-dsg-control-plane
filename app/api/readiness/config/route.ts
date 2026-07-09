@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     });
   } catch (caught) {
-    const errorMsg = caught instanceof Error ? caught.message : String(caught);
+    const errorMsg = caught instanceof Error ? caught.name : 'Unknown';
     console.error('[readiness-config] Fetch error:', {
       error: errorMsg,
       duration: Date.now() - startTime,
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest) {
       body = await request.json();
     } catch (parseError) {
       console.error('[readiness-config] JSON parse error:', {
-        error: parseError instanceof Error ? parseError.message : String(parseError),
+        error: parseError instanceof Error ? parseError.name : 'Unknown',
         duration: Date.now() - startTime,
       });
 
@@ -122,7 +122,7 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (caught) {
     const duration = Date.now() - startTime;
-    const errorMsg = caught instanceof Error ? caught.message : String(caught);
+    const errorMsg = caught instanceof Error ? caught.name : 'Unknown';
 
     console.error('[readiness-config] Unexpected error:', {
       error: errorMsg,
