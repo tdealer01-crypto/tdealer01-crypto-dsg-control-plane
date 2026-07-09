@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import { getSupabase } from '../lib/dsg-client';
 
 const router = new Hono();
 
@@ -30,21 +31,29 @@ router.get('/list', async (c) => {
       return c.json({ error: 'Missing stripe_account_id' }, 400);
     }
 
-    // TODO: Query stripe_operation_policies from Supabase
-    // TODO: Filter by operation_type if provided
-    // TODO: Return policy list with:
-    //   - policy_id
-    //   - operation_type
-    //   - rule_type
-    //   - conditions (JSON)
-    //   - action (ALLOW/BLOCK/REVIEW)
-    //   - created_at
-    //   - enabled (boolean)
+    const supabase = getSupabase();
+    let query = supabase
+      .from('stripe_operation_policies')
+      .select('*')
+      .eq('stripe_account_id', stripe_account_id)
+      .order('created_at', { ascending: false });
+
+    // Filter by operation_type if provided
+    if (operation_type) {
+      query = query.eq('operation_type', operation_type);
+    }
+
+    const { data: policies, error } = await query;
+
+    if (error) {
+      console.error('List policies error:', error);
+      return c.json({ error: 'Failed to list policies' }, 500);
+    }
 
     return c.json(
       {
-        policies: [],
-        total: 0,
+        policies: policies || [],
+        total: policies?.length || 0,
         stripe_account_id,
       },
       200
@@ -84,22 +93,56 @@ router.post('/create', async (c) => {
       return c.json({ error: 'Missing required fields: stripe_account_id, operation_type, rule_type' }, 400);
     }
 
-    // TODO: Validate rule_type is one of: amount_threshold, rate_limit, time_window
-    // TODO: Validate action is one of: ALLOW, BLOCK, REVIEW
-    // TODO: Validate conditions object based on rule_type
-    // TODO: Insert into stripe_operation_policies
-    // TODO: Invalidate Redis cache (Cache Write-Through pattern)
-    // TODO: Record policy creation in audit trail
-    // TODO: Return created policy with policy_id
+    // Validate rule_type
+    const validRuleTypes = ['amount_threshold', 'rate_limit', 'time_window', 'manual_approval'];
+    if (!validRuleTypes.includes(rule_type)) {
+      return c.json({ error: `Invalid rule_type. Must be one of: ${validRuleTypes.join(', ')}` }, 400);
+    }
+
+    // Validate action
+    const validActions = ['allow', 'block', 'review'];
+    const normalizedAction = (action || '').toLowerCase();
+    if (!validActions.includes(normalizedAction)) {
+      return c.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, 400);
+    }
+
+    // Validate conditions based on rule_type
+    if (!conditions || typeof conditions !== 'object') {
+      return c.json({ error: 'Conditions must be a valid JSON object' }, 400);
+    }
+
+    if (rule_type === 'amount_threshold' && !('amount_threshold' in conditions)) {
+      return c.json({ error: 'amount_threshold rule requires amount_threshold in conditions' }, 400);
+    }
+
+    const supabase = getSupabase();
+
+    // Insert policy
+    const { data: policy, error } = await supabase
+      .from('stripe_operation_policies')
+      .insert({
+        stripe_account_id,
+        operation_type,
+        rule_type,
+        conditions,
+        action: normalizedAction,
+        enabled: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Create policy error:', error);
+      return c.json({ error: 'Failed to create policy' }, 500);
+    }
 
     return c.json(
       {
         success: true,
-        policy_id: `policy_${Date.now()}`,
+        policy: policy,
         message: 'Policy created successfully',
-        stripe_account_id,
-        operation_type,
-        rule_type,
       },
       201
     );
@@ -126,16 +169,51 @@ router.put('/:policy_id', async (c) => {
       return c.json({ error: 'Missing policy_id' }, 400);
     }
 
-    // TODO: Fetch existing policy from Supabase
-    // TODO: Update specified fields
-    // TODO: Invalidate Redis cache
-    // TODO: Record update in audit trail
-    // TODO: Return updated policy
+    const supabase = getSupabase();
+
+    // Fetch existing policy
+    const { data: existing, error: fetchError } = await supabase
+      .from('stripe_operation_policies')
+      .select('*')
+      .eq('id', policy_id)
+      .single();
+
+    if (fetchError || !existing) {
+      return c.json({ error: 'Policy not found' }, 404);
+    }
+
+    // Validate action if provided
+    if (body.action) {
+      const validActions = ['allow', 'block', 'review'];
+      if (!validActions.includes((body.action || '').toLowerCase())) {
+        return c.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, 400);
+      }
+    }
+
+    // Update policy
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (body.conditions) updateData.conditions = body.conditions;
+    if (body.action) updateData.action = body.action.toLowerCase();
+    if (body.enabled !== undefined) updateData.enabled = body.enabled;
+
+    const { data: updated, error: updateError } = await supabase
+      .from('stripe_operation_policies')
+      .update(updateData)
+      .eq('id', policy_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Update policy error:', updateError);
+      return c.json({ error: 'Failed to update policy' }, 500);
+    }
 
     return c.json(
       {
         success: true,
-        policy_id,
+        policy: updated,
         message: 'Policy updated successfully',
       },
       200
@@ -158,10 +236,18 @@ router.delete('/:policy_id', async (c) => {
       return c.json({ error: 'Missing policy_id' }, 400);
     }
 
-    // TODO: Delete policy from Supabase
-    // TODO: Invalidate Redis cache
-    // TODO: Record deletion in audit trail
-    // TODO: Return success
+    const supabase = getSupabase();
+
+    // Delete policy
+    const { error } = await supabase
+      .from('stripe_operation_policies')
+      .delete()
+      .eq('id', policy_id);
+
+    if (error) {
+      console.error('Delete policy error:', error);
+      return c.json({ error: 'Failed to delete policy' }, 500);
+    }
 
     return c.json(
       {

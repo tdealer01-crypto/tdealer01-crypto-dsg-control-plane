@@ -296,14 +296,21 @@ export class ImmunefiJobClient {
 export class HackerOneJobClient {
   private readonly token?: string;
   private readonly limiter = new RateLimiter(60, 3600000); // 60 req/hour
+  private readonly isConfigured: boolean;
 
   constructor(token?: string) {
     this.token = token || process.env.HACKERONE_API_KEY;
+    this.isConfigured = Boolean(this.token?.trim());
   }
 
   async fetchJobs(): Promise<JobListing[]> {
+    if (!this.isConfigured) {
+      // Log without revealing sensitive configuration details
+      console.debug('[HackerOne] API credentials not available, skipping job fetch');
+      return [];
+    }
+
     if (!this.token) {
-      console.warn('[HackerOne] HACKERONE_API_KEY not configured, skipping');
       return [];
     }
 
@@ -314,14 +321,14 @@ export class HackerOneJobClient {
       });
 
       if (!response.ok) {
-        console.warn(`[HackerOne] API error: ${response.status}`);
+        console.debug(`[HackerOne] API request failed with status: ${response.status}`);
         return [];
       }
 
       const data = (await response.json()) as { data?: HackerOneProgram[] };
       return (data.data || []).map((p) => this.mapToJobListing(p)).filter(Boolean) as JobListing[];
     } catch (err) {
-      console.warn('[HackerOne] Fetch failed:', err);
+      console.debug('[HackerOne] Job fetch error (details omitted for security)', { errorType: err instanceof Error ? err.constructor.name : typeof err });
       return [];
     }
   }
