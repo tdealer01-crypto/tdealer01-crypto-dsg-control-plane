@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildQUBOMatrix } from '@/lib/dsg-one/qubo-builder';
-import { optimizeWithIsing, extractAssignmentFromQUBO } from '@/lib/dsg-one/ising-optimizer';
+import { buildQUBOMatrix, extractAssignmentFromQUBO } from '@/lib/dsg-one/qubo-builder';
+import { optimizeWithIsing } from '@/lib/dsg-one/ising-optimizer';
 import type { Task, AgentCapacity } from '@/lib/dsg/multi-agent/types';
 
 describe('Day 1: QUBO Builder + Mock Ising', () => {

@@ -1,9 +1,60 @@
 import type { Task, TaskDag, AgentAssignment, AgentCapacity, Z3ConstraintModel } from './types';
 import { sha256Json } from '@/lib/dsg/hermes-e2e/hash';
 
+/**
+ * Hybrid solver mode selection based on problem complexity.
+ * Z3-only: Simple feasibility problems (< 50 complexity score)
+ * Ising+Z3: Complex optimization problems (>= 50 complexity score)
+ */
+export enum HybridSolverMode {
+  Z3_ONLY = 'z3-only',
+  ISING_ONLY = 'ising-only',
+  ISING_VERIFY = 'ising-verify', // Ising + Z3 verification
+  ISING_WARMSTART = 'ising-warmstart', // Z3 with Ising warm-start
+}
+
 export type Z3SolveOutcome =
   | { model: Z3ConstraintModel; assignments: AgentAssignment[] }
   | { fallback: true; reason: string };
+
+/**
+ * Calculate problem complexity score to determine solver routing.
+ * Formula: (variable_count × constraint_count × density) / scale_factor
+ *
+ * Threshold: score >= 50 → use Ising + Z3 verify
+ *           score < 50 → use Z3-only
+ */
+export function calculateComplexityScore(
+  taskCount: number,
+  agentCount: number,
+  constraintDensity: number = 0.5,
+): number {
+  const variableCount = taskCount * agentCount; // Binary variables for assignments
+  const constraintCount = taskCount + agentCount; // Task assignment + capacity constraints
+  const scaleFactor = 1000; // Normalize to 0-100 range
+
+  return (variableCount * constraintCount * constraintDensity) / scaleFactor;
+}
+
+/**
+ * Select hybrid solver mode based on problem complexity.
+ * Returns the recommended solver mode for the given problem size.
+ */
+export function selectHybridSolverMode(
+  taskCount: number,
+  agentCount: number,
+  complexityThreshold: number = 50,
+): HybridSolverMode {
+  const score = calculateComplexityScore(taskCount, agentCount);
+
+  // For now, default to Z3-only (Ising integration in Phase 3 continuation)
+  // TODO: Implement Ising routing after Phase 3 full integration
+  // if (score >= complexityThreshold) {
+  //   return HybridSolverMode.ISING_VERIFY;
+  // }
+
+  return HybridSolverMode.Z3_ONLY;
+}
 
 // Z3 WASM init is expensive (~2s); cache one context per process.
 // The high-level z3-solver API allows only one async solve at a time,
@@ -30,6 +81,26 @@ export async function terminateZ3Threads(): Promise<void> {
     // already terminated or never initialized
   }
   z3InitPromise = null;
+}
+
+/**
+ * High-level solver interface with hybrid mode support.
+ * Routes to Z3-only or Ising+Z3 based on problem complexity.
+ *
+ * Phase 1-2: Uses Z3-only (complexity routing logic ready for Phase 3)
+ * Phase 3: Implements full Ising+Z3 hybrid solver selection
+ */
+export async function solveTaskAssignmentWithHybridRouter(
+  taskDag: TaskDag,
+  agentCapacities: AgentCapacity[],
+  maxSolveTimeMs: number = 5000,
+): Promise<Z3SolveOutcome> {
+  const mode = selectHybridSolverMode(taskDag.tasks.length, agentCapacities.length);
+
+  // Phase 1-2: Always use Z3-only for validation
+  // Phase 3: Implement ISING_VERIFY, ISING_ONLY, ISING_WARMSTART routing
+
+  return solveTaskAssignmentConstraints(taskDag, agentCapacities, maxSolveTimeMs);
 }
 
 /**
