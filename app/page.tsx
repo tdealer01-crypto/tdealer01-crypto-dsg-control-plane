@@ -7,9 +7,9 @@ import { GateResultCard } from '../components/GateResultCard';
 import RefTracker from '../components/RefTracker';
 
 const trustBar = [
-  'Deterministic Security Gateway — SMT Solver-verified policy invariants (8 Z3 theorems: 5 core + 3 DeFi)',
-  'WORM audit trail — SHA-256 requestHash → recordHash → bundleHash · tamper-evident by construction',
-  'EU AI Act Art. 12/14 · Annex IV · ISO 42001 — CCVS v1.2 live evidence chain · 2173 tests · mutation score 72.08%',
+  'Deterministic Engine — Gap-free sequences · SHA-256 hash chains · Merkle tree proofs · SARIF export',
+  'WORM Audit Trail — Every decision immutable · Chain verification · Tamper detection · Enterprise compliance',
+  'EU AI Act Ready — Art. 12/14 evidence pack · ISO 42001 · CCVS v1.2 · 2173 tests · 72.08% mutation score',
 ];
 
 const painCards = [
@@ -106,11 +106,14 @@ export default function HomePage() {
               <Link href="/demo" className="rounded-2xl bg-amber-300 px-6 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-200">
                 🎬 Try demo
               </Link>
-              <Link href="/design" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 text-base font-semibold text-slate-100 transition hover:border-white/20">
-                🎨 Design
+              <Link href="/features" className="rounded-2xl border border-emerald-300/30 bg-emerald-300/10 px-6 py-4 text-base font-semibold text-emerald-100 transition hover:border-emerald-300/60">
+                Core Features
               </Link>
               <Link href="/pricing" className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-6 py-4 text-base font-semibold text-amber-100 transition hover:border-amber-300/60">
                 Pricing
+              </Link>
+              <Link href="/use-cases" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-white/20">
+                Use Cases
               </Link>
               <Link href="/login" className="rounded-2xl border border-white/15 bg-white/[0.03] px-6 py-4 font-semibold text-slate-100 transition hover:border-emerald-300/40">
                 Continue with email
