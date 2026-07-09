@@ -11,11 +11,11 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     // Require internal service authentication
-    const auth = await requireInternalService(request);
+    const auth = requireInternalService(request);
     if (!auth.ok) {
       return NextResponse.json(
-        { ok: false, error: auth.error || 'Unauthorized' },
-        { status: auth.status || 401 }
+        { ok: false, error: auth.error },
+        { status: auth.status }
       );
     }
 
@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Require active profile (dashboard user)
-    const auth = await requireActiveProfile(request);
+    const auth = await requireActiveProfile();
     if (!auth.ok) {
       return NextResponse.json(
-        { ok: false, error: auth.error || 'Unauthorized' },
-        { status: auth.status || 401 }
+        { ok: false, error: auth.error },
+        { status: auth.status }
       );
     }
 
