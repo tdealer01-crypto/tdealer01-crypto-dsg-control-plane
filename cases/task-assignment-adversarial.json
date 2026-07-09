@@ -1,0 +1,137 @@
+{
+  "name": "Adversarial Task Assignment (High Conflict Constraints)",
+  "description": "Tests fallback mechanism when Ising solution violates hard constraints. High constraint density with conflicting requirements.",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "High-Risk Financial Transfer",
+      "domain": "financial",
+      "operation": "transfer",
+      "target": "account-001",
+      "dataSensitivity": "high",
+      "externalEffect": true,
+      "reversibility": "reversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": true,
+      "priority": 1,
+      "dependencies": ["task-3"]
+    },
+    {
+      "id": "task-2",
+      "name": "Compliance Audit",
+      "domain": "compliance",
+      "operation": "write",
+      "target": "log-db",
+      "dataSensitivity": "high",
+      "externalEffect": false,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": false,
+      "priority": 1,
+      "dependencies": []
+    },
+    {
+      "id": "task-3",
+      "name": "Risk Assessment",
+      "domain": "policy",
+      "operation": "update",
+      "target": "policy-engine",
+      "dataSensitivity": "high",
+      "externalEffect": true,
+      "reversibility": "reversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": true,
+      "priority": 1,
+      "dependencies": []
+    },
+    {
+      "id": "task-4",
+      "name": "Fraud Detection",
+      "domain": "compliance",
+      "operation": "analyze",
+      "target": "fraud-engine",
+      "dataSensitivity": "high",
+      "externalEffect": false,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": false,
+      "priority": 1,
+      "dependencies": ["task-2"]
+    },
+    {
+      "id": "task-5",
+      "name": "Regulatory Filing",
+      "domain": "compliance",
+      "operation": "write",
+      "target": "regulator-api",
+      "dataSensitivity": "high",
+      "externalEffect": true,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": false,
+      "priority": 1,
+      "dependencies": ["task-4"]
+    },
+    {
+      "id": "task-6",
+      "name": "Emergency Override Log",
+      "domain": "compliance",
+      "operation": "write",
+      "target": "emergency-log",
+      "dataSensitivity": "high",
+      "externalEffect": false,
+      "reversibility": "irreversible",
+      "userAuthorized": true,
+      "planAllowed": true,
+      "hasFreshEvidence": true,
+      "hasRollback": false,
+      "priority": 2,
+      "dependencies": ["task-1"]
+    }
+  ],
+  "agentCapacities": [
+    {
+      "agentId": 1,
+      "maxConcurrentTasks": 2,
+      "maxTotalTasks": 2,
+      "resourceAvailable": {
+        "cpu": 8,
+        "memory": 16
+      }
+    },
+    {
+      "agentId": 2,
+      "maxConcurrentTasks": 1,
+      "maxTotalTasks": 1,
+      "resourceAvailable": {
+        "cpu": 2,
+        "memory": 4
+      }
+    },
+    {
+      "agentId": 3,
+      "maxConcurrentTasks": 2,
+      "maxTotalTasks": 2,
+      "resourceAvailable": {
+        "cpu": 4,
+        "memory": 8
+      }
+    }
+  ],
+  "edges": [
+    {"from": "task-3", "to": "task-1"},
+    {"from": "task-2", "to": "task-4"},
+    {"from": "task-4", "to": "task-5"},
+    {"from": "task-1", "to": "task-6"}
+  ]
+}
