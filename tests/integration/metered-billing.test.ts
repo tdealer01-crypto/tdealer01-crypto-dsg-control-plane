@@ -23,7 +23,23 @@ vi.mock('stripe', () => {
   };
 });
 
-describe('Metered Billing Integration', () => {
+// Live suite: requires a running app server on localhost:3000 AND a real
+// Supabase project AND an explicit opt-in.
+//
+// Skipped unless RUN_METERED_BILLING_LIVE=1 is set, even when the
+// service-role key / URL are present. Reason: every test in this suite
+// fetches http://localhost:3000/api/revenue/events or
+// /api/cron/billing-sync, so it can only pass with a locally running dev
+// server plus configured INTERNAL_SERVICE_TOKEN / CRON_SECRET. In CI the
+// server is not started and SUPABASE_SERVICE_ROLE_KEY is not injected into
+// the vitest step, so createClient() throws "supabaseKey is required"
+// before any assertion runs. Gate behind an explicit opt-in like the other
+// live-DB suites (see tests/integration/delegation-end-to-end.test.ts).
+describe.skipIf(
+  process.env.RUN_METERED_BILLING_LIVE !== '1' ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL,
+)('Metered Billing Integration', () => {
   let supabase: any;
 
   beforeEach(() => {
