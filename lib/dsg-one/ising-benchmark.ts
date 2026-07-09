@@ -1,3 +1,5 @@
+'use server';
+
 /**
  * Phase 4: Benchmark Harness for Ising + Z3 Hybrid Solver
  *
