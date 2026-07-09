@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     // Require internal service authentication
     const auth = requireInternalService(request);
-    if (!auth.ok) {
+    if (auth.ok === false) {
       return NextResponse.json(
         { ok: false, error: auth.error },
         { status: auth.status }
