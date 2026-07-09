@@ -130,12 +130,14 @@ export async function buildQUBOMatrix(req: QUBOBuildRequest): Promise<QUBOBuildR
   // So: (sum_a x[i,a])^2 = sum_a x[i,a] + sum_{a<a'} 2*x[i,a]*x[i,a']
 
   for (let i = 0; i < numTasks; i++) {
-    // Quadratic terms: 2*x[i,a]*x[i,a'] for all pairs a < a'
+    // Quadratic terms: 2λ*x[i,a]*x[i,a'] for all pairs a < a'.
+    // Store λ per off-diagonal cell: the matrix is symmetrized below and
+    // x^T Q x sums both Q[i][j] and Q[j][i], yielding the intended 2λ.
     for (let a = 0; a < numAgents; a++) {
       for (let ap = a + 1; ap < numAgents; ap++) {
         const idx1 = i * numAgents + a;
         const idx2 = i * numAgents + ap;
-        Q[idx1][idx2] += 2 * ASSIGNMENT_PENALTY;
+        Q[idx1][idx2] += ASSIGNMENT_PENALTY;
       }
     }
 
@@ -160,12 +162,14 @@ export async function buildQUBOMatrix(req: QUBOBuildRequest): Promise<QUBOBuildR
   for (let a = 0; a < numAgents; a++) {
     const capacity = agents[a].maxTotalTasks;
 
-    // Quadratic terms: x[i,a]*x[j,a] for i < j
+    // Quadratic terms: 2μ*x[i,a]*x[j,a] for i < j.
+    // Store μ per off-diagonal cell: symmetrization + x^T Q x doubles it
+    // to the intended 2μ (storing 2μ here would silently double penalties).
     for (let i = 0; i < numTasks; i++) {
       for (let j = i + 1; j < numTasks; j++) {
         const idx1 = i * numAgents + a;
         const idx2 = j * numAgents + a;
-        Q[idx1][idx2] += 2 * CAPACITY_PENALTY;
+        Q[idx1][idx2] += CAPACITY_PENALTY;
       }
     }
 

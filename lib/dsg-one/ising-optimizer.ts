@@ -27,6 +27,7 @@
 
 import type { QUBOMatrix } from './qubo-builder';
 import { calculateQUBOEnergy } from './qubo-builder';
+import { solveQubo } from './ising-solver-core';
 import { sha256Json } from '@/lib/dsg/hermes-e2e/hash';
 
 export interface IsingOptimizationRequest {
@@ -148,8 +149,10 @@ export async function optimizeWithIsing(
 }
 
 /**
- * Mock Ising optimizer for Day 1 validation.
- * Uses greedy assignment: assign each variable to the value that minimizes energy.
+ * Mock Ising optimizer: deterministic local solve, no network.
+ * Delegates to the same solver core the self-hosted endpoint uses
+ * (lib/dsg-one/ising-solver-core), so mock and live results share one
+ * deterministic algorithm and differ only in transport.
  */
 function generateMockIsingResult(
   qubo: QUBOMatrix,
@@ -157,43 +160,20 @@ function generateMockIsingResult(
 ): IsingOptimizationResult {
   const startTime = Date.now();
 
-  // Greedy algorithm: flip each variable to its best value
-  const solution: Record<string, number> = {};
-  const x: number[] = Array(qubo.numVariables).fill(0); // Start with all 0s
-
-  // Variable indices to process (sorted for determinism)
-  const varIndices = Array.from({ length: qubo.numVariables }, (_, i) => i).sort();
-
-  // Simple greedy: for each variable, keep 1 if it reduces energy, else 0
-  for (const idx of varIndices) {
-    // Calculate energy delta if we flip this variable
-    let energyWith1 = 0;
-    let energyWith0 = 0;
-
-    // Energy contribution from this variable with x[idx]=1
-    x[idx] = 1;
-    for (let j = 0; j < qubo.numVariables; j++) {
-      energyWith1 += qubo.Q[idx][j] * x[j];
-      energyWith1 += qubo.Q[j][idx] * x[j];
-      if (j === idx) energyWith1 -= qubo.Q[idx][j]; // Avoid double-counting diagonal
-    }
-    energyWith1 += qubo.linear[idx];
-
-    // Energy contribution with x[idx]=0
-    x[idx] = 0;
-    energyWith0 = 0; // No contribution if 0
-
-    // Keep 1 if it reduces energy, else keep 0
-    x[idx] = energyWith1 <= energyWith0 ? 1 : 0;
-  }
+  const solved = solveQubo({
+    Q: qubo.Q,
+    linear: qubo.linear,
+    numVariables: qubo.numVariables,
+    seed,
+  });
 
   // Build solution dictionary
+  const solution: Record<string, number> = {};
   for (let i = 0; i < qubo.variables.length; i++) {
-    const varName = qubo.variables[i].id;
-    solution[varName] = x[i];
+    solution[qubo.variables[i].id] = solved.solution[i];
   }
 
-  // Calculate actual energy
+  // Calculate actual energy (includes the QUBO constant term)
   const energy = calculateQUBOEnergy(qubo, solution);
 
   // Solution quality is estimated as 0.85 for mock (high but not perfect)
