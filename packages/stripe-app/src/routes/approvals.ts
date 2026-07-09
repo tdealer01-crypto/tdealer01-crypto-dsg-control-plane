@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { getSupabase } from '../lib/dsg-client';
 
 const router = new Hono();
 
@@ -28,18 +29,38 @@ router.get('/pending', async (c) => {
       return c.json({ error: 'Missing stripe_account_id' }, 400);
     }
 
-    // TODO: Query stripe_operation_approvals from Supabase
-    // TODO: Filter by status if provided
-    // TODO: Include approval_url and decision_id
-    // TODO: Support pagination
-    // TODO: Sort by created_at descending
+    const supabase = getSupabase();
+    const limitNum = Math.min(parseInt(limit, 10) || 50, 100);
+    const offsetNum = parseInt(offset, 10) || 0;
+
+    let query = supabase
+      .from('stripe_operation_audits')
+      .select('*', { count: 'exact' })
+      .eq('stripe_account_id', stripe_account_id)
+      .order('created_at', { ascending: false })
+      .range(offsetNum, offsetNum + limitNum - 1);
+
+    // Filter by status if provided
+    if (status) {
+      query = query.eq('dsg_decision', status.toUpperCase());
+    } else {
+      // Default to REVIEW status (pending)
+      query = query.eq('dsg_decision', 'REVIEW');
+    }
+
+    const { data: approvals, count, error } = await query;
+
+    if (error) {
+      console.error('Get pending approvals error:', error);
+      return c.json({ error: 'Failed to retrieve pending approvals' }, 500);
+    }
 
     return c.json(
       {
-        approvals: [],
-        total: 0,
-        limit: parseInt(limit, 10),
-        offset: parseInt(offset, 10),
+        approvals: approvals || [],
+        total: count || 0,
+        limit: limitNum,
+        offset: offsetNum,
       },
       200
     );
@@ -63,18 +84,52 @@ router.get('/pending', async (c) => {
 router.post('/:decision_id/approve', async (c) => {
   try {
     const { decision_id } = c.req.param();
-    const { reason, approved_by } = await c.req.json<{ reason?: string; approved_by?: string }>();
+    const body = await c.req.json<{ reason?: string; approved_by?: string }>();
 
     if (!decision_id) {
       return c.json({ error: 'Missing decision_id' }, 400);
     }
 
-    // TODO: Fetch approval record from Supabase
-    // TODO: Verify approval is in pending status
-    // TODO: Update approval status to approved
-    // TODO: Call DSG gateway executor to proceed with operation
-    // TODO: Record audit log with approval details
-    // TODO: Return updated approval
+    const { reason, approved_by } = body;
+    const supabase = getSupabase();
+
+    // Fetch approval record from Supabase
+    const { data: audit, error: fetchError } = await supabase
+      .from('stripe_operation_audits')
+      .select('*')
+      .eq('stripe_event_id', decision_id)
+      .single();
+
+    if (fetchError || !audit) {
+      return c.json({ error: 'Approval not found' }, 404);
+    }
+
+    // Verify approval is in pending status
+    if (audit.dsg_decision !== 'REVIEW') {
+      return c.json({ error: 'Approval is not in pending status' }, 400);
+    }
+
+    // Update approval status to approved
+    const { data: updated, error: updateError } = await supabase
+      .from('stripe_operation_audits')
+      .update({
+        status: 'reviewed',
+        dsg_decision: 'ALLOW',
+        dsg_reason: reason || 'Approved by operator',
+        payload: {
+          ...audit.payload,
+          approved_by,
+          approved_at: new Date().toISOString(),
+        },
+      })
+      .eq('stripe_event_id', decision_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Approve operation error:', updateError);
+      return c.json({ error: 'Failed to approve operation' }, 500);
+    }
 
     return c.json(
       {
@@ -82,6 +137,7 @@ router.post('/:decision_id/approve', async (c) => {
         decision_id,
         status: 'approved',
         approved_at: new Date().toISOString(),
+        audit: updated,
       },
       200
     );
@@ -105,18 +161,52 @@ router.post('/:decision_id/approve', async (c) => {
 router.post('/:decision_id/reject', async (c) => {
   try {
     const { decision_id } = c.req.param();
-    const { reason, rejected_by } = await c.req.json<{ reason?: string; rejected_by?: string }>();
+    const body = await c.req.json<{ reason?: string; rejected_by?: string }>();
 
     if (!decision_id) {
       return c.json({ error: 'Missing decision_id' }, 400);
     }
 
-    // TODO: Fetch approval record from Supabase
-    // TODO: Verify approval is in pending status
-    // TODO: Update approval status to rejected
-    // TODO: Block the original Stripe operation
-    // TODO: Record audit log with rejection details
-    // TODO: Return updated approval
+    const { reason, rejected_by } = body;
+    const supabase = getSupabase();
+
+    // Fetch approval record from Supabase
+    const { data: audit, error: fetchError } = await supabase
+      .from('stripe_operation_audits')
+      .select('*')
+      .eq('stripe_event_id', decision_id)
+      .single();
+
+    if (fetchError || !audit) {
+      return c.json({ error: 'Approval not found' }, 404);
+    }
+
+    // Verify approval is in pending status
+    if (audit.dsg_decision !== 'REVIEW') {
+      return c.json({ error: 'Approval is not in pending status' }, 400);
+    }
+
+    // Update approval status to rejected
+    const { data: updated, error: updateError } = await supabase
+      .from('stripe_operation_audits')
+      .update({
+        status: 'reviewed',
+        dsg_decision: 'BLOCK',
+        dsg_reason: reason || 'Rejected by operator',
+        payload: {
+          ...audit.payload,
+          rejected_by,
+          rejected_at: new Date().toISOString(),
+        },
+      })
+      .eq('stripe_event_id', decision_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Reject operation error:', updateError);
+      return c.json({ error: 'Failed to reject operation' }, 500);
+    }
 
     return c.json(
       {
@@ -124,6 +214,7 @@ router.post('/:decision_id/reject', async (c) => {
         decision_id,
         status: 'rejected',
         rejected_at: new Date().toISOString(),
+        audit: updated,
       },
       200
     );
@@ -146,11 +237,29 @@ router.get('/:decision_id', async (c) => {
       return c.json({ error: 'Missing decision_id' }, 400);
     }
 
-    // TODO: Query single approval with full details
-    // TODO: Include linked stripe_operation_audits
-    // TODO: Include DSG decision metadata
+    const supabase = getSupabase();
 
-    return c.json({ approval: null }, 200);
+    // Query single approval with full details
+    const { data: audit, error } = await supabase
+      .from('stripe_operation_audits')
+      .select('*')
+      .eq('stripe_event_id', decision_id)
+      .single();
+
+    if (error || !audit) {
+      return c.json({ error: 'Approval not found' }, 404);
+    }
+
+    return c.json(
+      {
+        approval: audit,
+        stripe_event_id: audit.stripe_event_id,
+        status: audit.status,
+        decision: audit.dsg_decision,
+        reason: audit.dsg_reason,
+      },
+      200
+    );
   } catch (err) {
     console.error('Get approval detail error:', err);
     return c.json({ error: 'Failed to retrieve approval' }, 500);

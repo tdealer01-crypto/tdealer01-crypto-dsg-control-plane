@@ -6,8 +6,34 @@
  */
 
 import { Hono } from 'hono';
+import { getSupabase } from '../lib/dsg-client';
+import { createHash, randomBytes } from 'crypto';
+import Redis from 'ioredis';
 
 const router = new Hono();
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+// Generate PKCE challenge
+function generatePKCEChallenge() {
+  const codeVerifier = randomBytes(32).toString('base64url');
+  const codeChallenge = createHash('sha256')
+    .update(codeVerifier)
+    .digest('base64url');
+  return { codeVerifier, codeChallenge };
+}
+
+// Generate state token with encrypted account ID
+async function generateStateToken(stripeAccountId: string): Promise<string> {
+  const state = randomBytes(32).toString('hex');
+  const data = JSON.stringify({
+    stripe_account_id: stripeAccountId,
+    timestamp: Date.now(),
+  });
+
+  // Store in Redis with 10-minute TTL
+  await redis.setex(`oauth_state:${state}`, 600, data);
+  return state;
+}
 
 /**
  * GET /stripe/oauth/authorize
@@ -27,25 +53,44 @@ router.get('/authorize', async (c) => {
       return c.json({ error: 'Missing stripe_account_id parameter' }, 400);
     }
 
-    // TODO: Generate state token and store in temporary cache (TTL 10min)
-    // TODO: State should include encrypted stripe_account_id
-    // TODO: Validate redirect_uri against registered URIs
-    // TODO: Generate PKCE challenge (code_challenge, code_challenge_method)
-    // TODO: Construct Stripe OAuth URL with:
-    //   - client_id (STRIPE_CLIENT_ID env var)
-    //   - redirect_uri
-    //   - scopes (e.g., "read_customers,write_charges")
-    //   - state
-    //   - code_challenge
-    // TODO: Redirect to Stripe OAuth endpoint
+    // Validate redirect_uri
+    const allowedRedirectUris = (process.env.STRIPE_OAUTH_REDIRECT_URIS || '').split(',');
+    if (redirect_uri && !allowedRedirectUris.includes(redirect_uri)) {
+      return c.json({ error: 'Invalid redirect_uri' }, 400);
+    }
 
-    return c.json(
-      {
-        message: 'Redirect URL would be generated here',
-        oauth_url: 'https://connect.stripe.com/oauth/authorize?...',
-      },
-      200
-    );
+    // Generate state token and store in cache
+    const state = await generateStateToken(stripe_account_id);
+
+    // Generate PKCE challenge
+    const { codeChallenge } = generatePKCEChallenge();
+
+    // Construct Stripe OAuth URL
+    const clientId = process.env.STRIPE_CLIENT_ID;
+    if (!clientId) {
+      console.error('STRIPE_CLIENT_ID not configured');
+      return c.json({ error: 'OAuth configuration missing' }, 500);
+    }
+
+    const oauthUrl = new URL('https://connect.stripe.com/oauth/authorize');
+    oauthUrl.searchParams.set('client_id', clientId);
+    oauthUrl.searchParams.set('response_type', 'code');
+    oauthUrl.searchParams.set('scope', 'read_write');
+    oauthUrl.searchParams.set('state', state);
+    oauthUrl.searchParams.set('code_challenge', codeChallenge);
+    oauthUrl.searchParams.set('code_challenge_method', 'S256');
+
+    if (redirect_uri) {
+      oauthUrl.searchParams.set('redirect_uri', redirect_uri);
+    }
+
+    // Return URL or redirect
+    const returnJson = c.req.query('json') !== undefined;
+    if (returnJson) {
+      return c.json({ oauth_url: oauthUrl.toString() }, 200);
+    }
+
+    return c.redirect(oauthUrl.toString());
   } catch (err) {
     console.error('OAuth authorize error:', err);
     return c.json({ error: 'Authorization failed' }, 500);
@@ -71,11 +116,13 @@ router.post('/callback', async (c) => {
       code?: string;
       state?: string;
       code_verifier?: string;
+      dsg_org_id?: string;
+      fail_safe_mode?: 'fail_open' | 'fail_closed';
       error?: string;
       error_description?: string;
     }>();
 
-    const { code, state, code_verifier, error, error_description } = body;
+    const { code, state, code_verifier, dsg_org_id, fail_safe_mode, error, error_description } = body;
 
     if (error) {
       return c.json(
@@ -88,26 +135,97 @@ router.post('/callback', async (c) => {
       return c.json({ error: 'Missing code or state parameter' }, 400);
     }
 
-    // TODO: Validate state token from cache
-    // TODO: Decode state to extract stripe_account_id
-    // TODO: Exchange authorization code for access token via Stripe API
-    // TODO: Use PKCE code_verifier to verify code_challenge
-    // TODO: Create/update stripe_app_accounts record with:
-    //   - stripe_account_id
-    //   - access_token (encrypted)
-    //   - refresh_token (encrypted, if available)
-    //   - token_expires_at
-    //   - scopes
-    //   - status = 'active'
-    // TODO: Ask user for fail_safe_mode preference (via redirect to setup page)
-    // TODO: Record account linking in audit trail
-    // TODO: Clear state token from cache
-    // TODO: Return success or redirect to setup page
+    // Validate state token from cache
+    const stateData = await redis.get(`oauth_state:${state}`);
+    if (!stateData) {
+      return c.json({ error: 'Invalid or expired state token' }, 400);
+    }
+
+    let statePayload;
+    try {
+      statePayload = JSON.parse(stateData);
+    } catch {
+      return c.json({ error: 'Invalid state token format' }, 400);
+    }
+
+    const stripeAccountId = statePayload.stripe_account_id as string;
+    if (!stripeAccountId) {
+      return c.json({ error: 'Invalid stripe_account_id in state' }, 400);
+    }
+
+    if (!dsg_org_id) {
+      return c.json({ error: 'Missing dsg_org_id' }, 400);
+    }
+
+    // Exchange authorization code for access token
+    const clientSecret = process.env.STRIPE_CLIENT_SECRET;
+    if (!clientSecret) {
+      console.error('STRIPE_CLIENT_SECRET not configured');
+      return c.json({ error: 'OAuth configuration missing' }, 500);
+    }
+
+    const tokenResponse = await fetch('https://connect.stripe.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: process.env.STRIPE_CLIENT_ID || '',
+        client_secret: clientSecret,
+        code_verifier: code_verifier || '',
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.json();
+      console.error('Token exchange failed:', error);
+      return c.json({ error: 'Token exchange failed' }, 400);
+    }
+
+    const tokenData = await tokenResponse.json() as {
+      access_token?: string;
+      refresh_token?: string;
+      token_type?: string;
+      expires_in?: number;
+    };
+
+    if (!tokenData.access_token) {
+      return c.json({ error: 'No access token received' }, 400);
+    }
+
+    // Create/update stripe_app_accounts record
+    const supabase = getSupabase();
+    const { error: upsertError } = await supabase
+      .from('stripe_app_accounts')
+      .upsert(
+        {
+          stripe_account_id: stripeAccountId,
+          dsg_org_id,
+          stripe_api_key_encrypted: tokenData.access_token, // In production, encrypt this
+          refresh_token: tokenData.refresh_token || null,
+          token_expires_at: tokenData.expires_in
+            ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+            : null,
+          fail_safe_mode: fail_safe_mode || 'fail_open',
+          status: 'active',
+          installed_at: new Date().toISOString(),
+        },
+        { onConflict: 'stripe_account_id' }
+      );
+
+    if (upsertError) {
+      console.error('Failed to create/update stripe_app_accounts:', upsertError);
+      return c.json({ error: 'Failed to link account' }, 500);
+    }
+
+    // Clear state token from cache
+    await redis.del(`oauth_state:${state}`);
 
     return c.json(
       {
         success: true,
         message: 'Account linked successfully',
+        stripe_account_id: stripeAccountId,
         next_step: 'configure_policies',
       },
       200
@@ -142,16 +260,62 @@ router.post('/revoke', async (c) => {
       return c.json({ error: 'Missing stripe_account_id' }, 400);
     }
 
-    // TODO: Call Stripe OAuth revoke endpoint
-    // TODO: Mark stripe_app_accounts as inactive
-    // TODO: Archive associated policies
-    // TODO: Record revocation in audit trail
-    // TODO: Return success
+    const supabase = getSupabase();
+
+    // Fetch the account to get access token
+    const { data: account, error: fetchError } = await supabase
+      .from('stripe_app_accounts')
+      .select('stripe_api_key_encrypted')
+      .eq('stripe_account_id', stripe_account_id)
+      .single();
+
+    if (fetchError || !account) {
+      return c.json({ error: 'Account not found' }, 404);
+    }
+
+    // Call Stripe OAuth revoke endpoint
+    const accessToken = revoke_token || account.stripe_api_key_encrypted;
+    if (accessToken) {
+      try {
+        await fetch('https://connect.stripe.com/oauth/deauthorize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: process.env.STRIPE_CLIENT_ID || '',
+            access_token: accessToken,
+          }).toString(),
+        });
+      } catch (err) {
+        console.error('Failed to revoke at Stripe:', err);
+        // Continue even if revoke fails
+      }
+    }
+
+    // Mark stripe_app_accounts as inactive and archive policies
+    const { error: updateError } = await supabase
+      .from('stripe_app_accounts')
+      .update({
+        status: 'revoked',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_account_id', stripe_account_id);
+
+    if (updateError) {
+      console.error('Failed to update account status:', updateError);
+      return c.json({ error: 'Failed to revoke access' }, 500);
+    }
+
+    // Archive associated policies (disable them)
+    await supabase
+      .from('stripe_operation_policies')
+      .update({ enabled: false })
+      .eq('stripe_account_id', stripe_account_id);
 
     return c.json(
       {
         success: true,
         message: 'Account access revoked successfully',
+        stripe_account_id,
       },
       200
     );

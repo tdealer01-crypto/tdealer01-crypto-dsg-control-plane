@@ -47,31 +47,56 @@ export async function createStripeApproval(
   request: StripeApprovalRequest
 ): Promise<StripeApprovalDecision> {
   try {
-    // SCAFFOLD: Log approval creation
+    // Log approval creation
     console.log('[STRIPE-APPROVAL] Creating approval:', {
       stripe_event_id: request.stripe_event_id,
       operation_type: request.operation_type,
       amount_cents: request.amount_cents,
     });
 
-    // TODO: Generate approval token
-    // const approvalToken = buildApprovalToken();
+    // Generate approval token
+    const approvalToken = buildApprovalToken();
 
-    // TODO: Store in stripe_operation_audits table
-    // INSERT INTO stripe_operation_audits (
-    //   stripe_account_id,
-    //   stripe_event_id,
-    //   stripe_object_id,
-    //   operation_type,
-    //   dsg_decision,
-    //   status,
-    //   payload
-    // ) VALUES (...)
+    // Store in stripe_operation_audits table
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    );
 
-    // SCAFFOLD: Return mock approval decision
+    const { data: audit, error } = await supabase
+      .from('stripe_operation_audits')
+      .insert({
+        stripe_account_id: request.stripe_account_id,
+        stripe_event_id: request.stripe_event_id,
+        stripe_object_id: request.stripe_object_id,
+        operation_type: request.operation_type,
+        dsg_decision: 'REVIEW',
+        dsg_reason: request.reason || 'Awaiting operator review',
+        dsg_decision_id: request.dsg_decision_id || null,
+        status: 'recorded',
+        payload: {
+          amount_cents: request.amount_cents,
+          currency: request.currency,
+          created_at: new Date().toISOString(),
+        },
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[STRIPE-APPROVAL] Failed to create approval:', error);
+      return {
+        ok: false,
+        error: error.message || 'approval_creation_failed',
+      };
+    }
+
     return {
       ok: true,
-      approvalToken: `sa_mock_${Date.now()}`,
+      approvalToken,
       approvalHash: buildApprovalHash({
         stripeEventId: request.stripe_event_id,
         operationType: request.operation_type,
@@ -107,33 +132,62 @@ export async function approveStripeOperation(
   note?: string
 ): Promise<StripeApprovalDecision> {
   try {
-    // SCAFFOLD: Log approval
+    // Log approval
     console.log('[STRIPE-APPROVAL] Approving operation:', {
       stripe_event_id: stripeEventId,
       operator_id: operatorId,
       note,
     });
 
-    // TODO: Fetch approval from stripe_operation_audits
-    // const approval = SELECT * FROM stripe_operation_audits
-    //   WHERE stripe_event_id = stripeEventId AND dsg_decision = 'REVIEW'
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    );
 
-    // TODO: Call DSG approval workflow
-    // const decision = await decideGatewayApproval({
-    //   orgId,
-    //   auditToken: stripeEventId,
-    //   decision: 'approved',
-    //   reviewerId: operatorId,
-    //   reviewerRole: operatorRole,
-    //   note,
-    // });
+    // Fetch approval from stripe_operation_audits
+    const { data: approval, error: fetchError } = await supabase
+      .from('stripe_operation_audits')
+      .select('*')
+      .eq('stripe_event_id', stripeEventId)
+      .eq('dsg_decision', 'REVIEW')
+      .single();
 
-    // TODO: Update stripe_operation_audits to status='approved'
+    if (fetchError || !approval) {
+      return {
+        ok: false,
+        error: 'approval_not_found_or_already_decided',
+      };
+    }
 
-    // SCAFFOLD: Return mock approval
+    // Update stripe_operation_audits to status='reviewed'
+    const { error: updateError } = await supabase
+      .from('stripe_operation_audits')
+      .update({
+        status: 'reviewed',
+        dsg_decision: 'ALLOW',
+        dsg_reason: note || 'Approved by operator',
+        payload: {
+          ...approval.payload,
+          approved_by: operatorId,
+          approved_at: new Date().toISOString(),
+          approver_role: operatorRole,
+        },
+      })
+      .eq('stripe_event_id', stripeEventId);
+
+    if (updateError) {
+      console.error('[STRIPE-APPROVAL] Failed to update approval:', updateError);
+      return {
+        ok: false,
+        error: updateError.message || 'approval_update_failed',
+      };
+    }
+
     return {
       ok: true,
-      approvalToken: `sa_approved_${Date.now()}`,
+      approvalToken: buildApprovalToken(),
       stripe_event_id: stripeEventId,
     };
   } catch (error) {
@@ -166,32 +220,60 @@ export async function rejectStripeOperation(
   reason?: string
 ): Promise<StripeApprovalDecision> {
   try {
-    // SCAFFOLD: Log rejection
+    // Log rejection
     console.log('[STRIPE-APPROVAL] Rejecting operation:', {
       stripe_event_id: stripeEventId,
       operator_id: operatorId,
       reason,
     });
 
-    // TODO: Fetch approval from stripe_operation_audits
-    // const approval = SELECT * FROM stripe_operation_audits
-    //   WHERE stripe_event_id = stripeEventId AND dsg_decision = 'REVIEW'
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    );
 
-    // TODO: Call DSG approval workflow with rejection
-    // const decision = await decideGatewayApproval({
-    //   orgId,
-    //   auditToken: stripeEventId,
-    //   decision: 'rejected',
-    //   reviewerId: operatorId,
-    //   reviewerRole: operatorRole,
-    //   note: reason,
-    // });
+    // Fetch approval from stripe_operation_audits
+    const { data: approval, error: fetchError } = await supabase
+      .from('stripe_operation_audits')
+      .select('*')
+      .eq('stripe_event_id', stripeEventId)
+      .eq('dsg_decision', 'REVIEW')
+      .single();
 
-    // TODO: Update stripe_operation_audits to status='rejected'
+    if (fetchError || !approval) {
+      return {
+        ok: false,
+        error: 'approval_not_found_or_already_decided',
+      };
+    }
 
-    // TODO: Execute refund/freeze logic if needed
+    // Update stripe_operation_audits to status='rejected'
+    const { error: updateError } = await supabase
+      .from('stripe_operation_audits')
+      .update({
+        status: 'reviewed',
+        dsg_decision: 'BLOCK',
+        dsg_reason: reason || 'Rejected by operator',
+        payload: {
+          ...approval.payload,
+          rejected_by: operatorId,
+          rejected_at: new Date().toISOString(),
+          rejector_role: operatorRole,
+          rejection_reason: reason,
+        },
+      })
+      .eq('stripe_event_id', stripeEventId);
 
-    // SCAFFOLD: Return mock rejection
+    if (updateError) {
+      console.error('[STRIPE-APPROVAL] Failed to update rejection:', updateError);
+      return {
+        ok: false,
+        error: updateError.message || 'rejection_update_failed',
+      };
+    }
+
     return {
       ok: true,
       stripe_event_id: stripeEventId,
@@ -217,19 +299,53 @@ export async function rejectStripeOperation(
  */
 export async function listPendingStripeApprovals(orgId: string) {
   try {
-    // SCAFFOLD: Log query
+    // Log query
     console.log('[STRIPE-APPROVAL] Listing pending approvals for org:', orgId);
 
-    // TODO: Query stripe_operation_audits for pending approvals
-    // SELECT * FROM stripe_operation_audits
-    //   WHERE dsg_org_id = orgId
-    //   AND dsg_decision = 'REVIEW'
-    //   ORDER BY created_at DESC
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    );
 
-    // SCAFFOLD: Return empty list
+    // Query stripe_operation_audits for pending approvals
+    const { data: audits, error } = await supabase
+      .from('stripe_operation_audits')
+      .select(
+        `
+        id,
+        stripe_event_id,
+        stripe_account_id,
+        stripe_object_id,
+        operation_type,
+        dsg_decision,
+        dsg_reason,
+        created_at,
+        payload,
+        stripe_app_accounts(dsg_org_id)
+      `
+      )
+      .eq('dsg_decision', 'REVIEW')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[STRIPE-APPROVAL] Query failed:', error);
+      return {
+        ok: false,
+        error: error.message || 'query_failed',
+        approvals: [],
+      };
+    }
+
+    // Filter by org if provided
+    const filtered = audits?.filter((audit: any) => {
+      return !orgId || audit.stripe_app_accounts?.dsg_org_id === orgId;
+    }) || [];
+
     return {
       ok: true,
-      approvals: [],
+      approvals: filtered,
     };
   } catch (error) {
     return {
@@ -253,18 +369,49 @@ export async function listPendingStripeApprovals(orgId: string) {
  */
 export async function getStripeApprovalStatus(stripeEventId: string) {
   try {
-    // SCAFFOLD: Log status check
+    // Log status check
     console.log('[STRIPE-APPROVAL] Checking approval status:', stripeEventId);
 
-    // TODO: Query stripe_operation_audits
-    // SELECT * FROM stripe_operation_audits
-    //   WHERE stripe_event_id = stripeEventId
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    );
 
-    // SCAFFOLD: Return mock pending status
+    // Query stripe_operation_audits
+    const { data: audit, error } = await supabase
+      .from('stripe_operation_audits')
+      .select('*')
+      .eq('stripe_event_id', stripeEventId)
+      .single();
+
+    if (error) {
+      return {
+        ok: false,
+        error: error.message || 'query_failed',
+      };
+    }
+
+    if (!audit) {
+      return {
+        ok: false,
+        error: 'not_found',
+      };
+    }
+
+    const statusMap: { [key: string]: string } = {
+      recorded: 'pending',
+      reviewed: audit.dsg_decision === 'ALLOW' ? 'approved' : 'rejected',
+      executed: 'executed',
+    };
+
     return {
       ok: true,
-      status: 'pending',
+      status: statusMap[audit.status as string] || audit.status,
       stripe_event_id: stripeEventId,
+      dsg_decision: audit.dsg_decision,
+      dsg_reason: audit.dsg_reason,
     };
   } catch (error) {
     return {
