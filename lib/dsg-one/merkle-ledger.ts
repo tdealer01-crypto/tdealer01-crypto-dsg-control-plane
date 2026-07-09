@@ -163,21 +163,28 @@ export function generateMerkleProof(
   // Build proof path
   const proofPath: Array<{ hash: string; direction: 'left' | 'right' }> = [];
 
-  let leaves = entries.map((e) => hashLedgerEntry(e));
+  let currentLevel = entries.map((e) => hashLedgerEntry(e));
   let currentIndex = leafIndex;
 
-  while (leaves.length > 1) {
+  while (currentLevel.length > 1) {
     const isLeft = currentIndex % 2 === 0;
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-    const siblingHash = leaves[siblingIndex] || leaves[currentIndex];
+    const siblingHash = currentLevel[siblingIndex] || currentLevel[currentIndex];
 
     proofPath.push({
       hash: siblingHash,
       direction: isLeft ? 'right' : 'left',
     });
 
-    // Move up to parent level
-    leaves = leaves.filter((_, i) => i % 2 === 0 || i === leaves.length - 1);
+    // Compute next level (combine pairs of hashes)
+    const nextLevel: string[] = [];
+    for (let i = 0; i < currentLevel.length; i += 2) {
+      const leftHash = currentLevel[i];
+      const rightHash = currentLevel[i + 1] || leftHash;
+      nextLevel.push(combineHashes(leftHash, rightHash));
+    }
+
+    currentLevel = nextLevel;
     currentIndex = Math.floor(currentIndex / 2);
   }
 
