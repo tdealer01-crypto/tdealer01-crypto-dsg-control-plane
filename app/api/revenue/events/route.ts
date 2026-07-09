@@ -21,9 +21,7 @@ function getStripeClient(): Stripe {
   if (!secretKey) {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
-  return new Stripe(secretKey, {
-    apiVersion: '2024-12-18.acacia',
-  });
+  return new Stripe(secretKey);
 }
 
 async function resolveStripeSubscription(
@@ -72,16 +70,16 @@ async function recordUsageEvent(payload: RevenueEventPayload): Promise<{
       {
         event_name: subscription.meter_id, // Meter ID
         identifier: subscription.subscription_id, // Subscription ID
-        value: String(payload.quantity), // Usage quantity
+        quantity: payload.quantity, // Usage quantity
         timestamp: payload.timestamp ? Math.floor(new Date(payload.timestamp).getTime() / 1000) : undefined,
-      },
+      } as any,
       {
         idempotencyKey: payload.idempotency_key || `${payload.org_id}_${payload.event_name}_${Date.now()}`,
       },
     );
 
     return {
-      metered_event_id: meterEvent.id,
+      metered_event_id: (meterEvent as any).id,
       recorded_at: new Date().toISOString(),
     };
   } catch (error: any) {

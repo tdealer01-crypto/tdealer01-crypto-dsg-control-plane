@@ -256,8 +256,8 @@ function subscriptionToRecord(
  cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
  current_period_start: toIso(firstItem?.current_period_start?? null),
  current_period_end: toIso(firstItem?.current_period_end?? null),
- trial_start: toIso((subscription as any).trial_start?? firstItem?.trial_start?? null),
- trial_end: toIso((subscription as any).trial_end?? firstItem?.trial_end?? null),
+ trial_start: toIso((subscription as any).trial_start?? (firstItem as any)?.trial_start?? null),
+ trial_end: toIso((subscription as any).trial_end?? (firstItem as any)?.trial_end?? null),
     metadata: subscription.metadata || {},
     updated_at: new Date().toISOString(),
   };
