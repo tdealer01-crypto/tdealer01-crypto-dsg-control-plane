@@ -92,7 +92,7 @@ export async function getNextSequenceNumber(orgId: string): Promise<bigint> {
         .limit(1)
         .maybeSingle();
 
-      return BigInt((lastSeq?.sequence_number || 0)) + 1n;
+      return BigInt((lastSeq?.sequence_number || 0)) + BigInt(1);
     }
 
     return BigInt(data || 1);
