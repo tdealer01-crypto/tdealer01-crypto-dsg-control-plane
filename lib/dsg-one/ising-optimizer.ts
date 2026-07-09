@@ -1,11 +1,28 @@
 /**
- * Ising Optimizer (with Mock Mode for Day 1)
+ * Ising Optimizer (mock mode + live HTTP solver mode)
  *
- * Solves QUBO problems using NVIDIA Ising solver.
- * Day 1: Uses deterministic mock for architecture validation.
- * Phase 2+: Calls real NVIDIA Ising API.
+ * Solves QUBO problems with an Ising-style solver.
  *
- * Determinism: Same QUBO + seed → same solution (greedy mock or NVIDIA both deterministic with seed)
+ * Modes:
+ * - mock (default): deterministic greedy assignment, no network. Used by all
+ *   existing callers and CI.
+ * - live: POSTs the QUBO to an external solver endpoint configured via
+ *   NVIDIA_ISING_API_URL (+ optional NVIDIA_ISING_API_KEY bearer auth).
+ *   There is no hardcoded vendor URL: NVIDIA does not publish a public
+ *   QUBO/Ising REST endpoint (cuOpt covers LP/MILP/QP/VRP), so the endpoint
+ *   must point at a self-hosted or managed solver you actually run.
+ *
+ * Mode selection:
+ * - useMock: true  → mock, always.
+ * - useMock: false → live; throws IsingConfigError when the endpoint is not
+ *   configured, and falls back to the deterministic mock on transient solver
+ *   failures unless fallbackToMock is false.
+ * - useMock unset  → live only when NVIDIA_ISING_MODE=live AND the endpoint
+ *   is configured; otherwise mock (preserves existing default behavior).
+ *
+ * Determinism: energy is always recomputed locally from the QUBO (the remote
+ * solver's reported energy is never trusted for the audit trail), and
+ * proofData hashes are real SHA-256 over the sorted solution entries.
  */
 
 import type { QUBOMatrix } from './qubo-builder';
@@ -22,11 +39,18 @@ export interface IsingOptimizationRequest {
   /** Maximum solve time in milliseconds */
   timeout?: number;
 
-  /** Use mock instead of real NVIDIA API */
+  /** Use mock instead of the live solver endpoint */
   useMock?: boolean;
 
   /** Random seed for reproducible solver behavior (for stochastic solvers) */
   seed?: number;
+
+  /**
+   * When a live solve fails transiently (network/HTTP/shape errors), fall
+   * back to the deterministic mock instead of throwing. Defaults to true.
+   * Configuration errors (missing endpoint) always throw.
+   */
+  fallbackToMock?: boolean;
 }
 
 export interface IsingOptimizationResult {
@@ -45,6 +69,12 @@ export interface IsingOptimizationResult {
   /** Solver version identifier */
   solverVersion: string;
 
+  /** Which path produced this result */
+  mode: 'mock' | 'live' | 'live-fallback-mock';
+
+  /** Present only when mode is 'live-fallback-mock' */
+  fallbackReason?: string;
+
   /** Proof metadata for determinism */
   proofData: {
     quboHash: string;
@@ -53,24 +83,68 @@ export interface IsingOptimizationResult {
   };
 }
 
+/** Thrown when live mode is requested but the endpoint is not configured. */
+export class IsingConfigError extends Error {}
+
+/** Thrown when the live solver call fails and fallback is disabled. */
+export class IsingSolverError extends Error {}
+
+export interface IsingLiveConfig {
+  url: string;
+  apiKey?: string;
+}
+
+/**
+ * Read live-solver configuration from the environment.
+ * Returns null when no endpoint is configured.
+ */
+export function resolveIsingLiveConfig(): IsingLiveConfig | null {
+  const url = process.env.NVIDIA_ISING_API_URL?.trim();
+  if (!url) return null;
+  const apiKey = process.env.NVIDIA_ISING_API_KEY?.trim() || undefined;
+  return { url, apiKey };
+}
+
+function liveModeRequested(req: IsingOptimizationRequest): boolean {
+  if (req.useMock === true) return false;
+  if (req.useMock === false) return true;
+  // Unset: opt-in via env, and only when an endpoint is actually configured.
+  return (
+    process.env.NVIDIA_ISING_MODE === 'live' && resolveIsingLiveConfig() !== null
+  );
+}
+
 /**
  * Solve QUBO problem with Ising optimizer.
- *
- * Day 1: useMock=true returns deterministic greedy assignment
- * Phase 2: Real NVIDIA Ising API call with service credentials
  */
 export async function optimizeWithIsing(
   req: IsingOptimizationRequest,
 ): Promise<IsingOptimizationResult> {
-  const startTime = Date.now();
-
-  if (req.useMock ?? true) {
-    // Day 1: Deterministic mock (no API call)
+  if (!liveModeRequested(req)) {
     return generateMockIsingResult(req.quboMatrix, req.seed);
   }
 
-  // Phase 2+: Real NVIDIA Ising API
-  return callNvidiaIsingAPI(req);
+  const config = resolveIsingLiveConfig();
+  if (!config) {
+    throw new IsingConfigError(
+      'Live Ising solve requested but NVIDIA_ISING_API_URL is not set',
+    );
+  }
+
+  try {
+    return await callLiveIsingSolver(req, config);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (req.fallbackToMock === false) {
+      throw new IsingSolverError(`Live Ising solve failed: ${reason}`);
+    }
+    const mockResult = generateMockIsingResult(req.quboMatrix, req.seed);
+    return {
+      ...mockResult,
+      mode: 'live-fallback-mock',
+      fallbackReason: reason,
+    };
+  }
 }
 
 /**
@@ -126,7 +200,7 @@ function generateMockIsingResult(
   const confidence = 0.85;
 
   // Hash for determinism verification
-  const solutionHash = sha256Hash(JSON.stringify(Object.entries(solution).sort()));
+  const solutionHash = hashSolution(solution);
 
   const solveTimeMs = Date.now() - startTime;
 
@@ -136,6 +210,7 @@ function generateMockIsingResult(
     confidence,
     solveTimeMs,
     solverVersion: 'ising-mock-v1',
+    mode: 'mock',
     proofData: {
       quboHash: qubo.problemHash,
       solutionHash,
@@ -145,103 +220,136 @@ function generateMockIsingResult(
 }
 
 /**
- * Real NVIDIA Ising API call (Phase 2+).
- * Not implemented yet; placeholder for integration.
+ * POST the QUBO to the configured live solver endpoint.
+ *
+ * Request body (JSON):
+ *   { problemId, Q, linear, numVariables, timeoutMs, seed }
+ * Expected response body (JSON):
+ *   { solution: number[] | Record<string, 0|1|boolean>, version?, confidence? }
+ *
+ * Energy is always recomputed locally from the QUBO; the remote value is
+ * ignored so the audit trail cannot be skewed by a misbehaving solver.
  */
-async function callNvidiaIsingAPI(
+async function callLiveIsingSolver(
   req: IsingOptimizationRequest,
+  config: IsingLiveConfig,
 ): Promise<IsingOptimizationResult> {
   const startTime = Date.now();
+  const timeoutMs = Math.min(req.timeout ?? 5000, 30000);
 
-  const apiKey = process.env.NVIDIA_ISING_API_KEY;
-  if (!apiKey) {
-    throw new Error('NVIDIA_ISING_API_KEY environment variable not set');
-  }
-
-  // Prepare QUBO payload for NVIDIA API
   const payload = {
+    problemId: req.problemId,
     Q: req.quboMatrix.Q,
     linear: req.quboMatrix.linear,
-    timeout: Math.min(req.timeout ?? 5000, 30000), // Cap at 30s
+    numVariables: req.quboMatrix.numVariables,
+    timeoutMs,
     seed: req.seed,
   };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
   try {
-    const response = await fetch('https://api.nvidia.com/ising/solve', {
+    response = await fetch(config.url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
-
-    if (!response.ok) {
-      throw new Error(`NVIDIA API error: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    // Parse NVIDIA response and extract solution
-    const solution = normalizeSolution(result.solution, req.quboMatrix);
-    const energy = result.energy ?? calculateQUBOEnergy(req.quboMatrix, solution);
-    const confidence = result.confidence ?? 0.90;
-
-    const solutionHash = sha256Hash(JSON.stringify(Object.entries(solution).sort()));
-
-    return {
-      solution,
-      energy,
-      confidence,
-      solveTimeMs: Date.now() - startTime,
-      solverVersion: `nvidia-ising-${result.version ?? 'unknown'}`,
-      proofData: {
-        quboHash: req.quboMatrix.problemHash,
-        solutionHash,
-        seed: req.seed,
-      },
-    };
   } catch (error) {
-    throw new Error(`Failed to call NVIDIA Ising API: ${error instanceof Error ? error.message : String(error)}`);
+    const reason =
+      controller.signal.aborted
+        ? `solver timed out after ${timeoutMs}ms`
+        : error instanceof Error
+          ? error.message
+          : String(error);
+    throw new Error(reason);
+  } finally {
+    clearTimeout(timer);
   }
+
+  if (!response.ok) {
+    throw new Error(`solver HTTP ${response.status}`);
+  }
+
+  const result = (await response.json()) as {
+    solution?: unknown;
+    version?: unknown;
+    confidence?: unknown;
+  };
+
+  const solution = normalizeSolution(result.solution, req.quboMatrix);
+
+  // Determinism boundary: recompute energy locally, never trust remote energy.
+  const energy = calculateQUBOEnergy(req.quboMatrix, solution);
+  const confidence =
+    typeof result.confidence === 'number' &&
+    result.confidence >= 0 &&
+    result.confidence <= 1
+      ? result.confidence
+      : 0.9;
+
+  return {
+    solution,
+    energy,
+    confidence,
+    solveTimeMs: Date.now() - startTime,
+    solverVersion: `ising-live-${typeof result.version === 'string' ? result.version : 'unversioned'}`,
+    mode: 'live',
+    proofData: {
+      quboHash: req.quboMatrix.problemHash,
+      solutionHash: hashSolution(solution),
+      seed: req.seed,
+    },
+  };
 }
 
 /**
- * Normalize solution from NVIDIA API response to our format.
+ * Normalize and validate a solver response solution.
+ * Every QUBO variable must be assigned a binary value; anything else is a
+ * solver contract violation and throws (triggering fallback upstream).
  */
 function normalizeSolution(
-  apiSolution: any,
+  apiSolution: unknown,
   qubo: QUBOMatrix,
-): Record<string, number | boolean> {
-  const solution: Record<string, number | boolean> = {};
+): Record<string, number> {
+  const raw: Record<string, unknown> = {};
 
   if (Array.isArray(apiSolution)) {
-    // Solution as array of binary values
-    for (let i = 0; i < Math.min(apiSolution.length, qubo.variables.length); i++) {
-      solution[qubo.variables[i].id] = apiSolution[i];
+    if (apiSolution.length !== qubo.variables.length) {
+      throw new Error(
+        `solver returned ${apiSolution.length} values for ${qubo.variables.length} variables`,
+      );
     }
-  } else if (typeof apiSolution === 'object') {
-    // Solution as dictionary
-    for (const [key, value] of Object.entries(apiSolution)) {
-      solution[key] = value as number | boolean;
+    for (let i = 0; i < qubo.variables.length; i++) {
+      raw[qubo.variables[i].id] = apiSolution[i];
+    }
+  } else if (apiSolution !== null && typeof apiSolution === 'object') {
+    Object.assign(raw, apiSolution as Record<string, unknown>);
+  } else {
+    throw new Error('solver response has no solution field');
+  }
+
+  const solution: Record<string, number> = {};
+  for (const variable of qubo.variables) {
+    const value = raw[variable.id];
+    if (value === 0 || value === false) {
+      solution[variable.id] = 0;
+    } else if (value === 1 || value === true) {
+      solution[variable.id] = 1;
+    } else {
+      throw new Error(`solver returned non-binary value for variable ${variable.id}`);
     }
   }
 
   return solution;
 }
 
-/**
- * Simple SHA-256 hash implementation fallback.
- * In production, use crypto.subtle.digest or a library.
- */
-function sha256Hash(data: string): string {
-  // Placeholder: return deterministic hash based on content
-  // In production, use: crypto.subtle.digest('SHA-256', new TextEncoder().encode(data))
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return `sha256:${Math.abs(hash).toString(16).padStart(8, '0')}`;
+/** Real SHA-256 over sorted solution entries (hex, same format as problemHash). */
+function hashSolution(solution: Record<string, number | boolean>): string {
+  return sha256Json(Object.entries(solution).sort());
 }
