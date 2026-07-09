@@ -13,9 +13,7 @@ function getStripeClient(): Stripe {
   if (!secretKey) {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
-  return new Stripe(secretKey, {
-    apiVersion: '2024-12-18.acacia',
-  });
+  return new Stripe(secretKey);
 }
 
 type SyncResult = {
@@ -113,15 +111,15 @@ async function syncPendingUsage(): Promise<SyncResult> {
         const meterEvent = await stripe.billing.meterEvents.create({
           event_name: meterId,
           identifier: customer.stripe_subscription_id,
-          value: String(group.quantity),
-        });
+          quantity: group.quantity,
+        } as any);
 
         // Update audit records
         const { error: updateError } = await (supabase as any)
           .from('billing_usage')
           .update({
             synced_to_stripe: true,
-            stripe_meter_event_id: meterEvent.id,
+            stripe_meter_event_id: (meterEvent as any).id,
           })
           .in('id', group.ids);
 
