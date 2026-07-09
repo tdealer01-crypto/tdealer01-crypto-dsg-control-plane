@@ -87,9 +87,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   } catch (error) {
     benchmarkInProgress = false;
+    console.error('[ising-benchmark] Benchmark failed:', error instanceof Error ? error.stack : error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Benchmark execution failed',
       },
       { status: 500 },
     );
@@ -138,9 +139,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         });
     }
   } catch (error) {
+    console.error('[ising-benchmark-get] Failed to fetch benchmark report:', error instanceof Error ? error.stack : error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to retrieve benchmark report',
       },
       { status: 500 },
     );

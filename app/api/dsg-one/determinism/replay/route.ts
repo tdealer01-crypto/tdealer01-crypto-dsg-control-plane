@@ -82,13 +82,12 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('POST /api/dsg-one/determinism/replay failed:', errorMessage);
+    console.error('POST /api/dsg-one/determinism/replay failed:', error instanceof Error ? error.stack : error);
 
     return NextResponse.json(
       {
         ok: false,
-        error: errorMessage,
+        error: 'Failed to replay decision verification',
         isDeterministic: false,
       },
       { status: 500 }

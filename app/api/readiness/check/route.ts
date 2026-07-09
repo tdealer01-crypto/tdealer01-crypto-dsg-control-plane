@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       console.error('[readiness-check] JSON parse error:', {
         ip: clientIp,
-        error: parseError instanceof Error ? parseError.message : String(parseError),
+        error: parseError instanceof Error ? parseError.name : 'Unknown',
         duration: Date.now() - startTime,
       });
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (caught) {
     const duration = Date.now() - startTime;
-    const errorMsg = caught instanceof Error ? caught.message : String(caught);
+    const errorMsg = caught instanceof Error ? caught.name : 'Unknown';
 
     console.error('[readiness-check] Unexpected error:', {
       ip: clientIp,

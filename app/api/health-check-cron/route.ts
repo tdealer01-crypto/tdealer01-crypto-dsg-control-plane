@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(logEntry, { status: healthOk && readinessOk ? 200 : 503 });
   } catch (caught) {
-    const errorMsg = caught instanceof Error ? caught.message : String(caught);
+    const errorMsg = caught instanceof Error ? caught.name : 'Unknown';
 
     console.error('[DSG-HEALTH-ERROR]', {
       timestamp,
