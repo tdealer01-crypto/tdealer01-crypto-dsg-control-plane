@@ -1,5 +1,7 @@
-// Requires: npm install ethers
-// Until installed: signature verification is skipped in dev mode
+// Wallet signature verification with ethers.js
+// Requires: npm install ethers (listed in package.json dependencies)
+// Production mode: uses ethers.verifyMessage for cryptographic verification
+// Dev mode: skips verification when DEFI_DEV_MODE=true for testing
 
 export function getCustodialAddress(): string {
   return process.env.KUB_WALLET_ADDRESS ?? '';
@@ -7,14 +9,24 @@ export function getCustodialAddress(): string {
 
 export async function verifyWalletSignature(message: string, signature: string): Promise<string | null> {
   try {
-    // TODO: Replace with: const { ethers } = await import('ethers'); return ethers.verifyMessage(message, signature);
-    // Dev fallback: extract address from signature header if DEFI_DEV_MODE=true
-    if (process.env.DEFI_DEV_MODE === 'true') {
-      const match = message.match(/address:([0-9a-fA-Fx]+)/);
-      return match?.[1] ?? null;
+    // Production signature verification using ethers.js
+    if (process.env.DEFI_DEV_MODE !== 'true') {
+      const { verifyMessage } = await import('ethers');
+      try {
+        const recoveredAddress = verifyMessage(message, signature);
+        // Validate recovered address is not zero address (invalid signature)
+        return recoveredAddress && recoveredAddress !== '0x0000000000000000000000000000000000000000' ? recoveredAddress : null;
+      } catch (verifyError) {
+        // Invalid signature format or verification failed
+        return null;
+      }
     }
-    return null;
-  } catch {
+
+    // Dev-only fallback: extract address from signature header for testing
+    const match = message.match(/address:([0-9a-fA-Fx]+)/);
+    return match?.[1] ?? null;
+  } catch (err) {
+    console.error('Wallet signature verification error:', err);
     return null;
   }
 }
