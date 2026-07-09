@@ -60,8 +60,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get limit from query params
-    const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') || '10'), 100);
+    // Get limit from query params (support both NextRequest and plain Request for testing)
+    const url = new URL(request.url);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 100);
 
     // List events for this org
     const events = await listRevenueEvents(auth.orgId, { limit });
