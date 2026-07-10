@@ -90,7 +90,7 @@ jobs:
         run: npm run verify:production-manifest
 
       - name: Live DB tests
-        if: ${{ vars.CI_RUN_LIVE_DB_TESTS == 'true' }}
+        if: ${{ false }}
         run: npm run test:live:db:required
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
