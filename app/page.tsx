@@ -171,6 +171,116 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-b border-amber-300/15 bg-[#0f0a05]">
+        <div className="mx-auto max-w-7xl px-6 py-16">
+          <div className="mb-12">
+            <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100">
+              🚀 AI Infrastructure Control Plane
+            </p>
+            <h2 className="mt-6 text-4xl font-bold leading-tight text-white">
+              From GitHub URL to production in 2–3 minutes
+            </h2>
+            <p className="mt-4 max-w-3xl text-lg leading-7 text-slate-300">
+              DSG Setup analyzes your project, auto-discovers infrastructure needs (Stripe, Vercel, Supabase, GitHub, OpenAI), builds a dependency graph, and provisions everything in one approval.
+            </p>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-3 mb-12">
+            <div className="border border-amber-300/20 bg-amber-400/5 p-6 rounded-2xl">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-400/20 text-xl mb-4">📊</div>
+              <h3 className="text-xl font-bold text-white mb-2">Analyze</h3>
+              <p className="text-sm text-slate-300 mb-4">AI + heuristics scan your project. Detect Next.js, PostgreSQL, Stripe, Redis, and more with confidence scores.</p>
+              <code className="text-xs text-amber-200 bg-black/30 rounded px-2 py-1">POST /api/dsg-setup/analyze</code>
+            </div>
+
+            <div className="border border-amber-300/20 bg-amber-400/5 p-6 rounded-2xl">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-400/20 text-xl mb-4">🗺️</div>
+              <h3 className="text-xl font-bold text-white mb-2">Plan</h3>
+              <p className="text-sm text-slate-300 mb-4">Dependency resolver builds phases. GitHub → Supabase → Stripe → Vercel. Topological sort with parallel safety.</p>
+              <code className="text-xs text-amber-200 bg-black/30 rounded px-2 py-1">POST /api/dsg-setup/plan</code>
+            </div>
+
+            <div className="border border-amber-300/20 bg-amber-400/5 p-6 rounded-2xl">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-400/20 text-xl mb-4">⚡</div>
+              <h3 className="text-xl font-bold text-white mb-2">Execute</h3>
+              <p className="text-sm text-slate-300 mb-4">User approves once. DSG provisions all connectors, stores secrets in vault, rolls back on error.</p>
+              <code className="text-xs text-amber-200 bg-black/30 rounded px-2 py-1">POST /api/dsg-setup/execute</code>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
+            <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Vault</p>
+              <p className="text-sm font-semibold text-white">AES-256-GCM encrypted credentials</p>
+            </div>
+            <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Event Bus</p>
+              <p className="text-sm font-semibold text-white">Pub-sub for audit trail</p>
+            </div>
+            <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Rollback</p>
+              <p className="text-sm font-semibold text-white">Reverse on failure</p>
+            </div>
+            <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Capability Engine</p>
+              <p className="text-sm font-semibold text-white">Provider-agnostic resolution</p>
+            </div>
+          </div>
+
+          <div className="bg-white/[0.02] border border-amber-300/20 rounded-2xl p-8">
+            <h3 className="text-2xl font-bold text-white mb-6">7 APIs • 1 Infrastructure OS</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">POST /analyze</code>
+                <p className="text-xs text-slate-400">Discover services & confidence</p>
+              </div>
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">POST /plan</code>
+                <p className="text-xs text-slate-400">Build phases & dependencies</p>
+              </div>
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">POST /approve</code>
+                <p className="text-xs text-slate-400">Verify canonical hash</p>
+              </div>
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">POST /execute</code>
+                <p className="text-xs text-slate-400">Start orchestration</p>
+              </div>
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">GET /status/:id</code>
+                <p className="text-xs text-slate-400">Poll phase progress</p>
+              </div>
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">GET /connectors</code>
+                <p className="text-xs text-slate-400">List providers & capabilities</p>
+              </div>
+              <div className="space-y-2">
+                <code className="text-xs font-mono text-amber-200">GET /vault/secrets</code>
+                <p className="text-xs text-slate-400">Org-scoped credentials</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            <Link href="/dashboard/setup" className="border border-amber-300/30 bg-amber-300/10 rounded-2xl p-6 hover:border-amber-300/60 transition">
+              <p className="text-sm uppercase tracking-[0.2em] text-amber-200 font-semibold">Get started</p>
+              <h4 className="mt-2 text-lg font-bold text-white">Setup Wizard</h4>
+              <p className="mt-2 text-xs text-slate-300">Step through analyze → plan → approve → execute</p>
+            </Link>
+            <Link href="/docs/DSG_SETUP_GUIDE.md" className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 hover:border-white/20 transition">
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 font-semibold">Docs</p>
+              <h4 className="mt-2 text-lg font-bold text-white">Setup Guide</h4>
+              <p className="mt-2 text-xs text-slate-300">Complete API reference with curl examples</p>
+            </Link>
+            <Link href="/docs/LICENSING.md" className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 hover:border-white/20 transition">
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 font-semibold">Licensing</p>
+              <h4 className="mt-2 text-lg font-bold text-white">Pricing Tiers</h4>
+              <p className="mt-2 text-xs text-slate-300">Starter, Pro, Enterprise with decision metering</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section id="public-chat" className="border-b border-emerald-300/15 bg-[#07110f]">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>

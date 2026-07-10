@@ -2235,6 +2235,69 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_connector_credentials: {
+        Row: {
+          id: string
+          org_id: string
+          connector_id: string
+          credential_type: string
+          encrypted_value: string
+          token_type: string | null
+          scope: string | null
+          expires_at: string | null
+          refresh_token_encrypted: string | null
+          rotation_policy: Json
+          fingerprint: string | null
+          health_status: string
+          last_used_at: string | null
+          last_health_check_at: string | null
+          metadata: Json
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          connector_id: string
+          credential_type: string
+          encrypted_value: string
+          token_type?: string | null
+          scope?: string | null
+          expires_at?: string | null
+          refresh_token_encrypted?: string | null
+          rotation_policy?: Json
+          fingerprint?: string | null
+          health_status?: string
+          last_used_at?: string | null
+          last_health_check_at?: string | null
+          metadata?: Json
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          connector_id?: string
+          credential_type?: string
+          encrypted_value?: string
+          token_type?: string | null
+          scope?: string | null
+          expires_at?: string | null
+          refresh_token_encrypted?: string | null
+          rotation_policy?: Json
+          fingerprint?: string | null
+          health_status?: string
+          last_used_at?: string | null
+          last_health_check_at?: string | null
+          metadata?: Json
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dsg_crud_proof_tasks: {
         Row: {
           created_at: string
@@ -6097,6 +6160,9 @@ export type Database = {
           slug: string | null
           status: string
           updated_at: string
+          stripe_customer_id: string | null
+          subscription_tier: string
+          subscription_expires_at: string | null
         }
         Insert: {
           created_at?: string
@@ -6107,6 +6173,9 @@ export type Database = {
           slug?: string | null
           status?: string
           updated_at?: string
+          stripe_customer_id?: string | null
+          subscription_tier?: string
+          subscription_expires_at?: string | null
         }
         Update: {
           created_at?: string
@@ -6117,6 +6186,9 @@ export type Database = {
           slug?: string | null
           status?: string
           updated_at?: string
+          stripe_customer_id?: string | null
+          subscription_tier?: string
+          subscription_expires_at?: string | null
         }
         Relationships: []
       }
@@ -7988,6 +8060,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dsg_usage_metrics: {
+        Row: {
+          id: string
+          org_id: string
+          metric_month: string
+          decision_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          metric_month: string
+          decision_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          metric_month?: string
+          decision_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       webhook_deliveries: {
         Row: {
