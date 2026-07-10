@@ -6,13 +6,7 @@
 import { connectorRegistry } from '../connectors';
 import { credentialStore } from './credential-store';
 import { eventBus } from '../events';
-
-export interface HealthCheckResult {
-  connector_id: string;
-  status: 'healthy' | 'unhealthy' | 'expired';
-  details?: string;
-  checked_at: Date;
-}
+import type { HealthCheckResult } from '../types';
 
 export class HealthChecker {
   private isRunning = false;
@@ -84,9 +78,9 @@ export class HealthChecker {
 
         const result: HealthCheckResult = {
           connector_id: connector.id,
-          status: health.ok ? 'healthy' : 'unhealthy',
-          details: health.reason,
-          checked_at: new Date(),
+          ok: health.ok,
+          detail: health.detail,
+          last_checked_at: new Date(),
         };
 
         results.push(result);

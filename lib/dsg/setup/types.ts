@@ -301,6 +301,7 @@ export interface VaultSecretsResponse {
 // === Health & Status ===
 
 export interface HealthCheckResult {
+  connector_id?: string;
   ok: boolean;
   detail?: string;
   last_checked_at: Date;
