@@ -321,8 +321,3 @@ export interface CapabilityQuery {
   scope?: string;
 }
 
-export interface CapabilityMatch {
-  provider_id: string;
-  confidence: number;
-  supported_modes?: string[];
-}
