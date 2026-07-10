@@ -7,7 +7,8 @@ import { DiscoveryAnalyzer } from '../discovery/analyzer';
 import { dependencyResolver } from '../resolver';
 import { planGenerator } from './plan-generator';
 import { approvalHandler } from './approval-handler';
-import type { ProvisionPlan, ProvisionApprovalRequest, SuggestedProvider } from '../types';
+import type { ProvisionPlan, SuggestedProvider } from '../types';
+import type { ProvisionApprovalRequest } from './approval-handler';
 
 interface ProjectFiles {
   packageJson?: string;
