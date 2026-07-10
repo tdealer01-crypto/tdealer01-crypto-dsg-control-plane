@@ -23,26 +23,26 @@ export async function initializeEventListeners() {
   eventBus.subscribe('plan:approved', async (event) => {
     await auditListener.onEvent(event);
     await webhookListener.onEvent(event);
-    await notificationListener.onPlanApproved(event);
+    await notificationListener.onPlanApproved(event as any);
   });
 
   eventBus.subscribe('provision:started', async (event) => {
     await auditListener.onEvent(event);
     await webhookListener.onEvent(event);
-    await notificationListener.onProvisionStarted(event);
+    await notificationListener.onProvisionStarted(event as any);
   });
 
   eventBus.subscribe('item:executing', (event) => auditListener.onEvent(event));
   eventBus.subscribe('item:completed', async (event) => {
     await auditListener.onEvent(event);
     await webhookListener.onEvent(event);
-    await notificationListener.onItemCompleted(event);
+    await notificationListener.onItemCompleted(event as any);
   });
 
   eventBus.subscribe('item:failed', async (event) => {
     await auditListener.onEvent(event);
     await webhookListener.onEvent(event);
-    await notificationListener.onItemFailed(event);
+    await notificationListener.onItemFailed(event as any);
   });
 
   eventBus.subscribe('secret:stored', (event) => auditListener.onEvent(event));
@@ -51,12 +51,12 @@ export async function initializeEventListeners() {
 
   eventBus.subscribe('health:checked', async (event) => {
     await auditListener.onEvent(event);
-    await healthListener.onHealthChecked(event);
+    await healthListener.onHealthChecked(event as any);
   });
 
   eventBus.subscribe('health:failed', async (event) => {
     await auditListener.onEvent(event);
-    await healthListener.onHealthFailed(event);
+    await healthListener.onHealthFailed(event as any);
   });
 
   eventBus.subscribe('webhook:received', (event) => auditListener.onEvent(event));
@@ -64,13 +64,13 @@ export async function initializeEventListeners() {
   eventBus.subscribe('execution:completed', async (event) => {
     await auditListener.onEvent(event);
     await webhookListener.onEvent(event);
-    await notificationListener.onExecutionCompleted(event);
+    await notificationListener.onExecutionCompleted(event as any);
   });
 
   eventBus.subscribe('execution:failed', async (event) => {
     await auditListener.onEvent(event);
     await webhookListener.onEvent(event);
-    await notificationListener.onExecutionFailed(event);
+    await notificationListener.onExecutionFailed(event as any);
   });
 
   eventBus.subscribe('execution:paused', (event) => auditListener.onEvent(event));
