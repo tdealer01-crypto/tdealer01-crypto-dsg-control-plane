@@ -48,6 +48,7 @@ export async function GET(request: Request) {
         agent_id: agentId,
         decision: 'STABILIZE',
         reason: 'Verified runtime enterprise-proof report generated',
+        policy_version: '1.0',
         evidence: {
           report_class: report.report_class,
           mode: report.mode,

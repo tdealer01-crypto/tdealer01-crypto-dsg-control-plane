@@ -57,7 +57,7 @@ export default function ShowcasePage() {
               <div className="bg-green-900/30 border border-green-300/30 rounded-lg p-6">
                 <p className="text-green-100 font-semibold mb-2">✓ Why This Matters</p>
                 <p className="text-sm text-green-100/80">
-                  SHA-256 hashing makes evidence <strong>cryptographically immutable</strong>. Change 1 bit = completely different hash. Perfect for compliance audits where regulators need to verify decisions weren't altered.
+                  SHA-256 hashing makes evidence <strong>cryptographically immutable</strong>. Change 1 bit = completely different hash. Perfect for compliance audits where regulators need to verify decisions weren&apos;t altered.
                 </p>
               </div>
             </div>
@@ -132,10 +132,10 @@ export default function ShowcasePage() {
               </div>
 
               <p className="text-sm text-slate-300">
-                When regulators ask "How did this AI make this decision?" you can show them:
+                When regulators ask &quot;How did this AI make this decision?&quot; you can show them:
                 - The policy it followed
                 - The evidence it reviewed
-                - The cryptographic proof it's not been tampered with
+                - The cryptographic proof it&apos;s not been tampered with
                 - The audit trail for 2+ years
               </p>
             </div>
