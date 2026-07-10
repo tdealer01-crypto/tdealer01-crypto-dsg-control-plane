@@ -3729,6 +3729,39 @@ export type Database = {
           },
         ]
       }
+      dsg_ui_memory: {
+        Row: {
+          created_at: string
+          id: string
+          memory_key: string
+          org_id: string
+          page_key: string
+          payload: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memory_key?: string
+          org_id: string
+          page_key: string
+          payload?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memory_key?: string
+          org_id?: string
+          page_key?: string
+          payload?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dsg_wave_plans: {
         Row: {
           created_at: string
@@ -4679,6 +4712,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          expires_at: string
           id: string
           org_id: string
           role: string
@@ -4689,6 +4723,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          expires_at?: string
           id?: string
           org_id: string
           role?: string
@@ -4699,6 +4734,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          expires_at?: string
           id?: string
           org_id?: string
           role?: string
