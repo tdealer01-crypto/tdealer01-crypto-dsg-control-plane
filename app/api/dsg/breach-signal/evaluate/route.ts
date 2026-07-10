@@ -11,6 +11,7 @@ import {
   buildRateLimitHeaders,
   getRateLimitKey,
 } from "../../../../../lib/security/rate-limit";
+import type { Json } from "../../../../../lib/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ async function persistEvaluation(params: {
   blockedActions: string[];
   hibpChecked: boolean;
   hibpBreachCount?: number;
-  hibpBreaches?: unknown[];
+  hibpBreaches?: Json;
   hibpElevatedEvidence: boolean;
 }) {
   try {
