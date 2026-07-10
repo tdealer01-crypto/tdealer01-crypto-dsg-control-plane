@@ -315,9 +315,3 @@ export interface ProviderHealthStatus {
 
 // === Capabilities ===
 
-export interface CapabilityQuery {
-  capability: string;
-  resource_type?: string;
-  scope?: string;
-}
-
