@@ -58,7 +58,7 @@ export class AuditListener {
       previous_hash: previousEventHash,
     };
 
-    const eventHash = canonicalHash(chainInput);
+    const eventHash = canonicalHash(JSON.stringify(chainInput));
 
     const record: AuditRecord = {
       id: crypto.randomUUID(),
