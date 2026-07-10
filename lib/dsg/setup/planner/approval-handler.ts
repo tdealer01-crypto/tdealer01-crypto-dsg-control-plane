@@ -4,7 +4,7 @@
  */
 
 import { canonicalHash } from '@/lib/runtime/canonical';
-import type { ProvisionPlan, ProvisionApprovalRequest } from '../types';
+import type { ProvisionPlan } from '../types';
 import type { ApprovalContext, ApprovalResult } from './types';
 
 export interface ProvisionApprovalRequest {
