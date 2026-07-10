@@ -98,8 +98,11 @@ export class DependencyResolver {
 
     const totalTime = this.topoSort.estimateTotalTime(phases);
 
+    // Collect all nodes from phases (they already have phase property set)
+    const nodes = phases.flatMap((phase) => phase.items);
+
     return {
-      nodes: graph.getNodes(),
+      nodes,
       edges: graph.getEdges(),
       phases,
     };

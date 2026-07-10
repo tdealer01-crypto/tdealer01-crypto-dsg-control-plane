@@ -46,7 +46,12 @@ export class DiscoveryAnalyzer {
     const suggestedProviders = this.matchServicesToProviders(merged);
 
     // Generate proof hash for plan approval
-    const proofData = { detected: merged, suggested: suggestedProviders };
+    const proofData = {
+      detected_count: merged.length,
+      suggested_count: suggestedProviders.length,
+      detected_services: JSON.stringify(merged),
+      suggested_providers: JSON.stringify(suggestedProviders),
+    };
     const proofHash = canonicalHash(proofData);
 
     return {
@@ -92,7 +97,7 @@ export class DiscoveryAnalyzer {
     return Array.from(detected).map((service) => ({
       service,
       confidence: 0.85, // Average heuristic confidence
-      source: 'heuristic' as const,
+      source: 'package.json', // Default source for heuristic detection
     }));
   }
 

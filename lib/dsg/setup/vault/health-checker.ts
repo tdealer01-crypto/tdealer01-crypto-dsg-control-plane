@@ -93,9 +93,9 @@ export class HealthChecker {
           timestamp: new Date(),
           data: {
             connector_id: connector.id,
-            status: result.status,
-            last_checked_at: result.checked_at,
-            details: result.details,
+            status: result.ok ? 'healthy' : 'unhealthy',
+            last_checked_at: result.last_checked_at,
+            details: result.detail,
           },
         });
 
@@ -103,16 +103,16 @@ export class HealthChecker {
         await credentialStore.updateHealthStatus(
           'default-org',
           connector.id,
-          result.status,
+          result.ok ? 'healthy' : 'unhealthy',
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
 
         const result: HealthCheckResult = {
           connector_id: connector.id,
-          status: 'unhealthy',
-          details: errorMsg,
-          checked_at: new Date(),
+          ok: false,
+          detail: errorMsg,
+          last_checked_at: new Date(),
         };
 
         results.push(result);
@@ -160,32 +160,32 @@ export class HealthChecker {
 
       const result: HealthCheckResult = {
         connector_id,
-        status: health.ok ? 'healthy' : 'unhealthy',
-        details: health.reason,
-        checked_at: new Date(),
+        ok: health.ok,
+        detail: health.detail,
+        last_checked_at: new Date(),
       };
 
       // Emit event
       await eventBus.emit({
         id: crypto.randomUUID(),
-        type: health.ok ? 'health:checked' : 'health:failed',
+        type: result.ok ? 'health:checked' : 'health:failed',
         org_id,
         timestamp: new Date(),
-        data: health.ok
+        data: result.ok
           ? {
               connector_id,
               status: 'healthy' as const,
-              last_checked_at: new Date(),
+              last_checked_at: result.last_checked_at,
             }
           : {
               connector_id,
-              error: health.reason || 'Health check failed',
+              error: result.detail || 'Health check failed',
               failed_at: new Date(),
             },
       });
 
       // Update status
-      await credentialStore.updateHealthStatus(org_id, connector_id, result.status);
+      await credentialStore.updateHealthStatus(org_id, connector_id, result.ok ? 'healthy' : 'unhealthy');
 
       return result;
     } catch (error) {
@@ -205,9 +205,9 @@ export class HealthChecker {
 
       return {
         connector_id,
-        status: 'unhealthy',
-        details: errorMsg,
-        checked_at: new Date(),
+        ok: false,
+        detail: errorMsg,
+        last_checked_at: new Date(),
       };
     }
   }

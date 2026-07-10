@@ -7,12 +7,12 @@ import { connectorRegistry } from '../connectors';
 import { eventBus } from '../events';
 import type {
   ProvisionPlan,
-  ProvisionApprovalRequest,
   ProvisionExecution,
   DependencyGraph,
   Phase,
 } from '../types';
 import type { PlanItem } from './types';
+import type { ProvisionApprovalRequest } from './approval-handler';
 
 export interface ExecutionCheckpoint {
   execution_id: string;
@@ -226,11 +226,22 @@ export class ProvisionExecutor {
     success: boolean;
     error?: string;
   }> {
+    // Convert DependencyNode[] to PlanItem-compatible items for execution
+    const items = phase.items.map((node) => ({
+      id: node.id,
+      provider: node.provider_id,
+      action: node.action,
+      params: node.params,
+      estimated_seconds: node.estimated_seconds,
+      provides: node.provides,
+      requires: node.requires,
+    }));
+
     if (phase.can_run_parallel) {
       // Execute items in parallel
       return await this.executeParallel(
         execution_id,
-        phase.items,
+        items,
         checkpoint,
         orgId,
         userId,
@@ -239,7 +250,7 @@ export class ProvisionExecutor {
       // Execute items sequentially
       return await this.executeSequential(
         execution_id,
-        phase.items,
+        items,
         checkpoint,
         orgId,
         userId,
@@ -338,7 +349,7 @@ export class ProvisionExecutor {
         throw new Error(`Connector not found: ${item.provider}`);
       }
 
-      const result = await connector.provision({
+      const provisionResult = await connector.provision({
         action: item.action,
         params: item.params || {},
         requires: item.requires || {},
@@ -350,7 +361,7 @@ export class ProvisionExecutor {
       checkpoint.items_completed.push({
         id: item.id,
         status: 'completed',
-        result: result.output,
+        result: provisionResult.result,
         duration_seconds: duration,
         completed_at: new Date(),
       });
@@ -369,7 +380,7 @@ export class ProvisionExecutor {
           provider: item.provider,
           action: item.action,
           duration_seconds: duration,
-          result: result.output,
+          result: provisionResult.result,
           completed_at: new Date(),
         },
       });

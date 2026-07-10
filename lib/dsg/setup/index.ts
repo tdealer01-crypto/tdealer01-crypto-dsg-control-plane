@@ -9,9 +9,34 @@
  * - Types: Central type definitions
  */
 
-export * from './types';
+// Export all setup types (careful: some overlap with sub-module exports)
+export type {
+  ConnectorManifest,
+  ConnectorPermission,
+  ConnectorProvides,
+  ConnectorRequires,
+  ConnectorCapability,
+  ConnectorCredential,
+  DetectedService,
+  SuggestedProvider,
+  DiscoveryAnalysis,
+  DependencyNode,
+  DependencyEdge,
+  DependencyGraph,
+  Phase,
+  ProvisionPlan,
+  ProvisionItem,
+  ExecutedItem,
+  ProvisionExecution,
+  ProvisionAuditEvent,
+  CredentialSummary,
+  HealthCheckResult,
+  ProviderHealthStatus,
+} from './types';
+
 export * from './manifest';
-export * from './capabilities';
+export { capabilityEngine, registerDefaultCapabilities } from './capabilities';
+export type { CapabilityQuery, CapabilityMatch, Capability, CapabilityEngine } from './capabilities';
 export * from './connectors';
 export * from './vault';
 

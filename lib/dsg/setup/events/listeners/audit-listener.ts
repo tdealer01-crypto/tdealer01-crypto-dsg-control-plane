@@ -45,17 +45,21 @@ export class AuditListener {
     // Create audit record
     const auditData = {
       event_type: event.type,
-      event_data: event.data,
+      event_data: JSON.stringify(event.data),
       timestamp: event.timestamp.toISOString(),
       org_id: event.org_id,
-      execution_id: event.execution_id,
-      metadata: event.metadata,
+      execution_id: event.execution_id || '',
+      metadata: JSON.stringify(event.metadata || {}),
     };
 
     // Compute hash-chain hash: SHA256(current_event + previous_hash)
     const chainInput = {
-      ...auditData,
-      previous_hash: previousEventHash,
+      event_type: auditData.event_type,
+      event_data: auditData.event_data,
+      timestamp: auditData.timestamp,
+      org_id: auditData.org_id,
+      execution_id: auditData.execution_id,
+      previous_hash: previousEventHash || '',
     };
 
     const eventHash = canonicalHash(chainInput);
