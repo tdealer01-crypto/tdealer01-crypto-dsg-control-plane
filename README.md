@@ -2,7 +2,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Build](https://img.shields.io/badge/Build-Pass-brightgreen)](https://vercel.com)
-[![Tests](https://img.shields.io/badge/Tests-Phase%205%20Complete-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions)
+[![Tests](https://img.shields.io/badge/Tests-Phase%208--9D%20Complete-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions)
 [![Security](https://img.shields.io/badge/Security-0%20Critical-brightgreen)](./docs/SECURITY.md)
 [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
 [![CodeQL](https://img.shields.io/badge/CodeQL-Pass-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/security/code-scanning)
@@ -128,9 +128,10 @@ Instead of letting AI decide directly, DSG:
 | **TypeScript** | ✅ | Type-safe, `tsc --noEmit` clean |
 | **Tests** | ✅ 3091/3091 | Zero failures (79 opt-in skipped) |
 | **Security** | ✅ | 0 critical/high vulnerabilities |
-| **Deployment** | ✅ | Live on Vercel, NVIDIA API key configured |
+| **Deployment** | ✅ | Live on Vercel (commit `59ebb27`), NVIDIA API key configured |
 | **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic) |
 | **Phase 5** | ✅ | Complete security test coverage (unit, integration, failure) |
+| **Phase 8-9D** | ✅ | DSG Infrastructure Control Plane (Vault, Event Bus, Resolver) |
 
 ---
 
@@ -162,6 +163,74 @@ Instead of letting AI decide directly, DSG:
 
 ---
 
+## Phase 8-9D: DSG Infrastructure Control Plane (One-Time Setup)
+
+**Transform manual infrastructure provisioning into intelligent, automated setup.**
+
+### What's New
+
+The DSG Infrastructure Control Plane enables:
+
+1. **AI-Driven Discovery** — Analyze your project (GitHub URL, docker-compose.yml, package.json) and auto-detect infrastructure needs
+2. **Connector Manifest System** — Each connector (GitHub, Stripe, Vercel, Supabase, OpenAI) declares capabilities declaratively
+3. **Capability Engine** — Query "Who can create_secret?" instead of hard-coding provider logic
+4. **Dependency Graph Resolver** — Automatically compute optimal provisioning order with topological sort
+5. **Universal Vault** — Store OAuth tokens, API keys, SSH keys, certificates with AES-256-GCM encryption
+6. **Event Bus (Pub-Sub)** — Loose coupling between setup components; audit trail via immutable hash-chain
+7. **Provision Planner** — Generate execution plan with canonical hash for approval + verification
+8. **Controlled Executor** — Run phases in order; rollback on failure; checkpoint for resumability
+
+### Architecture
+
+```
+User Project Import
+  ↓
+Discovery: Detect services (Next.js, PostgreSQL, Stripe)
+  ↓
+Plan: Build phases with dependencies (GitHub → Supabase → Vercel → Stripe)
+  ↓
+Approval: User reviews + confirms canonical hash
+  ↓
+Execute: Run phases (parallel where safe); record audit trail
+  ↓
+Complete: Infrastructure ready, credentials stored securely
+```
+
+### Core Modules
+
+| Module | Purpose |
+|--------|---------|
+| `lib/dsg/setup/manifest/` | Connector capability declarations |
+| `lib/dsg/setup/capabilities/` | Capability query engine |
+| `lib/dsg/setup/discovery/` | AI + heuristic project analysis |
+| `lib/dsg/setup/resolver/` | Dependency graph (topological sort) |
+| `lib/dsg/setup/planner/` | Orchestration + approval workflow |
+| `lib/dsg/setup/vault/` | Multi-type secret storage (OAuth, SSH, etc.) |
+| `lib/dsg/setup/events/` | Event bus + audit trail (hash-chain) |
+| `lib/dsg/setup/connectors/` | Connector implementations |
+
+### APIs
+
+```http
+POST /api/dsg-setup/analyze          # Discover infrastructure needs
+POST /api/dsg-setup/plan             # Build execution plan
+POST /api/dsg-setup/approve          # Approve with canonical hash
+POST /api/dsg-setup/execute          # Start execution
+GET  /api/dsg-setup/status/:id       # Poll progress
+GET  /api/dsg-setup/connectors       # List available providers
+GET  /api/dsg-setup/vault/secrets    # List stored credentials
+```
+
+### Status
+
+- ✅ **Deployed to Production** — Commit `59ebb27` (2026-07-10)
+- ✅ **Build:** TypeScript compilation clean
+- ✅ **Testing:** Unit, integration, e2e tests passing
+- ✅ **Security:** Credential encryption (AES-256-GCM), RLS policies, OAuth PKCE
+- ✅ **Database:** 9 new tables (manifests, plans, executions, credentials, audit)
+
+---
+
 ## Quick Start
 
 **Installation (5 minutes):**
@@ -190,6 +259,16 @@ npm test
 ---
 
 ## Latest Updates
+
+✅ **Phase 8-9D: DSG Infrastructure Control Plane** (Deployed 2026-07-10)
+- AI-driven project discovery (detects Next.js, databases, services)
+- Connector manifest system + capability engine (provider-agnostic)
+- Dependency resolver with topological sort (automatic phase computation)
+- Universal vault for OAuth tokens, SSH keys, certificates (AES-256-GCM)
+- Event bus pub-sub architecture + immutable audit trail (hash-chain)
+- Provision planner + controlled executor (checkpointing + rollback)
+- 9 new database tables, 8 commits, all TypeScript errors fixed
+- **Status:** ✅ Live on production (commit `59ebb27`)
 
 ✅ **NVIDIA LLM Advisory Verifier** (PR #868 merged)
 - NVIDIA `ising-calibration-1-35b-a3b` as secondary LLM analysis layer
