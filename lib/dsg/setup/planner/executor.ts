@@ -11,8 +11,8 @@ import type {
   ProvisionExecution,
   DependencyGraph,
   Phase,
-  PlanItem,
 } from '../types';
+import type { PlanItem } from './types';
 
 export interface ExecutionCheckpoint {
   execution_id: string;
@@ -47,6 +47,31 @@ export interface ExecutionResult {
 
 export class ProvisionExecutor {
   private checkpoints: Map<string, ExecutionCheckpoint> = new Map();
+
+  /**
+   * Create initial checkpoint for execution
+   */
+  private createInitialCheckpoint(
+    execution_id: string,
+    phases: Phase[],
+  ): ExecutionCheckpoint {
+    const items_pending: Array<{ id: string }> = [];
+
+    for (const phase of phases) {
+      for (const item of phase.items) {
+        items_pending.push({ id: item.id });
+      }
+    }
+
+    return {
+      execution_id,
+      current_phase: 0,
+      items_completed: [],
+      items_executing: [],
+      items_pending,
+      created_at: new Date(),
+    };
+  }
 
   /**
    * Execute approved plan

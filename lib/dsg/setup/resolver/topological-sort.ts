@@ -5,12 +5,7 @@
 
 import { DependencyGraph } from './graph';
 import type { GraphNode } from './graph';
-
-export interface Phase {
-  phase: number;
-  items: GraphNode[];
-  can_run_parallel: boolean;
-}
+import type { Phase, DependencyNode } from '../types';
 
 export class TopologicalSort {
   /**
@@ -50,7 +45,10 @@ export class TopologicalSort {
 
       phases.push({
         phase: phases.length,
-        items: phaseNodes,
+        items: phaseNodes.map((node) => ({
+          ...node,
+          phase: phases.length,
+        })),
         can_run_parallel: true, // All items in a phase have no inter-dependencies
       });
 

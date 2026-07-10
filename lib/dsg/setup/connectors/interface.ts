@@ -9,7 +9,9 @@ export interface OAuthMetadata {
 }
 
 export interface ProvisionInput {
+  action: string;
   params: Record<string, unknown>;
+  requires?: Record<string, unknown>;
 }
 
 export interface ProvisionOutput {
