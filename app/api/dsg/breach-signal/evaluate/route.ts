@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Json } from "../../../../../lib/database.types";
 import {
   evaluateBreachSignal,
   type BreachSignalInput,
@@ -47,7 +48,7 @@ async function persistEvaluation(params: {
       blocked_actions: params.blockedActions,
       hibp_checked: params.hibpChecked,
       hibp_breach_count: params.hibpBreachCount ?? null,
-      hibp_breaches: params.hibpBreaches ?? null,
+      hibp_breaches: (params.hibpBreaches ?? null) as Json,
       hibp_elevated_evidence: params.hibpElevatedEvidence,
       raw_data_stored: false,
     });

@@ -133,6 +133,7 @@ export class MonitoringEmitter {
         tool_name: toolName,
         tool_input: toolInput,
         risk_level: riskLevel as any,
+        approval_status: 'pending',
       };
 
       const supabase = await this.getSupabase();
@@ -169,7 +170,8 @@ export class MonitoringEmitter {
         .from('monitoring_tool_calls')
         .update({
           tool_output: toolOutput,
-          approval_status: approvalStatus as any,
+          approval_status: approvalStatus,
+          completed_at: new Date().toISOString(),
         })
         .eq('tool_call_id', toolCallId);
 

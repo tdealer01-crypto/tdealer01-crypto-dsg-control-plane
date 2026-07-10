@@ -4712,8 +4712,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
-          expires_at: string
-          id: string
+          expires_at: string | null          id: string
           org_id: string
           role: string
           scope: Json
@@ -4723,8 +4722,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
-          expires_at?: string
-          id?: string
+          expires_at?: string | null          id?: string
           org_id: string
           role?: string
           scope?: Json
@@ -4734,8 +4732,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
-          expires_at?: string
-          id?: string
+          expires_at?: string | null          id?: string
           org_id?: string
           role?: string
           scope?: Json

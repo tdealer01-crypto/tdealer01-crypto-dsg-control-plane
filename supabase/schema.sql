@@ -361,6 +361,7 @@ create table public.guest_access_grants (
   email text not null,
   role text not null default 'guest_auditor',
   scope jsonb not null default '{}'::jsonb,
+  expires_at timestamptz null,
   status text not null default 'active',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
