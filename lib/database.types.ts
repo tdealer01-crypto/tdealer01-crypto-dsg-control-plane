@@ -902,6 +902,63 @@ export type Database = {
         }
         Relationships: []
       }
+      breach_signal_evaluations: {
+        Row: {
+          allowed_actions: Json
+          blocked_actions: Json
+          created_at: string
+          decision: string
+          evidence_level: string
+          hibp_breach_count: number | null
+          hibp_breaches: Json | null
+          hibp_checked: boolean
+          hibp_elevated_evidence: boolean
+          id: string
+          legal_purpose: string | null
+          owner: string | null
+          raw_data_stored: boolean
+          reasons: Json
+          severity: string
+          source_url: string | null
+        }
+        Insert: {
+          allowed_actions?: Json
+          blocked_actions?: Json
+          created_at?: string
+          decision: string
+          evidence_level: string
+          hibp_breach_count?: number | null
+          hibp_breaches?: Json | null
+          hibp_checked?: boolean
+          hibp_elevated_evidence?: boolean
+          id?: string
+          legal_purpose?: string | null
+          owner?: string | null
+          raw_data_stored?: boolean
+          reasons?: Json
+          severity: string
+          source_url?: string | null
+        }
+        Update: {
+          allowed_actions?: Json
+          blocked_actions?: Json
+          created_at?: string
+          decision?: string
+          evidence_level?: string
+          hibp_breach_count?: number | null
+          hibp_breaches?: Json | null
+          hibp_checked?: boolean
+          hibp_elevated_evidence?: boolean
+          id?: string
+          legal_purpose?: string | null
+          owner?: string | null
+          raw_data_stored?: boolean
+          reasons?: Json
+          severity?: string
+          source_url?: string | null
+        }
+        Relationships: []
+      }
       claim_readiness_artifacts: {
         Row: {
           artifact_data: Json | null
