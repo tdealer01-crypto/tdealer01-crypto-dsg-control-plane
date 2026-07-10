@@ -2,8 +2,9 @@
 name: Agent command
 about: Request Claude/Codex/DSG agent work with evidence and safety boundaries
 title: "[agent] "
-labels: ["agent-command", "needs-verification"]
-assignees: []
+labels: agent-command, needs-verification
+assignees: ''
+
 ---
 
 ## Agent trigger
