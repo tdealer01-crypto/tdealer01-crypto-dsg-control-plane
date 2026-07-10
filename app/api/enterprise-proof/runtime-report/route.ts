@@ -56,6 +56,7 @@ export async function GET(request: Request) {
           actor_user_id: access.userId,
           audit_mode: 'best_effort',
         },
+        policy_version: 'verified_runtime_v1',
         created_at: new Date().toISOString(),
       });
       auditLogged = !auditError;

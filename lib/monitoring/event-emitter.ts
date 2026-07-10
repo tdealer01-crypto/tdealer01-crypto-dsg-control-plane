@@ -93,7 +93,7 @@ export class MonitoringEmitter {
         execution_id: this.executionId as any,
         event_type: eventType as any,
         timestamp: new Date().toISOString(),
-        data: metadata || null,
+        metadata: metadata || null,
       };
 
       const supabase = await this.getSupabase();
@@ -131,8 +131,8 @@ export class MonitoringEmitter {
       const toolCall: ToolCallInsert = {
         execution_id: this.executionId as any,
         tool_name: toolName,
-        input: toolInput,
-        status: 'pending' as any,
+        tool_input: toolInput,
+        risk_level: riskLevel as any,
       };
 
       const supabase = await this.getSupabase();
@@ -168,10 +168,10 @@ export class MonitoringEmitter {
       const { error } = await supabase
         .from('monitoring_tool_calls')
         .update({
-          output: toolOutput,
-          status: approvalStatus as any,
+          tool_output: toolOutput,
+          approval_status: approvalStatus as any,
         })
-        .eq('call_id', toolCallId);
+        .eq('tool_call_id', toolCallId);
 
       if (error) {
         console.warn('Failed to complete tool call:', error.message);
@@ -202,9 +202,9 @@ export class MonitoringEmitter {
     try {
       const tokenUsage: TokenUsageInsert = {
         execution_id: this.executionId as any,
+        model_name: modelName,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
-        total_tokens: inputTokens + outputTokens,
         cost_usd: costUsd,
       };
 
