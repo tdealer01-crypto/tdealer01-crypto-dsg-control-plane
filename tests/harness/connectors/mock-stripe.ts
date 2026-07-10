@@ -116,8 +116,8 @@ export class MockStripeConnector extends ConnectorSimulator implements Connector
       ...result,
       output: {
         ...result.output,
-        webhook_endpoint: `we_${Math.random().toString(36).substr(2, 9)}`,
-        webhook_secret: `whsec_${Math.random().toString(36).substr(2, 20)}`,
+        webhook_endpoint: `we_${this.secureRandomHex(9)}`,
+        webhook_secret: `whsec_${this.secureRandomHex(20)}`,
       },
     };
   }
@@ -136,10 +136,24 @@ export class MockStripeConnector extends ConnectorSimulator implements Connector
       ...result,
       output: {
         ...result.output,
-        restricted_key: `rk_test_${Math.random().toString(36).substr(2, 30)}`,
+        restricted_key: `rk_test_${this.secureRandomHex(30)}`,
         permissions: ['read', 'write:payment_intents'],
       },
     };
+  }
+
+  /**
+   * Helper: securely generate random hex string
+   */
+  private secureRandomHex(length: number): string {
+    const bytes = new Uint8Array(Math.ceil(length / 2));
+    if (typeof global !== 'undefined' && global.crypto) {
+      global.crypto.getRandomValues(bytes);
+    } else {
+      const crypto = require('crypto');
+      crypto.randomFillSync(bytes);
+    }
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, length);
   }
 
   /**
