@@ -417,6 +417,98 @@ export type Database = {
           },
         ]
       }
+      agent_profiles: {
+        Row: {
+          id: string
+          agent_id: string
+          wallet_address: string
+          skills: string[]
+          reputation: number
+          tier: string
+          completed_jobs: number
+          total_earnings: number
+          last_active: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          wallet_address: string
+          skills?: string[]
+          reputation?: number
+          tier?: string
+          completed_jobs?: number
+          total_earnings?: number
+          last_active?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          wallet_address?: string
+          skills?: string[]
+          reputation?: number
+          tier?: string
+          completed_jobs?: number
+          total_earnings?: number
+          last_active?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_executions: {
+        Row: {
+          id: string
+          job_id: string
+          agent_id: string
+          status: string
+          deliverable: string | null
+          proof_hash: string | null
+          quality_score: number | null
+          tx_signature: string | null
+          started_at: string
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          agent_id: string
+          status: string
+          deliverable?: string | null
+          proof_hash?: string | null
+          quality_score?: number | null
+          tx_signature?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          agent_id?: string
+          status?: string
+          deliverable?: string | null
+          proof_hash?: string | null
+          quality_score?: number | null
+          tx_signature?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_executions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_profiles"
+            referencedColumns: ["agent_id"]
+          }
+        ]
+      }
       alert_events: {
         Row: {
           code: string
