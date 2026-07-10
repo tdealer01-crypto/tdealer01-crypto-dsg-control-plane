@@ -46,8 +46,7 @@ export class DiscoveryAnalyzer {
     const suggestedProviders = this.matchServicesToProviders(merged);
 
     // Generate proof hash for plan approval
-    const proofData = { detected: merged, suggested: suggestedProviders };
-    const proofHash = canonicalHash(proofData);
+    const proofHash = canonicalHash(JSON.stringify({ detected: merged, suggested: suggestedProviders }));
 
     return {
       id: crypto.randomUUID(),

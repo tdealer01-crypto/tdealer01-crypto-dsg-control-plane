@@ -2235,6 +2235,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_ui_memory: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string
+          page_key: string
+          memory_key: string
+          payload: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          user_id: string
+          page_key: string
+          memory_key: string
+          payload: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string
+          page_key?: string
+          memory_key?: string
+          payload?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dsg_connector_credentials: {
         Row: {
           id: string
@@ -4662,6 +4695,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          expires_at: string | null
           id: string
           org_id: string
           role: string
@@ -4672,6 +4706,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          expires_at?: string | null
           id?: string
           org_id: string
           role?: string
@@ -4682,6 +4717,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          expires_at?: string | null
           id?: string
           org_id?: string
           role?: string

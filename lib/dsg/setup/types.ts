@@ -68,7 +68,7 @@ export interface ConnectorCredential {
 export interface DetectedService {
   service: string;
   confidence: number;
-  source?: 'package.json' | 'docker-compose' | 'env' | 'workflow' | 'terraform' | 'dockerfile' | 'ai';
+  source?: 'heuristic' | 'package.json' | 'docker-compose' | 'env' | 'workflow' | 'terraform' | 'dockerfile' | 'ai';
   description?: string;
 }
 

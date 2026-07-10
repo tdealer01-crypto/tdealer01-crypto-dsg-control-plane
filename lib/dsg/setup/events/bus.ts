@@ -87,7 +87,7 @@ export class EventBus {
 
     // Fire all listeners in parallel but don't fail if one throws
     const promises = Array.from(listeners).map((listener) =>
-      listener(event).catch((error) => {
+      (listener as EventListener)(event as any).catch((error) => {
         console.error(`[event-bus] Listener failed for ${event.type}:`, error);
       }),
     );
