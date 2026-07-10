@@ -1,15 +1,22 @@
 # 🔐 DSG: Deterministic Execution & Governance
 
+[![Tests](https://img.shields.io/badge/tests-3091%2F3091_passing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
+[![Mutation](https://img.shields.io/badge/mutation-72.08%25-blue?style=for-the-badge)](BENCHMARKS.md)
+[![Gate](https://img.shields.io/badge/gate-11ms_avg-orange?style=for-the-badge)](BENCHMARKS.md)
+[![PDPA Ready](https://img.shields.io/badge/PDPA-มาตรา37พร้อม-purple?style=for-the-badge)](BENCHMARKS.md)
+
+> ### 🎯 ท้าพิสูจน์: ลองแก้หลักฐาน 1 ตัวอักษร ถ้าแก้แล้วผ่าน ผมให้ 10,000 บาท
+> [▶️ กดลอง Tamper Test สดๆ ไม่ต้องสมัคร](/showcase) | [📊 ดู Benchmark เทียบตลาด](BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+**DSG ONE คืออะไรใน 1 บรรทัด:** พิมพ์ Policy ภาษาไทยว่า "ห้ามโอนเกิน 50,000" ระบบบล็อก AI อัตโนมัติใน 11ms พร้อมออกใบเสร็จ SHA-256 ที่ปลอมไม่ได้และทำซ้ำได้ 2 ปี
+
+---
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Build](https://img.shields.io/badge/Build-Pass-brightgreen)](https://vercel.com)
-[![Tests](https://img.shields.io/badge/Tests-Phase%205%20Complete-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions)
 [![Security](https://img.shields.io/badge/Security-0%20Critical-brightgreen)](./docs/SECURITY.md)
 [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
 [![CodeQL](https://img.shields.io/badge/CodeQL-Pass-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/security/code-scanning)
-
-> **Production AI governance platform. Formal proofs. Evidence-backed. Enterprise-ready.**
-
-**Live Demo:** https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 ---
 
