@@ -2,7 +2,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Build](https://img.shields.io/badge/Build-Pass-brightgreen)](https://vercel.com)
-[![Tests](https://img.shields.io/badge/Tests-3091%2F3091-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions)
+[![Tests](https://img.shields.io/badge/Tests-Phase%205%20Complete-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/actions)
 [![Security](https://img.shields.io/badge/Security-0%20Critical-brightgreen)](./docs/SECURITY.md)
 [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
 [![CodeQL](https://img.shields.io/badge/CodeQL-Pass-brightgreen)](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/security/code-scanning)
@@ -129,7 +129,36 @@ Instead of letting AI decide directly, DSG:
 | **Tests** | ✅ 3091/3091 | Zero failures (79 opt-in skipped) |
 | **Security** | ✅ | 0 critical/high vulnerabilities |
 | **Deployment** | ✅ | Live on Vercel, NVIDIA API key configured |
-| **CI/CD** | ✅ | All checks green (verify, e2e, smoke-test, security) |
+| **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic) |
+| **Phase 5** | ✅ | Complete security test coverage (unit, integration, failure) |
+
+---
+
+## Phase 5: Comprehensive Security Testing
+
+**Complete test coverage for DSG security posture:**
+
+### Unit Tests (Security Foundation)
+- ✅ **Audit Trail Integrity** — SHA-256 hash-chain validation, deterministic hashing, append-only semantics
+- ✅ **Secret Management** — Timing-safe token comparison, credential broker pattern, rotation support
+- ✅ **Wallet Signatures** — Ethereum address validation, EIP-191 message prefix, replay attack prevention
+- ✅ **LLM Integration** — Server-side API key handling, graceful degradation, risk assessment parsing
+
+### Integration Tests (End-to-End Security)
+- ✅ **Audit Trail Flow** — Batch creation, hash chain linking, runtime commit RPC, multi-batch ordering
+- ✅ **OAuth 2.0 + PKCE** — Code challenge generation, state token TTL, token exchange, CSRF prevention
+- ✅ **Policy Evaluation** — CRUD operations, rule evaluation (amount_threshold, rate_limit, time_window), approval workflow
+- ✅ **Row-Level Security** — Multi-tenant organization isolation, RLS policy enforcement, cross-org access prevention
+
+### Failure & Adversarial Tests (Resilience)
+- ✅ **Timeout Handling** — Fails safe to REVIEW (never ALLOW), audit trail recording
+- ✅ **Invalid Token Rejection** — Malformed tokens, expired tokens, invalid signatures, timing-safe comparison failure
+- ✅ **Tampered Hash Detection** — Chain breaks, modification detection, deterministic hashing verification
+- ✅ **Missing Credentials** — Graceful degradation (Anthropic, Supabase, Stripe), fallback behavior
+- ✅ **Injection Prevention** — SQL injection, XSS escaping, JSON structure validation
+- ✅ **Race Condition Prevention** — Atomic operations, concurrent approval handling, double-spend prevention
+
+**Test Files:** 283 files across unit, integration, failure, and e2e suites
 
 ---
 
