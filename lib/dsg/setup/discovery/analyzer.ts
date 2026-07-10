@@ -97,7 +97,7 @@ export class DiscoveryAnalyzer {
     return Array.from(detected).map((service) => ({
       service,
       confidence: 0.85, // Average heuristic confidence
-      source: 'package.json', // Default source for heuristic detection
+      source: 'heuristic',
     }));
   }
 

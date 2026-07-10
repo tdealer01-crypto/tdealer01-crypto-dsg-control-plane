@@ -60,7 +60,7 @@ export class WebhookListener {
   /**
    * Listen to events and deliver to webhooks
    */
-  async onEvent(event: DSGEvent): Promise<void> {
+  async onEvent<T = Record<string, unknown>>(event: DSGEvent<T>): Promise<void> {
     const subscriptions = Array.from(this.subscriptions.values()).filter((s) => {
       if (!s.active) return false;
       if (event.org_id !== s.org_id) return false;
@@ -71,7 +71,7 @@ export class WebhookListener {
 
     // Deliver to all matching subscriptions (async, non-blocking)
     for (const subscription of subscriptions) {
-      this.deliverWithRetry(subscription, event).catch((error) => {
+      this.deliverWithRetry(subscription, event as DSGEvent).catch((error) => {
         console.error(
           `[webhook-listener] Failed to deliver to ${subscription.webhook_url}:`,
           error,

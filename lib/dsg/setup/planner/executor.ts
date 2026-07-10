@@ -9,9 +9,9 @@ import type {
   ProvisionPlan,
   ProvisionExecution,
   DependencyGraph,
+  DependencyNode,
   Phase,
 } from '../types';
-import type { PlanItem } from './types';
 import type { ProvisionApprovalRequest } from './approval-handler';
 
 export interface ExecutionCheckpoint {
@@ -226,22 +226,11 @@ export class ProvisionExecutor {
     success: boolean;
     error?: string;
   }> {
-    // Convert DependencyNode[] to PlanItem-compatible items for execution
-    const items = phase.items.map((node) => ({
-      id: node.id,
-      provider: node.provider_id,
-      action: node.action,
-      params: node.params,
-      estimated_seconds: node.estimated_seconds,
-      provides: node.provides,
-      requires: node.requires,
-    }));
-
     if (phase.can_run_parallel) {
       // Execute items in parallel
       return await this.executeParallel(
         execution_id,
-        items,
+        phase.items,
         checkpoint,
         orgId,
         userId,
@@ -250,7 +239,7 @@ export class ProvisionExecutor {
       // Execute items sequentially
       return await this.executeSequential(
         execution_id,
-        items,
+        phase.items,
         checkpoint,
         orgId,
         userId,
@@ -263,7 +252,7 @@ export class ProvisionExecutor {
    */
   private async executeParallel(
     execution_id: string,
-    items: PlanItem[],
+    items: DependencyNode[],
     checkpoint: ExecutionCheckpoint,
     orgId: string,
     userId: string,
@@ -291,7 +280,7 @@ export class ProvisionExecutor {
    */
   private async executeSequential(
     execution_id: string,
-    items: PlanItem[],
+    items: DependencyNode[],
     checkpoint: ExecutionCheckpoint,
     orgId: string,
     userId: string,
@@ -314,7 +303,7 @@ export class ProvisionExecutor {
    */
   private async executeItem(
     execution_id: string,
-    item: PlanItem,
+    item: DependencyNode,
     checkpoint: ExecutionCheckpoint,
     orgId: string,
     userId: string,
@@ -336,7 +325,7 @@ export class ProvisionExecutor {
         data: {
           execution_id,
           item_id: item.id,
-          provider: item.provider,
+          provider: item.provider_id,
           action: item.action,
           phase: checkpoint.current_phase,
           started_at: new Date(),
@@ -344,9 +333,9 @@ export class ProvisionExecutor {
       });
 
       // Get connector and call provision
-      const connector = connectorRegistry.get(item.provider);
+      const connector = connectorRegistry.get(item.provider_id);
       if (!connector) {
-        throw new Error(`Connector not found: ${item.provider}`);
+        throw new Error(`Connector not found: ${item.provider_id}`);
       }
 
       const provisionResult = await connector.provision({
@@ -377,7 +366,7 @@ export class ProvisionExecutor {
         data: {
           execution_id,
           item_id: item.id,
-          provider: item.provider,
+          provider: item.provider_id,
           action: item.action,
           duration_seconds: duration,
           result: provisionResult.result,
@@ -410,7 +399,7 @@ export class ProvisionExecutor {
         data: {
           execution_id,
           item_id: item.id,
-          provider: item.provider,
+          provider: item.provider_id,
           action: item.action,
           error: errorMsg,
           failed_at: new Date(),

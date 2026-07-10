@@ -68,7 +68,7 @@ export interface ConnectorCredential {
 export interface DetectedService {
   service: string;
   confidence: number;
-  source?: 'package.json' | 'docker-compose' | 'env' | 'workflow' | 'terraform' | 'dockerfile' | 'ai';
+  source?: 'package.json' | 'docker-compose' | 'env' | 'workflow' | 'terraform' | 'dockerfile' | 'ai' | 'heuristic';
   description?: string;
 }
 
@@ -153,6 +153,9 @@ export interface ProvisionItem {
   provides?: Record<string, unknown>;
   requires?: Record<string, unknown>;
 }
+
+// Alias for planner/executor call sites that refer to this shape as PlanItem.
+export type PlanItem = ProvisionItem;
 
 export interface ExecutedItem {
   id: string;
@@ -315,15 +318,5 @@ export interface ProviderHealthStatus {
 }
 
 // === Capabilities ===
-
-export interface CapabilityQuery {
-  capability: string;
-  resource_type?: string;
-  scope?: string;
-}
-
-export interface CapabilityMatch {
-  provider_id: string;
-  confidence: number;
-  supported_modes?: string[];
-}
+// CapabilityQuery/CapabilityMatch live in ./capabilities/types (the version
+// actually wired into the capability engine); re-exported via ./capabilities.

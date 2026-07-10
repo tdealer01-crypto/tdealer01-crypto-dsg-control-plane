@@ -81,10 +81,10 @@ export class DependencyResolver {
 
     const phases = this.topoSort.sort(graph);
 
-    // Convert to Phase type
+    // Convert to Phase type, stamping each item with its resolved phase number
     return phases.map((phase) => ({
       phase: phase.phase,
-      items: phase.items,
+      items: phase.items.map((item) => ({ ...item, phase: phase.phase })),
       can_run_parallel: phase.can_run_parallel,
     }));
   }

@@ -1,5 +1,13 @@
 export { EventBus, eventBus } from './bus';
 export type { DSGEvent, AnyEvent, EventListener, EventType } from './types';
+import type {
+  PlanApprovedEvent,
+  ProvisionStartedEvent,
+  ItemCompletedEvent,
+  ItemFailedEvent,
+  HealthCheckedEvent,
+  HealthFailedEvent,
+} from './types';
 export { auditListener } from './listeners/audit-listener';
 export { webhookListener } from './listeners/webhook-listener';
 export { healthListener } from './listeners/health-listener';
@@ -17,62 +25,62 @@ export async function initializeEventListeners() {
   const { notificationListener } = await import('./listeners/notification-listener');
 
   // Subscribe all listeners to event bus
-  eventBus.subscribe('connector:connected', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('discovery:completed', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('plan:generated', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('plan:approved', async (event) => {
-    await auditListener.onEvent(event as any);
-    await webhookListener.onEvent(event as any);
-    await notificationListener.onPlanApproved(event as any);
+  eventBus.subscribe('connector:connected', (event) => auditListener.onEvent(event));
+  eventBus.subscribe('discovery:completed', (event) => auditListener.onEvent(event));
+  eventBus.subscribe('plan:generated', (event) => auditListener.onEvent(event));
+  eventBus.subscribe<PlanApprovedEvent>('plan:approved', async (event) => {
+    await auditListener.onEvent(event);
+    await webhookListener.onEvent(event);
+    await notificationListener.onPlanApproved(event);
   });
 
-  eventBus.subscribe('provision:started', async (event) => {
-    await auditListener.onEvent(event as any);
-    await webhookListener.onEvent(event as any);
-    await notificationListener.onProvisionStarted(event as any);
+  eventBus.subscribe<ProvisionStartedEvent>('provision:started', async (event) => {
+    await auditListener.onEvent(event);
+    await webhookListener.onEvent(event);
+    await notificationListener.onProvisionStarted(event);
   });
 
-  eventBus.subscribe('item:executing', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('item:completed', async (event) => {
-    await auditListener.onEvent(event as any);
-    await webhookListener.onEvent(event as any);
-    await notificationListener.onItemCompleted(event as any);
+  eventBus.subscribe('item:executing', (event) => auditListener.onEvent(event));
+  eventBus.subscribe<ItemCompletedEvent>('item:completed', async (event) => {
+    await auditListener.onEvent(event);
+    await webhookListener.onEvent(event);
+    await notificationListener.onItemCompleted(event);
   });
 
-  eventBus.subscribe('item:failed', async (event) => {
-    await auditListener.onEvent(event as any);
-    await webhookListener.onEvent(event as any);
-    await notificationListener.onItemFailed(event as any);
+  eventBus.subscribe<ItemFailedEvent>('item:failed', async (event) => {
+    await auditListener.onEvent(event);
+    await webhookListener.onEvent(event);
+    await notificationListener.onItemFailed(event);
   });
 
-  eventBus.subscribe('secret:stored', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('secret:rotated', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('secret:accessed', (event) => auditListener.onEvent(event as any));
+  eventBus.subscribe('secret:stored', (event) => auditListener.onEvent(event));
+  eventBus.subscribe('secret:rotated', (event) => auditListener.onEvent(event));
+  eventBus.subscribe('secret:accessed', (event) => auditListener.onEvent(event));
 
-  eventBus.subscribe('health:checked', async (event) => {
-    await auditListener.onEvent(event as any);
-    await healthListener.onHealthChecked(event as any);
+  eventBus.subscribe<HealthCheckedEvent>('health:checked', async (event) => {
+    await auditListener.onEvent(event);
+    await healthListener.onHealthChecked(event);
   });
 
-  eventBus.subscribe('health:failed', async (event) => {
-    await auditListener.onEvent(event as any);
-    await healthListener.onHealthFailed(event as any);
+  eventBus.subscribe<HealthFailedEvent>('health:failed', async (event) => {
+    await auditListener.onEvent(event);
+    await healthListener.onHealthFailed(event);
   });
 
-  eventBus.subscribe('webhook:received', (event) => auditListener.onEvent(event as any));
+  eventBus.subscribe('webhook:received', (event) => auditListener.onEvent(event));
 
   eventBus.subscribe('execution:completed', async (event) => {
-    await auditListener.onEvent(event as any);
-    await webhookListener.onEvent(event as any);
-    await notificationListener.onExecutionCompleted(event as any);
+    await auditListener.onEvent(event);
+    await webhookListener.onEvent(event);
+    await notificationListener.onExecutionCompleted(event);
   });
 
   eventBus.subscribe('execution:failed', async (event) => {
-    await auditListener.onEvent(event as any);
-    await webhookListener.onEvent(event as any);
-    await notificationListener.onExecutionFailed(event as any);
+    await auditListener.onEvent(event);
+    await webhookListener.onEvent(event);
+    await notificationListener.onExecutionFailed(event);
   });
 
-  eventBus.subscribe('execution:paused', (event) => auditListener.onEvent(event as any));
-  eventBus.subscribe('execution:resumed', (event) => auditListener.onEvent(event as any));
+  eventBus.subscribe('execution:paused', (event) => auditListener.onEvent(event));
+  eventBus.subscribe('execution:resumed', (event) => auditListener.onEvent(event));
 }

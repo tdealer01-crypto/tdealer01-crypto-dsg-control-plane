@@ -3,7 +3,7 @@
  * Records events to immutable hash-chain audit trail
  */
 
-import { canonicalHash } from '@/lib/runtime/canonical';
+import { canonicalHash, type CanonicalInput } from '@/lib/runtime/canonical';
 import type { DSGEvent } from '../types';
 
 interface AuditRecord {
@@ -37,7 +37,7 @@ export class AuditListener {
   /**
    * Listen to all events and record to audit trail
    */
-  async onEvent(event: DSGEvent): Promise<void> {
+  async onEvent<T = Record<string, unknown>>(event: DSGEvent<T>): Promise<void> {
     // Get previous event hash (last item in chain)
     const previousRecord = this.auditChain[this.auditChain.length - 1];
     const previousEventHash = previousRecord?.event_hash || null;
@@ -62,7 +62,7 @@ export class AuditListener {
       previous_hash: previousEventHash || '',
     };
 
-    const eventHash = canonicalHash(chainInput);
+    const eventHash = canonicalHash(chainInput as CanonicalInput);
 
     const record: AuditRecord = {
       id: crypto.randomUUID(),
