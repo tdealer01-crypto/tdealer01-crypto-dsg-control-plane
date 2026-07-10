@@ -6523,6 +6523,45 @@ export type Database = {
         }
         Relationships: []
       }
+      revenue_events: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          org_id: string
+          plan_id: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          plan_id?: string | null
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          plan_id?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       runtime_approval_requests: {
         Row: {
           agent_id: string | null
