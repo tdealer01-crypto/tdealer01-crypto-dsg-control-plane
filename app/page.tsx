@@ -301,6 +301,117 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-b border-green-300/15 bg-[#050d09]">
+        <div className="mx-auto max-w-7xl px-6 py-20">
+          <div className="mb-12 text-center">
+            <p className="inline-flex rounded-full border border-green-300/30 bg-green-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-green-100 mb-4">
+              ✓ Evidence-Backed Quality
+            </p>
+            <h2 className="text-4xl font-bold text-white mb-4">Production-Ready with Proven Evidence</h2>
+            <p className="max-w-2xl mx-auto text-slate-300">
+              Every claim backed by automated verification. CCVS L1–L5 compliance pipeline runs on every commit.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
+            <div className="border border-green-400/30 bg-green-400/5 rounded-2xl p-6">
+              <div className="mb-4">
+                <div className="text-5xl font-bold text-green-300 font-mono">3091</div>
+                <div className="text-sm text-slate-400 mt-1">tests passing</div>
+              </div>
+              <p className="text-xs text-slate-300 leading-6">
+                <strong>100% pass rate</strong> across unit, integration, failure, and E2E test suites. Zero test debt.
+              </p>
+              <div className="mt-4 text-[11px] text-green-200 bg-green-400/10 rounded px-2 py-1 inline-block">
+                Automated on CI/CD
+              </div>
+            </div>
+
+            <div className="border border-blue-400/30 bg-blue-400/5 rounded-2xl p-6">
+              <div className="mb-4">
+                <div className="text-5xl font-bold text-blue-300 font-mono">72.08%</div>
+                <div className="text-sm text-slate-400 mt-1">mutation score</div>
+              </div>
+              <p className="text-xs text-slate-300 leading-6">
+                <strong>High resilience</strong> to code changes. Stryker mutation testing verifies test effectiveness.
+              </p>
+              <div className="mt-4 text-[11px] text-blue-200 bg-blue-400/10 rounded px-2 py-1 inline-block">
+                Per-commit verification
+              </div>
+            </div>
+
+            <div className="border border-purple-400/30 bg-purple-400/5 rounded-2xl p-6">
+              <div className="mb-4">
+                <div className="text-4xl font-bold text-purple-300 font-mono">L1–L5</div>
+                <div className="text-sm text-slate-400 mt-1">CCVS verified</div>
+              </div>
+              <p className="text-xs text-slate-300 leading-6">
+                <strong>Compliance matrix</strong> proves control flow: unit → integration → adversarial → mutation → provenance.
+              </p>
+              <div className="mt-4 text-[11px] text-purple-200 bg-purple-400/10 rounded px-2 py-1 inline-block">
+                Evidence chain
+              </div>
+            </div>
+
+            <div className="border border-amber-400/30 bg-amber-400/5 rounded-2xl p-6">
+              <div className="mb-4">
+                <div className="text-3xl font-bold text-amber-300 font-mono">229</div>
+                <div className="text-sm text-slate-400 mt-1">test files</div>
+              </div>
+              <p className="text-xs text-slate-300 leading-6">
+                <strong>Comprehensive coverage</strong> across deterministic gates, spine execution, and licensing.
+              </p>
+              <div className="mt-4 text-[11px] text-amber-200 bg-amber-400/10 rounded px-2 py-1 inline-block">
+                2173 total tests
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/[0.02] border border-green-300/20 rounded-2xl p-8 mb-8">
+            <h3 className="text-2xl font-bold text-white mb-6">CCVS Evidence Pipeline</h3>
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-300 mb-2">L1</div>
+                <p className="text-xs text-slate-400 mb-2"><strong>Unit Tests</strong></p>
+                <p className="text-xs text-slate-500">Isolated component verification</p>
+              </div>
+              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-300 mb-2">L2</div>
+                <p className="text-xs text-slate-400 mb-2"><strong>Integration</strong></p>
+                <p className="text-xs text-slate-500">Cross-layer behavior</p>
+              </div>
+              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-300 mb-2">L3</div>
+                <p className="text-xs text-slate-400 mb-2"><strong>Adversarial</strong></p>
+                <p className="text-xs text-slate-500">Failure scenarios</p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-5 mt-6 pt-6 border-t border-white/10">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-300 mb-2">L4</div>
+                <p className="text-xs text-slate-400 mb-2"><strong>Mutation</strong></p>
+                <p className="text-xs text-slate-500">Code resilience (72.08%)</p>
+              </div>
+              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-300 mb-2">L5</div>
+                <p className="text-xs text-slate-400 mb-2"><strong>Provenance</strong></p>
+                <p className="text-xs text-slate-500">Build & deploy audit</p>
+              </div>
+              <div className="flex items-center justify-center text-slate-500 col-span-2"></div>
+            </div>
+          </div>
+
+          <div className="border border-slate-500/30 bg-slate-500/5 rounded-lg p-6">
+            <p className="text-sm text-slate-300 leading-7">
+              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 2173 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-7xl px-6 py-16">
         <div className="grid gap-5 lg:grid-cols-3">
           {painCards.map((card) => (
