@@ -4,20 +4,8 @@
  */
 
 import { canonicalHash } from '@/lib/runtime/canonical';
-import type { ProvisionPlan } from '../types';
+import type { ProvisionPlan, ProvisionApprovalRequest } from '../types';
 import type { ApprovalContext, ApprovalResult } from './types';
-
-export interface ProvisionApprovalRequest {
-  approval_id: string;
-  plan_id: string;
-  org_id: string;
-  status: 'pending' | 'approved' | 'rejected' | 'expired';
-  canonical_plan_hash: string;
-  approved_by?: string;
-  approved_at?: Date;
-  expires_at: Date;
-  created_at: Date;
-}
 
 export class ApprovalHandler {
   /**
