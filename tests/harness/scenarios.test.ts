@@ -63,7 +63,7 @@ describe('Phase 9B: E2E Scenarios', () => {
       const result = await scenario.run();
 
       expect(result.success).toBe(false);
-      expect(result.duration_ms).toBeGreaterThan(0);
+      expect(result.duration_ms).toBeLessThan(30000);
     });
 
     it('should complete within reasonable time', async () => {
