@@ -93,7 +93,7 @@ export class MonitoringEmitter {
         execution_id: this.executionId as any,
         event_type: eventType as any,
         timestamp: new Date().toISOString(),
-        data: metadata || null,
+        metadata: metadata || null,
       };
 
       const supabase = await this.getSupabase();
