@@ -7,6 +7,9 @@ on:
     paths:
       - 'supabase/migrations/**'
 
+permissions:
+  contents: read
+
 jobs:
   migrate:
     name: Push migrations to Supabase
