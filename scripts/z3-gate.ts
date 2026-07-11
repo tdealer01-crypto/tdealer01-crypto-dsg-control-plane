@@ -45,6 +45,10 @@ import type {
   DeterministicConstraintResult,
   DeterministicProofRequest,
 } from '../lib/dsg/deterministic/types';
+import { buildQUBOMatrix } from '../lib/dsg-one/qubo-builder';
+import { optimizeWithIsing } from '../lib/dsg-one/ising-optimizer';
+import { verifyIsingWithZ3 } from '../lib/dsg-one/ising-to-z3-verifier';
+import type { Task, AgentCapacity } from '../lib/dsg/multi-agent/types';
 
 type CheckStatus = 'pass' | 'fail' | 'skip';
 type CheckResult = {
@@ -254,9 +258,111 @@ async function verifyExternalSolver(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Verify the Ising → feasibility verifier (lib/dsg-one/ising-to-z3-verifier).
+ *
+ * Honesty note: verifyIsingWithZ3() currently initialises a z3-solver WASM
+ * Context but decides SAT/UNSAT with deterministic JavaScript feasibility
+ * counting (task-assigned-exactly-once + agent-capacity), not by asserting into
+ * the Z3 solver. These checks therefore verify that feasibility contract, not a
+ * Z3 formal proof. The verifier needs the `z3-solver` devDependency at runtime;
+ * when it is absent (e.g. a production/omit-dev install) verifyIsingWithZ3
+ * returns isSAT="error", which this layer reports as `skip` (or `fail` under
+ * DSG_SOLVER_REQUIRED=true) rather than a false pass.
+ */
+function isingFixture(): { tasks: Task[]; agents: AgentCapacity[] } {
+  // Mirrors tests/dsg-one-ising-phase2-z3-verify.test.ts: this 3-task / 2-agent
+  // problem has a feasible mock optimizer solution that the verifier marks SAT.
+  const tasks = [
+    { id: 'task-1', name: 'Payment', domain: 'financial', operation: 'transfer', target: 'acct-1', dataSensitivity: 'high', externalEffect: true, reversibility: 'reversible', userAuthorized: true, planAllowed: true, hasFreshEvidence: true, hasRollback: true },
+    { id: 'task-2', name: 'Audit', domain: 'compliance', operation: 'write', target: 'log', dataSensitivity: 'medium', externalEffect: false, reversibility: 'irreversible', userAuthorized: true, planAllowed: true, hasFreshEvidence: true, hasRollback: false },
+    { id: 'task-3', name: 'Policy', domain: 'policy', operation: 'update', target: 'policy-engine', dataSensitivity: 'high', externalEffect: true, reversibility: 'reversible', userAuthorized: true, planAllowed: true, hasFreshEvidence: true, hasRollback: true },
+  ] as unknown as Task[];
+  const agents: AgentCapacity[] = [
+    { agentId: 1, maxConcurrentTasks: 2, maxTotalTasks: 2, resourceAvailable: { cpu: 4, memory: 8 } },
+    { agentId: 2, maxConcurrentTasks: 2, maxTotalTasks: 1, resourceAvailable: { cpu: 2, memory: 4 } },
+  ];
+  return { tasks, agents };
+}
+
+async function verifyIsingLayer(): Promise<boolean> {
+  const required = process.env.DSG_SOLVER_REQUIRED === 'true';
+  const { tasks, agents } = isingFixture();
+
+  try {
+    const build = await buildQUBOMatrix({ tasks, agentCapacities: agents });
+    const ising = await optimizeWithIsing({ problemId: 'z3-gate-ising', quboMatrix: build.qubo, useMock: true });
+    const feasible = await verifyIsingWithZ3({
+      isingAssignment: ising.solution,
+      quboMatrix: build.qubo,
+      tasks,
+      agentCapacities: agents,
+    });
+
+    if (feasible.isSAT === 'error') {
+      const reason =
+        'ising feasibility verifier unavailable (z3-solver devDependency not installed or WASM init failed)';
+      if (required) {
+        record('ising feasibility verifier available', false, `DSG_SOLVER_REQUIRED=true but ${reason}`);
+      } else {
+        skip('ising feasibility verifier', reason);
+      }
+      return false;
+    }
+
+    // Feasible mock assignment (each task → exactly one agent, within capacity) → SAT.
+    record(
+      'ising feasible assignment → SAT',
+      feasible.isSAT === 'sat' && feasible.isValid === true,
+      `isSAT=${feasible.isSAT} isValid=${feasible.isValid} z3Version=${feasible.z3Version}`,
+    );
+
+    // All-zero assignment: every task assigned 0 times → violates exactly-once → UNSAT.
+    const zeros: Record<string, number> = {};
+    for (const varName of Object.keys(build.qubo.variableMap)) {
+      zeros[varName] = 0;
+    }
+    const infeasible = await verifyIsingWithZ3({
+      isingAssignment: zeros,
+      quboMatrix: build.qubo,
+      tasks,
+      agentCapacities: agents,
+    });
+    record(
+      'ising infeasible (all-zero) → UNSAT',
+      infeasible.isSAT === 'unsat' && infeasible.isValid === false,
+      `isSAT=${infeasible.isSAT} isValid=${infeasible.isValid}`,
+    );
+
+    // Same assignment → same proof hash (deterministic verdict).
+    const repeat = await verifyIsingWithZ3({
+      isingAssignment: ising.solution,
+      quboMatrix: build.qubo,
+      tasks,
+      agentCapacities: agents,
+    });
+    record(
+      'ising verdict deterministic',
+      feasible.proofHash === repeat.proofHash,
+      `proofHash ${feasible.proofHash === repeat.proofHash ? 'stable' : 'DIVERGED'}`,
+    );
+
+    return true;
+  } catch (error) {
+    const reason = `ising verifier threw: ${error instanceof Error ? error.message : String(error)}`;
+    if (required) {
+      record('ising feasibility verifier available', false, reason);
+    } else {
+      skip('ising feasibility verifier', reason);
+    }
+    return false;
+  }
+}
+
 async function run(): Promise<void> {
   await verifyDeterministicInvariants();
   const externalInvoked = await verifyExternalSolver();
+  const isingVerified = await verifyIsingLayer();
 
   const failures = results.filter((r) => r.status === 'fail');
   const skipped = results.filter((r) => r.status === 'skip');
@@ -269,6 +375,7 @@ async function run(): Promise<void> {
     constraintSetHash: manifest.constraintSetHash,
     externalZ3SolverInvoked: externalInvoked,
     externalZ3ProductionSolverClaim: false,
+    isingFeasibilityVerifierInvoked: isingVerified,
     totalChecks: results.length,
     passedChecks: results.filter((r) => r.status === 'pass').length,
     skippedChecks: skipped.length,
