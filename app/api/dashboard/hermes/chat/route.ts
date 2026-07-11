@@ -50,7 +50,7 @@ function limitedModeReply(reason: string): string {
     '⚠️ Hermes is running in limited mode — the conversational LLM backend is not available right now.',
     `(${reason})`,
     '',
-    'To enable full conversational replies, configure OPENROUTER_API_KEY for this deployment.',
+    'To enable full conversational replies, configure OPENROUTER_API_KEY or NVIDIA_API_KEY for this deployment.',
   ].join('\n');
 }
 
