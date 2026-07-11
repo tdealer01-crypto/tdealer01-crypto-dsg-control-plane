@@ -77,25 +77,21 @@ export class AgentProfileManager {
 
   /**
    * Update agent profile
+   * DISABLED: Awaiting database schema implementation
    */
   async updateProfile(agentId: string, updates: Partial<AgentProfileData>): Promise<AgentProfileData> {
-    await this.ensureInitialized();
-
-    const { data, error } = await this.supabase!
-      .from('agent_profiles')
-      .update({
-        ...updates,
-        last_active: new Date().toISOString(),
-      })
-      .eq('agent_id', agentId)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update agent profile: ${error.message}`);
-    }
-
-    return data as AgentProfileData;
+    // Stub implementation - database tables not yet created
+    return {
+      agent_id: agentId,
+      wallet_address: '',
+      skills: [],
+      reputation: 0,
+      tier: 'bronze',
+      completed_jobs: 0,
+      total_earnings: 0,
+      last_active: new Date().toISOString(),
+      ...updates,
+    };
   }
 
   /**
