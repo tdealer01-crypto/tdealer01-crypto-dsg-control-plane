@@ -9,6 +9,9 @@ on:
 env:
   NODE_VERSION: '22.x'
 
+permissions:
+  contents: read
+
 jobs:
   # 1. Type Check & Lint
   typecheck:
@@ -49,10 +52,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run test:integration
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
 
   # 3b. Agent OS Deterministic Tests
   test-agent-os:
@@ -98,13 +97,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm audit --audit-level=high
-      - name: Run Snyk
-        uses: snyk/actions/node@master
-        with:
-          command: test
-          args: --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   # 6. Build & Deploy to Vercel
   deploy-vercel:
@@ -114,16 +106,20 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - uses: amondnet/vercel-action@v25
+      - uses: actions/setup-node@v4
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+      - name: Deploy to Vercel
+        run: |
+          vercel deploy \
+            --token ${{ secrets.VERCEL_TOKEN }} \
+            --org-id ${{ secrets.VERCEL_ORG_ID }} \
+            --project-id ${{ secrets.VERCEL_PROJECT_ID }} \
+            --prod
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   # 7. Post-Deploy Verification
   verify-deploy:

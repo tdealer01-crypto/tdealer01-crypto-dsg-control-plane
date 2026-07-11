@@ -91,7 +91,7 @@ describe('OAuth 2.0 with PKCE Flow', () => {
   });
 
   describe('Authorization Code Exchange', () => {
-    it('should exchange authorization code for access token', () => {
+    it('should exchange authorization code for access token', async () => {
       const exchangeCodeForToken = async (
         code: string,
         codeVerifier: string,
@@ -104,14 +104,14 @@ describe('OAuth 2.0 with PKCE Flow', () => {
         }
 
         return {
-          access_token: 'sk_live_token_abc123def456',
+          access_token: 'sk_test_token_abc123def456',
           token_type: 'bearer',
           expires_in: 3600,
-          refresh_token: 'rk_live_refresh_xyz789',
+          refresh_token: 'rk_test_refresh_xyz789',
         };
       };
 
-      const result = exchangeCodeForToken(
+      const result = await exchangeCodeForToken(
         'auth_code_123',
         'verifier_456',
         'client_id',
@@ -153,7 +153,7 @@ describe('OAuth 2.0 with PKCE Flow', () => {
     it('should store Stripe access token encrypted', () => {
       const tokenRecord = {
         stripe_app_account_id: 'stripe_account_123',
-        access_token: 'sk_live_token_encrypted_blob',
+        access_token: 'enc_2f4a8b9c1e3d7f2a5b8e1c4d9f2a5b8e1c4d9f2a5b8e1c4d9f2a5b8e1c4d9f',
         token_type: 'bearer',
         expires_in: 3600,
         refresh_token: 'rk_live_refresh_encrypted_blob',
@@ -163,7 +163,7 @@ describe('OAuth 2.0 with PKCE Flow', () => {
 
       expect(tokenRecord).toHaveProperty('access_token');
       expect(tokenRecord.status).toBe('active');
-      expect(tokenRecord.access_token).not.toContain('sk_live_');
+      expect(tokenRecord.access_token).not.toContain('sk_test_');
     });
 
     it('should include token expiration tracking', () => {

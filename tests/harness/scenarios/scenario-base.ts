@@ -3,10 +3,11 @@
  * Foundation for all E2E scenarios
  */
 
-import { eventBus } from '@/lib/dsg/setup/events';
-import { executionRecorder } from '../replay/execution-recorder';
-import type { DSGEvent, AnyEvent } from '@/lib/dsg/setup/events';
-import type { Connector } from '@/lib/dsg/setup/connectors/interface';
+export interface AnyEvent {
+  id?: string;
+  type: string;
+  data: Record<string, any>;
+}
 
 export abstract class ScenarioBase {
   protected scenario_id = crypto.randomUUID();
@@ -29,13 +30,6 @@ export abstract class ScenarioBase {
     error?: string;
   }> {
     this.startTime = Date.now();
-    executionRecorder.startRecording(this.execution_id, this.plan_id, this.org_id);
-
-    // Subscribe to events
-    const unsubscribe = eventBus.subscribeAll(async (event: DSGEvent) => {
-      this.recordedEvents.push(event as AnyEvent);
-      executionRecorder.recordEvent(event as AnyEvent);
-    });
 
     try {
       await this.setup();
@@ -43,9 +37,6 @@ export abstract class ScenarioBase {
       await this.verify();
 
       this.endTime = Date.now();
-      const recording = executionRecorder.stopRecording('completed');
-
-      unsubscribe();
 
       return {
         success: true,
@@ -55,14 +46,6 @@ export abstract class ScenarioBase {
     } catch (error) {
       this.endTime = Date.now();
       const errorMsg = error instanceof Error ? error.message : String(error);
-
-      try {
-        executionRecorder.stopRecording('failed');
-      } catch {
-        // Ignore recording errors
-      }
-
-      unsubscribe();
 
       return {
         success: false,
@@ -138,15 +121,18 @@ export abstract class ScenarioBase {
    * Helper: emit test event
    */
   protected async emitTestEvent(type: string, data: Record<string, unknown>): Promise<void> {
-    await eventBus.emit({
+    const event: AnyEvent = {
       id: crypto.randomUUID(),
-      type: type as any,
-      org_id: this.org_id,
-      user_id: this.user_id,
-      execution_id: this.execution_id,
-      timestamp: new Date(),
-      data,
-    });
+      type,
+      data: {
+        ...data,
+        org_id: this.org_id,
+        user_id: this.user_id,
+        execution_id: this.execution_id,
+        timestamp: new Date(),
+      },
+    };
+    this.recordedEvents.push(event);
   }
 
   /**

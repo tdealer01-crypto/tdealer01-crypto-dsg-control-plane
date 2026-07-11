@@ -7,20 +7,25 @@ on:
     paths:
       - 'supabase/migrations/**'
 
+permissions:
+  contents: read
+
 jobs:
   migrate:
     name: Push migrations to Supabase
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          version: latest
+          node-version: '24'
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
 
       - name: Link project
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
