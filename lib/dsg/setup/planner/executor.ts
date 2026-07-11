@@ -11,8 +11,8 @@ import type {
   ProvisionExecution,
   DependencyGraph,
   Phase,
-  PlanItem,
 } from '../types';
+import type { PlanItem } from './types';
 
 export interface ExecutionCheckpoint {
   execution_id: string;
