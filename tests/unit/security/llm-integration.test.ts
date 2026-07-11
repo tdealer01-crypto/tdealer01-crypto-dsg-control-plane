@@ -78,7 +78,7 @@ describe('LLM Integration Security', () => {
   });
 
   describe('Error Recovery', () => {
-    it('should provide fallback on LLM error', () => {
+    it('should provide fallback on LLM error', async () => {
       const proposePlanWithFallback = async (throwError: boolean) => {
         try {
           if (throwError) {
@@ -94,7 +94,7 @@ describe('LLM Integration Security', () => {
         }
       };
 
-      const result = proposePlanWithFallback(true);
+      const result = await proposePlanWithFallback(true);
       expect(result).toBeDefined();
       expect(result.riskTags).toContain('llm-error');
     });

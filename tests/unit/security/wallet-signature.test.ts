@@ -61,7 +61,7 @@ describe('Wallet Signature Verification', () => {
       const prefixedMessage = prefix + message.length + message;
 
       expect(prefixedMessage).toContain(message);
-      expect(prefixedMessage).toMatch(/^\\x19Ethereum/);
+      expect(prefixedMessage.startsWith('\x19Ethereum')).toBe(true);
     });
 
     it('should reject signatures with invalid format', () => {
