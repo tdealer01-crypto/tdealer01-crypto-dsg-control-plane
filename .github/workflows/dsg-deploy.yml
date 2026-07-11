@@ -98,9 +98,13 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=high
 
-  # 6. Build & Deploy to Vercel
-  deploy-vercel:
-    name: Deploy to Vercel
+  # 6. Post-Deploy Verification
+  # Production deploy is performed by the Vercel Git integration on push to main,
+  # so this workflow no longer shells out to the Vercel CLI. This job verifies the
+  # live production deploy once the gates pass. z3-gate-verify.ts retries the
+  # health/status probes so a just-finished deploy has time to become reachable.
+  verify-deploy:
+    name: Verify Production Deploy
     runs-on: ubuntu-latest
     needs: [typecheck, test-unit, test-integration, test-agent-os, z3-gate, security]
     if: github.ref == 'refs/heads/main'
@@ -109,31 +113,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Install Vercel CLI
-        run: npm install -g vercel
-      - name: Deploy to Vercel
-        run: |
-          vercel deploy \
-            --token ${{ secrets.VERCEL_TOKEN }} \
-            --org-id ${{ secrets.VERCEL_ORG_ID }} \
-            --project-id ${{ secrets.VERCEL_PROJECT_ID }} \
-            --prod
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-
-  # 7. Post-Deploy Verification
-  verify-deploy:
-    name: Verify Production Deploy
-    runs-on: ubuntu-latest
-    needs: deploy-vercel
-    steps:
-      - uses: actions/checkout@v4
-      - name: Wait for deploy
-        run: sleep 30
-      - name: Health check
-        run: |
-          curl -f https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health || exit 1
-      - name: Run Z3 Gate on production
+          cache: 'npm'
+      - run: npm ci
+      - name: Verify production deploy (health + status + deterministic gate)
         run: |
           npx tsx scripts/z3-gate-verify.ts --env=production
         env:
