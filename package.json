@@ -75,6 +75,7 @@
     "@octokit/rest": "^22.0.1",
     "@sentry/nextjs": "^10.48.0",
     "@solana/web3.js": "^1.98.4",
+    "@supabase/server": "^1.3.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.99.3",
     "@upstash/ratelimit": "^2.0.8",
