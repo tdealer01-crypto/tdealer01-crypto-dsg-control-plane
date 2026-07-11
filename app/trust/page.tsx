@@ -6,7 +6,7 @@ const routes = [
   { href: "/security-review", title: "Security Review", body: "Security review scope, evidence boundaries, and next trust steps." },
   { href: "/customer-reference", title: "Customer Reference", body: "Reference-pack structure for pilots, partners, and enterprise buyers." },
   { href: "/marketplace/production-evidence", title: "Production Evidence", body: "Current benchmark and runtime evidence already published." },
-  { href: "/compliance-evidence-pack", title: "Compliance Evidence Pack", body: "Pre-audit PDF report: 8 Z3 theorems (5 core + 3 DeFi), 2173 test assertions, WORM hash chain, EU AI Act Art. 12/14 + ISO 42001 control mapping." },
+  { href: "/compliance-evidence-pack", title: "Compliance Evidence Pack", body: "Pre-audit PDF report: 8 Z3 theorems (5 core + 3 DeFi), 3091 test assertions, WORM hash chain, EU AI Act Art. 12/14 + ISO 42001 control mapping." },
 ];
 
 export default function TrustPage() {

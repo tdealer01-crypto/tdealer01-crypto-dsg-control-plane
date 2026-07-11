@@ -9,7 +9,7 @@ import RefTracker from '../components/RefTracker';
 const trustBar = [
   'Deterministic Engine — Gap-free sequences · SHA-256 hash chains · Merkle tree proofs · SARIF export',
   'WORM Audit Trail — Every decision immutable · Chain verification · Tamper detection · Enterprise compliance',
-  'EU AI Act Ready — Art. 12/14 evidence pack · ISO 42001 · CCVS v1.2 · 2173 tests · 72.08% mutation score',
+  'EU AI Act Ready — Art. 12/14 evidence pack · ISO 42001 · CCVS v1.2 · 3091 tests · 72.08% mutation score',
 ];
 
 const painCards = [
@@ -362,7 +362,7 @@ export default function HomePage() {
                 <strong>Comprehensive coverage</strong> across deterministic gates, spine execution, and licensing.
               </p>
               <div className="mt-4 text-[11px] text-amber-200 bg-amber-400/10 rounded px-2 py-1 inline-block">
-                2173 total tests
+                3091 total tests
               </div>
             </div>
           </div>
@@ -406,7 +406,7 @@ export default function HomePage() {
 
           <div className="border border-slate-500/30 bg-slate-500/5 rounded-lg p-6">
             <p className="text-sm text-slate-300 leading-7">
-              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 2173 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
+              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3091 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
             </p>
           </div>
         </div>
@@ -517,7 +517,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-20">
         <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
           <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
-          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 2173 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
+          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 3091 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
         </div>
       </section>
 

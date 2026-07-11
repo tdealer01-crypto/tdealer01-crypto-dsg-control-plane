@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'AI Governance Compliance Evidence Pack — DSG ONE',
   description:
-    'Downloadable pre-audit compliance evidence for EU AI Act Article 12/14, Annex IV, and ISO/IEC 42001. Includes formal Z3 proofs (8 theorems: 5 core + 3 DeFi), 2173 automated test results, mutation score 72.08%, CCVS v1.2 evidence chain, and control mapping. Not a third-party certification.',
+    'Downloadable pre-audit compliance evidence for EU AI Act Article 12/14, Annex IV, and ISO/IEC 42001. Includes formal Z3 proofs (8 theorems: 5 core + 3 DeFi), 3091 automated test results, mutation score 72.08%, CCVS v1.2 evidence chain, and control mapping. Not a third-party certification.',
 };
 
 const EVIDENCE_SECTIONS = [
@@ -19,13 +19,13 @@ const EVIDENCE_SECTIONS = [
     icon: '🔐',
     title: 'WORM Audit Trail',
     desc: 'Write-Once SHA-256 hash chain: requestHash → decisionHash → recordHash → bundleHash. Optional HMAC-SHA256 signing. Tamper-evident — any field change cascades to all downstream hashes.',
-    badge: '2173 assertions verified',
+    badge: '3091 assertions verified',
     color: 'emerald',
   },
   {
     icon: '🧪',
     title: 'Automated Test Evidence',
-    desc: '2173 tests across 229 files covering gateway invariants, WORM idempotency, evidence bundle signing, approval lifecycle, security primitives, and provider dispatch. Mutation score 72.08% (191/265 killed) verified by Stryker.',
+    desc: '3091 tests across 229 files covering gateway invariants, WORM idempotency, evidence bundle signing, approval lifecycle, security primitives, and provider dispatch. Mutation score 72.08% (191/265 killed) verified by Stryker.',
     badge: '+59% vs baseline',
     color: 'violet',
   },
@@ -85,7 +85,7 @@ export default function ComplianceEvidencePackPage() {
             <span className="text-amber-300">Compliance Evidence Pack</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-            Formal proofs, WORM audit trail evidence, 2173 automated test assertions,
+            Formal proofs, WORM audit trail evidence, 3091 automated test assertions,
             CCVS v1.2 evidence chain, EU AI Act Annex IV mapping, and ISO 42001 control
             references — structured for pre-audit submission to your board, compliance team,
             or procurement review.
@@ -196,7 +196,7 @@ export default function ComplianceEvidencePackPage() {
               </p>
             </div>
             <div className="rounded-xl border border-slate-700 bg-slate-900 p-5">
-              <p className="font-bold text-white">2173 automated tests · 72.08% mutation score</p>
+              <p className="font-bold text-white">3091 automated tests · 72.08% mutation score</p>
               <p className="mt-2 text-sm text-slate-400 leading-6">
                 Tests cover the gap between what Z3 proves (structural properties) and what runs in production
                 (database interactions, authentication, HTTP routing, hash chain construction).

@@ -83,7 +83,7 @@ const features = [
       'EU AI Act Art. 12/14 evidence pack included',
       'ISO 42001 AI governance readiness',
       'CCVS v1.2 compliance evidence chain (L1–L5)',
-      '2173 tests covering all code paths (72.08% mutation score)',
+      '3091 tests covering all code paths (72.08% mutation score)',
     ],
     icon: '✅',
   },
@@ -104,7 +104,7 @@ const features = [
 const complianceItems = [
   { label: 'EU AI Act Art. 12/14', status: 'Live', detail: 'Evidence pack at /api/compliance-evidence-pack/annex4' },
   { label: 'ISO 42001 Readiness', status: 'Live', detail: 'Governance framework mapped to standard' },
-  { label: 'CCVS v1.2', status: 'Live', detail: '2173 tests, 72.08% mutation score' },
+  { label: 'CCVS v1.2', status: 'Live', detail: '3091 tests, 72.08% mutation score' },
   { label: 'Z3 Theorem Verification', status: 'Live', detail: '8 core theorems + 3 DeFi proofs' },
   { label: 'WORM Audit Trail', status: 'Live', detail: 'SHA-256 hash chain (tamper-evident)' },
   { label: 'JWT/JWKS Auth', status: 'Planned', detail: 'Supabase auth live; standalone completion coming' },
