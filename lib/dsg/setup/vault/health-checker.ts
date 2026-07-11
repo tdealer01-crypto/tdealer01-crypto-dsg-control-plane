@@ -168,7 +168,7 @@ export class HealthChecker {
       const result: HealthCheckResult = {
         connector_id,
         status: health.ok ? 'healthy' : 'unhealthy',
-        details: health.reason,
+        details: health.detail,
         checked_at: new Date(),
       };
 
@@ -186,7 +186,7 @@ export class HealthChecker {
             }
           : {
               connector_id,
-              error: health.reason || 'Health check failed',
+              error: health.detail || 'Health check failed',
               failed_at: new Date(),
             },
       });
