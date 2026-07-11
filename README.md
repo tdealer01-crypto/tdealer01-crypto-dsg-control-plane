@@ -174,7 +174,7 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 - ✅ **Injection Prevention** — SQL injection, XSS escaping, JSON structure validation
 - ✅ **Race Condition Prevention** — Atomic operations, concurrent approval handling, double-spend prevention
 
-**Test Files:** 312 files across unit, integration, failure, and e2e suites
+**Test Files:** 285 files across unit, integration, failure, and e2e suites
 
 ---
 
