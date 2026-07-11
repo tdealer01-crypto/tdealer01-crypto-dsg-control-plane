@@ -76,11 +76,11 @@ describe('Adversarial Security Scenarios', () => {
   describe('Invalid Token Rejection', () => {
     it('should reject malformed OAuth tokens', () => {
       const validateToken = (token: string): boolean => {
-        const tokenRegex = /^sk_live_[a-zA-Z0-9]{32,}$/;
+        const tokenRegex = /^sk_test_[a-zA-Z0-9]{32,}$/;
         return tokenRegex.test(token);
       };
 
-      expect(validateToken('sk_live_validtoken123456789abc')).toBe(true);
+      expect(validateToken('sk_test_validtoken123456789abcdefghijklmn')).toBe(true);
       expect(validateToken('invalid_token')).toBe(false);
       expect(validateToken('sk_test_token')).toBe(false);
       expect(validateToken('')).toBe(false);
@@ -121,8 +121,7 @@ describe('Adversarial Security Scenarios', () => {
         try {
           const providedDigest = createHash('sha256').update(provided).digest();
           const expectedDigest = createHash('sha256').update(expected).digest();
-          timingSafeEqual(providedDigest, expectedDigest);
-          return true;
+          return timingSafeEqual(providedDigest, expectedDigest);
         } catch {
           return false;
         }
@@ -246,7 +245,7 @@ describe('Adversarial Security Scenarios', () => {
       expect(validateStripeAccount('acct_123')).toBe(true);
     });
 
-    it('should handle missing credential broker gracefully', () => {
+    it('should handle missing credential broker gracefully', async () => {
       const requestCredential = async (credentialName: string) => {
         try {
           // Credential broker would normally fetch here
@@ -270,7 +269,7 @@ describe('Adversarial Security Scenarios', () => {
         }
       };
 
-      const result = requestCredential('MISSING_KEY');
+      const result = await requestCredential('MISSING_KEY');
       expect(result.ok).toBe(false);
       expect(result.status).toBe('unavailable');
     });
@@ -398,12 +397,12 @@ describe('Adversarial Security Scenarios', () => {
           .replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, '[REDACTED_IP]');
       };
 
-      const errorMsg = 'API key sk_live_abc123xyz failed at 192.168.1.1';
+      const errorMsg = 'API key sk_test_abc123xyz failed at 192.168.1.1';
       const sanitized = sanitizeError(errorMsg);
 
       expect(sanitized).toContain('[REDACTED_KEY]');
       expect(sanitized).toContain('[REDACTED_IP]');
-      expect(sanitized).not.toContain('sk_live_');
+      expect(sanitized).not.toContain('sk_test_');
     });
 
     it('should use debug level for sensitive operation logs', () => {
