@@ -82,12 +82,15 @@ export class HealthChecker {
         // Run health check
         const health = await connector.health(credential);
 
-        // Health check already returns HealthCheckResult, just add to results
-        results.push({
-          ...health,
+        // Convert connector health result to HealthCheckResult
+        const result: HealthCheckResult = {
           connector_id: connector.id,
+          status: health.ok ? 'healthy' : 'unhealthy',
+          details: health.detail,
           checked_at: new Date(),
-        });
+        };
+
+        results.push(result);
 
         // Emit health check event
         await eventBus.emit({
