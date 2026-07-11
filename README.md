@@ -5,7 +5,7 @@
 [![Gate](https://img.shields.io/badge/gate-11ms_avg-orange?style=for-the-badge)](BENCHMARKS.md)
 [![PDPA Ready](https://img.shields.io/badge/PDPA-มาตรา37พร้อม-purple?style=for-the-badge)](BENCHMARKS.md)
 
-> ### 🎯 ท้าพิสูจน์: ลองแก้หลักฐาน 1 ตัวอักษร ถ้าแก้แล้วผ่าน ผมให้ 10,000 บาท
+> ### 🎯 ท้าพิสูจน์: ลองแก้หลักฐาน 1 ตัวอักษร ถ้าแก้แล้วผ่าน 
 > [▶️ กดลอง Tamper Test สดๆ ไม่ต้องสมัคร](/showcase) | [📊 ดู Benchmark เทียบตลาด](BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 **DSG ONE คืออะไรใน 1 บรรทัด:** พิมพ์ Policy ภาษาไทยว่า "ห้ามโอนเกิน 50,000" ระบบบล็อก AI อัตโนมัติใน 11ms พร้อมออกใบเสร็จ SHA-256 ที่ปลอมไม่ได้และทำซ้ำได้ 2 ปี
