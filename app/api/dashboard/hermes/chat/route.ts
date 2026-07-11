@@ -118,6 +118,8 @@ Always be respectful and helpful.`;
     'deepseek/deepseek-chat-v3-0324:free',
   ];
 
+  console.log('[Hermes] Using OpenRouter models:', models[0], '(primary)');
+
   for (const model of models) {
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -139,8 +141,8 @@ Always be respectful and helpful.`;
 
       if (response.status === 429) {
         const detail = await response.text().catch(() => '');
-        console.error(
-          `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+        console.warn(
+          `[Hermes] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
         );
         continue;
       }
@@ -148,7 +150,7 @@ Always be respectful and helpful.`;
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
         console.error(
-          `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+          `[Hermes] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
         );
         continue;
       }
@@ -158,8 +160,12 @@ Always be respectful and helpful.`;
       };
 
       const content = data.choices?.[0]?.message?.content;
-      if (content) return content;
-    } catch {
+      if (content) {
+        console.log('[Hermes] OpenRouter response using model:', model);
+        return content;
+      }
+    } catch (err) {
+      console.warn(`[Hermes] Error with model ${model}:`, err);
       continue;
     }
   }
