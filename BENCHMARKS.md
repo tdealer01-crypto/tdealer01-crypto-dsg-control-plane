@@ -4,13 +4,13 @@
 > English: Real production metrics, not marketing.
 
 ## สรุปสั้นสำหรับคนรีบ
-DSG ONE ทำ Gate ตัดสินใจ 11ms, เทสผ่าน 3091/3091, Mutation 72.08%, ทำซ้ำได้ 2 ปีเหมือนเดิม, ปลอมหลักฐานไม่ได้ด้วย SHA-256 WORM Chain
+DSG ONE ทำ Gate ตัดสินใจ 11ms, เทสผ่าน 3389/3389 (0 fail), Mutation 72.08%, ทำซ้ำได้ 2 ปีเหมือนเดิม, ปลอมหลักฐานไม่ได้ด้วย SHA-256 WORM Chain
 
 ## ตารางเทียบตลาด AI Governance / AI Agent Framework 2026
 
 | ตัวชี้วัดที่ Auditor ขอดู | DSG ONE (คุณ) | LangGraph / AutoGen / OpenAI Agents | SaaS ทั่วไปในตลาด |
 | :--- | :--- | :--- | :--- |
-| **Total Tests Passing** | **3091/3091 (100%)** 79 opt-in skipped - 283 ไฟล์ | ไม่เปิดเผย, ส่วนใหญ่ <500 tests | 200-800 tests |
+| **Total Tests Passing** | **3389/3389 (0 fail)** - 312 ไฟล์ | ไม่เปิดเผย, ส่วนใหญ่ <500 tests | 200-800 tests |
 | **Mutation Score** | **72.08%** (วัดว่าจับบั๊กที่ซ่อนได้) | ไม่มีการวัด | 45-55% คือเก่งแล้ว |
 | **Deterministic Replay** | **ทำซ้ำได้ 100%** 2+ ปี hash เดิม | ทำซ้ำไม่ได้ เพราะพึ่ง LLM | ทำซ้ำไม่ได้ |
 | **Gate Latency (ตัดสินก่อนรัน)** | **8-15ms avg 11ms** | 800-1500ms (ต้องเรียก LLM) | 100-300ms |
@@ -36,6 +36,6 @@ AI governance Thailand, PDPA compliance tool, ระบบตรวจสอบ 
 
 ## อ้างอิง Production
 - Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
-- Tests: 3091/3091 passing (79 opt-in skipped) - 283 files
+- Tests: 3389/3389 passing (0 fail) - 312 files
 - Public proof rail: /api/ccvs/compliance-status และ /api/compliance-evidence-pack/annex4
-- Claim Boundary: live policy engine, CCVS v1.2 evidence chain (L1-L5), 2173 tests (229 files), mutation score 72.08%
+- Claim Boundary: live policy engine, CCVS v1.2 evidence chain (L1-L5), 3389 tests (312 files), mutation score 72.08%

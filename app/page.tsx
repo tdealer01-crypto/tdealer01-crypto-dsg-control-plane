@@ -9,7 +9,7 @@ import RefTracker from '../components/RefTracker';
 const trustBar = [
   'Deterministic Engine — Gap-free sequences · SHA-256 hash chains · Merkle tree proofs · SARIF export',
   'WORM Audit Trail — Every decision immutable · Chain verification · Tamper detection · Enterprise compliance',
-  'EU AI Act Ready — Art. 12/14 evidence pack · ISO 42001 · CCVS v1.2 · 3091 tests · 72.08% mutation score',
+  'EU AI Act Ready — Art. 12/14 evidence pack · ISO 42001 · CCVS v1.2 · 3,389 tests · 72.08% mutation score',
 ];
 
 const painCards = [
@@ -55,6 +55,41 @@ const launchLinks = [
     href: '/request-access',
   },
 ];
+
+const marketGaps = [
+  {
+    title: 'Decision before the LLM — ~11ms',
+    body: 'DSG evaluates policy in a deterministic gate before any model runs, so the decision path never waits on an LLM round-trip. Agent frameworks route the decision through an LLM (≈0.8–1.5s) and cannot replay it bit-for-bit.',
+  },
+  {
+    title: 'Formal proof, not vibes',
+    body: 'Policy invariants are proved with Z3 (8 theorems proved UNSAT at design time) and multi-agent task assignments are checked by a real Z3 solve. Mainstream agent stacks ship no formal verification.',
+  },
+  {
+    title: 'Evidence that survives an audit',
+    body: 'Every decision is recorded as a tamper-evident SHA-256 hash chain with CCVS L1–L5 artifacts and an EU AI Act Annex IV mapping — replayable years later. LangGraph, OpenAI Agents, and Temporal ship no audit evidence pack.',
+  },
+  {
+    title: 'Fails safe — and speaks Thai',
+    body: 'UNSUPPORTED never becomes PASS: unknown risk maps to REVIEW or BLOCK, never ALLOW. Policy can be written in natural-language Thai or English for the regulated SEA market.',
+  },
+];
+
+const comparisonRows: Array<{ cap: string; dsg: string; lang: string; oai: string; temporal: string }> = [
+  { cap: 'Deterministic replay of a decision', dsg: 'yes', lang: 'partial', oai: 'no', temporal: 'partial' },
+  { cap: 'Formal proof (Z3)', dsg: 'yes', lang: 'no', oai: 'no', temporal: 'no' },
+  { cap: 'Tamper-evident evidence chain', dsg: 'yes', lang: 'no', oai: 'no', temporal: 'no' },
+  { cap: 'Compliance pack (CCVS L1–L5 / EU AI Act)', dsg: 'yes', lang: 'no', oai: 'no', temporal: 'no' },
+  { cap: 'Runtime gate before execution', dsg: 'yes', lang: 'partial', oai: 'no', temporal: 'partial' },
+  { cap: 'Decision latency', dsg: '~11ms', lang: '0.8–1.5s', oai: '0.8–1.5s', temporal: '100–300ms' },
+];
+
+function ComparisonCell({ value }: { value: string }) {
+  if (value === 'yes') return <span className="font-semibold text-emerald-300">✓</span>;
+  if (value === 'no') return <span className="text-slate-600">—</span>;
+  if (value === 'partial') return <span className="text-amber-300">partial</span>;
+  return <span className="text-slate-200">{value}</span>;
+}
 
 const DEMO_LABEL = 'Sample action context (homepage proof rail demo)';
 
@@ -316,11 +351,11 @@ export default function HomePage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
             <div className="border border-green-400/30 bg-green-400/5 rounded-2xl p-6">
               <div className="mb-4">
-                <div className="text-5xl font-bold text-green-300 font-mono">3091</div>
+                <div className="text-5xl font-bold text-green-300 font-mono">3,389</div>
                 <div className="text-sm text-slate-400 mt-1">tests passing</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
-                <strong>100% pass rate</strong> across unit, integration, failure, and E2E test suites. Zero test debt.
+                <strong>0 failures</strong> across unit, integration, failure, and E2E test suites. Zero test debt.
               </p>
               <div className="mt-4 text-[11px] text-green-200 bg-green-400/10 rounded px-2 py-1 inline-block">
                 Automated on CI/CD
@@ -355,14 +390,14 @@ export default function HomePage() {
 
             <div className="border border-amber-400/30 bg-amber-400/5 rounded-2xl p-6">
               <div className="mb-4">
-                <div className="text-3xl font-bold text-amber-300 font-mono">229</div>
+                <div className="text-3xl font-bold text-amber-300 font-mono">312</div>
                 <div className="text-sm text-slate-400 mt-1">test files</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>Comprehensive coverage</strong> across deterministic gates, spine execution, and licensing.
               </p>
               <div className="mt-4 text-[11px] text-amber-200 bg-amber-400/10 rounded px-2 py-1 inline-block">
-                3091 total tests
+                3,389 total tests
               </div>
             </div>
           </div>
@@ -406,9 +441,66 @@ export default function HomePage() {
 
           <div className="border border-slate-500/30 bg-slate-500/5 rounded-lg p-6">
             <p className="text-sm text-slate-300 leading-7">
-              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3091 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
+              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (312 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-[#080a0d]">
+        <div className="mx-auto max-w-7xl px-6 py-20">
+          <div className="mb-12">
+            <p className="inline-flex rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100">
+              What the market doesn&apos;t have
+            </p>
+            <h2 className="mt-6 text-4xl font-bold leading-tight text-white">
+              Agent frameworks orchestrate. DSG governs — and proves it.
+            </h2>
+            <p className="mt-4 max-w-3xl text-lg leading-7 text-slate-300">
+              LangGraph, OpenAI Agents, and Temporal help you <em>run</em> an AI workflow. None of them can replay a
+              decision bit-for-bit, prove it against policy, or hand an auditor tamper-evident evidence. That gap is the product.
+            </p>
+          </div>
+
+          <div className="mb-12 grid gap-6 md:grid-cols-2">
+            {marketGaps.map((item) => (
+              <div key={item.title} className="rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.04] p-6">
+                <h3 className="text-lg font-bold text-white">{item.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">{item.body}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400">
+                  <th className="px-5 py-4 font-semibold">Capability</th>
+                  <th className="px-5 py-4 font-semibold text-emerald-200">DSG ONE</th>
+                  <th className="px-5 py-4 font-semibold">LangGraph</th>
+                  <th className="px-5 py-4 font-semibold">OpenAI Agents</th>
+                  <th className="px-5 py-4 font-semibold">Temporal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr key={row.cap} className="border-b border-white/[0.06] last:border-0">
+                    <td className="px-5 py-4 text-slate-200">{row.cap}</td>
+                    <td className="px-5 py-4"><ComparisonCell value={row.dsg} /></td>
+                    <td className="px-5 py-4"><ComparisonCell value={row.lang} /></td>
+                    <td className="px-5 py-4"><ComparisonCell value={row.oai} /></td>
+                    <td className="px-5 py-4"><ComparisonCell value={row.temporal} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-xs leading-6 text-slate-500">
+            Comparison reflects each product&apos;s default, documented capabilities for governed AI execution. Latency figures
+            are from <Link href="/showcase" className="text-emerald-300 underline">the live gate benchmark</Link>; competitor
+            values are typical LLM-in-the-loop ranges. Z3 proves policy invariants at design time and verifies multi-agent
+            assignments at runtime; the per-request gate route does not invoke an external Z3 solver.
+          </p>
         </div>
       </section>
 
@@ -517,7 +609,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-20">
         <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
           <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
-          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 3091 tests (229 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
+          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (312 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
         </div>
       </section>
 
