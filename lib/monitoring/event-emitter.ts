@@ -131,7 +131,7 @@ export class MonitoringEmitter {
       const toolCall: ToolCallInsert = {
         execution_id: this.executionId as any,
         tool_name: toolName,
-        input: toolInput,
+        tool_input: toolInput,
         status: 'pending' as any,
       };
 
