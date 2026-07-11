@@ -201,6 +201,7 @@ export class MonitoringEmitter {
     try {
       const tokenUsage: TokenUsageInsert = {
         execution_id: this.executionId as any,
+        model_name: modelName,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
         cost_usd: costUsd,
