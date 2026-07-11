@@ -16,7 +16,3 @@ comment on column public.guest_access_grants.expires_at is 'Timestamp when guest
 
 -- Idempotent: this migration can be run multiple times safely
 -- All statements use "if not exists" or "add column if not exists"
--- Test: Triggering supabase-migrate workflow to validate Actions allowlist fix (2026-07-11 12:50Z)
--- Re-test workflow with permissive Actions policy (2026-07-11 12:52Z)
--- Workflow fix test: Added permissions field (2026-07-11 12:56Z)
--- Removed production environment constraint (2026-07-11 12:57Z)
