@@ -336,9 +336,11 @@ export class ProvisionExecutor {
       }
 
       const result = await connector.provision({
-        action: item.action,
-        params: item.params || {},
-        requires: item.requires || {},
+        params: {
+          action: item.action,
+          ...(item.params || {}),
+          requires: item.requires || {},
+        },
       });
 
       const duration = (Date.now() - start_time) / 1000;
