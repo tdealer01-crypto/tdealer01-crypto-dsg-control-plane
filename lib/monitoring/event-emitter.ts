@@ -132,7 +132,6 @@ export class MonitoringEmitter {
         execution_id: this.executionId as any,
         tool_name: toolName,
         tool_input: toolInput,
-        status: 'pending' as any,
       };
 
       const supabase = await this.getSupabase();
