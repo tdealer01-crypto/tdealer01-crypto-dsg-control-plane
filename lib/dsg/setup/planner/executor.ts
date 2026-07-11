@@ -368,7 +368,7 @@ export class ProvisionExecutor {
           provider: item.provider,
           action: item.action,
           duration_seconds: duration,
-          result: result.output,
+          result: result.result,
           completed_at: new Date(),
         },
       });
