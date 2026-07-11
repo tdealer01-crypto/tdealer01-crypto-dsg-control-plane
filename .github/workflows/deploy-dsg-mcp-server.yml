@@ -81,12 +81,20 @@ jobs:
     steps:
       - name: Check SSH deploy config
         id: check-config
+        env:
+          MCP_TARGET_HOST: ${{ secrets.MCP_TARGET_HOST }}
+          MCP_SYSTEMD_SERVICE: ${{ secrets.MCP_SYSTEMD_SERVICE }}
         run: |
-          if [ -z "${{ secrets.MCP_TARGET_HOST }}" ]; then
+          if [ -z "$MCP_TARGET_HOST" ]; then
             echo "MCP_TARGET_HOST not set, skipping"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$MCP_SYSTEMD_SERVICE" ]; then
+            echo "has-systemd=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-systemd=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Download build artifact
@@ -113,7 +121,7 @@ jobs:
             echo "MCP server deployed to $TARGET_DIR"
 
       - name: Restart systemd service
-        if: steps.check-config.outputs.skip == 'false' && secrets.MCP_SYSTEMD_SERVICE != ''
+        if: steps.check-config.outputs.skip == 'false' && steps.check-config.outputs.has-systemd == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.MCP_TARGET_HOST }}
@@ -169,12 +177,20 @@ jobs:
     steps:
       - name: Check Lightpanda deploy config
         id: check-config
+        env:
+          LIGHTPANDA_HOST: ${{ secrets.LIGHTPANDA_HOST }}
+          LIGHTPANDA_SYSTEMD_SERVICE: ${{ secrets.LIGHTPANDA_SYSTEMD_SERVICE }}
         run: |
-          if [ -z "${{ secrets.LIGHTPANDA_HOST }}" ]; then
+          if [ -z "$LIGHTPANDA_HOST" ]; then
             echo "LIGHTPANDA_HOST not set, skipping"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$LIGHTPANDA_SYSTEMD_SERVICE" ]; then
+            echo "has-systemd=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-systemd=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout repository
@@ -222,7 +238,7 @@ jobs:
             fi
 
       - name: Install systemd service (optional)
-        if: steps.check-config.outputs.skip == 'false' && secrets.LIGHTPANDA_SYSTEMD_SERVICE != ''
+        if: steps.check-config.outputs.skip == 'false' && steps.check-config.outputs.has-systemd == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.LIGHTPANDA_HOST }}
@@ -242,8 +258,15 @@ jobs:
     if: always()
     steps:
       - name: Send Telegram notification
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets not set, skipping notification"
+            exit 0
+          fi
+
           SSH_STATUS="${{ needs.deploy-ssh.result }}"
           DOCKER_STATUS="${{ needs.deploy-docker.result }}"
           LIGHTPANDA_STATUS="${{ needs.deploy-lightpanda.result }}"
@@ -265,7 +288,8 @@ jobs:
           [ "$DOCKER_STATUS" != "" ] && DETAILS="$DETAILS\nMCP-Docker: $DOCKER_STATUS"
           [ "$LIGHTPANDA_STATUS" != "" ] && DETAILS="$DETAILS\nLightpanda: $LIGHTPANDA_STATUS"
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="${ICON} ${MSG} (${{ github.sha::7 }})${DETAILS}" \
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${ICON} ${MSG} (${SHORT_SHA})${DETAILS}" \
             -d parse_mode=Markdown

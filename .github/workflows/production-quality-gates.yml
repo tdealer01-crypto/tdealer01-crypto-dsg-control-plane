@@ -60,14 +60,43 @@ jobs:
           path: coverage
           if-no-files-found: warn
 
-  live-db-required:
+  # secrets.* is not available in job-level `if:` expressions — referencing it
+  # there invalidates the whole workflow file at trigger time (0 jobs, run named
+  # by file path). Probe the secrets in a step env instead and gate via outputs.
+  staging-config:
     runs-on: ubuntu-latest
     needs: fast-gate
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    outputs:
+      has-staging-db: ${{ steps.check.outputs.has-staging-db }}
+      has-staging-e2e: ${{ steps.check.outputs.has-staging-e2e }}
+    env:
+      STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+    steps:
+      - name: Check staging secrets
+        id: check
+        run: |
+          if [ -n "$STAGING_SUPABASE_URL" ] && [ -n "$STAGING_SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "has-staging-db=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-staging-db=false" >> "$GITHUB_OUTPUT"
+            echo "STAGING_SUPABASE_URL / STAGING_SUPABASE_SERVICE_ROLE_KEY not set — live DB gate will be skipped"
+          fi
+          if [ -n "$STAGING_BASE_URL" ]; then
+            echo "has-staging-e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-staging-e2e=false" >> "$GITHUB_OUTPUT"
+            echo "STAGING_BASE_URL not set — staging E2E gate will be skipped"
+          fi
+
+  live-db-required:
+    runs-on: ubuntu-latest
+    needs: staging-config
     timeout-minutes: 20
-    if: >
-      (github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
-      secrets.STAGING_SUPABASE_URL != '' &&
-      secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY != ''
+    if: needs.staging-config.outputs.has-staging-db == 'true'
     env:
       CI: true
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
@@ -90,11 +119,13 @@ jobs:
 
   staging-e2e:
     runs-on: ubuntu-latest
-    needs: live-db-required
+    needs: [staging-config, live-db-required]
     timeout-minutes: 30
     if: >
-      (github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
-      secrets.STAGING_BASE_URL != ''
+      !cancelled() &&
+      needs.staging-config.result == 'success' &&
+      needs.staging-config.outputs.has-staging-e2e == 'true' &&
+      (needs.live-db-required.result == 'success' || needs.live-db-required.result == 'skipped')
     env:
       CI: true
       PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}

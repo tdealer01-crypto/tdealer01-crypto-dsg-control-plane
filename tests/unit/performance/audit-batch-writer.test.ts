@@ -2,6 +2,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createHash } from 'crypto';
 import { AuditBatchWriter, type AuditEvent } from '@/lib/performance/audit-batch-writer';
 
+// Unit tests must not touch a real Supabase project: doFlush() calls
+// getSupabaseAdmin(), which throws without server env vars and would write
+// real rows (audit trail is append-only) if they were set. Mock the module
+// so inserts always succeed in-memory.
+const { supabaseFromMock, supabaseInsertMock } = vi.hoisted(() => {
+  const supabaseInsertMock = vi.fn(() => Promise.resolve({ error: null }));
+  const supabaseFromMock = vi.fn(() => ({ insert: supabaseInsertMock }));
+  return { supabaseFromMock, supabaseInsertMock };
+});
+
+vi.mock('@/lib/supabase-server', () => ({
+  getSupabaseAdmin: vi.fn(() => ({ from: supabaseFromMock })),
+}));
+
 /**
  * Unit tests for AuditBatchWriter
  *
