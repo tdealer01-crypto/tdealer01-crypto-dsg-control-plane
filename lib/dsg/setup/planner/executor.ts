@@ -189,6 +189,28 @@ export class ProvisionExecutor {
   }
 
   /**
+   * Create initial checkpoint with all items pending
+   */
+  private createInitialCheckpoint(execution_id: string, phases: Phase[]): ExecutionCheckpoint {
+    const all_items: Array<{ id: string }> = [];
+
+    for (const phase of phases) {
+      for (const item of phase.items) {
+        all_items.push({ id: item.id });
+      }
+    }
+
+    return {
+      execution_id,
+      current_phase: 0,
+      items_completed: [],
+      items_executing: [],
+      items_pending: all_items,
+      created_at: new Date(),
+    };
+  }
+
+  /**
    * Execute a single phase (with parallel items)
    */
   private async executePhase(
