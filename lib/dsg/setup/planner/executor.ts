@@ -227,7 +227,7 @@ export class ProvisionExecutor {
       // Execute items in parallel
       return await this.executeParallel(
         execution_id,
-        phase.items,
+        phase.items as any,
         checkpoint,
         orgId,
         userId,
@@ -236,7 +236,7 @@ export class ProvisionExecutor {
       // Execute items sequentially
       return await this.executeSequential(
         execution_id,
-        phase.items,
+        phase.items as any,
         checkpoint,
         orgId,
         userId,
