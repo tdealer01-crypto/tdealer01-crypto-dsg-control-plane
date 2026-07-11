@@ -16,3 +16,4 @@ comment on column public.guest_access_grants.expires_at is 'Timestamp when guest
 
 -- Idempotent: this migration can be run multiple times safely
 -- All statements use "if not exists" or "add column if not exists"
+-- Testing workflow with npm-installed supabase CLI (2026-07-11 12:59Z)
