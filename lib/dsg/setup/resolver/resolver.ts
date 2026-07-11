@@ -101,8 +101,22 @@ export class DependencyResolver {
 
     const totalTime = this.topoSort.estimateTotalTime(phases);
 
+    // Map node IDs to their phase numbers for converting to DependencyNode
+    const nodePhaseMap = new Map<string, number>();
+    for (const phase of phases) {
+      for (const node of phase.items) {
+        nodePhaseMap.set(node.id, phase.phase);
+      }
+    }
+
+    // Convert GraphNode[] to DependencyNode[] by adding phase property
+    const dependencyNodes = graph.getNodes().map((node) => ({
+      ...node,
+      phase: nodePhaseMap.get(node.id) || 0,
+    }));
+
     return {
-      nodes: graph.getNodes(),
+      nodes: dependencyNodes,
       edges: graph.getEdges(),
       phases,
     };
