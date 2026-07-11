@@ -203,7 +203,6 @@ export class MonitoringEmitter {
         execution_id: this.executionId as any,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
-        total_tokens: inputTokens + outputTokens,
         cost_usd: costUsd,
       };
 
