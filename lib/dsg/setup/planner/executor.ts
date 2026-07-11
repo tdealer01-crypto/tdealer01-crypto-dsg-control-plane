@@ -349,7 +349,7 @@ export class ProvisionExecutor {
       checkpoint.items_completed.push({
         id: item.id,
         status: 'completed',
-        result: result.output,
+        result: result.result,
         duration_seconds: duration,
         completed_at: new Date(),
       });
@@ -368,7 +368,7 @@ export class ProvisionExecutor {
           provider: item.provider,
           action: item.action,
           duration_seconds: duration,
-          result: result.output,
+          result: result.result,
           completed_at: new Date(),
         },
       });

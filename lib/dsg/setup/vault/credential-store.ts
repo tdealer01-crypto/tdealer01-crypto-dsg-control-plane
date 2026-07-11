@@ -3,7 +3,7 @@
  * Manage encrypted credentials for connectors (AES-256-GCM)
  */
 
-import { encryptWithMasterKey, decryptWithMasterKey } from '@/lib/security/secret-crypto';
+import { encryptSecret, decryptSecret } from '@/lib/security/secret-crypto';
 import { canonicalHash } from '@/lib/runtime/canonical';
 import { eventBus } from '../events';
 import type { ConnectorCredential } from '../types';
@@ -39,10 +39,7 @@ export class CredentialStore {
 
     // Encrypt credential value
     const credentialJson = JSON.stringify(credential);
-    const { ciphertext, iv, salt } = await encryptWithMasterKey(
-      credentialJson,
-      `connector:${credential.connector_id}`,
-    );
+    const encrypted_token = encryptSecret(credentialJson);
 
     // Generate fingerprint for audit trail (never log raw token)
     const fingerprint = canonicalHash({
@@ -56,7 +53,7 @@ export class CredentialStore {
       id: credential_id,
       org_id,
       connector_id: credential.connector_id,
-      encrypted_token: ciphertext,
+      encrypted_token,
       token_type: credential.token_type,
       scope: credential.scope,
       expires_at: credential.expires_at,
@@ -106,8 +103,7 @@ export class CredentialStore {
 
     // Decrypt credential
     try {
-      // Placeholder: actual decryption would use stored iv/salt + encrypted_token
-      const decrypted = stored.encrypted_token; // Would use decryptWithMasterKey(...)
+      const decrypted = decryptSecret(stored.encrypted_token);
 
       // Emit secret:accessed event
       await eventBus.emit({

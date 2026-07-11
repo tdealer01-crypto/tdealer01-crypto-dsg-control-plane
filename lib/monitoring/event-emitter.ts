@@ -93,7 +93,7 @@ export class MonitoringEmitter {
         execution_id: this.executionId as any,
         event_type: eventType as any,
         timestamp: new Date().toISOString(),
-        data: metadata || null,
+        metadata: metadata || null,
       };
 
       const supabase = await this.getSupabase();
@@ -131,8 +131,8 @@ export class MonitoringEmitter {
       const toolCall: ToolCallInsert = {
         execution_id: this.executionId as any,
         tool_name: toolName,
-        input: toolInput,
-        status: 'pending' as any,
+        tool_input: toolInput as any,
+        approval_status: 'pending' as any,
       };
 
       const supabase = await this.getSupabase();
@@ -202,9 +202,9 @@ export class MonitoringEmitter {
     try {
       const tokenUsage: TokenUsageInsert = {
         execution_id: this.executionId as any,
+        model_name: modelName,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
-        total_tokens: inputTokens + outputTokens,
         cost_usd: costUsd,
       };
 

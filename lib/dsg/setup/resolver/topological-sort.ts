@@ -5,12 +5,7 @@
 
 import { DependencyGraph } from './graph';
 import type { GraphNode } from './graph';
-
-export interface Phase {
-  phase: number;
-  items: GraphNode[];
-  can_run_parallel: boolean;
-}
+import type { DependencyNode, Phase } from '../types';
 
 export class TopologicalSort {
   /**
@@ -42,14 +37,19 @@ export class TopologicalSort {
     while (queue.length > 0) {
       // Current phase: all nodes with in-degree 0
       const currentPhaseItems = queue.splice(0, queue.length); // Drain queue
+      const phaseNumber = phases.length;
       const phaseNodes = currentPhaseItems
         .map((id) => graph.getNode(id))
-        .filter((n) => n !== undefined) as GraphNode[];
+        .filter((n) => n !== undefined)
+        .map((node) => ({
+          ...node,
+          phase: phaseNumber,
+        } as DependencyNode));
 
       if (phaseNodes.length === 0) break;
 
       phases.push({
-        phase: phases.length,
+        phase: phaseNumber,
         items: phaseNodes,
         can_run_parallel: true, // All items in a phase have no inter-dependencies
       });

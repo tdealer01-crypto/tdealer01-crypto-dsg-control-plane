@@ -77,7 +77,8 @@ export class AgentProfileManager {
   async getOrCreateProfile(agentId: string, walletAddress: string): Promise<AgentProfileData> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const client = (this.supabase! as any);
+    const { data, error } = await (client as any)
       .from('agent_profiles')
       .select('*')
       .eq('agent_id', agentId)
@@ -92,7 +93,7 @@ export class AgentProfileManager {
     }
 
     // Create new profile
-    const newProfile: Database['public']['Tables']['agent_profiles']['Insert'] = {
+    const newProfile: any = {
       agent_id: agentId,
       wallet_address: walletAddress,
       skills: [],
@@ -103,7 +104,7 @@ export class AgentProfileManager {
       last_active: new Date().toISOString(),
     };
 
-    const { data: created, error: createError } = await this.supabase!
+    const { data: created, error: createError } = await ((this.supabase! as any) as any)
       .from('agent_profiles')
       .insert(newProfile)
       .select()
@@ -122,7 +123,7 @@ export class AgentProfileManager {
   async updateProfile(agentId: string, updates: Partial<AgentProfileData>): Promise<AgentProfileData> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('agent_profiles')
       .update({
         ...updates,
@@ -149,7 +150,7 @@ export class AgentProfileManager {
     await this.ensureInitialized();
 
     // Fetch current profile
-    const { data: profile, error: fetchError } = await this.supabase!
+    const { data: profile, error: fetchError } = await (this.supabase! as any)
       .from('agent_profiles')
       .select('*')
       .eq('agent_id', agentId)
@@ -175,7 +176,7 @@ export class AgentProfileManager {
     }
 
     // Update profile
-    const { error: updateError } = await this.supabase!
+    const { error: updateError } = await (this.supabase! as any)
       .from('agent_profiles')
       .update({
         reputation: newReputation,
@@ -200,7 +201,7 @@ export class AgentProfileManager {
   async recordEarnings(earning: EarningsRecordData): Promise<void> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('agent_profiles')
       .select('total_earnings')
       .eq('agent_id', earning.agent_id)
@@ -213,7 +214,7 @@ export class AgentProfileManager {
     const currentEarnings = (data as any).total_earnings || 0;
 
     // Insert earnings record
-    const { error: insertError } = await this.supabase!
+    const { error: insertError } = await (this.supabase! as any)
       .from('earnings_records')
       .insert({
         job_id: earning.job_id,
@@ -228,7 +229,7 @@ export class AgentProfileManager {
     }
 
     // Update total earnings
-    const { error: updateError } = await this.supabase!
+    const { error: updateError } = await (this.supabase! as any)
       .from('agent_profiles')
       .update({
         total_earnings: currentEarnings + earning.amount,
@@ -247,7 +248,7 @@ export class AgentProfileManager {
   async recordExecution(execution: JobExecutionData): Promise<void> {
     await this.ensureInitialized();
 
-    const { error } = await this.supabase!
+    const { error } = await (this.supabase! as any)
       .from('job_executions')
       .insert({
         job_id: execution.job_id,
@@ -272,7 +273,7 @@ export class AgentProfileManager {
   async getEarnings(agentId: string, limit: number = 10): Promise<EarningsRecordData[]> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('earnings_records')
       .select('*')
       .eq('agent_id', agentId)
@@ -292,7 +293,7 @@ export class AgentProfileManager {
   async getExecutionHistory(agentId: string, limit: number = 10): Promise<JobExecutionData[]> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('job_executions')
       .select('*')
       .eq('agent_id', agentId)
@@ -312,7 +313,7 @@ export class AgentProfileManager {
   async getTotalEarnings(agentId: string): Promise<number> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('agent_profiles')
       .select('total_earnings')
       .eq('agent_id', agentId)
@@ -331,7 +332,7 @@ export class AgentProfileManager {
   async getReputation(agentId: string): Promise<number> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('agent_profiles')
       .select('reputation')
       .eq('agent_id', agentId)
@@ -350,7 +351,7 @@ export class AgentProfileManager {
   async getAgentsByTier(tier: 'bronze' | 'silver' | 'gold' | 'platinum'): Promise<AgentProfileData[]> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('agent_profiles')
       .select('*')
       .eq('tier', tier)
@@ -369,7 +370,7 @@ export class AgentProfileManager {
   async getTopAgents(limit: number = 10): Promise<AgentProfileData[]> {
     await this.ensureInitialized();
 
-    const { data, error } = await this.supabase!
+    const { data, error } = await (this.supabase! as any)
       .from('agent_profiles')
       .select('*')
       .order('reputation', { ascending: false })
