@@ -230,16 +230,16 @@ describe('RLS Multi-Tenant Enforcement', () => {
 
     it('should verify previous_hash only within same org', () => {
       const batches = [
-        { id: 'b1', org_id: 'org_A', hash: 'hash_a1', previous_hash: '0' * 16 },
+        { id: 'b1', org_id: 'org_A', hash: 'hash_a1', previous_hash: '0'.repeat(16) },
         { id: 'b2', org_id: 'org_A', hash: 'hash_a2', previous_hash: 'hash_a1' },
-        { id: 'b3', org_id: 'org_B', hash: 'hash_b1', previous_hash: '0' * 16 },
+        { id: 'b3', org_id: 'org_B', hash: 'hash_b1', previous_hash: '0'.repeat(16) },
       ];
 
       const verifyChain = (batchId: string, orgId: string): boolean => {
         const batch = batches.find((b) => b.id === batchId && b.org_id === orgId);
         if (!batch) return false;
 
-        if (batch.previous_hash === '0' * 16) {
+        if (batch.previous_hash === '0'.repeat(16)) {
           return true; // Genesis block
         }
 
@@ -263,7 +263,7 @@ describe('RLS Multi-Tenant Enforcement', () => {
       ]);
 
       const getPolicyForOrg = (policyId: string, orgId: string) => {
-        const key = `${orgId}:${policyId.split(':')[1]}`;
+        const key = `${orgId}:${policyId}`;
         return policies.get(key);
       };
 
