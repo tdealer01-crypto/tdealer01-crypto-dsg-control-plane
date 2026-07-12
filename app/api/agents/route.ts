@@ -8,6 +8,7 @@ import { requireRuntimeAccess } from '../../../lib/authz-runtime';
 import { resolvePolicyId } from '../../../lib/supabase/resolve-policy';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../lib/security/rate-limit';
 import { fireWebhook } from '../../../lib/webhooks/deliver';
+import { captureEvent } from '../../../lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -232,6 +233,31 @@ export async function POST(request: Request) {
       agent_id: inserted.id,
       name: inserted.name,
       policy_id: inserted.policy_id,
+    });
+
+    // Get user ID for telemetry
+    let userIdContext = 'api'; // Default for runtime/API access
+    if (!runtimeAccess.ok) {
+      // For authenticated user access, get user ID from Supabase
+      try {
+        const supabaseForAuth = await createSupabaseServerClient();
+        const { data: { user } } = await supabaseForAuth.auth.getUser();
+        userIdContext = user?.id || 'unknown';
+      } catch {
+        userIdContext = 'unknown';
+      }
+    }
+
+    // Capture agent_created event
+    await captureEvent('agent_created', {
+      userId: userIdContext as string,
+      organizationId: orgId,
+    }, {
+      organization_id: orgId,
+      agent_id: inserted.id,
+      agent_name: inserted.name,
+      agent_type: 'external_api',
+      created_by_user_id: userIdContext,
     });
 
     return NextResponse.json({
