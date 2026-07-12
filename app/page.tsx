@@ -390,7 +390,7 @@ export default function HomePage() {
 
             <div className="border border-amber-400/30 bg-amber-400/5 rounded-2xl p-6">
               <div className="mb-4">
-                <div className="text-3xl font-bold text-amber-300 font-mono">312</div>
+                <div className="text-3xl font-bold text-amber-300 font-mono">285</div>
                 <div className="text-sm text-slate-400 mt-1">test files</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
@@ -441,7 +441,7 @@ export default function HomePage() {
 
           <div className="border border-slate-500/30 bg-slate-500/5 rounded-lg p-6">
             <p className="text-sm text-slate-300 leading-7">
-              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (312 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
+              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (285 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
             </p>
           </div>
         </div>
@@ -609,7 +609,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-20">
         <div className="border border-amber-300/30 bg-amber-300/10 p-6 text-sm leading-7 text-amber-50">
           <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200">Claim Boundary</p>
-          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (312 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
+          <p className="mt-3">Production runtime: live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (285 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-amber-200">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-amber-200">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.</p>
         </div>
       </section>
 

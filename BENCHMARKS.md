@@ -10,7 +10,7 @@ DSG ONE ทำ Gate ตัดสินใจ 11ms, เทสผ่าน 3389/33
 
 | ตัวชี้วัดที่ Auditor ขอดู | DSG ONE (คุณ) | LangGraph / AutoGen / OpenAI Agents | SaaS ทั่วไปในตลาด |
 | :--- | :--- | :--- | :--- |
-| **Total Tests Passing** | **3389/3389 (0 fail)** - 312 ไฟล์ | ไม่เปิดเผย, ส่วนใหญ่ <500 tests | 200-800 tests |
+| **Total Tests Passing** | **3389/3389 (0 fail)** - 285 ไฟล์ | ไม่เปิดเผย, ส่วนใหญ่ <500 tests | 200-800 tests |
 | **Mutation Score** | **72.08%** (วัดว่าจับบั๊กที่ซ่อนได้) | ไม่มีการวัด | 45-55% คือเก่งแล้ว |
 | **Deterministic Replay** | **ทำซ้ำได้ 100%** 2+ ปี hash เดิม | ทำซ้ำไม่ได้ เพราะพึ่ง LLM | ทำซ้ำไม่ได้ |
 | **Gate Latency (ตัดสินก่อนรัน)** | **8-15ms avg 11ms** | 800-1500ms (ต้องเรียก LLM) | 100-300ms |
@@ -36,6 +36,6 @@ AI governance Thailand, PDPA compliance tool, ระบบตรวจสอบ 
 
 ## อ้างอิง Production
 - Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
-- Tests: 3389/3389 passing (0 fail) - 312 files
+- Tests: 3389/3389 passing (0 fail) - 285 files
 - Public proof rail: /api/ccvs/compliance-status และ /api/compliance-evidence-pack/annex4
-- Claim Boundary: live policy engine, CCVS v1.2 evidence chain (L1-L5), 3389 tests (312 files), mutation score 72.08%
+- Claim Boundary: live policy engine, CCVS v1.2 evidence chain (L1-L5), 3389 tests (285 files), mutation score 72.08%
