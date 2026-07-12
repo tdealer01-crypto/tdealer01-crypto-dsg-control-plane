@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
+import { createClient } from '../../../../../lib/supabase/server';
+import { captureEvent } from '../../../../../lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +29,30 @@ export async function GET(request: Request) {
   if (error) {
     return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
+
+  // Get current user for telemetry
+  let userId = 'unknown';
+  try {
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    userId = user?.id || 'unknown';
+  } catch {
+    // Continue without user ID
+  }
+
+  // Capture audit_trail_queried event
+  const eventCount = Array.isArray(data) ? data.length : 0;
+  void captureEvent('audit_trail_queried', {
+    userId,
+    organizationId: orgId,
+  }, {
+    organization_id: orgId,
+    event_count: eventCount,
+    limit_requested: limit,
+    queried_by_user_id: userId,
+  }).catch((error) => {
+    console.error('[gateway-audit-events] Failed to capture event:', error);
+  });
 
   return NextResponse.json({ ok: true, events: data ?? [] }, { status: 200 });
 }

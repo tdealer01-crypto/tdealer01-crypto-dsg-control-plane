@@ -11,6 +11,7 @@ import {
   checkGateEntitlement,
   recordGateEvaluation,
 } from "../../../../../../lib/dsg/gate-entitlement";
+import { captureEvent } from "../../../../../../lib/telemetry/capture-event";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,22 @@ export async function POST(request: Request) {
     proof.status,
     Date.now() - startMs,
   );
+
+  // Capture proof_verified event
+  void captureEvent('proof_verified', {
+    userId: caller.userId || 'unknown',
+    organizationId: caller.orgId,
+  }, {
+    organization_id: caller.orgId,
+    proof_status: proof.status,
+    proof_hash: proof.proofHash || null,
+    production_ready: proof.evidenceBoundary.productionReadyClaim,
+    external_solver_invoked: proof.evidenceBoundary.externalSolverInvoked,
+    verification_time_ms: Date.now() - startMs,
+    verified_by_user_id: caller.userId || 'unknown',
+  }).catch((error) => {
+    console.error('[dsg-proof-verify] Failed to capture event:', error);
+  });
 
   return NextResponse.json(
     {

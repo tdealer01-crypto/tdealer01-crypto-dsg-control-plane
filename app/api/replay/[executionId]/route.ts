@@ -6,6 +6,7 @@ import { requireOrgRole } from "../../../../lib/authz";
 import { RuntimeRouteRoles } from "../../../../lib/runtime/permissions";
 import { getSupabaseAdmin } from "../../../../lib/supabase-server";
 import { internalErrorMessage, logApiError } from "../../../../lib/security/api-error";
+import { captureEvent } from "../../../../lib/telemetry/capture-event";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +94,21 @@ export async function GET(
         const metadata = item?.metadata || {};
         return metadata?.execution_id === executionId || metadata?.audit_id === audit?.id;
       }) || null;
+
+    // Capture execution_replayed event
+    void captureEvent('execution_replayed', {
+      userId: access.userId || 'unknown',
+      organizationId: access.orgId,
+    }, {
+      organization_id: access.orgId,
+      execution_id: executionId,
+      execution_decision: execution?.decision || 'unknown',
+      core_match_found: !!coreMatch,
+      replay_mode: internalMode ? 'internal' : 'remote',
+      replayed_by_user_id: access.userId || 'unknown',
+    }).catch((error) => {
+      console.error('[api/replay] Failed to capture event:', error);
+    });
 
     return NextResponse.json({
       ok: true,

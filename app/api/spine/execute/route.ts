@@ -299,6 +299,24 @@ export async function POST(request: Request) {
       const decision = (result.body as Record<string, unknown>)?.decision as string || 'UNKNOWN';
       const decisionLatencyMs = Date.now() - (executionState?.startTime || Date.now());
 
+      // Capture approval_requested if decision requires human approval
+      if (decision === 'REVIEW' || decision === 'ESCALATE') {
+        const approvalQueueId = randomUUID();
+        void captureEvent('approval_requested', {
+          userId: agentId,
+          organizationId: orgId,
+          agentId,
+        }, {
+          organization_id: orgId,
+          execution_id: executionId,
+          approval_queue_id: approvalQueueId,
+          policy_id: policyId || null,
+          decision_reason: decision,
+        }).catch((error) => {
+          console.error('[api/spine/execute] Failed to capture approval_requested:', error);
+        });
+      }
+
       // Capture decision_made event
       await captureEvent('decision_made', {
         userId: agentId,
@@ -337,6 +355,22 @@ export async function POST(request: Request) {
         },
       }).catch((error) => {
         console.error('[api/spine/execute] logQuotaConsumption failed:', error);
+      });
+
+      // Capture execution_completed event
+      const wentToApproval = decision === 'REVIEW' || decision === 'ESCALATE';
+      void captureEvent('execution_completed', {
+        userId: agentId,
+        organizationId: orgId,
+        agentId,
+      }, {
+        organization_id: orgId,
+        execution_id: executionId,
+        final_decision: decision,
+        total_latency_ms: decisionLatencyMs,
+        went_to_approval: wentToApproval,
+      }).catch((error) => {
+        console.error('[api/spine/execute] Failed to capture execution_completed:', error);
       });
     }
 
