@@ -12,6 +12,7 @@ import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { meterExecution } from '../../../../lib/billing/metered';
 import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
 import { StopReason } from '../../../../lib/types/task';
+import { captureEvent } from '../../../../lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,6 +157,34 @@ export async function POST(request: Request) {
     const orgId = String(agent.org_id);
     const agentId = String(agent.id);
 
+    // Check if this is first execution for agent (before quota check)
+    const { count: agentExecutions } = await (async () => {
+      try {
+        // Try to get execution count, but don't fail if unavailable
+        const result = await (global as any).__supabaseExecutionCount?.(agentId);
+        return { count: result?.count || 0 };
+      } catch {
+        return { count: 0 };
+      }
+    })();
+
+    const isFirstExecution = (agentExecutions || 0) === 0;
+
+    // Capture execution_submitted event
+    await captureEvent('execution_submitted', {
+      userId: agentId,
+      organizationId: orgId,
+      agentId,
+    }, {
+      organization_id: orgId,
+      agent_id: agentId,
+      execution_id: randomUUID(),
+      policy_id: payload.policyId || null,
+      policy_version: 'v1',
+      is_first_execution: isFirstExecution,
+      request_type: payload.requestType || 'unknown',
+    });
+
     // Quota gate: check before executing (read-only, safe to run first)
     const quota = await checkQuota(orgId, agentId);
     if (!quota.allowed) {
@@ -259,6 +288,28 @@ export async function POST(request: Request) {
 
     // Count executions only on success (2xx)
     if (result.status >= 200 && result.status < 300) {
+      // Extract decision and metadata
+      const executionId =
+        ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
+        randomUUID();
+      const decision = (result.body as Record<string, unknown>)?.decision as string || 'UNKNOWN';
+      const decisionLatencyMs = Date.now() - (executionState?.startTime || Date.now());
+
+      // Capture decision_made event
+      await captureEvent('decision_made', {
+        userId: agentId,
+        organizationId: orgId,
+        agentId,
+      }, {
+        organization_id: orgId,
+        execution_id: executionId,
+        decision,
+        policy_id: payload.policyId || null,
+        policy_version: 'v1',
+        decision_latency_ms: decisionLatencyMs,
+        proof_hash: (result.body as Record<string, unknown>)?.proof_hash || null,
+      });
+
       // Fire-and-forget side effects must not become unhandled rejections —
       // a rejected floating promise can take down the worker after the
       // response has already been returned.
@@ -267,13 +318,10 @@ export async function POST(request: Request) {
       });
       void fireWebhook(orgId, 'execution.completed', {
         agent_id: agentId,
-        decision: (result.body as Record<string, unknown>)?.decision ?? null,
+        decision: decision ?? null,
       }).catch((error) => {
         console.error('[api/spine/execute] fireWebhook failed:', error);
       });
-      const executionId =
-        ((result.body as Record<string, unknown>)?.execution_id as string | undefined) ??
-        randomUUID();
       void meterExecution(orgId, 1, executionId).catch((error) => {
         console.error('[api/spine/execute] meterExecution failed:', error);
       });
