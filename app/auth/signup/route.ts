@@ -20,11 +20,28 @@ function getTrustedAppOrigin() {
 }
 
 export async function POST(request: NextRequest) {
-  const formData = await request.formData();
-  const email = String(formData.get('email') || '').trim().toLowerCase();
-  const workspaceName = String(formData.get('workspace_name') || '').trim();
-  const fullName = String(formData.get('full_name') || '').trim();
-  const next = getSafeNext(String(formData.get('next') || ''));
+  let email = '';
+  let workspaceName = '';
+  let fullName = '';
+  let next = '';
+
+  const contentType = request.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    // Handle JSON request
+    const body = await request.json().catch(() => ({}));
+    email = String(body.email || '').trim().toLowerCase();
+    workspaceName = String(body.workspace_name || '').trim();
+    fullName = String(body.full_name || '').trim();
+    next = getSafeNext(String(body.next || ''));
+  } else {
+    // Handle form data request
+    const formData = await request.formData();
+    email = String(formData.get('email') || '').trim().toLowerCase();
+    workspaceName = String(formData.get('workspace_name') || '').trim();
+    fullName = String(formData.get('full_name') || '').trim();
+    next = getSafeNext(String(formData.get('next') || ''));
+  }
 
   const redirectToSignup = new URL('/signup', request.url);
   redirectToSignup.searchParams.set('next', next);
