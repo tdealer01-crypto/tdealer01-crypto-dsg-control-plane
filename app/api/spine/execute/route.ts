@@ -170,6 +170,10 @@ export async function POST(request: Request) {
 
     const isFirstExecution = (agentExecutions || 0) === 0;
 
+    // Extract policyId and requestType from payload context/input
+    const policyId = (payload.context.policy_id || payload.input.policy_id) as string | undefined;
+    const requestType = (payload.context.request_type || payload.input.request_type || payload.action) as string;
+
     // Capture execution_submitted event
     await captureEvent('execution_submitted', {
       userId: agentId,
@@ -179,10 +183,10 @@ export async function POST(request: Request) {
       organization_id: orgId,
       agent_id: agentId,
       execution_id: randomUUID(),
-      policy_id: payload.policyId || null,
+      policy_id: policyId || null,
       policy_version: 'v1',
       is_first_execution: isFirstExecution,
-      request_type: payload.requestType || 'unknown',
+      request_type: requestType,
     });
 
     // Quota gate: check before executing (read-only, safe to run first)
@@ -304,7 +308,7 @@ export async function POST(request: Request) {
         organization_id: orgId,
         execution_id: executionId,
         decision,
-        policy_id: payload.policyId || null,
+        policy_id: policyId || null,
         policy_version: 'v1',
         decision_latency_ms: decisionLatencyMs,
         proof_hash: (result.body as Record<string, unknown>)?.proof_hash || null,

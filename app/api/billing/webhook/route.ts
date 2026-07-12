@@ -453,7 +453,10 @@ export async function POST(request: Request) {
 
           // Capture subscription_created event (on subscription creation only)
           if (event.type === 'customer.subscription.created' && record.org_id) {
-            const mrr = record.amount ? (record.amount / 100) : 0; // Convert cents to dollars
+            // Extract MRR from subscription items (convert cents to dollars)
+            const mrr = subscription.items?.data?.[0]?.price?.unit_amount
+              ? subscription.items.data[0].price.unit_amount / 100
+              : 0;
             await captureEvent('subscription_created', {
               userId: record.org_id, // Use org as distinct ID since no user context in webhook
               organizationId: record.org_id,

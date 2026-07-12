@@ -236,7 +236,17 @@ export async function POST(request: Request) {
     });
 
     // Get user ID for telemetry
-    const userIdContext = runtimeAccess.ok ? 'api' : (await requireActiveProfile().then(p => p.ok ? p.userId : 'unknown'));
+    let userIdContext = 'api'; // Default for runtime/API access
+    if (!runtimeAccess.ok) {
+      // For authenticated user access, get user ID from Supabase
+      try {
+        const supabaseForAuth = await createSupabaseServerClient();
+        const { data: { user } } = await supabaseForAuth.auth.getUser();
+        userIdContext = user?.id || 'unknown';
+      } catch {
+        userIdContext = 'unknown';
+      }
+    }
 
     // Capture agent_created event
     await captureEvent('agent_created', {
