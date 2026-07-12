@@ -37,18 +37,25 @@ async function getWelcomeData(authUserId: string) {
     : null;
 
   // Query onboarding_role separately to handle potential schema drift during migration
-  const { data: onboardingData } = await admin
-    .from('users')
-    .select('onboarding_role')
-    .eq('id', userRow.id)
-    .maybeSingle()
-    .catch(() => ({ data: null }));
+  let onboardingRole: OnboardingRole | null = null;
+  try {
+    const { data: onboardingData } = await admin
+      .from('users')
+      .select('onboarding_role')
+      .eq('id', userRow.id)
+      .maybeSingle();
+
+    onboardingRole = (onboardingData?.onboarding_role as OnboardingRole) || null;
+  } catch {
+    // Column doesn't exist yet during migration, default to null
+    onboardingRole = null;
+  }
 
   return {
     orgName: org?.name ?? 'Your workspace',
     plan: billing?.plan_key ?? org?.plan ?? 'trial',
     trialDaysLeft,
-    onboardingRole: (onboardingData?.onboarding_role as OnboardingRole) || null,
+    onboardingRole,
     userId: userRow.id,
   };
 }
