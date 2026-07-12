@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { buildGatewayEvidenceBundle } from '../../../../../lib/gateway/evidence-bundle';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
+import { createClient } from '../../../../../lib/supabase/server';
+import { captureEvent } from '../../../../../lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,10 +37,35 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 
+  // Get current user for telemetry
+  let userId = 'unknown';
+  try {
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    userId = user?.id || 'unknown';
+  } catch {
+    // Continue without user ID
+  }
+
   const bundle = buildGatewayEvidenceBundle({
     orgId,
     auditToken: auditToken || undefined,
     events: data ?? [],
+  });
+
+  // Capture evidence_exported event
+  const eventCount = Array.isArray(data) ? data.length : 0;
+  void captureEvent('evidence_exported', {
+    userId,
+    organizationId: orgId,
+  }, {
+    organization_id: orgId,
+    export_type: 'evidence-bundle',
+    event_count: eventCount,
+    audit_token: auditToken || null,
+    exported_by_user_id: userId,
+  }).catch((error) => {
+    console.error('[gateway-evidence-bundle] Failed to capture event:', error);
   });
 
   return NextResponse.json(bundle, {

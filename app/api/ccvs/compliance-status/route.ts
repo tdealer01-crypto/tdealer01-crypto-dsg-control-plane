@@ -13,6 +13,7 @@ import type { ComplianceMatrix } from '../../../../lib/ccvs/compliance-matrix';
 import { REQUIREMENT_CATALOG } from '../../../../lib/ccvs/compliance-matrix';
 import { readJsonBody } from '../../../../lib/security/request-json';
 import { createClient } from '../../../../lib/supabase/server';
+import { captureEvent } from '../../../../lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -198,6 +199,22 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
+
+  // Capture compliance_report_generated event
+  void captureEvent('compliance_report_generated', {
+    userId: 'ci-pipeline', // CI system generating the report
+    organizationId: 'platform', // Platform-wide compliance
+  }, {
+    organization_id: 'platform',
+    run_id,
+    claim_pass_eligible: newStatus.claim_pass_eligible,
+    requirements_pass: newStatus.requirements_pass,
+    requirements_total: newStatus.requirements_total,
+    mutation_score: newStatus.mutation_score || null,
+    generated_at: newStatus.updated_at,
+  }).catch((error) => {
+    console.error('[compliance-status] Failed to capture event:', error);
+  });
 
   return NextResponse.json({
     ok: true,
