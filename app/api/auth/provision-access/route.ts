@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import { captureEvent } from '../../../../lib/telemetry/capture-event';
 
 export async function POST() {
   const supabase = await createClient();
@@ -34,6 +35,22 @@ export async function POST() {
       },
       { status: 500 }
     );
+  }
+
+  // Capture workspace_created event
+  if (data?.ok && data?.workspace_id) {
+    void captureEvent('workspace_created', {
+      userId: user.id,
+      organizationId: data.organization_id,
+    }, {
+      organization_id: data.organization_id,
+      workspace_id: data.workspace_id,
+      workspace_name: data.workspace_name || 'default',
+      created_at: new Date().toISOString(),
+      created_by_user_id: user.id,
+    }).catch((error) => {
+      console.error('[auth-provision] Failed to capture workspace_created event:', error);
+    });
   }
 
   return NextResponse.json(data ?? { ok: false, reason: 'NO_RESULT' });
