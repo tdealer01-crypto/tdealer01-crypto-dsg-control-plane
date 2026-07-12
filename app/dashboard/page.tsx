@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MetricsSummary } from "@/components/monitoring";
+import SupportQueueWidget from "@/components/SupportQueueWidget";
 
 type Agent = {
   agent_id: string;
@@ -475,8 +476,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Bottom Row: Agents + Hermes ────────────────────────── */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {/* ── Support Queue ──────────────────────────────────────── */}
+        <div className="mt-8">
+          <SupportQueueWidget />
+        </div>
+
+        {/* ── Bottom Row: Agents + Hermes + Support ────────────────────────── */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
 
           {/* Agents */}
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
@@ -559,6 +565,9 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
+          {/* Support Queue (Alternative position - comment out if using separate widget above) */}
+          {/* <SupportQueueWidget /> */}
 
           {/* Hermes AI Status */}
           <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.03] p-5">
