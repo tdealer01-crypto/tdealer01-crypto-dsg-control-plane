@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
+import { sendEscalationNotifications } from '@/lib/support/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,23 @@ export async function POST(request: NextRequest) {
         .from('support_tickets' as any)
         .update({ status: 'in_progress' })
         .eq('id', ticket_id) as any);
+    }
+
+    // Send email notifications to team (fire and forget - don't block on failure)
+    const emailChannels = teamInfo.channels.filter((c: string) =>
+      c.includes('@')
+    ) as string[];
+    if (emailChannels.length > 0) {
+      void sendEscalationNotifications(emailChannels, {
+        ticketId: ticket_id,
+        ticketTitle: ticket.title || 'Support Ticket',
+        reason,
+        team: teamInfo.name,
+        severity: ticket.priority === 'urgent' ? 'critical' : ticket.priority || 'normal',
+        dashboardUrl: process.env.NEXT_PUBLIC_APP_URL,
+      }).catch((err) => {
+        console.error('[escalate] notification send failed:', err);
+      });
     }
 
     return NextResponse.json({
