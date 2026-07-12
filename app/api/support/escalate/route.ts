@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
 import { sendEscalationNotifications } from '@/lib/support/notifications';
+import { sendSlackEscalationToChannel } from '@/lib/support/slack-notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,20 +131,46 @@ export async function POST(request: NextRequest) {
         .eq('id', ticket_id) as any);
     }
 
-    // Send email notifications to team (fire and forget - don't block on failure)
+    // Send notifications to team (fire and forget - don't block on failure)
     const emailChannels = teamInfo.channels.filter((c: string) =>
       c.includes('@')
     ) as string[];
+    const slackChannels = teamInfo.channels.filter((c: string) =>
+      c.startsWith('#')
+    ) as string[];
+
+    const severity =
+      ticket.priority === 'urgent'
+        ? 'critical'
+        : ticket.priority || 'normal';
+
     if (emailChannels.length > 0) {
       void sendEscalationNotifications(emailChannels, {
         ticketId: ticket_id,
         ticketTitle: ticket.title || 'Support Ticket',
         reason,
         team: teamInfo.name,
-        severity: ticket.priority === 'urgent' ? 'critical' : ticket.priority || 'normal',
+        severity,
         dashboardUrl: process.env.NEXT_PUBLIC_APP_URL,
       }).catch((err) => {
-        console.error('[escalate] notification send failed:', err);
+        console.error('[escalate] email notification send failed:', err);
+      });
+    }
+
+    if (slackChannels.length > 0) {
+      slackChannels.forEach((channel) => {
+        void sendSlackEscalationToChannel(channel, {
+          ticketId: ticket_id,
+          ticketTitle: ticket.title || 'Support Ticket',
+          reason,
+          team: teamInfo.name,
+          severity,
+          ticketUrl: process.env.NEXT_PUBLIC_APP_URL
+            ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/support/tickets/${ticket_id}`
+            : undefined,
+        }).catch((err) => {
+          console.error('[escalate] slack notification send failed:', err);
+        });
       });
     }
 
