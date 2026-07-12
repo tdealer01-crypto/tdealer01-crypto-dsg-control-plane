@@ -17,6 +17,18 @@ vi.mock('../../../lib/security/api-error', () => ({
     new Response(JSON.stringify({ error: String(err) }), { status: 500 })
   ),
 }));
+vi.mock('../../../lib/telemetry/capture-event', () => ({
+  captureEvent: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../../../lib/supabase-server', () => ({
+  getSupabaseAdmin: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    })),
+  })),
+}));
 
 import { POST } from '../../../app/api/billing/checkout/route';
 import { createClient } from '../../../lib/supabase/server';
