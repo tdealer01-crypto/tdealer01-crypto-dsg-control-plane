@@ -441,7 +441,7 @@ export default function HomePage() {
 
           <div className="border border-slate-500/30 bg-slate-500/5 rounded-lg p-6">
             <p className="text-sm text-slate-300 leading-7">
-              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (285 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, or third-party independent audit.
+              <strong className="text-slate-100">Claim Boundary:</strong> Production runtime has live policy engine, CCVS v1.2 evidence chain (L1–L5), 3,389 tests (285 files), mutation score 72.08%, EU AI Act Annex IV mapping at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/compliance-evidence-pack/annex4</code>, and compliance-status API at <code className="text-emerald-300 bg-black/30 px-1 rounded">/api/ccvs/compliance-status</code>. Not claimed: external Z3 per-request invocation, JWT/JWKS standalone auth completion, WORM-certified external storage, third-party certification, or ISO/NIST independent audit.
             </p>
           </div>
         </div>
@@ -555,7 +555,7 @@ export default function HomePage() {
             status="PASS"
             summary="policyVersion 1.0 loaded and all 8 configured deterministic constraints evaluated as pass for this sample request."
             reason="No threshold, actor-role, or replay-protection violations were detected in the sample action context."
-            ruleRefs={['policyVersion:1.0', 'solver:static_check@dsg-deterministic-ts-0.0.0', 'constraintsChecked:8']}
+            ruleRefs={['policyVersion:1.0', 'solver:static_check@dsg-deterministic-ts-2.6.1', 'constraintsChecked:8']}
             demoLabel={DEMO_LABEL}
           />
           <ActionPathGraph
@@ -596,7 +596,7 @@ export default function HomePage() {
               { key: 'idempotency', label: 'replayProtection.idempotencyKey', availability: 'present', detail: 'Idempotency key present.' },
               { key: 'requestHash', label: 'replayProtection.requestHash', availability: 'present', detail: 'Request hash present.' },
               { key: 'solverName', label: 'solver.name', availability: 'present', detail: 'Observed solver.name: static_check.' },
-              { key: 'solverVersion', label: 'solver.version', availability: 'present', detail: 'Observed solver.version: dsg-deterministic-ts-0.0.0.' },
+              { key: 'solverVersion', label: 'solver.version', availability: 'present', detail: 'Observed solver.version: dsg-deterministic-ts-2.6.1.' },
               { key: 'constraintsChecked', label: 'constraintsChecked', availability: 'present', detail: 'Observed constraintsChecked: 8.' },
               { key: 'externalZ3', label: 'External Z3 production invocation', availability: 'unsupported', detail: 'Z3 runs at design time (8 theorems: 5 core policy + 3 DeFi, proved UNSAT); not invoked per-request in production.' },
               { key: 'jwtJwks', label: 'JWT/JWKS auth completion', availability: 'planned', detail: 'Supabase session auth is live; full JWT/JWKS standalone completion not yet claimed.' },
