@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { captureEvent } from '@/lib/telemetry/capture-event';
 import { createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
 
+    // Capture policy_updated event
+    const changeType = markdown_content ? 'constraint_modified' : (name || description !== undefined ? 'policy_metadata_changed' : 'other');
+    void captureEvent('policy_updated', {
+      userId: access.userId || 'unknown',
+      organizationId: access.orgId,
+    }, {
+      organization_id: access.orgId,
+      policy_id: id,
+      policy_version: `v${updated.version || 1}`,
+      change_type: changeType,
+      updated_by_user_id: access.userId || 'unknown',
+    }).catch((error) => {
+      console.error('[policy-update] Failed to capture event:', error);
+    });
+
     return NextResponse.json({
       success: true,
       policy: updated,
@@ -87,6 +103,14 @@ export async function DELETE(
   const admin = getSupabaseAdmin();
 
   try {
+    // Fetch policy info before deletion for telemetry
+    const { data: policyData } = await admin
+      .from('policies_markdoc' as any)
+      .select('id, created_at')
+      .eq('id', id)
+      .eq('org_id', access.orgId)
+      .single() as any;
+
     const { error } = await admin
       .from('policies_markdoc' as any)
       .delete()
@@ -97,6 +121,24 @@ export async function DELETE(
       console.error('Delete policy error:', error);
       return NextResponse.json({ error: 'Failed to delete policy' }, { status: 500 });
     }
+
+    // Capture policy_archived event
+    const activeDurationDays = policyData && typeof policyData === 'object' && 'created_at' in policyData && policyData.created_at
+      ? Math.floor((Date.now() - new Date(policyData.created_at as string).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    void captureEvent('policy_archived', {
+      userId: access.userId || 'unknown',
+      organizationId: access.orgId,
+    }, {
+      organization_id: access.orgId,
+      policy_id: id,
+      archived_by_user_id: access.userId || 'unknown',
+      active_duration_days: activeDurationDays,
+      total_executions: 0, // Would need additional query for actual execution count
+    }).catch((error) => {
+      console.error('[policy-delete] Failed to capture event:', error);
+    });
 
     return NextResponse.json({
       success: true,

@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { createClient } from '@/lib/supabase/server';
+import { captureEvent } from '@/lib/telemetry/capture-event';
 import type { Database } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +57,16 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
+    // Get current user for telemetry
+    let userId = 'unknown';
+    try {
+      const supabaseAuth = await createClient();
+      const { data: { user } } = await supabaseAuth.auth.getUser();
+      userId = user?.id || 'unknown';
+    } catch {
+      // Continue without user ID
+    }
+
     let query = supabase
       .from('runtime_approval_requests')
       .select('*')
@@ -88,6 +100,24 @@ export async function GET(request: NextRequest) {
         (a, b) => new Date(a.expiresAt || 0).getTime() - new Date(b.expiresAt || 0).getTime(),
       );
     }
+
+    // Capture approval_queue_checked event
+    const oldestPendingMs = sorted.length > 0 && sorted[0].createdAt
+      ? Date.now() - new Date(sorted[0].createdAt).getTime()
+      : 0;
+    const oldestPendingAgeMinutes = Math.floor(oldestPendingMs / 60000);
+
+    void captureEvent('approval_queue_checked', {
+      userId,
+      organizationId: orgId,
+    }, {
+      organization_id: orgId,
+      pending_count: sorted.length,
+      oldest_pending_age_minutes: oldestPendingAgeMinutes,
+      checked_by_user_id: userId,
+    }).catch((error) => {
+      console.error('[approval-queue-pending] Failed to capture event:', error);
+    });
 
     return NextResponse.json({
       total: count ?? sorted.length,

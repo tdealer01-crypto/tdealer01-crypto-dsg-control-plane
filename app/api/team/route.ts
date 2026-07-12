@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireOrgPermission } from '@/lib/auth/require-org-permission';
+import { captureEvent } from '@/lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +156,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     lastActive: '',
     createdAt: newUser.created_at ?? new Date().toISOString(),
   };
+
+  // Capture team_member_invited event
+  const invitedRole = role === 'ADMIN' ? 'admin' : (role === 'OPERATOR' ? 'operator' : 'auditor');
+  void captureEvent('team_member_invited', {
+    userId: access.userId || 'unknown',
+    organizationId: orgId,
+  }, {
+    organization_id: orgId,
+    invited_email: email,
+    invited_role: invitedRole,
+    inviter_user_id: access.userId || 'unknown',
+  }).catch((error) => {
+    console.error('[team-invite] Failed to capture event:', error);
+  });
 
   return NextResponse.json(invite, { status: 201 });
 }

@@ -4,6 +4,8 @@ import { requireFinanceGovernanceAccess } from '../../../../../../lib/finance-go
 import { FinanceGovernanceRepository } from '../../../../../../lib/finance-governance/repository';
 import { resolveOrgId } from '../../../../../../lib/finance-governance/org-scope';
 import { fireFinanceWebhook } from '../../../../../../lib/finance-governance/webhook-delivery';
+import { captureEvent } from '../../../../../../lib/telemetry/capture-event';
+import { createClient } from '../../../../../../lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,11 +18,39 @@ export async function POST(request: Request, context: RouteContext) {
     const orgId = resolveOrgId(request);
     requireFinanceGovernanceAccess(request, orgId, 'reject');
     const { id } = await context.params;
+
+    // Get current user for telemetry
+    let userId = 'unknown';
+    const startTime = Date.now();
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || 'unknown';
+    } catch {
+      // Continue without user ID
+    }
+
     const result = await repository.applyAction(orgId, id, 'reject');
     void fireFinanceWebhook(orgId, 'finance.approval.rejected', {
       approval_id: id,
       next_status: typeof result === 'object' && result !== null && 'nextStatus' in result ? String((result as Record<string, unknown>).nextStatus) : 'rejected',
     });
+
+    // Capture approval_completed event
+    const approvalTurnaroundMs = Date.now() - startTime;
+    void captureEvent('approval_completed', {
+      userId,
+      organizationId: orgId,
+    }, {
+      organization_id: orgId,
+      execution_id: id,
+      approval_decision: 'rejected',
+      approver_user_id: userId,
+      approval_turnaround_ms: approvalTurnaroundMs,
+    }).catch((error) => {
+      console.error('[approval-reject] Failed to capture event:', error);
+    });
+
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     return handleFinanceGovernanceApiError('api/finance-governance', error);
