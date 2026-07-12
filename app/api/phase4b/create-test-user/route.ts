@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { handleApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
         {
           ok: false,
           error: 'Failed to create user',
-          details: authError?.message,
+          details: internalErrorMessage(),
         },
         { status: 500 }
       );
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
         {
           ok: false,
           error: 'Failed to create user record',
-          details: dbError.message,
+          details: internalErrorMessage(),
         },
         { status: 500 }
       );
@@ -120,14 +121,6 @@ export async function POST(request: NextRequest) {
       ],
     });
   } catch (error) {
-    console.error('[phase4b] Error:', error);
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/phase4b/create-test-user', error);
   }
 }
