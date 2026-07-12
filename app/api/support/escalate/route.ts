@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
 import { sendEscalationNotifications } from '@/lib/support/notifications';
 import { sendSlackEscalationToChannel } from '@/lib/support/slack-notifications';
+import { captureEvent } from '@/lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -173,6 +174,21 @@ export async function POST(request: NextRequest) {
         });
       });
     }
+
+    // Capture escalation event for PostHog (fire and forget)
+    void captureEvent('support_escalation_created', {
+      userId: user.id,
+      organizationId: ticket.org_id,
+    }, {
+      ticket_id,
+      escalation_team,
+      escalation_reason: reason.substring(0, 200), // Truncate for size
+      severity,
+      escalated_at: new Date().toISOString(),
+      escalation_id: escalation?.id,
+    }).catch((err) => {
+      console.error('[escalate] Failed to capture escalation event:', err);
+    });
 
     return NextResponse.json({
       success: true,
