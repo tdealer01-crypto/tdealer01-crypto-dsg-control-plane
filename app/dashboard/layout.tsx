@@ -4,6 +4,7 @@ import Link from 'next/link';
 import AgentChatWidget from '../../components/AgentChatWidget';
 import AutoSetupTrigger from '../../components/AutoSetupTrigger';
 import DashboardNav from '../../components/DashboardNav';
+import CommandPalette from '../../components/CommandPalette';
 import NudgeBanner from '../../components/billing/NudgeBanner';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</p>
             <p className="text-base font-semibold leading-tight">Command Center</p>
           </Link>
-          <DashboardNav />
+          <div className="flex flex-1 items-center justify-between gap-4">
+            <DashboardNav />
+            <CommandPalette />
+          </div>
           <div className="hidden shrink-0 text-right lg:block">
             <p className="text-xs text-slate-500">
               {user ? 'Signed in as' : 'Not signed in'}
