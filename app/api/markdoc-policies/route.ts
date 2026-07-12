@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgPermission } from '@/lib/auth/require-org-permission';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { createHash } from 'crypto';
+import { captureEvent } from '@/lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,6 +109,28 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ error: 'Failed to create policy' }, { status: 500 });
     }
+
+    // Check if this is first policy for org
+    const { count: existingPolicies } = await admin
+      .from('policies_markdoc' as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', access.orgId);
+
+    const isFirstPolicy = (existingPolicies || 0) <= 1; // 1 because we just created it
+
+    // Capture policy_created event
+    await captureEvent('policy_created', {
+      userId: access.userId,
+      organizationId: access.orgId,
+    }, {
+      organization_id: access.orgId,
+      workspace_id: null,
+      policy_id: created.id,
+      policy_name: name,
+      policy_type: 'markdoc',
+      is_first_policy: isFirstPolicy,
+      created_by_user_id: access.userId,
+    });
 
     return NextResponse.json(
       {
