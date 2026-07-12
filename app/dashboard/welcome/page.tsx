@@ -13,7 +13,7 @@ async function getWelcomeData(authUserId: string) {
 
   const { data: userRow } = await admin
     .from('users')
-    .select('org_id, role, onboarding_role')
+    .select('id, org_id, role')
     .eq('auth_user_id', authUserId)
     .maybeSingle();
 
@@ -36,12 +36,20 @@ async function getWelcomeData(authUserId: string) {
     ? Math.max(0, Math.ceil((new Date(billing.trial_end).getTime() - Date.now()) / 86_400_000))
     : null;
 
+  // Query onboarding_role separately to handle potential schema drift during migration
+  const { data: onboardingData } = await admin
+    .from('users')
+    .select('onboarding_role')
+    .eq('id', userRow.id)
+    .maybeSingle()
+    .catch(() => ({ data: null }));
+
   return {
     orgName: org?.name ?? 'Your workspace',
     plan: billing?.plan_key ?? org?.plan ?? 'trial',
     trialDaysLeft,
-    onboardingRole: userRow?.onboarding_role as OnboardingRole | null,
-    userId: userRow?.id,
+    onboardingRole: (onboardingData?.onboarding_role as OnboardingRole) || null,
+    userId: userRow.id,
   };
 }
 
