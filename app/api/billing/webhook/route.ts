@@ -6,6 +6,7 @@ import type { Database, Json } from '../../../../lib/database.types';
 import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
 import { fulfillSubscription, revokeSubscription } from '../../../../lib/billing/fulfillment';
 import { REVOKED_STATUSES } from '../../../../lib/billing/entitlements';
+import { captureEvent } from '../../../../lib/telemetry/capture-event';
 
 export const dynamic = 'force-dynamic';
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
@@ -449,6 +450,22 @@ export async function POST(request: Request) {
           });
 
           await upsertBillingSubscription(supabase, record);
+
+          // Capture subscription_created event (on subscription creation only)
+          if (event.type === 'customer.subscription.created' && record.org_id) {
+            const mrr = record.amount ? (record.amount / 100) : 0; // Convert cents to dollars
+            await captureEvent('subscription_created', {
+              userId: record.org_id, // Use org as distinct ID since no user context in webhook
+              organizationId: record.org_id,
+            }, {
+              organization_id: record.org_id,
+              plan_tier: record.plan_key || 'unknown',
+              stripe_subscription_id: subscription.id,
+              stripe_customer_id: stripeCustomerId,
+              billing_period: record.billing_interval || 'monthly',
+              mrr,
+            });
+          }
 
           // Entitlement: keep organizations.plan in sync with subscription state
           const orgId = record.org_id;

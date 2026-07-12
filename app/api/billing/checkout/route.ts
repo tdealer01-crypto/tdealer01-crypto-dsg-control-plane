@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { ensureUserWorkspace, isWorkspaceFailure } from '../../../../lib/auth/ensure-user-workspace';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
+import { captureEvent } from '../../../../lib/telemetry/capture-event';
 // Pricing/plan definitions live in the shared catalog — the single source
 // of truth for every price shown or charged (lib/billing/pricing-catalog.ts).
 import {
@@ -250,6 +251,27 @@ export async function POST(request: Request) {
       billing_address_collection: 'auto',
       metadata,
       subscription_data: { ...(trialDays ? { trial_period_days: trialDays } : {}), metadata },
+    });
+
+    // Get current org plan
+    const admin = getSupabaseAdmin();
+    const { data: org } = await admin
+      .from('organizations')
+      .select('plan')
+      .eq('id', resolvedOrgId)
+      .maybeSingle();
+
+    const currentPlan = org?.plan || 'free';
+
+    // Capture checkout_started event
+    await captureEvent('checkout_started', {
+      userId: user.id,
+      organizationId: resolvedOrgId,
+    }, {
+      organization_id: resolvedOrgId,
+      plan_tier: rawPlan,
+      checkout_session_id: session.id,
+      current_plan: currentPlan,
     });
 
     return NextResponse.json({ ok: true, url: session.url, session_id: session.id, plan: rawPlan, interval }, { headers: buildRateLimitHeaders(rateLimit, 20) });
