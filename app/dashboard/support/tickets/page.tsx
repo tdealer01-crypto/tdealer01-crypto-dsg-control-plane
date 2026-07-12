@@ -1,13 +1,12 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
 
 export const metadata: Metadata = {
   title: 'Support Tickets — DSG Dashboard',
   description: 'Manage your support tickets and requests',
 };
 
-// Mock data for demonstration
+// TODO: Replace with real data once support_tickets migration is applied
 const mockTickets = [
   {
     id: 'ticket_001',
@@ -17,17 +16,15 @@ const mockTickets = [
     priority: 'high',
     created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    message_count: 5,
   },
   {
     id: 'ticket_002',
-    title: 'Need product refund',
-    description: 'Request to refund order #12345',
+    title: 'Need support with integration',
+    description: 'Having trouble integrating the API',
     status: 'pending',
     priority: 'normal',
     created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    message_count: 2,
   },
   {
     id: 'ticket_003',
@@ -37,7 +34,6 @@ const mockTickets = [
     priority: 'low',
     created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    message_count: 8,
   },
 ];
 
@@ -56,8 +52,9 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function TicketsPage() {
-  const pendingCount = mockTickets.filter((t) => t.status === 'pending').length;
-  const inProgressCount = mockTickets.filter((t) => t.status === 'in_progress').length;
+  const tickets = mockTickets;
+  const pendingCount = tickets.filter((t) => t.status === 'pending').length;
+  const inProgressCount = tickets.filter((t) => t.status === 'in_progress').length;
 
   return (
     <main className="min-h-screen bg-[#0B0B0F] text-[#F8FAFC]">
@@ -66,10 +63,10 @@ export default function TicketsPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold">Support Tickets</h1>
-            <p className="mt-1 text-sm text-[#AAB3C5]">Manage your support requests and repairs</p>
+            <p className="mt-1 text-sm text-[#AAB3C5]">Manage your support requests and escalations</p>
           </div>
           <Link href="/dashboard/support/tickets/create">
-            <Button variant="primary">Create Ticket</Button>
+            <button className="rounded-lg bg-emerald-500/20 px-4 py-2 font-semibold text-emerald-300 hover:bg-emerald-500/30 transition-colors">Create Ticket</button>
           </Link>
         </div>
       </div>
@@ -80,7 +77,7 @@ export default function TicketsPage() {
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="rounded-lg border border-[rgba(247,220,120,0.16)] bg-[#14151C] p-4">
             <p className="text-sm text-[#AAB3C5]">Total Tickets</p>
-            <p className="mt-2 text-3xl font-bold">{mockTickets.length}</p>
+            <p className="mt-2 text-3xl font-bold">{tickets.length}</p>
           </div>
           <div className="rounded-lg border border-[rgba(247,220,120,0.16)] bg-[#14151C] p-4">
             <p className="text-sm text-[#AAB3C5]">In Progress</p>
@@ -111,15 +108,12 @@ export default function TicketsPage() {
                     Created
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-widest text-[#AAB3C5]">
-                    Messages
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-widest text-[#AAB3C5]">
                     Action
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[rgba(247,220,120,0.16)]">
-                {mockTickets.map((ticket) => (
+                {tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-[rgba(247,220,120,0.05)] transition-colors">
                     <td className="px-6 py-4 text-sm">
                       <div>
@@ -142,12 +136,9 @@ export default function TicketsPage() {
                     <td className="px-6 py-4 text-sm text-[#AAB3C5]">
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#AAB3C5]">{ticket.message_count}</td>
                     <td className="px-6 py-4 text-sm">
                       <Link href={`/dashboard/support/tickets/${ticket.id}`}>
-                        <Button variant="ghost" size="sm">
-                          View
-                        </Button>
+                        <button className="text-emerald-300 hover:text-emerald-200 transition-colors font-medium">View</button>
                       </Link>
                     </td>
                   </tr>
@@ -156,11 +147,11 @@ export default function TicketsPage() {
             </table>
           </div>
 
-          {mockTickets.length === 0 && (
+          {tickets.length === 0 && (
             <div className="p-8 text-center">
               <p className="text-[#AAB3C5]">No support tickets yet.</p>
               <Link href="/dashboard/support/tickets/create" className="mt-4 inline-block">
-                <Button variant="primary">Create your first ticket</Button>
+                <button className="rounded-lg bg-emerald-500/20 px-4 py-2 font-semibold text-emerald-300 hover:bg-emerald-500/30 transition-colors">Create your first ticket</button>
               </Link>
             </div>
           )}
