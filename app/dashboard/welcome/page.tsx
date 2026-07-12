@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
 import { OnboardingChecklist } from '../../../components/OnboardingChecklist';
+import RoleSelector, { type OnboardingRole } from '../../../components/RoleSelector';
+import { getStepsForRole, getDefaultSteps } from '../../../lib/onboarding/role-based-flows';
 import AutoSetupButton from './AutoSetupButton';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +13,7 @@ async function getWelcomeData(authUserId: string) {
 
   const { data: userRow } = await admin
     .from('users')
-    .select('org_id, role')
+    .select('org_id, role, onboarding_role')
     .eq('auth_user_id', authUserId)
     .maybeSingle();
 
@@ -38,43 +40,13 @@ async function getWelcomeData(authUserId: string) {
     orgName: org?.name ?? 'Your workspace',
     plan: billing?.plan_key ?? org?.plan ?? 'trial',
     trialDaysLeft,
+    onboardingRole: userRow?.onboarding_role as OnboardingRole | null,
+    userId: userRow?.id,
   };
 }
 
-const STEPS = [
-  {
-    num: '01',
-    title: 'Create your API key',
-    description:
-      'Generate a scoped API key for your first integration. The raw key is shown once — save it securely.',
-    href: '/dashboard/api-keys',
-    cta: 'Go to API Keys →',
-    color: 'border-amber-300/30 bg-amber-300/5',
-    ctaColor: 'bg-amber-300 text-slate-950 hover:bg-amber-200',
-  },
-  {
-    num: '02',
-    title: 'Follow the Quickstart',
-    description:
-      'Three REST API calls — declare your session, gate every action, handle ALLOW/BLOCK. No SDK needed.',
-    href: '/quickstart',
-    cta: 'Open Quickstart →',
-    color: 'border-emerald-400/30 bg-emerald-400/5',
-    ctaColor: 'bg-emerald-400 text-slate-950 hover:bg-emerald-300',
-  },
-  {
-    num: '03',
-    title: 'Watch it work',
-    description:
-      'Go to your dashboard to see gated actions, audit stamps, and real-time session state.',
-    href: '/dashboard',
-    cta: 'Open Dashboard →',
-    color: 'border-blue-400/30 bg-blue-400/5',
-    ctaColor: 'bg-blue-400 text-slate-950 hover:bg-blue-300',
-  },
-];
 
-export default async function WelcomePage() {
+async function WelcomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -95,8 +67,10 @@ export default async function WelcomePage() {
             <span className="text-amber-300">{welcome?.orgName ?? 'DSG ONE'}</span>
           </h1>
           <p className="mt-4 text-lg text-slate-400">
-            Your account is active. Follow the 3 steps below to go from zero to a live,
-            gated AI agent in under 5 minutes.
+            Your account is active. {welcome?.onboardingRole ?
+              'Follow your role-specific steps to set up DSG ONE.' :
+              'Tell us your role so we can customize your setup experience.'
+            }
           </p>
           {welcome?.trialDaysLeft != null && (
             <p className="mt-3 text-sm text-slate-500">
@@ -105,68 +79,86 @@ export default async function WelcomePage() {
           )}
         </div>
 
+        {/* Role selector (if not yet selected) */}
+        {!welcome?.onboardingRole && (
+          <RoleSelector onRoleSelect={async () => {
+            // Page reload is handled by RoleSelector component after API save
+          }} />
+        )}
+
         {/* Auto Setup */}
-        <div className="mb-6">
-          <AutoSetupButton />
-        </div>
+        {welcome?.onboardingRole && (
+          <div className="mb-6">
+            <AutoSetupButton />
+          </div>
+        )}
 
         {/* Divider */}
-        <div className="mb-6 flex items-center gap-4">
-          <div className="h-px flex-1 bg-slate-800" />
-          <span className="text-xs font-semibold uppercase tracking-widest text-slate-600">หรือตั้งค่าเอง</span>
-          <div className="h-px flex-1 bg-slate-800" />
-        </div>
+        {welcome?.onboardingRole && (
+          <div className="mb-6 flex items-center gap-4">
+            <div className="h-px flex-1 bg-slate-800" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-slate-600">หรือตั้งค่าเอง</span>
+            <div className="h-px flex-1 bg-slate-800" />
+          </div>
+        )}
 
         {/* Steps */}
-        <div className="space-y-4">
-          {STEPS.map((step) => (
-            <div
-              key={step.num}
-              className={`rounded-2xl border p-6 ${step.color}`}
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-4">
-                  <span className="mt-0.5 text-3xl font-black text-white/10">{step.num}</span>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">{step.title}</h2>
-                    <p className="mt-1 max-w-lg text-sm text-slate-400">{step.description}</p>
+        {welcome?.onboardingRole && (
+          <div className="space-y-4">
+            {getStepsForRole(welcome.onboardingRole).map((step) => (
+              <div
+                key={step.num}
+                className={`rounded-2xl border p-6 ${step.color}`}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-4">
+                    <span className="mt-0.5 text-3xl font-black text-white/10">{step.num}</span>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">{step.title}</h2>
+                      <p className="mt-1 max-w-lg text-sm text-slate-400">{step.description}</p>
+                      {step.roleContext && (
+                        <p className="mt-2 text-xs text-slate-500">{step.roleContext}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <Link
-                  href={step.href}
-                  className={`shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold transition ${step.ctaColor}`}
-                >
-                  {step.cta}
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* What you get */}
-        <div className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-500">
-            What&apos;s included in your trial
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ['1,000 gated actions', 'Enough to verify your integration end-to-end'],
-              ['Cryptographic audit trail', 'Every ALLOW/BLOCK stamped and tamper-proof'],
-              ['EU AI Act coverage', 'Articles 9, 12, and 14 — out of the box'],
-              ['API key management', 'Create scoped keys, revoke instantly'],
-              ['Admin dashboard', 'Full visibility into sessions and actions'],
-              ['Quickstart support', 'Email us if you hit a wall — we reply fast'],
-            ].map(([title, desc]) => (
-              <div key={title} className="flex items-start gap-3">
-                <span className="mt-0.5 text-emerald-400">✓</span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">{title}</p>
-                  <p className="text-xs text-slate-500">{desc}</p>
+                  <Link
+                    href={step.href}
+                    className={`shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold transition ${step.ctaColor}`}
+                  >
+                    {step.cta}
+                  </Link>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        )}
+
+        {/* What you get */}
+        {welcome?.onboardingRole && (
+          <div className="mt-12 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-500">
+              What&apos;s included in your trial
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ['1,000 gated actions', 'Enough to verify your integration end-to-end'],
+                ['Cryptographic audit trail', 'Every ALLOW/BLOCK stamped and tamper-proof'],
+                ['EU AI Act coverage', 'Articles 9, 12, and 14 — out of the box'],
+                ['API key management', 'Create scoped keys, revoke instantly'],
+                ['Admin dashboard', 'Full visibility into sessions and actions'],
+                ['Quickstart support', 'Email us if you hit a wall — we reply fast'],
+              ].map(([title, desc]) => (
+                <div key={title} className="flex items-start gap-3">
+                  <span className="mt-0.5 text-emerald-400">✓</span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">{title}</p>
+                    <p className="text-xs text-slate-500">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Skip link */}
         <div className="mt-8 text-center">
@@ -182,3 +174,5 @@ export default async function WelcomePage() {
     </main>
   );
 }
+
+export default WelcomePage;
