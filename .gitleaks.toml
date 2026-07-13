@@ -13,6 +13,8 @@ useDefault = true
     "5b7fbbfb6fcbba34fb05f59242abcefd1778ccf4",
     "c57dc666c5cf88e5be36c54d86f19d39ac6e58b8",
     "f54f496fb4c330973de326c3909acccd2103964c",
+    "6facaa43d9be4ef3508fae161b4b8fdac6dbe6c4",  # AI-Firstify governance gate integration (false positive)
+    "352bd1e",  # Integrate AI-Firstify plugin API routes (false positive)
   ]
 
   # Exclude this config file from scanning — it contains regex pattern strings
