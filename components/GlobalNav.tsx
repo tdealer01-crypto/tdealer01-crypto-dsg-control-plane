@@ -42,7 +42,7 @@ const FLAT_LINKS = [
   { href: '/pricing',    label: 'Pricing',    match: (p: string) => p === '/pricing' },
   { href: '/docs',       label: 'Docs',       match: (p: string) => p === '/docs' || p.startsWith('/docs/') },
   { href: '/quickstart', label: 'Quickstart', match: (p: string) => p === '/quickstart' },
-  { href: '/docs/design-system-tool.html', label: '🎨 Design System', match: (p: string) => false, target: '_blank' },
+  { href: '/design-system-tool.html', label: '🎨 Design System', match: (p: string) => false, target: '_blank' },
 ];
 
 const NAV_T = {
