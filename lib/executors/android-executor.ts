@@ -4,6 +4,8 @@ import { verifySafeDomCommand } from '@/lib/dsg/safe-dom/verify-command';
 import type { RawDomElement, SafeDomCommand } from '@/lib/dsg/safe-dom/types';
 import { evaluateActionPolicy } from '@/lib/dsg/hermes-e2e/policy';
 import type { ActionDescriptor, GateDecision, RiskLevel } from '@/lib/dsg/hermes-e2e/types';
+import { createLogger } from '@/lib/logging/logger';
+import { simUseAdapter } from '@/lib/integrations/sim-use';
 
 /**
  * Android app executor (Appium-driven).
@@ -35,6 +37,17 @@ export interface AndroidExecutorCommandInput {
   /** Optional path to persist the evidence screenshot (live mode only). */
   screenshotPath?: string;
   timeoutMs?: number;
+  /** Audit context for logging and compliance. */
+  auditContext?: {
+    agentId?: string;
+    userId?: string;
+    requestId?: string;
+    sessionId?: string;
+  };
+  /** Enable SIM usage query alongside action. */
+  querySIMUsage?: boolean;
+  /** SIM ID for usage query. */
+  simId?: string;
 }
 
 export interface AndroidExecutorCompletion {
@@ -56,6 +69,10 @@ export interface AndroidExecutorCompletion {
     screenTitle?: string;
     screenshotSha256?: string;
     touchedRealDevice: boolean;
+    simUsageQueried?: boolean;
+    simDataPercentage?: number;
+    simStatus?: string;
+    simQueryTime?: number;
   };
 }
 
@@ -133,9 +150,28 @@ const EXTRACT_ACCESSIBILITY_TREE_FN = `
 export async function executeAndroidSafeDomCommand(
   input: AndroidExecutorCommandInput,
 ): Promise<AndroidExecutorCompletion> {
+  const logger = createLogger('android-executor');
   const mode: AndroidExecutorMode = input.mode ?? 'dry_run';
   const allowedApps = input.allowedApps ?? [];
   const appAllowed = isAppAllowed(input.appPackage, allowedApps);
+
+  // Log execution start
+  logger.debug(
+    'Android executor command start',
+    {
+      agentId: input.auditContext?.agentId,
+      userId: input.auditContext?.userId,
+      requestId: input.auditContext?.requestId,
+      sessionId: input.auditContext?.sessionId,
+      frameId: input.frameId,
+    },
+    {
+      appPackage: input.appPackage,
+      mode,
+      operation: input.command.operation,
+      querySIMUsage: input.querySIMUsage,
+    }
+  );
 
   const baseTrace = {
     appPackage: input.appPackage,
@@ -145,11 +181,74 @@ export async function executeAndroidSafeDomCommand(
     commandElementId: input.command.elementId,
     commandOperation: input.command.operation,
     touchedRealDevice: false,
+    simUsageQueried: false,
   };
+
+  // 0.5. Query SIM usage if requested (parallel to policy evaluation).
+  let simUsageData: any = null;
+  if (input.querySIMUsage && input.simId) {
+    try {
+      const simResult = await simUseAdapter.queryUsage(input.simId, {
+        agentId: input.auditContext?.agentId,
+        userId: input.auditContext?.userId,
+        requestId: input.auditContext?.requestId,
+      });
+
+      if (simResult.ok && simResult.data) {
+        simUsageData = simResult.data;
+        logger.info(
+          'SIM usage queried successfully',
+          {
+            agentId: input.auditContext?.agentId,
+            requestId: input.auditContext?.requestId,
+            frameId: input.frameId,
+          },
+          {
+            dataPercentage: simResult.data.dataPercentage,
+            status: simResult.data.status,
+            queryTime: simResult.queryTime,
+          }
+        );
+      } else {
+        logger.warn(
+          'SIM usage query failed',
+          {
+            agentId: input.auditContext?.agentId,
+            requestId: input.auditContext?.requestId,
+            frameId: input.frameId,
+          },
+          { error: simResult.error }
+        );
+      }
+    } catch (error) {
+      logger.error(
+        'Unexpected error querying SIM usage',
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          agentId: input.auditContext?.agentId,
+          requestId: input.auditContext?.requestId,
+          frameId: input.frameId,
+        }
+      );
+    }
+  }
 
   // 1. Policy gate — same rules as browser/mobile paths.
   const policy = evaluateActionPolicy(input.actionDescriptor);
   if (policy.decision !== 'ALLOW') {
+    logger.warn(
+      'Android action blocked by policy',
+      {
+        agentId: input.auditContext?.agentId,
+        requestId: input.auditContext?.requestId,
+        frameId: input.frameId,
+      },
+      {
+        decision: policy.decision,
+        risk: policy.risk,
+        reason: policy.reason,
+      }
+    );
     return {
       ok: true,
       status: policy.decision === 'REVIEW' || policy.decision === 'SAFE_ALTERNATIVE'
@@ -160,12 +259,26 @@ export async function executeAndroidSafeDomCommand(
       reason: policy.reason,
       completedSafely: true,
       mode,
-      trace: baseTrace,
+      trace: {
+        ...baseTrace,
+        simUsageQueried: !!simUsageData,
+        simDataPercentage: simUsageData?.dataPercentage,
+        simStatus: simUsageData?.status,
+      },
     };
   }
 
   // 2. App allowlist — never open an app the caller did not authorize.
   if (!appAllowed) {
+    logger.warn(
+      'Android app not in allowlist',
+      {
+        agentId: input.auditContext?.agentId,
+        requestId: input.auditContext?.requestId,
+        frameId: input.frameId,
+      },
+      { appPackage: input.appPackage }
+    );
     return {
       ok: true,
       status: 'BLOCKED',
@@ -174,12 +287,29 @@ export async function executeAndroidSafeDomCommand(
       reason: 'APP_NOT_IN_ALLOWLIST',
       completedSafely: true,
       mode,
-      trace: baseTrace,
+      trace: {
+        ...baseTrace,
+        simUsageQueried: !!simUsageData,
+        simDataPercentage: simUsageData?.dataPercentage,
+        simStatus: simUsageData?.status,
+      },
     };
   }
 
   // 3. Dry-run never launches Appium/device.
   if (mode === 'dry_run') {
+    logger.info(
+      'Android executor dry-run completed',
+      {
+        agentId: input.auditContext?.agentId,
+        requestId: input.auditContext?.requestId,
+        frameId: input.frameId,
+      },
+      {
+        appPackage: input.appPackage,
+        operation: input.command.operation,
+      }
+    );
     return {
       ok: true,
       status: 'DRY_RUN_COMPLETED',
@@ -188,12 +318,26 @@ export async function executeAndroidSafeDomCommand(
       reason: 'DRY_RUN_APP_ALLOWED_NO_APPIUM_LAUNCHED',
       completedSafely: true,
       mode,
-      trace: baseTrace,
+      trace: {
+        ...baseTrace,
+        simUsageQueried: !!simUsageData,
+        simDataPercentage: simUsageData?.dataPercentage,
+        simStatus: simUsageData?.status,
+      },
     };
   }
 
   // 4. Live mode is off unless explicitly enabled by environment.
   if (process.env.HERMES_ANDROID_LIVE !== 'true') {
+    logger.warn(
+      'Android live execution disabled',
+      {
+        agentId: input.auditContext?.agentId,
+        requestId: input.auditContext?.requestId,
+        frameId: input.frameId,
+      },
+      { reason: 'HERMES_ANDROID_LIVE not set to true' }
+    );
     return {
       ok: true,
       status: 'BLOCKED',
@@ -202,7 +346,12 @@ export async function executeAndroidSafeDomCommand(
       reason: 'LIVE_EXECUTE_DISABLED_BY_DEFAULT_SET_HERMES_ANDROID_LIVE',
       completedSafely: true,
       mode,
-      trace: baseTrace,
+      trace: {
+        ...baseTrace,
+        simUsageQueried: !!simUsageData,
+        simDataPercentage: simUsageData?.dataPercentage,
+        simStatus: simUsageData?.status,
+      },
     };
   }
 
@@ -244,6 +393,19 @@ export async function executeAndroidSafeDomCommand(
 
       const gate = verifySafeDomCommand(input.command, manifest);
       if (gate.decision !== 'ALLOW') {
+        logger.warn(
+          'Safe DOM command blocked',
+          {
+            agentId: input.auditContext?.agentId,
+            requestId: input.auditContext?.requestId,
+            frameId: input.frameId,
+          },
+          {
+            reason: gate.reason,
+            elementId: input.command.elementId,
+            operation: input.command.operation,
+          }
+        );
         return {
           ok: true,
           status: 'BLOCKED',
@@ -256,6 +418,9 @@ export async function executeAndroidSafeDomCommand(
             ...baseTrace,
             manifestElementCount: manifest.length,
             domMirrorHash,
+            simUsageQueried: !!simUsageData,
+            simDataPercentage: simUsageData?.dataPercentage,
+            simStatus: simUsageData?.status,
           },
         };
       }
@@ -304,6 +469,21 @@ export async function executeAndroidSafeDomCommand(
         screenTitle = 'Unknown';
       }
 
+      logger.info(
+        'Android safe DOM command executed successfully',
+        {
+          agentId: input.auditContext?.agentId,
+          requestId: input.auditContext?.requestId,
+          frameId: input.frameId,
+        },
+        {
+          appPackage: input.appPackage,
+          operation: input.command.operation,
+          screenTitle,
+          hasScreenshot: !!screenshotSha256,
+        }
+      );
+
       return {
         ok: true,
         status: 'COMPLETED',
@@ -323,21 +503,43 @@ export async function executeAndroidSafeDomCommand(
           screenTitle,
           screenshotSha256,
           touchedRealDevice: true,
+          simUsageQueried: !!simUsageData,
+          simDataPercentage: simUsageData?.dataPercentage,
+          simStatus: simUsageData?.status,
         },
       };
     } finally {
       await client.deleteSession();
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'unknown';
+    logger.error(
+      'Android executor failed with error',
+      error instanceof Error ? error : new Error(errorMessage),
+      {
+        agentId: input.auditContext?.agentId,
+        requestId: input.auditContext?.requestId,
+        frameId: input.frameId,
+      },
+      {
+        appPackage: input.appPackage,
+        operation: input.command.operation,
+      }
+    );
     return {
       ok: false,
       status: 'BLOCKED',
       decision: 'BLOCK',
       risk: 'HIGH',
-      reason: `APPIUM_ERROR: ${error instanceof Error ? error.message : 'unknown'}`,
+      reason: `APPIUM_ERROR: ${errorMessage}`,
       completedSafely: false,
       mode,
-      trace: baseTrace,
+      trace: {
+        ...baseTrace,
+        simUsageQueried: !!simUsageData,
+        simDataPercentage: simUsageData?.dataPercentage,
+        simStatus: simUsageData?.status,
+      },
     };
   }
 }
