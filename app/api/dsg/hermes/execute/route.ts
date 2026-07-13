@@ -19,6 +19,7 @@ import { planGoal } from "@/lib/agent/planner";
 import { agentPreflight } from "@/lib/agent/preflight";
 import { evaluateAnswerGate, detectClaimsInReply } from "@/lib/dsg/answer-gate";
 import { loadStartupContext } from "@/lib/hermes/startup-context";
+import { evaluateHermesGovernance, formatGovernanceDecision } from "@/lib/hermes/ai-firstify-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -212,7 +213,24 @@ export async function POST(req: NextRequest) {
           return;
         }
 
+        const action = classifyAction(message);
+        const governance = await evaluateHermesGovernance(agentCtx.orgId, action, {
+          message,
+          riskLevel: preflight.decision === "review" ? "medium" : "low",
+          environment: "hermes_execution",
+        });
+
+        if (governance.decision === "BLOCK") {
+          send({ type: "governance", decision: "BLOCK", reason: governance.reason, policyIds: governance.policyIds });
+          send({ type: "assistant_reply", reply: `AI-Firstify Governance: ${formatGovernanceDecision(governance)}`, model: "hermes-governance" });
+          send({ type: "done" });
+          return;
+        }
+
         const preflightDecision = preflight.decision === "review" ? "REVIEW" : "ALLOW";
+        const governanceDecision = governance.decision;
+        const finalGovernanceDecision = preflightDecision === "REVIEW" || governanceDecision === "REVIEW" ? "REVIEW" : "ALLOW";
+
         send({ type: "session.status_running" });
         send({
           type: "preflight",
@@ -220,6 +238,17 @@ export async function POST(req: NextRequest) {
           reason: preflight.reason ?? "Hermes deterministic plan allowed",
           risk: preflight.decision === "review" ? "MEDIUM" : "LOW",
         });
+
+        if (governance.decision === "REVIEW") {
+          send({
+            type: "governance",
+            decision: "REVIEW",
+            reason: governance.reason,
+            policyIds: governance.policyIds,
+            requiresApproval: governance.requiresApproval,
+          });
+        }
+
         send({
           type: "assistant_reply",
           reply: "รับคำสั่งแล้ว — Hermes กำลังรัน tool ผ่าน DSG gate ให้ครับ",
