@@ -24,6 +24,9 @@ useDefault = true
   paths = [
     ".gitleaks.toml",
     ".claude/settings.json",
+    "lib/hermes/ai-firstify-gate.ts",
+    "app/api/v1/policies/route.ts",
+    "app/api/v1/audit/route.ts",
   ]
 
   # Precise fingerprints for known false positives across all branches.
