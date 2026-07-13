@@ -4,6 +4,17 @@
 
 DSG (Deterministic Execution & Governance) is the AI runtime governance and control plane platform. This guide ensures consistent brand representation across all materials.
 
+### 🎨 Interactive Design System Tool
+
+Explore colors, typography, components, and spacing with our **[Interactive Design System Tool](./design-system-tool.html)** — featuring:
+- **Color Picker** with WCAG AA accessibility checker
+- **Typography Scale** showcase
+- **Component States** (buttons, alerts, etc.)
+- **Spacing Scale** visualizer
+- **Real-time Preview** and click-to-copy hex codes
+
+Open the tool in your browser to interactively explore the DSG design system.
+
 ---
 
 ## Logo System
