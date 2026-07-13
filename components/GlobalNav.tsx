@@ -256,7 +256,9 @@ export default function GlobalNav() {
                 onClick={closeMobileMenu}
                 className={[
                   'block rounded-xl border px-4 py-3 text-sm font-semibold',
-                  match(pathname)
+                  href === '/design-system-tool.html'
+                    ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+                    : match(pathname)
                     ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
                     : 'border-white/10 bg-white/[0.03] text-slate-100',
                 ].join(' ')}
