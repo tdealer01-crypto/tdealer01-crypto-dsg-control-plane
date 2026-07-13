@@ -1,4 +1,5 @@
-import type { GovernanceRequest, GovernanceResponse } from './types';
+import { getSupabaseClient } from './supabase-client';
+import type { AIModel, GovernanceRequest, GovernanceResponse } from './types';
 
 export class DSGClient {
   private apiBase: string;
@@ -79,6 +80,99 @@ export class DSGClient {
     }
 
     return response.json();
+  }
+
+  async getAIModel(modelId: string, orgId: string): Promise<AIModel | null> {
+    const supabase = getSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('ai_models')
+      .select('*')
+      .eq('id', modelId)
+      .eq('org_id', orgId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      version: data.version,
+      provider: data.provider,
+      tags: data.tags || [],
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
+  }
+
+  async listAIModels(orgId: string): Promise<AIModel[]> {
+    const supabase = getSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('ai_models')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map((row) => ({
+      id: row.id,
+      name: row.name,
+      version: row.version,
+      provider: row.provider,
+      tags: row.tags || [],
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    }));
+  }
+
+  async createAIModel(
+    orgId: string,
+    model: Omit<AIModel, 'createdAt' | 'updatedAt'> & {
+      description?: string;
+      modelType?: string;
+      endpoint?: string;
+      createdBy?: string;
+    }
+  ): Promise<AIModel | null> {
+    const supabase = getSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('ai_models')
+      .insert({
+        org_id: orgId,
+        name: model.name,
+        version: model.version,
+        provider: model.provider,
+        tags: model.tags || [],
+        description: model.description,
+        model_type: model.modelType,
+        endpoint_url: model.endpoint,
+        created_by: model.createdBy,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      version: data.version,
+      provider: data.provider,
+      tags: data.tags || [],
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
   }
 }
 
