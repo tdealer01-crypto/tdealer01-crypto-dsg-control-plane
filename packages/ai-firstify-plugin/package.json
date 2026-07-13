@@ -1,0 +1,44 @@
+{
+  "name": "@dsg-platform/ai-firstify-plugin",
+  "version": "0.1.0",
+  "description": "DSG AI-Firstify Plugin - Governance and Customization for AI-First Operations",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "hono dev src/server.ts --port 3002",
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "hono": "^4.0.0",
+    "ioredis": "^5.3.2",
+    "nanoid": "^4.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
+  },
+  "keywords": [
+    "dsg",
+    "ai-governance",
+    "compliance",
+    "gate",
+    "approval",
+    "audit",
+    "ai-firstify"
+  ],
+  "author": "t.dealer01@dsg.pics",
+  "license": "PROPRIETARY"
+}

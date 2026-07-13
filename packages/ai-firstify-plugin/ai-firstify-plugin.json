@@ -1,0 +1,69 @@
+{
+  "id": "pics.dsg.ai-firstify",
+  "name": "DSG AI-Firstify Plugin",
+  "version": "0.1.0",
+  "description": "AI-Firstify governance and customization plugin for DSG platform. Provides governance gates, policy enforcement, and compliance tracking for AI-first operations.",
+  "shortDescription": "AI governance and compliance for AI-first operations",
+  "documentationUrl": "https://dsg.pics/docs/ai-firstify-plugin",
+  "websiteUrl": "https://dsg.pics",
+  "supportEmail": "support@dsg.pics",
+  "author": "DSG Platform",
+  "license": "PROPRIETARY",
+  "capabilities": [
+    {
+      "id": "ai_governance",
+      "title": "AI Model Governance",
+      "description": "Real-time governance gates for AI model deployment and execution"
+    },
+    {
+      "id": "policy_enforcement",
+      "title": "Policy Enforcement",
+      "description": "Enforce policies and compliance rules for AI operations"
+    },
+    {
+      "id": "audit_trail",
+      "title": "Audit Trail",
+      "description": "Complete audit trail for all AI operations and decisions"
+    },
+    {
+      "id": "customization",
+      "title": "Custom Rules",
+      "description": "Create and manage custom governance rules for your AI workflows"
+    }
+  ],
+  "permissions": [
+    {
+      "id": "ai_model_access",
+      "name": "AI Model Access",
+      "description": "Access and monitor AI model execution"
+    },
+    {
+      "id": "policy_management",
+      "name": "Policy Management",
+      "description": "Create and update governance policies"
+    },
+    {
+      "id": "audit_logging",
+      "name": "Audit Logging",
+      "description": "Log AI operations for compliance and auditing"
+    }
+  ],
+  "integrations": [
+    {
+      "type": "dsg-control-plane",
+      "version": "1.0",
+      "baseUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app"
+    }
+  ],
+  "configuration": {
+    "required_env": [
+      "DSG_API_BASE",
+      "DSG_API_KEY",
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY"
+    ],
+    "optional_env": [
+      "REDIS_URL"
+    ]
+  }
+}
