@@ -178,6 +178,28 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 
 ---
 
+## Event-Driven Analytics & Support System
+
+**PostHog Integration:** Real-time event tracking for operational insights
+
+### Instrumented Events (20+ total)
+- **Conversion Funnel:** `user_signup`, `organization_created`, `agent_created`, `policy_created`, `execution_submitted`, `decision_made`, `checkout_started`, `subscription_created`
+- **Operational Metrics:** `approval_requested`, `approval_completed`, `approval_queue_checked`, `execution_completed`, `policy_updated`, `policy_archived`, `workspace_created`, `team_member_invited`
+- **Compliance & Audit:** `evidence_exported`, `audit_trail_queried`, `execution_replayed`, `compliance_report_generated`, `proof_verified`, `support_escalation_created`
+
+### Support System
+- **Escalation Routing** — Route tickets to engineering, product, security, leadership, or billing teams
+- **Multi-Channel Notifications** — Email (Resend) + Slack webhooks with color-coded severity
+- **Support Schema** — Tickets, internal messages, escalation history with org-scoped RLS
+- **Graceful Fallback** — Works without external APIs; notifications stored locally if services unavailable
+
+**PostHog Dashboards:**
+- Conversion Funnel (signup → organization → policy → execution → subscription)
+- Operational Health (approval turnaround, decision latency, active policies, execution volume)
+- Compliance Readiness (evidence exports, audit queries, proof coverage)
+
+---
+
 ## Quick Start
 
 **Installation (5 minutes):**
@@ -206,6 +228,22 @@ npm test
 ---
 
 ## Latest Updates
+
+✅ **PostHog Analytics & Event Instrumentation** (Deployed)
+- 20+ events capturing conversion, operations, and compliance flows
+- New: `user_signup` event (auth flow instrumentation)
+- New: `support_escalation_created` event (support system tracking)
+- Person-on-events mode with group hierarchy (Organization → Workspace → Agent)
+- Fire-and-forget event capture with graceful API fallback
+- PostHog dashboards: Conversion Funnel, Operational Health, Compliance Readiness
+
+✅ **Support System & Escalation Routing** (Deployed)
+- Multi-channel escalation (engineering, product, security, leadership, billing)
+- Email notifications via Resend with HTML templates
+- Slack webhooks with severity-based color coding
+- Support tickets + internal messaging + escalation history
+- Row-Level Security for org-scoped ticket access
+- Fire-and-forget pattern for async notifications
 
 ✅ **NVIDIA LLM Advisory Verifier** (PR #868 merged)
 - NVIDIA `ising-calibration-1-35b-a3b` as secondary LLM analysis layer
