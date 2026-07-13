@@ -121,8 +121,10 @@ async function main() {
 
   console.log('📊 Configuration Summary:');
   console.log(`   LOG_LEVEL: ${process.env.LOG_LEVEL || 'INFO'}`);
-  console.log(`   SIM_USE Mode: ${process.env.SIM_USE_API_KEY?.includes('placeholder') ? '🧪 TEST/DEV (mock data)' : '🔌 PRODUCTION'}`);
-  console.log(`   PostHog: ${process.env.POSTHOG_API_KEY?.includes('placeholder') ? '❌ Not configured' : '✅ Configured'}`);
+  const simUseKey = process.env.SIM_USE_API_KEY || '';
+  const isTestMode = !simUseKey || simUseKey.includes('placeholder') || simUseKey.startsWith('sk_test_dev');
+  console.log(`   SIM_USE Mode: ${isTestMode ? '🧪 TEST/DEV (mock data)' : '🔌 PRODUCTION'}`);
+  console.log(`   PostHog: ${process.env.POSTHOG_API_KEY?.includes('placeholder') || !process.env.POSTHOG_API_KEY ? '❌ Not configured' : '✅ Configured'}`);
   console.log(`   Cache Size: ${stats.cacheSize} entries`);
   console.log(`   Total Queries: ${stats.totalQueries}`);
   console.log('\n💡 To use real API keys:');
