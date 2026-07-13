@@ -1,7 +1,7 @@
 # AI-Firstify Plugin — Production Deployment Guide
 
 **Status:** Ready for Supabase application  
-**Supabase Project:** `zeyguilldygozufpgxms`  
+**Supabase Project:** `<your-project-id>`  
 **Date:** 2026-07-13
 
 ---
@@ -12,14 +12,14 @@ Your Supabase project needs 3 migrations applied. These are pure SQL and safe to
 
 ### Method A: Supabase SQL Editor (Easiest)
 
-1. Go to: https://supabase.com/dashboard/project/zeyguilldygozufpgxms/sql/new
+1. Go to: https://supabase.com/dashboard/project/<your-project-id>/sql/new
 2. Copy-paste each migration SQL below
 3. Click "RUN" for each
 
 ### Method B: Supabase CLI
 
 ```bash
-export SUPABASE_URL="https://zeyguilldygozufpgxms.supabase.co"
+export SUPABASE_URL="https://<your-project-id>.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 
 supabase db push --remote
@@ -353,13 +353,13 @@ npm run build
 Add to your deployment environment:
 
 ```
-SUPABASE_URL=https://zeyguilldygozufpgxms.supabase.co
+SUPABASE_URL=https://<your-project-id>.supabase.co
 SUPABASE_ANON_KEY=<your-anon-key-from-supabase-dashboard>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
 **Where to find keys:**
-1. Go to: https://supabase.com/dashboard/project/zeyguilldygozufpgxms/settings/api
+1. Go to: https://supabase.com/dashboard/project/<your-project-id>/settings/api
 2. Copy the keys from "Project API keys"
 
 ---
