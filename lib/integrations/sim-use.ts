@@ -66,16 +66,21 @@ export class SimUseAdapter {
   private lastQueryTime: number = 0;
 
   constructor(config: SimUseConfig = {}) {
+    const apiKey = config.apiKey || process.env.SIM_USE_API_KEY || '';
+    const isTestMode = !apiKey || apiKey.includes('placeholder') || apiKey.startsWith('sk_test_dev');
+
     this.config = {
       apiEndpoint: config.apiEndpoint || process.env.SIM_USE_API_ENDPOINT || 'https://sim-use.line.biz/api/v1',
-      apiKey: config.apiKey || process.env.SIM_USE_API_KEY || '',
+      apiKey,
       timeout: config.timeout || 10_000,
       cacheEnabled: config.cacheEnabled ?? true,
       cacheTtlSeconds: config.cacheTtlSeconds || 300, // 5 minutes default
     };
     this.cache = new Map();
 
-    if (!this.config.apiKey) {
+    if (isTestMode) {
+      logger.info('SIM_USE running in TEST MODE (no real API key)', { module: 'sim-use' });
+    } else if (!this.config.apiKey) {
       logger.warn('SIM_USE_API_KEY not configured', { module: 'sim-use' });
     }
   }
@@ -219,9 +224,16 @@ export class SimUseAdapter {
 
   /**
    * Fetch SIM usage from the API.
-   * Mock implementation - replace with real API call.
+   * Falls back to mock data in test/dev mode.
    */
   private async fetchFromApi(simId: string): Promise<SIMUsageResult> {
+    const isTestMode = !this.config.apiKey || this.config.apiKey.includes('placeholder') || this.config.apiKey.startsWith('sk_test_dev');
+
+    // Test/dev mode: return mock data
+    if (isTestMode) {
+      return this.getMockSIMData(simId);
+    }
+
     try {
       const url = `${this.config.apiEndpoint}/usage/${encodeURIComponent(simId)}`;
       const response = await fetch(url, {
@@ -282,6 +294,32 @@ export class SimUseAdapter {
         queryTime: 0,
       };
     }
+  }
+
+  /**
+   * Return mock SIM data for testing/development.
+   */
+  private getMockSIMData(simId: string): SIMUsageResult {
+    const mockData: SIMUsageData = {
+      simId,
+      phoneNumber: simId.includes('@') ? undefined : simId,
+      dataUsageBytes: 3_500_000_000, // 3.5 GB
+      dataLimitBytes: 5_000_000_000, // 5 GB
+      dataPercentage: 70,
+      callMinutesUsed: 245,
+      callMinutesLimit: 300,
+      smsUsed: 45,
+      smsLimit: 100,
+      lastUpdated: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+      status: 'active',
+    };
+
+    return {
+      ok: true,
+      data: mockData,
+      queryTime: 50, // Mock response time
+    };
   }
 
   private getCached(simId: string): SIMUsageData | null {

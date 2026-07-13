@@ -75,10 +75,8 @@ export class DSGLogger {
 
   constructor(minLevel: LogLevel = 'INFO') {
     this.minLevel = minLevel;
-    if (process.env.POSTHOG_API_KEY) {
-      this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
-        apiHost: process.env.POSTHOG_API_HOST || 'https://us.posthog.com',
-      });
+    if (process.env.POSTHOG_API_KEY && !process.env.POSTHOG_API_KEY.includes('placeholder')) {
+      this.posthog = new PostHog(process.env.POSTHOG_API_KEY);
     }
   }
 
@@ -240,11 +238,7 @@ export class DSGLogger {
    */
   async flush(): Promise<void> {
     if (this.posthog) {
-      return new Promise((resolve) => {
-        this.posthog!.flush(() => {
-          resolve();
-        });
-      });
+      await this.posthog.shutdown();
     }
   }
 }
