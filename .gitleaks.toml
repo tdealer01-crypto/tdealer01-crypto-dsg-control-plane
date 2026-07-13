@@ -15,6 +15,9 @@ useDefault = true
     "f54f496fb4c330973de326c3909acccd2103964c",
     "6facaa43d9be4ef3508fae161b4b8fdac6dbe6c4",  # AI-Firstify governance gate integration
     "352bd1e92dab014f01b8fec399ef2c3a7e881a39",  # Integrate AI-Firstify plugin API routes
+    "366f0e0d4e2f6c67c290bd09bd253defac338216",  # Add AI-Firstify allowlist
+    "b04671c4a74174f33be8178763e0df39c4976bdd",  # Use full commit hashes
+    "2792c499c29bc124c6f50d6733d5fb5daa529c90",  # Exclude AI-Firstify files
   ]
 
   # Exclude this config file from scanning — it contains regex pattern strings
