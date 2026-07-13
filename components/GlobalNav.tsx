@@ -42,6 +42,7 @@ const FLAT_LINKS = [
   { href: '/pricing',    label: 'Pricing',    match: (p: string) => p === '/pricing' },
   { href: '/docs',       label: 'Docs',       match: (p: string) => p === '/docs' || p.startsWith('/docs/') },
   { href: '/quickstart', label: 'Quickstart', match: (p: string) => p === '/quickstart' },
+  { href: '/docs/design-system-tool.html', label: '🎨 Design System', match: (p: string) => false, target: '_blank' },
 ];
 
 const NAV_T = {
@@ -136,10 +137,12 @@ export default function GlobalNav() {
               )}
             </div>
 
-            {FLAT_LINKS.map(({ href, label, match }) => (
+            {FLAT_LINKS.map(({ href, label, match, target }) => (
               <Link
                 key={href}
                 href={href}
+                target={target}
+                rel={target === '_blank' ? 'noopener noreferrer' : undefined}
                 className={[
                   'rounded-xl border px-3 py-2 text-sm font-semibold transition',
                   match(pathname)
@@ -244,10 +247,12 @@ export default function GlobalNav() {
             )}
 
             {/* Flat links */}
-            {FLAT_LINKS.map(({ href, label, match }) => (
+            {FLAT_LINKS.map(({ href, label, match, target }) => (
               <Link
                 key={href}
                 href={href}
+                target={target}
+                rel={target === '_blank' ? 'noopener noreferrer' : undefined}
                 onClick={closeMobileMenu}
                 className={[
                   'block rounded-xl border px-4 py-3 text-sm font-semibold',
