@@ -354,7 +354,7 @@ Add to your deployment environment:
 
 ```
 SUPABASE_URL=https://zeyguilldygozufpgxms.supabase.co
-SUPABASE_ANON_KEY=sb_publishable__T5uR3y1_EH6cDabodIEwA_Vads9ni4
+SUPABASE_ANON_KEY=<your-anon-key-from-supabase-dashboard>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
