@@ -21,12 +21,14 @@ useDefault = true
   # that reference secret-looking prefixes, which would cause gitleaks to flag
   # its own allowlist entries as secrets.
   # .claude/settings.json uses ${ENV_VAR} references only — no real secrets.
+  # docs/LOGGING_SIM_USE_INTEGRATION.md contains placeholder API keys for dev/test mode.
   paths = [
     ".gitleaks.toml",
     ".claude/settings.json",
     "lib/hermes/ai-firstify-gate.ts",
     "app/api/v1/policies/route.ts",
     "app/api/v1/audit/route.ts",
+    "docs/LOGGING_SIM_USE_INTEGRATION.md",
   ]
 
   # Precise fingerprints for known false positives across all branches.

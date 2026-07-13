@@ -66,7 +66,8 @@
     "test:mutation:ci": "npx stryker run --logLevel warn",
     "test:watch": "vitest",
     "test:evidence": "vitest run lib/dsg/multi-agent-ccvs/tests/evidence.test.ts",
-    "test:ci": "vitest run --reporter=junit --outputFile=junit.xml"
+    "test:ci": "vitest run --reporter=junit --outputFile=junit.xml",
+    "test:logging": "npx tsx scripts/test-logging-sim-use.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
