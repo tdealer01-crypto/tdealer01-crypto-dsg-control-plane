@@ -72,3 +72,14 @@ useDefault = true
     '''whsec_'\s*\+\s*Math\.random''',
     '''whsec_'\s*\+\s*randomBytes''',
   ]
+
+  # Placeholder API keys from logging + sim-use integration guide (d403cf0)
+  # These are explicitly marked as dev/test mode placeholders in documentation.
+  # Production usage requires real keys from LINE sim-use and PostHog.
+  # File: docs/LOGGING_SIM_USE_INTEGRATION.md
+  # - Line 41: SIM_USE_API_KEY=sk_test_dev_mode_placeholder_change_me
+  # - Line 42: POSTHOG_API_KEY=phc_dev_placeholder_add_your_key
+  # Pattern: "placeholder" or "dev" explicitly in value makes it safe to allowlist
+  paths = [
+    "docs/LOGGING_SIM_USE_INTEGRATION.md",
+  ]
