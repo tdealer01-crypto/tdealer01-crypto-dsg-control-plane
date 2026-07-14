@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import UsageBar from '../../../components/billing/UsageBar';
+import { getStoredAcquisitionChannel } from '@/lib/acquisition/track-channel';
 
 type PlanKey = 'pro' | 'business' | 'enterprise';
 type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
@@ -63,7 +64,11 @@ function UpgradeCard({
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.key, interval }),
+        body: JSON.stringify({
+          plan: plan.key,
+          interval,
+          acquisition_channel: getStoredAcquisitionChannel(),
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -259,7 +264,11 @@ function BillingInner() {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: bundleId, interval }),
+        body: JSON.stringify({
+          plan: bundleId,
+          interval,
+          acquisition_channel: getStoredAcquisitionChannel(),
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

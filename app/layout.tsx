@@ -7,6 +7,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import GlobalNav from '../components/GlobalNav';
 import PublicChatWidget from '../components/PublicChatWidget';
 import { ToastProvider } from '../components/ToastProvider';
+import AcquisitionChannelTracker from '../components/AcquisitionChannelTracker';
 import { LanguageProvider } from '@/lib/i18n/language-context';
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
         <LanguageProvider>
           <ToastProvider>
+            <AcquisitionChannelTracker />
             <GlobalNav />
             {children}
             <PublicChatWidget />

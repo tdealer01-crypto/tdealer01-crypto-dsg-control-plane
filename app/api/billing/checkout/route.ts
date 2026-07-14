@@ -42,6 +42,27 @@ function normalizeInterval(value: unknown): BillingInterval {
   return 'monthly';
 }
 
+function normalizeAcquisitionChannel(value: unknown): string | undefined {
+  const channel = String(value || '').trim().toLowerCase();
+  if (!channel) return undefined;
+  return channel.slice(0, 100);
+}
+
+// Persist the org's first-touch acquisition channel. Never overwrites an
+// existing value — this is first-touch attribution, not last-touch.
+async function persistAcquisitionChannel(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  orgId: string,
+  channel: string | undefined
+): Promise<void> {
+  if (!channel) return;
+  await (admin as any)
+    .from('organizations')
+    .update({ acquisition_channel: channel })
+    .eq('id', orgId)
+    .is('acquisition_channel', null);
+}
+
 type CheckoutProfileResult =
   | {
       ok: true;
@@ -91,6 +112,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const plan = searchParams.get('plan') ?? '';
   const interval = normalizeInterval(searchParams.get('interval'));
+  const acquisitionChannel = normalizeAcquisitionChannel(searchParams.get('acquisition_channel'));
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
   if (!isSkillsBundle(plan)) {
@@ -120,7 +142,10 @@ export async function GET(request: Request) {
       source: 'skills-marketplace',
       org_id: profile.org_id,
       auth_user_id: user.id,
+      ...(acquisitionChannel ? { acquisition_channel: acquisitionChannel } : {}),
     };
+
+    await persistAcquisitionChannel(getSupabaseAdmin(), profile.org_id, acquisitionChannel);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -180,6 +205,7 @@ export async function POST(request: Request) {
     const interval = normalizeInterval(body?.interval);
     const customerEmail = body?.email ? String(body.email) : undefined;
     const orgId = body?.org_id ? String(body.org_id) : undefined;
+    const acquisitionChannel = normalizeAcquisitionChannel(body?.acquisition_channel);
 
     const workspace = await resolveCheckoutProfile(supabase, user, customerEmail || user.email || null);
 
@@ -214,6 +240,9 @@ export async function POST(request: Request) {
       auth_user_id: user.id,
     };
     if (resolvedEmail) metadata.customer_email = resolvedEmail;
+    if (acquisitionChannel) metadata.acquisition_channel = acquisitionChannel;
+
+    await persistAcquisitionChannel(getSupabaseAdmin(), resolvedOrgId, acquisitionChannel);
 
     let lineItems: Stripe.Checkout.SessionCreateParams['line_items'];
     let successUrl: string;
@@ -272,6 +301,7 @@ export async function POST(request: Request) {
       plan_tier: rawPlan,
       checkout_session_id: session.id,
       current_plan: currentPlan,
+      acquisition_channel: acquisitionChannel || 'unknown',
     });
 
     return NextResponse.json({ ok: true, url: session.url, session_id: session.id, plan: rawPlan, interval }, { headers: buildRateLimitHeaders(rateLimit, 20) });
