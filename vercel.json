@@ -4,8 +4,12 @@
   "buildCommand": "npm run build",
   "crons": [
     {
+      "path": "/api/cron/billing-sync",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/flush-meter-outbox",
-      "schedule": "0 5 * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/reconcile-meter",
