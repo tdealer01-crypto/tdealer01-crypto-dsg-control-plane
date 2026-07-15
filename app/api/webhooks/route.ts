@@ -1,38 +1,16 @@
 import { Anthropic } from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
-import { handleApiError } from "@/lib/security/api-error";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-export async function POST(req: NextRequest) {
+export default async function handler(req: any, res: any) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   try {
-    const { order_id, customer_email, product, amount, stripe_session_id, timestamp } = await req.json();
-
-    // Lazy-load Supabase client only at runtime, not at build time
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
-
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: `Generate Delivery Proof for order ${order_id}, customer ${customer_email}, product ${product}`,
-        },
-      ],
-    });
-
-    return NextResponse.json({
-      success: true,
-      order_id,
-      report_url: `${process.env.NEXT_PUBLIC_APP_URL}/reports/${order_id}`,
-      timestamp: new Date().toISOString(),
-    });
+    const { order_id } = req.body;
+    const msg = await anthropic.messages.create({ model: "claude-sonnet-4-6", max_tokens: 1024, messages: [{ role: "user", content: `Generate proof for ${order_id}` }] });
+    return res.status(200).json({ success: true, order_id, timestamp: new Date().toISOString() });
   } catch (error) {
-    return handleApiError("POST /api/webhooks", error);
+    return res.status(500).json({ error: "Failed", message: error instanceof Error ? error.message : "Unknown" });
   }
 }
