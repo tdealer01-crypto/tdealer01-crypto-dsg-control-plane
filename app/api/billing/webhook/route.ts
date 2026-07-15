@@ -3,21 +3,12 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
-import { sendTrialWelcome, sendUpgradeSuccess, sendPaymentFailed } from '../../../../lib/email/sales';
+import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
 import { fulfillSubscription, revokeSubscription } from '../../../../lib/billing/fulfillment';
 import { REVOKED_STATUSES } from '../../../../lib/billing/entitlements';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
-import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Structured logging helper for webhook operations
- */
-function logWebhook(level: 'info' | 'error', message: string, data: Record<string, unknown>) {
-  const timestamp = new Date().toISOString();
-  console.log(JSON.stringify({ timestamp, level, message, ...data }));
-}
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
 
 type PriceMapping = {
@@ -160,18 +151,6 @@ function isDuplicateEventError(error: unknown): boolean {
   );
 }
 
-function generateMCPKey(): string {
-  return 'dsg_' + crypto.randomBytes(24).toString('hex');
-}
-
-function hashMCPKey(key: string): string {
-  return crypto.createHash('sha256').update(key).digest('hex');
-}
-
-function getMCPKeyPrefix(key: string): string {
-  return key.substring(0, 16) + '...';
-}
-
 async function claimEventProcessing(supabase: SupabaseAdmin, event: Stripe.Event) {
   const object = event.data.object as unknown as Record<string, unknown>;
 
@@ -291,81 +270,6 @@ async function upsertBillingSubscription(supabase: SupabaseAdmin, payload: Billi
   });
 }
 
-async function handleMCPSubscriptionActivation(
-  supabase: SupabaseAdmin,
-  session: Stripe.Checkout.Session,
-  subscription: Stripe.Subscription
-): Promise<void> {
-  const stripeCustomerId = typeof session.customer === 'string' ? session.customer : null;
-  if (!stripeCustomerId) return;
-
-  // Resolve org_id and auth_user_id from metadata or customer email
-  const customerEmail = session.customer_details?.email || session.customer_email || null;
-  const explicitOrgId = session.metadata?.org_id || null;
-  const resolvedOrgId = explicitOrgId || (await resolveOrgIdByEmail(supabase, customerEmail));
-
-  if (!resolvedOrgId || !customerEmail) return;
-
-  // Get auth_user_id from users table
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('auth_user_id')
-    .eq('org_id', resolvedOrgId)
-    .eq('email', customerEmail)
-    .limit(1)
-    .maybeSingle();
-
-  if (!userRow?.auth_user_id) return;
-
-  try {
-    // Generate MCP API key
-    const rawKey = generateMCPKey();
-    const keyHash = hashMCPKey(rawKey);
-    const keyPrefix = getMCPKeyPrefix(rawKey);
-
-    // Call create_mcp_api_key RPC
-    const { data: keyId, error: createError } = await supabase
-      .rpc('create_mcp_api_key', {
-        p_actor_id: userRow.auth_user_id,
-        p_key_hash: keyHash,
-        p_key_prefix: keyPrefix,
-        p_label: 'MCP Subscription Key',
-      });
-
-    if (createError || !keyId) {
-      console.error('[billing] Failed to create MCP API key', createError);
-      return;
-    }
-
-    // Get subscription period from Stripe subscription
-    const item = subscription.items?.data?.[0];
-    const periodStart = item?.current_period_start ? new Date(item.current_period_start * 1000).toISOString() : new Date().toISOString();
-    const periodEnd = item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-    // Call activate_mcp_subscription RPC
-    const { error: activateError } = await supabase.rpc('activate_mcp_subscription', {
-      p_key_id: keyId,
-      p_stripe_subscription_id: subscription.id,
-      p_stripe_customer_id: stripeCustomerId,
-      p_period_start: periodStart,
-      p_period_end: periodEnd,
-    });
-
-    if (activateError) {
-      console.error('[billing] Failed to activate MCP subscription', activateError);
-      return;
-    }
-
-    console.log('[billing] MCP subscription activated', {
-      keyId,
-      subscriptionId: subscription.id,
-      customerId: stripeCustomerId,
-    });
-  } catch (error) {
-    console.error('[billing] Error in handleMCPSubscriptionActivation', error);
-  }
-}
-
 async function handleInvoiceEvent(
   supabase: SupabaseAdmin,
   event: Stripe.Event,
@@ -395,35 +299,6 @@ async function handleInvoiceEvent(
         periodStart: invoice.period_start,
         periodEnd: invoice.period_end,
       });
-
-      // Handle MCP subscription renewal
-      const stripeSubscriptionId = typeof (invoice as any).subscription === 'string' ? (invoice as any).subscription : null;
-      if (stripeSubscriptionId) {
-        const { data: mcpKey } = await supabase
-          .from('dsg_mcp_api_keys')
-          .select('key_id')
-          .eq('stripe_subscription_id', stripeSubscriptionId)
-          .limit(1)
-          .maybeSingle();
-
-        if (mcpKey) {
-          const periodStart = invoice.period_start ? new Date(invoice.period_start * 1000).toISOString() : new Date().toISOString();
-          const periodEnd = invoice.period_end ? new Date(invoice.period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-          const { error: renewError } = await supabase.rpc('renew_mcp_subscription_period', {
-            p_stripe_subscription_id: stripeSubscriptionId,
-            p_period_start: periodStart,
-            p_period_end: periodEnd,
-          });
-
-          if (renewError) {
-            console.error('[billing] Failed to renew MCP subscription', renewError);
-          } else {
-            console.log('[billing] MCP subscription renewed', { subscriptionId: stripeSubscriptionId });
-          }
-        }
-      }
-
       // Metered usage charges are included in this invoice payment
       // Subscription status is already synced via customer.subscription.updated
       break;
@@ -436,37 +311,7 @@ async function handleInvoiceEvent(
         attemptCount: invoice.attempt_count,
         nextPaymentAttempt: invoice.next_payment_attempt,
       });
-
-      // Capture dunning event for analytics
-      if (orgId) {
-        await captureEvent('payment_failed', {
-          userId: orgId,
-          organizationId: orgId,
-        }, {
-          organization_id: orgId,
-          stripe_invoice_id: invoice.id,
-          stripe_customer_id: stripeCustomerId,
-          amount_due: invoice.amount_due,
-          attempt_count: invoice.attempt_count,
-          next_payment_attempt: invoice.next_payment_attempt,
-        });
-      }
-
-      // Send dunning email to customer
-      const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
-
-      if (billingCustomer?.email) {
-        // Fire-and-forget email send (fail-open)
-        // Plan key defaults to 'pro' since invoice dunning is relevant to paid plans
-        void sendPaymentFailed({
-          email: billingCustomer.email,
-          planKey: 'pro',
-          amountDue: invoice.amount_due,
-          attemptCount: invoice.attempt_count,
-          nextPaymentAttempt: invoice.next_payment_attempt,
-        }).catch(() => null);
-      }
-
+      // Could trigger dunning webhook or alert here
       break;
     }
     case 'invoice.finalized': {
@@ -486,15 +331,11 @@ async function handleInvoiceEvent(
 }
 
 export async function POST(request: Request) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
   try {
     const stripe = getStripeClient();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      logWebhook('error', 'Missing STRIPE_WEBHOOK_SECRET', { requestId });
       return NextResponse.json(
         { error: 'Missing STRIPE_WEBHOOK_SECRET' },
         { status: 500 }
@@ -503,7 +344,6 @@ export async function POST(request: Request) {
 
     const signature = request.headers.get('stripe-signature');
     if (!signature) {
-      logWebhook('error', 'Missing stripe-signature header', { requestId });
       return NextResponse.json(
         { error: 'Missing stripe-signature header' },
         { status: 400 }
@@ -513,12 +353,6 @@ export async function POST(request: Request) {
     const body = await request.text();
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     const supabase = getSupabaseAdmin();
-
-    logWebhook('info', 'Webhook received', {
-      requestId,
-      eventType: event.type,
-      eventId: event.id,
-    });
 
     const claimed = await claimEventProcessing(supabase, event);
     if (!claimed) {
@@ -579,16 +413,13 @@ export async function POST(request: Request) {
             const record = subscriptionToRecord(subscription, { orgId, customerEmail });
             await upsertBillingSubscription(supabase, record);
 
-            // Handle MCP subscription activation
-            if (record.plan_key === 'mcp_api') {
-              await handleMCPSubscriptionActivation(supabase, session, subscription);
-            } else if (orgId && record.plan_key) {
-              // Entitlement: grant plan to org immediately on checkout (non-MCP plans)
+            // Entitlement: grant plan to org immediately on checkout
+            if (orgId && record.plan_key) {
               await fulfillSubscription(orgId, record.plan_key, subscription.status);
             }
 
             // D0: send trial welcome email
-            if (customerEmail && subscription.trial_end && record.plan_key !== 'mcp_api') {
+            if (customerEmail && subscription.trial_end) {
               void sendTrialWelcome({
                 email: customerEmail,
                 planKey: record.plan_key || 'pro',
@@ -683,14 +514,6 @@ export async function POST(request: Request) {
         await handleInvoiceEvent(supabase, event, stripe);
       }
 
-      const duration = Date.now() - startTime;
-      logWebhook('info', 'Webhook processed successfully', {
-        requestId,
-        eventType: event.type,
-        eventId: event.id,
-        duration,
-        status: 'success',
-      });
       return NextResponse.json({ received: true, type: event.type });
     } catch (error) {
       try {
@@ -704,19 +527,7 @@ export async function POST(request: Request) {
       throw error;
     }
   } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logWebhook('error', 'Webhook processing failed', {
-      requestId,
-      duration,
-      status: 'failed',
-    });
-
-    logApiError('api/billing/webhook', error, {
-      stage: 'unhandled',
-      requestId,
-    });
-
+    logApiError('api/billing/webhook', error, { stage: 'unhandled' });
     return NextResponse.json(
       { error: internalErrorMessage() },
       { status: 400 }

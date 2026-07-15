@@ -154,31 +154,24 @@ Before starting, ensure you have:
 ### Step 4: Control Plane API Integration 🤖
 **Estimated Time:** 10 minutes
 
-The real, deployed endpoint is `app/api/webhooks/zapier/[...path]/route.ts` — it verifies an HMAC-SHA256 signature on every POST and persists rows into `zapier_payment_events`, `zapier_quota_events`, and `zapier_communication_events` in Supabase (migration `20260716120000_create_zapier_webhook_events.sql`). There is no separate "API key" concept for this integration — auth is the shared `ZAPIER_WEBHOOK_SECRET` used to sign requests.
-
-#### 4.1 Generate and store the webhook secret
-- [ ] Generate a secret: `openssl rand -hex 32`
-- [ ] Set it on Vercel (Production environment) as `ZAPIER_WEBHOOK_SECRET`
-- [ ] ⚠️ **Store securely — never commit to git.** See `docs/ENV_VARS_REFERENCE.md` for full setup details.
+#### 4.1 Generate API Key
+- [ ] Go to control plane admin: https://tdealer01-crypto-dsg-control-plane.vercel.app/admin
+- [ ] Navigate to: Settings → API Keys
+- [ ] Click "Generate New Key"
+- [ ] Name: "Zapier Revenue Automation"
+- [ ] Permissions: `billing:write`, `quotas:write`, `audit:write`
+- [ ] Copy key and save securely: `ZAPIER_CONTROL_PLANE_API_KEY`
+- [ ] ⚠️ **Store securely - never commit to git**
 
 #### 4.2 Create Webhook Actions in Zapier
-Each Zap needs a **Code by Zapier** step immediately before the webhook POST to compute the signature, since Zapier's built-in webhook action can't sign requests itself:
-
-```js
-const crypto = require('crypto');
-const body = JSON.stringify(inputData); // must match the POST body exactly, byte-for-byte
-const signature = crypto.createHmac('sha256', 'YOUR_ZAPIER_WEBHOOK_SECRET').update(body).digest('hex');
-output = [{ signature, body }];
-```
-
 **Webhook 1: Revenue Logging**
-- [ ] In Revenue Tracking Zap, add the Code step above, then add action after Slack notification
+- [ ] In Revenue Tracking Zap, add action after Slack notification
 - [ ] Action: "Webhooks by Zapier" → "POST"
-- [ ] URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/zapier/revenue`
+- [ ] URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/revenue`
 - [ ] Headers:
-  - [ ] `x-zapier-signature`: `{{signature}}` (from the Code step)
+  - [ ] `Authorization`: `Bearer ZAPIER_CONTROL_PLANE_API_KEY`
   - [ ] `Content-Type`: `application/json`
-- [ ] Body: `{{body}}` (the exact JSON string from the Code step, not a re-serialized copy) containing:
+- [ ] Body (JSON):
 ```json
 {
   "customer_id": "CUSTOMER_ID_FROM_SHEET",
@@ -190,35 +183,31 @@ output = [{ signature, body }];
   "timestamp": "DATE_AND_TIME"
 }
 ```
-- [ ] Test webhook — expect `{"success": true}` with HTTP 200
+- [ ] Test webhook
 
 **Webhook 2: Quota Update**
-- [ ] Add the same Code-step-then-webhook pattern in Service Delivery Manager Zap
+- [ ] Add new action in Service Delivery Manager Zap
 - [ ] Action: "Webhooks by Zapier" → "POST"
-- [ ] URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/zapier/quota`
+- [ ] URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/quotas/usage`
+- [ ] Similar headers and body structure
 - [ ] Test webhook
 
 **Webhook 3: Communication Logging**
-- [ ] Add the same Code-step-then-webhook pattern in Customer Outreach Zap
+- [ ] Add new action in Customer Outreach Zap
 - [ ] Action: "Webhooks by Zapier" → "POST"
-- [ ] URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/zapier/communication`
+- [ ] URL: `https://tdealer01-crypto-dsg-control-plane.vercel.app/api/audit/communications`
 - [ ] Test webhook
 
-#### 4.3 Verify persistence
-- [ ] `GET https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/zapier/health` returns `"status": "healthy"` (means `ZAPIER_WEBHOOK_SECRET` is configured)
-- [ ] Query Supabase directly to confirm rows landed:
-  ```sql
-  select * from zapier_payment_events order by created_at desc limit 5;
-  select * from zapier_quota_events order by created_at desc limit 5;
-  select * from zapier_communication_events order by created_at desc limit 5;
-  ```
-- [ ] A request with a wrong/missing `x-zapier-signature` returns HTTP 401 (confirms signature verification is actually enforced, not skipped)
+#### 4.3 Verify API Connectivity
+- [ ] Check control plane logs: https://tdealer01-crypto-dsg-control-plane.vercel.app/admin/logs
+- [ ] Should see webhook events coming in
+- [ ] HTTP status: 200 OK for all requests
 
 **Verification Checklist:**
-- [ ] `ZAPIER_WEBHOOK_SECRET` generated and set on Vercel
-- [ ] All 3 webhooks configured with the Code-step signature pattern
-- [ ] Rows visible in `zapier_payment_events` / `zapier_quota_events` / `zapier_communication_events`
-- [ ] Unsigned/mis-signed request confirmed to return 401
+- [ ] API key generated and secured
+- [ ] All 3 webhooks configured
+- [ ] Control plane receiving events
+- [ ] No authentication errors in logs
 
 ---
 

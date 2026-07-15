@@ -123,9 +123,8 @@ describe('requireRuntimeAccess', () => {
     requireOrgRoleMock.mockResolvedValue({ ok: false, status: 403, error: 'Forbidden' });
 
     const { requireRuntimeAccess } = await import('../../lib/authz-runtime');
-    const req = makeRequest();
-    await requireRuntimeAccess(req, 'checkpoint');
+    await requireRuntimeAccess(makeRequest(), 'checkpoint');
 
-    expect(requireOrgRoleMock).toHaveBeenCalledWith(['runtime_auditor', 'org_admin'], req);
+    expect(requireOrgRoleMock).toHaveBeenCalledWith(['runtime_auditor', 'org_admin']);
   });
 });

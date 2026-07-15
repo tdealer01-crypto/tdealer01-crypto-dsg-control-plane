@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import type { User } from '@supabase/supabase-js';
 import { createClient } from '../../lib/supabase/server';
 import Link from 'next/link';
 import AgentChatWidget from '../../components/AgentChatWidget';
@@ -11,18 +10,10 @@ import NudgeBanner from '../../components/billing/NudgeBanner';
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // Local/dev inspection: when Supabase public env vars are absent, createClient()
-  // throws. Middleware already fails closed (503/redirect) for protected paths on
-  // non-localhost hosts, so falling back to a signed-out shell here only affects
-  // local inspection — production auth behavior is unchanged.
-  let user: User | null = null;
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch {
-    user = null;
-  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">

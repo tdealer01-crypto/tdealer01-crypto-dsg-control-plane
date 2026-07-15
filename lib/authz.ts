@@ -20,35 +20,15 @@ function isMissingRuntimeRolesError(error: { message?: string; code?: string | n
   );
 }
 
-export async function requireOrgRole(requiredRoles: RuntimeRole[], req?: Request){
+export async function requireOrgRole(requiredRoles: RuntimeRole[]){
  try {
-  let userId: string | null = null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  // First, check if middleware set JWT user info in headers
-  if (req && req.headers) {
-    userId = req.headers.get('x-user-id') || null;
-  }
-
-  // Fall back to session-based auth if no JWT
-  if (!userId) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user?.id) {
-      return {
-        ok: false as const,
-        status: 401,
-        error: 'Unauthorized',
-      };
-    }
-
-    userId = user.id;
-  }
-
-  if (!userId) {
+  if (authError || !user?.id) {
     return {
       ok: false as const,
       status: 401,
@@ -69,7 +49,7 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[], req?: Request
   const profile = await admin
     .from('users')
     .select('id, org_id, is_active, role')
-    .eq('auth_user_id', userId)
+    .eq('auth_user_id', user.id)
     .maybeSingle();
 
   if (profile.error) {
@@ -133,7 +113,7 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[], req?: Request
         ok: true as const,
         orgId,
         userId: appUserId,
-        authUserId: String(userId),
+        authUserId: String(user.id),
         grantedRoles: fallbackList,
       };
     }
@@ -181,7 +161,7 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[], req?: Request
     ok: true as const,
     orgId,
     userId: appUserId,
-    authUserId: String(userId),
+    authUserId: String(user.id),
     grantedRoles: effectiveRolesList as RuntimeRole[],
   };
  } catch (error) {

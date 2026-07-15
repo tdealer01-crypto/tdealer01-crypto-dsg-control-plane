@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card } from "@/components/ui/Card";
 import { MetricsSummary } from "@/components/monitoring";
 import SupportQueueWidget from "@/components/SupportQueueWidget";
 
@@ -228,10 +227,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* ── Error Banner ───────────────────────────────────────── */}
         {error && (
-          <Card variant="error" className="mt-4">
+          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.08] px-4 py-3 text-sm text-red-300">
             <span className="font-bold">⚠ ข้อผิดพลาด:</span> {error}
-          </Card>
+          </div>
         )}
 
         {/* ── System Health Indicator ────────────────────────────── */}

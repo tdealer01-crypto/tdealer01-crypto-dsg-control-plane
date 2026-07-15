@@ -31,19 +31,16 @@ export async function middleware(request: NextRequest) {
 
   const requestStart = Date.now();
 
-  // Clone the request with the correlation ID injected, stripping auth-related headers
-  // to prevent header spoofing. These headers are only set after JWT verification.
-  const safeHeaders = new Headers(request.headers);
-  safeHeaders.delete('x-user-id');
-  safeHeaders.delete('x-user-email');
-
+  // Clone the request with the correlation ID injected
   const requestWithId = new NextRequest(request.url, {
     method: request.method,
-    headers: safeHeaders,
+    headers: new Headers(request.headers),
     body: request.body,
     duplex: 'half',
   } as RequestInit & { duplex: 'half' });
   requestWithId.headers.set('x-request-id', requestId);
+
+requestWithId.headers.set('x-request-id', requestId);
 
   // Allow public access to pricing page
   if (request.nextUrl.pathname === '/pricing') {
@@ -59,7 +56,7 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  // ── API routes: body-size enforcement + JWT Bearer token support ──────────
+  // ── API routes: body-size enforcement only ─────────────────────────────────
   if (request.nextUrl.pathname.startsWith('/api/')) {
     if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
       const cl = request.headers.get('content-length');
@@ -69,60 +66,6 @@ export async function middleware(request: NextRequest) {
         );
       }
     }
-
-    // Extract and validate JWT Bearer token if present
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const anonKey =
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-      if (url && anonKey) {
-        try {
-          const supabase = createServerClient(url, anonKey, {
-            cookies: {
-              getAll() {
-                return request.cookies.getAll();
-              },
-              setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value, options }) => {
-                  request.cookies.set(name, value);
-                  response.cookies.set(name, value, options);
-                });
-              },
-            },
-          });
-
-          // Verify token with Supabase
-          const { data, error } = await supabase.auth.getUser(token);
-          if (data?.user && !error) {
-            // Token is valid - add verified user to request headers
-            const authHeaders = new Headers(request.headers);
-            authHeaders.delete('x-user-id');
-            authHeaders.delete('x-user-email');
-
-            const requestWithAuth = new NextRequest(request.url, {
-              method: request.method,
-              headers: authHeaders,
-              body: request.body,
-              duplex: 'half',
-            } as RequestInit & { duplex: 'half' });
-
-            requestWithAuth.headers.set('x-user-id', data.user.id);
-            requestWithAuth.headers.set('x-user-email', data.user.email || '');
-            requestWithAuth.headers.set('x-request-id', requestId);
-
-            const authResponse = NextResponse.next({ request: requestWithAuth });
-            return stamp(authResponse);
-          }
-        } catch (err) {
-          // Invalid token - continue to route handler which will reject if needed
-        }
-      }
-    }
-
     return stamp(response);
   }
 

@@ -1,5 +1,5 @@
 {
-  "name": "@dsg-one/sdk",
+  "name": "dsg-one-sdk",
   "version": "0.1.0",
   "description": "DSG ONE SDK - TypeScript client for the Deterministic Security Gateway governed execution API",
   "main": "dist/index.js",
@@ -12,9 +12,7 @@
     }
   },
   "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
@@ -42,9 +40,6 @@
     "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane/issues"
   },
   "homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
-  "publishConfig": {
-    "access": "public"
-  },
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {

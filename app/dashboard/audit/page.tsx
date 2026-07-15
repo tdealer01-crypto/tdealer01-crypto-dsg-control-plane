@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
-import { Card } from '@/components/ui/Card';
 
 type AuditEvent = {
   id?: number;
@@ -137,7 +136,7 @@ export default function AuditPage() {
       actions={[{ href: '/dashboard/executions', label: 'Open executions', tone: 'gold' }, { href: '/dashboard/verification', label: 'Verify proof', tone: 'slate' }]}
       steps={steps}
     >
-      {error ? <Card variant="warning" className="mt-6 text-sm">{error}</Card> : null}
+      {error ? <div className="mt-6 border border-amber-300/25 bg-amber-300/10 p-4 text-sm text-amber-100">{error}</div> : null}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">

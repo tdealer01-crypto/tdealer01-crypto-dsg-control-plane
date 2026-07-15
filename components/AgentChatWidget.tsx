@@ -3,15 +3,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { parseSseData, formatHumanAgentEventMessage } from "../lib/agent/chat-event";
-import { AgentTimeline } from "./ui/AgentTimeline";
-import type { AgentChatEvent } from "../lib/agent/chat-event";
 
 type ChatLine = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   isTyping?: boolean;
-  events?: AgentChatEvent[];
 };
 
 type RouteQaResult = {
@@ -356,17 +353,16 @@ export default function AgentChatWidget() {
       const decoder = new TextDecoder();
       let buffer = "";
       let fullReply = "";
-      let agentEvents: AgentChatEvent[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        const rawEvents = buffer.split("\n\n");
-        buffer = rawEvents.pop() || "";
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
 
-        for (const raw of rawEvents) {
+        for (const raw of events) {
           if (!raw.startsWith("data: ")) continue;
 
           if (useCodex) {
@@ -403,15 +399,13 @@ export default function AgentChatWidget() {
           } else {
             const event = parseSseData(raw);
             if (!event) continue;
-            agentEvents.push(event);
             const msg = formatHumanAgentEventMessage(event);
-            if (msg) {
-              fullReply += (fullReply ? "\n" : "") + msg;
-            }
+            if (!msg) continue;
+            fullReply += (fullReply ? "\n" : "") + msg;
             setLines((prev) =>
               prev.map((line) =>
                 line.id === typingId
-                  ? { ...line, content: fullReply, events: agentEvents }
+                  ? { ...line, content: fullReply }
                   : line
               )
             );
@@ -420,21 +414,10 @@ export default function AgentChatWidget() {
       }
 
       // If we got no content, show a fallback
-      if (!fullReply.trim() && agentEvents.length === 0) {
+      if (!fullReply.trim()) {
         setLines((prev) => [
           ...prev.filter((l) => l.id !== typingId),
           makeLine("assistant", "ไม่ได้รับคำตอบจากระบบ ลองใหม่อีกครั้ง"),
-        ]);
-      } else if (agentEvents.length > 0) {
-        // Use timeline for structured events
-        setLines((prev) => [
-          ...prev.filter((l) => l.id !== typingId),
-          {
-            id: `assistant-${Date.now()}`,
-            role: "assistant",
-            content: "",
-            events: agentEvents,
-          },
         ]);
       } else {
         // Remove typing indicator if still there
@@ -585,8 +568,6 @@ export default function AgentChatWidget() {
                       <span className="ml-2 text-slate-400">{line.content}</span>
                     )}
                   </div>
-                ) : line.events && line.events.length > 0 ? (
-                  <AgentTimeline events={line.events} className="max-w-md" />
                 ) : (
                   <p className="whitespace-pre-wrap">{line.content}</p>
                 )}

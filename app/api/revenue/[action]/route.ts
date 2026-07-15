@@ -8,7 +8,6 @@ import { createClient } from '@supabase/supabase-js';
 import { PostHog } from 'posthog-node';
 import { handleApiError } from '@/lib/security/api-error';
 import { requireInternalService } from '@/lib/auth/internal-service';
-import { GATE_PLANS } from '@/lib/billing/pricing-catalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -351,14 +350,6 @@ export async function POST(
       const posthog = getPostHog();
       const body = await req.json();
       const { eventType, plan } = body;
-      // Simulated amounts follow the pricing catalog ('agency' is this
-      // route's legacy alias for the business tier).
-      const simulatedAmount =
-        plan === 'enterprise'
-          ? GATE_PLANS.enterprise.displayMonthlyUsd
-          : plan === 'agency'
-            ? GATE_PLANS.business.displayMonthlyUsd
-            : GATE_PLANS.pro.displayMonthlyUsd;
 
       // Get a random customer for simulation
       const { data: customers } = await supabase
@@ -383,7 +374,7 @@ export async function POST(
             {
               customer_id: customer.id,
               plan: plan || 'pro',
-              amount: simulatedAmount,
+              amount: plan === 'pro' ? 99 : 299,
               status: 'active',
               created_at: new Date().toISOString(),
             },
@@ -397,7 +388,7 @@ export async function POST(
           properties: {
             customer_id: customer.id,
             plan: plan || 'pro',
-            amount: simulatedAmount,
+            amount: plan === 'pro' ? 99 : 299,
           },
         });
 
@@ -415,7 +406,7 @@ export async function POST(
           .insert([
             {
               customer_id: customer.id,
-              amount: simulatedAmount,
+              amount: plan === 'pro' ? 99 : 299,
               status: 'paid',
               created_at: new Date().toISOString(),
             },
@@ -428,7 +419,7 @@ export async function POST(
           event: 'invoice_paid',
           properties: {
             customer_id: customer.id,
-            amount: simulatedAmount,
+            amount: plan === 'pro' ? 99 : 299,
           },
         });
 

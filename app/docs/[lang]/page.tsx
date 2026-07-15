@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import Markdoc from '@markdoc/markdoc';
 import { markdocConfig } from '../../../markdoc/config';
-import { createMarkdocComponents } from '../../../markdoc/components';
 
 const DOCS_DIR = path.join(process.cwd(), 'markdoc', 'docs');
 
@@ -27,9 +26,7 @@ export default async function DocsPage({ params }: { params: Promise<{ lang: str
   }
 
   const transformed = Markdoc.transform(Markdoc.parse(content), markdocConfig);
-  const rendered = Markdoc.renderers.react(transformed, React, {
-    components: createMarkdocComponents(),
-  });
+  const rendered = Markdoc.renderers.react(transformed, React, { components: {} });
 
   const availableLangs = [
     { code: 'en', label: '🇬🇧 English' },

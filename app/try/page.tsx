@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import TryChatWidget from '../../components/TryChatWidget';
-import { GATE_PLANS } from '@/lib/billing/pricing-catalog';
 
 const TRIAL_FEATURES = [
   {
@@ -51,25 +50,24 @@ const STEPS = [
   { num: '4', title: 'View Audit Trail', desc: 'Every action has a stamp, reason, and proof — in real time' },
 ];
 
-// Prices come from the pricing catalog — the same numbers /api/billing/checkout charges.
 const PLANS_AFTER_TRIAL = [
   {
     name: 'Pro',
-    price: `$${GATE_PLANS.pro.displayMonthlyUsd}`,
+    price: '$99',
     per: '/month',
     highlight: false,
     features: ['Unlimited gate evaluations', '90-day audit trail', '3 API keys', 'Email support'],
   },
   {
     name: 'Business',
-    price: `$${GATE_PLANS.business.displayMonthlyUsd}`,
+    price: '$299',
     per: '/month',
     highlight: true,
     features: ['Everything in Pro', 'Team management', 'Webhook & Notifications', 'PDF export', 'Priority support'],
   },
   {
     name: 'Enterprise',
-    price: `$${GATE_PLANS.enterprise.displayMonthlyUsd}`,
+    price: '$999',
     per: '/month',
     highlight: false,
     features: ['Everything in Business', 'Custom policy engine', 'SLA 99.9%', 'Dedicated onboarding', 'Custom audit report'],
