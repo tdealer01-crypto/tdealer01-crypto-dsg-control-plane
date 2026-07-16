@@ -109,7 +109,7 @@ export function generateAuthorizationCode(): string {
  * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashAuthorizationCode(code: string): string {
-  // lgtm[js/weak-cryptographic-algorithm]: opaque token hashing, not password hashing
+  // codeql [js/weak-cryptographic-algorithm] opaque token hashing, not password hashing
   return crypto.createHash('sha256').update(code).digest('hex');
 }
 
@@ -126,7 +126,7 @@ export function generateAccessToken(): string {
  * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashAccessToken(token: string): string {
-  // lgtm[js/weak-cryptographic-algorithm]: opaque token hashing, not password hashing
+  // codeql [js/weak-cryptographic-algorithm] opaque token hashing, not password hashing
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -143,7 +143,7 @@ export function generateRefreshToken(): string {
  * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashRefreshToken(token: string): string {
-  // lgtm[js/weak-cryptographic-algorithm]: opaque token hashing, not password hashing
+  // codeql [js/weak-cryptographic-algorithm] opaque token hashing, not password hashing
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
