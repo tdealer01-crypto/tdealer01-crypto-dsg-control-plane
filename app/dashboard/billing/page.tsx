@@ -217,6 +217,8 @@ function BillingInner() {
   const [interval, setInterval]   = useState<BillingInterval>('monthly');
   const [bundleLoading, setBundleLoading] = useState<string | null>(null);
   const [bundleError, setBundleError] = useState<string | null>(null);
+  const [mcpLoading, setMcpLoading] = useState(false);
+  const [mcpError, setMcpError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -279,6 +281,34 @@ function BillingInner() {
       setBundleError('Bundle checkout failed');
     } finally {
       setBundleLoading(null);
+    }
+  }
+
+  async function startMCPCheckout() {
+    setMcpLoading(true);
+    setMcpError(null);
+    try {
+      const res = await fetch('/api/mcp/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMcpError(data?.error || 'MCP checkout failed — please try again');
+        return;
+      }
+      const data = await res.json();
+      if (data?.data?.checkoutUrl) {
+        window.location.href = data.data.checkoutUrl;
+      } else {
+        setMcpError('Invalid checkout response');
+      }
+    } catch {
+      setMcpError('Something went wrong');
+    } finally {
+      setMcpLoading(false);
     }
   }
 
@@ -540,9 +570,14 @@ function BillingInner() {
                   <span>Usage logs + audit trail</span>
                 </div>
               </div>
-              <button className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition">
-                Create MCP Key →
+              <button
+                onClick={startMCPCheckout}
+                disabled={mcpLoading}
+                className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {mcpLoading ? 'Redirecting…' : 'Create MCP Key →'}
               </button>
+              {mcpError && <p className="mt-2 text-xs text-red-400">{mcpError}</p>}
             </div>
 
             {/* Integration guide */}

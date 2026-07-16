@@ -11,10 +11,13 @@ import { captureEvent } from '../../../../lib/telemetry/capture-event';
 import {
   GATE_PLANS as PLAN_CONFIG,
   SKILLS_BUNDLES as SKILLS_BUNDLE_CONFIG,
+  MCP_SUBSCRIPTION as MCP_SUBSCRIPTION_CONFIG,
   isSkillsBundle,
+  isMCPSubscription,
   getPriceId,
   type PlanKey,
   type SkillsBundleKey,
+  type MCPSubscriptionKey,
   type BillingInterval,
 } from '../../../../lib/billing/pricing-catalog';
 
@@ -220,7 +223,21 @@ export async function POST(request: Request) {
     let cancelUrl: string;
     let trialDays: number | undefined;
 
-    if (isSkillsBundle(rawPlan)) {
+    if (isMCPSubscription(rawPlan)) {
+      const subscription = MCP_SUBSCRIPTION_CONFIG[rawPlan];
+      const priceEnv = subscription.priceEnv;
+      const priceId = process.env[priceEnv];
+      if (!priceId) {
+        return NextResponse.json(
+          { error: 'MCP subscription not yet available — price configuration pending (founder action required)' },
+          { status: 503, headers: buildRateLimitHeaders(rateLimit, 20) }
+        );
+      }
+      metadata.plan_key = rawPlan;
+      lineItems = [{ price: priceId, quantity: 1 }];
+      successUrl = `${appUrl}/dashboard/billing?checkout=success&plan=${rawPlan}&session_id={CHECKOUT_SESSION_ID}`;
+      cancelUrl = `${appUrl}/dashboard/billing?checkout=cancelled&plan=${rawPlan}`;
+    } else if (isSkillsBundle(rawPlan)) {
       const bundle = SKILLS_BUNDLE_CONFIG[rawPlan];
       const unitAmount = interval === 'yearly' ? bundle.amountYearly : bundle.amountMonthly;
       metadata.plan_key = rawPlan;
