@@ -195,12 +195,12 @@ export function HermesAgentChat() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[600px] bg-gradient-to-b from-slate-50 to-white rounded-lg overflow-hidden border border-slate-200">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 bg-white">
-        <MessageCircle className="w-6 h-6 text-blue-600" />
+    <div className="flex flex-col h-full min-h-[600px] bg-[#0c0e14] rounded-lg overflow-hidden border border-white/10">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10 bg-[#12141c]">
+        <MessageCircle className="w-6 h-6 text-cyan-400" />
         <div>
-          <h1 className="text-lg font-bold text-slate-900">Hermes Agent</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-lg font-bold text-white">Hermes Agent</h1>
+          <p className="text-sm text-slate-400">
             Policy governance · Execution control · Audit trail
           </p>
         </div>
@@ -217,10 +217,10 @@ export function HermesAgentChat() {
             <div
               className={`max-w-[70%] rounded-lg px-4 py-3 ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-emerald-500/20 text-emerald-100 rounded-br-none'
                   : msg.role === 'agent'
-                    ? 'bg-slate-100 text-slate-900 border border-slate-200'
-                    : 'bg-amber-50 text-amber-900 border border-amber-200'
+                    ? 'bg-[#161822] text-slate-200 border border-white/10 rounded-bl-none'
+                    : 'bg-indigo-500/10 text-indigo-200 border border-indigo-500/20 rounded-bl-none'
               }`}
             >
               <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -233,10 +233,10 @@ export function HermesAgentChat() {
                     <span
                       className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
                         msg.executionSummary.decision === 'ALLOW'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-emerald-500/30 text-emerald-300'
                           : msg.executionSummary.decision === 'BLOCK'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-red-500/30 text-red-300'
+                            : 'bg-yellow-500/30 text-yellow-300'
                       }`}
                     >
                       {msg.executionSummary.decision}
@@ -260,8 +260,8 @@ export function HermesAgentChat() {
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-slate-100 text-slate-900 rounded-lg px-4 py-3 flex items-center gap-2">
-              <Loader className="w-4 h-4 animate-spin" />
+            <div className="bg-[#161822] text-slate-200 rounded-lg px-4 py-3 flex items-center gap-2 border border-white/10">
+              <Loader className="w-4 h-4 animate-spin text-cyan-400" />
               <span className="text-sm">Agent is processing...</span>
             </div>
           </div>
@@ -271,22 +271,22 @@ export function HermesAgentChat() {
       </div>
 
       {error && (
-        <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className="mx-4 mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm text-red-800 font-medium">Error</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <p className="text-sm text-red-300 font-medium">Error</p>
+            <p className="text-sm text-red-200 mt-1">{error}</p>
           </div>
           <button
             onClick={() => setError(null)}
-            className="text-red-600 hover:text-red-800 text-xs font-medium"
+            className="text-red-400 hover:text-red-300 text-xs font-medium"
           >
             ✕
           </button>
         </div>
       )}
 
-      <div className="border-t border-slate-200 bg-white px-4 py-4">
+      <div className="border-t border-white/10 bg-[#12141c] px-4 py-4">
         <div className="flex gap-3">
           <textarea
             ref={inputRef}
@@ -294,7 +294,7 @@ export function HermesAgentChat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="ถามเอเจนต์ หรือพิมพ์คำสั่ง... (Shift+Enter สำหรับขึ้นบรรทัด)"
-            className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm text-slate-900 placeholder:text-slate-400 bg-white"
+            className="flex-1 px-4 py-2 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none text-sm text-white placeholder:text-slate-500 bg-[#0f1118]"
             rows={1}
             disabled={isLoading || isStreaming}
           />
@@ -310,14 +310,14 @@ export function HermesAgentChat() {
             <button
               onClick={handleSendMessage}
               disabled={!input.trim() || isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-cyan-400 to-blue-500 text-white rounded-lg hover:from-cyan-300 hover:to-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
               <span className="text-sm font-medium hidden sm:inline">Send</span>
             </button>
           )}
         </div>
-        <p className="text-xs text-slate-500 mt-2">
+        <p className="text-xs text-slate-400 mt-2">
           💡 Hermes evaluates governance policies and returns ALLOW/BLOCK/REVIEW decisions
         </p>
       </div>
