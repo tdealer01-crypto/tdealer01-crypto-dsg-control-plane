@@ -1,4 +1,4 @@
-import TrinityDashboard from '@/components/trinity-dashboard'
+import SuperDashboard from '@/components/super-dashboard'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,5 +8,5 @@ export const metadata = {
 }
 
 export default function Home() {
-  return <TrinityDashboard />
+  return <SuperDashboard />
 }
