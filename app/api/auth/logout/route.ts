@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +9,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return handleApiError('POST /api/auth/logout', error);
+    console.error('Logout error:', error);
+    return NextResponse.json(
+      { error: 'Logout failed' },
+      { status: 500 }
+    );
   }
 }

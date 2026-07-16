@@ -1,22 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return handleApiError('POST /api/auth/login', new Error('Email and password required'), {
-        status: 400,
-      });
+      return NextResponse.json(
+        { error: 'Email and password required' },
+        { status: 400 }
+      );
     }
-
-    // Lazy-load Supabase config at runtime, not at build time
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
       // Fallback: if Supabase not configured, return mock auth
@@ -42,15 +41,14 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return handleApiError('POST /api/auth/login', error, {
-        status: 401,
-      });
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
     if (!data.session) {
-      return handleApiError('POST /api/auth/login', new Error('No session created'), {
-        status: 401,
-      });
+      return NextResponse.json(
+        { error: 'No session created' },
+        { status: 401 }
+      );
     }
 
     // Return JWT token and user info
@@ -63,6 +61,10 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    return handleApiError('POST /api/auth/login', error);
+    console.error('Auth error:', error);
+    return NextResponse.json(
+      { error: 'Authentication failed' },
+      { status: 500 }
+    );
   }
 }

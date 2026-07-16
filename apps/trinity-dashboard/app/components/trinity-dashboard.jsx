@@ -138,7 +138,7 @@ class TrinityClient {
 }
 
 // ============================================================================
-// SUPABASE AUTH (MOCK)
+// SUPABASE AUTH (REAL + MOCK FALLBACK)
 // ============================================================================
 
 class SupabaseAuth {
@@ -146,6 +146,7 @@ class SupabaseAuth {
     this.token = localStorage.getItem('trinity_jwt_token') || null;
     this.user = localStorage.getItem('trinity_user') ?
       JSON.parse(localStorage.getItem('trinity_user')) : null;
+    this.useMockAuth = !process.env.NEXT_PUBLIC_SUPABASE_URL;
   }
 
   isAuthenticated() {
@@ -153,7 +154,44 @@ class SupabaseAuth {
   }
 
   async login(email, password) {
-    // Mock login - in production, connect to real Supabase
+    // Use real Supabase if configured, otherwise fallback to mock
+    if (this.useMockAuth) {
+      return this._mockLogin(email, password);
+    }
+
+    try {
+      return await this._supabaseLogin(email, password);
+    } catch (error) {
+      console.warn('Supabase login failed, falling back to mock auth:', error.message);
+      return this._mockLogin(email, password);
+    }
+  }
+
+  async _supabaseLogin(email, password) {
+    // Call your backend auth endpoint to exchange credentials for JWT
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.statusText}`);
+    }
+
+    const { token, user } = await response.json();
+
+    this.token = token;
+    this.user = user;
+
+    localStorage.setItem('trinity_jwt_token', token);
+    localStorage.setItem('trinity_user', JSON.stringify(user));
+
+    return { token, user };
+  }
+
+  _mockLogin(email, password) {
+    // Fallback mock login for demo/testing
     if (email && password.length > 5) {
       const token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${Math.random()}.mock_token`;
       const user = { email, id: 'user-' + Date.now() };
