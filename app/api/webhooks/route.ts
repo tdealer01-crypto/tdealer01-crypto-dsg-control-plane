@@ -4,14 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleApiError } from "@/lib/security/api-error";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   try {
     const { order_id, customer_email, product, amount, stripe_session_id, timestamp } = await req.json();
+
+    // Lazy-load Supabase client only at runtime, not at build time
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
