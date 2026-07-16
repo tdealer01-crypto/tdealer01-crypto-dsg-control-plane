@@ -31,16 +31,19 @@ export async function middleware(request: NextRequest) {
 
   const requestStart = Date.now();
 
-  // Clone the request with the correlation ID injected
+  // Clone the request with the correlation ID injected, stripping auth-related headers
+  // to prevent header spoofing. These headers are only set after JWT verification.
+  const safeHeaders = new Headers(request.headers);
+  safeHeaders.delete('x-user-id');
+  safeHeaders.delete('x-user-email');
+
   const requestWithId = new NextRequest(request.url, {
     method: request.method,
-    headers: new Headers(request.headers),
+    headers: safeHeaders,
     body: request.body,
     duplex: 'half',
   } as RequestInit & { duplex: 'half' });
   requestWithId.headers.set('x-request-id', requestId);
-
-requestWithId.headers.set('x-request-id', requestId);
 
   // Allow public access to pricing page
   if (request.nextUrl.pathname === '/pricing') {
@@ -95,10 +98,14 @@ requestWithId.headers.set('x-request-id', requestId);
           // Verify token with Supabase
           const { data, error } = await supabase.auth.getUser(token);
           if (data?.user && !error) {
-            // Token is valid - add user to request headers
+            // Token is valid - add verified user to request headers
+            const authHeaders = new Headers(request.headers);
+            authHeaders.delete('x-user-id');
+            authHeaders.delete('x-user-email');
+
             const requestWithAuth = new NextRequest(request.url, {
               method: request.method,
-              headers: new Headers(request.headers),
+              headers: authHeaders,
               body: request.body,
               duplex: 'half',
             } as RequestInit & { duplex: 'half' });
