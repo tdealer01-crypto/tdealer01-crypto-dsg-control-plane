@@ -1,6 +1,19 @@
 'use client';
 
-const pricingTiers = [
+type PricingTier = {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  billingPeriod: 'none' | 'monthly' | 'yearly';
+  monthlyLimit: string;
+  highlight: boolean;
+  features: string[];
+  cta: string;
+  checkoutLink: string;
+};
+
+const pricingTiers: PricingTier[] = [
   {
     id: 'pro',
     name: 'Pro',
@@ -69,7 +82,19 @@ const pricingTiers = [
   },
 ];
 
-const features = [
+type FeatureItem = {
+  name: string;
+  pro: boolean | string;
+  business: boolean | string;
+  enterprise: boolean | string;
+};
+
+type FeatureCategory = {
+  category: string;
+  items: FeatureItem[];
+};
+
+const features: FeatureCategory[] = [
   {
     category: 'Core Features',
     items: [
@@ -123,7 +148,12 @@ const features = [
   },
 ];
 
-const faqs = [
+type FAQ = {
+  question: string;
+  answer: string;
+};
+
+const faqs: FAQ[] = [
   {
     question: 'Do you offer a free trial?',
     answer: 'Yes! Pro and Business tiers include 14 days free trial. Enterprise tier includes 30 days free trial. No credit card required to start.',
