@@ -18,6 +18,7 @@ export type SkillsBundleKey =
   | 'compliance_skills'
   | 'ops_skills'
   | 'enterprise_skills';
+export type MCPSubscriptionKey = 'mcp_api';
 export type BillingInterval = 'monthly' | 'yearly';
 
 export interface GatePlan {
@@ -55,8 +56,18 @@ export const SKILLS_BUNDLES: Record<SkillsBundleKey, { name: string; amountMonth
   enterprise_skills: { name: 'DSG Enterprise Bundle',        amountMonthly: 59900, amountYearly: 539100 },
 };
 
+// MCP API subscription — monthly only, env-driven price ID.
+// ฿490/month corresponds to ~$14 USD (exchange rate context only; actual charged in USD via Stripe).
+export const MCP_SUBSCRIPTION: Record<MCPSubscriptionKey, { name: string; callsPerMonth: number; priceEnv: string }> = {
+  mcp_api: { name: 'MCP API Subscription', callsPerMonth: 10000, priceEnv: 'STRIPE_PRICE_MCP_MONTHLY' },
+};
+
 export function isSkillsBundle(plan: string): plan is SkillsBundleKey {
   return plan in SKILLS_BUNDLES;
+}
+
+export function isMCPSubscription(plan: string): plan is MCPSubscriptionKey {
+  return plan in MCP_SUBSCRIPTION;
 }
 
 /** Delivery-Proof display tiers (entitlement logic lives in lib/delivery-proof/entitlement). */
