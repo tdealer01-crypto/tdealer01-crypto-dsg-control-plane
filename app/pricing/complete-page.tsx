@@ -34,7 +34,7 @@ const pricingTiers: PricingTier[] = [
       '✗ Dedicated support',
     ],
     cta: 'Start 14-Day Trial',
-    checkoutLink: '/checkout?plan=pro',
+    checkoutLink: '/api/billing/checkout?plan=pro',
   },
   {
     id: 'business',
@@ -56,7 +56,7 @@ const pricingTiers: PricingTier[] = [
       '✗ Dedicated support',
     ],
     cta: 'Start 14-Day Trial',
-    checkoutLink: '/checkout?plan=business',
+    checkoutLink: '/api/billing/checkout?plan=business',
   },
   {
     id: 'enterprise',
@@ -78,7 +78,7 @@ const pricingTiers: PricingTier[] = [
       '✓ 99.99% uptime SLA',
     ],
     cta: 'Start 30-Day Trial',
-    checkoutLink: '/checkout?plan=enterprise',
+    checkoutLink: '/api/billing/checkout?plan=enterprise',
   },
 ];
 
