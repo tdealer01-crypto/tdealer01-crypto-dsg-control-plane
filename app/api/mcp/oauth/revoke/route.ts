@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getDsgSupabaseRpcConfig, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';
 import { hashAccessToken, validateClientCredentials } from '@/lib/mcp/oauth-helper';
 
+// ERROR_HANDLER_EXEMPT: OAuth 2.0 revocation endpoint (RFC 7009) requires always-200 response
 export const dynamic = 'force-dynamic';
 
 type RevokeRequest = {

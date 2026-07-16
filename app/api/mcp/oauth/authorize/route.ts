@@ -9,6 +9,7 @@ import {
   validatePKCE,
 } from '@/lib/mcp/oauth-helper';
 
+// ERROR_HANDLER_EXEMPT: OAuth 2.0 authorization endpoint requires spec-compliant error responses
 export const dynamic = 'force-dynamic';
 
 type AuthorizeParams = {

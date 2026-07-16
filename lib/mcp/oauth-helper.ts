@@ -105,8 +105,11 @@ export function generateAuthorizationCode(): string {
 
 /**
  * Hash authorization code for storage
+ * Note: This is for opaque token hashing (input is cryptographically random),
+ * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashAuthorizationCode(code: string): string {
+  // lgtm[js/weak-cryptographic-algorithm]: opaque token hashing, not password hashing
   return crypto.createHash('sha256').update(code).digest('hex');
 }
 
@@ -119,8 +122,11 @@ export function generateAccessToken(): string {
 
 /**
  * Hash access token for storage
+ * Note: This is for opaque token hashing (input is cryptographically random),
+ * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashAccessToken(token: string): string {
+  // lgtm[js/weak-cryptographic-algorithm]: opaque token hashing, not password hashing
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 

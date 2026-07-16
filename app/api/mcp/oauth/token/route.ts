@@ -11,6 +11,7 @@ import {
   getOAuthClientConfig,
 } from '@/lib/mcp/oauth-helper';
 
+// ERROR_HANDLER_EXEMPT: OAuth 2.0 token endpoint requires RFC 6749-compliant error responses
 export const dynamic = 'force-dynamic';
 
 type TokenRequest = {
