@@ -1,5 +1,11 @@
 import Stripe from 'stripe';
-const stripe = new Stripe('rk_liv_51Svhl8KCAFwxVQo9NdJ3bT99G8iOBRB7OoldYtJfxCzB7RQIq64ZnfPYoAEpNJ0oP5BcfSmeEGqcIVksqnEqI1T500NCYuFINu');
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeSecretKey) {
+  throw new Error('STRIPE_SECRET_KEY environment variable is required to run setup');
+}
+
+const stripe = new Stripe(stripeSecretKey);
 
 async function main() {
   try {
