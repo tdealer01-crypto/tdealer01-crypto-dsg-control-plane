@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { parseSseData, formatHumanAgentEventMessage } from "../lib/agent/chat-event";
+import { parseSseData, type AgentChatEvent } from "../lib/agent/chat-event";
+import { AgentTimeline, type AgentEvent } from "@/components/ui/AgentTimeline";
 
-type ChatLine = {
+export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  isTyping?: boolean;
-};
+}
 
 type RouteQaResult = {
   ok?: boolean;
@@ -229,14 +229,6 @@ const PAGE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
   ],
 };
 
-function makeLine(role: ChatLine["role"], content: string): ChatLine {
-  return {
-    id: `${role}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    role,
-    content,
-  };
-}
-
 function formatRouteQa(result: RouteQaResult) {
   if (result.error) return `❌ ตรวจสอบไม่สำเร็จ: ${result.error}`;
 
@@ -261,25 +253,18 @@ function formatRouteQa(result: RouteQaResult) {
 export default function AgentChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [qaBusy, setQaBusy] = useState(false);
   const [useCodex, setUseCodex] = useState(false);
   const [codexResponseId, setCodexResponseId] = useState<string | null>(null);
-  const [lines, setLines] = useState<ChatLine[]>([
-    makeLine(
-      "system",
-      "สวัสดีครับ ผมคือ DSG Agent พร้อมช่วยตรวจสอบระบบและดำเนินการให้คุณ เลือกคำสั่งด้านล่างหรือพิมพ์คำถามได้เลย",
-    ),
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "init-1",
+      role: "assistant",
+      content: "สวัสดีครับ ผมคือ DSG Agent พร้อมช่วยตรวจสอบระบบและดำเนินการให้คุณ เลือกคำสั่งด้านล่างหรือพิมพ์คำถามได้เลย",
+    },
   ]);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [lines]);
+  const [sseEvents, setSseEvents] = useState<AgentEvent[]>([]);
 
   const suggestions = useMemo(() => {
     return PAGE_SUGGESTIONS[pathname] || PAGE_SUGGESTIONS["/dashboard"] || [];
@@ -288,10 +273,11 @@ export default function AgentChatWidget() {
   const runRouteQa = useCallback(async (all: boolean) => {
     if (qaBusy) return;
     setQaBusy(true);
-    setLines((prev) => [
+    setMessages((prev) => [
       ...prev,
-      makeLine("user", all ? "ตรวจสอบทุกหน้า" : `ตรวจหน้าปัจจุบัน ${pathname}`),
+      { id: `user-qa-${Date.now()}`, role: "user", content: all ? "ตรวจสอบทุกหน้า" : `ตรวจหน้าปัจจุบัน ${pathname}` },
     ]);
+    setSseEvents([]);
 
     try {
       const res = await fetch("/api/route-qa", {
@@ -300,11 +286,11 @@ export default function AgentChatWidget() {
         body: JSON.stringify(all ? { all: true } : { path: pathname }),
       });
       const json = (await res.json().catch(() => ({}))) as RouteQaResult;
-      setLines((prev) => [...prev, makeLine("assistant", formatRouteQa(json))]);
+      setMessages((prev) => [...prev, { id: `assistant-qa-${Date.now()}`, role: "assistant", content: formatRouteQa(json) }]);
     } catch (err) {
-      setLines((prev) => [
+      setMessages((prev) => [
         ...prev,
-        makeLine("assistant", err instanceof Error ? `❌ ${err.message}` : "❌ เกิดข้อผิดพลาด"),
+        { id: `error-qa-${Date.now()}`, role: "assistant", content: err instanceof Error ? `❌ ${err.message}` : "❌ เกิดข้อผิดพลาด" },
       ]);
     } finally {
       setQaBusy(false);
@@ -314,24 +300,15 @@ export default function AgentChatWidget() {
   const submit = useCallback(async (message: string) => {
     if (!message.trim() || busy) return;
     setBusy(true);
-    setLines((prev) => [...prev, makeLine("user", message)]);
-    setDraft("");
-
-    // Add typing indicator
-    const typingId = `typing-${Date.now()}`;
-    setLines((prev) => [
-      ...prev,
-      { id: typingId, role: "assistant", content: "", isTyping: true },
-    ]);
+    setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: "user", content: message }]);
+    setSseEvents([]);
 
     try {
       const endpoint = useCodex ? CODEX_ENDPOINT : AGENT_CHAT_ENDPOINT;
       const body = useCodex
         ? JSON.stringify({
             input: message,
-            ...(codexResponseId
-              ? { previous_response_id: codexResponseId }
-              : {}),
+            ...(codexResponseId ? { previous_response_id: codexResponseId } : {}),
           })
         : JSON.stringify({ message, pageContext: pathname });
 
@@ -353,6 +330,7 @@ export default function AgentChatWidget() {
       const decoder = new TextDecoder();
       let buffer = "";
       let fullReply = "";
+      const timelineEvents: AgentEvent[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -370,24 +348,23 @@ export default function AgentChatWidget() {
               const event = JSON.parse(raw.slice(6)) as Record<string, unknown>;
               if (event.type === "token") {
                 fullReply += (event.content as string) ?? "";
-                setLines((prev) =>
-                  prev.map((line) =>
-                    line.id === typingId
-                      ? { ...line, content: fullReply }
-                      : line
-                  )
-                );
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastMsg = updated[updated.length - 1];
+                  if (lastMsg?.role === "assistant") {
+                    lastMsg.content = fullReply;
+                  } else {
+                    updated.push({
+                      id: `assistant-${Date.now()}`,
+                      role: "assistant",
+                      content: fullReply,
+                    });
+                  }
+                  return updated;
+                });
               }
               if (event.type === "done") {
-                if (fullReply.trim()) {
-                  setLines((prev) => [
-                    ...prev.filter((l) => l.id !== typingId),
-                    makeLine("assistant", fullReply.trim()),
-                  ]);
-                }
-                setCodexResponseId(
-                  (event.responseId as string | null) ?? null
-                );
+                setCodexResponseId((event.responseId as string | null) ?? null);
                 break;
               }
               if (event.type === "error") {
@@ -397,39 +374,33 @@ export default function AgentChatWidget() {
               // skip malformed events
             }
           } else {
-            const event = parseSseData(raw);
+            const event = parseSseData(raw) as AgentChatEvent | null;
             if (!event) continue;
-            const msg = formatHumanAgentEventMessage(event);
-            if (!msg) continue;
-            fullReply += (fullReply ? "\n" : "") + msg;
-            setLines((prev) =>
-              prev.map((line) =>
-                line.id === typingId
-                  ? { ...line, content: fullReply }
-                  : line
-              )
-            );
+            timelineEvents.push(event);
+            setSseEvents([...timelineEvents]);
           }
         }
       }
 
-      // If we got no content, show a fallback
-      if (!fullReply.trim()) {
-        setLines((prev) => [
-          ...prev.filter((l) => l.id !== typingId),
-          makeLine("assistant", "ไม่ได้รับคำตอบจากระบบ ลองใหม่อีกครั้ง"),
+      if (!useCodex && timelineEvents.length > 0) {
+        const finalReply = timelineEvents.find((e) => e.type === "assistant_reply")?.reply || "ทำงานเสร็จแล้ว";
+        setMessages((prev) => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: finalReply }]);
+      }
+
+      if (!fullReply.trim() && useCodex) {
+        setMessages((prev) => [
+          ...prev,
+          { id: `assistant-${Date.now()}`, role: "assistant", content: "ไม่ได้รับคำตอบจากระบบ ลองใหม่อีกครั้ง" },
         ]);
-      } else {
-        // Remove typing indicator if still there
-        setLines((prev) => prev.filter((l) => l.id !== typingId));
       }
     } catch (err) {
-      setLines((prev) => [
-        ...prev.filter((l) => l.id !== typingId),
-        makeLine(
-          "assistant",
-          err instanceof Error ? `❌ ${err.message}` : "❌ เกิดข้อผิดพลาด"
-        ),
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: err instanceof Error ? `❌ ${err.message}` : "❌ เกิดข้อผิดพลาด",
+        },
       ]);
     } finally {
       setBusy(false);
@@ -460,20 +431,16 @@ export default function AgentChatWidget() {
     );
   }
 
+  // Custom wrapper with QA buttons and Codex toggle
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[600px] w-[400px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0c0e14] shadow-2xl shadow-black/60">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-[#12141c] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500">
-            <span className="text-sm">🤖</span>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white">
-              {useCodex ? "⚡ Codex" : "DSG AI"}
-            </p>
-            <p className="text-[10px] text-emerald-400">พร้อมช่วยเหลือ</p>
-          </div>
+    <div className="fixed bottom-6 right-6 z-50 flex h-[600px] w-[400px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[--dsg-surface] shadow-2xl shadow-black/60">
+      {/* Header with Codex toggle */}
+      <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-emerald-600/20 to-cyan-600/20 px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-white">
+            {useCodex ? "⚡ Codex" : "DSG AI"}
+          </p>
+          <p className="text-[10px] text-emerald-400">พร้อมช่วยเหลือ</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -530,51 +497,49 @@ export default function AgentChatWidget() {
         </button>
       </div>
 
-      {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
-      >
-        {lines.map((line) => (
+      {/* Messages and Timeline */}
+      <div className="flex-1 overflow-y-auto space-y-3 px-4 py-3">
+        {messages.map((msg) => (
           <div
-            key={line.id}
-            className={line.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[90%]"}
+            key={msg.id}
+            className={msg.role === "user" ? "ml-auto max-w-[85%]" : "max-w-[90%]"}
           >
-            {line.role === "system" ? (
-              <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-200">
-                <p className="whitespace-pre-wrap">{line.content}</p>
-              </div>
-            ) : line.role === "user" ? (
+            {msg.role === "user" ? (
               <div className="rounded-2xl rounded-br-md bg-emerald-500/20 px-3 py-2 text-xs text-emerald-100">
-                <p className="whitespace-pre-wrap">{line.content}</p>
+                <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
             ) : (
               <div className="rounded-2xl rounded-bl-md border border-white/10 bg-[#161822] px-3 py-2 text-xs text-slate-200">
-                {line.isTyping ? (
-                  <div className="flex items-center gap-1">
-                    <div
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <div
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <div
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                    {line.content && (
-                      <span className="ml-2 text-slate-400">{line.content}</span>
-                    )}
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{line.content}</p>
-                )}
+                <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
             )}
           </div>
         ))}
+
+        {/* Timeline view for SSE events */}
+        {sseEvents.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <p className="text-xs font-semibold text-gray-400 mb-3">Execution Steps:</p>
+            <AgentTimeline events={sseEvents} isLoading={busy} accentColor="blue" />
+          </div>
+        )}
+
+        {busy && sseEvents.length === 0 && (
+          <div className="flex items-center gap-1">
+            <div
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+              style={{ animationDelay: "0ms" }}
+            />
+            <div
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+              style={{ animationDelay: "150ms" }}
+            />
+            <div
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+              style={{ animationDelay: "300ms" }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Suggestions */}
@@ -597,20 +562,27 @@ export default function AgentChatWidget() {
       <div className="border-t border-white/10 bg-[#12141c] p-3">
         <div className="flex gap-2">
           <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {}} // Will update via onSubmit
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void submit(draft);
+                const input = e.currentTarget as HTMLInputElement;
+                submit(input.value);
+                input.value = "";
               }
             }}
             placeholder="พิมพ์คำถามหรือคำสั่ง..."
             className="flex-1 rounded-xl border border-white/10 bg-[#0c0e14] px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20"
           />
           <button
-            onClick={() => submit(draft)}
-            disabled={busy || !draft.trim()}
+            onClick={(e) => {
+              const input = (e.currentTarget.parentElement?.querySelector("input") as HTMLInputElement);
+              if (input?.value) {
+                submit(input.value);
+                input.value = "";
+              }
+            }}
+            disabled={busy}
             className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-30"
           >
             {busy ? "..." : "ส่ง"}

@@ -1,21 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-
-type ChatLine = {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-};
-
-function makeLine(role: ChatLine['role'], content: string): ChatLine {
-  return {
-    id: `${role}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    role,
-    content,
-  };
-}
+import { ChatShell, type ChatMessage, type ChatSuggestion } from '@/components/ui';
 
 const quickPrompts = ['Get started', 'Connect existing system', 'View monitor', 'export evidence', 'Pricing', 'Request demo'];
 
@@ -29,12 +16,21 @@ const commandLinks = [
 export default function PublicChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  const [lines, setLines] = useState<ChatLine[]>([
-    makeLine('system', 'Ask DSG before logging in: connect existing systems, monitor, commands, pricing, demo — public mode does not execute actions'),
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'init-1',
+      role: 'system',
+      content: 'Ask DSG before logging in: connect existing systems, monitor, commands, pricing, demo — public mode does not execute actions',
+    },
   ]);
 
+  const suggestions: ChatSuggestion[] = useMemo(
+    () => quickPrompts.map((label) => ({ label, prompt: label })),
+    []
+  );
+
+  // Hide on protected routes
   if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/app-shell') || pathname?.startsWith('/approvals')) {
     return null;
   }
@@ -44,8 +40,7 @@ export default function PublicChatWidget() {
     if (!text || busy) return;
 
     setBusy(true);
-    setDraft('');
-    setLines((prev) => [...prev, makeLine('user', text)]);
+    setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: 'user', content: text }]);
 
     try {
       const response = await fetch('/api/public-chat', {
@@ -53,13 +48,17 @@ export default function PublicChatWidget() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message: text }),
       });
-      const json = await response.json().catch(() => ({}));
+      const json = (await response.json().catch(() => ({}))) as { reply?: string; error?: string };
       if (!response.ok) throw new Error(String(json.error || 'Public chat failed'));
-      setLines((prev) => [...prev, makeLine('assistant', String(json.reply || 'Ready to help.'))]);
+      setMessages((prev) => [...prev, { id: `assistant-${Date.now()}`, role: 'assistant', content: String(json.reply || 'Ready to help.') }]);
     } catch (error) {
-      setLines((prev) => [
+      setMessages((prev) => [
         ...prev,
-        makeLine('assistant', error instanceof Error ? error.message : 'Public chat failed'),
+        {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: error instanceof Error ? error.message : 'Public chat failed',
+        },
       ]);
     } finally {
       setBusy(false);
@@ -79,79 +78,38 @@ export default function PublicChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex h-[560px] w-[min(410px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-amber-300/25 bg-[#06080f] shadow-2xl shadow-black/70">
-      <div className="flex items-center justify-between border-b border-amber-300/15 px-4 py-3">
-        <div>
-          <p className="text-sm font-black text-slate-100">DSG Command Assistant</p>
-          <p className="text-[11px] text-slate-400">Ask easily · See next action · No runtime execution</p>
+    <div className="fixed bottom-5 right-5 z-50 flex h-[560px] w-[min(410px,calc(100vw-24px))] flex-col overflow-hidden">
+      <ChatShell
+        title="DSG Command Assistant"
+        description="Ask easily · See next action · No runtime execution"
+        messages={messages}
+        onSubmit={submit}
+        isLoading={busy}
+        suggestions={suggestions}
+        inputPlaceholder="Ask or command, e.g. how to connect ERP..."
+        accentColor="amber"
+        onClose={() => setOpen(false)}
+        maxHeight="calc(560px - 220px)"
+      />
+
+      {/* Command links section */}
+      <div className="border-t border-amber-300/15 bg-[--dsg-surface] px-4 py-3">
+        <div className="grid grid-cols-4 gap-2">
+          {commandLinks.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-xl border border-blue-300/25 bg-blue-300/10 px-2 py-2 text-center text-[11px] font-bold text-blue-100 hover:bg-blue-300/15 transition"
+            >
+              {item.label}
+            </a>
+          ))}
         </div>
-        <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close public chat">✕</button>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 border-b border-amber-300/15 px-4 py-3">
-        {commandLinks.map((item) => (
-          <a key={item.href} href={item.href} className="rounded-xl border border-blue-300/25 bg-blue-300/10 px-2 py-2 text-center text-[11px] font-bold text-blue-100 hover:bg-blue-300/15">
-            {item.label}
-          </a>
-        ))}
-      </div>
-
-      <div className="border-b border-amber-300/15 bg-amber-300/10 px-4 py-3 text-xs leading-6 text-amber-50">
+      {/* Info section */}
+      <div className="border-t border-amber-300/15 bg-amber-300/10 px-4 py-3 text-xs leading-6 text-amber-50">
         Customers typically want to see: what systems can connect, why an action was allowed/reviewed/blocked, whether evidence can be exported, and what the next step is.
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-        {lines.map((line) => (
-          <div
-            key={line.id}
-            className={
-              line.role === 'user'
-                ? 'ml-auto max-w-[85%] rounded-xl border border-amber-300/30 bg-amber-300/20 px-3 py-2 text-xs text-amber-50'
-                : line.role === 'system'
-                  ? 'max-w-[92%] rounded-xl border border-blue-300/25 bg-blue-300/10 px-3 py-2 text-xs text-blue-100'
-                  : 'max-w-[92%] rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200'
-            }
-          >
-            {line.content}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-t border-amber-300/15 px-4 py-2">
-        {quickPrompts.map((item) => (
-          <button
-            key={item}
-            onClick={() => submit(item)}
-            disabled={busy}
-            className="rounded-full border border-slate-700 px-2.5 py-1 text-[11px] text-slate-300 hover:border-amber-300 disabled:opacity-50"
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
-      <div className="border-t border-amber-300/15 p-3">
-        <div className="flex gap-2">
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                void submit(draft);
-              }
-            }}
-            placeholder="Ask or command, e.g. how to connect ERP..."
-            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-300"
-          />
-          <button
-            onClick={() => submit(draft)}
-            disabled={busy}
-            className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-black text-black disabled:bg-slate-700 disabled:text-slate-400"
-          >
-            {busy ? '...' : 'Send'}
-          </button>
-        </div>
       </div>
     </div>
   );
