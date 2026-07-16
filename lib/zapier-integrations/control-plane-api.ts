@@ -1,9 +1,12 @@
 /**
  * Control Plane API Integration for Zapier Revenue Automation
- * Handles bidirectional communication with main control plane
+ * Verifies inbound Zapier webhook signatures and persists revenue/quota/
+ * communication events emitted by the Zapier Zaps into Supabase.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { createHmac, timingSafeEqual } from 'crypto'
+import { getSupabaseAdmin } from '../supabase-server'
+import type { Json } from '../database.types'
 
 export interface ZapierRevenuePayload {
   customer_id: string
@@ -34,18 +37,56 @@ export interface ZapierCommunicationPayload {
 }
 
 /**
- * Validates Zapier webhook signature (if configured)
+ * Verifies the `x-zapier-signature` header against an HMAC-SHA256 digest of
+ * the raw request body, keyed by ZAPIER_WEBHOOK_SECRET.
+ *
+ * Fails closed: missing secret, missing header, or a mismatch all return
+ * false. The caller must reject the request (401) rather than skip
+ * verification, matching the fail-closed convention used for cron secrets
+ * and the marketplace webhook elsewhere in this codebase.
  */
 export function validateZapierSignature(
-  request: NextRequest,
-  secret: string
+  rawBody: string,
+  signatureHeader: string | null
 ): boolean {
-  const signature = request.headers.get('x-zapier-signature')
-  if (!signature || !secret) return true // Skip if not configured
+  const secret = process.env.ZAPIER_WEBHOOK_SECRET
 
-  // Implement HMAC-SHA256 verification
-  // return verifySignature(body, signature, secret)
-  return true
+  if (!secret) {
+    console.warn('[Zapier Webhook] Missing ZAPIER_WEBHOOK_SECRET — rejecting webhook (fail closed)')
+    return false
+  }
+
+  if (!signatureHeader) {
+    return false
+  }
+
+  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
+
+  const expectedBuffer = Buffer.from(expected)
+  const receivedBuffer = Buffer.from(signatureHeader)
+
+  if (expectedBuffer.length !== receivedBuffer.length) {
+    return false
+  }
+
+  return timingSafeEqual(expectedBuffer, receivedBuffer)
+}
+
+/**
+ * Best-effort org resolution from a Stripe customer id via billing_customers.
+ * Returns null when the customer can't be matched yet — rows are still
+ * persisted with org_id = null so they can be reconciled later.
+ */
+async function resolveOrgIdByCustomerId(customerId: string): Promise<string | null> {
+  const supabase = getSupabaseAdmin()
+
+  const { data } = await supabase
+    .from('billing_customers')
+    .select('org_id')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle()
+
+  return data?.org_id ? String(data.org_id) : null
 }
 
 /**
@@ -55,30 +96,31 @@ export async function handleRevenueWebhook(
   payload: ZapierRevenuePayload
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Validate payload
     if (!payload.customer_id || !payload.amount || !payload.payment_id) {
       throw new Error('Missing required fields')
     }
 
-    // Log to billing system
-    console.log('[Zapier Revenue Webhook]', {
-      customer_id: payload.customer_id,
-      amount: payload.amount,
-      currency: payload.currency,
-      payment_id: payload.payment_id,
-      status: payload.status,
-      timestamp: payload.timestamp,
-    })
+    const orgId = await resolveOrgIdByCustomerId(payload.customer_id)
+    const supabase = getSupabaseAdmin()
 
-    // In production: store in database
-    // await db.billing.create({
-    //   customer_id: payload.customer_id,
-    //   amount: payload.amount,
-    //   currency: payload.currency,
-    //   payment_id: payload.payment_id,
-    //   status: payload.status,
-    //   created_at: new Date(payload.timestamp),
-    // })
+    const { error } = await supabase.from('zapier_payment_events').upsert(
+      {
+        org_id: orgId,
+        customer_id: payload.customer_id,
+        payment_id: payload.payment_id,
+        invoice_number: payload.invoice_number ?? null,
+        amount: payload.amount,
+        currency: payload.currency,
+        status: payload.status,
+        occurred_at: payload.timestamp,
+        raw_payload: payload as unknown as Json,
+      },
+      { onConflict: 'payment_id' }
+    )
+
+    if (error) {
+      throw new Error(`failed_to_persist_payment_event: ${error.message}`)
+    }
 
     return { success: true }
   } catch (error) {
@@ -101,25 +143,27 @@ export async function handleQuotaWebhook(
       throw new Error('Missing required fields')
     }
 
-    console.log('[Zapier Quota Webhook]', {
+    const orgId = await resolveOrgIdByCustomerId(payload.customer_id)
+    const supabase = getSupabaseAdmin()
+
+    const { error } = await supabase.from('zapier_quota_events').insert({
+      org_id: orgId,
       customer_id: payload.customer_id,
+      service_type: payload.service_type,
+      quota_allocated: payload.quota_allocated,
+      usage_current: payload.usage_current,
       usage_percent: payload.usage_percent,
       health_status: payload.health_status,
+      raw_payload: payload as unknown as Json,
     })
 
-    // Check if alert should be sent
-    if (payload.usage_percent >= 80) {
-      console.warn(`[Quota Alert] ${payload.customer_id} at ${payload.usage_percent}%`)
-      // In production: send alert to customer
+    if (error) {
+      throw new Error(`failed_to_persist_quota_event: ${error.message}`)
     }
 
-    // In production: update usage table
-    // await db.quotas.update({
-    //   customer_id: payload.customer_id,
-    //   usage_current: payload.usage_current,
-    //   usage_percent: payload.usage_percent,
-    //   health_status: payload.health_status,
-    // })
+    if (payload.usage_percent >= 80) {
+      console.warn(`[Quota Alert] ${payload.customer_id} at ${payload.usage_percent}%`)
+    }
 
     return { success: true }
   } catch (error) {
@@ -142,23 +186,23 @@ export async function handleCommunicationWebhook(
       throw new Error('Missing required fields')
     }
 
-    console.log('[Zapier Communication Webhook]', {
+    const orgId = await resolveOrgIdByCustomerId(payload.customer_id)
+    const supabase = getSupabaseAdmin()
+
+    const { error } = await supabase.from('zapier_communication_events').insert({
+      org_id: orgId,
       customer_id: payload.customer_id,
       email: payload.email,
       type: payload.type,
+      subject: payload.subject ?? null,
       status: payload.status,
-      timestamp: payload.timestamp,
+      occurred_at: payload.timestamp,
+      raw_payload: payload as unknown as Json,
     })
 
-    // In production: audit all communications
-    // await db.audit.communications.create({
-    //   customer_id: payload.customer_id,
-    //   email: payload.email,
-    //   type: payload.type,
-    //   subject: payload.subject,
-    //   status: payload.status,
-    //   created_at: new Date(payload.timestamp),
-    // })
+    if (error) {
+      throw new Error(`failed_to_persist_communication_event: ${error.message}`)
+    }
 
     return { success: true }
   } catch (error) {
@@ -181,12 +225,14 @@ export async function checkZapierIntegrationHealth(): Promise<{
     communication_webhook: boolean
   }
 }> {
+  const secretConfigured = Boolean(process.env.ZAPIER_WEBHOOK_SECRET)
+
   return {
-    status: 'healthy',
+    status: secretConfigured ? 'healthy' : 'degraded',
     components: {
-      revenue_webhook: true,
-      quota_webhook: true,
-      communication_webhook: true,
+      revenue_webhook: secretConfigured,
+      quota_webhook: secretConfigured,
+      communication_webhook: secretConfigured,
     },
   }
 }

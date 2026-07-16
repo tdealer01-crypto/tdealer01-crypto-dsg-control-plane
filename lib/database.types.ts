@@ -767,6 +767,150 @@ export type Database = {
           },
         ]
       }
+      zapier_payment_events: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          customer_id: string
+          id: string
+          invoice_number: string | null
+          occurred_at: string
+          org_id: string | null
+          payment_id: string
+          raw_payload: Json
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          customer_id: string
+          id?: string
+          invoice_number?: string | null
+          occurred_at: string
+          org_id?: string | null
+          payment_id: string
+          raw_payload?: Json
+          status: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          id?: string
+          invoice_number?: string | null
+          occurred_at?: string
+          org_id?: string | null
+          payment_id?: string
+          raw_payload?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_payment_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapier_quota_events: {
+        Row: {
+          created_at: string
+          customer_id: string
+          health_status: string
+          id: string
+          org_id: string | null
+          quota_allocated: number
+          raw_payload: Json
+          service_type: string
+          usage_current: number
+          usage_percent: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          health_status: string
+          id?: string
+          org_id?: string | null
+          quota_allocated: number
+          raw_payload?: Json
+          service_type: string
+          usage_current: number
+          usage_percent: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          health_status?: string
+          id?: string
+          org_id?: string | null
+          quota_allocated?: number
+          raw_payload?: Json
+          service_type?: string
+          usage_current?: number
+          usage_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_quota_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapier_communication_events: {
+        Row: {
+          created_at: string
+          customer_id: string
+          email: string
+          id: string
+          occurred_at: string
+          org_id: string | null
+          raw_payload: Json
+          status: string
+          subject: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          email: string
+          id?: string
+          occurred_at: string
+          org_id?: string | null
+          raw_payload?: Json
+          status: string
+          subject?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          email?: string
+          id?: string
+          occurred_at?: string
+          org_id?: string | null
+          raw_payload?: Json
+          status?: string
+          subject?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_communication_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_meter_outbox: {
         Row: {
           created_at: string
