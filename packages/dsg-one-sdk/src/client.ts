@@ -24,7 +24,7 @@ import type {
 } from "./types";
 import { DsgOneError } from "./types";
 
-const DEFAULT_BASE_URL = "https://dsg-one-v1.vercel.app";
+const DEFAULT_BASE_URL = "https://tdealer01-crypto-dsg-control-plane.vercel.app";
 const DEFAULT_TIMEOUT = 30000;
 
 export class DsgOneClient {
