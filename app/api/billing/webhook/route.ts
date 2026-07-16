@@ -389,7 +389,7 @@ async function handleInvoiceEvent(
       });
 
       // Handle MCP subscription renewal
-      const stripeSubscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : null;
+      const stripeSubscriptionId = typeof (invoice as any).subscription === 'string' ? (invoice as any).subscription : null;
       if (stripeSubscriptionId) {
         const { data: mcpKey } = await supabase
           .from('dsg_mcp_api_keys')
