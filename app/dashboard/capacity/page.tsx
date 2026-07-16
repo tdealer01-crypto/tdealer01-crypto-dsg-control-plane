@@ -104,8 +104,8 @@ export default function CapacityPage() {
             <div className="mt-6 grid gap-4 md:grid-cols-4">
               <StatCard label="Plan" value={data.plan_key} />
               <StatCard label="Executions" value={String(data.executions)} />
-              <StatCard label="Remaining" value={String(data.remaining_executions)} tone="blue" />
-              <StatCard label="Projected" value={`$${data.projected_amount_usd}`} tone="amber" />
+              <StatCard label="Remaining" value={String(data.remaining_executions)} variant="info" />
+              <StatCard label="Projected" value={`$${data.projected_amount_usd}`} variant="warning" />
             </div>
 
             <Card className="mt-6">

@@ -193,14 +193,22 @@ export default function RevenueDashboard() {
 
         {!loading && stats.length > 0 && (
           <div className="mt-6 grid gap-4 md:grid-cols-4">
-            {stats.map((stat, idx) => (
-              <StatCard
-                key={idx}
-                label={stat.label}
-                value={stat.value}
-                tone={stat.color as 'blue' | 'amber' | 'emerald' | 'cyan' | undefined}
-              />
-            ))}
+            {stats.map((stat, idx) => {
+              const variantMap: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
+                emerald: 'success',
+                blue: 'info',
+                cyan: 'info',
+                purple: 'default',
+              };
+              return (
+                <StatCard
+                  key={idx}
+                  label={stat.label}
+                  value={stat.value}
+                  variant={variantMap[stat.color] || 'default'}
+                />
+              );
+            })}
           </div>
         )}
 

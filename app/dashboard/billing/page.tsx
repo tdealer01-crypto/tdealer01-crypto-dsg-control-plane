@@ -501,7 +501,7 @@ function BillingInner() {
           {bundleError && <p className="mt-3 text-xs text-red-400">{bundleError}</p>}
         </Card>
 
-        <Card className="mt-8" style={{ backgroundImage: 'linear-gradient(to right, rgb(34, 211, 238, 0.1), rgb(59, 130, 246, 0.05))' }}>
+        <Card className="mt-8">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xl font-semibold">MCP API Subscription</h2>
