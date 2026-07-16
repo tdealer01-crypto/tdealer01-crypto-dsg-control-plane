@@ -178,21 +178,27 @@ export async function sendBehavioralNoAgent(opts: {
 }): Promise<void> {
   await sendEmail(opts.email, opts.subject,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#10b981">🛂 DSG Gate is waiting for your agent</h2>
+      <h2 style="color:#10b981">🛂 Gate your AI actions now</h2>
       <p>${opts.openingLine}</p>
-      <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px;overflow:auto">// 1. Declare a session
-POST ${BASE_URL}/api/try/gate
-{ "session_id": "sess_abc", "declared_actions": ["read_file","send_email"], "ttl_minutes": 30 }
+      <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px;overflow:auto">// 1. Get API key from /dashboard/integrations
+DSG_API_KEY="dsg_live_xxx"
+DSG_AGENT_ID="my-agent"
 
-// 2. Check before every action
-POST ${BASE_URL}/api/try/gate
-{ "session_id": "sess_abc", "action": "read_file path=/reports/q1.pdf" }
-// → { "decision": "ALLOW", "stamp": "DSG-A3F8" }</pre>
-      <a href="${BASE_URL}/dashboard/api-keys"
+// 2. Gate every action before execution
+POST ${BASE_URL}/api/execute
+Authorization: Bearer $DSG_API_KEY
+{
+  "agent_id": "$DSG_AGENT_ID",
+  "action": "read invoice",
+  "input": {"invoice_id": "INV-001"},
+  "context": {"source": "agent"}
+}
+// → { "decision": "ALLOW", "proof_hash": "sha256:...", ... }</pre>
+      <a href="${BASE_URL}/dashboard/integrations"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
         Get API Key →
       </a>
-      <p style="color:#64748b;font-size:12px;margin-top:24px">Questions? Just reply to this email.</p>
+      <p style="color:#64748b;font-size:12px;margin-top:24px">Full working examples: <a href="${BASE_URL}/quickstart" style="color:#10b981">quickstart</a></p>
     </div>`);
 }
 
