@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
+import { Button } from '@/components/ui/Button';
 
 const verificationSteps = [
   {
@@ -82,11 +83,15 @@ export default function VerificationPage() {
           </WorkflowPanel>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard/executions" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-100">
-              Review executions
+            <Link href="/dashboard/executions">
+              <Button variant="secondary" className="w-full">
+                Review executions
+              </Button>
             </Link>
-            <Link href="/dashboard/policies" className="rounded-xl bg-amber-300 px-4 py-3 text-center text-sm font-semibold text-slate-950">
-              Review policy flow
+            <Link href="/dashboard/policies">
+              <Button variant="primary" className="w-full">
+                Review policy flow
+              </Button>
             </Link>
           </div>
         </div>

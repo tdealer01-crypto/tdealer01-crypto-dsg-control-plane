@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 
 type ProofItem = {
   id: string;
@@ -24,10 +29,12 @@ function formatDate(value?: string | null) {
 
 export default function ProofsPage() {
   const [items, setItems] = useState<ProofItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
     fetch('/api/proofs?limit=20', { cache: 'no-store' })
       .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
       .then(({ ok, json }) => {
@@ -38,6 +45,9 @@ export default function ProofsPage() {
       .catch((err) => {
         if (!alive) return;
         setError(err instanceof Error ? err.message : 'Failed to load proofs');
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
@@ -45,30 +55,51 @@ export default function ProofsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
-      <div className="mx-auto max-w-6xl">
-        <h1 className="text-3xl font-semibold">Proofs</h1>
-        <p className="mt-2 text-slate-400">Recent DSG decisions with proof hashes and stability signals.</p>
-        {error ? <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
-        <div className="mt-8 space-y-3">
-          {items.map((item) => (
-            <div key={item.id} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-semibold">{item.decision}</p>
-                  <p className="mt-1 text-sm text-slate-400">{item.execution_id}</p>
+    <main className="min-h-screen bg-slate-950">
+      <div className="mx-auto max-w-6xl px-6 py-10">
+        <PageHeader
+          title="พิสูจน์"
+          description="การตัดสินใจ DSG ล่าสุดพร้อมแฮชพิสูจน์และสัญญาณเสถียรภาพ"
+        />
+
+        {error ? (
+          <Card variant="error" className="mb-6">{error}</Card>
+        ) : null}
+
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-lg" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="ไม่มีพิสูจน์"
+            description="ไม่พบการตัดสินใจที่มีพิสูจน์"
+          />
+        ) : (
+          <div className="space-y-3">
+            {items.map((item) => (
+              <Card key={item.id} variant="default">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-white">{item.decision}</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {item.execution_id}
+                    </p>
+                  </div>
+                  <Badge variant="info">{item.proof_type}</Badge>
                 </div>
-                <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">{item.proof_type}</span>
-              </div>
-              <div className="mt-3 grid gap-2 text-sm text-slate-300">
-                <p>Reason: {item.reason}</p>
-                <p>Proof hash: {item.proof_hash || '-'}</p>
-                <p>Stability: {item.stability_score ?? '-'}</p>
-                <p>Created: {formatDate(item.created_at)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+                <div className="mt-3 grid gap-2 text-sm text-gray-300">
+                  <p>เหตุผล: {item.reason}</p>
+                  <p>แฮชพิสูจน์: {item.proof_hash || '-'}</p>
+                  <p>เสถียรภาพ: {item.stability_score ?? '-'}</p>
+                  <p>สร้างเมื่อ: {formatDate(item.created_at)}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

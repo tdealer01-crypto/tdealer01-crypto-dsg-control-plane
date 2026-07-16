@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
 import DecisionExplainer from '../../../components/DecisionExplainer';
 import { ExecutionList } from '@/components/monitoring';
+import { Card } from '@/components/ui/Card';
 
 type Execution = {
   id: string;
@@ -156,8 +157,8 @@ export default function ExecutionsPage() {
       actions={[{ href: '/dashboard/audit', label: 'Open audit', tone: 'gold' }, { href: '/dashboard/policies', label: 'Tune policy', tone: 'slate' }]}
       steps={steps}
     >
-      {error ? <div className="mt-6 border border-rose-300/25 bg-rose-300/10 p-4 text-sm text-rose-100">{error}</div> : null}
-      {coreError ? <div className="mt-6 border border-sky-300/25 bg-sky-300/10 p-4 text-sm text-sky-100">Core ledger unavailable; showing database execution view.</div> : null}
+      {error ? <Card variant="error" className="mt-6">{error}</Card> : null}
+      {coreError ? <Card variant="warning" className="mt-6">Core ledger unavailable; showing database execution view.</Card> : null}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">

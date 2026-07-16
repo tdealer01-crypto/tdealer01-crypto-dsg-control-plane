@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { Card } from '@/components/ui/Card';
+import { Skeleton } from '@/components/Skeleton';
 
 type PolicyItem = {
   id: string;
@@ -175,15 +177,21 @@ export default function PoliciesPage() {
                 </span>
               </div>
 
-              {error ? <div className="mt-4 border border-red-400/25 bg-red-500/10 p-3 text-sm leading-7 text-red-100">{error}</div> : null}
-              {notice ? <div className="mt-4 border border-emerald-300/25 bg-emerald-400/10 p-3 text-sm leading-7 text-emerald-100">{notice}</div> : null}
+              {error ? <Card variant="error" className="mt-4 text-sm leading-7">{error}</Card> : null}
+              {notice ? <Card variant="success" className="mt-4 text-sm leading-7">{notice}</Card> : null}
 
               <div className="mt-5 space-y-3">
-                {loading ? <div className="border border-white/10 bg-black/20 p-4 text-sm text-slate-400">Loading policies…</div> : null}
-                {!loading && policies.length === 0 ? (
-                  <div className="border border-amber-300/25 bg-amber-300/10 p-4 text-sm leading-7 text-amber-50">
-                    No policy found in runtime. Click Deploy update to create the first policy from the default manifest.
+                {loading ? (
+                  <div className="space-y-2">
+                    {[1, 2].map((i) => (
+                      <Skeleton key={i} className="h-20 rounded" />
+                    ))}
                   </div>
+                ) : null}
+                {!loading && policies.length === 0 ? (
+                  <Card variant="warning" className="text-sm leading-7">
+                    No policy found in runtime. Click Deploy update to create the first policy from the default manifest.
+                  </Card>
                 ) : null}
                 {policies.map((policy) => (
                   <button
