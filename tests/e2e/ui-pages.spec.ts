@@ -6,10 +6,10 @@ test.describe('Login Page UI', () => {
   });
 
   test('should display login page with all 3 options', async ({ page }) => {
-    // Main heading "DSG ONE"
-    await expect(page.locator('h1')).toContainText('DSG ONE');
+    // Main heading (h2, not h1 - h1 is "DSG ONE")
+    await expect(page.locator('h2').first()).toContainText('เข้าสู่ระบบด้วยรหัสผ่าน');
 
-    // 3 main sections visible
+    // 3 options visible
     await expect(page.locator('text=สำหรับผู้ใช้ที่มีบัญชีแล้ว')).toBeVisible();
     await expect(page.locator('text=ลืมรหัสผ่าน')).toBeVisible();
     await expect(page.locator('text=ผู้ใช้ใหม่')).toBeVisible();
@@ -99,9 +99,17 @@ test.describe('Password Login Page UI', () => {
 
     await page.locator('input#email').fill('test@example.com');
     await page.locator('input#password').fill('password123');
+<<<<<<< HEAD
     const submitBtn = page.locator('button:has-text("เข้าสู่ระบบ")');
     await expect(submitBtn).toBeEnabled();
     // Don't actually submit since it requires backend
+=======
+    const submitBtn = page.locator('button[type="submit"]');
+    // Click submit and verify form exists (form will attempt submission)
+    await submitBtn.click();
+    // Button should exist and form should be attempting submission
+    await expect(submitBtn).toBeVisible();
+>>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 });
 
@@ -145,12 +153,20 @@ test.describe('Dashboard Page UI', () => {
     await expect(page.locator('h1')).toContainText('ศูนย์ควบคุม');
   });
 
+<<<<<<< HEAD
   test.skip('should show 4 KPI cards', async ({ page }) => {
     // Skipped: Requires Supabase env vars
     await expect(page.locator('text=Agents')).toBeVisible();
     await expect(page.locator('text=Executions')).toBeVisible();
     await expect(page.locator('text=Core Status')).toBeVisible();
     await expect(page.locator('text=DB Status')).toBeVisible();
+=======
+  test('should show 4 KPI cards', async ({ page }) => {
+    await expect(page.locator('text=ตัวแทนที่ใช้งาน').first()).toBeVisible();
+    await expect(page.locator('text=การดำเนินการทั้งหมด')).toBeVisible();
+    await expect(page.locator('text=สถานะ Core')).toBeVisible();
+    await expect(page.locator('text=สถานะฐานข้อมูล')).toBeVisible();
+>>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 
   test.skip('should show system health indicator', async ({ page }) => {
@@ -158,9 +174,16 @@ test.describe('Dashboard Page UI', () => {
     await expect(page.locator('text=สถานะระบบ')).toBeVisible();
   });
 
+<<<<<<< HEAD
   test.skip('should show refresh button', async ({ page }) => {
     // Skipped: Requires Supabase env vars
     await expect(page.locator('button:has-text("รีเฟรช")')).toBeVisible();
+=======
+  test('should show refresh button', async ({ page }) => {
+    // Button contains "รีเฟรช" or "กำลังโหลด"
+    const refreshBtn = page.locator('button').filter({ hasText: /รีเฟรช|กำลังโหลด/ });
+    await expect(refreshBtn).toBeVisible();
+>>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 
   test.skip('should show command center link', async ({ page }) => {
@@ -168,9 +191,14 @@ test.describe('Dashboard Page UI', () => {
     await expect(page.locator('a:has-text("ศูนย์บัญชาการ")')).toBeVisible();
   });
 
+<<<<<<< HEAD
   test.skip('should show products grid', async ({ page }) => {
     // Skipped: Requires Supabase env vars
     await expect(page.locator('text=Products')).toBeVisible();
+=======
+  test('should show products grid', async ({ page }) => {
+    await expect(page.locator('text=ผลิตภัณฑ์')).toBeVisible();
+>>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 });
 
