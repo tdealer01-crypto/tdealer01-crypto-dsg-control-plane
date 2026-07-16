@@ -472,7 +472,7 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS current_tier TEXT DEFAULT 'fr
 - ⏳ Supabase migrations (3 new tables + 2 alters) not yet applied
 - ⏳ RLS policies not yet enforced (auth context not implemented)
 - ⏳ Free tier quotas tracked in code, not persisted to DB
-- ⏳ Email notifications (Resend integration) scaffolded but not wired
+- ⏳ Email notifications (Resend integration code exists in `lib/resend.ts`; requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL` env vars to activate)
 - ⏳ Billing (Stripe) configured in code, webhooks not tested
 - ⏳ Demo videos not yet recorded (placeholder scripts ready)
 
