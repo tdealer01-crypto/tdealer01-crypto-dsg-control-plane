@@ -1,12 +1,11 @@
-import SuperDashboard from '@/components/super-dashboard'
+import dynamic from 'next/dynamic';
 
-export const dynamic = 'force-dynamic'
+const SuperDashboard = dynamic(() => import('@/components/super-dashboard'), {
+  ssr: false,
+});
 
-export const metadata = {
-  title: 'Trinity Agent Dashboard',
-  description: 'Real-time orchestration control plane for DSG Agent OS',
-}
+export const dynamic = 'force-dynamic';
 
 export default function TrinityDashboard() {
-  return <SuperDashboard />
+  return <SuperDashboard />;
 }
