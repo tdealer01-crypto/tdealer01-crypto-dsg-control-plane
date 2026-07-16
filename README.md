@@ -285,6 +285,14 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Latest Updates
 
+✅ **MCP Integration Guide** (PR #930 Merged)
+- Comprehensive reference for 4 MCP integrations (PostHog, Supabase, Vercel, AWS Marketplace)
+- 101+ tools documented with setup, auth, usage patterns, and troubleshooting
+- Live production data examples: 50+ PostHog tools, 25+ Supabase tools, 15+ Vercel tools, 11+ AWS tools
+- Security: Centralized error handling, no error-message leakage
+- All CI checks passed: security ✅, CCVS evidence ✅, CodeQL ✅, e2e tests ✅
+- [Read the Guide](./docs/MCP_INTEGRATION_GUIDE.md)
+
 ✅ **JWT Bearer Token Authentication** (PR #914 Merged)
 - Production-ready JWT Bearer authentication for API routes
 - Supabase-backed token generation and validation
@@ -349,6 +357,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 | Document | For Whom | Read Time |
 |----------|----------|-----------|
+| **[MCP Integration Guide](./docs/MCP_INTEGRATION_GUIDE.md)** | Engineers | 15 min |
 | **[Trinity Dashboard UI](./apps/trinity-dashboard/README.md)** | Operators | 5 min |
 | **[Trinity × DSG Integration](./docs/integration/Trinity-DSG-Agents-Integration.md)** | Operators | 10 min |
 | **[Integration Checklist](./docs/integration/INTEGRATION-CHECKLIST.md)** | Implementers | 15 min |
@@ -366,6 +375,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 ## Integrations
 
 **Complete & Deployed:**
+- ✅ **MCP (Model Context Protocol)** — 4 production MCPs with 101+ tools
+  - [Setup Guide](./docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools)
+  - Production-tested: Analytics, database management, deployment monitoring, solution discovery
+  - All security checks passed, comprehensive troubleshooting included
+
 - ✅ **Trinity Dashboard UI** — Real-time agent control plane (Chat + Dashboard + CLI + API)
   - [Dashboard](./apps/trinity-dashboard/README.md) | Quick Start: Deploy in <5 minutes
   - All 7 agents, cost tracking, security audit, orchestration health
