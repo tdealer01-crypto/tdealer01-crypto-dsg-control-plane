@@ -285,10 +285,11 @@ function BillingInner() {
     setMcpLoading(true);
     setMcpError(null);
     try {
-      const res = await fetch('/api/billing/checkout', {
+      const res = await fetch('/api/mcp/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: 'mcp_api' }),
+        body: JSON.stringify({}),
+        cache: 'no-store',
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -296,7 +297,11 @@ function BillingInner() {
         return;
       }
       const data = await res.json();
-      window.location.href = data.url;
+      if (data?.data?.checkoutUrl) {
+        window.location.href = data.data.checkoutUrl;
+      } else {
+        setMcpError('Invalid checkout response');
+      }
     } catch {
       setMcpError('Something went wrong');
     } finally {
