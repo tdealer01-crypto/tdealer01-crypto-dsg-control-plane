@@ -2,10 +2,18 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
+  "ignoreCommand": "git diff --quiet HEAD~ HEAD -- app/",
+  "env": {
+    "VERCEL_REBUILD_TRIGGER": "1"
+  },
   "crons": [
     {
+      "path": "/api/cron/billing-sync",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/flush-meter-outbox",
-      "schedule": "0 5 * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/reconcile-meter",
