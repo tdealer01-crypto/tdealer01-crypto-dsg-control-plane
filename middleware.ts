@@ -56,7 +56,7 @@ requestWithId.headers.set('x-request-id', requestId);
     return res;
   }
 
-  // ── API routes: body-size enforcement only ─────────────────────────────────
+  // ── API routes: body-size enforcement + JWT Bearer token support ──────────
   if (request.nextUrl.pathname.startsWith('/api/')) {
     if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
       const cl = request.headers.get('content-length');
@@ -66,6 +66,56 @@ requestWithId.headers.set('x-request-id', requestId);
         );
       }
     }
+
+    // Extract and validate JWT Bearer token if present
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey =
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+      if (url && anonKey) {
+        try {
+          const supabase = createServerClient(url, anonKey, {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value, options }) => {
+                  request.cookies.set(name, value);
+                  response.cookies.set(name, value, options);
+                });
+              },
+            },
+          });
+
+          // Verify token with Supabase
+          const { data, error } = await supabase.auth.getUser(token);
+          if (data?.user && !error) {
+            // Token is valid - add user to request headers
+            const requestWithAuth = new NextRequest(request.url, {
+              method: request.method,
+              headers: new Headers(request.headers),
+              body: request.body,
+              duplex: 'half',
+            } as RequestInit & { duplex: 'half' });
+
+            requestWithAuth.headers.set('x-user-id', data.user.id);
+            requestWithAuth.headers.set('x-user-email', data.user.email || '');
+            requestWithAuth.headers.set('x-request-id', requestId);
+
+            const authResponse = NextResponse.next({ request: requestWithAuth });
+            return stamp(authResponse);
+          }
+        } catch (err) {
+          // Invalid token - continue to route handler which will reject if needed
+        }
+      }
+    }
+
     return stamp(response);
   }
 
