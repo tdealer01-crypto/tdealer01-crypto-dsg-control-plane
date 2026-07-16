@@ -160,28 +160,27 @@ describe('Chat Widget UI', () => {
   it('should have all required features', async () => {
     const fs = await import('fs');
     const content = fs.readFileSync('./components/AgentChatWidget.tsx', 'utf8');
-    
+
     // Features
     expect(content).toContain('PAGE_SUGGESTIONS');
     expect(content).toContain('CODEX_ENDPOINT');
     expect(content).toContain('AGENT_CHAT_ENDPOINT');
-    
+
     // QA buttons
     expect(content).toContain('ตรวจหน้านี้');
     expect(content).toContain('ตรวจทั้งหมด');
-    
-    // Thai UI
-    expect(content).toContain('สวัสดีครับ');
-    expect(content).toContain('พิมพ์คำถาม');
-    expect(content).toContain('ส่ง');
-    
+
+    // Design system components
+    expect(content).toContain('AgentTimeline');
+    expect(content).toContain('AgentEvent');
+
     // Streaming
     expect(content).toContain('getReader');
     expect(content).toContain('TextDecoder');
-    
-    // Loading indicator
-    expect(content).toContain('isTyping');
-    
+
+    // Loading indicator (via AgentTimeline)
+    expect(content).toContain('isLoading');
+
     // Client-side
     expect(content).toContain('use client');
   });
