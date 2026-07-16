@@ -395,3 +395,40 @@ export async function sendGitHubLeadFollowup(opts: {
     </div>`,
   );
 }
+
+// ─── Payment Failed (Dunning) ─────────────────────────────────────────────────
+// Triggered on invoice.payment_failed webhook event
+export async function sendPaymentFailed(opts: {
+  email: string;
+  planKey: string;
+  amountDue: number;
+  attemptCount: number;
+  nextPaymentAttempt: number | null;
+}): Promise<void> {
+  const amountStr = (opts.amountDue / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const nextAttemptDate = opts.nextPaymentAttempt
+    ? new Date(opts.nextPaymentAttempt * 1000).toLocaleDateString('en-US')
+    : 'soon';
+
+  await sendEmail(
+    opts.email,
+    `⚠️ Payment failed — update your billing method now`,
+    `<div style="font-family:sans-serif;max-width:560px;margin:auto">
+      <h2 style="color:#ef4444">⚠️ Payment could not be processed</h2>
+      <p>We tried to charge ${amountStr} for your <strong>${opts.planKey.toUpperCase()}</strong> plan (attempt ${opts.attemptCount}).</p>
+      <p>The charge was declined. This can happen if:</p>
+      <ul>
+        <li>Your card has expired or been replaced</li>
+        <li>Your bank blocked the charge</li>
+        <li>Insufficient funds</li>
+      </ul>
+      <p><strong>Next retry:</strong> ${nextAttemptDate}</p>
+      <p>To avoid service suspension, update your billing method now:</p>
+      <a href="${BASE_URL}/dashboard/billing"
+         style="background:#ef4444;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
+        Update Payment Method →
+      </a>
+      <p style="color:#64748b;font-size:12px;margin-top:32px">If this charge was denied by mistake, contact your bank or <a href="mailto:support@dsg.pics" style="color:#64748b">reach out to support</a>.</p>
+    </div>`,
+  );
+}

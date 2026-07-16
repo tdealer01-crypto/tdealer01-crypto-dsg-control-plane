@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
-import { sendTrialWelcome, sendUpgradeSuccess } from '../../../../lib/email/sales';
+import { sendTrialWelcome, sendUpgradeSuccess, sendPaymentFailed } from '../../../../lib/email/sales';
 import { fulfillSubscription, revokeSubscription } from '../../../../lib/billing/fulfillment';
 import { REVOKED_STATUSES } from '../../../../lib/billing/entitlements';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
@@ -311,7 +311,37 @@ async function handleInvoiceEvent(
         attemptCount: invoice.attempt_count,
         nextPaymentAttempt: invoice.next_payment_attempt,
       });
-      // Could trigger dunning webhook or alert here
+
+      // Capture dunning event for analytics
+      if (orgId) {
+        await captureEvent('payment_failed', {
+          userId: orgId,
+          organizationId: orgId,
+        }, {
+          organization_id: orgId,
+          stripe_invoice_id: invoice.id,
+          stripe_customer_id: stripeCustomerId,
+          amount_due: invoice.amount_due,
+          attempt_count: invoice.attempt_count,
+          next_payment_attempt: invoice.next_payment_attempt,
+        });
+      }
+
+      // Send dunning email to customer
+      const billingCustomer = await getBillingCustomer(supabase, stripeCustomerId);
+
+      if (billingCustomer?.email) {
+        // Fire-and-forget email send (fail-open)
+        // Plan key defaults to 'pro' since invoice dunning is relevant to paid plans
+        void sendPaymentFailed({
+          email: billingCustomer.email,
+          planKey: 'pro',
+          amountDue: invoice.amount_due,
+          attemptCount: invoice.attempt_count,
+          nextPaymentAttempt: invoice.next_payment_attempt,
+        }).catch(() => null);
+      }
+
       break;
     }
     case 'invoice.finalized': {
