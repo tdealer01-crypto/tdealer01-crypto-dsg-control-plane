@@ -73,8 +73,13 @@ npm run dev
 |---|---|---|---|
 | `REACT_APP_TRINITY_API_URL` | Yes | `https://api.dsg.local` | Trinity API endpoint |
 | `TRINITY_JWT_TOKEN` | No | (mock auth) | Supabase JWT token |
-| `SUPABASE_URL` | No | — | Supabase project URL |
-| `SUPABASE_KEY` | No | — | Supabase anon key |
+| `NEXT_PUBLIC_SUPABASE_URL` | No | — | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | — | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | — | Supabase service role (server-side only) |
+
+**📖 Setup Guide:** See [../../SUPABASE_SETUP.md](../../SUPABASE_SETUP.md) for complete Supabase configuration (5 minutes).
+
+**Quick Template:** Copy [.env.local.template](./.env.local.template) to `.env.local` and fill in your values.
 
 ## Interfaces
 
