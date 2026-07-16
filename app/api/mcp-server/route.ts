@@ -1,4 +1,11 @@
 import { NextResponse } from 'next/server';
+import {
+  validateOAuthToken,
+  recordOAuthTokenUsage,
+  extractBearerToken,
+  isQuotaExceeded,
+  isSubscriptionInactive,
+} from '@/lib/mcp/oauth-validator';
 
 // ERROR_HANDLER_EXEMPT: MCP JSON-RPC protocol requires structured error responses
 export const dynamic = 'force-dynamic';
@@ -185,9 +192,78 @@ export async function POST(request: Request) {
       if (!toolName) {
         return Response.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'Invalid params: name is required' } });
       }
-      const authHeader = getAuthHeader(request);
-      const result = await callTool(toolName, toolInput, authHeader, request);
-      return Response.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } });
+
+      // OAuth token validation (if present)
+      const authHeaderRaw = request.headers.get('authorization');
+      const bearerToken = extractBearerToken(authHeaderRaw);
+
+      if (bearerToken?.startsWith('mcp_')) {
+        // OAuth access token — validate it
+        const validation = await validateOAuthToken(bearerToken);
+
+        if (!validation.valid) {
+          return Response.json(
+            { jsonrpc: '2.0', id, error: { code: -32001, message: 'Unauthorized: invalid or expired token' } },
+            { status: 401 },
+          );
+        }
+
+        // Check subscription status
+        if (isSubscriptionInactive(validation)) {
+          return Response.json(
+            {
+              jsonrpc: '2.0',
+              id,
+              error: {
+                code: -32002,
+                message: 'Payment Required: MCP API subscription not active',
+                data: {
+                  status: 'subscription_inactive',
+                  upgrade_url: 'https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/billing',
+                },
+              },
+            },
+            { status: 402 },
+          );
+        }
+
+        // Check quota
+        if (isQuotaExceeded(validation)) {
+          return Response.json(
+            {
+              jsonrpc: '2.0',
+              id,
+              error: {
+                code: -32003,
+                message: 'Payment Required: Monthly API quota exceeded',
+                data: {
+                  status: 'quota_exceeded',
+                  calls_used: validation.callsUsed,
+                  calls_limit: validation.callsLimit,
+                  upgrade_url: 'https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/billing',
+                },
+              },
+            },
+            { status: 402 },
+          );
+        }
+
+        // Record usage (after passing all checks)
+        await recordOAuthTokenUsage(validation.tokenId).catch((err) => {
+          console.error('[tools/call] Failed to record usage:', err);
+          // Don't fail the request if usage recording fails
+        });
+
+        // OAuth token is valid; proceed with tool call
+        const authHeader = getAuthHeader(request);
+        const result = await callTool(toolName, toolInput, authHeader, request);
+        return Response.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } });
+      } else {
+        // Non-OAuth bearer token or no auth — use original flow (backward compatible)
+        const authHeader = getAuthHeader(request);
+        const result = await callTool(toolName, toolInput, authHeader, request);
+        return Response.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } });
+      }
     }
 
     return Response.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } });

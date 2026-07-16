@@ -17,10 +17,11 @@
    - [Vercel MCP](#vercel-mcp)
    - [AWS Marketplace MCP](#aws-marketplace-mcp)
 4. [Authentication & Configuration](#authentication--configuration)
-5. [Usage Patterns](#usage-patterns)
-6. [API Reference](#api-reference)
-7. [Best Practices](#best-practices)
-8. [Troubleshooting](#troubleshooting)
+5. [MCP OAuth 2.0 for claude.ai Remote Connector](#mcp-oauth-20-for-claudeai-remote-connector)
+6. [Usage Patterns](#usage-patterns)
+7. [API Reference](#api-reference)
+8. [Best Practices](#best-practices)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -522,6 +523,333 @@ VERCEL_TEAM_ID=team_xxxxx
 # AWS Marketplace
 # No env vars needed (public API)
 ```
+
+---
+
+## MCP OAuth 2.0 for claude.ai Remote Connector
+
+### Overview
+
+DSG ONE MCP server supports **OAuth 2.0 Authorization Code + PKCE (RFC 7636)** for secure remote connector setup in claude.ai. This enables:
+
+- ✅ One-click connector setup in claude.ai (no manual token copying)
+- ✅ Automatic binding to existing MCP API subscription (฿490/month)
+- ✅ RFC 8414 OAuth discovery metadata for standards compliance
+- ✅ PKCE S256 code challenge for mobile/SPA security
+- ✅ Subscription status + quota validation at tool execution time
+- ✅ Token revocation and audit trail
+
+### Prerequisites
+
+- Active MCP API subscription (฿490/month)
+- claude.ai web or desktop app (version 2024.09+)
+- Existing user account in DSG ONE
+
+### Setup: Connect DSG MCP to claude.ai
+
+#### Step 1: Go to claude.ai Connectors
+
+1. Visit https://claude.ai/settings/connectors (web app)
+2. Or: Settings → Integrations → MCP (desktop app)
+3. Click "+ Add Custom Connector"
+
+#### Step 2: Enter OAuth Server Details
+
+**Authorization Server Metadata:**
+```
+OAuth Server URL: https://tdealer01-crypto-dsg-control-plane.vercel.app
+```
+
+claude.ai will auto-discover endpoints from:
+```
+https://tdealer01-crypto-dsg-control-plane.vercel.app/.well-known/oauth-authorization-server
+```
+
+**Metadata includes:**
+```json
+{
+  "authorization_endpoint": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp/oauth/authorize",
+  "token_endpoint": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp/oauth/token",
+  "revocation_endpoint": "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp/oauth/revoke",
+  "scopes_supported": ["mcp:execute"],
+  "response_types_supported": ["code"],
+  "code_challenge_methods_supported": ["S256"]
+}
+```
+
+#### Step 3: Authenticate & Grant Consent
+
+1. Click "Connect"
+2. Redirected to `/api/mcp/oauth/authorize` (login if needed)
+3. Review consent screen: "mcp:execute — Execute MCP tools and call available resources"
+4. Click "✓ Authorize"
+5. Redirected back to claude.ai with authorization code
+6. Token automatically exchanged and stored
+
+#### Step 4: Verify Connection
+
+Test in claude.ai chat:
+```
+"List all App Builder jobs"
+```
+
+Expected response: Available jobs from your DSG workspace.
+
+### OAuth Flow Diagram
+
+```
+┌─────────────┐
+│  claude.ai  │
+│  User Clicks│
+│  "Connect"  │
+└──────┬──────┘
+       │
+       │ 1. Redirects to /api/mcp/oauth/authorize
+       │    with code_challenge + nonce + state (PKCE S256)
+       ▼
+┌────────────────────────────────────────────┐
+│  DSG ONE OAuth Authorization Endpoint      │
+│  (/api/mcp/oauth/authorize)                │
+│                                            │
+│  • Validate redirect_uri (whitelist)       │
+│  • Generate & sign state token (HMAC-SHA) │
+│  • User login (if not authenticated)      │
+│  • Redirect to /api/mcp/oauth/consent     │
+└────────────────────────────────────────────┘
+       │
+       │ 2. Consent form shown
+       ▼
+┌────────────────────────────────────────────┐
+│  Consent Screen (HTTPS)                    │
+│  "Authorize claude.ai"                     │
+│  Permissions: mcp:execute                  │
+│  Approve / Deny                            │
+└────────────────────────────────────────────┘
+       │
+       │ 3. User approves → generate auth code
+       │    Store code in mcp_oauth_codes (10-min TTL)
+       │    Redirect back with code + state
+       ▼
+┌─────────────────────────────────┐
+│  claude.ai (Backend)            │
+│  Receives: code + state         │
+│  Validates state (CSRF check)   │
+└────────────────────────────────┬┘
+       │
+       │ 4. POST /api/mcp/oauth/token
+       │    code + code_verifier + client credentials
+       ▼
+┌────────────────────────────────────────────┐
+│  DSG ONE Token Exchange Endpoint           │
+│  (/api/mcp/oauth/token)                    │
+│                                            │
+│  • Validate client credentials             │
+│  • Lookup authorization code               │
+│  • Verify PKCE: SHA256(code_verifier)      │
+│  • Get or create MCP API key for user      │
+│  • Check subscription status (Stripe)      │
+│  • Generate opaque access token (mcp_**)   │
+│  • Store in mcp_oauth_tokens (1-hour TTL) │
+│  • Link to user's quota                    │
+└────────────────────────────────────────────┘
+       │
+       │ 5. Response: { access_token, expires_in, subscription_status }
+       ▼
+┌─────────────────────────────────┐
+│  claude.ai Stores Token         │
+│  Securely saves access_token    │
+│  Ready for MCP tool calls       │
+└─────────────────────────────────┘
+       │
+       │ 6. MCP Tool Call
+       │    Authorization: Bearer mcp_...
+       ▼
+┌────────────────────────────────────────────┐
+│  DSG ONE MCP Server (/api/mcp-server)      │
+│                                            │
+│  • Extract Bearer token                    │
+│  • Validate token signature & expiry       │
+│  • Check not revoked                       │
+│  • Verify subscription active              │
+│  • Validate quota (calls_used < calls_limit)
+│  • Record usage (for billing)              │
+│  • Execute tool call                       │
+│  • Return results                          │
+└────────────────────────────────────────────┘
+       │
+       └─→ Results back to claude.ai
+```
+
+### Token Validation & Quota
+
+**At MCP Tool Call Time:**
+
+```javascript
+// /api/mcp-server/route.ts tools/call handler
+
+const bearerToken = extractBearerToken(request.headers.get('authorization'));
+
+if (bearerToken?.startsWith('mcp_')) {
+  // OAuth token validation
+  const validation = await validateOAuthToken(bearerToken);
+  
+  if (!validation.valid) {
+    // 401 Unauthorized: token invalid/expired/revoked
+    return Response.json({
+      jsonrpc: '2.0',
+      error: { code: -32001, message: 'Unauthorized: invalid or expired token' }
+    }, { status: 401 });
+  }
+  
+  if (isSubscriptionInactive(validation)) {
+    // 402 Payment Required: no active Stripe subscription
+    return Response.json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32002,
+        message: 'Payment Required: MCP API subscription not active',
+        data: {
+          status: 'subscription_inactive',
+          upgrade_url: 'https://tdealer01-crypto-dsg-control-plane.vercel.app/dashboard/billing'
+        }
+      }
+    }, { status: 402 });
+  }
+  
+  if (isQuotaExceeded(validation)) {
+    // 402 Payment Required: monthly quota exceeded
+    return Response.json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32003,
+        message: 'Payment Required: Monthly API quota exceeded',
+        data: {
+          status: 'quota_exceeded',
+          calls_used: validation.callsUsed,
+          calls_limit: validation.callsLimit,
+          upgrade_url: '...'
+        }
+      }
+    }, { status: 402 });
+  }
+  
+  // Record usage for billing (non-blocking)
+  await recordOAuthTokenUsage(validation.tokenId);
+  
+  // Execute tool call
+  // ...
+}
+```
+
+**Token Linked to:**
+- `actor_id` (user making the request)
+- `key_id` (MCP API key from dsg_mcp_api_keys table)
+- `stripe_subscription_id` (for billing validation)
+- `calls_limit` (10,000/month per key)
+- `calls_used` (tracked in dsg_mcp_usage)
+
+### Token Revocation
+
+**Revoke via oauth/revoke Endpoint (RFC 7009):**
+
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp/oauth/revoke \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=mcp_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0" \
+  -d "token_type_hint=access_token"
+```
+
+**Or via Bearer Token:**
+
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp/oauth/revoke \
+  -H "Authorization: Bearer mcp_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0" \
+  -H "Content-Type: application/x-www-form-urlencoded"
+```
+
+**Response:** Always 200 OK (RFC 7009 compliance — prevents token detection via HTTP status)
+
+### Environment Configuration
+
+**Production (Vercel):**
+
+```bash
+# OAuth Server Configuration
+NEXTAUTH_SECRET=<generated-secret>
+MCP_OAUTH_CLIENT_ID=claude-ai-connector-v1
+MCP_OAUTH_CLIENT_SECRET=<generated-secret>
+MCP_OAUTH_REDIRECT_URIS=https://claude.ai/auth/callback/dsg-mcp,https://claude.ai/connect/dsg-mcp
+
+# Token Timeouts
+MCP_OAUTH_TOKEN_TTL=3600      # 1 hour
+MCP_OAUTH_CODE_TTL=600        # 10 minutes
+MCP_OAUTH_STATE_TTL=1800      # 30 minutes
+```
+
+**Self-Hosted (Local Development):**
+
+```bash
+# .env.local
+NEXTAUTH_SECRET=test-secret-local
+MCP_OAUTH_CLIENT_ID=claude-ai-connector-v1
+MCP_OAUTH_CLIENT_SECRET=test-secret-local
+MCP_OAUTH_REDIRECT_URIS=https://localhost:3000/callback,http://localhost:3000/callback
+```
+
+### Backward Compatibility
+
+**Existing Bearer Tokens Still Work:**
+
+```bash
+# Old-style bearer token (e.g., from API key)
+curl https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server \
+  -H "Authorization: Bearer sk_test_old_api_key_123" \
+  -H "Content-Type: application/json" \
+  -d '{ "method": "tools/call", ... }'
+
+# Is passed through unchanged (not OAuth validated)
+# Uses existing downstream auth middleware
+```
+
+**OAuth tokens are detected by `mcp_` prefix:**
+
+```javascript
+const isOAuthToken = bearerToken?.startsWith('mcp_');
+```
+
+### Troubleshooting OAuth Connection
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "Invalid client" error | Wrong client_id/secret | Verify env vars: `MCP_OAUTH_CLIENT_ID`, `MCP_OAUTH_CLIENT_SECRET` |
+| "State validation failed" | CSRF protection triggered | Cookie blocked; disable 3rd-party cookie restrictions |
+| "PKCE verification failed" | Code verifier mismatch | Rare; try disconnecting and reconnecting |
+| "redirect_uri mismatch" | Callback URL not whitelisted | Add to `MCP_OAUTH_REDIRECT_URIS` env var |
+| "Subscription not active" | No Stripe subscription | Upgrade at `/dashboard/billing` |
+| "Quota exceeded" | Monthly API calls limit reached | Upgrade plan or wait until next billing cycle |
+| Token shows "mcp_" but won't authenticate | Token expired (1 hour TTL) | Disconnect and reconnect in claude.ai |
+
+### RFC Compliance
+
+**OAuth 2.0 Specifications Implemented:**
+
+| Spec | Feature | Status |
+|------|---------|--------|
+| RFC 6749 | Authorization Code Grant | ✅ Implemented |
+| RFC 7636 | PKCE (Proof Key for Public Clients) | ✅ S256 method |
+| RFC 7009 | Token Revocation | ✅ Implemented |
+| RFC 8414 | OAuth 2.0 Authorization Server Metadata | ✅ Discoverable |
+| RFC 9728 | OAuth 2.0 Protected Resource Metadata | ✅ Discoverable |
+
+**Security Features:**
+
+- ✅ HMAC-SHA256 state token signing (30-min TTL)
+- ✅ Timing-safe PKCE S256 validation
+- ✅ Opaque access tokens (not JWT)
+- ✅ Token hashing in database (SHA-256)
+- ✅ Token revocation support
+- ✅ Subscription + quota soft gates
+- ✅ Backward-compatible with existing bearer tokens
 
 ---
 
