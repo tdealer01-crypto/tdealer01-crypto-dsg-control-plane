@@ -3,10 +3,13 @@
 @tailwind utilities;
 
 :root {
+  /* Backgrounds */
   --dsg-bg: #050505;
   --dsg-bg-2: #0B0B0F;
   --dsg-surface: #14151C;
   --dsg-surface-2: #191A22;
+
+  /* Colors */
   --dsg-border: rgba(255,255,255,0.08);
   --dsg-red: #E10600;
   --dsg-red-deep: #8B0000;
@@ -17,6 +20,30 @@
   --dsg-success: #33D17A;
   --dsg-warning: #F5C542;
   --dsg-error: #FF4D4D;
+
+  /* Aliases for component compatibility */
+  --color-surface-primary: #14151C;
+  --color-surface-secondary: #191A22;
+
+  /* Spacing tokens */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Radius tokens */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* Text sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
 }
 
 html,

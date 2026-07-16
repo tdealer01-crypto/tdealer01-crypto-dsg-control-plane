@@ -13,3 +13,8 @@ export {
   useCommandRegistry,
   type Command,
 } from './CommandPalette';
+export { AgentTimeline, type AgentEvent } from './AgentTimeline';
+export { ChatShell, type ChatMessage, type ChatSuggestion } from './ChatShell';
+export { PageHeader } from './PageHeader';
+export { EmptyState } from './EmptyState';
+export { StatCard } from './StatCard';
