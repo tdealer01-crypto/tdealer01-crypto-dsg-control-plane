@@ -187,6 +187,8 @@ GET  /api/state/continuity           // Health metrics
 
 ### Mock Auth (Built-in — Default)
 
+No setup required. Works immediately for demo/testing:
+
 ```
 Email:    any@example.com
 Password: anything (6+ chars)
@@ -196,13 +198,48 @@ Use:      Demo, testing, development
 
 ### Real Supabase JWT (Production)
 
-```bash
-# Set TRINITY_JWT_TOKEN to real JWT from Supabase
-export TRINITY_JWT_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+For production, use real Supabase authentication:
 
-# Dashboard will use real auth
-# Auto-sent in API Authorization header
+**1. Add Supabase credentials to `.env.local`:**
+
+```bash
+# Supabase (required for real auth)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Trinity Dashboard (optional)
+REACT_APP_TRINITY_API_URL=https://api.dsg.local
 ```
+
+**2. Set up Supabase Auth in your project:**
+
+Go to Supabase Dashboard → Authentication → Users:
+- Create users manually, or
+- Enable Email/Password signup in Authentication → Providers
+
+**3. Test real Supabase JWT:**
+
+```bash
+npm run dev
+# Open http://localhost:3000/trinity-dashboard
+# Login with your Supabase email + password
+# Token is automatically retrieved from /api/auth/login
+```
+
+**4. Automatic fallback:**
+
+If Supabase is not configured (missing env vars), Trinity Dashboard automatically falls back to Mock Auth.
+
+**5. For Vercel Production:**
+
+Set these environment variables in Vercel dashboard:
+
+| Variable | Value | Scope |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase URL | Production, Preview, Development |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key | Production, Preview, Development |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key | Production only |
 
 ---
 
