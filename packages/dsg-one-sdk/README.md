@@ -7,11 +7,11 @@ TypeScript client for the **DSG ONE** (Deterministic Security Gateway) governed 
 ## Installation
 
 ```bash
-npm install dsg-one-sdk
+npm install @dsg-one/sdk
 # or
-yarn add dsg-one-sdk
+yarn add @dsg-one/sdk
 # or
-pnpm add dsg-one-sdk
+pnpm add @dsg-one/sdk
 ```
 
 Requires Node.js 18+
@@ -19,7 +19,7 @@ Requires Node.js 18+
 ## Quick Start
 
 ```typescript
-import { DsgOneClient } from "dsg-one-sdk";
+import { DsgOneClient } from "@dsg-one/sdk";
 
 // Initialize with your API key (format: dsg_live_...)
 const client = new DsgOneClient({ 
@@ -58,7 +58,7 @@ console.log("Monthly usage:", quota);
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `baseUrl` | `string` | `"https://dsg-one-v1.vercel.app"` | DSG ONE API base URL |
+| `baseUrl` | `string` | `"https://tdealer01-crypto-dsg-control-plane.vercel.app"` | DSG ONE API base URL |
 | `apiKey` | `string` | `undefined` | Your `dsg_live_...` API key |
 | `defaultHeaders` | `Record<string, string>` | `{}` | Headers to include in all requests |
 | `timeout` | `number` | `30000` | Request timeout in milliseconds |
