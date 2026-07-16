@@ -4,9 +4,6 @@ import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -16,6 +13,10 @@ export async function POST(request: Request) {
         status: 400,
       });
     }
+
+    // Lazy-load Supabase config at runtime, not at build time
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
       // Fallback: if Supabase not configured, return mock auth
