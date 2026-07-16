@@ -67,7 +67,65 @@ You support Thai language responses.
 Keep responses concise but informative.
 Always be respectful and helpful.`;
 
-  // Try NGC models first if NVIDIA API is configured
+  // Try OpenRouter first (primary provider)
+  if (openrouterKey) {
+    const models = [
+      process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
+      'google/gemma-3-27b-it:free',
+      'deepseek/deepseek-chat-v3-0324:free',
+    ];
+
+    for (const model of models) {
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openrouterKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: message },
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+          }),
+        });
+
+        if (response.status === 429) {
+          const detail = await response.text().catch(() => '');
+          console.error(
+            `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
+          );
+          continue;
+        }
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          console.error(
+            `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
+          );
+          continue;
+        }
+
+        const data = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          console.log('[Hermes] OpenRouter response:', model);
+          return content;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  // Fallback to NVIDIA/NGC if OpenRouter unavailable or failed
   if (nvidiaKey) {
     try {
       const ngcModel = selectNGCModel();
@@ -95,72 +153,15 @@ Always be respectful and helpful.`;
         };
         const content = data.choices?.[0]?.message?.content;
         if (content) {
-          console.log('[Hermes] NGC model response:', ngcModel.displayName);
+          console.log('[Hermes] NVIDIA/NGC fallback response:', ngcModel.displayName);
           return content;
         }
       } else {
         const detail = await response.text().catch(() => '');
-        console.warn(`[Hermes] NGC fallback (${response.status}): ${detail.slice(0, 200)}`);
+        console.warn(`[Hermes] NVIDIA fallback (${response.status}): ${detail.slice(0, 200)}`);
       }
     } catch (err) {
-      console.warn('[Hermes] NGC error, trying OpenRouter:', err);
-    }
-  }
-
-  // Fallback to OpenRouter
-  if (!openrouterKey) {
-    return limitedModeReply('OpenRouter API key not configured');
-  }
-
-  const models = [
-    process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free',
-    'google/gemma-3-27b-it:free',
-    'deepseek/deepseek-chat-v3-0324:free',
-  ];
-
-  for (const model of models) {
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openrouterKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: message },
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        }),
-      });
-
-      if (response.status === 429) {
-        const detail = await response.text().catch(() => '');
-        console.error(
-          `[api/dashboard/hermes/chat] OpenRouter 429 for model "${model}", trying next: ${detail.slice(0, 200)}`,
-        );
-        continue;
-      }
-
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '');
-        console.error(
-          `[api/dashboard/hermes/chat] OpenRouter ${response.status} for model "${model}": ${detail.slice(0, 300)}`,
-        );
-        continue;
-      }
-
-      const data = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-
-      const content = data.choices?.[0]?.message?.content;
-      if (content) return content;
-    } catch {
-      continue;
+      console.warn('[Hermes] NVIDIA error:', err);
     }
   }
 

@@ -1,12 +1,15 @@
 // AI Chat trial endpoint — no auth required for demo.
-// Returns structured response showing AI agent reasoning.
+// Uses real LLM models: OpenRouter (primary) → NVIDIA (fallback)
 
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_RESPONSES: Record<string, string> = {
-  'default': `สวัสดีครับ ผมคือ DSG Agent สามารถช่วยคุณได้ดังนี้:
+const SYSTEM_PROMPT = `You are DSG Assistant, a helpful AI that explains DSG ONE / ProofGate AI control plane.
+Be concise, factual, and helpful. Support Thai language responses.
+Explain product features, governance, security, and how to get started.`;
+
+const FALLBACK_RESPONSE = `สวัสดีครับ ผมคือ DSG Assistant สามารถช่วยคุณได้ดังนี้:
 
 1. 🔍 ตรวจสอบความพร้อมของระบบ (readiness check)
 2. 👥 ดูรายชื่อ AI Agents ที่ลงทะเบียนไว้
@@ -14,67 +17,95 @@ const DEMO_RESPONSES: Record<string, string> = {
 4. 💰 ตรวจสอบความจุและการใช้งาน
 5. 🔧 ปรับแต่ง workflow rules
 
-ลองถามคำถามเกี่ยวกับระบบ เช่น "ระบบทำงานอย่างไร" หรือ "ตรวจสอบความพร้อม"`,
+ลองถามคำถามเกี่ยวกับระบบ เช่น "ระบบทำงานอย่างไร" หรือ "ตรวจสอบความพร้อม"`;
 
-  'readiness': `✅ ระบบพร้อมทำงาน
+async function callOpenRouter(message: string): Promise<string | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return null;
 
-📊 สถานะระบบ:
-   • Core Service: ✅ Online
-   • Database: ✅ Connected (Supabase PostgreSQL)
-   • AI Engine: ✅ OW Alpha model active
-   • Rate Limiter: ✅ Operational
+  const model = process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free';
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
+        'X-Title': 'DSG ONE Assistant',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: message },
+        ],
+        max_tokens: 700,
+        temperature: 0.7,
+      }),
+    });
 
-⏱  Uptime: 99.97%
-📈 Requests today: 1,247
-⚡ Avg latency: 420ms`,
+    if (!response.ok) {
+      console.warn(`[try/chat] OpenRouter ${response.status}`);
+      return null;
+    }
 
-  'agents': `👥 AI Agents ที่ลงทะเบียนไว้:
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
 
-1. 🤖 DSG Agent v2
-   สถานะ: Active | Model: OWL Alpha
-   หน้าที่: ประสานงานหลัก
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      console.log('[try/chat] OpenRouter response:', model);
+      return content;
+    }
+  } catch (err) {
+    console.warn('[try/chat] OpenRouter error:', err);
+  }
+  return null;
+}
 
-2. 🛡 Gate Agent
-   สถานะ: Active | Model: deepseek-r1
-   หน้าที่: ตรวจสอบ policy + อนุมัติ actions
+async function callNvidia(message: string): Promise<string | null> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) return null;
 
-3. 🔍 Audit Agent
-   สถานะ: Active | Model: OWL Alpha
-   หน้าที่: บันทึกและตรวจสอบ audit trail
+  const model = process.env.NVIDIA_MODEL_CHAT || 'nvidia/nemotron-3-ultra-550b-a55b';
+  try {
+    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: message },
+        ],
+        max_tokens: 700,
+        temperature: 0.7,
+      }),
+    });
 
-4. 💬 Chat Agent  
-   สถานะ: Active | Model: fusion
-   หน้าที่: ตอบคำถามและสนับสนุนผู้ใช้`,
+    if (!response.ok) {
+      console.warn(`[try/chat] NVIDIA ${response.status}`);
+      return null;
+    }
 
-  'executions': `📊 การดำเนินการล่าสุด (Last 5):
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
 
-⏰ 08:32 | ✅ ALLOW | Agent v2: สร้างรายงานประจำวัน
-⏰ 08:30 | ✅ ALLOW | Chat Agent: ตอบคำถามลูกค้า
-⏰ 08:28 | ❌ BLOCK | Agent v2: ลบข้อมูลทั้งหมด (policy violation)
-⏰ 08:25 | ✅ ALLOW | Audit Agent: สรุป log รายวัน
-⏰ 08:20 | ✅ ALLOW | Gate Agent: อนุมัติ workflow restart
-
-📈 Stats today:
-   • Total: 247 actions
-   • ALLOW: 231 (93.5%)
-   • BLOCK: 16 (6.5%)
-   • Success rate: 93.5%`,
-
-  'capacity': `💰 ความจุและการใช้งาน:
-
-📊 Current Plan: Trial
-   • Executions: 247 / unlimited (trial)
-   • Executions left: unlimited
-   • Rate limit: 60 req/min
-   • Active sessions: 3
-
-🔋 Resource Usage:
-   • Compute: 12% utilized
-   • Storage: 850 MB / 5 GB
-   • Bandwidth: 2.1 GB / unlimited
-
-💡 Tip: Upgrade to Production สำหรับ API key, unlimited rate, และ SLA guarantee`,
-};
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      console.log('[try/chat] NVIDIA/Nemotron response:', model);
+      return content;
+    }
+  } catch (err) {
+    console.warn('[try/chat] NVIDIA error:', err);
+  }
+  return null;
+}
 
 export async function POST(request: Request) {
   try {
@@ -84,36 +115,34 @@ export async function POST(request: Request) {
     if (!message) {
       return NextResponse.json({
         error: 'message is required',
-        hint: 'Try: readiness, agents, executions, capacity',
+        reply: 'ให้กรุณาพิมพ์คำถามหรือข้อความ',
       }, { status: 400 });
     }
 
-    const lower = message.toLowerCase();
+    // Try OpenRouter first
+    let response = await callOpenRouter(message);
 
-    let response: string;
-    if (lower.includes('readiness') || lower.includes('สถานะ') || lower.includes('พร้อม') || lower.includes('ตรวจสอบ')) {
-      response = DEMO_RESPONSES.readiness;
-    } else if (lower.includes('agent') || lower.includes('ตัวแทน') || lower.includes('ชื่อ')) {
-      response = DEMO_RESPONSES.agents;
-    } else if (lower.includes('execution') || lower.includes('การดำเนินการ') || lower.includes('log') || lower.includes('ประวัติ')) {
-      response = DEMO_RESPONSES.executions;
-    } else if (lower.includes('capacity') || lower.includes('ความจุ') || lower.includes('usage') || lower.includes('การใช้งาน')) {
-      response = DEMO_RESPONSES.capacity;
-    } else {
-      response = DEMO_RESPONSES.default;
+    // Fallback to NVIDIA if OpenRouter unavailable
+    if (!response) {
+      response = await callNvidia(message);
+    }
+
+    // Fallback to hardcoded response if all LLM backends unavailable
+    if (!response) {
+      response = FALLBACK_RESPONSE;
     }
 
     return NextResponse.json({
       ok: true,
-      response,
+      reply: response,
       timestamp: new Date().toISOString(),
       meta: {
-        model: 'OWL Alpha',
-        mode: 'demo',
-        note: 'นี่คือ demo response — production จะใช้ LLM จริง',
+        provider: process.env.OPENROUTER_API_KEY ? 'openrouter' : (process.env.NVIDIA_API_KEY ? 'nvidia' : 'fallback'),
+        mode: 'llm',
       },
     });
   } catch (err) {
+    console.error('[try/chat] Error:', err);
     return NextResponse.json({ error: 'invalid request' }, { status: 400 });
   }
 }
