@@ -5,7 +5,7 @@
  *
  * Quick start:
  * ```typescript
- * import { DsgOneClient } from "@dsg-one/sdk";
+ * import { DsgOneClient } from "dsg-one-sdk";
  *
  * const client = new DsgOneClient({ apiKey: "dsg_live_..." });
  * const result = await client.execute({ agentId, action: "scan", input: { ... } });
