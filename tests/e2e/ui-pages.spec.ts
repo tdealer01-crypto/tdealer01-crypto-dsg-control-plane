@@ -90,8 +90,13 @@ test.describe('Password Login Page UI', () => {
     await expect(page.locator('a:has-text("กลับไปหน้าเข้าสู่ระบบ")')).toBeVisible();
   });
 
-  test('should have working form submission', async ({ page }) => {
-    // Just verify form exists and can be submitted
+  test('should show loading state on submit', async ({ page }) => {
+    // Intercept POST to /auth/password-login to delay response and keep loading state visible
+    await page.route('**/auth/password-login', route => {
+      // Hold the request for 2 seconds to allow assertion of loading text
+      setTimeout(() => route.abort(), 2000);
+    });
+
     await page.locator('input#email').fill('test@example.com');
     await page.locator('input#password').fill('password123');
     const submitBtn = page.locator('button:has-text("เข้าสู่ระบบ")');
@@ -106,7 +111,7 @@ test.describe('Signup Page UI', () => {
   });
 
   test('should display signup form with all fields', async ({ page }) => {
-    // Verify all form inputs are visible
+    await expect(page.locator('text=สร้าง workspace แรกของคุณ')).toBeVisible();
     await expect(page.locator('input[name="full_name"]')).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.locator('input[name="workspace_name"]')).toBeVisible();
@@ -126,11 +131,7 @@ test.describe('Signup Page UI', () => {
   });
 
   test('should show link back to login', async ({ page }) => {
-    // Check for a link that mentions login or existing account
-    const loginLink = page.locator('a').filter({ hasText: /เข้าสู่ระบบ|มีบัญชี|Login/ });
-    // Verify page has navigation back to login
-    const hasPrevLink = await page.locator('a[href*="/login"]').isVisible().catch(() => false);
-    await expect(page.locator('body')).toContainText('DSG ONE');
+    await expect(page.locator('a:has-text("เข้าสู่ระบบ")')).toBeVisible();
   });
 });
 
@@ -138,11 +139,142 @@ test.describe('Signup Page UI', () => {
 // These tests are skipped in the current E2E test suite.
 // To enable them, configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
 
-test.describe('Documentation Page UI', () => {
-  test('should display docs page', async ({ page }) => {
-    await page.goto('/docs');
-    // Verify docs page loads (title or main heading should be visible)
-    await expect(page.locator('body')).toContainText(/docs|documentation|guide/i);
+test.describe('Dashboard Page UI', () => {
+  test.skip('should display dashboard header', async ({ page }) => {
+    // Skipped: Requires Supabase env vars NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+    await expect(page.locator('h1')).toContainText('ศูนย์ควบคุม');
+  });
+
+  test.skip('should show 4 KPI cards', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await expect(page.locator('text=Agents')).toBeVisible();
+    await expect(page.locator('text=Executions')).toBeVisible();
+    await expect(page.locator('text=Core Status')).toBeVisible();
+    await expect(page.locator('text=DB Status')).toBeVisible();
+  });
+
+  test.skip('should show system health indicator', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await expect(page.locator('text=สถานะระบบ')).toBeVisible();
+  });
+
+  test.skip('should show refresh button', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await expect(page.locator('button:has-text("รีเฟรช")')).toBeVisible();
+  });
+
+  test.skip('should show command center link', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await expect(page.locator('a:has-text("ศูนย์บัญชาการ")')).toBeVisible();
+  });
+
+  test.skip('should show products grid', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await expect(page.locator('text=Products')).toBeVisible();
+  });
+});
+
+test.describe('Hermes Dashboard UI', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/dashboard/hermes');
+  });
+
+  test.skip('should display tabs', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await expect(page.locator('button:has-text("overview")')).toBeVisible();
+    await expect(page.locator('button:has-text("agents")')).toBeVisible();
+    await expect(page.locator('button:has-text("executions")')).toBeVisible();
+    await expect(page.locator('button:has-text("governance")')).toBeVisible();
+  });
+
+  test.skip('should switch between tabs', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await page.locator('button:has-text("agents")').click();
+    await expect(page.locator('text=Agents tab content')).toBeVisible();
+
+    await page.locator('button:has-text("executions")').click();
+    await expect(page.locator('text=Executions tab content')).toBeVisible();
+  });
+
+  test.skip('should show Hermes Agent chat on overview tab', async ({ page }) => {
+    // Skipped: Requires Supabase env vars
+    await page.locator('button:has-text("overview")').click();
+    await expect(page.locator('h1:has-text("Hermes Agent")')).toBeVisible();
+    await expect(page.locator('text=Policy governance · Execution control · Audit trail')).toBeVisible();
+    await expect(page.locator('textarea[placeholder*="ถามเอเจนต์"]')).toBeVisible();
+  });
+});
+
+test.describe('Chat Widget UI', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/dashboard');
+  });
+
+  test.skip('should show floating chat button', async ({ page }) => {
+    // Skipped: Requires Supabase env vars to load dashboard
+    await expect(page.locator('button[aria-label="เปิดแชท AI"]')).toBeVisible();
+  });
+
+  test.skip('should open chat on click', async ({ page }) => {
+    // Skipped: Requires Supabase env vars to load dashboard
+    await page.locator('button[aria-label="เปิดแชท AI"]').click();
+    await expect(page.locator('text=DSG AI')).toBeVisible();
+    await expect(page.locator('text=พร้อมช่วยเหลือ')).toBeVisible();
+  });
+
+  test.skip('should show QA buttons in chat', async ({ page }) => {
+    // Skipped: Requires Supabase env vars to load dashboard
+    await page.locator('button[aria-label="เปิดแชท AI"]').click();
+    await expect(page.locator('text=ตรวจหน้านี้')).toBeVisible();
+    await expect(page.locator('text=ตรวจทั้งหมด')).toBeVisible();
+  });
+
+  test.skip('should show suggestion chips', async ({ page }) => {
+    // Skipped: Requires Supabase env vars to load dashboard
+    await page.locator('button[aria-label="เปิดแชท AI"]').click();
+    await expect(page.locator('text=ตรวจสอบระบบ')).toBeVisible();
+  });
+
+  test.skip('should have text input and send button', async ({ page }) => {
+    // Skipped: Requires Supabase env vars to load dashboard
+    await page.locator('button[aria-label="เปิดแชท AI"]').click();
+    await expect(page.locator('input[placeholder="พิมพ์คำถามหรือคำสั่ง..."]')).toBeVisible();
+    await expect(page.locator('button:has-text("ส่ง")')).toBeVisible();
+  });
+
+  test.skip('should close chat on X click', async ({ page }) => {
+    // Skipped: Requires Supabase env vars to load dashboard
+    await page.locator('button[aria-label="เปิดแชท AI"]').click();
+    await expect(page.locator('text=DSG AI')).toBeVisible();
+    await page.locator('button[aria-label="ปิดแชท"]').click();
+    await expect(page.locator('text=DSG AI')).not.toBeVisible();
+  });
+});
+
+test.describe('Docs Page UI', () => {
+  test('should display English docs at /docs/en', async ({ page }) => {
+    await page.goto('/docs/en');
+    await expect(page.locator('text=DSG ONE')).toBeVisible();
+    await expect(page.locator('text=User Guide')).toBeVisible();
+  });
+
+  test('should display Thai docs at /docs/th', async ({ page }) => {
+    await page.goto('/docs/th');
+    await expect(page.locator('text=DSG ONE')).toBeVisible();
+    await expect(page.locator('text=คู่มือการใช้งาน')).toBeVisible();
+  });
+
+  test('should have language switcher', async ({ page }) => {
+    await page.goto('/docs/en');
+    await expect(page.locator('a[href="/docs/th"]')).toBeVisible();
+    await expect(page.locator('a[href="/docs/en"]')).toBeVisible();
+  });
+
+  test('should switch language', async ({ page }) => {
+    await page.goto('/docs/en');
+    await page.locator('a[href="/docs/th"]').click();
+    await expect(page).toHaveURL(/\/docs\/th/);
+    await expect(page.locator('text=คู่มือการใช้งาน')).toBeVisible();
   });
 });
 
