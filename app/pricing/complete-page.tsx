@@ -1,63 +1,74 @@
 'use client';
 
-import Link from 'next/link';
+type PricingTier = {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  billingPeriod: 'none' | 'monthly' | 'yearly';
+  monthlyLimit: string;
+  highlight: boolean;
+  features: string[];
+  cta: string;
+  checkoutLink: string;
+};
 
-const pricingTiers = [
+const pricingTiers: PricingTier[] = [
   {
-    id: 'developer',
-    name: 'Developer',
-    description: 'For prototyping and small teams',
-    price: 'Free',
-    billingPeriod: 'none' as const,
-    monthlyLimit: '1,000 records/mo',
+    id: 'pro',
+    name: 'Pro',
+    description: 'For small teams and projects',
+    price: '$99',
+    billingPeriod: 'monthly' as const,
+    monthlyLimit: '10,000 executions/mo',
     highlight: false,
     features: [
       '✓ DSG ONE Determinism Engine',
       '✓ Gap-free sequence generation',
       '✓ SHA-256 hash chain verification',
       '✓ Basic audit export (JSON)',
-      '✓ Community support',
-      '✗ Merkle tree proofs',
-      '✗ SARIF export',
-      '✗ Priority support',
-      '✗ Custom SLAs',
-    ],
-    cta: 'Start Free',
-    checkoutLink: '/signup?plan=developer',
-  },
-  {
-    id: 'pro',
-    name: 'Professional',
-    description: 'For production deployments',
-    price: '$199',
-    billingPeriod: 'monthly' as const,
-    monthlyLimit: '1,000,000 records/mo',
-    highlight: true,
-    features: [
-      '✓ Everything in Developer',
-      '✓ Unlimited sequence generations',
-      '✓ Merkle tree audit proofs',
-      '✓ SARIF format export',
-      '✓ Multi-org support (5 orgs)',
       '✓ Email support (24h response)',
       '✓ Monthly compliance reports',
-      '✗ Custom rate limits',
+      '✗ Merkle tree proofs',
+      '✗ SARIF export',
       '✗ Dedicated support',
     ],
     cta: 'Start 14-Day Trial',
     checkoutLink: '/checkout?plan=pro',
   },
   {
+    id: 'business',
+    name: 'Business',
+    description: 'For production deployments',
+    price: '$199',
+    billingPeriod: 'monthly' as const,
+    monthlyLimit: '1,000,000 executions/mo',
+    highlight: true,
+    features: [
+      '✓ Everything in Pro',
+      '✓ Unlimited sequence generations',
+      '✓ Merkle tree audit proofs',
+      '✓ SARIF format export',
+      '✓ Multi-org support (unlimited orgs)',
+      '✓ Email support (24h response)',
+      '✓ Monthly compliance reports',
+      '✓ Custom rate limits',
+      '✗ Dedicated support',
+    ],
+    cta: 'Start 14-Day Trial',
+    checkoutLink: '/checkout?plan=business',
+  },
+  {
     id: 'enterprise',
     name: 'Enterprise',
     description: 'For mission-critical governance',
-    price: 'Custom',
-    billingPeriod: 'none' as const,
+    price: '$499',
+    billingPeriod: 'monthly' as const,
     monthlyLimit: 'Unlimited',
     highlight: false,
     features: [
-      '✓ Everything in Professional',
-      '✓ Unlimited organizations',
+      '✓ Everything in Business',
+      '✓ Unlimited organizations & executions',
       '✓ Custom rate limits & SLAs',
       '✓ White-label options',
       '✓ Dedicated success manager',
@@ -66,70 +77,86 @@ const pricingTiers = [
       '✓ On-premises deployment',
       '✓ 99.99% uptime SLA',
     ],
-    cta: 'Request Quote',
-    checkoutLink: '/enterprise-contact',
+    cta: 'Start 30-Day Trial',
+    checkoutLink: '/checkout?plan=enterprise',
   },
 ];
 
-const features = [
+type FeatureItem = {
+  name: string;
+  pro: boolean | string;
+  business: boolean | string;
+  enterprise: boolean | string;
+};
+
+type FeatureCategory = {
+  category: string;
+  items: FeatureItem[];
+};
+
+const features: FeatureCategory[] = [
   {
     category: 'Core Features',
     items: [
-      { name: 'Deterministic Security Gateway', developer: true, pro: true, enterprise: true },
-      { name: 'Gap-Free Sequence Generation', developer: true, pro: true, enterprise: true },
-      { name: 'SHA-256 Hash Chain Verification', developer: true, pro: true, enterprise: true },
-      { name: 'Merkle Tree Audit Proofs', developer: false, pro: true, enterprise: true },
-      { name: 'SARIF Format Export', developer: false, pro: true, enterprise: true },
-      { name: 'Replay Protection', developer: true, pro: true, enterprise: true },
+      { name: 'Deterministic Security Gateway', pro: true, business: true, enterprise: true },
+      { name: 'Gap-Free Sequence Generation', pro: true, business: true, enterprise: true },
+      { name: 'SHA-256 Hash Chain Verification', pro: true, business: true, enterprise: true },
+      { name: 'Merkle Tree Audit Proofs', pro: false, business: true, enterprise: true },
+      { name: 'SARIF Format Export', pro: false, business: true, enterprise: true },
+      { name: 'Replay Protection', pro: true, business: true, enterprise: true },
     ],
   },
   {
     category: 'Compliance & Security',
     items: [
-      { name: 'EU AI Act Evidence Pack', developer: true, pro: true, enterprise: true },
-      { name: 'ISO 42001 Readiness', developer: true, pro: true, enterprise: true },
-      { name: 'CCVS v1.2 Compliance Chain', developer: true, pro: true, enterprise: true },
-      { name: 'Z3 Theorem Verification', developer: true, pro: true, enterprise: true },
-      { name: 'Monthly Compliance Reports', developer: false, pro: true, enterprise: true },
-      { name: 'Custom Compliance Reporting', developer: false, pro: false, enterprise: true },
+      { name: 'EU AI Act Evidence Pack', pro: true, business: true, enterprise: true },
+      { name: 'ISO 42001 Readiness', pro: true, business: true, enterprise: true },
+      { name: 'CCVS v1.2 Compliance Chain', pro: true, business: true, enterprise: true },
+      { name: 'Z3 Theorem Verification', pro: true, business: true, enterprise: true },
+      { name: 'Monthly Compliance Reports', pro: true, business: true, enterprise: true },
+      { name: 'Custom Compliance Reporting', pro: false, business: false, enterprise: true },
     ],
   },
   {
     category: 'Support & Operations',
     items: [
-      { name: 'Community Support', developer: true, pro: false, enterprise: false },
-      { name: 'Email Support (24h)', developer: false, pro: true, enterprise: false },
-      { name: 'Priority Support (1h)', developer: false, pro: false, enterprise: true },
-      { name: 'Dedicated Success Manager', developer: false, pro: false, enterprise: true },
-      { name: 'SLA Guarantee', developer: false, pro: false, enterprise: '99.99%' },
+      { name: 'Email Support (24h)', pro: true, business: true, enterprise: true },
+      { name: 'Priority Support (1h)', pro: false, business: false, enterprise: true },
+      { name: 'Dedicated Success Manager', pro: false, business: false, enterprise: true },
+      { name: 'SLA Guarantee', pro: false, business: false, enterprise: '99.99%' },
     ],
   },
   {
     category: 'Scalability',
     items: [
-      { name: 'Records/Month', developer: '1,000', pro: '1,000,000', enterprise: 'Unlimited' },
-      { name: 'Concurrent Requests', developer: '100/sec', pro: '10,000/sec', enterprise: 'Custom' },
-      { name: 'Organizations Supported', developer: '1', pro: '5', enterprise: 'Unlimited' },
-      { name: 'API Rate Limits', developer: 'Standard', pro: 'Standard', enterprise: 'Custom' },
-      { name: 'Data Retention', developer: '30 days', pro: '90 days', enterprise: 'Unlimited' },
+      { name: 'Executions/Month', pro: '10,000', business: '1,000,000', enterprise: 'Unlimited' },
+      { name: 'Concurrent Requests', pro: '100/sec', business: '10,000/sec', enterprise: 'Custom' },
+      { name: 'Organizations Supported', pro: '1', business: 'Unlimited', enterprise: 'Unlimited' },
+      { name: 'API Rate Limits', pro: 'Standard', business: 'Custom', enterprise: 'Custom' },
+      { name: 'Data Retention', pro: '90 days', business: 'Unlimited', enterprise: 'Unlimited' },
     ],
   },
   {
     category: 'Deployment',
     items: [
-      { name: 'Cloud Hosted', developer: true, pro: true, enterprise: true },
-      { name: 'Multi-Region', developer: false, pro: true, enterprise: true },
-      { name: 'On-Premises Option', developer: false, pro: false, enterprise: true },
-      { name: 'Private VPC', developer: false, pro: false, enterprise: true },
-      { name: 'White-Label', developer: false, pro: false, enterprise: true },
+      { name: 'Cloud Hosted', pro: true, business: true, enterprise: true },
+      { name: 'Multi-Region', pro: false, business: true, enterprise: true },
+      { name: 'On-Premises Option', pro: false, business: false, enterprise: true },
+      { name: 'Private VPC', pro: false, business: false, enterprise: true },
+      { name: 'White-Label', pro: false, business: false, enterprise: true },
     ],
   },
 ];
 
-const faqs = [
+type FAQ = {
+  question: string;
+  answer: string;
+};
+
+const faqs: FAQ[] = [
   {
-    question: 'Can I start free and upgrade later?',
-    answer: 'Yes! The Developer tier is completely free with no credit card required. You can upgrade to Professional or Enterprise at any time.',
+    question: 'Do you offer a free trial?',
+    answer: 'Yes! Pro and Business tiers include 14 days free trial. Enterprise tier includes 30 days free trial. No credit card required to start.',
   },
   {
     question: 'What happens if I exceed my monthly limit?',
@@ -137,19 +164,23 @@ const faqs = [
   },
   {
     question: 'Do you offer annual billing discounts?',
-    answer: 'Yes! Annual billing for Professional tier includes 20% discount. Contact us for Enterprise annual pricing.',
+    answer: 'Yes! Annual billing includes 20% discount on all tiers. Contact us for custom enterprise pricing.',
   },
   {
     question: 'What about data retention and backups?',
-    answer: 'Developer: 30 days, Professional: 90 days, Enterprise: Unlimited. All tiers include daily automated backups.',
+    answer: 'Pro: 90 days, Business: Unlimited, Enterprise: Unlimited. All tiers include daily automated backups and point-in-time recovery.',
   },
   {
-    question: 'Is there a free trial for Professional?',
-    answer: 'Yes! We offer 14 days free access to Professional tier to evaluate the full feature set.',
+    question: 'Can I upgrade or downgrade anytime?',
+    answer: 'Yes! You can upgrade or downgrade your plan anytime. Changes take effect at your next billing cycle.',
   },
   {
-    question: 'Can I migrate from Developer to Professional?',
-    answer: 'Absolutely. All your data and configurations transfer automatically. No downtime.',
+    question: 'What about MCP API subscriptions?',
+    answer: 'Separate from these plans, we offer MCP API subscriptions at ฿490/month (approximately $14 USD) with 10,000 calls/month for integrating with external services.',
+  },
+  {
+    question: 'Do you offer Skills Bundles?',
+    answer: 'Yes! We offer specialized Skills Bundles for Finance, Development, Compliance, and Operations domains. Contact sales for bundle pricing and features.',
   },
 ];
 
@@ -234,34 +265,43 @@ export default function CompletePricingPage() {
       {/* Feature Comparison */}
       <section className="mx-auto max-w-6xl px-6 pb-16">
         <h2 className="text-4xl font-bold mb-12">Feature Comparison</h2>
-        {features.map((category) => (
-          <div key={category.category} className="mb-12">
-            <h3 className="text-xl font-bold text-slate-300 mb-6 uppercase tracking-wider text-xs">
-              {category.category}
-            </h3>
-            <div className="border border-white/10 rounded-xl overflow-hidden">
-              {category.items.map((item, index) => (
+        <div className="border border-white/10 rounded-xl overflow-hidden">
+          {/* Header row */}
+          <div className="grid grid-cols-4 gap-4 p-4 bg-white/[0.05] border-b border-white/10 font-bold">
+            <div className="text-slate-300">Feature</div>
+            <div className="text-center text-slate-300">Pro</div>
+            <div className="text-center text-slate-300">Business</div>
+            <div className="text-center text-slate-300">Enterprise</div>
+          </div>
+          {/* Feature rows */}
+          {features.map((category, categoryIndex) => (
+            <div key={category.category}>
+              {categoryIndex > 0 && <div className="border-t border-white/10" />}
+              <div className="bg-white/[0.03] p-4 font-bold text-xs uppercase tracking-wider text-slate-400 border-b border-white/10">
+                {category.category}
+              </div>
+              {category.items.map((item, itemIndex) => (
                 <div
                   key={item.name}
                   className={`grid grid-cols-4 gap-4 p-4 ${
-                    index % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.01]'
-                  } ${index !== category.items.length - 1 ? 'border-b border-white/10' : ''}`}
+                    itemIndex % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.01]'
+                  } ${itemIndex !== category.items.length - 1 ? 'border-b border-white/10' : ''}`}
                 >
                   <div className="font-medium text-slate-300">{item.name}</div>
-                  <div className="text-center">
-                    {item.developer === true ? (
-                      <span className="text-emerald-400">✓</span>
-                    ) : typeof item.developer === 'string' ? (
-                      <span className="text-slate-400 text-sm">{item.developer}</span>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
-                  </div>
                   <div className="text-center">
                     {item.pro === true ? (
                       <span className="text-emerald-400">✓</span>
                     ) : typeof item.pro === 'string' ? (
                       <span className="text-slate-400 text-sm">{item.pro}</span>
+                    ) : (
+                      <span className="text-slate-500">—</span>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    {item.business === true ? (
+                      <span className="text-emerald-400">✓</span>
+                    ) : typeof item.business === 'string' ? (
+                      <span className="text-slate-400 text-sm">{item.business}</span>
                     ) : (
                       <span className="text-slate-500">—</span>
                     )}
@@ -278,8 +318,8 @@ export default function CompletePricingPage() {
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
       {/* FAQs */}
