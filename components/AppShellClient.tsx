@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import EntropyField from './canvas/EntropyField';
 import { parseSseData, formatAgentEventMessage } from '../lib/agent/chat-event';
+import { ChatShell, AgentTimeline, type ChatMessage, type ChatSuggestion, type AgentEvent } from '@/components/ui';
 
 type MonitorPayload = {
   ok: boolean;
@@ -56,11 +57,6 @@ type MonitorPayload = {
   }>;
 };
 
-type ChatMessage = {
-  id: string;
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-};
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -111,16 +107,21 @@ export default function AppShellPage() {
   const [monitor, setMonitor] = useState<MonitorPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'm0',
-      role: 'system',
+      role: 'assistant',
       content:
         'Authenticated command workspace ready. Review readiness, entropy, alerts, and operator context before taking action.',
     },
   ]);
+  const [sseEvents, setSseEvents] = useState<AgentEvent[]>([]);
+
+  const suggestions: ChatSuggestion[] = [
+    { label: 'Readiness analysis', prompt: 'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend the next operator action.' },
+    { label: 'Quick status', prompt: 'What is the current system status?' },
+  ];
 
   useEffect(() => {
     let alive = true;
@@ -190,19 +191,17 @@ export default function AppShellPage() {
     [alerts.length, deterministic, entropy, readinessStatus],
   );
 
-  async function submitPrompt() {
-    const value = draft.trim();
-    if (!value || chatBusy) return;
+  const submitPrompt = async (message: string) => {
+    if (!message.trim() || chatBusy) return;
 
-    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', content: value }]);
-    setDraft('');
+    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', content: message }]);
     setChatBusy(true);
 
     try {
       const res = await fetch('/api/agent-chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: value }),
+        body: JSON.stringify({ message }),
       });
 
       if (!res.ok) {
@@ -215,6 +214,14 @@ export default function AppShellPage() {
 
       const decoder = new TextDecoder();
       let buffer = '';
+      const timelineEvents: AgentEvent[] = [];
+      const assistantMessage: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: '',
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
 
       while (true) {
         const { done, value: chunk } = await reader.read();
@@ -228,16 +235,19 @@ export default function AppShellPage() {
           if (!raw.startsWith('data: ')) continue;
           const event = parseSseData(raw);
           if (!event) continue;
+          timelineEvents.push(event);
+          setSseEvents([...timelineEvents]);
           const message = formatAgentEventMessage(event);
-          if (!message) continue;
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `a-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-              role: 'assistant',
-              content: message,
-            },
-          ]);
+          if (message) {
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              const lastMsg = newMessages[newMessages.length - 1];
+              if (lastMsg && lastMsg.role === 'assistant') {
+                lastMsg.content = (lastMsg.content ? lastMsg.content + '\n' : '') + message;
+              }
+              return newMessages;
+            });
+          }
         }
       }
     } catch (err) {
@@ -252,7 +262,7 @@ export default function AppShellPage() {
     } finally {
       setChatBusy(false);
     }
-  }
+  };
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#050505] text-[#F7F7F2]">
@@ -304,64 +314,37 @@ export default function AppShellPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
           <section className="flex min-h-[780px] flex-col rounded-[2rem] border border-white/10 bg-[#0B0B0F]/90 shadow-[0_24px_120px_rgba(0,0,0,0.34)]">
-            <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
-              <div>
-                <p className="text-sm font-semibold text-white">Agent Console</p>
-                <p className="text-xs leading-5 text-slate-400">
-                  Ask for readiness, active alerts, audit status, policies, capacity, or execution context.
-                </p>
-              </div>
-              <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1 text-xs font-semibold text-[#F5D76E]">
+            <div className="flex flex-col border-b border-white/10 px-5 py-4">
+              <p className="text-sm font-semibold text-white">Agent Console</p>
+              <p className="text-xs leading-5 text-slate-400">
+                Ask for readiness, active alerts, audit status, policies, capacity, or execution context.
+              </p>
+              <span className="mt-3 inline-flex rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1 w-fit text-xs font-semibold text-[#F5D76E]">
                 Human-reviewed actions
               </span>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={
-                    message.role === 'user'
-                      ? 'ml-auto max-w-[88%] rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-4 py-3 text-sm leading-6 text-[#F7F7F2]'
-                      : message.role === 'assistant'
-                        ? 'max-w-[88%] rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm leading-6 text-slate-100'
-                        : 'max-w-[92%] rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-50'
-                  }
-                >
-                  {message.content}
-                </div>
-              ))}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <ChatShell
+                title=""
+                description=""
+                messages={messages}
+                onSubmit={submitPrompt}
+                isLoading={chatBusy}
+                suggestions={suggestions}
+                inputPlaceholder="Ask for readiness, alerts, policies, capacity..."
+                accentColor="blue"
+                maxHeight="calc(100% - 8px)"
+                compact={true}
+              />
             </div>
 
-            <div className="border-t border-white/10 p-4">
-              <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Ask for readiness, active alerts, audit status, policies, capacity, or execution context..."
-                  className="min-h-[112px] rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-600 transition focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
-                />
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={submitPrompt}
-                    disabled={chatBusy}
-                    className="rounded-2xl bg-[#D4AF37] px-5 py-3 text-sm font-semibold text-black shadow-[0_18px_60px_rgba(212,175,55,0.18)] transition hover:bg-[#F5D76E] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
-                  >
-                    {chatBusy ? 'Running…' : 'Run in Agent Chat'}
-                  </button>
-                  <button
-                    onClick={() =>
-                      setDraft(
-                        'Analyze current readiness, active alerts, determinism health, and quota pressure. Recommend the next operator action.',
-                      )
-                    }
-                    className="rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-50"
-                  >
-                    Use Readiness Prompt
-                  </button>
-                </div>
+            {sseEvents.length > 0 && (
+              <div className="border-t border-white/10 px-5 py-4">
+                <p className="text-xs font-semibold text-slate-400 mb-3">Tool execution timeline</p>
+                <AgentTimeline events={sseEvents} isLoading={chatBusy} accentColor="blue" />
               </div>
-            </div>
+            )}
           </section>
 
           <section className="space-y-6 rounded-[2rem] border border-white/10 bg-[#0B0B0F]/90 p-5 shadow-[0_24px_120px_rgba(0,0,0,0.34)]">

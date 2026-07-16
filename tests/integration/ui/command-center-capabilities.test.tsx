@@ -25,7 +25,8 @@ describe('command center capabilities surface', () => {
     expect(pageSource).toContain('AppShellClient');
     expect(pageSource).toContain("redirect('/login?next=/app-shell')");
     expect(clientSource).toContain('Split-pane chat and live monitor');
-    expect(clientSource).toContain('Run in Agent Chat');
+    expect(clientSource).toContain('ChatShell');
+    expect(clientSource).toContain('AgentTimeline');
     expect(clientSource).toContain("fetch('/api/core/monitor'");
     expect(clientSource).toContain("fetch('/api/agent-chat'");
   });
