@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type Item = {
   id: string;
@@ -33,6 +36,7 @@ function formatDate(value?: string | null) {
 export default function LedgerPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [coreItems, setCoreItems] = useState<CoreItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -48,6 +52,9 @@ export default function LedgerPage() {
       .catch((err) => {
         if (!alive) return;
         setError(err instanceof Error ? err.message : 'Failed to load ledger');
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
@@ -55,38 +62,72 @@ export default function LedgerPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
-      <div className="mx-auto max-w-7xl">
-        <h1 className="text-3xl font-semibold">Ledger</h1>
-        <p className="mt-2 text-slate-400">Control-plane evidence plus DSG core ledger chain.</p>
-        {error ? <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">Control-plane</h2>
-            <div className="mt-4 space-y-3">
-              {items.map((item) => (
-                <div key={item.id} className="rounded-xl border border-slate-800 p-4">
-                  <p className="font-semibold">{item.decision || '-'}</p>
-                  <p className="mt-1 text-sm text-slate-400">{item.execution_id || item.id}</p>
-                  <p className="mt-2 text-sm text-slate-300">{item.reason || '-'}</p>
-                  <p className="mt-2 text-xs text-slate-500">{formatDate(item.created_at)}</p>
-                </div>
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <PageHeader
+          title="Ledger"
+          description="Control-plane evidence plus DSG core ledger chain."
+        />
+
+        {error && (
+          <Card variant="error" className="mt-6">
+            <p className="text-sm font-medium">Error loading ledger</p>
+            <p className="mt-1 text-xs opacity-90">{error}</p>
+          </Card>
+        )}
+
+        {!loading && items.length === 0 && coreItems.length === 0 && !error && (
+          <EmptyState
+            title="No ledger entries"
+            description="No control-plane or DSG core entries found"
+          />
+        )}
+
+        {loading && (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-24 rounded-lg border border-slate-700 bg-slate-900 animate-pulse" />
               ))}
             </div>
-          </section>
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">DSG Core</h2>
-            <div className="mt-4 space-y-3">
-              {coreItems.map((item) => (
-                <div key={item.id} className="rounded-xl border border-slate-800 p-4">
-                  <p className="font-semibold">{item.decision || item.gate_result || '-'}</p>
-                  <p className="mt-1 text-sm text-slate-400">sequence {item.sequence}</p>
-                  <p className="mt-2 text-xs text-slate-500">{formatDate(item.created_at)}</p>
-                </div>
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-24 rounded-lg border border-slate-700 bg-slate-900 animate-pulse" />
               ))}
             </div>
-          </section>
-        </div>
+          </div>
+        )}
+
+        {!loading && (items.length > 0 || coreItems.length > 0) && (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <Card>
+              <h2 className="text-lg font-semibold text-slate-100">Control-plane</h2>
+              <div className="mt-4 space-y-2">
+                {items.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
+                    <p className="font-semibold text-slate-100">{item.decision || '-'}</p>
+                    <p className="mt-1 text-xs text-slate-400">{item.execution_id || item.id}</p>
+                    <p className="mt-2 text-xs text-slate-300">{item.reason || '-'}</p>
+                    <p className="mt-2 text-xs text-slate-500">{formatDate(item.created_at)}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <h2 className="text-lg font-semibold text-slate-100">DSG Core</h2>
+              <div className="mt-4 space-y-2">
+                {coreItems.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
+                    <p className="font-semibold text-slate-100">{item.decision || item.gate_result || '-'}</p>
+                    <p className="mt-1 text-xs text-slate-400">sequence {item.sequence}</p>
+                    <p className="mt-2 text-xs text-slate-500">{formatDate(item.created_at)}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </main>
   );

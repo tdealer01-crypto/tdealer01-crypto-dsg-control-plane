@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { StatCard } from '@/components/ui/StatCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 
 type Capacity = {
   plan_key: string;
@@ -28,6 +33,7 @@ function formatDate(value?: string | null) {
 
 export default function CapacityPage() {
   const [data, setData] = useState<Capacity | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -42,37 +48,100 @@ export default function CapacityPage() {
       .catch((err) => {
         if (!alive) return;
         setError(err instanceof Error ? err.message : 'Failed to load capacity');
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
     };
   }, []);
 
+  const handleRetry = () => {
+    setLoading(true);
+    setError('');
+    window.location.reload();
+  };
+
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
-      <div className="mx-auto max-w-6xl">
-        <h1 className="text-3xl font-semibold">Capacity</h1>
-        <p className="mt-2 text-slate-400">Plan quota, remaining executions, utilization, and projected overage.</p>
-        {error ? <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div> : null}
-        {data ? (
-          <div className="mt-8 grid gap-6 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm text-slate-400">Plan</p><p className="mt-3 text-3xl font-semibold">{data.plan_key}</p></div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm text-slate-400">Executions</p><p className="mt-3 text-3xl font-semibold">{data.executions}</p></div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm text-slate-400">Remaining</p><p className="mt-3 text-3xl font-semibold">{data.remaining_executions}</p></div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm text-slate-400">Projected</p><p className="mt-3 text-3xl font-semibold">US${data.projected_amount_usd}</p></div>
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <PageHeader
+          title="Capacity"
+          description="Plan quota, remaining executions, utilization, and projected overage"
+        />
+
+        {error && (
+          <Card variant="error" className="mt-6">
+            <p className="text-sm font-medium">Error loading capacity</p>
+            <p className="mt-1 text-xs opacity-90">{error}</p>
+            <button
+              onClick={handleRetry}
+              className="mt-3 text-xs font-semibold text-red-300 hover:text-red-200 underline"
+            >
+              Try again
+            </button>
+          </Card>
+        )}
+
+        {loading && (
+          <div className="mt-6 grid gap-4 md:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
           </div>
-        ) : null}
-        {data ? (
-          <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
-            <p>Status: {data.subscription_status}</p>
-            <p>Billing interval: {data.billing_interval}</p>
-            <p>Billing period: {data.billing_period}</p>
-            <p>Utilization: {data.utilization}</p>
-            <p>Current period start: {formatDate(data.current_period_start)}</p>
-            <p>Current period end: {formatDate(data.current_period_end)}</p>
-            <p>Overage executions: {data.overage_executions}</p>
-          </div>
-        ) : null}
+        )}
+
+        {!loading && !data && !error && (
+          <EmptyState
+            title="No capacity data"
+            description="Unable to retrieve capacity information"
+          />
+        )}
+
+        {data && (
+          <>
+            <div className="mt-6 grid gap-4 md:grid-cols-4">
+              <StatCard label="Plan" value={data.plan_key} />
+              <StatCard label="Executions" value={String(data.executions)} />
+              <StatCard label="Remaining" value={String(data.remaining_executions)} variant="info" />
+              <StatCard label="Projected" value={`$${data.projected_amount_usd}`} variant="warning" />
+            </div>
+
+            <Card className="mt-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</p>
+                  <p className="mt-2 text-sm text-slate-100">{data.subscription_status}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Billing Interval</p>
+                  <p className="mt-2 text-sm text-slate-100">{data.billing_interval}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Billing Period</p>
+                  <p className="mt-2 text-sm text-slate-100">{data.billing_period}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Utilization</p>
+                  <p className="mt-2 text-sm text-slate-100">{data.utilization}%</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Current Period Start</p>
+                  <p className="mt-2 text-sm text-slate-100">{formatDate(data.current_period_start)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Current Period End</p>
+                  <p className="mt-2 text-sm text-slate-100">{formatDate(data.current_period_end)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Overage Executions</p>
+                  <p className="mt-2 text-sm text-slate-100">{data.overage_executions}</p>
+                </div>
+              </div>
+            </Card>
+          </>
+        )}
       </div>
     </main>
   );
