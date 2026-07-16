@@ -61,7 +61,7 @@ AI Agent → [DSG Gate: policy + replay + quota + evidence] → Execute / Block 
 | "Production-ready" | "Production-connected" |
 | "Certified / Third-party audited" | "Audit-ready / Pre-audit evidence mapping" |
 | "WORM-certified storage" | "SHA-256 hash chain, tamper-evident by construction" |
-| "Usage-based metered billing" | "Flat-tier quota; metered infra exists but not wired" |
+| "Usage-based metered billing active" | "Flat-tier quota; metering code wired into execution but Stripe meter env not yet configured" |
 | "SDK one-liner connect" | "SDK ready, not yet published to npm" |
 | "SLA 99.9%" | "No SLA claimed" |
 
@@ -128,7 +128,7 @@ Each viewer sees: Decision Explainer + Audit Trail + Compliance Mapping
 | # | Action | Timeline | Blocked By |
 |---|--------|----------|------------|
 | 1 | **Publish SDK to npm + GitHub App** | Week 1 | — |
-| 2 | **Wire Stripe metered billing → execution** | Week 2 | SDK |
+| 2 | **Configure Stripe meter env + test meter emission** | Week 2 | SDK |
 | 3 | **3 Finance Ops pilots → case studies** | Weeks 2–6 | — |
 | 4 | **Optimize Delivery Proof sharing** | Week 2 | — |
 | 5 | **CISO/Enterprise pipeline** | Weeks 4–12 | Case studies |
