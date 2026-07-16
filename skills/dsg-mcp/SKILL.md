@@ -137,6 +137,142 @@ mcp_servers:
     timeout_ms: 30000
 ```
 
+## OAuth 2.0 Setup for claude.ai Remote Connector
+
+### Quick Setup: Connect DSG MCP to claude.ai (Recommended)
+
+**easiest method for claude.ai web app users — one-click OAuth connection**
+
+#### Step 1: Open claude.ai Connector Settings
+
+1. Visit https://claude.ai/settings/connectors
+2. Click "+ Add Custom Connector"
+
+#### Step 2: Paste OAuth Server URL
+
+```
+https://tdealer01-crypto-dsg-control-plane.vercel.app
+```
+
+claude.ai will auto-discover:
+- Authorization endpoint: `/api/mcp/oauth/authorize`
+- Token endpoint: `/api/mcp/oauth/token`
+- Revocation endpoint: `/api/mcp/oauth/revoke`
+
+#### Step 3: Authenticate & Approve
+
+1. Click "Connect"
+2. Log in to your DSG account (if not already authenticated)
+3. Review consent screen
+4. Click "✓ Authorize"
+5. Token automatically exchanged and stored in claude.ai
+
+#### Step 4: Verify MCP Tools Available
+
+In claude.ai chat, ask:
+```
+"What MCP tools are available?"
+```
+
+or
+
+```
+"List all App Builder jobs in DSG"
+```
+
+### OAuth Technical Details
+
+**What Happens Behind the Scenes:**
+
+1. **PKCE Code Challenge** — Security protection for mobile/SPA clients
+   - claude.ai generates: `code_verifier` (128 random chars)
+   - Hashes it: `code_challenge = SHA256(code_verifier)`
+   - Sends to DSG with `code_challenge_method=S256`
+
+2. **State Token** — CSRF protection
+   - DSG generates HMAC-SHA256 signed state token
+   - 30-minute TTL
+   - Validated before granting authorization code
+
+3. **Authorization Code** — Temporary credential
+   - DSG issues `code_` + random hex (10-minute TTL)
+   - One-time use only (burned after token exchange)
+   - Sent back to claude.ai
+
+4. **Token Exchange** — Code → Access Token
+   - claude.ai sends: `code + code_verifier + client_credentials`
+   - DSG verifies PKCE: `SHA256(code_verifier) == stored_code_challenge`
+   - DSG issues opaque access token: `mcp_` + random hex (1-hour TTL)
+   - Token linked to your MCP API key and subscription
+
+5. **Tool Calls** — Token validation at execution
+   - claude.ai sends: `Authorization: Bearer mcp_...`
+   - DSG validates token signature + expiry
+   - DSG checks subscription active (Stripe)
+   - DSG checks quota not exceeded (10,000 calls/month)
+   - DSG records usage for billing
+   - Tool executes if all checks pass
+
+**Token Validation Errors:**
+
+| Status | Error | Fix |
+|--------|-------|-----|
+| 401 | `invalid or expired token` | Token expired (1-hour TTL) — disconnect/reconnect in claude.ai |
+| 402 | `subscription not active` | No active Stripe subscription — upgrade at `/dashboard/billing` |
+| 402 | `quota exceeded` | Monthly limit reached (10,000 calls/month) — upgrade plan or wait for next cycle |
+
+### Revoking OAuth Access
+
+To disconnect DSG MCP from claude.ai:
+
+1. **Via claude.ai:**
+   - Go to https://claude.ai/settings/connectors
+   - Find "DSG ONE MCP"
+   - Click "Disconnect"
+   - Token automatically revoked
+
+2. **Via curl (manual):**
+   ```bash
+   curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp/oauth/revoke \
+     -H "Authorization: Bearer mcp_your_token_here"
+   ```
+
+3. **Via Dashboard:**
+   - Go to `/dashboard/billing`
+   - View "Connected Applications"
+   - Click "Revoke Access"
+
+### OAuth Metadata (RFC 8414)
+
+DSG publishes OAuth discovery metadata at:
+
+```bash
+curl https://tdealer01-crypto-dsg-control-plane.vercel.app/.well-known/oauth-authorization-server
+```
+
+Response includes:
+- Supported scopes: `["mcp:execute"]`
+- Code challenge methods: `["S256"]` (PKCE S256)
+- Grant types: `["authorization_code", "refresh_token"]`
+- Full endpoint URLs
+
+### Backward Compatibility: Bearer Token Auth
+
+Existing users with `DSG_ACCESS_TOKEN` bearer tokens can still use:
+
+```bash
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/mcp-server \
+  -H "Authorization: Bearer sk_test_old_api_key_123" \
+  -H "Content-Type: application/json" \
+  -d '{ "jsonrpc": "2.0", "method": "tools/list" }'
+```
+
+Old-style tokens are passed through to downstream auth unchanged. Only tokens starting with `mcp_` are validated as OAuth tokens.
+
+**Recommendation:** Migrate to OAuth setup for better token rotation and revocation flow.
+
+---
+
 ## Quick Start
 
 ### 1. Verify Server is Reachable
