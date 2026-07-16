@@ -109,7 +109,7 @@ export function generateAuthorizationCode(): string {
  * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashAuthorizationCode(code: string): string {
-  // codeql [js/weak-cryptographic-algorithm] opaque token hashing, not password hashing
+  // codeql [js/weak-cryptographic-algorithm]
   return crypto.createHash('sha256').update(code).digest('hex');
 }
 
