@@ -9,183 +9,213 @@ const BASE_URL = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
 const STEPS = [
   {
     num: '01',
-    title: 'Declare your session',
-    subtitle: 'Tell DSG ONE which actions your agent is allowed to perform — before it runs.',
+    title: 'Get your API key',
+    subtitle: 'Retrieve your DSG_API_KEY and DSG_AGENT_ID from the dashboard.',
     description:
-      'Every agent session starts with a declaration. This is your contract: the gate will only allow actions that match what you declared here.',
-    curl: `curl -X POST ${BASE_URL}/api/try/gate \\
+      'Every agent needs credentials to connect to the production governed path. Visit /dashboard/integrations to get your API key and agent ID — or download a pre-filled helper script that includes both automatically.',
+    curl: `# Get your API key from /dashboard/integrations
+DSG_API_KEY="dsg_live_xxxxxxxxxxxx"
+DSG_AGENT_ID="my-agent-001"
+
+curl -X POST ${BASE_URL}/api/execute \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $DSG_API_KEY" \\
   -d '{
-    "session_id": "my-agent-run-001",
-    "declared_actions": [
-      "read database",
-      "send email",
-      "update user record"
-    ],
-    "ttl_minutes": 30
+    "agent_id": "'$DSG_AGENT_ID'",
+    "action": "read database",
+    "input": {"table": "invoices"},
+    "context": {"source": "agent"}
   }'`,
-    python: `import requests
+    python: `# Install the official template:
+# curl ${BASE_URL}/api/quickstart/download?lang=python > dsg_gate.py
 
-response = requests.post(
-    "${BASE_URL}/api/try/gate",
-    json={
-        "session_id": "my-agent-run-001",
-        "declared_actions": [
-            "read database",
-            "send email",
-            "update user record"
-        ],
-        "ttl_minutes": 30,
-    }
-)
+from dsg_gate import gate
 
-data = response.json()
-print(data["decision"])          # "ALLOW"
-print(data["declaration_stamp"]) # "DSG-A4B2C1D3"`,
-    javascript: `const response = await fetch("${BASE_URL}/api/try/gate", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    session_id: "my-agent-run-001",
-    declared_actions: [
-      "read database",
-      "send email",
-      "update user record",
-    ],
-    ttl_minutes: 30,
-  }),
-});
+# Before every agent action, ask the gate:
+decision = gate("my-session-001", "read database")
 
-const data = await response.json();
-console.log(data.decision);          // "ALLOW"
-console.log(data.declaration_stamp); // "DSG-A4B2C1D3"`,
+if decision == "ALLOW":
+    # Safe to execute
+    fetch_invoices()
+else:
+    # BLOCK — do not execute
+    print(f"Action blocked: {decision}")`,
+    javascript: `// Download the official template:
+// curl ${BASE_URL}/api/quickstart/download?lang=javascript > dsg_gate.js
+
+const { gate } = require('./dsg_gate');
+
+// Before every agent action, ask the gate:
+const decision = await gate("my-session-001", "read database");
+
+if (decision === "ALLOW") {
+  // Safe to execute
+  fetchInvoices();
+} else {
+  // BLOCK — do not execute
+  console.log(\`Action blocked: \${decision}\`);
+}`,
     response: `{
-  "ok": true,
   "decision": "ALLOW",
-  "session_id": "my-agent-run-001",
-  "declaration_stamp": "DSG-A4B2C1D3",
-  "declared_actions": ["read database", "send email", "update user record"],
-  "ttl_minutes": 30,
-  "expires_at": "2026-05-18T05:02:00.000Z",
-  "agent_guidance": {
-    "message": "Session declared. Gate is active for 30 minutes."
-  }
+  "reason": "action allowed by policy",
+  "proof_hash": "sha256:abc123def456...",
+  "execution_id": "exec-2026-07-16-abcdef",
+  "stop_reason": null
 }`,
   },
   {
     num: '02',
     title: 'Gate every action',
-    subtitle: 'Before your agent executes anything, ask the gate. Gets a cryptographic stamp if allowed.',
+    subtitle: 'Call /api/execute before side effects — get decision + proof.',
     description:
-      'Send the action string to the gate before your agent runs it. If the action matches your declaration, you get an ALLOW stamp. If not — or if it matches a permanently blocked pattern — you get BLOCK with full guidance.',
-    curl: `curl -X POST ${BASE_URL}/api/try/gate \\
+      'Submit your agent action with agent_id, action name, input data, and context. The governed path returns a decision: ALLOW (proceed), BLOCK (stop), REVIEW (escalate), or STABILIZE (queue). All decisions are logged with proof hashes for audit trails.',
+    curl: `curl -X POST ${BASE_URL}/api/execute \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $DSG_API_KEY" \\
   -d '{
-    "session_id": "my-agent-run-001",
-    "action": "send email to user@example.com"
+    "agent_id": "my-agent-001",
+    "action": "send email",
+    "input": {"to": "user@example.com", "subject": "Invoice"},
+    "context": {"risk_score": 0.2, "source": "agent"}
   }'`,
-    python: `def gate_check(session_id: str, action: str) -> dict:
+    python: `import requests
+
+def execute_with_gate(agent_id: str, action: str, input_data: dict, context: dict = None):
     response = requests.post(
-        "${BASE_URL}/api/try/gate",
-        json={"session_id": session_id, "action": action}
+        "${BASE_URL}/api/execute",
+        headers={
+            "Authorization": f"Bearer {DSG_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "agent_id": agent_id,
+            "action": action,
+            "input": input_data,
+            "context": context or {"source": "agent"},
+        },
     )
     return response.json()
 
-# Before every agent action:
-result = gate_check("my-agent-run-001", "send email to user@example.com")
+# Call before side effects:
+result = execute_with_gate(
+    agent_id="my-agent-001",
+    action="send email",
+    input_data={"to": "user@example.com", "subject": "Invoice"},
+)
 
-if result["decision"] == "ALLOW":
-    stamp = result["stamp"]
-    # Execute the action — you have a cryptographic proof
-    send_email(to="user@example.com", audit_stamp=stamp)
-else:
-    # BLOCK — do not execute, check guidance
-    print(result["agent_guidance"]["suggested_llm_prompt"])`,
-    javascript: `async function gateCheck(sessionId, action) {
-  const res = await fetch("${BASE_URL}/api/try/gate", {
+decision = result.get("decision")
+if decision == "ALLOW":
+    send_email(...)
+elif decision == "BLOCK":
+    print(f"Blocked: {result['reason']}")
+else:  # REVIEW, STABILIZE
+    queue_for_approval(...)`,
+    javascript: `async function executeWithGate(agentId, action, input, context = {}) {
+  const response = await fetch("${BASE_URL}/api/execute", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, action }),
+    headers: {
+      "Authorization": \`Bearer \${process.env.DSG_API_KEY}\`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      agent_id: agentId,
+      action,
+      input,
+      context: { source: "agent", ...context },
+    }),
   });
-  return res.json();
+  return response.json();
 }
 
-// Before every agent action:
-const result = await gateCheck("my-agent-run-001", "send email to user@example.com");
+// Call before side effects:
+const result = await executeWithGate(
+  "my-agent-001",
+  "send email",
+  { to: "user@example.com", subject: "Invoice" }
+);
 
 if (result.decision === "ALLOW") {
-  const stamp = result.stamp;
-  // Execute the action — you have a cryptographic proof
-  await sendEmail({ to: "user@example.com", auditStamp: stamp });
+  sendEmail(...);
+} else if (result.decision === "BLOCK") {
+  console.error(\`Blocked: \${result.reason}\`);
 } else {
-  // BLOCK — do not execute, check guidance
-  console.log(result.agent_guidance.suggested_llm_prompt);
+  queueForApproval(...);
 }`,
     response: `{
   "decision": "ALLOW",
-  "stamp": "DSG-X9K3M7P2",
-  "action": "send email to user@example.com",
-  "session_state": {
-    "session_id": "my-agent-run-001",
-    "declared_actions": ["read database", "send email", "update user record"],
-    "stamps_issued": 1,
-    "blocked_count": 0,
-    "ttl_remaining_min": 29
+  "reason": "matches inline threshold policy",
+  "proof_hash": "sha256:7e4c3f8a...",
+  "execution_id": "exec-2026-07-16-xyz789",
+  "stop_reason": null,
+  "usage": {
+    "execution_count": 42,
+    "remaining_quota": 958
   }
 }`,
   },
   {
     num: '03',
-    title: 'Handle ALLOW and BLOCK',
-    subtitle: 'ALLOW comes with a cryptographic stamp. BLOCK comes with full agent guidance.',
+    title: 'Handle decisions',
+    subtitle: 'ALLOW → execute; BLOCK → stop; REVIEW/STABILIZE → queue.',
     description:
-      'When an action is blocked, the gate returns the reason, what alternatives are available, and a suggested prompt so your LLM can self-correct — without human intervention.',
-    curl: `# Try a blocked action:
-curl -X POST ${BASE_URL}/api/try/gate \\
+      'Every decision includes reason and proof_hash for audit. ALLOW means the action matches policy. BLOCK means stop immediately. REVIEW and STABILIZE queue for approval — use webhooks or polling to track status. All outcomes are logged in your audit trail.',
+    curl: `# Blocked decision:
+curl -X POST ${BASE_URL}/api/execute \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $DSG_API_KEY" \\
   -d '{
-    "session_id": "my-agent-run-001",
-    "action": "delete all user records"
+    "agent_id": "my-agent-001",
+    "action": "delete all invoices",
+    "input": {},
+    "context": {"source": "agent"}
   }'`,
-    python: `result = gate_check("my-agent-run-001", "delete all user records")
+    python: `# Handle all decision types:
+result = execute_with_gate(
+    agent_id="my-agent-001",
+    action="delete all invoices",
+    input_data={},
+)
 
-if result["decision"] == "BLOCK":
-    reason = result["reason"]
-    guidance = result["agent_guidance"]
+decision = result["decision"]
+reason = result["reason"]
+proof_hash = result["proof_hash"]
 
-    # Self-healing: pass the suggested prompt back to your LLM
-    corrected_action = your_llm.complete(
-        guidance["suggested_llm_prompt"]
-    )
-    print(f"Blocked: {reason}")
-    print(f"Alternatives: {guidance['can_proceed_with']}")`,
-    javascript: `const result = await gateCheck("my-agent-run-001", "delete all user records");
+if decision == "ALLOW":
+    delete_invoices()
+    log_audit("action executed", proof_hash)
+elif decision == "BLOCK":
+    print(f"Permanently blocked: {reason}")
+    # Do NOT execute
+elif decision in ["REVIEW", "STABILIZE"]:
+    queue_id = result.get("queue_id")
+    print(f"Queued for review: {queue_id}")
+    # Wait for approval via webhook or polling`,
+    javascript: `// Handle all decision types:
+const result = await executeWithGate(
+  "my-agent-001",
+  "delete all invoices",
+  {}
+);
 
-if (result.decision === "BLOCK") {
-  const { reason, agent_guidance } = result;
+const { decision, reason, proof_hash } = result;
 
-  // Self-healing: pass the suggested prompt back to your LLM
-  const correctedAction = await yourLLM.complete(
-    agent_guidance.suggested_llm_prompt
-  );
-  console.log("Blocked:", reason);
-  console.log("Alternatives:", agent_guidance.can_proceed_with);
+if (decision === "ALLOW") {
+  deleteInvoices();
+  auditLog("action executed", proof_hash);
+} else if (decision === "BLOCK") {
+  console.error(\`Permanently blocked: \${reason}\`);
+  // Do NOT execute
+} else if (["REVIEW", "STABILIZE"].includes(decision)) {
+  const queueId = result.queue_id;
+  console.log(\`Queued for review: \${queueId}\`);
+  // Poll or subscribe to webhooks for approval
 }`,
     response: `{
   "decision": "BLOCK",
-  "reason": "Pattern \"delete\\\\s+all\" is permanently blocked regardless of declaration",
-  "blocked_action": "delete all user records",
-  "session_state": {
-    "session_id": "my-agent-run-001",
-    "declared_actions": ["read database", "send email", "update user record"],
-    "stamps_issued": 1,
-    "blocked_count": 1,
-    "ttl_remaining_min": 28
-  },
-  "agent_guidance": {
-    "can_proceed_with": ["read database", "send email", "update user record"],
-    "suggested_llm_prompt": "Your action \\"delete all user records\\" was blocked by DSG Gate. You can still perform: read database, send email, update user record. Choose an alternative or stop."
-  }
+  "reason": "pattern \\"delete.*all\\" blocked by permanent policy",
+  "proof_hash": "sha256:9f2a1b5c...",
+  "execution_id": "exec-2026-07-16-blocked42",
+  "stop_reason": "policy_violation"
 }`,
   },
 ];
@@ -200,102 +230,125 @@ const LANG_LABELS: Record<Lang, string> = {
 };
 
 const FULL_EXAMPLE_PYTHON = `import requests
+import logging
 
-BASE = "${BASE_URL}/api/try/gate"
+DSG_BASE_URL = "${BASE_URL}"
+DSG_API_KEY = "dsg_live_xxxxxxxxxxxx"  # from /dashboard/integrations
+DSG_AGENT_ID = "my-invoice-agent"
 
-def declare(session_id: str, actions: list[str], ttl: int = 60) -> dict:
-    return requests.post(BASE, json={
-        "session_id": session_id,
-        "declared_actions": actions,
-        "ttl_minutes": ttl,
-    }).json()
+logger = logging.getLogger(__name__)
 
-def gate(session_id: str, action: str) -> dict:
-    return requests.post(BASE, json={
-        "session_id": session_id,
-        "action": action,
-    }).json()
+def execute_with_dsg(action: str, input_data: dict) -> dict:
+    """Call /api/execute before every side effect."""
+    try:
+        resp = requests.post(
+            f"{DSG_BASE_URL}/api/execute",
+            headers={
+                "Authorization": f"Bearer {DSG_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "agent_id": DSG_AGENT_ID,
+                "action": action,
+                "input": input_data,
+                "context": {"source": "invoice-processor", "timestamp_ms": 0},
+            },
+            timeout=5,
+        )
+        return resp.json()
+    except Exception as exc:
+        logger.error("[DSG] execute error: %s — defaulting to BLOCK", exc)
+        return {"decision": "BLOCK", "reason": "network_error"}
 
-# 1. Declare at the start of your agent run
-session = declare(
-    session_id="invoice-processor-run-42",
-    actions=["read invoice", "validate amount", "send payment confirmation"],
-)
-assert session["decision"] == "ALLOW", "Session declaration failed"
-
-# 2. Gate every action before executing
-actions_to_run = [
-    "read invoice from database",
-    "validate amount against threshold",
-    "send payment confirmation email",
-    "delete all invoices",  # this will be blocked
+# Example: Process a batch of invoices
+invoices = [
+    {"id": "INV-001", "amount": 5000},
+    {"id": "INV-002", "amount": 15000},
+    {"id": "INV-003", "amount": 1000000},  # suspicious amount
 ]
 
-stamps = []
-for action in actions_to_run:
-    result = gate("invoice-processor-run-42", action)
-    if result["decision"] == "ALLOW":
-        stamp = result["stamp"]
-        stamps.append(stamp)
-        # Execute with cryptographic proof
-        run_action(action, audit_stamp=stamp)
+for invoice in invoices:
+    # 1. Ask gate before processing
+    result = execute_with_dsg(
+        action="process invoice",
+        input_data={"invoice_id": invoice["id"], "amount": invoice["amount"]},
+    )
+
+    decision = result["decision"]
+    reason = result.get("reason", "")
+    proof_hash = result.get("proof_hash", "")
+
+    if decision == "ALLOW":
+        logger.info(f"Processing {invoice['id']} — proof: {proof_hash}")
+        # Execute: send to payment processor, record audit, etc.
+        process_invoice(invoice)
+    elif decision == "BLOCK":
+        logger.warning(f"Blocked {invoice['id']}: {reason}")
+        # Do NOT execute
     else:
-        # Log and skip — do not execute
-        print(f"BLOCKED: {action}")
-        print(f"Reason: {result['reason']}")
-        break
+        # REVIEW or STABILIZE
+        logger.info(f"Queued {invoice['id']} for approval")
+        queue_for_approval(invoice)
 
-print(f"Completed {len(stamps)} actions with audit stamps: {stamps}")`;
+print("Invoice batch completed with full audit trail")`;
 
-const FULL_EXAMPLE_JS = `const BASE = "${BASE_URL}/api/try/gate";
+const FULL_EXAMPLE_JS = `const DSG_BASE_URL = "${BASE_URL}";
+const DSG_API_KEY = "dsg_live_xxxxxxxxxxxx";  // from /dashboard/integrations
+const DSG_AGENT_ID = "my-invoice-agent";
 
-async function declare(sessionId, actions, ttlMinutes = 60) {
-  const res = await fetch(BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, declared_actions: actions, ttl_minutes: ttlMinutes }),
-  });
-  return res.json();
-}
-
-async function gate(sessionId, action) {
-  const res = await fetch(BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, action }),
-  });
-  return res.json();
-}
-
-// 1. Declare at the start of your agent run
-const session = await declare(
-  "invoice-processor-run-42",
-  ["read invoice", "validate amount", "send payment confirmation"]
-);
-if (session.decision !== "ALLOW") throw new Error("Session declaration failed");
-
-// 2. Gate every action before executing
-const actionsToRun = [
-  "read invoice from database",
-  "validate amount against threshold",
-  "send payment confirmation email",
-  "delete all invoices", // this will be blocked
-];
-
-const stamps = [];
-for (const action of actionsToRun) {
-  const result = await gate("invoice-processor-run-42", action);
-  if (result.decision === "ALLOW") {
-    stamps.push(result.stamp);
-    await runAction(action, { auditStamp: result.stamp });
-  } else {
-    console.log("BLOCKED:", action);
-    console.log("Reason:", result.reason);
-    break;
+async function executeWithDSG(action, inputData) {
+  try {
+    const res = await fetch(\`\${DSG_BASE_URL}/api/execute\`, {
+      method: "POST",
+      headers: {
+        "Authorization": \`Bearer \${DSG_API_KEY}\`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        agent_id: DSG_AGENT_ID,
+        action,
+        input: inputData,
+        context: { source: "invoice-processor", timestamp_ms: 0 },
+      }),
+    });
+    return res.json();
+  } catch (err) {
+    console.error("[DSG] execute error:", err, "— defaulting to BLOCK");
+    return { decision: "BLOCK", reason: "network_error" };
   }
 }
 
-console.log(\`Completed \${stamps.length} actions with audit stamps:\`, stamps);`;
+// Example: Process a batch of invoices
+const invoices = [
+  { id: "INV-001", amount: 5000 },
+  { id: "INV-002", amount: 15000 },
+  { id: "INV-003", amount: 1000000 },  // suspicious amount
+];
+
+for (const invoice of invoices) {
+  // 1. Ask gate before processing
+  const result = await executeWithDSG(
+    "process invoice",
+    { invoice_id: invoice.id, amount: invoice.amount }
+  );
+
+  const { decision, reason = "", proof_hash = "" } = result;
+
+  if (decision === "ALLOW") {
+    console.log(\`Processing \${invoice.id} — proof: \${proof_hash}\`);
+    // Execute: send to payment processor, record audit, etc.
+    processInvoice(invoice);
+  } else if (decision === "BLOCK") {
+    console.warn(\`Blocked \${invoice.id}: \${reason}\`);
+    // Do NOT execute
+  } else {
+    // REVIEW or STABILIZE
+    console.log(\`Queued \${invoice.id} for approval\`);
+    queueForApproval(invoice);
+  }
+}
+
+console.log("Invoice batch completed with full audit trail");`;
 
 export default function QuickstartPage() {
   const [activeLang, setActiveLang] = useState<Lang>('curl');
@@ -306,21 +359,21 @@ export default function QuickstartPage() {
       {/* Hero */}
       <section className="border-b border-white/10 bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-20">
         <div className="mx-auto max-w-4xl text-center">
-          <div className="mb-4 inline-block rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-1.5 text-sm font-semibold text-amber-200">
-            REST API — no SDK required
+          <div className="mb-4 inline-block rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-1.5 text-sm font-semibold text-emerald-200">
+            Production Governed Execution Path
           </div>
           <h1 className="mt-4 text-4xl font-black leading-tight md:text-5xl">
-            Integrate DSG ONE in
-            <span className="text-amber-300"> 5 minutes</span>
+            Gate AI actions before they run.
+            <span className="text-emerald-300"> Full audit trail.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-300">
-            Three API calls. No installation. Works with any language, any AI framework.
-            Your agent declares its intent — DSG ONE gates every action with a cryptographic stamp.
+            One REST API. Any language. Zero installation. Post your agent action to /api/execute,
+            get back a decision (ALLOW / BLOCK / REVIEW / STABILIZE) with proof hashes and audit logs.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
               href="/dashboard/integrations"
-              className="rounded-xl bg-amber-300 px-7 py-3 font-bold text-slate-950 hover:bg-amber-200"
+              className="rounded-xl bg-emerald-600 px-7 py-3 font-bold text-white hover:bg-emerald-500"
             >
               Get your API key →
             </Link>
@@ -328,7 +381,7 @@ export default function QuickstartPage() {
               href="/eu-ai-act"
               className="rounded-xl border border-slate-600 px-7 py-3 font-bold text-slate-200 hover:border-slate-400"
             >
-              Why compliance matters
+              Compliance ready
             </Link>
           </div>
         </div>
@@ -337,13 +390,16 @@ export default function QuickstartPage() {
       {/* Base URL */}
       <section className="border-b border-white/10 bg-slate-900/50 px-6 py-6">
         <div className="mx-auto max-w-4xl flex items-center gap-4">
-          <span className="text-sm font-semibold text-slate-400 shrink-0">Base URL</span>
+          <span className="text-sm font-semibold text-slate-400 shrink-0">Endpoint</span>
           <code className="flex-1 rounded-lg border border-white/10 bg-slate-800 px-4 py-2 font-mono text-sm text-emerald-300">
-            {BASE_URL}/api/try/gate
+            {BASE_URL}/api/execute
           </code>
-          <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
-            No auth required for trial
-          </span>
+          <Link
+            href="/dashboard/integrations"
+            className="shrink-0 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-300/20"
+          >
+            Get API Key →
+          </Link>
         </div>
       </section>
 
@@ -414,29 +470,29 @@ export default function QuickstartPage() {
         </div>
       </section>
 
-      {/* How stamps work */}
+      {/* Audit and proof */}
       <section className="border-t border-white/10 bg-slate-900/50 px-6 py-16">
         <div className="mx-auto max-w-4xl">
-          <h2 className="mb-2 text-2xl font-black">What the stamp proves</h2>
+          <h2 className="mb-2 text-2xl font-black">Every decision is auditable</h2>
           <p className="mb-8 text-slate-400">
-            Every ALLOW response includes a cryptographic stamp. This is your audit evidence.
+            Every execution returns a proof_hash and execution_id. All decisions logged with reason and timestamp.
           </p>
           <div className="grid gap-4 md:grid-cols-3">
             {[
               {
-                title: 'Tamper-proof',
-                desc: 'The stamp is generated server-side and tied to your session ID and action. It cannot be forged or replayed.',
-                icon: '🔒',
+                title: 'Proof Hash',
+                desc: 'SHA256 hash of decision + payload. Tied to execution_id for deterministic replay and audit trail verification.',
+                icon: '🔐',
               },
               {
-                title: 'EU AI Act Art. 12',
-                desc: 'Every gated action is logged with timestamp and decision. Satisfies record-keeping requirements for high-risk AI.',
+                title: 'EU AI Act Art. 12 Ready',
+                desc: 'Every gated action logged with timestamp, decision, reason, and proof hash. Export for compliance auditors.',
                 icon: '📋',
               },
               {
-                title: 'Self-healing agents',
-                desc: 'BLOCK responses include a suggested prompt so your LLM can decide next steps without human intervention.',
-                icon: '🤖',
+                title: 'Policy-driven',
+                desc: 'Decisions come from deterministic gates, not randomness. Same input = same decision. Fully auditable and reproducible.',
+                icon: '⚙️',
               },
             ].map((item) => (
               <div key={item.title} className="rounded-2xl border border-slate-700 bg-slate-800/50 p-5">
@@ -491,28 +547,28 @@ export default function QuickstartPage() {
         </div>
       </section>
 
-      {/* Rate limits */}
+      {/* Account limits and policies */}
       <section className="border-t border-white/10 bg-slate-900/50 px-6 py-12">
         <div className="mx-auto max-w-4xl grid gap-6 md:grid-cols-2">
           <div>
-            <h3 className="mb-3 font-bold text-slate-100">Trial limits</h3>
+            <h3 className="mb-3 font-bold text-slate-100">Starter agent limits</h3>
             <ul className="space-y-2 text-sm text-slate-400">
               <li className="flex items-center gap-2">
-                <span className="text-amber-400">·</span> 60 requests / minute
+                <span className="text-amber-400">·</span> 1,000 executions / month (starter)
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-amber-400">·</span> Sessions expire after TTL (default 60 min)
+                <span className="text-amber-400">·</span> 60 requests / minute (rate limit)
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-amber-400">·</span> No API key required for trial
+                <span className="text-amber-400">·</span> Requires valid API key (Bearer token)
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-amber-400">·</span> Production accounts: unlimited with API key
+                <span className="text-amber-400">·</span> Usage tracked per organization
               </li>
             </ul>
           </div>
           <div>
-            <h3 className="mb-3 font-bold text-slate-100">Permanently blocked actions</h3>
+            <h3 className="mb-3 font-bold text-slate-100">Permanently blocked patterns</h3>
             <ul className="space-y-2 text-sm text-slate-400">
               {[
                 'delete all / drop table / truncate',
@@ -525,6 +581,50 @@ export default function QuickstartPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Download ready-to-use files */}
+      <section className="border-t border-white/10 bg-slate-900/50 px-6 py-16">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-2 text-2xl font-black">Download ready-to-use files</h2>
+          <p className="mb-8 text-slate-400">
+            Skip the manual setup. Download pre-configured helper scripts with your API key already embedded.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6">
+              <h3 className="mb-2 font-bold text-slate-100">Python Helper</h3>
+              <p className="mb-4 text-sm text-slate-400">dsg_gate.py — ready to drop into your agent code</p>
+              <Link
+                href="/api/quickstart/download?lang=python"
+                className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                Download dsg_gate.py
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6">
+              <h3 className="mb-2 font-bold text-slate-100">JavaScript Helper</h3>
+              <p className="mb-4 text-sm text-slate-400">dsg_gate.js — CommonJS or ESM compatible</p>
+              <Link
+                href="/api/quickstart/download?lang=javascript"
+                className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                Download dsg_gate.js
+              </Link>
+            </div>
+          </div>
+          <div className="mt-8 rounded-2xl border border-slate-700 bg-slate-800/50 p-6">
+            <h3 className="mb-2 font-bold text-slate-100">Integration Pack</h3>
+            <p className="mb-4 text-sm text-slate-400">
+              Get all env vars, smoke tests, and a Node.js code snippet in one JSON response. Great for team setups.
+            </p>
+            <code className="block rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-300 mb-4">
+              curl -s -X POST {BASE_URL}/api/quickstart/integration-pack \
+              <br />
+              &nbsp;&nbsp;-H &quot;Authorization: Bearer $DSG_API_KEY&quot; |
+              jq .
+            </code>
           </div>
         </div>
       </section>
@@ -550,7 +650,7 @@ export default function QuickstartPage() {
               EU AI Act compliance
             </Link>
           </div>
-          <p className="mt-6 text-sm text-slate-500">No credit card · 5-minute setup · REST API — no SDK</p>
+          <p className="mt-6 text-sm text-slate-500">No credit card · 5-minute setup · Production API · Full audit trail</p>
         </div>
       </section>
     </main>
