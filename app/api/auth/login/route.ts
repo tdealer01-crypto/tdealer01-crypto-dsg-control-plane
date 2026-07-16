@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +12,9 @@ export async function POST(request: Request) {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password required' },
-        { status: 400 }
-      );
+      return handleApiError('POST /api/auth/login', new Error('Email and password required'), {
+        status: 400,
+      });
     }
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -41,14 +41,15 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
+      return handleApiError('POST /api/auth/login', error, {
+        status: 401,
+      });
     }
 
     if (!data.session) {
-      return NextResponse.json(
-        { error: 'No session created' },
-        { status: 401 }
-      );
+      return handleApiError('POST /api/auth/login', new Error('No session created'), {
+        status: 401,
+      });
     }
 
     // Return JWT token and user info
@@ -61,10 +62,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Auth error:', error);
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 500 }
-    );
+    return handleApiError('POST /api/auth/login', error);
   }
 }
