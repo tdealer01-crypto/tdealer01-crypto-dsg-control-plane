@@ -106,10 +106,10 @@ describe('Dashboard Page UI', () => {
   it('should have all required components', async () => {
     const fs = await import('fs');
     const content = fs.readFileSync('./app/dashboard/page.tsx', 'utf8');
-    
+
     // KPI cards or status indicators
-    expect(content).toContain('Agents') || expect(content).toContain('agents');
-    expect(content).toContain('Executions') || expect(content).toContain('executions');
+    expect(content).toContain('ตัวแทน') || expect(content).toContain('agents');
+    expect(content).toContain('การดำเนินการทั้งหมด') || expect(content).toContain('executions');
     
     // Thai labels
     expect(content).toContain('ศูนย์ควบคุม') || expect(content).toContain('Dashboard');
