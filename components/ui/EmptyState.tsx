@@ -7,10 +7,7 @@ interface EmptyStateProps {
   icon?: 'inbox' | 'error' | 'package' | React.ReactNode;
   title: string;
   description?: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
+  action?: React.ReactNode;
   className?: string;
 }
 
@@ -42,14 +39,7 @@ export function EmptyState({
       <div className="text-gray-600 mb-4">{getIcon(icon)}</div>
       <h3 className="text-lg font-semibold text-gray-300 mb-1">{title}</h3>
       {description && <p className="text-sm text-gray-500 mb-4 max-w-sm">{description}</p>}
-      {action && (
-        <button
-          onClick={action.onClick}
-          className="text-sm px-4 py-2 rounded-lg border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all text-gray-300 hover:text-gray-100"
-        >
-          {action.label}
-        </button>
-      )}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
