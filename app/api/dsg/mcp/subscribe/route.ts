@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: { keyId: body.keyId, actorId: actor.actorId },
-      success_url: `${appUrl}/dsg/api-keys?subscribe=success`,
-      cancel_url: `${appUrl}/dsg/api-keys?subscribe=cancelled`,
+      success_url: `${appUrl}/dashboard/billing?checkout=success&plan=mcp_api&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/dashboard/billing?checkout=cancelled&plan=mcp_api`,
     });
 
     return NextResponse.json(

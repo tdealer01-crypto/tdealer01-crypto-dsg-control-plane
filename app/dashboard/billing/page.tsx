@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import UsageBar from '../../../components/billing/UsageBar';
+import { Card, Badge, Button } from '@/components/ui';
 
 type PlanKey = 'pro' | 'business' | 'enterprise';
 type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
@@ -533,130 +534,118 @@ function BillingInner() {
         </div>
 
         {/* MCP Subscription Section */}
-        <div className="mt-8 rounded-2xl border border-cyan-600/20 bg-gradient-to-r from-cyan-600/10 to-blue-600/5 p-6">
-          <div className="flex items-start justify-between">
+        <Card variant="blue" className="mt-8">
+          <div className="flex items-start justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold">MCP API Subscription</h2>
               <p className="mt-2 text-sm text-slate-300">
                 Connect DSG governance to Claude Desktop, Cursor, or any MCP-compatible client
               </p>
             </div>
-            <span className="inline-flex rounded-full bg-cyan-600/20 px-3 py-1 text-xs font-semibold text-cyan-300">
-              Developer
-            </span>
+            <Badge variant="info">Developer</Badge>
           </div>
 
-          {/* Pricing card */}
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Pricing card */}
+            <Card variant="default" className="bg-slate-900/50">
               <p className="text-sm font-semibold text-white">Per-Developer Subscription</p>
-              <div className="mt-2 flex items-baseline gap-1">
+              <div className="mt-3 flex items-baseline gap-1 mb-4">
                 <span className="text-3xl font-bold text-cyan-300">฿490</span>
-                <span className="text-sm text-slate-400">/month per dev</span>
+                <span className="text-sm text-slate-400">/month</span>
               </div>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2 text-xs text-slate-300">
-                  <span className="text-cyan-400">✓</span>
-                  <span>Unlimited MCP calls</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-300">
-                  <span className="text-cyan-400">✓</span>
-                  <span>RPC-validated API keys</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-300">
-                  <span className="text-cyan-400">✓</span>
-                  <span>Atomic quota enforcement</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-300">
-                  <span className="text-cyan-400">✓</span>
-                  <span>Usage logs + audit trail</span>
-                </div>
+              <div className="space-y-2 mb-5">
+                {['Unlimited MCP calls', 'RPC-validated API keys', 'Atomic quota enforcement', 'Usage logs + audit trail'].map((feature) => (
+                  <div key={feature} className="flex items-center gap-2 text-xs text-slate-300">
+                    <span className="text-emerald-400">✓</span>
+                    <span>{feature}</span>
+                  </div>
+                ))}
               </div>
-              <button
+              <Button
                 onClick={startMCPCheckout}
                 disabled={mcpLoading}
-                className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition disabled:cursor-not-allowed disabled:opacity-60"
+                variant="primary"
+                size="md"
+                className="w-full"
               >
                 {mcpLoading ? 'Redirecting…' : 'Create MCP Key →'}
-              </button>
-              {mcpError && <p className="mt-2 text-xs text-red-400">{mcpError}</p>}
-            </div>
+              </Button>
+              {mcpError && <p className="mt-3 text-xs text-red-400">{mcpError}</p>}
+            </Card>
 
             {/* Integration guide */}
-            <div className="rounded-xl border border-slate-700/50 bg-slate-950/30 p-4">
-              <p className="text-sm font-semibold text-white">Quick Setup</p>
-              <div className="mt-3 space-y-2 text-xs text-slate-400">
+            <Card variant="default" className="bg-slate-950/50">
+              <p className="text-sm font-semibold text-white mb-3">Quick Setup</p>
+              <div className="space-y-3 text-xs text-slate-400">
                 <div className="font-mono">
-                  <p className="text-cyan-400">1. Create MCP API key (see left)</p>
-                  <p className="mt-2 text-cyan-400">2. Configure in claude_desktop_config.json</p>
-                  <p className="mt-2 font-mono text-[0.7rem] text-slate-500">
-                    {`{`}<br/>
-                    {`  "mcpServers": {`}<br/>
-                    {`    "dsg": {`}<br/>
-                    {`      "command": "...",`}<br/>
-                    {`      "env": {`}<br/>
-                    {`        "DSG_API_KEY": "YOUR_MCP_KEY"`}<br/>
-                    {`      }`}<br/>
-                    {`    }`}<br/>
-                    {`  }`}<br/>
-                    {`}`}
-                  </p>
+                  <p className="text-cyan-400 mb-2">1. Create MCP API key (see left)</p>
+                  <p className="text-cyan-400 mb-2">2. Configure in claude_desktop_config.json</p>
+                  <div className="bg-slate-950 rounded p-2 text-[0.7rem] text-slate-500 overflow-x-auto">
+                    <pre>{`{
+  "mcpServers": {
+    "dsg": {
+      "command": "...",
+      "env": {
+        "DSG_API_KEY": "YOUR_MCP_KEY"
+      }
+    }
+  }
+}`}</pre>
+                  </div>
                 </div>
-                <p className="mt-3 text-slate-500">
-                  <a href="https://docs.anthropic.com/en/docs/build-with-claude/mcp" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
-                    Learn about MCP →
-                  </a>
-                </p>
+                <a href="https://docs.anthropic.com/en/docs/build-with-claude/mcp" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline block">
+                  Learn about MCP →
+                </a>
               </div>
-            </div>
+            </Card>
           </div>
+        </Card>
 
-          {/* Active keys list */}
-          <div className="mt-6 rounded-lg border border-slate-700/50 bg-slate-950/30 p-4">
-            <p className="text-sm font-semibold text-slate-200">Active MCP Keys</p>
-            <p className="mt-1 text-xs text-slate-500">Current org keys with usage synced into the quota dashboard</p>
-            {loading ? (
-              <div className="mt-3 py-8 text-center text-slate-500">Loading keys…</div>
-            ) : quotaUsage?.activeKeys?.length ? (
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-500">
-                      <th className="px-2 py-2 font-medium">Key</th>
-                      <th className="px-2 py-2 font-medium">Created</th>
-                      <th className="px-2 py-2 font-medium">Monthly usage</th>
-                      <th className="px-2 py-2 font-medium">Next billing</th>
+        {/* Active keys list */}
+        <div className="mt-6 rounded-lg border border-slate-700/50 bg-slate-950/30 p-4">
+          <p className="text-sm font-semibold text-slate-200">Active MCP Keys</p>
+          <p className="mt-1 text-xs text-slate-500">Current org keys with usage synced into the quota dashboard</p>
+          {loading ? (
+            <div className="mt-3 py-8 text-center text-slate-500">Loading keys…</div>
+          ) : quotaUsage?.activeKeys?.length ? (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-500">
+                    <th className="px-2 py-2 font-medium">Key</th>
+                    <th className="px-2 py-2 font-medium">Created</th>
+                    <th className="px-2 py-2 font-medium">Monthly usage</th>
+                    <th className="px-2 py-2 font-medium">Next billing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quotaUsage.activeKeys.map((key) => (
+                    <tr key={key.id} className="border-b border-slate-900/80 text-slate-300">
+                      <td className="px-2 py-3">
+                        <p className="font-medium text-white">{key.name}</p>
+                        <p className="text-xs text-slate-500">{key.prefix}</p>
+                      </td>
+                      <td className="px-2 py-3">{formatDate(key.createdAt)}</td>
+                      <td className="px-2 py-3">{key.currentMonthlyUsage.toLocaleString()}</td>
+                      <td className="px-2 py-3">{formatDate(key.nextBillingDate)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {quotaUsage.activeKeys.map((key) => (
-                      <tr key={key.id} className="border-b border-slate-900/80 text-slate-300">
-                        <td className="px-2 py-3">
-                          <p className="font-medium text-white">{key.name}</p>
-                          <p className="text-xs text-slate-500">{key.prefix}</p>
-                        </td>
-                        <td className="px-2 py-3">{formatDate(key.createdAt)}</td>
-                        <td className="px-2 py-3">{key.currentMonthlyUsage.toLocaleString()}</td>
-                        <td className="px-2 py-3">{formatDate(key.nextBillingDate)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="mt-3 text-center py-8 text-slate-500">
-                <p className="text-sm">No active MCP keys yet</p>
-                <p className="text-xs mt-1">Create one above to get started</p>
-              </div>
-            )}
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="mt-3 text-center py-8 text-slate-500">
+              <p className="text-sm">No active MCP keys yet</p>
+              <p className="text-xs mt-1">Create one above to get started</p>
+            </div>
+          )}
+        </div>
 
-          {/* Billing note */}
-          <div className="mt-4 p-3 rounded-lg bg-cyan-600/5 border border-cyan-600/10">
-            <p className="text-xs text-slate-400">
-              <span className="font-semibold text-cyan-300">Monthly billing:</span> Your team can have multiple MCP keys, each billed separately. Keys expire after 30 days and auto-renew.
-            </p>
-          </div>
+        {/* Billing note */}
+        <div className="mt-4 p-3 rounded-lg bg-cyan-600/5 border border-cyan-600/10">
+          <p className="text-xs text-slate-400">
+            <span className="font-semibold text-cyan-300">Monthly billing:</span> Your team can have multiple MCP keys, each billed separately. Keys expire after 30 days and auto-renew.
+          </p>
         </div>
       </div>
     </main>

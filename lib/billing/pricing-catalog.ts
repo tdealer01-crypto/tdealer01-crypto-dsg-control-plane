@@ -59,7 +59,7 @@ export const SKILLS_BUNDLES: Record<SkillsBundleKey, { name: string; amountMonth
 // MCP API subscription — monthly only, env-driven price ID.
 // ฿490/month corresponds to ~$14 USD (exchange rate context only; actual charged in USD via Stripe).
 export const MCP_SUBSCRIPTION: Record<MCPSubscriptionKey, { name: string; callsPerMonth: number; priceEnv: string }> = {
-  mcp_api: { name: 'MCP API Subscription', callsPerMonth: 10000, priceEnv: 'STRIPE_PRICE_MCP_MONTHLY' },
+  mcp_api: { name: 'MCP API Subscription', callsPerMonth: 10000, priceEnv: 'STRIPE_MCP_PRICE_ID' },
 };
 
 export function isSkillsBundle(plan: string): plan is SkillsBundleKey {
