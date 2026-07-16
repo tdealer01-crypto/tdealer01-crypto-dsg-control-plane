@@ -214,6 +214,13 @@ Set these in your environment or MCP client config:
 
 **Important:** Never commit real token values. Use environment variables or `.env` files (kept in `.gitignore`).
 
+### Token Management
+
+- **Rotation:** Rotate `DSG_ACCESS_TOKEN` every 90 days or after team member departure
+- **Revocation:** Tokens can be revoked by removing them from the environment and restarting the MCP client
+- **Scope:** Use the least-privilege token (read-only tools when write-access not needed)
+- **Storage:** Keep tokens in secure credential managers (1Password, LastPass, etc.), not files or chat
+
 ## MCP Protocol Details
 
 ### Initialize Request
