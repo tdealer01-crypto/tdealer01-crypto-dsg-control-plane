@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,10 +119,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'CHECKOUT_FAILED';
-    return NextResponse.json(
-      { ok: false, error: message },
-      { status: 500 }
-    );
+    return handleApiError('api/mcp/checkout', error);
   }
 }
