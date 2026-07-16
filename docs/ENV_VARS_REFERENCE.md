@@ -25,6 +25,7 @@ Complete documentation for all environment variables required for DSG Control Pl
 | `UPSTASH_REDIS_REST_URL` | Secret | Recommended (rate limiting) | `https://*.upstash.io` | Upstash Console → REST API |
 | `UPSTASH_REDIS_REST_TOKEN` | Secret | Recommended (rate limiting) | Long token string | Upstash Console → REST API |
 | `DSG_API_KEY` | Secret | Yes (or `DSG_CORE_API_KEY`) | API key | DSG Control Plane |
+| `ZAPIER_WEBHOOK_SECRET` | Secret | Yes (for Zapier revenue automation) | Random string, 32+ chars | Self-generated, shared with your Zapier "Code by Zapier" step |
 | `NODE_ENV` | Public | Yes | `production` | Configuration |
 
 Live check anytime, no guessing: `GET /api/setup/status` reports `true`/`false` per category (Supabase/Stripe/Anthropic/GitHub) from the running production deployment.
@@ -100,6 +101,39 @@ No route in this codebase reads `process.env.STRIPE_PUBLISHABLE_KEY` (grep-verif
 **Example**:
 ```
 STRIPE_WEBHOOK_SECRET=[YOUR_WEBHOOK_SIGNING_SECRET_STARTS_WITH_whsec_]
+```
+
+---
+
+### ZAPIER_WEBHOOK_SECRET
+
+**Purpose**: Verifies that `POST /api/webhooks/zapier/{revenue,quota,communication}` requests actually came from your Zapier Zaps, not an anonymous caller. The route rejects with 401 when the `x-zapier-signature` header doesn't match, or fails closed (also 401) when this variable is unset.
+
+**Type**: Secret *(store in Vercel Production environment only)*
+
+**Format**: Any random string, 32+ characters (e.g. generate with `openssl rand -hex 32`)
+
+**Where to Get**: You generate this value yourself — it isn't issued by Zapier. Set the same value in Vercel and in your Zap.
+
+**Setup**:
+
+1. Generate a secret: `openssl rand -hex 32`
+2. Set it on Vercel as `ZAPIER_WEBHOOK_SECRET`
+3. In each Zap that calls the control plane, add a **Code by Zapier** step *before* the "Webhooks by Zapier" POST action that computes:
+   ```js
+   const crypto = require('crypto');
+   const signature = crypto.createHmac('sha256', 'YOUR_SECRET').update(JSON.stringify(inputData.body)).digest('hex');
+   output = [{ signature }];
+   ```
+4. Reference `{{signature}}` as the `x-zapier-signature` header value on the webhook action, and ensure the POST body sent is byte-for-byte the same JSON string that was hashed.
+
+**Security Notes**:
+- ✓ Never commit this value to git or print it in logs
+- ✓ Rotate by generating a new value and updating both Vercel and the Zap's Code step together (mismatched values fail closed, not open)
+
+**Example**:
+```
+ZAPIER_WEBHOOK_SECRET=[YOUR_RANDOM_32+_CHAR_SECRET]
 ```
 
 **Validation**: Must start with `whsec_`

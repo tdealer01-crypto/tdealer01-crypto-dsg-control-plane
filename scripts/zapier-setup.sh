@@ -167,9 +167,9 @@ cat > /tmp/api-integration-config.json << 'EOF'
     "base_url": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
     "endpoints": {
       "revenue_log": {
-        "path": "/api/billing/revenue",
+        "path": "/api/webhooks/zapier/revenue",
         "method": "POST",
-        "auth": "Bearer token",
+        "auth": "HMAC-SHA256 signature (ZAPIER_WEBHOOK_SECRET)",
         "payload": {
           "customer_id": "from Customers.Customer_ID",
           "amount": "from Payments.Amount",
@@ -180,15 +180,14 @@ cat > /tmp/api-integration-config.json << 'EOF'
           "timestamp": "from Payments.Date + Payments.Time"
         },
         "headers": {
-          "Authorization": "Bearer API_KEY",
-          "Content-Type": "application/json",
-          "X-Webhook-Source": "Zapier-Revenue-Automation"
+          "x-zapier-signature": "hex HMAC-SHA256 of the exact POST body, computed in a Code by Zapier step",
+          "Content-Type": "application/json"
         }
       },
       "quota_update": {
-        "path": "/api/quotas/usage",
+        "path": "/api/webhooks/zapier/quota",
         "method": "POST",
-        "auth": "Bearer token",
+        "auth": "HMAC-SHA256 signature (ZAPIER_WEBHOOK_SECRET)",
         "payload": {
           "customer_id": "from Service Delivery.Customer_Name",
           "service_type": "from Service Delivery.Service_Type",
@@ -199,9 +198,9 @@ cat > /tmp/api-integration-config.json << 'EOF'
         }
       },
       "communication_log": {
-        "path": "/api/audit/communications",
+        "path": "/api/webhooks/zapier/communication",
         "method": "POST",
-        "auth": "Bearer token",
+        "auth": "HMAC-SHA256 signature (ZAPIER_WEBHOOK_SECRET)",
         "payload": {
           "customer_id": "from Communications.Customer_Name",
           "email": "from Communications.Email",
@@ -213,11 +212,12 @@ cat > /tmp/api-integration-config.json << 'EOF'
       }
     },
     "setup_steps": [
-      "1. Get API key from control plane admin dashboard",
-      "2. Set environment variable: ZAPIER_CONTROL_PLANE_API_KEY",
-      "3. In Zapier, create Webhook action for each endpoint",
-      "4. Test webhook connection",
-      "5. Enable API logging for audit trail"
+      "1. Generate a secret: openssl rand -hex 32",
+      "2. Set environment variable on Vercel: ZAPIER_WEBHOOK_SECRET",
+      "3. In each Zap, add a 'Code by Zapier' step before the webhook action that computes hex HMAC-SHA256(body, ZAPIER_WEBHOOK_SECRET)",
+      "4. In Zapier, create the 'Webhooks by Zapier' POST action for each endpoint, setting x-zapier-signature from the Code step output",
+      "5. Test webhook connection — expect HTTP 200 with { success: true }",
+      "6. Query zapier_payment_events / zapier_quota_events / zapier_communication_events in Supabase to confirm persistence"
     ]
   }
 }
@@ -227,15 +227,18 @@ echo "✅ API integration configuration created"
 echo "   Location: /tmp/api-integration-config.json"
 echo ""
 echo "Setup Steps:"
-echo "1. Generate API key from control plane admin: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/keys"
-echo "2. Store safely: export ZAPIER_CONTROL_PLANE_API_KEY='your-key'"
-echo "3. In Zapier:"
-echo "   - Create 'Webhook by Zapier' action"
-echo "   - URL: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/billing/revenue"
+echo "1. Generate a secret: openssl rand -hex 32"
+echo "2. Set it on Vercel (Production env): ZAPIER_WEBHOOK_SECRET"
+echo "3. In Zapier, add a 'Code by Zapier' step before each webhook action:"
+echo "   const crypto = require('crypto');"
+echo "   const body = JSON.stringify(inputData);"
+echo "   output = [{ signature: crypto.createHmac('sha256', 'YOUR_SECRET').update(body).digest('hex'), body }];"
+echo "4. Add 'Webhooks by Zapier' → POST action:"
+echo "   - URL: https://tdealer01-crypto-dsg-control-plane.vercel.app/api/webhooks/zapier/revenue"
 echo "   - Method: POST"
-echo "   - Headers: Authorization: Bearer \$ZAPIER_CONTROL_PLANE_API_KEY"
-echo "   - Body: JSON from Payments sheet"
-echo "4. Test with sample payment"
+echo "   - Headers: x-zapier-signature: {{signature}}"
+echo "   - Body: {{body}} (the exact string hashed in step 3, not a re-serialized copy)"
+echo "5. Test with sample payment, confirm HTTP 200 and a new row in zapier_payment_events"
 echo ""
 read -p "Press Enter when API integration is configured..."
 
