@@ -25,8 +25,8 @@ export async function requireOrgRole(requiredRoles: RuntimeRole[], req?: Request
   let userId: string | null = null;
 
   // First, check if middleware set JWT user info in headers
-  if (req) {
-    userId = (req as any).headers?.get?.('x-user-id') || null;
+  if (req && req.headers) {
+    userId = req.headers.get('x-user-id') || null;
   }
 
   // Fall back to session-based auth if no JWT
