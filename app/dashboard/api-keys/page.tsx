@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type Scope = 'read' | 'write' | 'admin' | 'gates:evaluate' | 'proofs:prove';
 type KeyStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
@@ -210,14 +213,13 @@ export default function ApiKeysPage() {
           </section>
         )}
 
-        {/* Create form */}
         {showCreateForm && (
-          <section className="mt-6 rounded-3xl border border-blue-400/20 bg-blue-400/5 p-6">
+          <Card className="mt-6">
             <h2 className="text-lg font-black text-white">Create new API key</h2>
             {createError && (
-              <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                {createError}
-              </div>
+              <Card variant="error" className="mt-3">
+                <p className="text-sm">{createError}</p>
+              </Card>
             )}
             <div className="mt-5 grid gap-6">
               <div>
@@ -292,19 +294,17 @@ export default function ApiKeysPage() {
                 </button>
               </div>
             </div>
-          </section>
+          </Card>
         )}
 
-        {/* Security note */}
-        <div className="mt-6 rounded-2xl border border-slate-700 bg-slate-900/50 px-5 py-4">
+        <Card className="mt-6">
           <p className="text-xs font-semibold text-slate-400">
             <span className="mr-1 font-black text-amber-300">Security:</span>
             Keys are hashed server-side (SHA-256) and cannot be retrieved after creation. Treat them like passwords. Rotate every 90 days for production workloads.
           </p>
-        </div>
+        </Card>
 
-        {/* Keys table */}
-        <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+        <Card className="mt-6">
           <div className="mb-5">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">API keys</p>
             {!loading && <h2 className="mt-1 text-2xl font-black text-white">{keys.length} key{keys.length !== 1 ? 's' : ''}</h2>}
@@ -313,10 +313,10 @@ export default function ApiKeysPage() {
           {loading ? (
             <div className="py-12 text-center text-sm text-slate-500">Loading keys…</div>
           ) : fetchError ? (
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 py-10 text-center">
-              <p className="text-sm font-semibold text-red-400">{fetchError}</p>
-              <p className="mt-1 text-xs text-slate-500">Make sure you are signed in and have an organisation set up.</p>
-            </div>
+            <Card variant="error" className="text-center py-10">
+              <p className="text-sm font-semibold">{fetchError}</p>
+              <p className="mt-1 text-xs text-slate-400">Make sure you are signed in and have an organisation set up.</p>
+            </Card>
           ) : keys.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-700 py-16 text-center">
               <p className="text-lg font-bold text-slate-400">No API keys yet</p>
@@ -404,10 +404,9 @@ export default function ApiKeysPage() {
               </table>
             </div>
           )}
-        </section>
+        </Card>
 
-        {/* Scope reference */}
-        <section className="mt-8 rounded-3xl border border-white/10 bg-[#0b0d10] p-6">
+        <Card className="mt-8">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Scope reference</p>
           <h2 className="mt-3 text-2xl font-black text-white">Available permission scopes</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -418,7 +417,7 @@ export default function ApiKeysPage() {
               </article>
             ))}
           </div>
-        </section>
+        </Card>
 
       </div>
     </main>
