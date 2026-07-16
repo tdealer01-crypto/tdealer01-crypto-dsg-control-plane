@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MetricsSummary } from "@/components/monitoring";
 import SupportQueueWidget from "@/components/SupportQueueWidget";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/Skeleton";
 
 type Agent = {
   agent_id: string;
@@ -51,10 +58,6 @@ type OnboardingState = {
   next_action?: string;
 };
 
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} />;
-}
-
 function statusDot(ok: boolean | null) {
   if (ok === null) return "bg-slate-600";
   return ok ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" : "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]";
@@ -85,20 +88,6 @@ const PRODUCTS = [
   { href: "/eu-ai-act", label: "EU AI Act", sub: "บล็อกก่อนเกิดความเสียหาย", icon: "🇪🇺", color: "red" },
 ];
 
-const COLOR_MAP: Record<string, string> = {
-  amber: "border-amber-400/20 bg-amber-400/[0.06] hover:border-amber-400/40 hover:bg-amber-400/[0.1]",
-  emerald: "border-emerald-400/20 bg-emerald-400/[0.06] hover:border-emerald-400/40 hover:bg-emerald-400/[0.1]",
-  blue: "border-blue-400/20 bg-blue-400/[0.06] hover:border-blue-400/40 hover:bg-blue-400/[0.1]",
-  violet: "border-violet-400/20 bg-violet-400/[0.06] hover:border-violet-400/40 hover:bg-violet-400/[0.1]",
-  red: "border-red-400/20 bg-red-400/[0.06] hover:border-red-400/40 hover:bg-red-400/[0.1]",
-};
-
-const KPI_COLORS: Record<string, { border: string; text: string; glow: string }> = {
-  emerald: { border: "border-emerald-400/20", text: "text-emerald-400", glow: "shadow-emerald-500/10" },
-  blue: { border: "border-blue-400/20", text: "text-blue-400", glow: "shadow-blue-500/10" },
-  amber: { border: "border-amber-400/20", text: "text-amber-400", glow: "shadow-amber-500/10" },
-  violet: { border: "border-violet-400/20", text: "text-violet-400", glow: "shadow-violet-500/10" },
-};
 
 export default function DashboardPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -200,42 +189,32 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-[#07080b] text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
 
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
-              DSG Control Plane
-            </p>
-            <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">
-              ศูนย์ควบคุม
-            </h1>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/dashboard/command-center"
-              className="rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2 text-sm font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:shadow-amber-500/30 hover:brightness-110"
-            >
-              ศูนย์บัญชาการ
-            </Link>
-            <button
-              onClick={() => void load()}
-              disabled={loading}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
-            >
-              {loading ? "⟳ กำลังโหลด..." : "↻ รีเฟรช"}
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="ศูนย์ควบคุม"
+          description="DSG Control Plane"
+          actions={
+            <div className="flex gap-2">
+              <Link href="/dashboard/command-center">
+                <Button variant="primary">ศูนย์บัญชาการ</Button>
+              </Link>
+              <Button
+                onClick={() => void load()}
+                disabled={loading}
+                variant="secondary"
+              >
+                {loading ? "⟳ กำลังโหลด..." : "↻ รีเฟรช"}
+              </Button>
+            </div>
+          }
+        />
 
-        {/* ── Error Banner ───────────────────────────────────────── */}
         {error && (
-          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.08] px-4 py-3 text-sm text-red-300">
+          <Card variant="error" className="mt-4">
             <span className="font-bold">⚠ ข้อผิดพลาด:</span> {error}
-          </div>
+          </Card>
         )}
 
-        {/* ── System Health Indicator ────────────────────────────── */}
-        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
+        <Card className="mt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className={`h-3 w-3 rounded-full ${loading ? "bg-slate-600 animate-pulse" : systemHealth?.allGood ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"}`} />
@@ -264,81 +243,56 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
+        </Card>
 
-        {/* ── KPI Cards ──────────────────────────────────────────── */}
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-          {kpis.map((k) => {
-            const colors = KPI_COLORS[k.color] ?? KPI_COLORS.amber;
-            return (
-              <Link
-                key={k.label}
-                href={k.href}
-                className={`group relative overflow-hidden rounded-2xl border ${colors.border} bg-white/[0.025] p-4 shadow-lg ${colors.glow} transition-all hover:bg-white/[0.05] hover:scale-[1.02] sm:p-5`}
-              >
-                <div className="absolute -right-4 -top-4 text-4xl opacity-10 transition-opacity group-hover:opacity-20">
-                  {k.icon}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base">{k.icon}</span>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 sm:text-[11px]">
-                    {k.label}
-                  </p>
-                </div>
-                <div className="mt-3">
-                  {k.value === null ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    <p className={`text-2xl font-bold ${colors.text} sm:text-3xl`}>
-                      {k.value}
-                    </p>
-                  )}
-                </div>
-                <p className="mt-1 text-[11px] text-slate-600">{k.sub}</p>
-              </Link>
-            );
-          })}
+          {kpis.map((k) => (
+            <Link key={k.label} href={k.href}>
+              <StatCard
+                label={k.label}
+                value={k.value === null ? "..." : k.value}
+                icon={<span className="text-2xl">{k.icon}</span>}
+                variant={k.color as any}
+              />
+            </Link>
+          ))}
         </div>
 
-        {/* ── Monitoring Metrics (NEW - Phase 2) ─────────────────── */}
-        <div className="mt-8">
-          <p className="mb-4 text-[10px] uppercase tracking-[0.25em] text-slate-500">
+        <div className="mt-8 space-y-4">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
             📊 Agent Monitoring Metrics
           </p>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+          <Card>
             <MetricsSummary period="month" autoRefresh={true} />
-          </div>
+          </Card>
         </div>
 
         {/* ── Products Grid ──────────────────────────────────────── */}
-        <div className="mt-8">
-          <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-slate-500">
+        <div className="mt-8 space-y-4">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
             ผลิตภัณฑ์
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {PRODUCTS.map((p) => (
-              <Link
-                key={p.href}
-                href={p.href}
-                className={`group rounded-2xl border p-4 transition-all hover:scale-[1.02] ${COLOR_MAP[p.color] ?? COLOR_MAP.amber}`}
-              >
-                <span className="text-2xl">{p.icon}</span>
-                <p className="mt-2 text-sm font-semibold text-slate-100 leading-snug group-hover:text-white">
-                  {p.label}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
-                  {p.sub}
-                </p>
+              <Link key={p.href} href={p.href}>
+                <Card className="h-full">
+                  <div>
+                    <span className="text-2xl block mb-2">{p.icon}</span>
+                    <p className="text-sm font-semibold text-slate-100 leading-snug">
+                      {p.label}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                      {p.sub}
+                    </p>
+                  </div>
+                </Card>
               </Link>
             ))}
           </div>
         </div>
 
-        {/* ── Middle Row: Onboarding + Recent Executions ─────────── */}
         <div className="mt-8 grid gap-4 lg:grid-cols-[360px_1fr]">
-
-          {/* Onboarding */}
-          <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.03] p-5">
+          <Card>
             <div className="flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-[0.25em] text-emerald-300/60">
                 การตั้งค่า
@@ -405,10 +359,9 @@ export default function DashboardPage() {
             >
               {doneCount < 3 ? `ถัดไป: ${onboardingSteps.find((s) => !s.done)?.label ?? "ดำเนินการต่อ"} →` : "ดูการดำเนินการทั้งหมด →"}
             </Link>
-          </div>
+          </Card>
 
-          {/* Recent Executions */}
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+          <Card>
             <div className="flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
                 การดำเนินการล่าสุด
@@ -473,7 +426,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* ── Support Queue ──────────────────────────────────────── */}
@@ -481,11 +434,8 @@ export default function DashboardPage() {
           <SupportQueueWidget />
         </div>
 
-        {/* ── Bottom Row: Agents + Hermes + Support ────────────────────────── */}
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
-
-          {/* Agents */}
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+          <Card>
             <div className="flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
                 ตัวแทนที่ใช้งาน
@@ -564,13 +514,12 @@ export default function DashboardPage() {
                 })}
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Support Queue (Alternative position - comment out if using separate widget above) */}
           {/* <SupportQueueWidget /> */}
 
-          {/* Hermes AI Status */}
-          <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.03] p-5">
+          <Card>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.25em] text-violet-300/50">
@@ -644,7 +593,7 @@ export default function DashboardPage() {
                 ตั้งค่า Brain
               </Link>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* ── Quick Links Footer ──────────────────────────────────── */}
