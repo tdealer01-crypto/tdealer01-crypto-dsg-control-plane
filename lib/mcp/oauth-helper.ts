@@ -139,8 +139,11 @@ export function generateRefreshToken(): string {
 
 /**
  * Hash refresh token for storage
+ * Note: This is for opaque token hashing (input is cryptographically random),
+ * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashRefreshToken(token: string): string {
+  // lgtm[js/weak-cryptographic-algorithm]: opaque token hashing, not password hashing
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
