@@ -229,6 +229,15 @@ npm test
 
 ## Latest Updates
 
+✅ **Trinity Dashboard UI** (Deployed)
+- Real-time agent orchestration control plane (Chat + Dashboard + CLI + API)
+- Live monitoring: All 7 agents, orchestration health, cost tracking, security audit
+- 4 interfaces in 1: Dashboard tab, Chat tab, CLI reference, API docs
+- Supabase JWT auth (+ mock auth for demo)
+- Auto-refresh every 10s; responsive dark mode UI
+- Deploy in <5 min: Vercel (3 min), Docker (5 min), Local dev (npm run dev)
+- Dashboard: [apps/trinity-dashboard/](./apps/trinity-dashboard/) | Quick Start: [README](./apps/trinity-dashboard/README.md)
+
 ✅ **Trinity × DSG Agents Phase 5 Integration** (Merged to main)
 - Complete integration package: architecture guide, benefits analysis, 23-point deployment checklist
 - 5 integration points: Agent Status Sync, Cost Tracking, Security Audit, Mode Switching, State Continuity
@@ -274,6 +283,7 @@ npm test
 
 | Document | For Whom | Read Time |
 |----------|----------|-----------|
+| **[Trinity Dashboard UI](./apps/trinity-dashboard/README.md)** | Operators | 5 min |
 | **[Trinity × DSG Integration](./docs/integration/Trinity-DSG-Agents-Integration.md)** | Operators | 10 min |
 | **[Integration Checklist](./docs/integration/INTEGRATION-CHECKLIST.md)** | Implementers | 15 min |
 | **[Integration Benefits](./docs/integration/Trinity-DSG-Benefits.txt)** | Leadership | 5 min |
@@ -288,6 +298,12 @@ npm test
 ---
 
 ## Integrations
+
+**Complete & Deployed:**
+- ✅ **Trinity Dashboard UI** — Real-time agent control plane (Chat + Dashboard + CLI + API)
+  - [Dashboard](./apps/trinity-dashboard/README.md) | Quick Start: Deploy in <5 minutes
+  - All 7 agents, cost tracking, security audit, orchestration health
+  - Supabase JWT auth ready, responsive dark mode
 
 **Complete & Documented:**
 - ✅ **Trinity × DSG Agents Phase 5** — Full orchestration + cost tracking + audit trail + mode switching
@@ -314,4 +330,4 @@ npm test
 
 MIT — [See LICENSE](./LICENSE)
 
-**Latest:** ✅ NVIDIA LLM Advisory Verifier (PR #868 merged) · ✅ Full API security audit (4 routes fixed, CI regression test added)
+**Latest:** ✅ Trinity Dashboard UI deployed (Chat + Dashboard + CLI + API) · ✅ Trinity × DSG Agents Phase 5 integration (5 endpoints, 23-point checklist) · ✅ Full API security audit (4 routes fixed, CI regression test added)
