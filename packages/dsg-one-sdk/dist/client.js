@@ -6,7 +6,7 @@
  *
  * Quick start:
  * ```typescript
- * import { DsgOneClient } from "@dsg-one/sdk";
+ * import { DsgOneClient } from "dsg-one-sdk";
  *
  * const client = new DsgOneClient({ apiKey: "dsg_live_..." });
  * const result = await client.execute({ agentId, action: "scan", input: { ... } });
@@ -17,7 +17,7 @@ exports.DsgOneError = exports.DsgOneClient = void 0;
 exports.createClient = createClient;
 exports.createClientFromEnv = createClientFromEnv;
 const types_1 = require("./types");
-const DEFAULT_BASE_URL = "https://dsg-one-v1.vercel.app";
+const DEFAULT_BASE_URL = "https://tdealer01-crypto-dsg-control-plane.vercel.app";
 const DEFAULT_TIMEOUT = 30000;
 class DsgOneClient {
     baseUrl;

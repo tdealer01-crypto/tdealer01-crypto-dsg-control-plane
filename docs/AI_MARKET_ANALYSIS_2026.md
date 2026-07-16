@@ -89,7 +89,7 @@ Auth = Bearer token + SHA256 hash ของ agent key (resolve ใน `lib/agent
 3. **Expand:** skill pack upsell ตาม persona
 
 ### ข้อต้องระวัง (truth boundary ในการส่งมอบ)
-- **Stripe metered billing มี infra แต่ยังไม่ wired เข้า execution** (`lib/billing/metered.ts`) — ปัจจุบันใช้ quota รายเดือนแบบ flat tier → **อย่าขาย "usage-based billing" ว่าพร้อมใช้**
+- **Stripe metered billing wired into execution path** (`meterExecution` called in `/api/spine/execute` line 347); requires Stripe meter env (`STRIPE_METER_EVENT_NAME`/meter id) to emit live meter events — ปัจจุบันใช้ quota รายเดือนแบบ flat tier → **อย่าขาย "usage-based billing active" ว่าส่ง meter events ถ้า env ยังไม่ตั้ง**
 - หลักฐานทุกชิ้นติด `certificationClaim=false` / `independentAuditClaim=false` → ส่งมอบเป็น **"audit-ready / pre-audit evidence" ไม่ใช่ "certified"**
 - "WORM" = DB hash chain ที่ตรวจสอบได้ ไม่ใช่ tamper-proof storage จริง (ไม่มี HSM/blockchain)
 
@@ -187,7 +187,7 @@ Skill packs (upsell): Finance $199 · Dev Automation $99 · Compliance $249 · O
 - **Retention hook:** audit export + evidence history สร้าง lock-in (ลูกค้าไม่อยากเสียประวัติหลักฐาน)
 
 ### 8.3 ลำดับงานก่อนขาย pricing ขั้นสูง
-- **wire Stripe metered billing เข้า execution** ก่อนพูดเรื่อง usage-based overage จริง (ตอนนี้ flat tier)
+- **configure Stripe meter env** (`STRIPE_METER_EVENT_NAME`, meter id) ก่อนโฆษณา usage-based overage live (ตอนนี้ flat tier; code wired แต่ยังต้อง env + meter คอนฟิก)
 - ตรวจสอบ entitlement (`lib/billing/entitlements.ts`) ให้ map ตรงกับหน้า pricing ที่โฆษณา ก่อน launch แคมเปญ
 
 ---
@@ -198,14 +198,14 @@ Skill packs (upsell): Finance $199 · Dev Automation $99 · Compliance $249 · O
 2. **ล่า quick-win:** เจาะ Finance Ops ($199–999/เดือน รอบสั้น) เพื่อ revenue + case study แรก
 3. **ขยาย growth loop:** ทำ Delivery Proof report ให้แชร์ลื่นที่สุด = การตลาดทบต้น
 4. **รักษาเส้น claim:** ทุก asset ใช้ `production-connected / audit-ready / pre-audit` ไม่ใช่ `certified / production-ready`
-5. **wire metered billing** ก่อนขาย usage-based pricing
+5. **configure Stripe meter env + test meter events** ก่อนโฆษณา usage-based billing live
 
 ---
 
 ## 10. หมายเหตุความถูกต้อง (Verification Note)
 
-- **Verified จากโค้ด:** routes (`/api/agents`, `/api/spine/execute`, `/api/gateway/tools/execute`, `/api/dsg/v1/gates/evaluate`, `/api/delivery-proof/scan`, `/api/compliance-evidence-pack*`, `/api/ccvs/*`), Bearer auth + SHA256 (`lib/agent-auth.ts`), quota (`lib/usage/quota.ts`), pricing tiers (`lib/stripe-products.ts` / หน้า pricing), evidence surfaces (`lib/ccvs/*`, `lib/gateway/evidence-bundle.ts`)
+- **Verified จากโค้ด:** routes (`/api/agents`, `/api/spine/execute`, `/api/gateway/tools/execute`, `/api/dsg/v1/gates/evaluate`, `/api/delivery-proof/scan`, `/api/compliance-evidence-pack*`, `/api/ccvs/*`), Bearer auth + SHA256 (`lib/agent-auth.ts`), quota (`lib/usage/quota.ts`), pricing tiers (`lib/stripe-products.ts` / หน้า pricing), evidence surfaces (`lib/ccvs/*`, `lib/gateway/evidence-bundle.ts`), metering call (`meterExecution` in `/api/spine/execute` line 347)
 - **Projection / สมมติฐาน:** TAM, MRR/ARR, CAC, churn, conversion, เป้าหมายลูกค้า, ICP score thresholds — ยังไม่มี traction จริงรองรับ
-- **ยังไม่ verified / ยังไม่พร้อม:** SDK บน npm/PyPI (ยังไม่ published), Stripe metered billing wired เข้า execution (ยังไม่ wired), pilot ลูกค้าจริง (ยังไม่มี), third-party certification/audit (ไม่มี)
+- **ยังไม่ verified / ยังไม่พร้อม:** SDK บน npm/PyPI (ยังไม่ published), Stripe meter env + live meter emission (code wired, env not yet configured), pilot ลูกค้าจริง (ยังไม่มี), third-party certification/audit (ไม่มี)
 
 > เอกสารนี้เป็น strategy artifact เพื่อช่วยตัดสินใจ ไม่เปลี่ยนสถานะ production readiness และไม่ใช่หลักฐาน compliance

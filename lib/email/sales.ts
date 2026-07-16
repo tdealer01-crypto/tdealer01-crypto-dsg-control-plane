@@ -178,21 +178,27 @@ export async function sendBehavioralNoAgent(opts: {
 }): Promise<void> {
   await sendEmail(opts.email, opts.subject,
     `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-      <h2 style="color:#10b981">🛂 DSG Gate is waiting for your agent</h2>
+      <h2 style="color:#10b981">🛂 Gate your AI actions now</h2>
       <p>${opts.openingLine}</p>
-      <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px;overflow:auto">// 1. Declare a session
-POST ${BASE_URL}/api/try/gate
-{ "session_id": "sess_abc", "declared_actions": ["read_file","send_email"], "ttl_minutes": 30 }
+      <pre style="background:#0f172a;color:#86efac;padding:16px;border-radius:8px;font-size:13px;overflow:auto">// 1. Get API key from /dashboard/integrations
+DSG_API_KEY="dsg_live_xxx"
+DSG_AGENT_ID="my-agent"
 
-// 2. Check before every action
-POST ${BASE_URL}/api/try/gate
-{ "session_id": "sess_abc", "action": "read_file path=/reports/q1.pdf" }
-// → { "decision": "ALLOW", "stamp": "DSG-A3F8" }</pre>
-      <a href="${BASE_URL}/dashboard/api-keys"
+// 2. Gate every action before execution
+POST ${BASE_URL}/api/execute
+Authorization: Bearer $DSG_API_KEY
+{
+  "agent_id": "$DSG_AGENT_ID",
+  "action": "read invoice",
+  "input": {"invoice_id": "INV-001"},
+  "context": {"source": "agent"}
+}
+// → { "decision": "ALLOW", "proof_hash": "sha256:...", ... }</pre>
+      <a href="${BASE_URL}/dashboard/integrations"
          style="background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
         Get API Key →
       </a>
-      <p style="color:#64748b;font-size:12px;margin-top:24px">Questions? Just reply to this email.</p>
+      <p style="color:#64748b;font-size:12px;margin-top:24px">Full working examples: <a href="${BASE_URL}/quickstart" style="color:#10b981">quickstart</a></p>
     </div>`);
 }
 
@@ -386,6 +392,43 @@ export async function sendGitHubLeadFollowup(opts: {
       <p style="font-size:12px;color:#94a3b8">
         <a href="${BASE_URL}/unsubscribe?email=${encodeURIComponent(opts.email)}" style="color:#94a3b8">Unsubscribe</a>
       </p>
+    </div>`,
+  );
+}
+
+// ─── Payment Failed (Dunning) ─────────────────────────────────────────────────
+// Triggered on invoice.payment_failed webhook event
+export async function sendPaymentFailed(opts: {
+  email: string;
+  planKey: string;
+  amountDue: number;
+  attemptCount: number;
+  nextPaymentAttempt: number | null;
+}): Promise<void> {
+  const amountStr = (opts.amountDue / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const nextAttemptDate = opts.nextPaymentAttempt
+    ? new Date(opts.nextPaymentAttempt * 1000).toLocaleDateString('en-US')
+    : 'soon';
+
+  await sendEmail(
+    opts.email,
+    `⚠️ Payment failed — update your billing method now`,
+    `<div style="font-family:sans-serif;max-width:560px;margin:auto">
+      <h2 style="color:#ef4444">⚠️ Payment could not be processed</h2>
+      <p>We tried to charge ${amountStr} for your <strong>${opts.planKey.toUpperCase()}</strong> plan (attempt ${opts.attemptCount}).</p>
+      <p>The charge was declined. This can happen if:</p>
+      <ul>
+        <li>Your card has expired or been replaced</li>
+        <li>Your bank blocked the charge</li>
+        <li>Insufficient funds</li>
+      </ul>
+      <p><strong>Next retry:</strong> ${nextAttemptDate}</p>
+      <p>To avoid service suspension, update your billing method now:</p>
+      <a href="${BASE_URL}/dashboard/billing"
+         style="background:#ef4444;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;margin-top:16px">
+        Update Payment Method →
+      </a>
+      <p style="color:#64748b;font-size:12px;margin-top:32px">If this charge was denied by mistake, contact your bank or <a href="mailto:support@dsg.pics" style="color:#64748b">reach out to support</a>.</p>
     </div>`,
   );
 }

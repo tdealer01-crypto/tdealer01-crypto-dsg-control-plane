@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,10 +85,10 @@ interface SimResult {
 
 function Section({ title, children }: { title: string; children?: unknown }) {
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+    <Card>
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-slate-400">{title}</h2>
       {children as never}
-    </div>
+    </Card>
   );
 }
 
@@ -247,50 +249,49 @@ export default function PayoutSafetyPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-slate-400">Loading payout safety settings…</p>
-      </div>
+      <main className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 flex h-64 items-center justify-center">
+          <p className="text-sm text-slate-400">Loading payout safety settings…</p>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-6 py-8">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
 
-      {/* Header + Emergency Stop */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Payout Safety Settings</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Control when and how money leaves your account — every payout is checked against these rules automatically.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <PageHeader
+            title="Payout Safety Settings"
+            description="Control when and how money leaves your account — every payout is checked against these rules automatically."
+          />
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <button
+              onClick={toggleEmergency}
+              disabled={emergencyLoading}
+              className={`rounded px-4 py-2 text-sm font-bold transition-all ${
+                policy.emergency_paused
+                  ? 'bg-amber-500 text-black hover:bg-amber-400'
+                  : 'bg-red-600 text-white hover:bg-red-500'
+              } disabled:opacity-50`}
+            >
+              {emergencyLoading ? '…' : policy.emergency_paused ? '▶ Resume Payouts' : '⏸ Emergency Stop'}
+            </button>
+            {policy.emergency_paused && (
+              <span className="text-xs font-semibold text-red-400">ALL PAYOUTS PAUSED</span>
+            )}
+          </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <button
-            onClick={toggleEmergency}
-            disabled={emergencyLoading}
-            className={`rounded px-4 py-2 text-sm font-bold transition-all ${
-              policy.emergency_paused
-                ? 'bg-amber-500 text-black hover:bg-amber-400'
-                : 'bg-red-600 text-white hover:bg-red-500'
-            } disabled:opacity-50`}
-          >
-            {emergencyLoading ? '…' : policy.emergency_paused ? '▶ Resume Payouts' : '⏸ Emergency Stop'}
-          </button>
-          {policy.emergency_paused && (
-            <span className="text-xs font-semibold text-red-400">ALL PAYOUTS PAUSED</span>
-          )}
-        </div>
-      </div>
 
-      {/* Status Summary */}
-      <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
-        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <Stat label="Automation" value={policy.automation_enabled ? 'ON' : 'OFF'} ok={policy.automation_enabled} />
-          <Stat label="Emergency" value={policy.emergency_paused ? 'PAUSED' : 'Active'} ok={!policy.emergency_paused} />
-          <Stat label="Max per payout" value={`${policy.max_payout_amount.toLocaleString()} ${policy.allowed_currency}`} ok />
-          <Stat label="Daily limit" value={`${policy.daily_limit.toLocaleString()} ${policy.allowed_currency}`} ok />
-        </div>
-      </div>
+        <Card>
+          <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <Stat label="Automation" value={policy.automation_enabled ? 'ON' : 'OFF'} ok={policy.automation_enabled} />
+            <Stat label="Emergency" value={policy.emergency_paused ? 'PAUSED' : 'Active'} ok={!policy.emergency_paused} />
+            <Stat label="Max per payout" value={`${policy.max_payout_amount.toLocaleString()} ${policy.allowed_currency}`} ok />
+            <Stat label="Daily limit" value={`${policy.daily_limit.toLocaleString()} ${policy.allowed_currency}`} ok />
+          </div>
+        </Card>
 
       {/* Automation toggle */}
       <Section title="General">
@@ -604,7 +605,8 @@ export default function PayoutSafetyPage() {
         )}
       </Section>
 
-    </div>
+      </div>
+    </main>
   );
 }
 

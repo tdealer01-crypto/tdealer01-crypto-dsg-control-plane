@@ -1,6 +1,6 @@
 # 🔐 DSG: Deterministic Execution & Governance
 
-[![Tests](https://img.shields.io/badge/tests-3389_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
+[![Tests](https://img.shields.io/badge/tests-3415_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
 [![Mutation](https://img.shields.io/badge/mutation-72.08%25-blue?style=for-the-badge)](BENCHMARKS.md)
 [![Gate](https://img.shields.io/badge/gate-11ms_avg-orange?style=for-the-badge)](BENCHMARKS.md)
 [![PDPA Ready](https://img.shields.io/badge/PDPA-มาตรา37พร้อม-purple?style=for-the-badge)](BENCHMARKS.md)
@@ -142,11 +142,12 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 |-------|--------|-------|
 | **Build** | ✅ | Next.js production build |
 | **TypeScript** | ✅ | Type-safe, `tsc --noEmit` clean |
-| **Tests** | ✅ 3389 passing / 0 failing | CCVS evidence run, zero failures |
-| **Security** | ✅ | 0 critical/high vulnerabilities |
-| **Deployment** | ✅ | Live on Vercel, NVIDIA API key configured |
+| **Tests** | ✅ 3415 passing / 0 failing | CCVS evidence run, JWT auth tests included |
+| **Security** | ✅ | 0 critical/high vulnerabilities, JWT header spoofing prevented |
+| **Deployment** | ✅ | Live on Vercel (commit 728ae9f), NVIDIA API key configured |
 | **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic) |
 | **Phase 5** | ✅ | Complete security test coverage (unit, integration, failure) |
+| **JWT Auth** | ✅ | Production-ready Bearer token authentication, E2E verified |
 
 ---
 
@@ -227,7 +228,98 @@ npm test
 
 ---
 
+## JWT Bearer Token Authentication
+
+**Production API authentication with Supabase JWT:**
+
+```bash
+# 1. Get JWT Token (exchange credentials for token)
+curl -X POST https://tdealer01-crypto-dsg-control-plane.vercel.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password"
+  }'
+
+# Response:
+# {
+#   "token": "eyJhbGc...",
+#   "user": {
+#     "id": "user-id",
+#     "email": "user@example.com",
+#     "user_metadata": {...}
+#   }
+# }
+
+# 2. Use JWT token with authenticated API routes
+TOKEN="eyJhbGc..."
+curl -H "Authorization: Bearer $TOKEN" \
+  https://tdealer01-crypto-dsg-control-plane.vercel.app/api/executions
+
+# 3. Token is validated by middleware and passed to route handlers
+# Response includes org-scoped data based on authenticated user
+```
+
+**Supported Endpoints (JWT Bearer):**
+- `GET /api/executions` — List execution history
+- `GET /api/policies` — List organization policies
+- `GET /api/usage` — Get usage/quota information
+- `GET /api/audit` — Access audit trail
+- `POST /api/agent-chat` — Chat with agent
+- All authenticated operator routes
+
+**Security Features:**
+- ✅ Middleware strips inbound `x-user-id` headers to prevent spoofing
+- ✅ JWT validated against Supabase auth service
+- ✅ User identity only set after successful token verification
+- ✅ Rate limiting enforced per authenticated user
+- ✅ All API errors use centralized handlers (no error message leakage)
+
+**Implementation:**
+- Route: `app/api/auth/login/route.ts` — Token generation
+- Middleware: `middleware.ts` (lines 59-120) — Bearer token validation
+- Auth: `lib/authz.ts` — User role/org resolution via JWT header
+- Handlers: All protected routes pass `request` to authorization functions
+
+---
+
 ## Latest Updates
+
+✅ **MCP Integration Guide** (PR #930 Merged)
+- Comprehensive reference for 4 MCP integrations (PostHog, Supabase, Vercel, AWS Marketplace)
+- 101+ tools documented with setup, auth, usage patterns, and troubleshooting
+- Live production data examples: 50+ PostHog tools, 25+ Supabase tools, 15+ Vercel tools, 11+ AWS tools
+- Security: Centralized error handling, no error-message leakage
+- All CI checks passed: security ✅, CCVS evidence ✅, CodeQL ✅, e2e tests ✅
+- [Read the Guide](./docs/MCP_INTEGRATION_GUIDE.md)
+
+✅ **JWT Bearer Token Authentication** (PR #914 Merged)
+- Production-ready JWT Bearer authentication for API routes
+- Supabase-backed token generation and validation
+- Middleware-level token extraction and verification
+- Security: Inbound x-user-id headers stripped to prevent spoofing attacks
+- Endpoints: `POST /api/auth/login` (get token), authenticated routes accept `Authorization: Bearer <token>`
+- Example: `/api/executions`, `/api/policies`, and other protected routes
+- Full end-to-end testing verified on production
+- All security checks passed: 0 vulnerabilities, 3415 tests passing
+
+✅ **Trinity Dashboard UI** (Deployed)
+- Real-time agent orchestration control plane (Chat + Dashboard + CLI + API)
+- Live monitoring: All 7 agents, orchestration health, cost tracking, security audit
+- 4 interfaces in 1: Dashboard tab, Chat tab, CLI reference, API docs
+- Supabase JWT auth (+ mock auth for demo)
+- Auto-refresh every 10s; responsive dark mode UI
+- Deploy in <5 min: Vercel (3 min), Docker (5 min), Local dev (npm run dev)
+- Dashboard: [apps/trinity-dashboard/](./apps/trinity-dashboard/) | Quick Start: [README](./apps/trinity-dashboard/README.md)
+
+✅ **Trinity × DSG Agents Phase 5 Integration** (Merged to main)
+- Complete integration package: architecture guide, benefits analysis, 23-point deployment checklist
+- 5 integration points: Agent Status Sync, Cost Tracking, Security Audit, Mode Switching, State Continuity
+- ROI: $150k/year from saved incident response time (6 hours/day)
+- Incident diagnosis: 2 hours → 5 minutes; Cost per incident: $400 → $20
+- Documentation ready: [Trinity-DSG-Agents-Integration.md](./docs/integration/Trinity-DSG-Agents-Integration.md)
+- Implementation guide: [INTEGRATION-CHECKLIST.md](./docs/integration/INTEGRATION-CHECKLIST.md)
+- CCVS Evidence: 3413/3413 PASS ✅ | Security: 0 vulnerabilities ✅
 
 ✅ **PostHog Analytics & Event Instrumentation** (Deployed)
 - 20+ events capturing conversion, operations, and compliance flows
@@ -265,6 +357,11 @@ npm test
 
 | Document | For Whom | Read Time |
 |----------|----------|-----------|
+| **[MCP Integration Guide](./docs/MCP_INTEGRATION_GUIDE.md)** | Engineers | 15 min |
+| **[Trinity Dashboard UI](./apps/trinity-dashboard/README.md)** | Operators | 5 min |
+| **[Trinity × DSG Integration](./docs/integration/Trinity-DSG-Agents-Integration.md)** | Operators | 10 min |
+| **[Integration Checklist](./docs/integration/INTEGRATION-CHECKLIST.md)** | Implementers | 15 min |
+| **[Integration Benefits](./docs/integration/Trinity-DSG-Benefits.txt)** | Leadership | 5 min |
 | **[Architecture Deep Dive](./docs/ARCHITECTURE.md)** | Engineers | 15 min |
 | **[Security Audit](./docs/SECURITY.md)** | Security teams | 10 min |
 | **[Z3 Formal Verification](./docs/VERIFICATION.md)** | Researchers | 20 min |
@@ -275,11 +372,24 @@ npm test
 
 ---
 
-## Extensions (Optional)
+## Integrations
 
-**Core features work standalone. Add these as needed:**
+**Complete & Deployed:**
+- ✅ **MCP (Model Context Protocol)** — 4 production MCPs with 101+ tools
+  - [Setup Guide](./docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools)
+  - Production-tested: Analytics, database management, deployment monitoring, solution discovery
+  - All security checks passed, comprehensive troubleshooting included
 
-- **Trinity Multi-Agent** — AI workflow orchestration
+- ✅ **Trinity Dashboard UI** — Real-time agent control plane (Chat + Dashboard + CLI + API)
+  - [Dashboard](./apps/trinity-dashboard/README.md) | Quick Start: Deploy in <5 minutes
+  - All 7 agents, cost tracking, security audit, orchestration health
+  - Supabase JWT auth ready, responsive dark mode
+
+**Complete & Documented:**
+- ✅ **Trinity × DSG Agents Phase 5** — Full orchestration + cost tracking + audit trail + mode switching
+  - [Integration Guide](./docs/integration/Trinity-DSG-Agents-Integration.md) | [Checklist](./docs/integration/INTEGRATION-CHECKLIST.md) | [Benefits](./docs/integration/Trinity-DSG-Benefits.txt)
+
+**Optional Extensions:**
 - **Solana Integration** — Blockchain settlement layer
 - **Thai Language Agent** — Natural language policy in Thai
 - **Stripe Marketplace** — Revenue & billing integration
@@ -300,4 +410,4 @@ npm test
 
 MIT — [See LICENSE](./LICENSE)
 
-**Latest:** ✅ NVIDIA LLM Advisory Verifier (PR #868 merged) · ✅ Full API security audit (4 routes fixed, CI regression test added)
+**Latest:** ✅ JWT Bearer Token Auth deployed (production E2E verified) · ✅ Trinity Dashboard UI deployed (Chat + Dashboard + CLI + API) · ✅ Trinity × DSG Agents Phase 5 integration (5 endpoints, 23-point checklist) · ✅ Full API security audit (4 routes fixed, CI regression test added)

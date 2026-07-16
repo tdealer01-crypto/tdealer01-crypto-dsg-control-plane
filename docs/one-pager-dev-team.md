@@ -132,10 +132,10 @@ console.log(result.audit_id, result.proof.proof_hash);
 ---
 
 ## Truth Boundary
-| ✅ Verified | ❌ Not Yet |
-|-------------|------------|
-| SDK builds, types work | **Not yet on npm** (ready to publish) |
-| Gate returns decision + proof | Metered billing not wired to execution |
+| ✅ Verified | ⏳ Pending |
+|-------------|-----------|
+| SDK builds, types work | **Ready to publish** (npm credentials required; no live npm registry entry yet) |
+| Gate returns decision + proof | Metered billing wired into execution; Stripe meter env not yet configured |
 | 2173 tests pass | GitHub App not yet live |
 | Edge gate <50ms latency | PyPI package not built |
 

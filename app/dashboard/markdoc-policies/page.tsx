@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Policy {
   id: string;
@@ -61,138 +64,131 @@ export default function MarkdocPoliciesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Markdoc Policies
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Create and manage markdown-based governance policies
-            </p>
-          </div>
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <PageHeader
+            title="Markdoc Policies"
+            description="Create and manage markdown-based governance policies"
+          />
           <Link
             href="/dashboard/markdoc-policies/new"
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
           >
             + Create Policy
           </Link>
         </div>
 
-        {/* Error message */}
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800">
-            {error}
-          </div>
+          <Card variant="error" className="mb-4">
+            <p className="text-sm">{error}</p>
+          </Card>
         )}
 
-        {/* Loading */}
         {loading && (
-          <div className="text-center text-gray-600">Loading policies...</div>
+          <div className="text-center text-slate-400 py-8">Loading policies...</div>
         )}
 
-        {/* Empty state */}
         {!loading && policies.length === 0 && !error && (
-          <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-            <p className="text-gray-600">No policies yet</p>
-            <p className="mt-2 text-sm text-gray-500">
-              Create your first Markdoc policy to get started
-            </p>
-            <Link
-              href="/dashboard/markdoc-policies/new"
-              className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              Create Policy
-            </Link>
-          </div>
+          <EmptyState
+            title="No policies yet"
+            description="Create your first Markdoc policy to get started"
+            action={
+              <Link
+                href="/dashboard/markdoc-policies/new"
+                className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                Create Policy
+              </Link>
+            }
+          />
         )}
 
-        {/* Policies table */}
         {!loading && policies.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Policy Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Version
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {policies.map((policy) => (
-                  <tr key={policy.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">
-                        {policy.name}
-                        {policy.is_default && (
-                          <span className="ml-2 inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
-                            Default
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {policy.description || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      v{policy.version}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          policy.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : policy.status === "draft"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {policy.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {formatDate(policy.created_at)}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm">
-                      <button
-                        onClick={() =>
-                          router.push(
-                            `/dashboard/markdoc-policies/${policy.id}`
-                          )
-                        }
-                        className="text-blue-600 hover:text-blue-900 hover:underline"
-                      >
-                        View
-                      </button>
-                      <span className="mx-2 text-gray-300">|</span>
-                      <button className="text-blue-600 hover:text-blue-900 hover:underline">
-                        Edit
-                      </button>
-                    </td>
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-700">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">
+                      Policy Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">
+                      Description
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">
+                      Version
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">
+                      Created
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-slate-400">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-700">
+                  {policies.map((policy) => (
+                    <tr key={policy.id} className="hover:bg-slate-900 transition">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-slate-100">
+                          {policy.name}
+                          {policy.is_default && (
+                            <span className="ml-2 inline-block rounded-full bg-emerald-500/20 px-2 py-1 text-xs font-semibold text-emerald-300">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-400">
+                        {policy.description || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-400">
+                        v{policy.version}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            policy.status === "active"
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : policy.status === "draft"
+                                ? "bg-amber-500/20 text-amber-300"
+                                : "bg-slate-600/20 text-slate-300"
+                          }`}
+                        >
+                          {policy.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-400">
+                        {formatDate(policy.created_at)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm">
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/markdoc-policies/${policy.id}`
+                            )
+                          }
+                          className="text-cyan-400 hover:text-cyan-300 transition"
+                        >
+                          View
+                        </button>
+                        <span className="mx-2 text-slate-600">|</span>
+                        <button className="text-cyan-400 hover:text-cyan-300 transition">
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
       </div>
-    </div>
+    </main>
   );
 }

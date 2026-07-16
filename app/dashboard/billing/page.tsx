@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { StatCard } from '@/components/ui/StatCard';
 import UsageBar from '../../../components/billing/UsageBar';
 
 type PlanKey = 'pro' | 'business' | 'enterprise';
@@ -214,6 +217,8 @@ function BillingInner() {
   const [interval, setInterval]   = useState<BillingInterval>('monthly');
   const [bundleLoading, setBundleLoading] = useState<string | null>(null);
   const [bundleError, setBundleError] = useState<string | null>(null);
+  const [mcpLoading, setMcpLoading] = useState(false);
+  const [mcpError, setMcpError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -279,6 +284,34 @@ function BillingInner() {
     }
   }
 
+  async function startMCPCheckout() {
+    setMcpLoading(true);
+    setMcpError(null);
+    try {
+      const res = await fetch('/api/mcp/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMcpError(data?.error || 'MCP checkout failed — please try again');
+        return;
+      }
+      const data = await res.json();
+      if (data?.data?.checkoutUrl) {
+        window.location.href = data.data.checkoutUrl;
+      } else {
+        setMcpError('Invalid checkout response');
+      }
+    } catch {
+      setMcpError('Something went wrong');
+    } finally {
+      setMcpLoading(false);
+    }
+  }
+
   async function openBillingPortal() {
     setPortalLoading(true);
     setPortalError(null);
@@ -298,7 +331,7 @@ function BillingInner() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-16 text-white">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* Checkout success toast */}
       {toast && (
         <div className="fixed right-5 top-20 z-50 flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950 px-5 py-4 text-sm text-emerald-200 shadow-xl">
@@ -308,27 +341,24 @@ function BillingInner() {
         </div>
       )}
 
-      <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="mb-3 text-sm uppercase tracking-[0.25em] text-emerald-400">Billing</p>
-            <h1 className="text-4xl font-bold">Usage and Billing</h1>
-            <p className="mt-3 max-w-2xl text-slate-300">
-              Review current plan, subscription status, included executions, and projected amount.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/pricing" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-8">
+          <PageHeader
+            title="Usage and Billing"
+            description="Review current plan, subscription status, included executions, and projected amount."
+          />
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Link href="/pricing" className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-slate-600">
               Change Plan
             </Link>
             <button
               onClick={openBillingPortal}
               disabled={portalLoading}
-              className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {portalLoading ? 'Opening Portal…' : 'Manage Billing'}
             </button>
-            <Link href="/dashboard" className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:border-slate-600">
+            <Link href="/dashboard" className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-slate-600">
               Dashboard
             </Link>
           </div>
@@ -361,7 +391,7 @@ function BillingInner() {
         )}
 
         {!loading && quotaUsage && (
-          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <Card className="mt-6">
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Quota Usage Breakdown</h2>
@@ -394,30 +424,31 @@ function BillingInner() {
                 </div>
               ))}
             </div>
+          </Card>
+        )}
+
+        {loading && (
+          <div className="mt-6 grid gap-4 md:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         )}
 
-        {/* KPI cards */}
-        <div className="mt-6 grid gap-6 md:grid-cols-4">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-          ) : (
-            [
+        {!loading && (
+          <div className="mt-6 grid gap-4 md:grid-cols-4">
+            {[
               { label: 'Plan',        value: usage?.plan                          ?? '—' },
               { label: 'Status',      value: usage?.subscription_status           ?? '—' },
               { label: 'Executions',  value: (usage?.executions ?? 0).toLocaleString() },
               { label: 'Projected',   value: usage ? `US$${usage.projected_amount_usd.toFixed(2)}` : '—' },
             ].map((card) => (
-              <div key={card.label} className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-                <p className="text-sm text-slate-400">{card.label}</p>
-                <p className="mt-3 text-3xl font-semibold">{card.value}</p>
-              </div>
-            ))
-          )}
-        </div>
+              <StatCard key={card.label} label={card.label} value={card.value} />
+            ))}
+          </div>
+        )}
 
-        {/* Revenue KPI */}
-        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <Card className="mt-8">
           <h2 className="text-xl font-semibold">Revenue KPI (last {kpis?.window_days ?? 30} days)</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {[
@@ -434,10 +465,9 @@ function BillingInner() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
-        {/* Billing period */}
-        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <Card className="mt-8">
           <h2 className="text-xl font-semibold">Billing period</h2>
           {loading ? (
             <div className="mt-3 space-y-2">
@@ -456,9 +486,8 @@ function BillingInner() {
               </div>
             </>
           )}
-        </div>
+        </Card>
 
-        {/* Upgrade plans */}
         <div className="mt-12">
           <h2 className="text-2xl font-semibold">Upgrade Plan</h2>
           <p className="mt-2 text-slate-300">Choose a plan that fits your team&apos;s needs.</p>
@@ -480,8 +509,8 @@ function BillingInner() {
           </div>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-semibold">Add-on bundles</h2>
+        <Card className="mt-8">
+          <h2 className="text-lg font-semibold text-slate-100">Add-on bundles</h2>
           <p className="mt-2 text-sm text-slate-300">Keep base subscription for recurring revenue and attach bundles for expansion revenue.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {SKILL_BUNDLES.map((bundle) => (
@@ -500,10 +529,9 @@ function BillingInner() {
             ))}
           </div>
           {bundleError && <p className="mt-3 text-xs text-red-400">{bundleError}</p>}
-        </div>
+        </Card>
 
-        {/* MCP Subscription Section */}
-        <div className="mt-8 rounded-2xl border border-cyan-600/20 bg-gradient-to-r from-cyan-600/10 to-blue-600/5 p-6">
+        <Card className="mt-8">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xl font-semibold">MCP API Subscription</h2>
@@ -542,9 +570,14 @@ function BillingInner() {
                   <span>Usage logs + audit trail</span>
                 </div>
               </div>
-              <button className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition">
-                Create MCP Key →
+              <button
+                onClick={startMCPCheckout}
+                disabled={mcpLoading}
+                className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 transition disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {mcpLoading ? 'Redirecting…' : 'Create MCP Key →'}
               </button>
+              {mcpError && <p className="mt-2 text-xs text-red-400">{mcpError}</p>}
             </div>
 
             {/* Integration guide */}
@@ -622,7 +655,7 @@ function BillingInner() {
               <span className="font-semibold text-cyan-300">Monthly billing:</span> Your team can have multiple MCP keys, each billed separately. Keys expire after 30 days and auto-renew.
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </main>
   );

@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { Skeleton } from '@/components/Skeleton';
 
 type PolicyItem = {
   id: string;
@@ -133,38 +136,35 @@ export default function PoliciesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#090a0d] text-slate-100">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <header className="flex flex-col gap-5 border border-white/10 bg-[linear-gradient(135deg,rgba(126,16,24,0.20),rgba(13,15,18,0.94)_42%,rgba(245,197,92,0.10)_120%)] p-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">DSG Runtime Governance</p>
-            <h1 className="mt-3 text-4xl font-semibold text-white md:text-5xl">Policy Control Flow</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-              A redesigned page for real users: load policy from runtime, review thresholds, edit the manifest, and deploy as a new policy version that the agent uses to inspect actions before execution.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">Dashboard</Link>
-            <Link href="/product" className="rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">Product</Link>
-            <button onClick={refreshPolicies} disabled={loading} className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <PageHeader
+            title="Policy Control Flow"
+            description="Load policy from runtime, review thresholds, edit the manifest, and deploy as a new policy version that the agent uses to inspect actions before execution."
+          />
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Link href="/dashboard" className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Dashboard</Link>
+            <Link href="/product" className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Product</Link>
+            <button onClick={refreshPolicies} disabled={loading} className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60">
               {loading ? 'Refreshing…' : 'Refresh runtime'}
             </button>
           </div>
-        </header>
+        </div>
 
-        <section className="mt-6 grid gap-3 md:grid-cols-4">
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
           {FLOW_STEPS.map(([step, title, body]) => (
-            <div key={step} className="border border-white/10 bg-[#0d0f12] p-4">
+            <Card key={step}>
               <div className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/10 text-sm font-bold text-amber-100">{step}</div>
               <h2 className="mt-4 text-sm font-semibold text-white">{title}</h2>
               <p className="mt-2 text-xs leading-6 text-slate-400">{body}</p>
-            </div>
+            </Card>
           ))}
-        </section>
+        </div>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-6">
-            <div className="border border-white/10 bg-[#0d0f12] p-5">
+            <Card>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Runtime source</p>
@@ -175,15 +175,21 @@ export default function PoliciesPage() {
                 </span>
               </div>
 
-              {error ? <div className="mt-4 border border-red-400/25 bg-red-500/10 p-3 text-sm leading-7 text-red-100">{error}</div> : null}
-              {notice ? <div className="mt-4 border border-emerald-300/25 bg-emerald-400/10 p-3 text-sm leading-7 text-emerald-100">{notice}</div> : null}
+              {error ? <Card variant="error" className="mt-4 text-sm leading-7">{error}</Card> : null}
+              {notice ? <Card variant="success" className="mt-4 text-sm leading-7">{notice}</Card> : null}
 
               <div className="mt-5 space-y-3">
-                {loading ? <div className="border border-white/10 bg-black/20 p-4 text-sm text-slate-400">Loading policies…</div> : null}
-                {!loading && policies.length === 0 ? (
-                  <div className="border border-amber-300/25 bg-amber-300/10 p-4 text-sm leading-7 text-amber-50">
-                    No policy found in runtime. Click Deploy update to create the first policy from the default manifest.
+                {loading ? (
+                  <div className="space-y-2">
+                    {[1, 2].map((i) => (
+                      <Skeleton key={i} className="h-20 rounded" />
+                    ))}
                   </div>
+                ) : null}
+                {!loading && policies.length === 0 ? (
+                  <Card variant="warning" className="text-sm leading-7">
+                    No policy found in runtime. Click Deploy update to create the first policy from the default manifest.
+                  </Card>
                 ) : null}
                 {policies.map((policy) => (
                   <button
@@ -212,19 +218,19 @@ export default function PoliciesPage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </Card>
 
-            <div className="border border-emerald-300/20 bg-emerald-400/10 p-5">
+            <Card>
               <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/80">What user gets</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Where you see results</h2>
               <p className="mt-3 text-sm leading-7 text-emerald-50/90">
                 Once a policy is deployed, the agent/runtime has a new threshold version to use for gate decisions. The dashboard shows the source, status, governance state, and active manifest — all auditable and traceable.
               </p>
-            </div>
+            </Card>
           </div>
 
           <div className="space-y-6">
-            <div className="border border-white/10 bg-[#0d0f12] p-5">
+            <Card>
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Selected policy</p>
@@ -296,9 +302,9 @@ export default function PoliciesPage() {
                   Deploy update to runtime
                 </button>
               </div>
-            </div>
+            </Card>
 
-            <div className="border border-blue-300/20 bg-blue-300/10 p-5">
+            <Card>
               <p className="text-[11px] uppercase tracking-[0.24em] text-blue-200">Runtime path</p>
               <div className="mt-4 grid gap-3 md:grid-cols-4">
                 {['Agent action', 'Policy check', 'Gate decision', 'Evidence trail'].map((item, index) => (
@@ -308,9 +314,9 @@ export default function PoliciesPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );

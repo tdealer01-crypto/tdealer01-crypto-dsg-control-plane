@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AgentCostCard } from "@/components/monitoring";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/Skeleton";
 
 interface Agent {
   id: string;
@@ -86,83 +92,72 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Agents</h1>
-            <p className="mt-2 text-gray-600">
-              Connect and manage agents in your organization
-            </p>
-          </div>
-          <Link
-            href="/dashboard/agents/connect"
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            + Connect Agent
-          </Link>
-        </div>
+        <PageHeader
+          title="ตัวแทน"
+          description="เชื่อมต่อและจัดการตัวแทนในองค์กรของคุณ"
+          actions={
+            <Link href="/dashboard/agents/connect">
+              <Button variant="primary">+ เชื่อมต่อตัวแทน</Button>
+            </Link>
+          }
+        />
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800">
+          <Card variant="error" className="mb-6">
             {error}
-          </div>
+          </Card>
         )}
 
         {loading && (
-          <div className="text-center text-gray-600">Loading agents...</div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-64 rounded-lg" />
+            ))}
+          </div>
         )}
 
         {!loading && agents.length === 0 && !error && (
-          <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-            <p className="text-gray-600">No agents yet</p>
-            <p className="mt-2 text-sm text-gray-500">
-              Connect your first agent to get started
-            </p>
-            <Link
-              href="/dashboard/agents/connect"
-              className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              Connect Agent
-            </Link>
-          </div>
+          <EmptyState
+            title="ยังไม่มีตัวแทน"
+            description="เชื่อมต่อตัวแทนแรกของคุณเพื่อเริ่มต้น"
+            action={
+              <Link href="/dashboard/agents/connect">
+                <Button variant="primary">เชื่อมต่อตัวแทน</Button>
+              </Link>
+            }
+          />
         )}
 
         {!loading && agents.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
-              <div
-                key={agent.id}
-                className="rounded-lg border border-gray-200 bg-white p-6 hover:border-blue-300"
-              >
+              <Card key={agent.id} variant="default">
                 <div className="mb-4 flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-white">
                       {agent.name}
                     </h3>
-                    <p className="text-sm text-gray-500">{agent.id}</p>
+                    <p className="text-sm text-gray-400">{agent.id}</p>
                   </div>
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                      agent.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
+                  <Badge
+                    variant={agent.status === "active" ? "success" : "default"}
                   >
                     {agent.status}
-                  </span>
+                  </Badge>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-600">
+                <div className="space-y-2 text-sm text-gray-400">
                   <div>
                     <p className="text-xs font-medium text-gray-500">
-                      CREATED
+                      สร้าง
                     </p>
                     <p>{formatDate(agent.created_at)}</p>
                   </div>
                   <div>
                     <p className="text-xs font-medium text-gray-500">
-                      LAST USED
+                      ใช้งานล่าสุด
                     </p>
                     <p>{formatTime(agent.last_used_at)}</p>
                   </div>
@@ -177,20 +172,22 @@ export default function AgentsPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => router.push(`/dashboard/agents/${encodeURIComponent(agent.id)}/permissions`)}
-                    className="flex-1 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-100"
+                    className="flex-1"
                   >
-                    Permissions
-                  </button>
-                  <button
+                    สิทธิ์
+                  </Button>
+                  <Button
+                    variant="secondary"
                     onClick={() => router.push(`/dashboard/agents/${encodeURIComponent(agent.id)}/settings`)}
-                    className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                    className="flex-1"
                   >
-                    Settings
-                  </button>
+                    การตั้งค่า
+                  </Button>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}

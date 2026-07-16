@@ -2,11 +2,12 @@
 
 ## Overview
 
-Hermes Agent requires a configured LLM backend to provide conversational responses. The system supports three providers:
+Hermes Agent requires a configured LLM backend to provide conversational responses. The system supports four providers:
 
-- **OpenRouter** (recommended) — access to NousResearch Hermes models
+- **OpenRouter** (primary) — access to multiple open-source and commercial models
 - **Together AI** — direct access to NousResearch Hermes models  
-- **Anthropic** — Claude models (fallback)
+- **Anthropic** — Claude models
+- **NVIDIA/Nemotron** (fallback) — NVIDIA's enterprise language models
 
 Without a configured LLM backend, Hermes will operate in **limited mode** and return:
 ```
@@ -96,14 +97,15 @@ curl -s https://tdealer01-crypto-dsg-control-plane.vercel.app/api/health | jq '.
 
 ## Provider Selection Logic
 
-The system checks environment variables in this order:
+The system checks environment variables in this order (priority-based):
 
-1. **OpenRouter** — if `OPENROUTER_API_KEY` is set
+1. **OpenRouter** (primary) — if `OPENROUTER_API_KEY` is set
 2. **Together AI** — if `TOGETHER_API_KEY` is set (and OpenRouter is not)
 3. **Anthropic** — if `ANTHROPIC_API_KEY` is set (and neither OpenRouter nor Together is set)
-4. **None** — if no providers are configured
+4. **NVIDIA/Nemotron** (fallback) — if `NVIDIA_API_KEY` is set (attempted only if primary provider fails)
+5. **None** — if no providers are configured
 
-The first configured provider is used as the primary backend.
+The first configured provider is used as the primary backend. NVIDIA is automatically used as a fallback when the primary provider is unavailable.
 
 ---
 
@@ -132,8 +134,22 @@ Default: `claude-haiku-4-5-20251001`
 
 Override via environment:
 ```bash
-DSG_BRAIN_MODEL=claude-opus-4-8
+ANTHROPIC_MODEL=claude-opus-4-8
 ```
+
+### NVIDIA/Nemotron (Fallback)
+
+Default: `nvidia/nemotron-3-ultra-550b-a55b`
+
+Override via environment:
+```bash
+NVIDIA_MODEL_CHAT=nvidia/nemotron-3-ultra-550b-a55b
+```
+
+NVIDIA is automatically used as a fallback provider when:
+- Primary provider (`OPENROUTER_API_KEY`, `TOGETHER_API_KEY`, or `ANTHROPIC_API_KEY`) is unavailable
+- Primary provider API request fails
+- `NVIDIA_API_KEY` is configured in the environment
 
 ---
 
@@ -147,8 +163,9 @@ DSG_BRAIN_MODEL=claude-opus-4-8
 ```
 
 **Likely causes:**
-- None of `OPENROUTER_API_KEY`, `TOGETHER_API_KEY`, or `ANTHROPIC_API_KEY` are set
-- API key is expired or invalid
+- None of `OPENROUTER_API_KEY`, `TOGETHER_API_KEY`, `ANTHROPIC_API_KEY`, or `NVIDIA_API_KEY` are set
+- All configured API keys are expired or invalid
+- All primary providers are experiencing downtime
 
 **Fix:**
 1. Verify API key is set: `echo $OPENROUTER_API_KEY`
@@ -227,9 +244,13 @@ Return Response
 
 | Variable | Required | Value | Example |
 |----------|----------|-------|---------|
-| `OPENROUTER_API_KEY` | if using OpenRouter | API key from openrouter.ai | `sk-or-...` |
-| `TOGETHER_API_KEY` | if using Together AI | API key from api.together.ai | `xxxx...` |
-| `ANTHROPIC_API_KEY` | if using Anthropic | API key from console.anthropic.com | `sk-ant-...` |
+| `OPENROUTER_API_KEY` | for primary provider | API key from openrouter.ai | `sk-or-...` |
+| `OPENROUTER_MODEL_CHAT` | optional | Model identifier (primary) | `openai/gpt-4.1-mini` |
+| `TOGETHER_API_KEY` | for primary provider | API key from api.together.ai | `xxxx...` |
+| `ANTHROPIC_API_KEY` | for primary provider | API key from console.anthropic.com | `sk-ant-...` |
+| `ANTHROPIC_MODEL` | optional | Model identifier (Anthropic) | `claude-haiku-4-5-20251001` |
+| `NVIDIA_API_KEY` | for fallback provider | API key from NVIDIA NGC | `nvapi-...` |
+| `NVIDIA_MODEL_CHAT` | optional | Model identifier (NVIDIA) | `nvidia/nemotron-3-ultra-550b-a55b` |
 | `DSG_BRAIN_MODEL` | optional | Model identifier | `nousresearch/hermes-3-llama-3.1-70b` |
 | `DSG_BRAIN_PROVIDER` | optional | Force provider selection | `nous-hermes` or `anthropic` |
 

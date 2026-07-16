@@ -33,7 +33,7 @@ type ChatMessage = {
   content: string;
 };
 
-type Provider = 'openai' | 'openrouter' | 'anthropic';
+type Provider = 'openai' | 'openrouter' | 'anthropic' | 'nvidia';
 
 type OpenAITextContent = {
   text?: string;
@@ -147,15 +147,19 @@ function safeModel(value: string | undefined, fallback: string) {
   return value;
 }
 
-function resolveProvider(): 'anthropic' | Provider | null {
+function resolveProvider(): Provider | null {
   const requested = (process.env.PUBLIC_CHAT_PROVIDER || process.env.AI_PROVIDER || '').toLowerCase();
 
   if (requested === 'anthropic') return 'anthropic';
   if (requested === 'openrouter') return 'openrouter';
   if (requested === 'openai') return 'openai';
+  if (requested === 'nvidia') return 'nvidia';
+
+  // Auto-detect: OpenRouter first (primary), then others
+  if (process.env.OPENROUTER_API_KEY) return 'openrouter';
   if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
   if (process.env.OPENAI_API_KEY) return 'openai';
-  if (process.env.OPENROUTER_API_KEY) return 'openrouter';
+  if (process.env.NVIDIA_API_KEY) return 'nvidia';
   return null;
 }
 
@@ -357,11 +361,74 @@ async function callOpenRouter(messages: ChatMessage[]): Promise<ChatResult> {
   };
 }
 
+async function callNvidia(messages: ChatMessage[]): Promise<ChatResult> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) {
+    return fallbackResult(messages, 'NVIDIA_API_KEY is not configured');
+  }
+
+  const model = safeModel(
+    process.env.NVIDIA_MODEL_CHAT,
+    'nvidia/nemotron-3-ultra-550b-a55b',
+  );
+
+  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages.map((message) => ({ role: message.role, content: message.content })),
+      ],
+      max_tokens: 700,
+      temperature: 0.2,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as OpenRouterResponse;
+
+  if (!response.ok) {
+    return {
+      ...fallbackResult(messages, payload.error?.message || 'NVIDIA API request failed'),
+      status: response.status,
+      model,
+      provider: 'nvidia',
+    };
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    answer: extractOpenRouterText(payload),
+    mode: 'openrouter_chat_completions_api',
+    model,
+    provider: 'nvidia',
+  };
+}
+
 async function callModel(messages: ChatMessage[]): Promise<ChatResult> {
   const provider = resolveProvider();
+
+  // Try primary provider
+  if (provider === 'openrouter') {
+    const result = await callOpenRouter(messages);
+    if (result.ok) return result;
+    // Try NVIDIA fallback if OpenRouter fails
+    if (process.env.NVIDIA_API_KEY) {
+      const nvidiaResult = await callNvidia(messages);
+      if (nvidiaResult.ok) return nvidiaResult;
+    }
+    return result;
+  }
+
   if (provider === 'anthropic') return callAnthropic(messages);
-  if (provider === 'openrouter') return callOpenRouter(messages);
   if (provider === 'openai') return callOpenAI(messages);
+  if (provider === 'nvidia') return callNvidia(messages);
+
   return fallbackResult(messages, 'No AI provider key is configured');
 }
 

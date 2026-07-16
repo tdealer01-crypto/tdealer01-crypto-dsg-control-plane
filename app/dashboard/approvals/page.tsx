@@ -3,6 +3,13 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAppLanguage } from '@/store/useAppLanguage';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { StatCard } from '@/components/ui/StatCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 
 const APPROVALS_T = {
   th: {
@@ -169,182 +176,168 @@ export default function ApprovalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">{t.title}</h1>
-            <p className="text-gray-600">{t.subtitle}</p>
-          </div>
-          <button
-            onClick={fetchApprovals}
-            disabled={loading}
-            className="self-start sm:self-auto rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-blue-600 hover:text-blue-600 transition disabled:opacity-40"
-          >
-            {loading ? t.loading : t.refresh}
-          </button>
+    <div className="min-h-screen bg-slate-950 p-8">
+      <div className="mx-auto max-w-6xl">
+        <PageHeader
+          title={t.title}
+          description={t.subtitle}
+          actions={
+            <Button
+              onClick={fetchApprovals}
+              disabled={loading}
+              variant="primary"
+            >
+              {loading ? t.loading : t.refresh}
+            </Button>
+          }
+        />
+
+        <div className="mb-8 grid gap-4 md:grid-cols-2">
+          <StatCard
+            label={t.pendingLabel}
+            value={pendingCount}
+            variant={pendingCount > 0 ? 'warning' : 'success'}
+          />
+          <StatCard
+            label={t.totalLabel}
+            value={approvals.length}
+            variant="info"
+          />
         </div>
 
-        {/* Stats */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex gap-8">
-            <div>
-              <p className="text-gray-600 text-sm">{t.pendingLabel}</p>
-              <p className="text-4xl font-bold text-yellow-600">{pendingCount}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">{t.totalLabel}</p>
-              <p className="text-4xl font-bold text-gray-900">{approvals.length}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2 mb-8">
+        <div className="mb-8 flex gap-2">
           {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => {
             const labels = { all: t.filterAll, pending: t.filterPending, approved: t.filterApproved, rejected: t.filterRejected };
             return (
-              <button
+              <Button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                  filter === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
-                }`}
+                variant={filter === status ? 'primary' : 'secondary'}
               >
                 {labels[status]}
-              </button>
+              </Button>
             );
           })}
         </div>
 
-        {/* Approvals List */}
         {loading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map(n => (
-              <div key={n} className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-gray-200 animate-pulse">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex gap-3">
-                      <div className="h-5 w-5 rounded-full bg-gray-200" />
-                      <div className="h-5 w-48 rounded bg-gray-200" />
-                      <div className="h-5 w-16 rounded-full bg-gray-200" />
-                    </div>
-                    <div className="h-4 w-64 rounded bg-gray-100" />
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <div className="h-9 w-24 rounded-lg bg-gray-200" />
-                    <div className="h-9 w-20 rounded-lg bg-gray-200" />
-                  </div>
-                </div>
-              </div>
+            {[1, 2, 3].map((n) => (
+              <Skeleton key={n} className="h-32 rounded-lg" />
             ))}
           </div>
         ) : filteredApprovals.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <p className="text-lg font-semibold text-gray-700">
-              {filter === 'pending' ? t.emptyPendingTitle : t.emptyOtherTitle(filter)}
-            </p>
-            <p className="mt-2 text-sm text-gray-500">
-              {filter === 'pending' ? t.emptyPendingBody : t.emptyOtherBody}
-            </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <button
-                onClick={() => setFilter('all')}
-                className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 text-sm font-semibold hover:bg-blue-50 transition"
-              >
-                {t.viewAll}
-              </button>
-              <button
-                onClick={fetchApprovals}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
-              >
-                {t.refresh}
-              </button>
-            </div>
-          </div>
+          <EmptyState
+            title={filter === 'pending' ? t.emptyPendingTitle : t.emptyOtherTitle(filter)}
+            description={filter === 'pending' ? t.emptyPendingBody : t.emptyOtherBody}
+            action={
+              <div className="flex gap-2">
+                <Button onClick={() => setFilter('all')} variant="secondary">
+                  {t.viewAll}
+                </Button>
+                <Button onClick={fetchApprovals} variant="primary">
+                  {t.refresh}
+                </Button>
+              </div>
+            }
+          />
         ) : (
           <div className="space-y-4">
             {filteredApprovals.map((approval) => (
-              <div
+              <Card
                 key={approval.id}
-                className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-600"
+                variant={
+                  approval.status === 'approved'
+                    ? 'success'
+                    : approval.status === 'rejected'
+                      ? 'error'
+                      : 'default'
+                }
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    {/* Title */}
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="mb-2 flex items-center gap-3">
                       {getStatusIcon(approval.status)}
-                      <h3 className="text-lg font-bold text-gray-900">{approval.action}</h3>
-                      <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full ${getPriorityColor(
-                          approval.priority,
-                        )}`}
+                      <h3 className="text-lg font-bold text-white">
+                        {approval.action}
+                      </h3>
+                      <Badge
+                        variant={
+                          approval.priority === 'high'
+                            ? 'error'
+                            : approval.priority === 'medium'
+                              ? 'warning'
+                              : 'success'
+                        }
                       >
                         {approval.priority.toUpperCase()}
-                      </span>
+                      </Badge>
                     </div>
 
-                    {/* Agent & Time */}
-                    <p className="text-sm text-gray-600 mb-4">
-                      {t.agentLabel}: <span className="font-mono font-semibold">{approval.agentId}</span>
+                    <p className="mb-4 text-sm text-gray-400">
+                      {t.agentLabel}:{' '}
+                      <span className="font-mono font-semibold">
+                        {approval.agentId}
+                      </span>
                       {' • '}
-                      {t.createdLabel}: <span>{new Date(approval.createdAt).toLocaleString()}</span>
+                      {t.createdLabel}:{' '}
+                      <span>{new Date(approval.createdAt).toLocaleString()}</span>
                     </p>
 
-                    {/* Action Input (if any) */}
-                    {approval.input && Object.keys(approval.input).length > 0 && (
-                      <details className="mb-4">
-                        <summary className="cursor-pointer text-sm font-semibold text-blue-600 hover:text-blue-700">
-                          {t.viewDetails}
-                        </summary>
-                        <pre className="mt-2 bg-gray-50 p-3 rounded text-xs overflow-x-auto">
-                          {JSON.stringify(approval.input, null, 2)}
-                        </pre>
-                      </details>
-                    )}
+                    {approval.input &&
+                      Object.keys(approval.input).length > 0 && (
+                        <details className="mb-4">
+                          <summary className="cursor-pointer text-sm font-semibold text-blue-300 hover:text-blue-200">
+                            {t.viewDetails}
+                          </summary>
+                          <pre className="mt-2 overflow-x-auto rounded border border-white/10 bg-black/40 p-3 text-xs leading-6 text-slate-300">
+                            {JSON.stringify(approval.input, null, 2)}
+                          </pre>
+                        </details>
+                      )}
 
-                    {/* Expiry Warning */}
                     {approval.status === 'pending' && (
-                      <p className="text-xs text-red-600 font-semibold">
-                        {t.expires}: {new Date(approval.expiresAt).toLocaleString()}
+                      <p className="text-xs font-semibold text-red-300">
+                        {t.expires}:{' '}
+                        {new Date(approval.expiresAt).toLocaleString()}
                       </p>
                     )}
                   </div>
 
-                  {/* Action Buttons */}
                   {approval.status === 'pending' && (
-                    <div className="flex gap-2 ml-4">
-                      <button
+                    <div className="ml-4 flex gap-2">
+                      <Button
                         onClick={() => handleApprove(approval.id)}
                         disabled={processing === approval.id}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
+                        variant="success"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="h-4 w-4" />
                         {t.approve}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleReject(approval.id)}
                         disabled={processing === approval.id}
-                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
+                        variant="danger"
                       >
-                        <XCircle className="w-4 h-4" />
+                        <XCircle className="h-4 w-4" />
                         {t.reject}
-                      </button>
+                      </Button>
                     </div>
                   )}
 
                   {approval.status === 'approved' && (
-                    <span className="text-green-600 font-bold">{t.approved}</span>
+                    <span className="font-bold text-emerald-300">
+                      {t.approved}
+                    </span>
                   )}
 
                   {approval.status === 'rejected' && (
-                    <span className="text-red-600 font-bold">{t.rejected}</span>
+                    <span className="font-bold text-red-300">
+                      {t.rejected}
+                    </span>
                   )}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}

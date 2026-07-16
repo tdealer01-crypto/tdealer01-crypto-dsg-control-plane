@@ -13,6 +13,7 @@ vi.mock('../../../lib/supabase-server', () => ({
 vi.mock('../../../lib/email/sales', () => ({
   sendTrialWelcome: vi.fn(),
   sendUpgradeSuccess: vi.fn(),
+  sendPaymentFailed: vi.fn(),
 }));
 vi.mock('../../../lib/security/api-error', () => ({
   internalErrorMessage: vi.fn(() => 'Internal server error'),
@@ -28,14 +29,18 @@ vi.mock('../../../lib/billing/entitlements', () => ({
     ['canceled', 'unpaid', 'past_due', 'incomplete_expired'].includes(status) ? 'free' : planKey
   ),
 }));
+vi.mock('../../../lib/telemetry/capture-event', () => ({
+  captureEvent: vi.fn().mockResolvedValue({}),
+}));
 
 import { POST } from '../../../app/api/billing/webhook/route';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
-import { sendUpgradeSuccess } from '../../../lib/email/sales';
+import { sendUpgradeSuccess, sendPaymentFailed } from '../../../lib/email/sales';
 import { fulfillSubscription, revokeSubscription } from '../../../lib/billing/fulfillment';
 
 const mockGetAdmin = vi.mocked(getSupabaseAdmin);
 const mockSendUpgradeSuccess = vi.mocked(sendUpgradeSuccess);
+const mockSendPaymentFailed = vi.mocked(sendPaymentFailed);
 const mockFulfill = vi.mocked(fulfillSubscription);
 const mockRevoke = vi.mocked(revokeSubscription);
 
@@ -378,5 +383,28 @@ describe('POST /api/billing/webhook', () => {
     const res = await POST(makeRequest('{}'));
     expect(res.status).toBe(200);
     expect(mockRevoke).toHaveBeenCalledWith('org-1');
+  });
+
+  it('handles invoice.payment_failed without crashing', async () => {
+    const invoice = {
+      id: 'in_1',
+      customer: 'cus_1',
+      amount_due: 9999,
+      attempt_count: 2,
+      next_payment_attempt: 1704067200,
+      subscription: null,
+    };
+    const event = {
+      id: 'evt_payment_failed',
+      type: 'invoice.payment_failed',
+      data: { object: invoice },
+    };
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue(event as any);
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.received).toBe(true);
+    expect(body.type).toBe('invoice.payment_failed');
   });
 });

@@ -28,6 +28,7 @@
     "ccvs:hpc-parallel": "node scripts/ccvs-parallel-evidence-hpc.mjs",
     "marketplace:screenshots": "./scripts/with-playwright-chromium.sh node scripts/capture-marketplace-screenshots.mjs",
     "test:e2e": "./scripts/with-playwright-chromium.sh playwright test tests/e2e/enterprise-proof.spec.ts tests/e2e/finance-governance-workflow.spec.ts",
+    "test:e2e:ui": "./scripts/with-playwright-chromium.sh playwright test tests/e2e/ui-pages.spec.ts tests/e2e/chat-agents.spec.ts",
     "screenshot": "./scripts/with-playwright-chromium.sh node scripts/capture-screenshot.mjs",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:install:shell": "playwright install --only-shell chromium",

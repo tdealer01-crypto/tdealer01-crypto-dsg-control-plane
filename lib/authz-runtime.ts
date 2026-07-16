@@ -39,7 +39,7 @@ export async function requireRuntimeAccess(
     };
   }
 
-  const session = await requireOrgRole(RuntimeRouteRoles[routeKey]);
+  const session = await requireOrgRole(RuntimeRouteRoles[routeKey], req);
   if (!session.ok) {
     return { ok: false, status: session.status, error: session.error };
   }
