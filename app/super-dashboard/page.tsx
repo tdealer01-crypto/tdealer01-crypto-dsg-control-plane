@@ -100,11 +100,59 @@ export default function SuperDashboard() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        addMessage('agent', data.response || 'Task queued for execution');
-      } else {
+      if (!response.ok) {
         addMessage('system', '⚠️ Could not reach agent. Please try again.');
+        return;
+      }
+
+      // Parse SSE stream
+      const reader = response.body?.getReader();
+      if (!reader) {
+        addMessage('system', '⚠️ No response stream');
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let hasResponse = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+
+          try {
+            const jsonStr = line.slice(6).trim();
+            const event = JSON.parse(jsonStr);
+
+            if (event.type === 'assistant_reply' && event.reply) {
+              if (!hasResponse) {
+                addMessage('agent', event.reply);
+                hasResponse = true;
+              }
+            } else if (event.type === 'token' && event.text) {
+              // Progressive token display (could be enhanced for better UX)
+              if (!hasResponse) {
+                addMessage('agent', event.text);
+                hasResponse = true;
+              }
+            } else if (event.type === 'error' && event.message) {
+              addMessage('system', `❌ ${event.message}`);
+            }
+          } catch (e) {
+            // Skip unparseable SSE lines
+          }
+        }
+      }
+
+      if (!hasResponse) {
+        addMessage('system', 'Agent processed your request');
       }
     } catch (err) {
       addMessage('system', `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
