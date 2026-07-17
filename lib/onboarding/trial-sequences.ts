@@ -164,8 +164,8 @@ export async function sendOnboardingEmail(
 
   // Get org and user info
   const { data: trial } = await supabase
-    .from('trial_accounts')
-    .select('id,lead_id')
+    .from('discovery_trial_accounts')
+    .select('id,prospect_id')
     .eq('org_id', orgId)
     .maybeSingle();
 
@@ -217,9 +217,9 @@ export async function sendOnboardingEmail(
     }
 
     // Log interaction
-    if (trial.lead_id) {
-      await supabase.from('lead_interactions').insert({
-        lead_id: trial.lead_id,
+    if (trial.prospect_id) {
+      await supabase.from('prospect_interactions').insert({
+        prospect_id: trial.prospect_id,
         interaction_type: 'onboarding_email_sent',
         metadata: { template: email.template, stage, dayNumber },
       });
@@ -242,7 +242,7 @@ export async function progressTrialStage(
   const supabase = getSupabaseAdmin() as any;
 
   const { error } = await supabase
-    .from('trial_accounts')
+    .from('discovery_trial_accounts')
     .update({
       onboarding_stage: newStage,
       updated_at: new Date().toISOString(),
@@ -260,7 +260,7 @@ export async function isReadyToConvert(orgId: string): Promise<boolean> {
 
   // Get trial account
   const { data: trial } = await supabase
-    .from('trial_accounts')
+    .from('discovery_trial_accounts')
     .select('total_executions,trial_start_at')
     .eq('org_id', orgId)
     .maybeSingle();

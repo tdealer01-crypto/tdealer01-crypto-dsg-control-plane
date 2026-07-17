@@ -197,7 +197,7 @@ export async function saveLeads(leads: DiscoveredLead[]): Promise<number> {
   let savedCount = 0;
 
   for (const lead of leads) {
-    const { error } = await supabase.from('leads').upsert(
+    const { error } = await supabase.from('discovered_prospects').upsert(
       {
         source: lead.source,
         source_id: lead.source_id,

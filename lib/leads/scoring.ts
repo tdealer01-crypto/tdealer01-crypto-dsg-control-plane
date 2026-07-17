@@ -142,7 +142,7 @@ export async function scoreLead(
     // Fetch from database if not provided
     const supabase = getSupabaseAdmin() as any;
     const { data } = await supabase
-      .from('leads')
+      .from('discovered_prospects')
       .select('name,company,title,bio')
       .eq('id', leadId)
       .maybeSingle();
@@ -175,7 +175,7 @@ export async function scoreAllLeads(): Promise<number> {
 
   // Get all leads that need scoring
   const { data: leads } = await supabase
-    .from('leads')
+    .from('discovered_prospects')
     .select('id,name,company,title,bio');
 
   if (!leads || leads.length === 0) {
@@ -188,7 +188,7 @@ export async function scoreAllLeads(): Promise<number> {
     const score = await scoreLead(lead.id, lead);
 
     const { error } = await supabase
-      .from('leads')
+      .from('discovered_prospects')
       .update({
         icp_score: score.icpScore,
         engagement_score: score.engagementScore,
@@ -222,7 +222,7 @@ export async function getTopLeads(
   const supabase = getSupabaseAdmin() as any;
 
   const { data } = await supabase
-    .from('leads')
+    .from('discovered_prospects')
     .select('id,name,email,company,title,overall_score,status')
     .gte('overall_score', minScore)
     .order('overall_score', { ascending: false })

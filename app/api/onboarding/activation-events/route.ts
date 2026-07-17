@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     // Get trial account
     const { data: trial } = await admin
-      .from('trial_accounts')
+      .from('discovery_trial_accounts')
       .select('id,onboarding_stage,trial_start_at')
       .eq('org_id', profile.org_id)
       .maybeSingle();
@@ -66,8 +66,8 @@ export async function POST(request: Request) {
     }
 
     // Log the activation event
-    await admin.from('lead_interactions').insert({
-      lead_id: trial.lead_id,
+    await admin.from('prospect_interactions').insert({
+      prospect_id: trial.prospect_id,
       interaction_type: `trial_${eventType}`,
       metadata: { org_id: profile.org_id, ...metadata },
     });
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       newStage = 'first_execution';
       // Increment execution counter
       await admin
-        .from('trial_accounts')
+        .from('discovery_trial_accounts')
         .update({ total_executions: (trial as any).total_executions + 1 })
         .eq('org_id', profile.org_id);
       sendEmail = true;
@@ -154,7 +154,7 @@ export async function GET(request: Request) {
 
     // Get trial status
     const { data: trial } = await admin
-      .from('trial_accounts')
+      .from('discovery_trial_accounts')
       .select(
         'id,onboarding_stage,total_executions,trial_start_at,trial_end_at,status'
       )

@@ -155,7 +155,7 @@ export async function sendOutreachEmail(
 
   // Get lead details
   const { data: lead, error: fetchError } = await supabase
-    .from('leads')
+    .from('discovered_prospects')
     .select('id,name,email,status')
     .eq('id', leadId)
     .maybeSingle();
@@ -177,8 +177,8 @@ export async function sendOutreachEmail(
   const { messageId, error } = await sendEmail(lead.email, subject, html);
 
   // Track interaction
-  await supabase.from('lead_interactions').insert({
-    lead_id: leadId,
+  await supabase.from('prospect_interactions').insert({
+    prospect_id: leadId,
     interaction_type: 'email_sent',
     metadata: { template, subject, messageId },
   });
@@ -186,7 +186,7 @@ export async function sendOutreachEmail(
   // Update lead status
   if (lead.status === 'discovered') {
     await supabase
-      .from('leads')
+      .from('discovered_prospects')
       .update({ status: 'contacted', last_contacted_at: new Date().toISOString() })
       .eq('id', leadId);
   }
@@ -212,7 +212,7 @@ export async function sendOutreachToTopLeads(
 
   // Get top uncontacted leads
   const { data: leads } = await supabase
-    .from('leads')
+    .from('discovered_prospects')
     .select('id')
     .gte('overall_score', minScore)
     .eq('status', 'discovered')
@@ -239,8 +239,8 @@ export async function sendOutreachToTopLeads(
 export async function logEmailOpen(leadId: string, messageId: string): Promise<boolean> {
   const supabase = getSupabaseAdmin() as any;
 
-  const { error } = await supabase.from('lead_interactions').insert({
-    lead_id: leadId,
+  const { error } = await supabase.from('prospect_interactions').insert({
+    prospect_id: leadId,
     interaction_type: 'email_opened',
     metadata: { messageId },
   });
@@ -258,8 +258,8 @@ export async function logLinkClick(
 ): Promise<boolean> {
   const supabase = getSupabaseAdmin() as any;
 
-  const { error } = await supabase.from('lead_interactions').insert({
-    lead_id: leadId,
+  const { error } = await supabase.from('prospect_interactions').insert({
+    prospect_id: leadId,
     interaction_type: 'link_clicked',
     metadata: { linkUrl, linkText },
   });

@@ -42,8 +42,8 @@ export async function POST(request: Request) {
 
     // Get trial account
     const { data: trial } = await admin
-      .from('trial_accounts')
-      .select('id,lead_id')
+      .from('discovery_trial_accounts')
+      .select('id,prospect_id')
       .eq('org_id', profile.org_id)
       .maybeSingle();
 
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
     // Update trial account to converted
     await admin
-      .from('trial_accounts')
+      .from('discovery_trial_accounts')
       .update({
         status: 'converted',
         converted_at: new Date().toISOString(),
@@ -120,19 +120,19 @@ export async function POST(request: Request) {
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     });
 
-    // Log interaction if from lead
-    if (trial.lead_id) {
-      await admin.from('lead_interactions').insert({
-        lead_id: trial.lead_id,
+    // Log interaction if from prospect
+    if (trial.prospect_id) {
+      await admin.from('prospect_interactions').insert({
+        prospect_id: trial.prospect_id,
         interaction_type: 'trial_converted',
         metadata: { plan, interval, subscription_id: subscription.id },
       });
 
-      // Update lead status
+      // Update prospect status
       await admin
-        .from('leads')
+        .from('discovered_prospects')
         .update({ status: 'converted' })
-        .eq('id', trial.lead_id);
+        .eq('id', trial.prospect_id);
     }
 
     return NextResponse.json(
