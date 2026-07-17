@@ -109,7 +109,7 @@ export default function TrinityDashboard() {
               <div className="text-center space-y-2">
                 <div className="text-4xl">{agent.emoji}</div>
                 <h3 className="font-bold text-[#F8FAFC]">{agent.name}</h3>
-                <p className="text-xs text-[#AAB3C5]">{agent.role}</p>
+                <p className="text-xs text-[#E0E5EE]">{agent.role}</p>
                 <Badge>✓ {agent.status}</Badge>
               </div>
             </Card>
@@ -192,7 +192,7 @@ export default function TrinityDashboard() {
 
               <Card variant="default">
                 <div className="space-y-2">
-                  <p className="text-xs text-[#AAB3C5] uppercase tracking-widest font-semibold">Plan Hash</p>
+                  <p className="text-xs text-[#E0E5EE] uppercase tracking-widest font-semibold">Plan Hash</p>
                   <p className="font-mono text-sm text-[#F7DC78] break-all">{result.planHash}</p>
                 </div>
               </Card>
@@ -216,7 +216,7 @@ export default function TrinityDashboard() {
                     {j.difficulty === 'easy' ? '⭐ Easy' : j.difficulty === 'medium' ? '⭐⭐ Medium' : '⭐⭐⭐ Hard'}
                   </Badge>
                 </div>
-                <p className="text-sm text-[#AAB3C5]">{j.reward} SOL</p>
+                <p className="text-sm text-[#E0E5EE]">{j.reward} SOL</p>
                 <Button variant="secondary" size="sm" onClick={() => handleUseJob(j)} type="button">
                   Use Job
                 </Button>
@@ -262,7 +262,7 @@ export default function TrinityDashboard() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="gradient-text text-3xl md:text-4xl font-black mb-2">Trinity AI Orchestration</h1>
-        <p className="text-[#AAB3C5] mb-4">5-Agent Multi-Agent System for Job Discovery, Execution, Verification & Settlement</p>
+        <p className="text-[#E0E5EE] mb-4">5-Agent Multi-Agent System for Job Discovery, Execution, Verification & Settlement</p>
         <div className="flex items-center gap-2 text-emerald-400">
           <span className={`inline-block w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
           {isConnected ? '● Real-time Connected' : '● Connection Lost'}
@@ -279,7 +279,7 @@ export default function TrinityDashboard() {
           <Card variant="gold">
             <div className="space-y-2">
               <h4 className="font-bold text-[#F7DC78] text-lg">🧠 Mind Agent</h4>
-              <ul className="text-sm text-[#AAB3C5] space-y-1">
+              <ul className="text-sm text-[#E0E5EE] space-y-1">
                 <li>• Discover jobs across 6 platforms</li>
                 <li>• Filter by category and difficulty</li>
                 <li>• Real-time job monitoring</li>
@@ -290,7 +290,7 @@ export default function TrinityDashboard() {
           <Card variant="gold">
             <div className="space-y-2">
               <h4 className="font-bold text-[#F7DC78] text-lg">✋ Hand Agent</h4>
-              <ul className="text-sm text-[#AAB3C5] space-y-1">
+              <ul className="text-sm text-[#E0E5EE] space-y-1">
                 <li>• Execute jobs with deliverables</li>
                 <li>• Quality scoring (0-100%)</li>
                 <li>• Execution time tracking</li>
@@ -301,7 +301,7 @@ export default function TrinityDashboard() {
           <Card variant="gold">
             <div className="space-y-2">
               <h4 className="font-bold text-[#F7DC78] text-lg">👁️ Eye Agent</h4>
-              <ul className="text-sm text-[#AAB3C5] space-y-1">
+              <ul className="text-sm text-[#E0E5EE] space-y-1">
                 <li>• Verify deliverable quality</li>
                 <li>• Blockchain tx validation</li>
                 <li>• Issue detection</li>
@@ -312,7 +312,7 @@ export default function TrinityDashboard() {
           <Card variant="gold">
             <div className="space-y-2">
               <h4 className="font-bold text-[#F7DC78] text-lg">⚡ Nerve Agent</h4>
-              <ul className="text-sm text-[#AAB3C5] space-y-1">
+              <ul className="text-sm text-[#E0E5EE] space-y-1">
                 <li>• SOL token settlement</li>
                 <li>• Reputation management</li>
                 <li>• Tier advancement</li>
@@ -323,7 +323,7 @@ export default function TrinityDashboard() {
           <Card variant="gold">
             <div className="space-y-2">
               <h4 className="font-bold text-[#F7DC78] text-lg">🦴 Spine Agent</h4>
-              <ul className="text-sm text-[#AAB3C5] space-y-1">
+              <ul className="text-sm text-[#E0E5EE] space-y-1">
                 <li>• Deterministic plan hashing</li>
                 <li>• DSG governance validation</li>
                 <li>• Immutable audit trail</li>
@@ -334,7 +334,7 @@ export default function TrinityDashboard() {
           <Card variant="gold">
             <div className="space-y-2">
               <h4 className="font-bold text-[#F7DC78] text-lg">📊 Analytics</h4>
-              <ul className="text-sm text-[#AAB3C5] space-y-1">
+              <ul className="text-sm text-[#E0E5EE] space-y-1">
                 <li>• Execution history tracking</li>
                 <li>• Performance metrics</li>
                 <li>• Status monitoring</li>
