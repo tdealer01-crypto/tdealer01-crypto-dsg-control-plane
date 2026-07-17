@@ -160,7 +160,7 @@ export async function sendOnboardingEmail(
   stage: OnboardingStage,
   dayNumber: number
 ): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   // Get org and user info
   const { data: trial } = await supabase
@@ -239,7 +239,7 @@ export async function progressTrialStage(
   orgId: string,
   newStage: OnboardingStage
 ): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   const { error } = await supabase
     .from('trial_accounts')
@@ -256,7 +256,7 @@ export async function progressTrialStage(
  * Check if trial user is ready to convert
  */
 export async function isReadyToConvert(orgId: string): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   // Get trial account
   const { data: trial } = await supabase

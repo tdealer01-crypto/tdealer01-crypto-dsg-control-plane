@@ -192,7 +192,7 @@ export async function discoverLeadsFromTwitter(): Promise<DiscoveredLead[]> {
  * Save discovered leads to database
  */
 export async function saveLeads(leads: DiscoveredLead[]): Promise<number> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   let savedCount = 0;
 

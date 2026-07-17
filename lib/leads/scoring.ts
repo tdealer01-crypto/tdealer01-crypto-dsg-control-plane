@@ -83,7 +83,7 @@ export function calculateICPScore(lead: {
 export async function calculateEngagementScore(
   leadId: string
 ): Promise<number> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   // Get recent interactions
   const { data: interactions } = await supabase
@@ -140,7 +140,7 @@ export async function scoreLead(
     icpScore = calculateICPScore(lead);
   } else {
     // Fetch from database if not provided
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
     const { data } = await supabase
       .from('leads')
       .select('name,company,title,bio')
@@ -171,7 +171,7 @@ export async function scoreLead(
  * Score all leads and update database
  */
 export async function scoreAllLeads(): Promise<number> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   // Get all leads that need scoring
   const { data: leads } = await supabase
@@ -219,7 +219,7 @@ export async function getTopLeads(
   overallScore: number;
   status: string;
 }>> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   const { data } = await supabase
     .from('leads')
