@@ -73,6 +73,8 @@
     "revenue:process:leads": "node scripts/revenue/process-leads.mjs",
     "revenue:webhook:setup": "node scripts/revenue/zapier-webhook-handler.mjs",
     "revenue:monitor:marketplace": "node scripts/revenue/marketplace-monitor.mjs",
+    "revenue:test:webhook": "node scripts/revenue/webhook-tester.mjs",
+    "revenue:verify:setup": "node scripts/revenue/verify-setup.mjs",
     "revenue:init": "npm run revenue:webhook:setup && npm run revenue:setup:hubspot"
   },
   "dependencies": {
