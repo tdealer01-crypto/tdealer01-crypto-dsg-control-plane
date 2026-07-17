@@ -36,6 +36,11 @@
       "name": "dsg-multi-governance-orchestrator",
       "path": "../skills/dsg-multi-governance-orchestrator",
       "description": "Multi-source governance orchestration: UI trust upgrades, action-layer permission gates, deterministic execution, marketplace/enterprise cutover, architecture pages, and production GO/NO-GO validation."
+    },
+    {
+      "name": "dsg-marketplace-fix",
+      "path": "../skills/dsg-marketplace-fix",
+      "description": "Remediation skill — fixes the premature Claude.ai README claim and verifies the production OAuth authorization-server endpoint before marketplace launch."
     }
   ],
   "pricing": {
