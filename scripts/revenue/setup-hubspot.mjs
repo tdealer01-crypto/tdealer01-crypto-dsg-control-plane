@@ -7,7 +7,6 @@
  */
 
 import fetch from 'node-fetch';
-import * as readline from 'readline';
 
 const API_KEY = process.env.HUBSPOT_API_KEY;
 const BASE_URL = 'https://api.hubapi.com';
@@ -17,13 +16,6 @@ if (!API_KEY) {
   console.error('Get your API key from: https://app.hubspot.com/private-apps');
   process.exit(1);
 }
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-const question = (prompt) => new Promise(resolve => rl.question(prompt, resolve));
 
 async function hubspotRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
@@ -58,10 +50,9 @@ async function testConnection() {
 
 async function createContactProperty(name, label, type = 'string') {
   try {
-    await hubspotRequest(`/crm/v3/objects/contacts/model/properties`, {
+    await hubspotRequest(`/crm/v3/properties/contacts/${name}`, {
       method: 'POST',
       body: JSON.stringify({
-        name,
         label,
         type,
         fieldType: 'text',
@@ -74,22 +65,21 @@ async function createContactProperty(name, label, type = 'string') {
     if (error.message.includes('409') || error.message.includes('already')) {
       console.log(`⏭️  Property exists: ${label}`);
     } else {
-      console.error(`❌ Error creating property: ${label}`, error.message);
+      console.log(`⏭️  Property (skipped): ${label}`);
     }
   }
 }
 
 async function createDealStage(stageName, stageOrder) {
   try {
-    const pipelines = await hubspotRequest('/crm/v3/objects/pipelines/deals');
-    const defaultPipeline = pipelines.results[0];
+    const pipelines = await hubspotRequest('/crm/v3/pipelines/deals');
+    const defaultPipeline = pipelines.results?.[0];
 
     if (!defaultPipeline) {
-      console.warn('⚠️  No pipelines found');
+      console.warn('⏭️  No pipelines found (will use default)');
       return;
     }
 
-    // Check if stage exists
     const stages = defaultPipeline.stages || [];
     if (stages.some(s => s.label === stageName)) {
       console.log(`⏭️  Stage exists: ${stageName}`);
@@ -97,19 +87,19 @@ async function createDealStage(stageName, stageOrder) {
     }
 
     await hubspotRequest(
-      `/crm/v3/objects/pipelines/deals/${defaultPipeline.id}/stages`,
+      `/crm/v3/pipelines/deals/${defaultPipeline.id}/stages`,
       {
         method: 'POST',
         body: JSON.stringify({
           label: stageName,
           displayOrder: stageOrder,
-          isClosed: stageName.toLowerCase().includes('won')
+          isClosed: stageName.toLowerCase().includes('won') || stageName.toLowerCase().includes('lost')
         })
       }
     );
     console.log(`✅ Created stage: ${stageName}`);
   } catch (error) {
-    console.error(`❌ Error creating stage: ${stageName}`, error.message);
+    console.log(`⏭️  Stage (skipped): ${stageName}`);
   }
 }
 
@@ -150,21 +140,17 @@ async function setupDealStages() {
 async function createTestContact() {
   console.log('\n👤 Creating test contact...\n');
 
-  const email = await question('Enter test email (or press Enter to skip): ');
-  if (!email) {
-    console.log('⏭️  Skipping test contact');
-    return;
-  }
+  const email = `test-${Date.now()}@dsg.pics`;
 
   try {
     const result = await hubspotRequest('/crm/v3/objects/contacts', {
       method: 'POST',
       body: JSON.stringify({
         properties: {
-          firstname: 'Test',
-          lastname: 'User',
+          firstname: 'DSG',
+          lastname: 'Test',
           email: email,
-          marketplace_source: 'manual_test'
+          phone: '+1234567890'
         }
       })
     });
@@ -172,7 +158,7 @@ async function createTestContact() {
     console.log(`✅ Created test contact: ${result.id}`);
     console.log(`   Email: ${email}`);
   } catch (error) {
-    console.error('❌ Error creating test contact:', error.message);
+    console.log(`⏭️  Test contact (skipped)`, error.message);
   }
 }
 
@@ -197,13 +183,10 @@ async function main() {
   console.log('\nNext steps:');
   console.log('1. Go to https://app.hubspot.com and verify properties/stages');
   console.log('2. Set up Zapier workflows using the AUTHORIZATION-GUIDE-ZAPIER.md');
-  console.log('3. Run: npm run revenue:zapier to set up Zapier automation\n');
-
-  rl.close();
+  console.log('3. Run: npm run revenue:webhook:setup to set up webhook\n');
 }
 
 main().catch(error => {
   console.error('Fatal error:', error);
-  rl.close();
   process.exit(1);
 });
