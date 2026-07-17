@@ -5,7 +5,8 @@
   "version": "1.0.0",
   "owner": {
     "name": "tdealer01-crypto",
-    "type": "organization"
+    "type": "organization",
+    "url": "https://github.com/tdealer01-crypto"
   },
   "maintainer": "tdealer01-crypto",
   "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",

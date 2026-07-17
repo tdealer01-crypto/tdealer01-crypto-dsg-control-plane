@@ -10,7 +10,7 @@ claude plugin add https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-contr
 ```
 
 ### Claude.ai
-Visit the Claude Code plugin marketplace and search for "DSG Governance Control Plane"
+Marketplace listing coming soon. For now, add the marketplace directly via the Claude Code CLI command above.
 
 ## 📋 Features
 
