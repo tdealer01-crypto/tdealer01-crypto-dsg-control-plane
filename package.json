@@ -68,7 +68,12 @@
     "test:watch": "vitest",
     "test:evidence": "vitest run lib/dsg/multi-agent-ccvs/tests/evidence.test.ts",
     "test:ci": "vitest run --reporter=junit --outputFile=junit.xml",
-    "test:logging": "npx tsx scripts/test-logging-sim-use.ts"
+    "test:logging": "npx tsx scripts/test-logging-sim-use.ts",
+    "revenue:setup:hubspot": "node scripts/revenue/setup-hubspot.mjs",
+    "revenue:process:leads": "node scripts/revenue/process-leads.mjs",
+    "revenue:webhook:setup": "node scripts/revenue/zapier-webhook-handler.mjs",
+    "revenue:monitor:marketplace": "node scripts/revenue/marketplace-monitor.mjs",
+    "revenue:init": "npm run revenue:webhook:setup && npm run revenue:setup:hubspot"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
