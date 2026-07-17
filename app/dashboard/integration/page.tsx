@@ -21,7 +21,7 @@ function EntryCard({
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
       <p className="text-sm uppercase tracking-[0.15em] text-slate-400">{title}</p>
       <p className="mt-3 text-lg font-semibold text-slate-100">{repo}</p>
-      <p className="mt-3 text-sm text-slate-300">{role}</p>
+      <p className="mt-3 text-sm text-slate-200">{role}</p>
     </div>
   );
 }
@@ -37,7 +37,7 @@ export default async function IntegrationPage() {
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-slate-400">DSG</p>
             <h1 className="mt-2 text-3xl font-semibold">Integration Truth</h1>
-            <p className="mt-2 text-slate-400">
+            <p className="mt-2 text-slate-300">
               Verified topology for the current DSG product surface, formal core, runtime plane, and audit plane.
             </p>
           </div>
@@ -78,11 +78,11 @@ export default async function IntegrationPage() {
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Canonical Core Health</h2>
-            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">
+            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-200">
               {core.ok ? "online" : "offline"}
             </span>
           </div>
-          <div className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
             <p>Core URL: {core.url}</p>
             <p>Status: {core.ok ? core.status || "ok" : core.error || "unreachable"}</p>
             <p>Version: {core.version || "-"}</p>
@@ -92,7 +92,7 @@ export default async function IntegrationPage() {
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">Verified Formal Core</h2>
-          <div className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
             <p>Verified: {VERIFIED_FORMAL_CORE.verified ? "yes" : "no"}</p>
             <p>Solver: {VERIFIED_FORMAL_CORE.solver}</p>
             <p>Artifact format: {VERIFIED_FORMAL_CORE.artifact_format}</p>
@@ -100,7 +100,7 @@ export default async function IntegrationPage() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {VERIFIED_FORMAL_CORE.properties.map((item) => (
-              <span key={item} className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-300">
+              <span key={item} className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide text-slate-200">
                 {item}
               </span>
             ))}
