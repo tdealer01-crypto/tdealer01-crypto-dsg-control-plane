@@ -3,6 +3,10 @@
   "displayName": "DSG Governance Control Plane — Claude Code Plugin Marketplace",
   "description": "Official plugin marketplace for the DSG AI Governance Control Plane. Packages Deterministic Safety Gate, Replayable Governance, Compliance Evidence Pack, Runtime Governance, and Hermes Controlled Executor as distributable Claude Code skills.\n\nPitch: Cloudflare = Control Plane of the Internet. Datadog = Control Plane of Observability. DSG = Control Plane of AI Governance.",
   "version": "1.0.0",
+  "owner": {
+    "name": "tdealer01-crypto",
+    "type": "organization"
+  },
   "maintainer": "tdealer01-crypto",
   "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
   "plugins": [
