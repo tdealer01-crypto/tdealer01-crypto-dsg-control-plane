@@ -208,7 +208,7 @@ export async function sendOutreachToTopLeads(
   limit: number = 10,
   minScore: number = 70
 ): Promise<OutreachResult[]> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   // Get top uncontacted leads
   const { data: leads } = await supabase
@@ -237,7 +237,7 @@ export async function sendOutreachToTopLeads(
  * Log email open event (called by pixel/webhook)
  */
 export async function logEmailOpen(leadId: string, messageId: string): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   const { error } = await supabase.from('lead_interactions').insert({
     lead_id: leadId,
@@ -256,7 +256,7 @@ export async function logLinkClick(
   linkUrl: string,
   linkText?: string
 ): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
 
   const { error } = await supabase.from('lead_interactions').insert({
     lead_id: leadId,

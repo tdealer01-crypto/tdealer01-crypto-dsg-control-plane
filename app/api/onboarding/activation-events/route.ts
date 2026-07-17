@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const admin = getSupabaseAdmin();
+    const admin = getSupabaseAdmin() as any;
     const { data: profile } = await admin
       .from('users')
       .select('org_id,is_active')
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     // Get trial account
     const { data: trial } = await admin
       .from('trial_accounts')
-      .select('id,onboarding_stage')
+      .select('id,onboarding_stage,trial_start_at')
       .eq('org_id', profile.org_id)
       .maybeSingle();
 
@@ -141,7 +141,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const admin = getSupabaseAdmin();
+    const admin = getSupabaseAdmin() as any;
     const { data: profile } = await admin
       .from('users')
       .select('org_id')

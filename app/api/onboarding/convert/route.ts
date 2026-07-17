@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const admin = getSupabaseAdmin();
+    const admin = getSupabaseAdmin() as any;
     const { data: profile } = await admin
       .from('users')
       .select('org_id,is_active')
