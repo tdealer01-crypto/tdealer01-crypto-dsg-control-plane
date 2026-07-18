@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       agent = {
         api_key: process.env.SUPERTEAM_API_KEY,
         name: 'superteam-agent-live',
-        claim_code: 'LIVE_AGENT',
+        claim_code: `DSG-${agentId}`,
       };
       console.log('Using real Superteam API key for submission');
     } else {
@@ -109,11 +109,17 @@ export async function POST(request: NextRequest) {
       superteamResult = await client.submitListing(submission);
 
       // Extract claim code from Superteam response
+      // Superteam returns the real claim code on successful submission
       if (superteamResult.success && superteamResult.data) {
         claimCode = superteamResult.data.claimCode ||
                    superteamResult.data.claim_code ||
-                   superteamResult.data.id ||
-                   listingId;
+                   superteamResult.data.submissionId ||
+                   superteamResult.data.id;
+      }
+
+      // If no claim code from API, use listing ID as reference
+      if (!claimCode) {
+        claimCode = listingId;
       }
     } catch (apiError) {
       console.error('Superteam API submission error:', apiError);
