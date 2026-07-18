@@ -139,9 +139,9 @@ export function planGoal(message: string, pageContext?: string): AgentPlan {
   }
 
   if (/browser|navigate|open url/.test(lower)) {
-    return {
-      steps: [nextStep(1, 'browser_navigate', { url: extractUrl(text), extract: '' })],
-    };
+    return withAgentId(agentId, (id) => ({
+      steps: [nextStep(1, 'browser_navigate', { agent_id: id, url: extractUrl(text), extract: '' })],
+    }));
   }
 
   if (/search|online|web/.test(lower)) {
