@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
 
 interface ProofChain {
   requestHash: string;
@@ -47,17 +48,61 @@ export default function TestResultPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Retrieve test result from sessionStorage
-    const storedResults = sessionStorage.getItem('public-test-results');
-    const results: Record<string, TestResult> = storedResults ? JSON.parse(storedResults) : {};
+    const fetchResult = async () => {
+      try {
+        // First, try sessionStorage for same-tab immediate access
+        const storedResults = sessionStorage.getItem('public-test-results');
+        const results: Record<string, TestResult> = storedResults ? JSON.parse(storedResults) : {};
 
-    if (results[testId]) {
-      setResult(results[testId]);
-      setLoading(false);
-    } else {
-      setError('ไม่พบผลการทดสอบที่ได้บันทึกไว้');
-      setLoading(false);
-    }
+        if (results[testId]) {
+          setResult(results[testId]);
+          setLoading(false);
+          return;
+        }
+
+        // If not in sessionStorage, fetch from Supabase
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (!url || !anonKey) {
+          setError('ไม่สามารถเข้าถึงฐานข้อมูล');
+          setLoading(false);
+          return;
+        }
+
+        const supabase = createClient(url, anonKey);
+
+        // Fetch from public_test_results table (RLS allows public read)
+        const { data, error: fetchError } = await supabase
+          .from('public_test_results')
+          .select('result_json')
+          .eq('test_id', testId)
+          .single();
+
+        if (fetchError || !data) {
+          setError('ไม่พบผลการทดสอบ');
+          setLoading(false);
+          return;
+        }
+
+        // Parse and display result
+        const testResult = data.result_json as TestResult;
+        setResult(testResult);
+
+        // Cache in sessionStorage for future same-session access
+        const cachedResults = sessionStorage.getItem('public-test-results');
+        const updatedResults: Record<string, TestResult> = cachedResults ? JSON.parse(cachedResults) : {};
+        updatedResults[testId] = testResult;
+        sessionStorage.setItem('public-test-results', JSON.stringify(updatedResults));
+
+        setLoading(false);
+      } catch (err) {
+        setError('เกิดข้อผิดพลาดในการโหลดผลการทดสอบ');
+        setLoading(false);
+      }
+    };
+
+    fetchResult();
   }, [testId]);
 
   const handleExportJSON = () => {
