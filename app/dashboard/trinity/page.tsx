@@ -10,12 +10,62 @@ export default function TrinityDashboard() {
   const [result, setResult] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(true);
 
+  // Chat state
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setIsConnected(Math.random() > 0.1);
     }, 5000);
     return () => clearInterval(timer);
   }, []);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = { role: 'user' as const, content: chatInput, timestamp: new Date().toLocaleTimeString() };
+    setMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const response = await fetch('/api/dashboard/trinity/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: chatInput,
+          context: { agents, jobs },
+        }),
+      });
+
+      if (!response.ok) throw new Error('Chat failed');
+
+      const data = await response.json();
+      const assistantMessage = {
+        role: 'assistant' as const,
+        content: data.response,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      const errorMessage = {
+        role: 'assistant' as const,
+        content: 'Sorry, there was an error processing your request.',
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const agents = [
     { name: 'Mind', status: 'registered', role: 'Job discovery across 6 platforms', emoji: '🧠' },
@@ -99,6 +149,71 @@ export default function TrinityDashboard() {
   };
 
   const tabsData = [
+    {
+      key: 'chat',
+      label: '💬 Agent Chat',
+      content: (
+        <div className="space-y-4">
+          <Card variant="gold" className="h-96 overflow-y-auto">
+            <div className="space-y-4">
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-center">
+                  <div className="text-[#E0E5EE]">
+                    <p className="text-lg font-bold mb-2">💬 Chat with Trinity Agents</p>
+                    <p className="text-sm">Ask about jobs, execution, verification, or DSG governance</p>
+                  </div>
+                </div>
+              ) : (
+                messages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                        msg.role === 'user'
+                          ? 'bg-[#F7DC78] text-[#0B0B0F]'
+                          : 'bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20'
+                      }`}
+                    >
+                      <p className="text-sm">{msg.content}</p>
+                      <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-[#0B0B0F]/60' : 'text-[#E0E5EE]/50'}`}>
+                        {msg.timestamp}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20 px-4 py-2 rounded-lg">
+                    <p className="text-sm animate-pulse">Agent thinking...</p>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </Card>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && handleChatSubmit()}
+              placeholder="Ask me about jobs, execution, governance..."
+              disabled={chatLoading}
+              className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a24] text-[#F8FAFC] border border-[#F7DC78]/20 focus:outline-none focus:border-[#F7DC78]"
+            />
+            <Button
+              onClick={handleChatSubmit}
+              disabled={chatLoading || !chatInput.trim()}
+              variant="primary"
+              type="button"
+            >
+              {chatLoading ? '...' : '→'}
+            </Button>
+          </div>
+        </div>
+      ),
+    },
     {
       key: 'agents',
       label: 'Agents',
@@ -270,7 +385,7 @@ export default function TrinityDashboard() {
       </div>
 
       {/* Tabs */}
-      <Tabs tabs={tabsData} defaultTab="agents" />
+      <Tabs tabs={tabsData} defaultTab="chat" />
 
       {/* Capabilities */}
       <div className="mt-12">
