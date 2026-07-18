@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
 import { createClient } from '@/lib/supabase/server';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
@@ -16,9 +17,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    let apiKey: string | null = null;
     let agentName = 'test-agent';
     let status: 'ok' | 'degraded' | 'blocked' = 'ok';
     let lastAction = 'monitoring listings';
+    let superteamHealth = null;
 
     // Try Supabase first
     try {
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
         .single() as any);
 
       if (agent) {
+        apiKey = agent.api_key;
         agentName = agent.name;
 
         if (!agent.api_key) {
@@ -71,8 +75,27 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
+      apiKey = memAgent.apiKey;
       agentName = memAgent.name;
       lastAction = 'monitoring listings (memory store)';
+    }
+
+    // Check Superteam API health if API key exists
+    if (apiKey && status !== 'blocked') {
+      try {
+        const client = new SuperteamAgentClient(apiKey, agentName);
+        const healthCheck = await client.getHeartbeat();
+        superteamHealth = healthCheck.data;
+
+        if (!healthCheck.success) {
+          status = 'degraded';
+          lastAction = `Superteam API: ${healthCheck.error}`;
+        }
+      } catch (error) {
+        console.warn('Superteam health check failed:', String(error).slice(0, 100));
+        status = 'degraded';
+        lastAction = 'Superteam API unreachable';
+      }
     }
 
     // Record heartbeat
@@ -86,6 +109,7 @@ export async function GET(request: NextRequest) {
       capabilities: ['register', 'listings', 'submit', 'claim'],
       lastAction,
       nextAction: 'discovering opportunities',
+      superteamHealth,
     };
 
     return NextResponse.json({ success: true, heartbeat });
