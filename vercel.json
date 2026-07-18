@@ -46,6 +46,10 @@
     {
       "path": "/api/cron/superteam/content-generate",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/superteam/daily-revenue",
+      "schedule": "0 2 * * *"
     }
   ]
 }
