@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../../lib/authz';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
+import { internalErrorMessage } from '../../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,6 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     .eq('org_id', access.orgId)
     .select('*')
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   return NextResponse.json({ item: data });
 }

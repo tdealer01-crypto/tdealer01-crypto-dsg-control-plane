@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../lib/authz';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { preventDisablingAllRecoveryPaths } from '../../../../lib/auth/admin-safety';
+import { internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export async function PATCH(req: NextRequest) {
 
   if (body.sso_enforced === true) {
     try { await preventDisablingAllRecoveryPaths(admin, access.orgId); }
-    catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'Cannot enforce SSO.' }, { status: 409 }); }
+    catch (e) { return NextResponse.json({ error: 'Cannot enforce SSO.' }, { status: 409 }); }
   }
 
   const { data, error } = await admin
@@ -21,6 +22,6 @@ export async function PATCH(req: NextRequest) {
     .upsert({ org_id: access.orgId, sso_enabled: Boolean(body.sso_enabled), sso_enforced: Boolean(body.sso_enforced), break_glass_email_enabled: body.break_glass_email_enabled !== false, sso_metadata: body.sso_metadata || {}, updated_at: new Date().toISOString() }, { onConflict: 'org_id' })
     .select('*')
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   return NextResponse.json({ item: data });
 }

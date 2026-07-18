@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { requireOrgRole } from '../../../../lib/authz';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { normalizeDomain } from '../../../../lib/auth/domain-governance';
+import { internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET() {
     .select('*')
     .eq('org_id', access.orgId)
     .order('created_at', { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   return NextResponse.json({ items: data || [] });
 }
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     notes: body.notes || null,
   };
   const { data, error } = await admin.from('org_domains').insert(payload).select('*').single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   return NextResponse.json(
     {
       item: data,

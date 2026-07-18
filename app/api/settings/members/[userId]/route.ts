@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgRole } from '../../../../../lib/authz';
 import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
 import { preventRemovingLastOwner } from '../../../../../lib/auth/admin-safety';
+import { internalErrorMessage } from '../../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +20,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   try {
     await preventRemovingLastOwner(admin, access.orgId, userId, role);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Owner safety check failed.' }, { status: 409 });
+    return NextResponse.json({ error: 'Owner safety check failed.' }, { status: 409 });
   }
   const { data, error } = await admin.from('users').update({ role, updated_at: new Date().toISOString() }).eq('org_id', access.orgId).eq('id', userId).select('id,role').single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: internalErrorMessage() }, { status: 500 });
   return NextResponse.json({ item: data });
 }
