@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { SuperteamAgentClient, Submission } from '@/lib/superteam/agent-client';
+import { TelegramSubmitter } from '@/lib/superteam/telegram-submitter';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
 export const dynamic = 'force-dynamic';
@@ -87,24 +88,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Superteam client
-    const client = new SuperteamAgentClient(agent.api_key, agent.name);
+    // Use Telegram submission if bot token is available
+    let result: any = { success: false, error: 'No submission method available' };
 
-    // Prepare submission
-    const submission: Submission = {
-      listingId,
-      link,
-      otherInfo,
-      telegram: telegram || undefined,
-      ask: ask || null,
-      eligibilityAnswers:
-        eligibilityAnswers && eligibilityAnswers.length > 0
-          ? eligibilityAnswers
-          : undefined,
-    };
-
-    // Submit to Superteam
-    const result = await client.submitListing(submission);
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+      try {
+        const telegramSubmitter = new TelegramSubmitter(process.env.TELEGRAM_BOT_TOKEN);
+        result = await telegramSubmitter.submitBounty({
+          listingId,
+          title: otherInfo || 'Bounty Submission',
+          reward: ask || 0,
+          rewardToken: 'USDC',
+          link,
+          otherInfo: `Agent: ${agent.name} | Info: ${otherInfo}`,
+        });
+        console.log(`✅ Telegram submission sent for ${listingId}:`, result);
+      } catch (telegramError) {
+        console.error('Telegram submission error:', telegramError);
+        result = {
+          success: false,
+          error: `Telegram error: ${telegramError instanceof Error ? telegramError.message : String(telegramError)}`,
+        };
+      }
+    } else {
+      // Fallback to Superteam API client
+      try {
+        const client = new SuperteamAgentClient(agent.api_key, agent.name);
+        const submission: Submission = {
+          listingId,
+          link,
+          otherInfo,
+          telegram: telegram || undefined,
+          ask: ask || null,
+          eligibilityAnswers:
+            eligibilityAnswers && eligibilityAnswers.length > 0
+              ? eligibilityAnswers
+              : undefined,
+        };
+        result = await client.submitListing(submission);
+      } catch (apiError) {
+        console.error('API submission error:', apiError);
+        result = {
+          success: false,
+          error: `API error: ${apiError instanceof Error ? apiError.message : String(apiError)}`,
+        };
+      }
+    }
 
     // Log submission
     const submissionId = `submit-${agentId}-${listingId}-${Date.now()}`;

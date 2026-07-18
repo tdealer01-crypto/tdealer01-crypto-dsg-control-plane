@@ -52,14 +52,16 @@ export async function POST(request: NextRequest) {
       if (count >= maxSubmit) break;
 
       try {
-        // Create submission payload
+        // Create submission payload with bounty details
         const submission = {
           listingId: bounty.id,
           link: `https://tdealer01-crypto-dsg-control-plane.vercel.app/submission/${bounty.id}`,
-          otherInfo: `Auto-submitted by DSG Agent - ${bounty.title}`,
+          otherInfo: `Auto-submit: ${bounty.title}`,
           telegram: process.env.TELEGRAM_BOT_TOKEN ? '@dsg_agent' : undefined,
           ask: bounty.reward,
           eligibilityAnswers: [],
+          title: bounty.title,
+          rewardToken: bounty.rewardToken,
         };
 
         // Submit via API
