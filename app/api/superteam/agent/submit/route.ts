@@ -39,11 +39,11 @@ export async function POST(request: NextRequest) {
     let agent: any = null;
     try {
       const supabase = await createClient();
-      const { data: dbAgent } = await supabase
-        .from('dsg_agents')
+      const { data: dbAgent } = await (supabase
+        .from('dsg_agents' as any)
         .select('api_key, name, claim_code')
         .eq('id', agentId)
-        .single();
+        .single() as any);
       if (dbAgent) {
         agent = dbAgent;
       }
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     // Try to store in Supabase (with fallback)
     try {
       const supabase = await createClient();
-      await supabase.from('agent_submissions').insert({
+      await (supabase.from('agent_submissions' as any).insert({
         id: submissionId,
         agent_id: agentId,
         listing_id: listingId,
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         telegram,
         ask,
         submitted_at: new Date().toISOString(),
-      });
+      }) as any);
       console.log(`✅ Submission logged to Supabase: ${submissionId}`);
     } catch (dbError) {
       console.warn(
@@ -160,11 +160,11 @@ export async function GET(request: NextRequest) {
     // Try Supabase first
     try {
       const supabase = await createClient();
-      const { data: dbSubmissions, error } = await supabase
-        .from('agent_submissions')
+      const { data: dbSubmissions, error } = await (supabase
+        .from('agent_submissions' as any)
         .select('*')
         .eq('agent_id', agentId)
-        .order('submitted_at', { ascending: false });
+        .order('submitted_at', { ascending: false }) as any);
 
       if (!error && dbSubmissions) {
         submissions = dbSubmissions;

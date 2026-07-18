@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
     // Try Supabase first
     try {
       const supabase = await createClient();
-      const { data: agent } = await supabase
-        .from('dsg_agents')
+      const { data: agent } = await (supabase
+        .from('dsg_agents' as any)
         .select('*')
         .eq('id', agentId)
-        .single();
+        .single() as any);
 
       if (agent) {
         agentName = agent.name;
@@ -38,19 +38,19 @@ export async function GET(request: NextRequest) {
         }
 
         // Update heartbeat
-        await supabase
-          .from('dsg_agents')
+        await (supabase
+          .from('dsg_agents' as any)
           .update({ last_heartbeat: new Date().toISOString() })
-          .eq('id', agentId);
+          .eq('id', agentId) as any);
 
         // Try to get last submission
-        const { data: lastSubmission } = await supabase
-          .from('agent_submissions')
+        const { data: lastSubmission } = await (supabase
+          .from('agent_submissions' as any)
           .select('submitted_at')
           .eq('agent_id', agentId)
           .order('submitted_at', { ascending: false })
           .limit(1)
-          .single();
+          .single() as any);
 
         if (lastSubmission) {
           lastAction = `last submission: ${new Date(lastSubmission.submitted_at).toISOString()}`;

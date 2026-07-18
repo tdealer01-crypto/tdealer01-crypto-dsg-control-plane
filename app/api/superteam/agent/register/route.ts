@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Try to store in Supabase (with fallback)
     try {
       const supabase = await createClient();
-      await supabase.from('dsg_agents').insert({
+      await (supabase.from('dsg_agents' as any).insert({
         id: mockRegistration.agentId,
         name: agentName,
         api_key: mockRegistration.apiKey,
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         username: mockRegistration.username,
         status: 'active',
         created_at: new Date().toISOString(),
-      });
+      }) as any);
       console.log(`✅ Agent stored in Supabase: ${mockRegistration.agentId}`);
     } catch (dbError) {
       // Fallback to memory store if DB unavailable

@@ -29,11 +29,11 @@ export async function GET(request: NextRequest) {
     // Try to get from Supabase first
     try {
       const supabase = await createClient();
-      const { data: agent } = await supabase
-        .from('dsg_agents')
+      const { data: agent } = await (supabase
+        .from('dsg_agents' as any)
         .select('api_key, name')
         .eq('id', agentId)
-        .single();
+        .single() as any);
 
       if (agent) {
         apiKey = agent.api_key;
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         discovered_at: new Date().toISOString(),
       }));
 
-      await supabase.from('agent_discovery_log').insert(discoverLog);
+      await (supabase.from('agent_discovery_log' as any).insert(discoverLog) as any);
       console.log(`✅ Discovery log stored for agent ${agentId}`);
     } catch (e) {
       console.warn('Could not log discovery to DB:', String(e).slice(0, 100));

@@ -26,11 +26,11 @@ export async function POST(request: NextRequest) {
     let agent: any = null;
     try {
       const supabase = await createClient();
-      const { data: dbAgent, error: fetchError } = await supabase
-        .from('dsg_agents')
+      const { data: dbAgent, error: fetchError } = await (supabase
+        .from('dsg_agents' as any)
         .select('*')
         .eq('claim_code', claimCode)
-        .single();
+        .single() as any);
 
       if (!fetchError && dbAgent) {
         agent = dbAgent;
@@ -65,15 +65,15 @@ export async function POST(request: NextRequest) {
     // Link human to agent
     try {
       const supabase = await createClient();
-      await supabase
-        .from('dsg_agents')
+      await (supabase
+        .from('dsg_agents' as any)
         .update({
           human_id: humanId,
           human_email: humanEmail,
           claimed_at: new Date().toISOString(),
           status: 'claimed',
         })
-        .eq('id', agent.id);
+        .eq('id', agent.id) as any);
       console.log(`✅ Agent claimed in Supabase: ${agent.id}`);
     } catch (dbError) {
       console.warn(
@@ -85,10 +85,10 @@ export async function POST(request: NextRequest) {
     let submissions: any[] = [];
     try {
       const supabase = await createClient();
-      const { data: dbSubmissions } = await supabase
-        .from('agent_submissions')
+      const { data: dbSubmissions } = await (supabase
+        .from('agent_submissions' as any)
         .select('*')
-        .eq('agent_id', agent.id);
+        .eq('agent_id', agent.id) as any);
       if (dbSubmissions) {
         submissions = dbSubmissions;
       }
@@ -113,10 +113,10 @@ export async function POST(request: NextRequest) {
     if (submissions && submissions.length > 0) {
       try {
         const supabase = await createClient();
-        await supabase
-          .from('agent_submissions')
+        await (supabase
+          .from('agent_submissions' as any)
           .update({ human_id: humanId })
-          .eq('agent_id', agent.id);
+          .eq('agent_id', agent.id) as any);
       } catch (e) {
         console.warn('Could not update submissions in DB, using memory only');
       }
