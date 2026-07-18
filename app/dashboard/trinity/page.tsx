@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, Tabs, Badge, Table, StatCard } from '@/components/ui';
-import { Zap, CheckCircle, TrendingUp, Users } from 'lucide-react';
+import { Zap, CheckCircle, TrendingUp, Users, Download, Trash2 } from 'lucide-react';
 
 export default function TrinityDashboard() {
   const [job, setJob] = useState({ title: '', category: '', reward: '' });
@@ -11,10 +11,32 @@ export default function TrinityDashboard() {
   const [isConnected, setIsConnected] = useState(true);
 
   // Chat state
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: string; toolCalls?: string[] }>>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<'Mind' | 'Hand' | 'Eye' | 'Nerve' | 'Spine' | 'All'>('All');
+  const [language, setLanguage] = useState<'th' | 'en'>('en');
+  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Translations
+  const t = language === 'th' ? {
+    agentChat: '💬 แชทกับเอเจนต์',
+    selectAgent: 'เลือกเอเจนต์',
+    askQuestion: 'ถามเกี่ยวกับงาน การปฏิบัติ หรือการจัดการ...',
+    thinking: 'เอเจนต์กำลังคิด...',
+    exportChat: '📥 ส่งออก',
+    clearChat: '🗑️ ลบ',
+    language: 'ภาษา',
+  } : {
+    agentChat: '💬 Agent Chat',
+    selectAgent: 'Select Agent',
+    askQuestion: 'Ask about jobs, execution, governance...',
+    thinking: 'Agent thinking...',
+    exportChat: '📥 Export',
+    clearChat: '🗑️ Clear',
+    language: 'Language',
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -31,7 +53,11 @@ export default function TrinityDashboard() {
   const handleChatSubmit = async () => {
     if (!chatInput.trim()) return;
 
-    const userMessage = { role: 'user' as const, content: chatInput, timestamp: new Date().toLocaleTimeString() };
+    const userMessage = {
+      role: 'user' as const,
+      content: chatInput,
+      timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
+    };
     setMessages(prev => [...prev, userMessage]);
     setChatInput('');
     setChatLoading(true);
@@ -42,7 +68,10 @@ export default function TrinityDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: chatInput,
+          agent: selectedAgent,
           context: { agents, jobs },
+          sessionId,
+          language,
         }),
       });
 
@@ -52,18 +81,47 @@ export default function TrinityDashboard() {
       const assistantMessage = {
         role: 'assistant' as const,
         content: data.response,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
+        toolCalls: data.toolCalls,
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       const errorMessage = {
         role: 'assistant' as const,
-        content: 'Sorry, there was an error processing your request.',
-        timestamp: new Date().toLocaleTimeString(),
+        content: language === 'th' ? 'ขออภัย เกิดข้อผิดพลาด' : 'Sorry, there was an error processing your request.',
+        timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setChatLoading(false);
+    }
+  };
+
+  const handleExportChat = () => {
+    const chatData = {
+      sessionId,
+      agent: selectedAgent,
+      language,
+      exportedAt: new Date().toISOString(),
+      messages: messages.map(msg => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp).toISOString(),
+      })),
+    };
+
+    const jsonStr = JSON.stringify(chatData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `trinity-chat-${sessionId}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleClearChat = () => {
+    if (window.confirm(language === 'th' ? 'ลบประวัติแชท?' : 'Clear chat history?')) {
+      setMessages([]);
     }
   };
 
@@ -151,16 +209,72 @@ export default function TrinityDashboard() {
   const tabsData = [
     {
       key: 'chat',
-      label: '💬 Agent Chat',
+      label: t.agentChat,
       content: (
         <div className="space-y-4">
+          {/* Controls */}
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Agent Selection */}
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-[#E0E5EE]">{t.selectAgent}:</span>
+              <select
+                value={selectedAgent}
+                onChange={e => setSelectedAgent(e.target.value as any)}
+                className="px-3 py-1 bg-[#1a1a24] text-[#F7DC78] border border-[#F7DC78]/20 rounded-lg text-sm focus:outline-none focus:border-[#F7DC78]"
+              >
+                <option value="All">🤖 All Agents</option>
+                <option value="Mind">🧠 Mind (Discovery)</option>
+                <option value="Hand">✋ Hand (Execution)</option>
+                <option value="Eye">👁️ Eye (Verification)</option>
+                <option value="Nerve">⚡ Nerve (Payment)</option>
+                <option value="Spine">🦴 Spine (Governance)</option>
+              </select>
+            </div>
+
+            {/* Language Toggle */}
+            <div className="flex gap-2 ml-auto">
+              <span className="text-sm text-[#E0E5EE]">{t.language}:</span>
+              <button
+                onClick={() => setLanguage('th')}
+                className={`px-2 py-1 text-xs rounded ${language === 'th' ? 'bg-[#F7DC78] text-[#0B0B0F]' : 'bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20'}`}
+              >
+                ไทย
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-2 py-1 text-xs rounded ${language === 'en' ? 'bg-[#F7DC78] text-[#0B0B0F]' : 'bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20'}`}
+              >
+                EN
+              </button>
+            </div>
+
+            {/* Export & Clear */}
+            <button
+              onClick={handleExportChat}
+              className="flex items-center gap-2 px-3 py-1 bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20 rounded-lg text-sm hover:border-[#F7DC78]"
+              title={t.exportChat}
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleClearChat}
+              disabled={messages.length === 0}
+              className="flex items-center gap-2 px-3 py-1 bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20 rounded-lg text-sm hover:border-red-500 disabled:opacity-50"
+              title={t.clearChat}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Chat Box */}
           <Card variant="gold" className="h-96 overflow-y-auto">
             <div className="space-y-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center">
                   <div className="text-[#E0E5EE]">
-                    <p className="text-lg font-bold mb-2">💬 Chat with Trinity Agents</p>
-                    <p className="text-sm">Ask about jobs, execution, verification, or DSG governance</p>
+                    <p className="text-lg font-bold mb-2">{t.agentChat}</p>
+                    <p className="text-sm">{t.askQuestion}</p>
+                    <p className="text-xs mt-4 text-[#E0E5EE]/50">Agent: <span className="text-[#F7DC78]">{selectedAgent}</span></p>
                   </div>
                 </div>
               ) : (
@@ -174,6 +288,11 @@ export default function TrinityDashboard() {
                       }`}
                     >
                       <p className="text-sm">{msg.content}</p>
+                      {msg.toolCalls && msg.toolCalls.length > 0 && (
+                        <div className="text-xs mt-2 opacity-70">
+                          {msg.toolCalls.map((tool, i) => <div key={i}>🔧 {tool}</div>)}
+                        </div>
+                      )}
                       <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-[#0B0B0F]/60' : 'text-[#E0E5EE]/50'}`}>
                         {msg.timestamp}
                       </p>
@@ -184,7 +303,7 @@ export default function TrinityDashboard() {
               {chatLoading && (
                 <div className="flex justify-start">
                   <div className="bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20 px-4 py-2 rounded-lg">
-                    <p className="text-sm animate-pulse">Agent thinking...</p>
+                    <p className="text-sm animate-pulse">{t.thinking}</p>
                   </div>
                 </div>
               )}
@@ -192,13 +311,14 @@ export default function TrinityDashboard() {
             </div>
           </Card>
 
+          {/* Input */}
           <div className="flex gap-2">
             <input
               type="text"
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
               onKeyPress={e => e.key === 'Enter' && handleChatSubmit()}
-              placeholder="Ask me about jobs, execution, governance..."
+              placeholder={t.askQuestion}
               disabled={chatLoading}
               className="flex-1 px-4 py-2 rounded-lg bg-[#1a1a24] text-[#F8FAFC] border border-[#F7DC78]/20 focus:outline-none focus:border-[#F7DC78]"
             />
