@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Try Supabase first
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: agent } = await supabase
         .from('dsg_agents')
         .select('*')
@@ -71,7 +71,6 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      // Update from memory store
       agentName = memAgent.name;
       lastAction = 'monitoring listings (memory store)';
     }

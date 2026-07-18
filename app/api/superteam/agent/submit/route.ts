@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Get agent from Supabase or memory store
     let agent: any = null;
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: dbAgent } = await supabase
         .from('dsg_agents')
         .select('api_key, name, claim_code')
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Try to store in Supabase (with fallback)
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       await supabase.from('agent_submissions').insert({
         id: submissionId,
         agent_id: agentId,
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     // Try Supabase first
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: dbSubmissions, error } = await supabase
         .from('agent_submissions')
         .select('*')

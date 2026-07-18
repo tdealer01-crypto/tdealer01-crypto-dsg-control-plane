@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Try to get from Supabase first
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: agent } = await supabase
         .from('dsg_agents')
         .select('api_key, name')
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // Try to store discovery log (with fallback)
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const discoverLog = listings.map((listing) => ({
         id: `discovery-${agentId}-${listing.id}-${Date.now()}`,
         agent_id: agentId,

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Try to store in Supabase (with fallback)
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       await supabase.from('dsg_agents').insert({
         id: mockRegistration.agentId,
         name: agentName,

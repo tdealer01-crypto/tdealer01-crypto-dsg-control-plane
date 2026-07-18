@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Find agent by claim code
     let agent: any = null;
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: dbAgent, error: fetchError } = await supabase
         .from('dsg_agents')
         .select('*')
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Link human to agent
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       await supabase
         .from('dsg_agents')
         .update({
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     // Get agent submissions
     let submissions: any[] = [];
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: dbSubmissions } = await supabase
         .from('agent_submissions')
         .select('*')
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Update submissions to link to human
     if (submissions && submissions.length > 0) {
       try {
-        const supabase = createClient();
+        const supabase = await createClient();
         await supabase
           .from('agent_submissions')
           .update({ human_id: humanId })
