@@ -3,6 +3,10 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('[Trinity Chat] ANTHROPIC_API_KEY not configured');
+}
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -195,12 +199,20 @@ function processToolCall(toolName: string, toolInput: Record<string, unknown>): 
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('[Trinity Chat] ANTHROPIC_API_KEY not set in environment');
+      return NextResponse.json(
+        { error: 'API configuration error: ANTHROPIC_API_KEY not configured' },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const userMessage = body.message as string;
     const selectedAgent = body.agent as string || 'All';
     const language = body.language as string || 'en';
 
-    if (!userMessage) {
+    if (!userMessage || userMessage.trim().length === 0) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
 
@@ -315,9 +327,20 @@ Always explain tool usage. Be helpful and efficient.`;
       toolCalls: toolCalls.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i), // unique
     });
   } catch (error) {
-    console.error('[Trinity Chat] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+
+    console.error('[Trinity Chat] Error:', {
+      message: errorMessage,
+      stack: errorStack,
+      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+    });
+
     return NextResponse.json(
-      { error: 'Failed to process chat request' },
+      {
+        error: 'Failed to process chat request',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : 'Internal server error',
+      },
       { status: 500 }
     );
   }
