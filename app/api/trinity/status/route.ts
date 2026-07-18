@@ -42,19 +42,22 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    system: 'Trinity AI Multi-Agent System',
-    version: '2.0',
+    system: 'Trinity AI Multi-Agent System (Trinity6 with Agent OS)',
+    version: '6.0',
     agents: {
       Mind: { status: 'registered', role: 'Job discovery across live bounty sources' },
       Hand: { status: 'registered', role: 'Work execution and deliverable generation' },
       Eye: { status: 'registered', role: 'Quality verification and severity-aware checks' },
       Nerve: { status: 'registered', role: 'Payment settlement and reputation management' },
       Spine: { status: 'registered', role: 'Orchestration, governance gates, and audit trail' },
+      AgentOS: { status: 'registered', role: 'Dynamic agent coordination, memory, routing, executive decisions' },
     },
     governance: {
       policyVersion: '2.0',
       constraintsEnforced: 7,
       unsupportedMapsTo: 'REVIEW_OR_BLOCK',
+      agentOSEnabled: true,
+      orchestrationLevel: 'Trinity6',
     },
     milestones: {
       M1: { name: 'Production Cutover', status: m1Ready ? 'READY' : 'NO-GO' },

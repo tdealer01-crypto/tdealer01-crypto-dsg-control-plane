@@ -2,6 +2,13 @@
  * Trinity AI Multi-Agent Orchestration API
  * POST /api/trinity/orchestrate
  *
+ * Trinity6 with Agent OS:
+ * - Agent Registry: Track all 5 Trinity agents + lifecycle
+ * - Event Bus: Pub/sub for job discovery, execution, verification
+ * - Shared Memory: Persistent context across agent transitions
+ * - Multi-Model Router: Route to optimal model per task
+ * - Executive Hierarchy: CTO approval for strategic decisions
+ *
  * dry_run=true (default): deterministic simulation only
  * dry_run=false: DB-backed flow + verification + settlement attempt
  *
@@ -17,6 +24,7 @@ import {
   parseActorContext,
   settleJob,
 } from '@/lib/trinity/workflow';
+import { orchestrateWithAgentOS } from '@/lib/trinity/agent-os-integration';
 
 export const dynamic = 'force-dynamic';
 
@@ -211,6 +219,25 @@ export async function POST(req: Request) {
       );
     }
 
+    // Trinity6: Orchestrate with Agent OS
+    let agentOSOrchestration: Record<string, unknown> | undefined;
+    try {
+      agentOSOrchestration = await orchestrateWithAgentOS({
+        id: job.id,
+        title: job.title,
+        category: job.category,
+        rewardAmount: job.rewardAmount,
+        deadline: job.deadline,
+        requirements: job.requirements,
+        agentId: agent.agentId,
+        reputation: agent.reputation,
+        skills: agent.skills,
+      });
+    } catch (err) {
+      console.error('[Trinity6] Agent OS orchestration failed:', err);
+      // Continue with Trinity5 fallback if Agent OS fails
+    }
+
     const startMs = Date.now();
     const deliverable = await generateDeliverableWithLLM(job.category, job.title);
     const qualityScore = scoreQuality(deliverable, job.category);
@@ -341,6 +368,8 @@ export async function POST(req: Request) {
       auditHash,
       completedAt,
       ...(dry_run ? {} : { persisted, persistError }),
+      // Trinity6: Agent OS Orchestration
+      ...(agentOSOrchestration ? { agentOS: agentOSOrchestration } : {}),
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err), completedAt: new Date().toISOString() }, { status: 500 });
@@ -350,9 +379,16 @@ export async function POST(req: Request) {
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    service: 'trinity-orchestrator',
-    agents: ['Mind', 'Hand', 'Eye', 'Nerve', 'Spine'],
-    version: '2.0',
-    description: 'Trinity AI Multi-Agent Orchestration — DB-backed workflow with optional live settlement',
+    service: 'trinity-orchestrator-trinity6',
+    agents: ['Mind', 'Hand', 'Eye', 'Nerve', 'Spine', 'AgentOS'],
+    version: '6.0',
+    description: 'Trinity6 AI Multi-Agent Orchestration with Agent OS — Dynamic coordination, routing, memory, and executive decisions',
+    agentOSCapabilities: [
+      'agent-registry: lifecycle management',
+      'event-bus: pub/sub coordination',
+      'shared-memory: persistent context',
+      'multi-model-router: cost/latency optimization',
+      'executive-hierarchy: strategic oversight',
+    ],
   });
 }
