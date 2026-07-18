@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
 import { ContentGenerator } from '@/lib/superteam/content-generator';
 
@@ -145,10 +146,7 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch (error) {
-        console.error(
-          `Error processing ${bounty.title}:`,
-          error instanceof Error ? error.message : String(error)
-        );
+        console.error(`Error processing ${bounty.title}:`, error);
       }
     }
 
@@ -213,15 +211,6 @@ export async function GET(request: NextRequest) {
       note: 'Daily revenue generation complete. Content submitted to Superteam with Telegram notifications.',
     });
   } catch (error) {
-    console.error('[DAILY-REVENUE] Error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Daily revenue generation failed',
-        details: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/cron/superteam/daily-revenue', error);
   }
 }

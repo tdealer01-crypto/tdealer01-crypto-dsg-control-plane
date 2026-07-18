@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 import { ContentGenerator } from '@/lib/superteam/content-generator';
 
 export const dynamic = 'force-dynamic';
@@ -70,13 +71,6 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Content generation error:', error);
-    return NextResponse.json(
-      {
-        error: 'Content generation failed',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/superteam/agent/generate-content', error);
   }
 }

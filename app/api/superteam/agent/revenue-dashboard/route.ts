@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { handleApiError } from '@/lib/security/api-error';
 import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
@@ -183,13 +184,6 @@ export async function GET(request: NextRequest) {
       note: 'Revenue tracking for all agent submissions. Shows completed work ready for claim.',
     });
   } catch (error) {
-    console.error('[REVENUE-DASHBOARD] Error:', error);
-    return NextResponse.json(
-      {
-        error: 'Dashboard error',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/superteam/agent/revenue-dashboard', error);
   }
 }

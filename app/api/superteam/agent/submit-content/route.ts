@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { handleApiError } from '@/lib/security/api-error';
 import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
 import { TelegramSubmitter } from '@/lib/superteam/telegram-submitter';
 import { testMemoryStore } from '@/lib/superteam/test-store';
@@ -200,14 +201,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Content submission error:', error);
-    return NextResponse.json(
-      {
-        error: 'Content submission failed',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/superteam/agent/submit-content', error);
   }
 }
 
@@ -275,13 +269,6 @@ export async function GET(request: NextRequest) {
       count: submissions.length,
     });
   } catch (error) {
-    console.error('Error fetching submissions:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch submissions',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/superteam/agent/submit-content', error);
   }
 }

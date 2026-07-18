@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 import { SuperteamAgentClient, Listing } from '@/lib/superteam/agent-client';
 
 export const dynamic = 'force-dynamic';
@@ -131,10 +132,7 @@ export async function GET(request: NextRequest) {
           );
         }
       } catch (error) {
-        console.error(
-          `Generation error for ${bounty.title}:`,
-          error instanceof Error ? error.message : String(error)
-        );
+        console.error(`Generation error for ${bounty.title}:`, error);
       }
     }
 
@@ -167,15 +165,6 @@ export async function GET(request: NextRequest) {
       note: 'Content generated and ready for submission. Next: agent will submit to Superteam and track completions.',
     });
   } catch (error) {
-    console.error('[CONTENT-GEN] Error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Content generation cron failed',
-        details: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/cron/superteam/content-generate', error);
   }
 }
