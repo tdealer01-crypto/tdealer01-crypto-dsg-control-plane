@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { logApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,11 +151,9 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Conversion error:', error);
+    logApiError('api/onboarding/convert', error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Conversion failed',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

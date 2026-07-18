@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { runLeadDiscovery } from '../../../../lib/leads/discovery';
 import { scoreAllLeads, getTopLeads } from '../../../../lib/leads/scoring';
 import { sendOutreachToTopLeads } from '../../../../lib/leads/outreach';
+import { logApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,11 +60,11 @@ export async function GET(request: Request) {
     console.log('Lead discovery cron completed:', result);
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error('Lead discovery cron error:', error);
+    logApiError('api/cron/lead-discovery', error);
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Cron job failed',
+        error: internalErrorMessage(),
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

@@ -12,6 +12,7 @@ import {
   isReadyToConvert,
   sendOnboardingEmail,
 } from '../../../../lib/onboarding/trial-sequences';
+import { logApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,11 +119,9 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Activation event error:', error);
+    logApiError('api/onboarding/activation-events', error, { method: 'POST' });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Failed to log event',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }
@@ -187,11 +186,9 @@ export async function GET(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get activation status error:', error);
+    logApiError('api/onboarding/activation-events', error, { method: 'GET' });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Failed to get status',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { sendOutreachEmail, sendOutreachToTopLeads } from '../../../../lib/leads/outreach';
 import type { OutreachTemplate } from '../../../../lib/leads/outreach';
+import { logApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,11 +54,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Outreach error:', error);
+    logApiError('api/leads/outreach', error, { method: 'POST' });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Outreach failed',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }
@@ -90,11 +89,9 @@ export async function GET(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Outreach GET error:', error);
+    logApiError('api/leads/outreach', error, { method: 'GET' });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Failed to fetch outreach history',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }

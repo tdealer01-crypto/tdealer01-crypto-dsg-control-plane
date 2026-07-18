@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { runLeadDiscovery } from '../../../../lib/leads/discovery';
 import { scoreAllLeads, getTopLeads } from '../../../../lib/leads/scoring';
+import { logApiError, internalErrorMessage } from '../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,11 +68,9 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Lead discovery error:', error);
+    logApiError('api/leads/discover', error, { method: 'GET' });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Discovery failed',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }
@@ -106,11 +105,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Lead discovery POST error:', error);
+    logApiError('api/leads/discover', error, { method: 'POST' });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Discovery failed',
-      },
+      { error: internalErrorMessage() },
       { status: 500 }
     );
   }
