@@ -3,6 +3,15 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// NVIDIA OpenAI-compatible client
+interface NVIDIAClient {
+  chat: {
+    completions: {
+      create: (params: any) => Promise<any>;
+    };
+  };
+}
+
 if (!process.env.ANTHROPIC_API_KEY) {
   console.error('[Trinity Chat] ANTHROPIC_API_KEY not configured');
 }
@@ -10,6 +19,32 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// NVIDIA client for GLM model
+let nvidiaClient: NVIDIAClient | null = null;
+if (process.env.NVIDIA_API_KEY) {
+  // Dynamic import to avoid breaking if OpenAI not available
+  nvidiaClient = {
+    chat: {
+      completions: {
+        create: async (params: any) => {
+          const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
+            },
+            body: JSON.stringify(params),
+          });
+          if (!response.ok) {
+            throw new Error(`NVIDIA API error: ${response.statusText}`);
+          }
+          return response.json();
+        },
+      },
+    },
+  };
+}
 
 // MCP Tools available to agents
 const tools = [
@@ -199,7 +234,14 @@ function processToolCall(toolName: string, toolInput: Record<string, unknown>): 
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
+    const body = await request.json();
+    const userMessage = body.message as string;
+    const selectedAgent = body.agent as string || 'All';
+    const language = body.language as string || 'en';
+    const modelProvider = (body.model || 'anthropic') as 'anthropic' | 'nvidia';
+
+    // Validate API key for selected model
+    if (modelProvider === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {
       console.error('[Trinity Chat] ANTHROPIC_API_KEY not set in environment');
       return NextResponse.json(
         { error: 'API configuration error: ANTHROPIC_API_KEY not configured' },
@@ -207,10 +249,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const userMessage = body.message as string;
-    const selectedAgent = body.agent as string || 'All';
-    const language = body.language as string || 'en';
+    if (modelProvider === 'nvidia' && !process.env.NVIDIA_API_KEY) {
+      console.error('[Trinity Chat] NVIDIA_API_KEY not set in environment');
+      return NextResponse.json(
+        { error: 'API configuration error: NVIDIA_API_KEY not configured' },
+        { status: 503 }
+      );
+    }
 
     if (!userMessage || userMessage.trim().length === 0) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
@@ -265,40 +310,35 @@ Always explain tool usage. Be helpful and efficient.`;
       },
     ];
 
-    let response = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
-      system: systemPrompt,
-      tools: tools as never,
-      messages: messages as never,
-    });
+    let response: any;
 
-    // Handle tool use in agentic loop
-    while (response.stop_reason === 'tool_use') {
-      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
+    if (modelProvider === 'nvidia') {
+      // Use NVIDIA GLM model
+      if (!nvidiaClient) {
+        return NextResponse.json(
+          { error: 'NVIDIA client not available' },
+          { status: 503 }
+        );
+      }
 
-      if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
-
-      const toolResult = processToolCall(toolUseBlock.name, toolUseBlock.input);
-
-      // Add assistant response and tool result to messages
-      messages.push({
-        role: 'assistant',
-        content: response.content,
+      response = await nvidiaClient.chat.completions.create({
+        model: 'z-ai/glm-5.2',
+        messages: messages as never,
+        max_tokens: 1024,
+        temperature: 1,
+        top_p: 1,
       });
 
-      messages.push({
-        role: 'user',
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: toolUseBlock.id,
-            content: toolResult,
-          },
-        ],
-      });
-
-      // Get next response
+      // For NVIDIA, directly use the response
+      if (response.choices && response.choices[0] && response.choices[0].message) {
+        // Wrap NVIDIA response to match Anthropic format
+        response = {
+          content: [{ type: 'text', text: response.choices[0].message.content }],
+          stop_reason: 'end_turn',
+        };
+      }
+    } else {
+      // Use Anthropic Claude (default)
       response = await anthropic.messages.create({
         model: 'claude-opus-4-8',
         max_tokens: 1024,
@@ -306,6 +346,41 @@ Always explain tool usage. Be helpful and efficient.`;
         tools: tools as never,
         messages: messages as never,
       });
+
+      // Handle tool use in agentic loop (Claude only)
+      while (response.stop_reason === 'tool_use') {
+        const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
+
+        if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
+
+        const toolResult = processToolCall(toolUseBlock.name, toolUseBlock.input);
+
+        // Add assistant response and tool result to messages
+        messages.push({
+          role: 'assistant',
+          content: response.content,
+        });
+
+        messages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUseBlock.id,
+              content: toolResult,
+            },
+          ],
+        });
+
+        // Get next response
+        response = await anthropic.messages.create({
+          model: 'claude-opus-4-8',
+          max_tokens: 1024,
+          system: systemPrompt,
+          tools: tools as never,
+          messages: messages as never,
+        });
+      }
     }
 
     // Extract final text response and track tool calls
