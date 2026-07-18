@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
+import { handleApiError } from '@/lib/security/api-error';
 import {
   discoverJobsReal,
   executeJobReal,
@@ -250,34 +251,17 @@ Always explain tool usage. Be helpful and efficient.`;
       },
     ];
 
-    let response: any;
-
     const toolCalls: string[] = [];
 
-    // Handle tool use in agentic loop with streaming support
-    while (response.stop_reason === 'tool_use') {
-      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
+    // Get initial response from selected model
+    let response: any;
 
-      if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
-
-      // Await tool call (supports long-running tools)
-      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
-      toolCalls.push(toolUseBlock.name);
-
-      // Add assistant response and tool result to messages
-      messages.push({
-        role: 'assistant',
-        content: response.content,
-      });
-
-      // For NVIDIA, directly use the response
-      if (response.choices && response.choices[0] && response.choices[0].message) {
-        // Wrap NVIDIA response to match Anthropic format
-        response = {
-          content: [{ type: 'text', text: response.choices[0].message.content }],
-          stop_reason: 'end_turn',
-        };
-      }
+    if (modelProvider === 'nvidia') {
+      // NVIDIA provider - not fully implemented yet
+      response = {
+        content: [{ type: 'text', text: 'NVIDIA provider not yet supported' }],
+        stop_reason: 'end_turn',
+      };
     } else {
       // Use Anthropic Claude (default)
       response = await anthropic.messages.create({
@@ -287,41 +271,42 @@ Always explain tool usage. Be helpful and efficient.`;
         tools: tools as never,
         messages: messages as never,
       });
+    }
 
-      // Handle tool use in agentic loop (Claude only)
-      while (response.stop_reason === 'tool_use') {
-        const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
+    // Handle tool use in agentic loop (Claude only)
+    while (response.stop_reason === 'tool_use') {
+      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
 
-        if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
+      if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
 
-        const toolResult = processToolCall(toolUseBlock.name, toolUseBlock.input);
+      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+      toolCalls.push(toolUseBlock.name);
 
-        // Add assistant response and tool result to messages
-        messages.push({
-          role: 'assistant',
-          content: response.content,
-        });
+      // Add assistant response and tool result to messages
+      messages.push({
+        role: 'assistant',
+        content: response.content,
+      });
 
-        messages.push({
-          role: 'user',
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: toolUseBlock.id,
-              content: toolResult,
-            },
-          ],
-        });
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: toolUseBlock.id,
+            content: toolResult,
+          },
+        ],
+      });
 
-        // Get next response
-        response = await anthropic.messages.create({
-          model: 'claude-opus-4-8',
-          max_tokens: 1024,
-          system: systemPrompt,
-          tools: tools as never,
-          messages: messages as never,
-        });
-      }
+      // Get next response
+      response = await anthropic.messages.create({
+        model: 'claude-opus-4-8',
+        max_tokens: 1024,
+        system: systemPrompt,
+        tools: tools as never,
+        messages: messages as never,
+      });
     }
 
     // Extract final text response
