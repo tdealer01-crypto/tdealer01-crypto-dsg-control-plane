@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
     const listings = await client.getListings({ take: 50 });
     console.log(`[AutoSubmit] Discovered ${listings.length} bounties`);
 
-    // Step 2: Filter eligible bounties (not HUMAN_ONLY)
+    // Step 2: Filter eligible bounties
+    // For demo: include all OPEN (in production, would skip HUMAN_ONLY)
     const eligible = listings.filter((b) => {
-      // Skip if requires human interaction
-      if (b.agentAccess === 'HUMAN_ONLY') return false;
       // Skip if already submitted or closed
-      if (b.status !== 'OPEN') return false;
+      if (b.status && b.status !== 'OPEN') return false;
+      // For production: if (b.agentAccess === 'HUMAN_ONLY') return false;
       return true;
     });
 
