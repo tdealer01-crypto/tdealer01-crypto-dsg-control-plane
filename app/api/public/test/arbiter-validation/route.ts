@@ -1,21 +1,9 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
-
-// Public Supabase client (no RLS bypass needed - table is public read)
-function getPublicSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    return null;
-  }
-
-  return createClient(url, key);
-}
 
 interface TestRequest {
   minArbiterCount: number;
@@ -131,6 +119,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!Number.isInteger(body.minArbiterCount) || !Number.isInteger(body.actualArbiterCount)) {
+      return NextResponse.json(
+        { error: 'Invalid request: arbiter counts must be integers' },
+        { status: 400 }
+      );
+    }
+
     const testId = randomUUID();
     const timestamp = new Date().toISOString();
 
@@ -173,34 +168,32 @@ export async function POST(request: Request) {
     };
 
     // Persist result to Supabase for shareable link access
-    const supabase = getPublicSupabaseClient();
-    if (supabase) {
-      try {
-        await supabase.from('public_test_results').insert({
-          test_id: testId,
-          min_required: body.minArbiterCount,
-          actual_count: body.actualArbiterCount,
-          test_name: result.testCase.testName,
-          decision: result.decision,
-          reason: result.reason,
-          request_hash: result.proofChain.requestHash,
-          proof_hash: result.proofChain.proofHash,
-          bundle_hash: result.proofChain.bundleHash,
-          merkle_root: result.proofChain.merkleRoot,
-          ccvs_level: result.ccvsLevel,
-          compliance_ccvs: result.compliance.ccvs,
-          compliance_pdpa: result.compliance.pdpa,
-          compliance_eu_ai_act: result.compliance.euAiAct,
-          evidence_deterministic: result.evidence.deterministic,
-          evidence_replayable: result.evidence.replayable,
-          evidence_tamperable: result.evidence.tamperable,
-          result_json: result,
-        });
-      } catch (dbError) {
-        console.error('[public-test] Failed to persist result to Supabase:', dbError);
-        // Non-fatal: still return result even if persistence fails
-        // The test result is valid, but shareable link may not work
-      }
+    try {
+      const supabase = getSupabaseAdmin() as any;
+      await supabase.from('public_test_results').insert({
+        test_id: testId,
+        min_required: body.minArbiterCount,
+        actual_count: body.actualArbiterCount,
+        test_name: result.testCase.testName,
+        decision: result.decision,
+        reason: result.reason,
+        request_hash: result.proofChain.requestHash,
+        proof_hash: result.proofChain.proofHash,
+        bundle_hash: result.proofChain.bundleHash,
+        merkle_root: result.proofChain.merkleRoot,
+        ccvs_level: result.ccvsLevel,
+        compliance_ccvs: result.compliance.ccvs,
+        compliance_pdpa: result.compliance.pdpa,
+        compliance_eu_ai_act: result.compliance.euAiAct,
+        evidence_deterministic: result.evidence.deterministic,
+        evidence_replayable: result.evidence.replayable,
+        evidence_tamperable: result.evidence.tamperable,
+        result_json: result,
+      });
+    } catch (dbError) {
+      console.error('[public-test] Failed to persist result to Supabase:', dbError);
+      // Non-fatal: still return result even if persistence fails
+      // The test result is valid, but shareable link may not work
     }
 
     return NextResponse.json(result, { status: 200 });

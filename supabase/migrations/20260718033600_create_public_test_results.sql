@@ -48,17 +48,9 @@ ALTER TABLE public_test_results ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read access" ON public_test_results
   FOR SELECT USING (true);
 
--- Policy: no direct client inserts (server-only writes via API)
-CREATE POLICY "No client inserts" ON public_test_results
-  FOR INSERT WITH CHECK (false);
-
--- Policy: no updates
-CREATE POLICY "No updates" ON public_test_results
-  FOR UPDATE WITH CHECK (false);
-
--- Policy: no deletes (only server-side cleanup via cron)
-CREATE POLICY "No deletes" ON public_test_results
-  FOR DELETE WITH CHECK (false);
+-- Note: INSERT/UPDATE/DELETE policies intentionally omitted
+-- Service role key (used by API) bypasses RLS, enabling server-side writes
+-- Authenticated clients cannot insert/update/delete (RLS default deny)
 
 -- Comment
 COMMENT ON TABLE public_test_results IS 'Public test results for third-party arbiter count validation - immutable audit evidence with automatic 90-day expiration';
