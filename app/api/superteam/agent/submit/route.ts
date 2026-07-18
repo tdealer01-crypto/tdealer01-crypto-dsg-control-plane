@@ -37,24 +37,35 @@ export async function POST(request: NextRequest) {
 
     // Get agent from Supabase or memory store
     let agent: any = null;
-    try {
-      const supabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      const { data: dbAgent, error } = await supabase
-        .from('dsg_agents')
-        .select('api_key, name, claim_code')
-        .eq('id', agentId)
-        .single();
 
-      if (error) {
-        console.warn(`Supabase agent lookup error: ${error.message}`);
-      } else if (dbAgent) {
-        agent = dbAgent;
+    // Prefer real SUPERTEAM_API_KEY if available
+    if (process.env.SUPERTEAM_API_KEY) {
+      agent = {
+        api_key: process.env.SUPERTEAM_API_KEY,
+        name: 'superteam-agent-live',
+        claim_code: 'LIVE_AGENT',
+      };
+      console.log('Using real Superteam API key for submission');
+    } else {
+      try {
+        const supabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        const { data: dbAgent, error } = await supabase
+          .from('dsg_agents')
+          .select('api_key, name, claim_code')
+          .eq('id', agentId)
+          .single();
+
+        if (error) {
+          console.warn(`Supabase agent lookup error: ${error.message}`);
+        } else if (dbAgent) {
+          agent = dbAgent;
+        }
+      } catch (e) {
+        console.warn(`Supabase unavailable for agent lookup: ${String(e).slice(0, 100)}`);
       }
-    } catch (e) {
-      console.warn(`Supabase unavailable for agent lookup: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback to memory store
