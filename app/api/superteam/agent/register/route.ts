@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 import { randomBytes } from 'crypto';
 
@@ -36,8 +36,12 @@ export async function POST(request: NextRequest) {
 
     // Try to store in Supabase (with fallback)
     try {
-      const supabase = await createClient();
-      await (supabase.from('dsg_agents' as any).insert({
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error } = await supabase.from('dsg_agents').insert({
         id: mockRegistration.agentId,
         name: agentName,
         api_key: mockRegistration.apiKey,
@@ -45,7 +49,12 @@ export async function POST(request: NextRequest) {
         username: mockRegistration.username,
         status: 'active',
         created_at: new Date().toISOString(),
-      }) as any);
+      });
+
+      if (error) {
+        throw new Error(`Supabase insert error: ${error.message}`);
+      }
+
       console.log(`✅ Agent stored in Supabase: ${mockRegistration.agentId}`);
     } catch (dbError) {
       // Fallback to memory store if DB unavailable

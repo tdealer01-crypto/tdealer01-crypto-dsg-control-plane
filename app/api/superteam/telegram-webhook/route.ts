@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
 export const dynamic = 'force-dynamic';
@@ -91,18 +91,24 @@ async function autoSubmitToListing(
     let agent: any = null;
 
     try {
-      const supabase = await createClient();
-      const { data: dbAgent } = await (supabase
-        .from('dsg_agents' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: dbAgent, error } = await supabase
+        .from('dsg_agents')
         .select('api_key, name, claim_code')
         .eq('id', agentId)
-        .single() as any);
+        .single();
 
-      if (dbAgent) {
+      if (error) {
+        console.warn(`Agent lookup error: ${error.message}`);
+      } else if (dbAgent) {
         agent = dbAgent;
       }
     } catch (e) {
-      console.warn('Supabase unavailable, checking memory store');
+      console.warn(`Supabase unavailable, checking memory store: ${String(e).slice(0, 100)}`);
     }
 
     if (!agent) {
@@ -127,8 +133,12 @@ async function autoSubmitToListing(
 
     // Store auto-submission
     try {
-      const supabase = await createClient();
-      await (supabase.from('agent_submissions' as any).insert({
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error } = await supabase.from('agent_submissions').insert({
         id: submissionId,
         agent_id: agentId,
         listing_id: listingId,
@@ -139,12 +149,16 @@ async function autoSubmitToListing(
         telegram: 'telegram_auto_submit',
         ask: Math.floor(listing.reward * 0.8), // Ask 80% of listed reward
         submitted_at: new Date().toISOString(),
-      }) as any);
+      });
+
+      if (error) {
+        throw new Error(`Insert error: ${error.message}`);
+      }
 
       console.log(`✅ Auto-submission created: ${submissionId}`);
       return true;
     } catch (dbError) {
-      console.warn('Supabase unavailable, using memory store');
+      console.warn(`Supabase unavailable, using memory store: ${String(dbError).slice(0, 100)}`);
       testMemoryStore.addSubmission({
         id: submissionId,
         agentId,
@@ -198,18 +212,24 @@ export async function POST(request: NextRequest) {
     let agents: any[] = [];
 
     try {
-      const supabase = await createClient();
-      const { data: dbAgents } = await (supabase
-        .from('dsg_agents' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: dbAgents, error } = await supabase
+        .from('dsg_agents')
         .select('id, name, status')
         .eq('status', 'active')
-        .limit(10) as any);
+        .limit(10);
 
-      if (dbAgents) {
+      if (error) {
+        console.warn(`Agent list fetch error: ${error.message}`);
+      } else if (dbAgents) {
         agents = dbAgents;
       }
     } catch (e) {
-      console.warn('Supabase unavailable, checking memory store');
+      console.warn(`Supabase unavailable, checking memory store: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback: get agents from memory store
@@ -242,8 +262,12 @@ export async function POST(request: NextRequest) {
 
     // Log webhook activity
     try {
-      const supabase = await createClient();
-      await (supabase.from('agent_discovery_log' as any).insert({
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error } = await supabase.from('agent_discovery_log').insert({
         id: `telegram-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         agent_id: 'telegram-bot',
         listing_id: `telegram-${Date.now()}`,
@@ -251,9 +275,13 @@ export async function POST(request: NextRequest) {
         listing_type: 'bounty',
         reward: listing.reward,
         discovered_at: new Date().toISOString(),
-      }) as any);
+      });
+
+      if (error) {
+        console.warn(`Discovery log insert error: ${error.message}`);
+      }
     } catch (e) {
-      console.warn('Could not log telegram activity');
+      console.warn(`Could not log telegram activity: ${String(e).slice(0, 100)}`);
     }
 
     return NextResponse.json({

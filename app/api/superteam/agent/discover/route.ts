@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { SuperteamAgentClient } from '@/lib/superteam/agent-client';
-import { createClient } from '@/lib/supabase/server';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
 export const dynamic = 'force-dynamic';
@@ -28,19 +28,25 @@ export async function GET(request: NextRequest) {
 
     // Try to get from Supabase first
     try {
-      const supabase = await createClient();
-      const { data: agent } = await (supabase
-        .from('dsg_agents' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: agent, error } = await supabase
+        .from('dsg_agents')
         .select('api_key, name')
         .eq('id', agentId)
-        .single() as any);
+        .single();
 
-      if (agent) {
+      if (error) {
+        console.warn(`Agent lookup error: ${error.message}`);
+      } else if (agent) {
         apiKey = agent.api_key;
         agentName = agent.name;
       }
     } catch (e) {
-      console.warn('Supabase unavailable, checking memory store');
+      console.warn(`Supabase unavailable, checking memory store: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback to memory store
@@ -70,7 +76,11 @@ export async function GET(request: NextRequest) {
 
     // Try to store discovery log (with fallback)
     try {
-      const supabase = await createClient();
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
       const discoverLog = listings.map((listing) => ({
         id: `discovery-${agentId}-${listing.id}-${Date.now()}`,
         agent_id: agentId,
@@ -81,10 +91,15 @@ export async function GET(request: NextRequest) {
         discovered_at: new Date().toISOString(),
       }));
 
-      await (supabase.from('agent_discovery_log' as any).insert(discoverLog) as any);
-      console.log(`✅ Discovery log stored for agent ${agentId}`);
+      const { error } = await supabase.from('agent_discovery_log').insert(discoverLog);
+
+      if (error) {
+        console.warn(`Discovery log insert error: ${error.message}`);
+      } else {
+        console.log(`✅ Discovery log stored for agent ${agentId}`);
+      }
     } catch (e) {
-      console.warn('Could not log discovery to DB:', String(e).slice(0, 100));
+      console.warn(`Could not log discovery to DB: ${String(e).slice(0, 100)}`);
     }
 
     return NextResponse.json({

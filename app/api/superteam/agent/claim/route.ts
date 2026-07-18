@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
 export const dynamic = 'force-dynamic';
@@ -25,18 +25,24 @@ export async function POST(request: NextRequest) {
     // Find agent by claim code
     let agent: any = null;
     try {
-      const supabase = await createClient();
-      const { data: dbAgent, error: fetchError } = await (supabase
-        .from('dsg_agents' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: dbAgent, error: fetchError } = await supabase
+        .from('dsg_agents')
         .select('*')
         .eq('claim_code', claimCode)
-        .single() as any);
+        .single();
 
-      if (!fetchError && dbAgent) {
+      if (fetchError) {
+        console.warn(`Agent lookup error: ${fetchError.message}`);
+      } else if (dbAgent) {
         agent = dbAgent;
       }
     } catch (e) {
-      console.warn('Supabase unavailable for agent lookup');
+      console.warn(`Supabase unavailable for agent lookup: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback to memory store
@@ -64,36 +70,52 @@ export async function POST(request: NextRequest) {
 
     // Link human to agent
     try {
-      const supabase = await createClient();
-      await (supabase
-        .from('dsg_agents' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error } = await supabase
+        .from('dsg_agents')
         .update({
           human_id: humanId,
           human_email: humanEmail,
           claimed_at: new Date().toISOString(),
           status: 'claimed',
         })
-        .eq('id', agent.id) as any);
+        .eq('id', agent.id);
+
+      if (error) {
+        throw new Error(`Update error: ${error.message}`);
+      }
+
       console.log(`✅ Agent claimed in Supabase: ${agent.id}`);
     } catch (dbError) {
       console.warn(
-        `⚠️ Supabase unavailable for claim, using memory store: ${String(dbError).slice(0, 100)}`
+        `⚠️ Supabase unavailable for claim: ${String(dbError).slice(0, 100)}`
       );
     }
 
     // Get agent submissions
     let submissions: any[] = [];
     try {
-      const supabase = await createClient();
-      const { data: dbSubmissions } = await (supabase
-        .from('agent_submissions' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: dbSubmissions, error } = await supabase
+        .from('agent_submissions')
         .select('*')
-        .eq('agent_id', agent.id) as any);
-      if (dbSubmissions) {
+        .eq('agent_id', agent.id);
+
+      if (error) {
+        console.warn(`Submissions fetch error: ${error.message}`);
+      } else if (dbSubmissions) {
         submissions = dbSubmissions;
       }
     } catch (e) {
-      console.warn('Supabase unavailable for submissions fetch');
+      console.warn(`Supabase unavailable for submissions fetch: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback to memory store submissions
@@ -112,13 +134,21 @@ export async function POST(request: NextRequest) {
     // Update submissions to link to human
     if (submissions && submissions.length > 0) {
       try {
-        const supabase = await createClient();
-        await (supabase
-          .from('agent_submissions' as any)
+        const supabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error } = await supabase
+          .from('agent_submissions')
           .update({ human_id: humanId })
-          .eq('agent_id', agent.id) as any);
+          .eq('agent_id', agent.id);
+
+        if (error) {
+          throw new Error(`Update error: ${error.message}`);
+        }
       } catch (e) {
-        console.warn('Could not update submissions in DB, using memory only');
+        console.warn(`Could not update submissions in DB: ${String(e).slice(0, 100)}`);
       }
     }
 

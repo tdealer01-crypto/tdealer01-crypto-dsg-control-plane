@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { SuperteamAgentClient, Submission } from '@/lib/superteam/agent-client';
-import { createClient } from '@/lib/supabase/server';
 import { testMemoryStore } from '@/lib/superteam/test-store';
 
 export const dynamic = 'force-dynamic';
@@ -38,17 +38,23 @@ export async function POST(request: NextRequest) {
     // Get agent from Supabase or memory store
     let agent: any = null;
     try {
-      const supabase = await createClient();
-      const { data: dbAgent } = await (supabase
-        .from('dsg_agents' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { data: dbAgent, error } = await supabase
+        .from('dsg_agents')
         .select('api_key, name, claim_code')
         .eq('id', agentId)
-        .single() as any);
-      if (dbAgent) {
+        .single();
+
+      if (error) {
+        console.warn(`Supabase agent lookup error: ${error.message}`);
+      } else if (dbAgent) {
         agent = dbAgent;
       }
     } catch (e) {
-      console.warn('Supabase unavailable for agent lookup');
+      console.warn(`Supabase unavailable for agent lookup: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback to memory store
@@ -94,8 +100,12 @@ export async function POST(request: NextRequest) {
 
     // Try to store in Supabase (with fallback)
     try {
-      const supabase = await createClient();
-      await (supabase.from('agent_submissions' as any).insert({
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error } = await supabase.from('agent_submissions').insert({
         id: submissionId,
         agent_id: agentId,
         listing_id: listingId,
@@ -107,7 +117,12 @@ export async function POST(request: NextRequest) {
         telegram,
         ask,
         submitted_at: new Date().toISOString(),
-      }) as any);
+      });
+
+      if (error) {
+        throw new Error(`Supabase insert error: ${error.message}`);
+      }
+
       console.log(`✅ Submission logged to Supabase: ${submissionId}`);
     } catch (dbError) {
       console.warn(
@@ -159,18 +174,23 @@ export async function GET(request: NextRequest) {
 
     // Try Supabase first
     try {
-      const supabase = await createClient();
-      const { data: dbSubmissions, error } = await (supabase
-        .from('agent_submissions' as any)
+      const supabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { data: dbSubmissions, error } = await supabase
+        .from('agent_submissions')
         .select('*')
         .eq('agent_id', agentId)
-        .order('submitted_at', { ascending: false }) as any);
+        .order('submitted_at', { ascending: false });
 
-      if (!error && dbSubmissions) {
+      if (error) {
+        console.warn(`Supabase submissions fetch error: ${error.message}`);
+      } else if (dbSubmissions) {
         submissions = dbSubmissions;
       }
     } catch (e) {
-      console.warn('Supabase unavailable for submissions fetch');
+      console.warn(`Supabase unavailable for submissions fetch: ${String(e).slice(0, 100)}`);
     }
 
     // Fallback to memory store
