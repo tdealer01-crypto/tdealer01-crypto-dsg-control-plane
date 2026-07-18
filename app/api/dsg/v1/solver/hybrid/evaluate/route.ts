@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     };
 
     // ── Analyze problem ───────────────────────────────────────────────────
-    const problemAnalysis = debug ? await analyzeProblemDebug(proofRequest) : null;
+    const problemAnalysis = debug ? (await analyzeProblemDebug(proofRequest)) : null;
 
     // ── Solve with hybrid strategy ────────────────────────────────────────
     const result = await solveHybrid(proofRequest, forceParallel);

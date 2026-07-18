@@ -18,7 +18,7 @@ export interface IsingConstraint {
   weight: number; // 1.0 for hard constraints
   variables: string[]; // variable names involved
   satisfactionFn: (vars: Record<string, boolean>) => boolean;
-  description: string;
+  description?: string;
 }
 
 export interface IsingProblem {
