@@ -169,7 +169,8 @@ export async function POST(request: Request) {
 
     // Persist result to Supabase for shareable link access
     try {
-      const supabase = getSupabaseAdmin() as any;
+      const supabase = getSupabaseAdmin();
+      // @ts-ignore - public_test_results is a new table, types will be generated after migration
       await supabase.from('public_test_results').insert({
         test_id: testId,
         min_required: body.minArbiterCount,
