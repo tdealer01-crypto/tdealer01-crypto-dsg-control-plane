@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import { applyRateLimit, getRateLimitKey } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,16 @@ function validateArbiterCount(
 
 export async function POST(request: Request) {
   try {
+    // Apply rate limiting (10 requests per minute per IP)
+    const rateLimitKey = getRateLimitKey(request, 'public-test-arbiter');
+    const rateLimitResult = await applyRateLimit({ key: rateLimitKey, limit: 10, windowMs: 60_000 });
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded: 10 requests per minute' },
+        { status: 429 }
+      );
+    }
+
     const body = (await request.json()) as TestRequest;
 
     // Validate input
@@ -191,7 +202,6 @@ export async function POST(request: Request) {
         evidence_tamperable: result.evidence.tamperable,
         result_json: result,
       };
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore - public_test_results table not yet in database.types.ts
       await supabase.from('public_test_results').insert(insertData);
     } catch (dbError) {
