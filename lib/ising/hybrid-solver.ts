@@ -124,10 +124,16 @@ export interface HybridSolveResult {
  * Solve using both Z3 and Ising in parallel, return fastest successful
  */
 export async function solveBothParallel(
-  constraints: DeterministicConstraintResult[],
   request: DeterministicProofRequest,
 ): Promise<HybridSolveResult> {
   const startMs = Date.now();
+  const { getDeterministicPolicyManifest } = await import('../dsg/deterministic/policy-manifest');
+  const manifest = getDeterministicPolicyManifest();
+  const context = request.context ?? {};
+  const constraints = manifest.constraints.map((constraint) => ({
+    ...constraint,
+    passed: context[constraint.evidenceKey] === true,
+  }));
 
   const promises = [
     evaluateDeterministicGate(request)
@@ -200,15 +206,22 @@ export async function solveBothParallel(
  * Smart solver selection and execution
  */
 export async function solveHybrid(
-  constraints: DeterministicConstraintResult[],
   request: DeterministicProofRequest,
   forceParallel?: boolean,
 ): Promise<HybridSolveResult> {
+  const { getDeterministicPolicyManifest } = await import('../dsg/deterministic/policy-manifest');
+  const manifest = getDeterministicPolicyManifest();
+  const context = request.context ?? {};
+  const constraints = manifest.constraints.map((constraint) => ({
+    ...constraint,
+    passed: context[constraint.evidenceKey] === true,
+  }));
+
   const characteristics = analyzeProblem(constraints);
   const choice = forceParallel ? 'parallel' : selectSolver(characteristics);
 
   if (choice === 'parallel') {
-    return solveBothParallel(constraints, request);
+    return solveBothParallel(request);
   }
 
   const startMs = Date.now();
@@ -279,13 +292,21 @@ export async function solveHybrid(
 /**
  * Debug info: show problem analysis
  */
-export function analyzeProblemDebug(
-  constraints: DeterministicConstraintResult[],
-): {
+export async function analyzeProblemDebug(
+  request: DeterministicProofRequest,
+): Promise<{
   characteristics: ProblemCharacteristics;
   recommendedSolver: SolverChoice;
   reasoning: string;
-} {
+}> {
+  const { getDeterministicPolicyManifest } = await import('../dsg/deterministic/policy-manifest');
+  const manifest = getDeterministicPolicyManifest();
+  const context = request.context ?? {};
+  const constraints = manifest.constraints.map((constraint) => ({
+    ...constraint,
+    passed: context[constraint.evidenceKey] === true,
+  }));
+
   const characteristics = analyzeProblem(constraints);
   const solver = selectSolver(characteristics);
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { solveHybrid, analyzeProblemDebug } from '../../../../../../../lib/ising/hybrid-solver';
-import { getDeterministicPolicyManifest } from '../../../../../../../lib/dsg/deterministic/policy-manifest';
+import type { DeterministicProofRequest } from '../../../../../../../lib/dsg/deterministic/types';
 import { readJsonBody } from '../../../../../../../lib/security/request-json';
 import {
   requireDsgAuth,
@@ -37,8 +37,8 @@ interface HybridEvaluateRequest {
   planId?: string;
   riskLevel?: 'low' | 'medium' | 'high';
   context?: Record<string, unknown>;
-  nonce?: string;
-  idempotencyKey?: string;
+  nonce: string;
+  idempotencyKey: string;
 }
 
 export async function POST(request: Request) {
@@ -118,21 +118,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    // ── Get policy manifest and extract constraints ────────────────────────
-    const manifest = getDeterministicPolicyManifest();
-    const context = req.context ?? {};
-
-    // Build constraints from manifest
-    const constraints = manifest.constraints.map((constraint) => ({
-      ...constraint,
-      passed: context[constraint.evidenceKey] === true,
-    }));
+    // ── Build proof request with required fields ────────────────────────────
+    const proofRequest: DeterministicProofRequest = {
+      planId: req.planId,
+      riskLevel: req.riskLevel ?? 'medium',
+      context: req.context ?? {},
+      nonce: req.nonce,
+      idempotencyKey: req.idempotencyKey,
+    };
 
     // ── Analyze problem ───────────────────────────────────────────────────
-    const problemAnalysis = debug ? analyzeProblemDebug(constraints) : null;
+    const problemAnalysis = debug ? await analyzeProblemDebug(proofRequest) : null;
 
     // ── Solve with hybrid strategy ────────────────────────────────────────
-    const result = await solveHybrid(constraints, req, forceParallel);
+    const result = await solveHybrid(proofRequest, forceParallel);
 
     // ── Record usage ──────────────────────────────────────────────────────
     await recordGateEvaluation(caller.orgId, {

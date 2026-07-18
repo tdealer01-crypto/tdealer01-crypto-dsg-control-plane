@@ -31,7 +31,6 @@ export function constraintsToIsingProblem(
     weight: constraint.severity === 'critical' ? 10.0 : 1.0,
     variables: [constraint.evidenceKey],
     satisfactionFn: (vars: Record<string, boolean>) => vars[constraint.evidenceKey] === true,
-    description: constraint.description,
   }));
 
   return {

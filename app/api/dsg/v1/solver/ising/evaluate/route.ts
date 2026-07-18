@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { evaluateGateWithIsingSolver } from '../../../../../../../lib/ising/gate-adapter';
 import { getDeterministicPolicyManifest } from '../../../../../../../lib/dsg/deterministic/policy-manifest';
+import type { DeterministicProofRequest } from '../../../../../../../lib/dsg/deterministic/types';
 import { readJsonBody } from '../../../../../../../lib/security/request-json';
 import {
   requireDsgAuth,
@@ -49,8 +50,8 @@ interface IsingEvaluateRequest {
   planId?: string;
   riskLevel?: 'low' | 'medium' | 'high';
   context?: Record<string, unknown>;
-  nonce?: string;
-  idempotencyKey?: string;
+  nonce: string;
+  idempotencyKey: string;
   solverConfig?: {
     maxIterations?: number;
     initialTemperature?: number;
@@ -141,8 +142,17 @@ export async function POST(request: Request) {
       passed: context[constraint.evidenceKey] === true,
     }));
 
+    // ── Build proof request with required fields ────────────────────────────
+    const proofRequest: DeterministicProofRequest = {
+      planId: req.planId,
+      riskLevel: req.riskLevel ?? 'medium',
+      context: req.context ?? {},
+      nonce: req.nonce,
+      idempotencyKey: req.idempotencyKey,
+    };
+
     // ── Evaluate with Ising solver ────────────────────────────────────────
-    const result = await evaluateGateWithIsingSolver(constraints, req, req.solverConfig);
+    const result = await evaluateGateWithIsingSolver(constraints, proofRequest, req.solverConfig);
 
     // ── Record usage ──────────────────────────────────────────────────────
     await recordGateEvaluation(caller.orgId, {
