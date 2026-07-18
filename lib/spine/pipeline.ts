@@ -9,6 +9,14 @@ export class SpineInfraError extends Error {
   }
 }
 
+export interface PipelineConfig {
+  minArbiterCount: number;
+}
+
+export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
+  minArbiterCount: parseInt(process.env.DSG_SPINE_MIN_ARBITER_COUNT || '0', 10),
+};
+
 function severity(decision: Decision): number {
   const severities: Record<Decision, number> = { ALLOW: 0, STABILIZE: 1, BLOCK: 2 };
   return severities[decision];
@@ -40,8 +48,10 @@ function pluginError(pluginId: string, error: unknown): PluginOutput {
   };
 }
 
-export async function runPipeline(input: PluginInput): Promise<PipelineResult> {
+export async function runPipeline(input: PluginInput, config: Partial<PipelineConfig> = {}): Promise<PipelineResult> {
   ensureSpinePluginsRegistered();
+
+  const finalConfig = { ...DEFAULT_PIPELINE_CONFIG, ...config };
 
   const stages: PipelineResult['stages'] = [];
   let finalDecision: Decision = 'ALLOW';
@@ -77,6 +87,24 @@ export async function runPipeline(input: PluginInput): Promise<PipelineResult> {
 
   if (gateOutput.decision !== 'BLOCK') {
     const arbiters = registry.getByKind('arbiter').sort((a, b) => a.id.localeCompare(b.id));
+
+    if (arbiters.length < finalConfig.minArbiterCount) {
+      finalDecision = 'BLOCK';
+      finalReason = `ARBITER_COUNT_INSUFFICIENT: got ${arbiters.length}, need ${finalConfig.minArbiterCount}`;
+      finalPolicyVersion = 'spine:arbiter-validation';
+      authoritativePluginId = 'spine:arbiter-validator';
+      authoritativeProof = defaultProof();
+      return {
+        final_decision: finalDecision,
+        final_reason: finalReason,
+        final_policy_version: finalPolicyVersion,
+        total_latency_ms: totalLatency,
+        proof: authoritativeProof,
+        authoritative_plugin_id: authoritativePluginId,
+        stages,
+      };
+    }
+
     for (const arbiter of arbiters) {
       const output = await arbiter.evaluate(input).catch((error) => pluginError(arbiter.id, error));
       totalLatency += output.latency_ms;
