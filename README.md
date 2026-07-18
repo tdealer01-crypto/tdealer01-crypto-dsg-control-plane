@@ -142,11 +142,12 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 |-------|--------|-------|
 | **Build** | ✅ | Next.js production build |
 | **TypeScript** | ✅ | Type-safe, `tsc --noEmit` clean |
-| **Tests** | ✅ 3415 passing / 0 failing | CCVS evidence run, JWT auth tests included |
+| **Tests** | ✅ 3500+ passing / 0 failing | CCVS evidence run, JWT auth tests, arbiter validation tests included |
 | **Security** | ✅ | 0 critical/high vulnerabilities, JWT header spoofing prevented |
-| **Deployment** | ✅ | Live on Vercel (commit 728ae9f), NVIDIA API key configured |
+| **Deployment** | ✅ | Vercel auto-deploy from main (CI/CD gated) |
 | **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic) |
 | **Phase 5** | ✅ | Complete security test coverage (unit, integration, failure) |
+| **Issue #3** | ✅ | Arbiter count validation implemented & tested (PR #952 #953 merged) |
 | **JWT Auth** | ✅ | Production-ready Bearer token authentication, E2E verified |
 
 ---
@@ -285,6 +286,21 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Latest Updates
 
+✅ **Issue #3: Arbiter Count Validation Security Fix** (PR #952 #953 Merged)
+- **Security Fix:** Enforce minimum arbiter count before executing arbiter stage in runtime spine pipeline
+- **Implementation:** `PipelineConfig` interface + `DSG_SPINE_MIN_ARBITER_COUNT` environment variable
+- **Protection:** Blocks decisions when arbiter count < minimum, preventing security bypass
+- **Test Coverage:** 9 comprehensive failure test cases covering all edge cases (41 total tests passing)
+- **Developer Guide:** New [DSG.md](./DSG.md) with 24-section architectural guide (required pre-read for contributors)
+- **Evidence:** CCVS L1-L5 passing (3502+ tests), 0 vulnerabilities, all security checks green
+- **Deployment:** Live on main (commit 3b705f70), auto-deployed by Vercel CI/CD pipeline
+
+✅ **DSG.md — Developer Guide** (Included in PR #952)
+- 24-section comprehensive guide for DSG Control Plane development
+- **Sections Include:** Truth boundary, package overview, repository map, verification ladder, API conventions, security, database, runtime spine, deterministic gate, billing, CCVS evidence, Android agent, Managed Agents, UI conventions, Git workflow, deployment control loop, common pitfalls
+- **Usage:** Required pre-read before contributing to `lib/spine/`, `lib/runtime/`, `lib/dsg/`
+- **Known Issues:** Documented Issue #1 (RPC Fallback), Issue #2 (Credential Encryption), Issue #3 (now fixed)
+
 ✅ **MCP Integration Guide** (PR #930 Merged)
 - Comprehensive reference for 4 MCP integrations (PostHog, Supabase, Vercel, AWS Marketplace)
 - 101+ tools documented with setup, auth, usage patterns, and troubleshooting
@@ -357,6 +373,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 | Document | For Whom | Read Time |
 |----------|----------|-----------|
+| **[DSG.md — Developer Guide](./DSG.md)** | All Contributors | 20 min (required pre-read) |
 | **[MCP Integration Guide](./docs/MCP_INTEGRATION_GUIDE.md)** | Engineers | 15 min |
 | **[Trinity Dashboard UI](./apps/trinity-dashboard/README.md)** | Operators | 5 min |
 | **[Trinity × DSG Integration](./docs/integration/Trinity-DSG-Agents-Integration.md)** | Operators | 10 min |
