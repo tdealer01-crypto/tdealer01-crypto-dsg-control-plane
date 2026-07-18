@@ -6,21 +6,30 @@ export default function SuperteamDashboard() {
   const [stats, setStats] = useState({ agents: 0, bounties: 0, submissions: 0, revenue: 0 });
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [bounties, setBounties] = useState<any[]>([]);
+  const [apiUrl, setApiUrl] = useState('');
 
-  const PROD_URL = 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
   const AGENT_ID = 'agent_1784384630740_e7ac817';
 
   useEffect(() => {
+    // Use current origin for API calls (works in both dev and production)
+    if (typeof window !== 'undefined') {
+      setApiUrl(window.location.origin);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!apiUrl) return;
+
     const loadData = async () => {
       try {
         // Load submissions
-        const subRes = await fetch(`${PROD_URL}/api/superteam/agent/submit?agentId=${AGENT_ID}`);
+        const subRes = await fetch(`${apiUrl}/api/superteam/agent/submit?agentId=${AGENT_ID}`);
         const subData = await subRes.json();
         const subs = subData.submissions || [];
         setSubmissions(subs);
 
         // Load bounties
-        const bounRes = await fetch(`${PROD_URL}/api/superteam/agent/discover?agentId=${AGENT_ID}&take=10`);
+        const bounRes = await fetch(`${apiUrl}/api/superteam/agent/discover?agentId=${AGENT_ID}&take=20`);
         const bounData = await bounRes.json();
         const boun = bounData.listings || [];
         setBounties(boun);
@@ -41,7 +50,7 @@ export default function SuperteamDashboard() {
     loadData();
     const interval = setInterval(loadData, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [apiUrl]);
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#0f172a', color: '#fff', minHeight: '100vh' }}>

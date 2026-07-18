@@ -39,7 +39,7 @@ export interface AgentResponse {
 export class SuperteamAgentClient {
   private apiKey: string;
   private agentName: string;
-  private baseUrl = 'https://earn.superteam.fun/api';
+  private baseUrl: string;
   private retryAttempts = 3;
   private retryDelay = 1000;
 
@@ -49,6 +49,7 @@ export class SuperteamAgentClient {
     }
     this.apiKey = apiKey;
     this.agentName = agentName;
+    this.baseUrl = process.env.SUPERTEAM_BASE_URL || 'https://superteam.fun/api';
   }
 
   private async retryFetch<T>(
@@ -134,7 +135,10 @@ export class SuperteamAgentClient {
       params.append('skip', String(skip));
       if (type) params.append('type', type);
 
-      const url = `${this.baseUrl}/v1/listings?${params.toString()}`;
+      const url = `${this.baseUrl}/listings?${params.toString()}`;
+      console.log(`[SuperteamAgentClient] Fetching listings from: ${url}`);
+      console.log(`[SuperteamAgentClient] Base URL: ${this.baseUrl}`);
+
       const response = await this.retryFetch<any>(url, {
         method: 'GET',
         headers: {
@@ -144,19 +148,39 @@ export class SuperteamAgentClient {
         },
       });
 
+      console.log(`[SuperteamAgentClient] Response type: ${typeof response}, isArray: ${Array.isArray(response)}`);
+
+      let listings: any[] = [];
+
       if (Array.isArray(response)) {
-        return response;
+        console.log(`[SuperteamAgentClient] Response is array, count: ${response.length}`);
+        listings = response;
+      } else if (response.listings && Array.isArray(response.listings)) {
+        console.log(`[SuperteamAgentClient] Found listings in response.listings, count: ${response.listings.length}`);
+        listings = response.listings;
+      } else if (response.data && Array.isArray(response.data)) {
+        console.log(`[SuperteamAgentClient] Found listings in response.data, count: ${response.data.length}`);
+        listings = response.data;
+      } else {
+        console.warn(`[SuperteamAgentClient] No listings found in response`);
+        return [];
       }
 
-      if (response.listings && Array.isArray(response.listings)) {
-        return response.listings;
-      }
-
-      if (response.data && Array.isArray(response.data)) {
-        return response.data;
-      }
-
-      return [];
+      // Map API response to Listing interface
+      return listings.map((item: any) => ({
+        id: item.id,
+        slug: item.slug,
+        title: item.title,
+        description: item.description || '',
+        type: item.type || 'bounty',
+        reward: item.rewardAmount || 0,
+        rewardToken: item.token,
+        deadline: item.deadline,
+        skills: item.skills || [],
+        agentAccess: item.agentAccess,
+        postedAt: item.postedAt,
+        status: item.status,
+      }));
     } catch (error) {
       console.error('Failed to fetch listings:', error);
       return [];

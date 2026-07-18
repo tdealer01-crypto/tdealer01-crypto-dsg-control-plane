@@ -1,0 +1,4 @@
+interface:
+  display_name: "Colosseum Resources"
+  short_description: "Project-specific Solana hackathon tool advisor"
+  default_prompt: "What are you building for the hackathon? I can recommend the right Colosseum sponsor tools, SDKs, and build paths."

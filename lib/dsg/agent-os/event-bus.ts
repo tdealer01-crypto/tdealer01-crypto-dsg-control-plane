@@ -45,25 +45,72 @@ export interface EventBusStats {
   eventsInMemory: number;
 }
 
+/**
+ * Minimal Redis surface the bus needs. Satisfied by @upstash/redis (REST,
+ * serverless-friendly) or any injected fake in tests.
+ */
+export interface RedisLikeClient {
+  ping(): Promise<unknown>;
+  lpush(key: string, ...values: string[]): Promise<number>;
+  lrange(key: string, start: number, stop: number): Promise<unknown[]>;
+  ltrim(key: string, start: number, stop: number): Promise<unknown>;
+}
+
 class EventBus {
   private subscriptions = new Map<string, Subscription>();
   private streams = new Map<string, Event[]>();
   private counter = 0;
   private redisUrl?: string;
   private usingRedis = false;
+  private redisClient?: RedisLikeClient;
+  private readonly redisKeyPrefix = 'agent-os:stream:';
+  private readonly maxRedisEventsPerStream = 500;
 
   async initializeRedis(redisUrl: string): Promise<{ ok: boolean; error?: string }> {
+    // Legacy TCP URL path. No TCP client is opened in serverless; real
+    // persistence goes through initializeUpstash (REST). Does not claim
+    // usingRedis without an actual connection.
     this.redisUrl = redisUrl;
-    // In a real implementation, connect to Redis here
-    // For now, just mark as using Redis
-    this.usingRedis = true;
     return { ok: true };
+  }
+
+  /**
+   * Connect the bus to Upstash Redis (REST) for durable event persistence.
+   * Pass url+token, or inject a client (tests). Verifies with a ping before
+   * claiming the connection. Delivery to subscribers stays in-process; what
+   * Redis adds is that published events survive across serverless invocations
+   * and are readable from any instance via getEvents.
+   */
+  async initializeUpstash(input: {
+    url?: string;
+    token?: string;
+    client?: RedisLikeClient;
+  }): Promise<{ ok: boolean; error?: string }> {
+    try {
+      let client = input.client;
+      if (!client) {
+        if (!input.url || !input.token) {
+          return { ok: false, error: 'Upstash URL and token are required' };
+        }
+        const { Redis } = await import('@upstash/redis');
+        client = new Redis({ url: input.url, token: input.token }) as unknown as RedisLikeClient;
+      }
+      await client.ping();
+      this.redisClient = client;
+      this.usingRedis = true;
+      return { ok: true };
+    } catch (err) {
+      this.redisClient = undefined;
+      this.usingRedis = false;
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   }
 
   async shutdown(): Promise<void> {
     this.subscriptions.clear();
     this.streams.clear();
     this.usingRedis = false;
+    this.redisClient = undefined;
   }
 
   private generateEventId(): string {
@@ -119,6 +166,17 @@ class EventBus {
     const stream = this.streams.get(streamKey) || [];
     stream.push(event);
     this.streams.set(streamKey, stream);
+
+    // Durable persistence (best-effort): newest-first list per stream in Redis.
+    if (this.redisClient) {
+      const key = this.redisKeyPrefix + streamKey;
+      try {
+        await this.redisClient.lpush(key, JSON.stringify(event));
+        await this.redisClient.ltrim(key, 0, this.maxRedisEventsPerStream - 1);
+      } catch (err) {
+        console.error('[AgentOS EventBus] Redis persist failed:', err);
+      }
+    }
 
     // Deliver to subscribers
     for (const subscription of this.subscriptions.values()) {
@@ -182,6 +240,22 @@ class EventBus {
   }
 
   async getEvents(streamKey: string, since?: string, limit = 100): Promise<Event[]> {
+    // Prefer the durable Redis stream when connected — it spans invocations.
+    if (this.redisClient) {
+      try {
+        const raw = await this.redisClient.lrange(this.redisKeyPrefix + streamKey, 0, limit - 1);
+        // Upstash may auto-deserialize JSON strings; handle both shapes.
+        const parsed = raw.map((r) => (typeof r === 'string' ? (JSON.parse(r) as Event) : (r as Event)));
+        let events = parsed.reverse(); // stored newest-first; return chronological
+        if (since) {
+          events = events.filter((e) => e.timestamp > since);
+        }
+        return events.slice(-limit);
+      } catch (err) {
+        console.error('[AgentOS EventBus] Redis read failed, falling back to memory:', err);
+      }
+    }
+
     const stream = this.streams.get(streamKey) || [];
     let events = stream;
 

@@ -30,6 +30,8 @@ export { executiveHierarchy } from './executive';
  */
 export async function initializeAgentOS(options?: {
   redisUrl?: string;
+  upstashUrl?: string;
+  upstashToken?: string;
   supabaseUrl?: string;
   supabaseServiceKey?: string;
 }): Promise<{
@@ -47,8 +49,14 @@ export async function initializeAgentOS(options?: {
     executive: true, // always available
   };
 
-  // Initialize Event Bus with Redis
-  if (options?.redisUrl) {
+  // Initialize Event Bus: Upstash REST (durable) preferred, then legacy Redis URL, then in-memory
+  if (options?.upstashUrl && options?.upstashToken) {
+    const eventBusResult = await eventBus.initializeUpstash({
+      url: options.upstashUrl,
+      token: options.upstashToken,
+    });
+    results.eventBus = eventBusResult.ok;
+  } else if (options?.redisUrl) {
     const eventBusResult = await eventBus.initializeRedis(options.redisUrl);
     results.eventBus = eventBusResult.ok;
   } else {

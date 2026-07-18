@@ -38,6 +38,18 @@
     {
       "path": "/api/cron/weekly-report",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/superteam/auto-submit",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/superteam/content-generate",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/superteam/daily-revenue",
+      "schedule": "0 2 * * *"
     }
   ]
 }
