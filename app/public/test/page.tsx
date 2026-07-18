@@ -51,6 +51,12 @@ export default function PublicTestPage() {
       const data = await response.json() as TestResult;
       setResult(data);
       setTestHistory([data, ...testHistory.slice(0, 4)]);
+
+      // Store result in sessionStorage for result viewer to access
+      const storedResults = sessionStorage.getItem('public-test-results');
+      const results: Record<string, TestResult> = storedResults ? JSON.parse(storedResults) : {};
+      results[data.testId] = data;
+      sessionStorage.setItem('public-test-results', JSON.stringify(results));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
     } finally {

@@ -50,8 +50,13 @@ function generateHash(data: string): string {
   return createHash('sha256').update(data).digest('hex');
 }
 
-function generateProofChain(testId: string, decision: string, reason: string): ProofChain {
-  const requestData = `${testId}-request`;
+function generateProofChain(
+  minArbiterCount: number,
+  actualArbiterCount: number,
+  decision: string,
+  reason: string
+): ProofChain {
+  const requestData = `${minArbiterCount}|${actualArbiterCount}-request`;
   const requestHash = generateHash(requestData);
 
   const proofData = `${requestHash}-${decision}-${reason}`;
@@ -117,8 +122,8 @@ export async function POST(request: Request) {
       body.actualArbiterCount
     );
 
-    // Generate proof chain
-    const proofChain = generateProofChain(testId, decision, reason);
+    // Generate proof chain using canonical input parameters for determinism
+    const proofChain = generateProofChain(body.minArbiterCount, body.actualArbiterCount, decision, reason);
 
     // Create test result
     const result: TestResult = {
@@ -145,7 +150,7 @@ export async function POST(request: Request) {
       },
       auditTrail: {
         created: timestamp,
-        shareableLink: `${process.env.VERCEL_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app'}/public/test-result/${testId}`,
+        shareableLink: `https://${process.env.VERCEL_URL || 'tdealer01-crypto-dsg-control-plane.vercel.app'}/public/test-result/${testId}`,
       },
     };
 

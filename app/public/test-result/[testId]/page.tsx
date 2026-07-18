@@ -47,44 +47,17 @@ export default function TestResultPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real implementation, this would fetch from a results database
-    // For now, we show the structure with mock data
-    const mockResult: TestResult = {
-      testId: testId || 'mock-test-id',
-      timestamp: new Date().toISOString(),
-      testCase: {
-        minRequired: 2,
-        actualCount: 1,
-        testName: 'Insufficient Arbiters Test',
-      },
-      decision: 'BLOCK',
-      reason: 'ARBITER_COUNT_INSUFFICIENT: got 1, need 2',
-      proofChain: {
-        requestHash: 'sha256:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z',
-        proofHash: 'sha256:x9y8z7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0f9e8d7c6b5a4',
-        bundleHash: 'sha256:m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6',
-        merkleRoot: 'sha256:z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0f9e8d7c6b5a4',
-      },
-      ccvsLevel: 'L2',
-      compliance: {
-        ccvs: true,
-        pdpa: true,
-        euAiAct: true,
-      },
-      evidence: {
-        deterministic: true,
-        replayable: true,
-        tamperable: false,
-      },
-      auditTrail: {
-        created: new Date().toISOString(),
-        shareableLink: `/public/test-result/${testId}`,
-      },
-    };
+    // Retrieve test result from sessionStorage
+    const storedResults = sessionStorage.getItem('public-test-results');
+    const results: Record<string, TestResult> = storedResults ? JSON.parse(storedResults) : {};
 
-    // Simulate loading
-    setResult(mockResult);
-    setLoading(false);
+    if (results[testId]) {
+      setResult(results[testId]);
+      setLoading(false);
+    } else {
+      setError('ไม่พบผลการทดสอบที่ได้บันทึกไว้');
+      setLoading(false);
+    }
   }, [testId]);
 
   const handleExportJSON = () => {
