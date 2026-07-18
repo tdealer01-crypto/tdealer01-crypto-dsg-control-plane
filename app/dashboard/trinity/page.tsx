@@ -16,6 +16,7 @@ export default function TrinityDashboard() {
   const [chatLoading, setChatLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<'Mind' | 'Hand' | 'Eye' | 'Nerve' | 'Spine' | 'All'>('All');
   const [language, setLanguage] = useState<'th' | 'en'>('en');
+  const [modelProvider, setModelProvider] = useState<'anthropic' | 'nvidia'>('anthropic');
   const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -92,6 +93,7 @@ export default function TrinityDashboard() {
         body: JSON.stringify({
           message: chatInput,
           agent: selectedAgent,
+          model: modelProvider,
           context: { agents, jobs },
           sessionId,
           language,
@@ -301,6 +303,19 @@ export default function TrinityDashboard() {
                 <option value="Eye">👁️ Eye (Verification)</option>
                 <option value="Nerve">⚡ Nerve (Payment)</option>
                 <option value="Spine">🦴 Spine (Governance)</option>
+              </select>
+            </div>
+
+            {/* Model Selection */}
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-[#E0E5EE]">Model:</span>
+              <select
+                value={modelProvider}
+                onChange={e => setModelProvider(e.target.value as any)}
+                className="px-3 py-1 bg-[#1a1a24] text-[#F7DC78] border border-[#F7DC78]/20 rounded-lg text-sm focus:outline-none focus:border-[#F7DC78]"
+              >
+                <option value="anthropic">🧠 Claude (Anthropic)</option>
+                <option value="nvidia">⚡ GLM (NVIDIA)</option>
               </select>
             </div>
 
