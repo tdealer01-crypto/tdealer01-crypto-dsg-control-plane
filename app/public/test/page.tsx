@@ -20,7 +20,95 @@ interface TestResult {
   };
 }
 
+type Language = 'th' | 'en';
+
+const translations: Record<Language, Record<string, string>> = {
+  th: {
+    backHome: '← กลับหน้าหลัก',
+    title: '🧪 ระบบการทดสอบสาธารณะ',
+    subtitle: 'ทดสอบการตรวจสอบ Arbiter Count โดยบุคคลที่สาม ด้วยความเป็นอิสระและโปร่งใส',
+    badge: '✓ ไม่ต้องสมัครสมาชิก • ไม่ต้องการ API key • ผลลัพธ์ชะบ่อนหลักฐานที่สามารถตรวจสอบได้',
+    setupLabel: '⚙️ ตั้งค่าการทดสอบ',
+    minArbiterLabel: 'จำนวน Arbiters ที่ต้องการ (ขั้นต่ำ)',
+    actualArbiterLabel: 'จำนวน Arbiters ที่แท้จริง',
+    testNameLabel: 'ชื่อการทดสอบ (ทางเลือก)',
+    testNamePlaceholder: 'เช่น Insufficient Arbiters',
+    runTestBtn: '▶️ เรียกใช้การทดสอบ',
+    runningBtn: 'กำลังดำเนินการทดสอบ...',
+    quickTemplates: 'แม่แบบด่วน',
+    insufficient: '❌ ไม่เพียงพอ (2/1)',
+    perfect: '✅ พอดี (2/2)',
+    exceeded: '✅ เกิน (2/3)',
+    result: 'ผลลัพธ์',
+    ccvs: 'CCVS',
+    testId: 'Test ID',
+    time: 'เวลา',
+    status: 'สถานะ',
+    verified: '✓ ตรวจสอบแล้ว',
+    proofChain: '🔐 ห่วงโซ่พิสูจน์',
+    requestHash: 'Request Hash',
+    proofHash: 'Proof Hash',
+    merkleRoot: 'Merkle Root',
+    viewDetails: '📋 ดูรายละเอียดเต็ม',
+    exportJSON: '📥 ส่งออก JSON',
+    runTestHint: 'เรียกใช้การทดสอบด้านซ้ายเพื่อดูผลลัพธ์',
+    resultsHere: 'ผลลัพธ์จะปรากฏที่นี่',
+    testHistory: '📊 ประวัติการทดสอบ',
+    tamperProof: '🔍 ป้องกันการปลอมแปลง',
+    tamperProofDesc: 'SHA-256 WORM Chain ทำให้ไม่สามารถเปลี่ยนผลลัพธ์ได้โดยไม่บอก',
+    compliant: '⚖️ สอดคล้องกับกฎเกณฑ์',
+    compliantDesc: 'ผลลัพธ์ทั้งหมดพร้อมสำหรับ CCVS, PDPA, EU AI Act',
+    verifiable: '✓ ตรวจสอบได้',
+    verifiableDesc: 'ทำซ้ำการทดสอบเดิมด้วยพารามิเตอร์เดียวกันเพื่อยืนยัน',
+    seeCode: 'ต้องการดูโค้ด? เยี่ยมชมที่',
+    testError: 'ไม่สามารถดำเนินการทดสอบได้',
+    generalError: 'เกิดข้อผิดพลาด',
+  },
+  en: {
+    backHome: '← Back Home',
+    title: '🧪 Public Testing System',
+    subtitle: 'Third-party Arbiter Count verification with independence and transparency',
+    badge: '✓ No signup • No API key • Tamper-proof verifiable results',
+    setupLabel: '⚙️ Test Configuration',
+    minArbiterLabel: 'Minimum Arbiters Required',
+    actualArbiterLabel: 'Actual Arbiters',
+    testNameLabel: 'Test Name (optional)',
+    testNamePlaceholder: 'e.g., Insufficient Arbiters',
+    runTestBtn: '▶️ Run Test',
+    runningBtn: 'Running test...',
+    quickTemplates: 'Quick Templates',
+    insufficient: '❌ Insufficient (2/1)',
+    perfect: '✅ Perfect (2/2)',
+    exceeded: '✅ Exceeded (2/3)',
+    result: 'Result',
+    ccvs: 'CCVS',
+    testId: 'Test ID',
+    time: 'Time',
+    status: 'Status',
+    verified: '✓ Verified',
+    proofChain: '🔐 Proof Chain',
+    requestHash: 'Request Hash',
+    proofHash: 'Proof Hash',
+    merkleRoot: 'Merkle Root',
+    viewDetails: '📋 View Full Details',
+    exportJSON: '📥 Export JSON',
+    runTestHint: 'Run a test on the left to see results',
+    resultsHere: 'Results will appear here',
+    testHistory: '📊 Test History',
+    tamperProof: '🔍 Tamper-Proof',
+    tamperProofDesc: 'SHA-256 WORM Chain makes results immutable without detection',
+    compliant: '⚖️ Regulatory Compliant',
+    compliantDesc: 'All results ready for CCVS, PDPA, EU AI Act',
+    verifiable: '✓ Verifiable',
+    verifiableDesc: 'Replay the same test with same parameters to verify',
+    seeCode: 'Want to see the code? Visit',
+    testError: 'Unable to run test',
+    generalError: 'An error occurred',
+  },
+};
+
 export default function PublicTestPage() {
+  const [language, setLanguage] = useState<Language>('th');
   const [minArbiterCount, setMinArbiterCount] = useState(1);
   const [actualArbiterCount, setActualArbiterCount] = useState(0);
   const [testName, setTestName] = useState('');
@@ -28,6 +116,8 @@ export default function PublicTestPage() {
   const [result, setResult] = useState<TestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [testHistory, setTestHistory] = useState<TestResult[]>([]);
+
+  const t = translations[language];
 
   const handleRunTest = async () => {
     setLoading(true);
@@ -45,7 +135,7 @@ export default function PublicTestPage() {
       });
 
       if (!response.ok) {
-        throw new Error('ไม่สามารถดำเนินการทดสอบได้');
+        throw new Error(t.testError);
       }
 
       const data = await response.json() as TestResult;
@@ -58,7 +148,7 @@ export default function PublicTestPage() {
       results[data.testId] = data;
       sessionStorage.setItem('public-test-results', JSON.stringify(results));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+      setError(err instanceof Error ? err.message : t.generalError);
     } finally {
       setLoading(false);
     }
@@ -67,21 +157,43 @@ export default function PublicTestPage() {
   return (
     <main className="min-h-screen bg-[#07080a] text-white p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+        {/* Header with Language Toggle */}
+        <div className="mb-8 flex justify-between items-center">
           <Link href="/" className="text-emerald-300 hover:text-emerald-200 text-sm font-semibold">
-            ← กลับหน้าหลัก
+            {t.backHome}
           </Link>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setLanguage('th')}
+              className={`px-3 py-1 rounded text-sm font-semibold transition ${
+                language === 'th'
+                  ? 'bg-emerald-300 text-slate-950'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              ไทย
+            </button>
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-3 py-1 rounded text-sm font-semibold transition ${
+                language === 'en'
+                  ? 'bg-emerald-300 text-slate-950'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              English
+            </button>
+          </div>
         </div>
 
         {/* Title */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">🧪 ระบบการทดสอบสาธารณะ</h1>
+          <h1 className="text-5xl font-bold text-white mb-4">{t.title}</h1>
           <p className="text-xl text-slate-300 mb-6">
-            ทดสอบการตรวจสอบ Arbiter Count โดยบุคคลที่สาม ด้วยความเป็นอิสระและโปร่งใส
+            {t.subtitle}
           </p>
           <div className="inline-block bg-emerald-400/10 border border-emerald-300/30 rounded-lg px-4 py-2 text-emerald-100 text-sm">
-            ✓ ไม่ต้องสมัครสมาชิก • ไม่ต้องการ API key • ผลลัพธ์ชะบ่อนหลักฐานที่สามารถตรวจสอบได้
+            {t.badge}
           </div>
         </div>
 
@@ -89,12 +201,12 @@ export default function PublicTestPage() {
           {/* Test Input */}
           <div className="md:col-span-1">
             <div className="border border-emerald-300/20 bg-emerald-400/5 rounded-2xl p-8 sticky top-8">
-              <h2 className="text-2xl font-bold text-white mb-6">⚙️ ตั้งค่าการทดสอบ</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">{t.setupLabel}</h2>
 
               {/* Min Arbiter Count */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-emerald-100 mb-2">
-                  จำนวน Arbiters ที่ต้องการ (ขั้นต่ำ)
+                  {t.minArbiterLabel}
                 </label>
                 <input
                   type="range"
@@ -110,7 +222,7 @@ export default function PublicTestPage() {
               {/* Actual Arbiter Count */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-amber-100 mb-2">
-                  จำนวน Arbiters ที่แท้จริง
+                  {t.actualArbiterLabel}
                 </label>
                 <input
                   type="range"
@@ -126,13 +238,13 @@ export default function PublicTestPage() {
               {/* Test Name */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  ชื่อการทดสอบ (ทางเลือก)
+                  {t.testNameLabel}
                 </label>
                 <input
                   type="text"
                   value={testName}
                   onChange={(e) => setTestName(e.target.value)}
-                  placeholder="เช่น Insufficient Arbiters"
+                  placeholder={t.testNamePlaceholder}
                   className="w-full px-4 py-2 bg-slate-900 border border-slate-500/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-300/50"
                 />
               </div>
@@ -143,42 +255,42 @@ export default function PublicTestPage() {
                 disabled={loading}
                 className="w-full bg-emerald-300 text-slate-950 px-6 py-3 rounded-lg font-bold hover:bg-emerald-200 disabled:bg-slate-500 disabled:cursor-not-allowed transition"
               >
-                {loading ? 'กำลังดำเนินการทดสอบ...' : '▶️ เรียกใช้การทดสอบ'}
+                {loading ? t.runningBtn : t.runTestBtn}
               </button>
 
               {/* Quick Templates */}
               <div className="mt-8 pt-8 border-t border-emerald-300/20">
-                <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">แม่แบบด่วน</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">{t.quickTemplates}</p>
                 <div className="space-y-2">
                   <button
                     onClick={() => {
                       setMinArbiterCount(2);
                       setActualArbiterCount(1);
-                      setTestName('ไม่เพียงพอ');
+                      setTestName(language === 'th' ? 'ไม่เพียงพอ' : 'Insufficient');
                     }}
                     className="w-full text-left px-3 py-2 text-sm rounded border border-emerald-300/30 text-emerald-100 hover:bg-emerald-300/10"
                   >
-                    ❌ ไม่เพียงพอ (2/1)
+                    {t.insufficient}
                   </button>
                   <button
                     onClick={() => {
                       setMinArbiterCount(2);
                       setActualArbiterCount(2);
-                      setTestName('พอดี');
+                      setTestName(language === 'th' ? 'พอดี' : 'Perfect');
                     }}
                     className="w-full text-left px-3 py-2 text-sm rounded border border-emerald-300/30 text-emerald-100 hover:bg-emerald-300/10"
                   >
-                    ✅ พอดี (2/2)
+                    {t.perfect}
                   </button>
                   <button
                     onClick={() => {
                       setMinArbiterCount(2);
                       setActualArbiterCount(3);
-                      setTestName('เกิน');
+                      setTestName(language === 'th' ? 'เกิน' : 'Exceeded');
                     }}
                     className="w-full text-left px-3 py-2 text-sm rounded border border-emerald-300/30 text-emerald-100 hover:bg-emerald-300/10"
                   >
-                    ✅ เกิน (2/3)
+                    {t.exceeded}
                   </button>
                 </div>
               </div>
@@ -205,7 +317,7 @@ export default function PublicTestPage() {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">ผลลัพธ์</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">{t.result}</p>
                       <p
                         className={`text-5xl font-bold ${
                           result.decision === 'ALLOW' ? 'text-emerald-300' : 'text-red-300'
@@ -215,7 +327,7 @@ export default function PublicTestPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">CCVS</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">{t.ccvs}</p>
                       <p className="text-3xl font-bold text-blue-300">{result.ccvsLevel}</p>
                     </div>
                   </div>
@@ -228,40 +340,40 @@ export default function PublicTestPage() {
                 <div className="border border-slate-500/20 bg-slate-900/50 rounded-lg p-6">
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Test ID</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">{t.testId}</p>
                       <p className="text-slate-100 font-mono text-sm truncate">{result.testId}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">เวลา</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">{t.time}</p>
                       <p className="text-slate-100 text-sm">
-                        {new Date(result.timestamp).toLocaleTimeString('th-TH')}
+                        {new Date(result.timestamp).toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US')}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">สถานะ</p>
-                      <p className="text-emerald-100 text-sm">✓ ตรวจสอบแล้ว</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">{t.status}</p>
+                      <p className="text-emerald-100 text-sm">✓ {t.verified}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Proof Chain Preview */}
                 <div className="border border-purple-300/20 bg-purple-400/5 rounded-lg p-6">
-                  <h3 className="text-lg font-bold text-white mb-4">🔐 ห่วงโซ่พิสูจน์</h3>
+                  <h3 className="text-lg font-bold text-white mb-4">{t.proofChain}</h3>
                   <div className="space-y-2">
                     <div className="bg-black/50 rounded p-3 border border-purple-300/20">
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Request Hash</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">{t.requestHash}</p>
                       <p className="text-xs text-purple-100 font-mono truncate">
                         {result.proofChain.requestHash}
                       </p>
                     </div>
                     <div className="bg-black/50 rounded p-3 border border-purple-300/20">
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Proof Hash</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">{t.proofHash}</p>
                       <p className="text-xs text-purple-100 font-mono truncate">
                         {result.proofChain.proofHash}
                       </p>
                     </div>
                     <div className="bg-black/50 rounded p-3 border border-purple-300/20">
-                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Merkle Root</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">{t.merkleRoot}</p>
                       <p className="text-xs text-purple-100 font-mono truncate">
                         {result.proofChain.merkleRoot}
                       </p>
@@ -275,7 +387,7 @@ export default function PublicTestPage() {
                     href={result.auditTrail.shareableLink}
                     className="flex-1 bg-blue-300 text-slate-950 px-6 py-3 rounded-lg font-bold hover:bg-blue-200 transition text-center"
                   >
-                    📋 ดูรายละเอียดเต็ม
+                    {t.viewDetails}
                   </Link>
                   <button
                     onClick={() => {
@@ -290,22 +402,22 @@ export default function PublicTestPage() {
                     }}
                     className="flex-1 border border-blue-300/40 text-blue-100 px-6 py-3 rounded-lg font-bold hover:bg-blue-300/10 transition"
                   >
-                    📥 ส่งออก JSON
+                    {t.exportJSON}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="border border-slate-500/20 bg-slate-900/50 rounded-lg p-12 text-center">
-                <p className="text-slate-400 mb-4">เรียกใช้การทดสอบด้านซ้ายเพื่อดูผลลัพธ์</p>
+                <p className="text-slate-400 mb-4">{t.runTestHint}</p>
                 <div className="text-5xl mb-2">🧪</div>
-                <p className="text-slate-500 text-sm">ผลลัพธ์จะปรากฏที่นี่</p>
+                <p className="text-slate-500 text-sm">{t.resultsHere}</p>
               </div>
             )}
 
             {/* Test History */}
             {testHistory.length > 0 && (
               <div className="mt-8 border border-slate-500/20 bg-slate-900/50 rounded-lg p-6">
-                <h3 className="text-lg font-bold text-white mb-4">📊 ประวัติการทดสอบ</h3>
+                <h3 className="text-lg font-bold text-white mb-4">{t.testHistory}</h3>
                 <div className="space-y-2">
                   {testHistory.map((test, idx) => (
                     <div
@@ -315,7 +427,7 @@ export default function PublicTestPage() {
                       <div>
                         <p className="text-sm font-mono text-slate-300 truncate">{test.testId}</p>
                         <p className="text-xs text-slate-500">
-                          {new Date(test.timestamp).toLocaleTimeString('th-TH')}
+                          {new Date(test.timestamp).toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US')}
                         </p>
                       </div>
                       <div
@@ -338,21 +450,21 @@ export default function PublicTestPage() {
         {/* Info Section */}
         <div className="mt-16 grid md:grid-cols-3 gap-6">
           <div className="border border-blue-300/20 bg-blue-400/5 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-white mb-3">🔍 ป้องกันการปลอมแปลง</h3>
+            <h3 className="text-lg font-bold text-white mb-3">{t.tamperProof}</h3>
             <p className="text-slate-300 text-sm">
-              SHA-256 WORM Chain ทำให้ไม่สามารถเปลี่ยนผลลัพธ์ได้โดยไม่บอก
+              {t.tamperProofDesc}
             </p>
           </div>
           <div className="border border-green-300/20 bg-green-400/5 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-white mb-3">⚖️ สอดคล้องกับกฎเกณฑ์</h3>
+            <h3 className="text-lg font-bold text-white mb-3">{t.compliant}</h3>
             <p className="text-slate-300 text-sm">
-              ผลลัพธ์ทั้งหมดพร้อมสำหรับ CCVS, PDPA, EU AI Act
+              {t.compliantDesc}
             </p>
           </div>
           <div className="border border-purple-300/20 bg-purple-400/5 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-white mb-3">✓ ตรวจสอบได้</h3>
+            <h3 className="text-lg font-bold text-white mb-3">{t.verifiable}</h3>
             <p className="text-slate-300 text-sm">
-              ทำซ้ำการทดสอบเดิมด้วยพารามิเตอร์เดียวกันเพื่อยืนยัน
+              {t.verifiableDesc}
             </p>
           </div>
         </div>
@@ -360,10 +472,10 @@ export default function PublicTestPage() {
         {/* Footer */}
         <div className="text-center mt-16 pt-8 border-t border-slate-500/20">
           <p className="text-slate-400 text-sm mb-4">
-            ต้องการดูโค้ด? เยี่ยมชมที่ <code className="text-emerald-300">/api/public/test/arbiter-validation</code>
+            {t.seeCode} <code className="text-emerald-300">/api/public/test/arbiter-validation</code>
           </p>
           <Link href="/" className="text-emerald-300 hover:text-emerald-200 text-sm font-semibold">
-            ← กลับหน้าหลัก
+            {t.backHome}
           </Link>
         </div>
       </div>
