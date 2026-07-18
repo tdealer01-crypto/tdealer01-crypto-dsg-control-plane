@@ -25,6 +25,7 @@ import {
   settleJob,
 } from '@/lib/trinity/workflow';
 import { orchestrateWithAgentOS } from '@/lib/trinity/agent-os-integration';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -372,7 +373,7 @@ export async function POST(req: Request) {
       ...(agentOSOrchestration ? { agentOS: agentOSOrchestration } : {}),
     });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err), completedAt: new Date().toISOString() }, { status: 500 });
+    return handleApiError('POST /api/trinity/orchestrate', err);
   }
 }
 
