@@ -168,10 +168,10 @@ export async function POST(request: Request) {
     };
 
     // Persist result to Supabase for shareable link access
+    // Note: public_test_results table created by migration; types generated on next db:types run
     try {
       const supabase = getSupabaseAdmin();
-      // @ts-ignore - public_test_results is a new table, types will be generated after migration
-      await supabase.from('public_test_results').insert({
+      const insertData = {
         test_id: testId,
         min_required: body.minArbiterCount,
         actual_count: body.actualArbiterCount,
@@ -190,7 +190,10 @@ export async function POST(request: Request) {
         evidence_replayable: result.evidence.replayable,
         evidence_tamperable: result.evidence.tamperable,
         result_json: result,
-      });
+      };
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - public_test_results table not yet in database.types.ts
+      await supabase.from('public_test_results').insert(insertData);
     } catch (dbError) {
       console.error('[public-test] Failed to persist result to Supabase:', dbError);
       // Non-fatal: still return result even if persistence fails
