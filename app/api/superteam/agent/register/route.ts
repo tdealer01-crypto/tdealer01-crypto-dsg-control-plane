@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { testMemoryStore } from '@/lib/superteam/test-store';
+import { randomBytes } from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+function generateRandomString(length: number): string {
+  return randomBytes(Math.ceil(length / 2))
+    .toString('hex')
+    .slice(0, length);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,9 +25,9 @@ export async function POST(request: NextRequest) {
 
     // Generate mock registration data (since we're in test mode)
     const mockRegistration = {
-      agentId: `agent_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      claimCode: `CLAIM_${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      apiKey: `sk_${Math.random().toString(36).slice(2, 20)}`,
+      agentId: `agent_${Date.now()}_${generateRandomString(7)}`,
+      claimCode: `CLAIM_${generateRandomString(6).toUpperCase()}`,
+      apiKey: `sk_${generateRandomString(18)}`,
       username: agentName
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, '-')
