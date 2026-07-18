@@ -155,11 +155,14 @@ export async function POST(request: Request) {
     const result = await evaluateGateWithIsingSolver(constraints, proofRequest, req.solverConfig);
 
     // ── Record usage ──────────────────────────────────────────────────────
-    await recordGateEvaluation(caller.orgId, {
-      solver: 'ising',
-      decision: result.gateStatus,
-      riskLevel: req.riskLevel ?? 'medium',
-    });
+    const evalId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    await recordGateEvaluation(
+      evalId,
+      caller.orgId,
+      'gates/evaluate',
+      result.gateStatus,
+      Date.now() - startMs,
+    );
 
     // ── Response ──────────────────────────────────────────────────────────
     const response = NextResponse.json({
