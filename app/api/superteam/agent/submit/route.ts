@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
       eligibilityAnswers,
     } = body;
 
+    let claimCode: string | null = null;
+
     if (!agentId || !listingId || !link || !otherInfo) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
       agent = {
         api_key: process.env.SUPERTEAM_API_KEY,
         name: 'superteam-agent-live',
-        claim_code: 'LIVE_AGENT',
+        claim_code: `DSG-${agentId}`,
       };
       console.log('Using real Superteam API key for submission');
     } else {
@@ -88,8 +90,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use Telegram submission if bot token is available
-    let result: any = { success: false, error: 'No submission method available' };
+    // First submit to Superteam API to get real claim code
+    let superteamResult: any = { success: false };
+
+    try {
+      const client = new SuperteamAgentClient(agent.api_key, agent.name);
+      const submission: Submission = {
+        listingId,
+        link,
+        otherInfo,
+        telegram: telegram || undefined,
+        ask: ask || null,
+        eligibilityAnswers:
+          eligibilityAnswers && eligibilityAnswers.length > 0
+            ? eligibilityAnswers
+            : undefined,
+      };
+      superteamResult = await client.submitListing(submission);
+
+      // Extract claim code from Superteam response
+      // Superteam returns the real claim code on successful submission
+      if (superteamResult.success && superteamResult.data) {
+        claimCode = superteamResult.data.claimCode ||
+                   superteamResult.data.claim_code ||
+                   superteamResult.data.submissionId ||
+                   superteamResult.data.id;
+      }
+
+      // If no claim code from API, use listing ID as reference
+      if (!claimCode) {
+        claimCode = listingId;
+      }
+    } catch (apiError) {
+      console.error('Superteam API submission error:', apiError);
+    }
+
+    // Use Telegram notification if bot token is available
+    let result: any = superteamResult;
 
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
       try {
@@ -97,44 +134,24 @@ export async function POST(request: NextRequest) {
           process.env.TELEGRAM_BOT_TOKEN,
           process.env.TELEGRAM_CHAT_ID
         );
-        result = await telegramSubmitter.submitBounty({
+        const telegramResult = await telegramSubmitter.submitBounty({
           listingId,
           title: otherInfo || 'Bounty Submission',
           reward: ask || 0,
           rewardToken: 'USDC',
           link,
           otherInfo: `Agent: ${agent.name} | Info: ${otherInfo}`,
+          claimCode: claimCode,
         });
-        console.log(`✅ Telegram submission sent for ${listingId}:`, result);
+        console.log(`✅ Telegram notification sent for ${listingId}:`, telegramResult);
+
+        // Combine results
+        result = {
+          ...superteamResult,
+          telegram: telegramResult,
+        };
       } catch (telegramError) {
-        console.error('Telegram submission error:', telegramError);
-        result = {
-          success: false,
-          error: `Telegram error: ${telegramError instanceof Error ? telegramError.message : String(telegramError)}`,
-        };
-      }
-    } else {
-      // Fallback to Superteam API client
-      try {
-        const client = new SuperteamAgentClient(agent.api_key, agent.name);
-        const submission: Submission = {
-          listingId,
-          link,
-          otherInfo,
-          telegram: telegram || undefined,
-          ask: ask || null,
-          eligibilityAnswers:
-            eligibilityAnswers && eligibilityAnswers.length > 0
-              ? eligibilityAnswers
-              : undefined,
-        };
-        result = await client.submitListing(submission);
-      } catch (apiError) {
-        console.error('API submission error:', apiError);
-        result = {
-          success: false,
-          error: `API error: ${apiError instanceof Error ? apiError.message : String(apiError)}`,
-        };
+        console.error('Telegram notification error:', telegramError);
       }
     }
 
@@ -182,11 +199,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      success: true,
+      success: result.success || false,
       submissionId,
-      claimCode: agent.claim_code,
+      claimCode: claimCode || agent.claim_code,
       message:
-        'Submitted to Superteam. Human operator can claim with claim code.',
+        result.success
+          ? 'Submitted to Superteam. Use claim code to claim bounty.'
+          : 'Submission attempted. Check Telegram for details.',
       result,
     });
   } catch (error) {

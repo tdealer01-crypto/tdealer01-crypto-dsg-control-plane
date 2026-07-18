@@ -3,13 +3,14 @@ import { TelegramSubmitter } from '@/lib/superteam/telegram-submitter';
 
 describe('TelegramSubmitter', () => {
   const mockBotToken = 'test_bot_token_123';
+  const mockChatId = '12345678';
 
   it('throws error when bot token is missing', () => {
     expect(() => new TelegramSubmitter('')).toThrow('Telegram bot token is required');
   });
 
-  it('initializes with valid bot token', () => {
-    const submitter = new TelegramSubmitter(mockBotToken);
+  it('initializes with valid bot token and chat ID', () => {
+    const submitter = new TelegramSubmitter(mockBotToken, mockChatId);
     expect(submitter).toBeDefined();
   });
 
@@ -22,7 +23,7 @@ describe('TelegramSubmitter', () => {
       }),
     });
 
-    const submitter = new TelegramSubmitter(mockBotToken);
+    const submitter = new TelegramSubmitter(mockBotToken, mockChatId);
     const result = await submitter.submitBounty({
       listingId: 'test-123',
       title: 'Test Bounty',
@@ -47,7 +48,7 @@ describe('TelegramSubmitter', () => {
       }),
     });
 
-    const submitter = new TelegramSubmitter(mockBotToken);
+    const submitter = new TelegramSubmitter(mockBotToken, mockChatId);
     const result = await submitter.submitBounty({
       listingId: 'test-123',
       title: 'Test Bounty',
@@ -62,7 +63,7 @@ describe('TelegramSubmitter', () => {
   });
 
   it('gets status for message', async () => {
-    const submitter = new TelegramSubmitter(mockBotToken);
+    const submitter = new TelegramSubmitter(mockBotToken, mockChatId);
     const status = await submitter.getStatus('12345');
 
     expect(status.delivered).toBe(true);

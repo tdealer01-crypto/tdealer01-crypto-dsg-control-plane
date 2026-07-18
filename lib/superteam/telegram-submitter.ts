@@ -10,6 +10,7 @@ export interface TelegramSubmission {
   rewardToken: string;
   link: string;
   otherInfo: string;
+  claimCode?: string;
 }
 
 export class TelegramSubmitter {
@@ -75,13 +76,17 @@ export class TelegramSubmitter {
   }
 
   private formatSubmissionMessage(submission: TelegramSubmission): string {
+    const claimCodeSection = submission.claimCode
+      ? `<b>Claim Code:</b> <code>${submission.claimCode}</code>\n`
+      : '';
+
     return `
 🎯 <b>Bounty Submission</b>
 
 <b>Title:</b> ${this.escapeHtml(submission.title)}
 <b>Listing ID:</b> <code>${submission.listingId}</code>
 <b>Reward:</b> ${submission.reward} ${submission.rewardToken}
-<b>Link:</b> ${submission.link}
+${claimCodeSection}<b>Link:</b> ${submission.link}
 <b>Info:</b> ${this.escapeHtml(submission.otherInfo)}
 
 Submitted via DSG Agent
