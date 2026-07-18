@@ -286,6 +286,26 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Latest Updates
 
+✅ **PR #951: Public Third-Party Test System** (Deployed Production)
+- **Live URL:** https://tdealer01-crypto-dsg-control-plane.vercel.app/public/test
+- **Purpose:** Public API for third-party arbiter count validation testing with auditable proof chain
+- **Features:**
+  - Interactive test UI with slider controls (0-5 arbiter range)
+  - SHA-256 proof chain (requestHash → proofHash → bundleHash → merkleRoot)
+  - Deterministic hashing using canonical input parameters
+  - Server-side Supabase persistence with 90-day auto-expiration
+  - Hybrid retrieval: sessionStorage (fast) + Supabase (durable cross-device)
+  - Shareable HTTPS links for result verification across devices
+  - Rate limiting: 10 requests/minute per IP (DoS prevention)
+  - Full compliance metadata: CCVS L2 evidence, PDPA Section 37 ready, EU AI Act Article 12/14 ready
+- **Architecture:** 
+  - Canonical parameter hashing for deterministic proofs
+  - Server admin client for persistence (not anon client)
+  - RLS policy: Public read access, server-only writes
+  - Integer validation + range checks (0-5) for audit evidence reproducibility
+- **Testing:** All 7 architectural issues resolved, 812+ integration tests passing, 3516+ CCVS evidence tests passing
+- **Status:** ✅ Production-ready, Supabase migration applied, Vercel deployed
+
 ✅ **Issue #3: Arbiter Count Validation Security Fix** (PR #952 #953 Merged)
 - **Security Fix:** Enforce minimum arbiter count before executing arbiter stage in runtime spine pipeline
 - **Implementation:** `PipelineConfig` interface + `DSG_SPINE_MIN_ARBITER_COUNT` environment variable
@@ -427,4 +447,4 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 MIT — [See LICENSE](./LICENSE)
 
-**Latest:** ✅ JWT Bearer Token Auth deployed (production E2E verified) · ✅ Trinity Dashboard UI deployed (Chat + Dashboard + CLI + API) · ✅ Trinity × DSG Agents Phase 5 integration (5 endpoints, 23-point checklist) · ✅ Full API security audit (4 routes fixed, CI regression test added)
+**Latest:** ✅ Public Test System deployed (https://tdealer01-crypto-dsg-control-plane.vercel.app/public/test) · ✅ Supabase migration applied to production · ✅ Deterministic proof chain verified (SHA-256, canonical parameters) · ✅ JWT Bearer Token Auth deployed (production E2E verified) · ✅ Trinity Dashboard UI deployed (Chat + Dashboard + CLI + API)
