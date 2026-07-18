@@ -77,9 +77,10 @@ export default function TrinityDashboard() {
   const handleChatSubmit = async () => {
     if (!chatInput.trim()) return;
 
+    const userInputMessage = chatInput;
     const userMessage = {
       role: 'user' as const,
-      content: chatInput,
+      content: userInputMessage,
       timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
     };
     setMessages(prev => [...prev, userMessage]);
@@ -87,30 +88,122 @@ export default function TrinityDashboard() {
     setChatLoading(true);
 
     try {
-      const response = await fetch('/api/dashboard/trinity/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: chatInput,
-          agent: selectedAgent,
-          model: modelProvider,
-          context: { agents, jobs },
-          sessionId,
-          language,
-        }),
-      });
+      // Try streaming first, fall back to JSON
+      const useStreaming = true;
 
-      if (!response.ok) throw new Error('Chat failed');
+      if (useStreaming) {
+        // Streaming mode using SSE
+        let assistantContent = '';
+        let toolCalls: string[] = [];
+        let toolResults: any[] = [];
 
-      const data = await response.json();
-      const assistantMessage = {
-        role: 'assistant' as const,
-        content: data.response,
-        timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
-        toolCalls: data.toolCalls,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+        const response = await fetch('/api/dashboard/trinity/chat-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userInputMessage,
+            agent: selectedAgent,
+            sessionId,
+            language,
+            streaming: true,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Stream error: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (reader) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.slice(6));
+
+                if (event.type === 'tool_start') {
+                  setMessages(prev => {
+                    const lastMsg = prev[prev.length - 1];
+                    if (lastMsg?.role === 'assistant') {
+                      return prev;
+                    }
+                    return [...prev, {
+                      role: 'assistant' as const,
+                      content: `🔧 ${event.data.tool}...`,
+                      timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
+                    }];
+                  });
+                } else if (event.type === 'tool_result') {
+                  toolCalls.push(event.data.tool);
+                  toolResults.push({ tool: event.data.tool, result: event.data.result });
+                } else if (event.type === 'response') {
+                  assistantContent = event.data.text;
+                  toolCalls = event.data.toolCalls || [];
+                } else if (event.type === 'error') {
+                  assistantContent = `Error: ${event.data.message}`;
+                }
+              } catch (e) {
+                // Parse error, continue
+              }
+            }
+          }
+        }
+
+        if (assistantContent) {
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.role === 'assistant' && lastMsg.content.startsWith('🔧')) {
+              // Replace tool loading message with actual response
+              return [...prev.slice(0, -1), {
+                role: 'assistant' as const,
+                content: assistantContent,
+                timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
+                toolCalls,
+              }];
+            }
+            return [...prev, {
+              role: 'assistant' as const,
+              content: assistantContent,
+              timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
+              toolCalls,
+            }];
+          });
+        }
+      } else {
+        // Fallback to non-streaming
+        const response = await fetch('/api/dashboard/trinity/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userInputMessage,
+            agent: selectedAgent,
+            sessionId,
+            language,
+          }),
+        });
+
+        if (!response.ok) throw new Error('Chat failed');
+
+        const data = await response.json();
+        const assistantMessage = {
+          role: 'assistant' as const,
+          content: data.response,
+          timestamp: new Date().toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-US'),
+          toolCalls: data.toolCalls,
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
     } catch (error) {
+      console.error('Chat error:', error);
       const errorMessage = {
         role: 'assistant' as const,
         content: language === 'th' ? 'ขออภัย เกิดข้อผิดพลาด' : 'Sorry, there was an error processing your request.',

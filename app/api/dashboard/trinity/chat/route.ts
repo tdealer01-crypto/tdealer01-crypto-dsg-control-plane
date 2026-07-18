@@ -2,56 +2,25 @@ import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
-import { handleApiError } from '@/lib/security/api-error';
-
-// NVIDIA OpenAI-compatible client
-interface NVIDIAClient {
-  chat: {
-    completions: {
-      create: (params: any) => Promise<any>;
-    };
-  };
-}
-
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('[Trinity Chat] ANTHROPIC_API_KEY not configured');
-}
+import {
+  discoverJobsReal,
+  executeJobReal,
+  verifyDeliverableReal,
+  settlePaymentReal,
+  validateGovernanceReal,
+} from '@/lib/trinity/real-jobs';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// NVIDIA client for GLM model
-let nvidiaClient: NVIDIAClient | null = null;
-if (process.env.NVIDIA_API_KEY) {
-  // Dynamic import to avoid breaking if OpenAI not available
-  nvidiaClient = {
-    chat: {
-      completions: {
-        create: async (params: any) => {
-          const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-            },
-            body: JSON.stringify(params),
-          });
-          if (!response.ok) {
-            throw new Error(`NVIDIA API error: ${response.statusText}`);
-          }
-          return response.json();
-        },
-      },
-    },
-  };
-}
+export const dynamic = 'force-dynamic';
 
 // MCP Tools available to agents
 const tools = [
   {
     name: 'discover_jobs',
-    description: 'Discover available jobs across platforms (Mind Agent)',
+    description: 'Discover available jobs across real platforms (Mind Agent)',
     input_schema: {
       type: 'object',
       properties: {
@@ -64,7 +33,7 @@ const tools = [
   },
   {
     name: 'execute_job',
-    description: 'Execute a job with deliverables (Hand Agent)',
+    description: 'Execute a job with real tracking (Hand Agent)',
     input_schema: {
       type: 'object',
       properties: {
@@ -89,7 +58,7 @@ const tools = [
   },
   {
     name: 'settle_payment',
-    description: 'Settle payment and manage reputation (Nerve Agent)',
+    description: 'Settle payment with real tracking (Nerve Agent)',
     input_schema: {
       type: 'object',
       properties: {
@@ -101,7 +70,7 @@ const tools = [
   },
   {
     name: 'validate_governance',
-    description: 'Validate against DSG governance policies (Spine Agent)',
+    description: 'Validate against real DSG governance policies (Spine Agent)',
     input_schema: {
       type: 'object',
       properties: {
@@ -123,80 +92,50 @@ const tools = [
   },
 ];
 
-// Real implementation of tool calls with realistic data
-function processToolCall(toolName: string, toolInput: Record<string, unknown>): string {
+// Real implementation using live data sources and Supabase
+async function processToolCall(toolName: string, toolInput: Record<string, unknown>): Promise<string> {
   switch (toolName) {
-    case 'discover_jobs':
-      const jobsByCategory: Record<string, Array<any>> = {
-        'smart-contract-audit': [
-          { id: '1', title: 'Fix reentrancy vulnerability in ERC-20 vault', platform: 'GitHub Bounties', reward: 5.0, difficulty: 'hard' },
-          { id: '2', title: 'Audit Uniswap V4 hook implementation', platform: 'Solana Bounties', reward: 7.5, difficulty: 'hard' },
-          { id: '3', title: 'Review governance token contract', platform: 'Internal', reward: 4.0, difficulty: 'medium' },
-        ],
-        'backend-dev': [
-          { id: '4', title: 'Implement OAuth 2.0 authentication module', platform: 'Solana Bounties', reward: 3.5, difficulty: 'medium' },
-          { id: '5', title: 'Build REST API with Node.js', platform: 'GitHub', reward: 2.5, difficulty: 'easy' },
-        ],
-        'frontend-dev': [
-          { id: '6', title: 'Design React UI component library', platform: 'Internal Projects', reward: 2.0, difficulty: 'medium' },
-          { id: '7', title: 'Build responsive dashboard', platform: 'GitHub', reward: 1.5, difficulty: 'easy' },
-        ],
-      };
+    case 'discover_jobs': {
+      const result = await discoverJobsReal(
+        toolInput.category as string | undefined,
+        toolInput.difficulty as string | undefined,
+        toolInput.min_reward as number | undefined
+      );
+      return JSON.stringify(result);
+    }
 
-      const category = toolInput.category as string || 'smart-contract-audit';
-      const jobs = jobsByCategory[category] || jobsByCategory['smart-contract-audit'];
+    case 'execute_job': {
+      const result = await executeJobReal(
+        toolInput.job_id as string,
+        toolInput.deliverable as string,
+        toolInput.execution_time_target as number | undefined
+      );
+      return JSON.stringify(result);
+    }
 
-      return JSON.stringify({
-        count: jobs.length,
-        category,
-        jobs: jobs.slice(0, 3),
-        timestamp: new Date().toISOString(),
-      });
+    case 'verify_deliverable': {
+      const result = await verifyDeliverableReal(
+        toolInput.deliverable_id as string,
+        toolInput.quality_criteria as string | undefined
+      );
+      return JSON.stringify(result);
+    }
 
-    case 'execute_job':
-      return JSON.stringify({
-        execution_id: `exec-${Math.random().toString(36).slice(2, 9).toUpperCase()}`,
-        job_id: toolInput.job_id,
-        status: 'completed',
-        quality_score: 85 + Math.random() * 15,
-        execution_time_ms: Math.random() * 3000 + 1000,
-        deliverable_size_kb: Math.random() * 500 + 50,
-        timestamp: new Date().toISOString(),
-      });
+    case 'settle_payment': {
+      const result = await settlePaymentReal(
+        toolInput.execution_id as string,
+        toolInput.amount_sol as number
+      );
+      return JSON.stringify(result);
+    }
 
-    case 'verify_deliverable':
-      return JSON.stringify({
-        deliverable_id: toolInput.deliverable_id,
-        verification_status: 'passed',
-        quality_score: Math.random() * 20 + 80,
-        checks_passed: 12,
-        checks_total: 12,
-        issues: [],
-        verification_time_ms: Math.random() * 1000,
-      });
-
-    case 'settle_payment':
-      return JSON.stringify({
-        execution_id: toolInput.execution_id,
-        amount_sol: toolInput.amount_sol,
-        transaction_hash: `${Math.random().toString(16).slice(2, 10)}${Math.random().toString(16).slice(2, 10)}`,
-        status: 'confirmed',
-        confirmations: 32,
-        reputation_change: Math.random() * 5,
-        new_reputation: Math.random() * 100,
-        timestamp: new Date().toISOString(),
-      });
-
-    case 'validate_governance':
-      return JSON.stringify({
-        policy_name: toolInput.policy_name,
-        validation_status: 'approved',
-        constraints_checked: 5,
-        constraints_satisfied: 5,
-        deterministic_hash: `0x${Math.random().toString(16).slice(2, 66)}`,
-        ccvs_level: 'L2',
-        audit_trail_id: `audit-${Date.now()}`,
-      });
+    case 'validate_governance': {
+      const result = await validateGovernanceReal(
+        toolInput.policy_name as string,
+        toolInput.constraints as Record<string, any> | undefined
+      );
+      return JSON.stringify(result);
+    }
 
     case 'read_dsg_documentation':
       try {
@@ -313,21 +252,22 @@ Always explain tool usage. Be helpful and efficient.`;
 
     let response: any;
 
-    if (modelProvider === 'nvidia') {
-      // Use NVIDIA GLM model
-      if (!nvidiaClient) {
-        return NextResponse.json(
-          { error: 'NVIDIA client not available' },
-          { status: 503 }
-        );
-      }
+    const toolCalls: string[] = [];
 
-      response = await nvidiaClient.chat.completions.create({
-        model: 'z-ai/glm-5.2',
-        messages: messages as never,
-        max_tokens: 1024,
-        temperature: 1,
-        top_p: 1,
+    // Handle tool use in agentic loop with streaming support
+    while (response.stop_reason === 'tool_use') {
+      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
+
+      if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
+
+      // Await tool call (supports long-running tools)
+      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+      toolCalls.push(toolUseBlock.name);
+
+      // Add assistant response and tool result to messages
+      messages.push({
+        role: 'assistant',
+        content: response.content,
       });
 
       // For NVIDIA, directly use the response
@@ -384,23 +324,18 @@ Always explain tool usage. Be helpful and efficient.`;
       }
     }
 
-    // Extract final text response and track tool calls
+    // Extract final text response
     const finalResponse = response.content
       .filter((block: any) => block.type === 'text')
       .map((block: any) => block.text)
       .join('\n');
 
-    const toolCalls = messages
-      .filter((msg: any) => msg.role === 'assistant' && Array.isArray(msg.content))
-      .flatMap((msg: any) =>
-        msg.content
-          .filter((block: any) => block.type === 'tool_use')
-          .map((block: any) => block.name)
-      );
-
+    // Return with streaming-ready format
     return NextResponse.json({
       response: finalResponse || 'No response generated',
-      toolCalls: toolCalls.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i), // unique
+      toolCalls: [...new Set(toolCalls)], // unique
+      source: 'production',
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     return handleApiError('api/dashboard/trinity/chat', error, {
