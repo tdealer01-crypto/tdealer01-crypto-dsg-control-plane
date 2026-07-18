@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
           rewardToken: 'USDC',
           link,
           otherInfo: `Agent: ${agent.name} | Info: ${otherInfo}`,
+          claimCode: agent.claim_code,
         });
         console.log(`✅ Telegram submission sent for ${listingId}:`, result);
       } catch (telegramError) {
