@@ -27,12 +27,12 @@ import { sha256Json } from '@/lib/dsg/hermes-e2e/hash';
  * Each Trinity agent registers with Agent OS
  */
 export const TRINITY_AGENTS = {
-  MIND: { name: 'Mind', role: 'discovery', capabilities: ['job-discovery', 'source-analysis'] },
-  HAND: { name: 'Hand', role: 'execution', capabilities: ['code-generation', 'deliverable-creation'] },
-  EYE: { name: 'Eye', role: 'verification', capabilities: ['quality-check', 'security-audit'] },
-  NERVE: { name: 'Nerve', role: 'settlement', capabilities: ['payment-processing', 'reputation-tracking'] },
-  SPINE: { name: 'Spine', role: 'governance', capabilities: ['policy-enforcement', 'audit-trail'] },
-} as const;
+  MIND: { name: 'Mind', role: 'discovery', capabilities: ['job-discovery', 'source-analysis'] as string[] },
+  HAND: { name: 'Hand', role: 'execution', capabilities: ['code-generation', 'deliverable-creation'] as string[] },
+  EYE: { name: 'Eye', role: 'verification', capabilities: ['quality-check', 'security-audit'] as string[] },
+  NERVE: { name: 'Nerve', role: 'settlement', capabilities: ['payment-processing', 'reputation-tracking'] as string[] },
+  SPINE: { name: 'Spine', role: 'governance', capabilities: ['policy-enforcement', 'audit-trail'] as string[] },
+};
 
 /**
  * Initialize Trinity6: Register all 5 agents with Agent OS
@@ -142,9 +142,20 @@ export async function routeTrinityTask(
 
   if (!agent) throw new Error(`No Trinity agent found for task type: ${taskType}`);
 
+  // Map Trinity task types to ModelCapabilities
+  const capabilityMap: Record<string, 'planning' | 'coding' | 'verification' | 'execution' | 'orchestration'> = {
+    discovery: 'planning',
+    execution: 'coding',
+    verification: 'verification',
+    settlement: 'execution',
+    governance: 'orchestration',
+  };
+
+  const capability = capabilityMap[taskType] || 'execution';
+
   return multiModelRouter.route({
     agentId: agent.id,
-    taskType: taskType,
+    taskType: capability,
     estimatedInputTokens: estimatedTokens.input,
     estimatedOutputTokens: estimatedTokens.output,
     maxCostUsd: costBudget || 0.5,
