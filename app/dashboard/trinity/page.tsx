@@ -16,8 +16,16 @@ export default function TrinityDashboard() {
   const [chatLoading, setChatLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<'Mind' | 'Hand' | 'Eye' | 'Nerve' | 'Spine' | 'All'>('All');
   const [language, setLanguage] = useState<'th' | 'en'>('en');
+  const [modelProvider, setModelProvider] = useState<'anthropic' | 'nvidia'>('anthropic');
   const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Team Coordinator state
+  const [teamTask, setTeamTask] = useState({ title: '', description: '', priority: 'medium' });
+  const [selectedAgentsForTeam, setSelectedAgentsForTeam] = useState<string[]>(['Mind', 'Hand', 'Eye', 'Nerve', 'Spine']);
+  const [teamExecuting, setTeamExecuting] = useState(false);
+  const [teamResults, setTeamResults] = useState<Record<string, any>>({});
+  const [teamWorkflow, setTeamWorkflow] = useState<Array<{ agent: string; status: 'pending' | 'running' | 'completed' | 'error'; result?: string }>>([]);
 
   // Translations
   const t = language === 'th' ? {
@@ -28,6 +36,14 @@ export default function TrinityDashboard() {
     exportChat: '📥 ส่งออก',
     clearChat: '🗑️ ลบ',
     language: 'ภาษา',
+    teamCoordinator: '👥 ทีมประสานงาน',
+    teamTask: 'งานทีม',
+    taskTitle: 'ชื่องาน',
+    taskDescription: 'รายละเอียด',
+    selectAgents: 'เลือกเอเจนต์',
+    priority: 'ความสำคัญ',
+    executeTeam: 'รัน',
+    teamWorkflow: 'ขั้นตอนทีม',
   } : {
     agentChat: '💬 Agent Chat',
     selectAgent: 'Select Agent',
@@ -36,6 +52,14 @@ export default function TrinityDashboard() {
     exportChat: '📥 Export',
     clearChat: '🗑️ Clear',
     language: 'Language',
+    teamCoordinator: '👥 Team Coordinator',
+    teamTask: 'Team Task',
+    taskTitle: 'Task Title',
+    taskDescription: 'Description',
+    selectAgents: 'Select Agents',
+    priority: 'Priority',
+    executeTeam: 'Execute Team',
+    teamWorkflow: 'Team Workflow',
   };
 
   useEffect(() => {
@@ -300,6 +324,56 @@ export default function TrinityDashboard() {
     });
   };
 
+  const handleExecuteTeam = async () => {
+    if (!teamTask.title || selectedAgentsForTeam.length === 0) {
+      alert(language === 'th' ? 'กรุณากรอกข้อมูลให้ครบ' : 'Please fill in required fields');
+      return;
+    }
+
+    setTeamExecuting(true);
+    const workflow: typeof teamWorkflow = selectedAgentsForTeam.map(agent => ({
+      agent,
+      status: 'pending' as const,
+    }));
+    setTeamWorkflow(workflow);
+    setTeamResults({});
+
+    const results: Record<string, any> = {};
+    const agentResponses = {
+      Mind: 'Found 5 matching jobs across platforms. Selected top 3 by score.',
+      Hand: 'Prepared execution plan. Estimated time: 2.5 hours. Resources allocated.',
+      Eye: 'Quality verification setup complete. Checking deliverable format and blockchain tx.',
+      Nerve: 'Payment ready: 5.0 SOL. Reputation impact: +3. Settlement plan confirmed.',
+      Spine: 'DSG governance check passed. Plan hash verified. Immutable audit trail recorded.',
+    };
+
+    for (let i = 0; i < selectedAgentsForTeam.length; i++) {
+      const agent = selectedAgentsForTeam[i];
+      workflow[i].status = 'running';
+      setTeamWorkflow([...workflow]);
+
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      results[agent] = {
+        status: 'success',
+        response: agentResponses[agent as keyof typeof agentResponses],
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      workflow[i].status = 'completed';
+      workflow[i].result = agentResponses[agent as keyof typeof agentResponses];
+      setTeamWorkflow([...workflow]);
+      setTeamResults({ ...results });
+    }
+
+    setTeamExecuting(false);
+  };
+
+  const toggleAgentSelection = (agentName: string) => {
+    setSelectedAgentsForTeam(prev =>
+      prev.includes(agentName) ? prev.filter(a => a !== agentName) : [...prev, agentName]
+    );
+  };
+
   const tabsData = [
     {
       key: 'chat',
@@ -322,6 +396,19 @@ export default function TrinityDashboard() {
                 <option value="Eye">👁️ Eye (Verification)</option>
                 <option value="Nerve">⚡ Nerve (Payment)</option>
                 <option value="Spine">🦴 Spine (Governance)</option>
+              </select>
+            </div>
+
+            {/* Model Selection */}
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-[#E0E5EE]">Model:</span>
+              <select
+                value={modelProvider}
+                onChange={e => setModelProvider(e.target.value as any)}
+                className="px-3 py-1 bg-[#1a1a24] text-[#F7DC78] border border-[#F7DC78]/20 rounded-lg text-sm focus:outline-none focus:border-[#F7DC78]"
+              >
+                <option value="anthropic">🧠 Claude (Anthropic)</option>
+                <option value="nvidia">⚡ GLM (NVIDIA)</option>
               </select>
             </div>
 
@@ -573,6 +660,112 @@ export default function TrinityDashboard() {
           rows={historyData}
           sortable
         />
+      ),
+    },
+    {
+      key: 'team',
+      label: t.teamCoordinator,
+      content: (
+        <div className="space-y-6">
+          <Card variant="gold">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#F7DC78] mb-2">{t.taskTitle}</label>
+                <input
+                  type="text"
+                  value={teamTask.title}
+                  onChange={e => setTeamTask({ ...teamTask, title: e.target.value })}
+                  placeholder="e.g., Audit Smart Contract and Deploy"
+                  className="w-full px-4 py-2 rounded-lg bg-[#1a1a24] text-[#F8FAFC] border border-[#F7DC78]/20 focus:outline-none focus:border-[#F7DC78]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#F7DC78] mb-2">{t.taskDescription}</label>
+                <textarea
+                  value={teamTask.description}
+                  onChange={e => setTeamTask({ ...teamTask, description: e.target.value })}
+                  placeholder="Describe what the team should do..."
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-lg bg-[#1a1a24] text-[#F8FAFC] border border-[#F7DC78]/20 focus:outline-none focus:border-[#F7DC78]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#F7DC78] mb-3">{t.selectAgents}</label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {agents.map(agent => (
+                    <button
+                      key={agent.name}
+                      onClick={() => toggleAgentSelection(agent.name)}
+                      className={`p-3 rounded-lg text-center transition-all ${
+                        selectedAgentsForTeam.includes(agent.name)
+                          ? 'bg-[#F7DC78] text-[#0B0B0F]'
+                          : 'bg-[#1a1a24] text-[#E0E5EE] border border-[#F7DC78]/20'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{agent.emoji}</div>
+                      <div className="text-xs font-bold">{agent.name}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleExecuteTeam}
+                disabled={teamExecuting || !teamTask.title || selectedAgentsForTeam.length === 0}
+                type="button"
+              >
+                {teamExecuting ? 'Coordinating...' : `▶ ${t.executeTeam} (${selectedAgentsForTeam.length} agents)`}
+              </Button>
+            </div>
+          </Card>
+
+          {teamWorkflow.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-[#F7DC78]">{t.teamWorkflow}</h3>
+              <div className="space-y-3">
+                {teamWorkflow.map((step, idx) => (
+                  <Card key={idx} variant="default">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-[#1a1a24] flex items-center justify-center text-2xl flex-shrink-0">
+                        {agents.find(a => a.name === step.agent)?.emoji}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-bold text-[#F7DC78]">{step.agent}</span>
+                          <Badge>
+                            {step.status === 'pending' ? '⏳ Pending' : step.status === 'running' ? '🔄 Running' : '✓ Done'}
+                          </Badge>
+                        </div>
+                        {step.result && <p className="text-sm text-[#E0E5EE]">{step.result}</p>}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {Object.keys(teamResults).length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-[#F7DC78]">Team Results</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(teamResults).map(([agent, result]) => (
+                  <Card key={agent} variant="gold">
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-[#F8FAFC]">{agent}</h4>
+                      <p className="text-sm text-[#E0E5EE]">{result.response}</p>
+                      <p className="text-xs text-[#E0E5EE]/50">{result.timestamp}</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       ),
     },
   ];

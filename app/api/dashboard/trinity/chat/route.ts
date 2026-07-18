@@ -163,7 +163,7 @@ async function processToolCall(toolName: string, toolInput: Record<string, unkno
       } catch (error) {
         return JSON.stringify({
           error: 'Failed to read DSG.md',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          available: false,
         });
       }
 
@@ -178,8 +178,26 @@ export async function POST(request: Request) {
     const userMessage = body.message as string;
     const selectedAgent = body.agent as string || 'All';
     const language = body.language as string || 'en';
+    const modelProvider = (body.model || 'anthropic') as 'anthropic' | 'nvidia';
 
-    if (!userMessage) {
+    // Validate API key for selected model
+    if (modelProvider === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {
+      console.error('[Trinity Chat] ANTHROPIC_API_KEY not set in environment');
+      return NextResponse.json(
+        { error: 'API configuration error: ANTHROPIC_API_KEY not configured' },
+        { status: 503 }
+      );
+    }
+
+    if (modelProvider === 'nvidia' && !process.env.NVIDIA_API_KEY) {
+      console.error('[Trinity Chat] NVIDIA_API_KEY not set in environment');
+      return NextResponse.json(
+        { error: 'API configuration error: NVIDIA_API_KEY not configured' },
+        { status: 503 }
+      );
+    }
+
+    if (!userMessage || userMessage.trim().length === 0) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
 
@@ -232,13 +250,7 @@ Always explain tool usage. Be helpful and efficient.`;
       },
     ];
 
-    let response = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
-      system: systemPrompt,
-      tools: tools as never,
-      messages: messages as never,
-    });
+    let response: any;
 
     const toolCalls: string[] = [];
 
@@ -258,18 +270,16 @@ Always explain tool usage. Be helpful and efficient.`;
         content: response.content,
       });
 
-      messages.push({
-        role: 'user',
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: toolUseBlock.id,
-            content: toolResult,
-          },
-        ],
-      });
-
-      // Get next response
+      // For NVIDIA, directly use the response
+      if (response.choices && response.choices[0] && response.choices[0].message) {
+        // Wrap NVIDIA response to match Anthropic format
+        response = {
+          content: [{ type: 'text', text: response.choices[0].message.content }],
+          stop_reason: 'end_turn',
+        };
+      }
+    } else {
+      // Use Anthropic Claude (default)
       response = await anthropic.messages.create({
         model: 'claude-opus-4-8',
         max_tokens: 1024,
@@ -277,6 +287,41 @@ Always explain tool usage. Be helpful and efficient.`;
         tools: tools as never,
         messages: messages as never,
       });
+
+      // Handle tool use in agentic loop (Claude only)
+      while (response.stop_reason === 'tool_use') {
+        const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
+
+        if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
+
+        const toolResult = processToolCall(toolUseBlock.name, toolUseBlock.input);
+
+        // Add assistant response and tool result to messages
+        messages.push({
+          role: 'assistant',
+          content: response.content,
+        });
+
+        messages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUseBlock.id,
+              content: toolResult,
+            },
+          ],
+        });
+
+        // Get next response
+        response = await anthropic.messages.create({
+          model: 'claude-opus-4-8',
+          max_tokens: 1024,
+          system: systemPrompt,
+          tools: tools as never,
+          messages: messages as never,
+        });
+      }
     }
 
     // Extract final text response
@@ -293,10 +338,11 @@ Always explain tool usage. Be helpful and efficient.`;
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Trinity Chat] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process chat request' },
-      { status: 500 }
-    );
+    return handleApiError('api/dashboard/trinity/chat', error, {
+      details: {
+        hasAntropicKey: !!process.env.ANTHROPIC_API_KEY,
+        hasNvidiaKey: !!process.env.NVIDIA_API_KEY,
+      },
+    });
   }
 }

@@ -1,0 +1,53 @@
+# Example: GitHub Actions Workflow calling DSG Public API
+
+name: DSG Arbiter Validation Check
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-arbiters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run DSG Arbiter Count Validation
+        id: dsg-check
+        run: |
+          # Check if arbiter count is sufficient
+          RESPONSE=$(curl -s -X POST \
+            https://tdealer01-crypto-dsg-control-plane.vercel.app/api/public/test/arbiter-validation \
+            -H "Content-Type: application/json" \
+            -d '{
+              "minArbiterCount": 2,
+              "actualArbiterCount": '${{ env.ARBITER_COUNT }}'
+            }')
+
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+
+          # Extract decision
+          DECISION=$(echo $RESPONSE | jq -r '.decision')
+          echo "decision=$DECISION" >> $GITHUB_OUTPUT
+
+          if [ "$DECISION" = "BLOCK" ]; then
+            echo "::error::Arbiter validation failed: $(echo $RESPONSE | jq -r '.reason')"
+            exit 1
+          fi
+
+      - name: Report Result
+        if: always()
+        run: |
+          echo "Arbiter Decision: ${{ steps.dsg-check.outputs.decision }}"
+          echo "Full Response:"
+          echo "${{ steps.dsg-check.outputs.response }}" | jq .
+
+      - name: Save Shareable Evidence
+        if: always()
+        run: |
+          LINK=$(echo "${{ steps.dsg-check.outputs.response }}" | jq -r '.shareableLink')
+          echo "Evidence: $LINK" >> $GITHUB_STEP_SUMMARY
+
+env:
+  ARBITER_COUNT: 3
