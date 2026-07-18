@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
+import { handleApiError } from '@/lib/security/api-error';
 
 // NVIDIA OpenAI-compatible client
 interface NVIDIAClient {
@@ -223,7 +224,7 @@ function processToolCall(toolName: string, toolInput: Record<string, unknown>): 
       } catch (error) {
         return JSON.stringify({
           error: 'Failed to read DSG.md',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          available: false,
         });
       }
 
@@ -402,21 +403,11 @@ Always explain tool usage. Be helpful and efficient.`;
       toolCalls: toolCalls.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i), // unique
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : '';
-
-    console.error('[Trinity Chat] Error:', {
-      message: errorMessage,
-      stack: errorStack,
-      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
-    });
-
-    return NextResponse.json(
-      {
-        error: 'Failed to process chat request',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : 'Internal server error',
+    return handleApiError('api/dashboard/trinity/chat', error, {
+      details: {
+        hasAntropicKey: !!process.env.ANTHROPIC_API_KEY,
+        hasNvidiaKey: !!process.env.NVIDIA_API_KEY,
       },
-      { status: 500 }
-    );
+    });
   }
 }
