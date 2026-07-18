@@ -91,9 +91,12 @@ export async function POST(request: NextRequest) {
     // Use Telegram submission if bot token is available
     let result: any = { success: false, error: 'No submission method available' };
 
-    if (process.env.TELEGRAM_BOT_TOKEN) {
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
       try {
-        const telegramSubmitter = new TelegramSubmitter(process.env.TELEGRAM_BOT_TOKEN);
+        const telegramSubmitter = new TelegramSubmitter(
+          process.env.TELEGRAM_BOT_TOKEN,
+          process.env.TELEGRAM_CHAT_ID
+        );
         result = await telegramSubmitter.submitBounty({
           listingId,
           title: otherInfo || 'Bounty Submission',

@@ -15,14 +15,20 @@ export interface TelegramSubmission {
 export class TelegramSubmitter {
   private botToken: string;
   private botApiUrl: string;
-  private targetBot: string = '@STEarnBot';
+  private chatId: string | number;
 
-  constructor(botToken: string) {
+  constructor(botToken: string, chatId?: string | number) {
     if (!botToken) {
       throw new Error('Telegram bot token is required');
     }
     this.botToken = botToken;
     this.botApiUrl = 'https://api.telegram.org/bot' + botToken;
+    // Use provided chat_id or fall back to environment variable
+    this.chatId = chatId || process.env.TELEGRAM_CHAT_ID || '';
+
+    if (!this.chatId) {
+      throw new Error('Telegram chat ID is required (set TELEGRAM_CHAT_ID or pass in constructor)');
+    }
   }
 
   async submitBounty(submission: TelegramSubmission): Promise<{
@@ -33,14 +39,14 @@ export class TelegramSubmitter {
     try {
       const message = this.formatSubmissionMessage(submission);
 
-      // Send to STEarnBot via direct message
+      // Send to user's Telegram account
       const response = await fetch(`${this.botApiUrl}/sendMessage`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          chat_id: this.targetBot,
+          chat_id: String(this.chatId),
           text: message,
           parse_mode: 'HTML',
         }),
