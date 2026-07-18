@@ -300,9 +300,8 @@ Agent: ${selectedAgent}${dsgContext}`;
             sendEvent('done', { message: 'Chat completed' });
             controller.close();
           } catch (error) {
-            sendEvent('error', {
-              message: error instanceof Error ? error.message : 'Unknown error',
-            });
+            console.error('[TRINITY-CHAT-STREAM] stream error:', error);
+            sendEvent('error', { message: 'Internal server error' });
             controller.close();
           }
         },

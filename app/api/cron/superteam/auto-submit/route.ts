@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,15 +70,6 @@ export async function GET(request: NextRequest) {
       nextRun: 'In 6 hours',
     });
   } catch (error) {
-    console.error('[CRON] Auto-submit error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Cron job failed',
-        details: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return handleApiError('api/cron/superteam/auto-submit', error);
   }
 }

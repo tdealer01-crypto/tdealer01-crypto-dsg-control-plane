@@ -27,6 +27,14 @@ export default function TrinityDashboard() {
   const [teamResults, setTeamResults] = useState<Record<string, any>>({});
   const [teamWorkflow, setTeamWorkflow] = useState<Array<{ agent: string; status: 'pending' | 'running' | 'completed' | 'error'; result?: string }>>([]);
 
+  // Live system state from real Trinity APIs
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [liveJobs, setLiveJobs] = useState<any[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [historyRows, setHistoryRows] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [liveRun, setLiveRun] = useState(false);
+
   // Translations
   const t = language === 'th' ? {
     agentChat: '💬 แชทกับเอเจนต์',
@@ -62,11 +70,79 @@ export default function TrinityDashboard() {
     teamWorkflow: 'Team Workflow',
   };
 
+  // Heartbeat: poll the real Trinity status API
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIsConnected(Math.random() > 0.1);
-    }, 5000);
-    return () => clearInterval(timer);
+    let cancelled = false;
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/trinity/status');
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        if (!cancelled) {
+          setIsConnected(true);
+          setSystemStatus(data);
+        }
+      } catch {
+        if (!cancelled) setIsConnected(false);
+      }
+    };
+    checkStatus();
+    const timer = setInterval(checkStatus, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const loadJobs = async () => {
+    setJobsLoading(true);
+    try {
+      const res = await fetch('/api/trinity/discover?limit=9');
+      const data = await res.json();
+      setLiveJobs(
+        (data.jobs ?? []).map((j: any) => ({
+          id: j.id,
+          title: j.title,
+          category: j.category,
+          reward: j.reward?.amount ?? 0,
+          currency: j.reward?.currency ?? 'SOL',
+          difficulty: j.difficulty,
+          platform: j.platform,
+          source: j.source,
+        }))
+      );
+    } catch {
+      setLiveJobs([]);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch('/api/trinity/history?limit=20');
+      const data = await res.json();
+      setHistoryRows(
+        (data.executions ?? []).map((e: any) => ({
+          id: e.id,
+          jobTitle: e.job_title,
+          status: e.status,
+          execTimeMs: e.execution_time,
+          created: e.created_at ? new Date(e.created_at).toLocaleString() : '-',
+        }))
+      );
+    } catch {
+      setHistoryRows([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadJobs();
+    loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
@@ -243,45 +319,19 @@ export default function TrinityDashboard() {
     }
   };
 
-  const agents = [
-    { name: 'Mind', status: 'registered', role: 'Job discovery across 6 platforms', emoji: '🧠' },
-    { name: 'Hand', status: 'registered', role: 'Work execution and deliverables', emoji: '✋' },
-    { name: 'Eye', status: 'registered', role: 'Quality verification and validation', emoji: '👁️' },
-    { name: 'Nerve', status: 'registered', role: 'Payment settlement and reputation', emoji: '⚡' },
-    { name: 'Spine', status: 'registered', role: 'DSG governance and audit trail', emoji: '🦴' },
+  const agentMeta = [
+    { name: 'Mind', emoji: '🧠', fallbackRole: 'Job discovery across live bounty sources' },
+    { name: 'Hand', emoji: '✋', fallbackRole: 'Work execution and deliverables' },
+    { name: 'Eye', emoji: '👁️', fallbackRole: 'Quality verification and validation' },
+    { name: 'Nerve', emoji: '⚡', fallbackRole: 'Payment settlement and reputation' },
+    { name: 'Spine', emoji: '🦴', fallbackRole: 'DSG governance and audit trail' },
   ];
-
-  const jobs = [
-    {
-      id: '1',
-      title: 'Fix reentrancy vulnerability in ERC-20 vault',
-      category: 'smart-contract-audit',
-      reward: 5.0,
-      difficulty: 'hard',
-      platform: 'GitHub Bounties',
-    },
-    {
-      id: '2',
-      title: 'Implement OAuth 2.0 authentication module',
-      category: 'backend-dev',
-      reward: 3.5,
-      difficulty: 'medium',
-      platform: 'Solana Bounties',
-    },
-    {
-      id: '3',
-      title: 'Design React UI component library',
-      category: 'frontend-dev',
-      reward: 2.0,
-      difficulty: 'medium',
-      platform: 'Internal Projects',
-    },
-  ];
-
-  const historyData = [
-    { id: '1', jobTitle: 'Smart Contract Security Audit', status: 'success', execTimeMs: 2847, created: '2026-06-29 13:20' },
-    { id: '2', jobTitle: 'Backend API Development', status: 'success', execTimeMs: 5123, created: '2026-06-29 13:10' },
-  ];
+  const agents = agentMeta.map(a => ({
+    name: a.name,
+    emoji: a.emoji,
+    role: systemStatus?.agents?.[a.name]?.role ?? a.fallbackRole,
+    status: systemStatus?.agents?.[a.name]?.status ?? 'offline',
+  }));
 
   const handleExecute = async () => {
     if (!job.title || !job.reward) {
@@ -290,33 +340,32 @@ export default function TrinityDashboard() {
     }
 
     setExecuting(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const mockResult = {
-      planHash: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9',
-      governance: {
-        approved: true,
-        decision: 'ALLOW',
-        constraints: [
-          { name: 'max_duration', satisfied: true },
-          { name: 'max_cost', satisfied: true },
-          { name: 'security_check', satisfied: true },
-        ],
-      },
-      execution: {
-        qualityScore: 85,
-        executionTimeMs: 2500,
-        deliverableLength: 1024,
-      },
-      verification: { passed: true, qualityScore: 90 },
-      reputation: { newReputation: 82, reputationChange: 2 },
-    };
-
-    setResult(mockResult);
-    setExecuting(false);
+    setResult(null);
+    try {
+      const res = await fetch('/api/trinity/orchestrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job: {
+            title: job.title,
+            category: job.category || 'general',
+            rewardAmount: Number(job.reward),
+          },
+          dry_run: !liveRun,
+        }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (liveRun) loadHistory();
+    } catch (error) {
+      console.error('Orchestrate error:', error);
+      setResult({ ok: false, error: 'Orchestration request failed' });
+    } finally {
+      setExecuting(false);
+    }
   };
 
-  const handleUseJob = (selectedJob: typeof jobs[0]) => {
+  const handleUseJob = (selectedJob: { title: string; category: string; reward: number }) => {
     setJob({
       title: selectedJob.title,
       category: selectedJob.category,
@@ -338,29 +387,81 @@ export default function TrinityDashboard() {
     setTeamWorkflow(workflow);
     setTeamResults({});
 
-    const results: Record<string, any> = {};
-    const agentResponses = {
-      Mind: 'Found 5 matching jobs across platforms. Selected top 3 by score.',
-      Hand: 'Prepared execution plan. Estimated time: 2.5 hours. Resources allocated.',
-      Eye: 'Quality verification setup complete. Checking deliverable format and blockchain tx.',
-      Nerve: 'Payment ready: 5.0 SOL. Reputation impact: +3. Settlement plan confirmed.',
-      Spine: 'DSG governance check passed. Plan hash verified. Immutable audit trail recorded.',
+    // Real data sources: Mind reads live discovery; Hand/Eye/Nerve/Spine read one real orchestration run
+    let discoverData: any = null;
+    let orchestrateData: any = null;
+    const needsOrchestrate = selectedAgentsForTeam.some(a => a !== 'Mind');
+
+    try {
+      if (selectedAgentsForTeam.includes('Mind')) {
+        const res = await fetch('/api/trinity/discover?limit=5');
+        discoverData = await res.json();
+      }
+      if (needsOrchestrate) {
+        const res = await fetch('/api/trinity/orchestrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job: { title: teamTask.title, category: 'general', rewardAmount: 1 },
+            dry_run: true,
+          }),
+        });
+        orchestrateData = await res.json();
+      }
+    } catch (error) {
+      console.error('Team execution error:', error);
+    }
+
+    const buildAgentResult = (agent: string): { text: string; ok: boolean } => {
+      switch (agent) {
+        case 'Mind': {
+          if (!discoverData?.ok) return { text: 'Discovery failed — no live response', ok: false };
+          const platforms = Array.from(new Set((discoverData.jobs ?? []).map((j: any) => j.platform))).join(', ');
+          return { text: `Found ${discoverData.count ?? 0} live jobs${platforms ? ` from ${platforms}` : ''}`, ok: true };
+        }
+        case 'Hand': {
+          const ex = orchestrateData?.execution;
+          if (!ex) return { text: 'Execution data unavailable', ok: false };
+          return { text: `Deliverable generated: ${ex.deliverableLength} chars, quality ${ex.qualityScore}%, ${ex.executionTimeMs}ms`, ok: true };
+        }
+        case 'Eye': {
+          const v = orchestrateData?.verification;
+          if (!v) return { text: 'Verification data unavailable', ok: false };
+          const issues = v.issues?.length ? ` — ${v.issues.join('; ')}` : '';
+          return { text: `Verification ${v.passed ? 'passed' : 'failed'} (score ${v.qualityScore}%)${issues}`, ok: Boolean(v.passed) };
+        }
+        case 'Nerve': {
+          const r = orchestrateData?.reputation;
+          if (!r) return { text: 'Reputation data unavailable', ok: false };
+          const sign = r.reputationChange >= 0 ? '+' : '';
+          return { text: `Reputation ${r.newReputation} (${sign}${r.reputationChange})${orchestrateData?.settlement ? ' — settlement attempted' : ''}`, ok: true };
+        }
+        case 'Spine': {
+          const g = orchestrateData?.governance;
+          if (!g) return { text: 'Governance data unavailable', ok: false };
+          const violations = g.violations?.length ? ` — ${g.violations.join('; ')}` : '';
+          const hash = String(orchestrateData?.planHash ?? '').slice(0, 16);
+          return { text: `Governance ${g.approved ? 'ALLOW' : 'BLOCK'}${violations}${hash ? ` — planHash ${hash}…` : ''}`, ok: Boolean(g.approved) };
+        }
+        default:
+          return { text: 'No data', ok: false };
+      }
     };
 
+    const results: Record<string, any> = {};
     for (let i = 0; i < selectedAgentsForTeam.length; i++) {
       const agent = selectedAgentsForTeam[i];
       workflow[i].status = 'running';
       setTeamWorkflow([...workflow]);
 
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
+      const { text, ok } = buildAgentResult(agent);
       results[agent] = {
-        status: 'success',
-        response: agentResponses[agent as keyof typeof agentResponses],
+        status: ok ? 'success' : 'error',
+        response: text,
         timestamp: new Date().toLocaleTimeString(),
       };
-      workflow[i].status = 'completed';
-      workflow[i].result = agentResponses[agent as keyof typeof agentResponses];
+      workflow[i].status = ok ? 'completed' : 'error';
+      workflow[i].result = text;
       setTeamWorkflow([...workflow]);
       setTeamResults({ ...results });
     }
@@ -565,6 +666,16 @@ export default function TrinityDashboard() {
                 min="0"
               />
 
+              <label className="flex items-center gap-2 text-sm text-[#E0E5EE] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={liveRun}
+                  onChange={e => setLiveRun(e.target.checked)}
+                  className="accent-[#F7DC78]"
+                />
+                Live run (persist to DB + settlement attempt) — unchecked = dry run
+              </label>
+
               <Button
                 variant="primary"
                 size="lg"
@@ -572,46 +683,55 @@ export default function TrinityDashboard() {
                 disabled={executing || !job.title}
                 type="button"
               >
-                {executing ? 'Executing...' : '▶ Execute Orchestration'}
+                {executing ? 'Executing...' : `▶ Execute Orchestration${liveRun ? ' (LIVE)' : ' (dry run)'}`}
               </Button>
             </div>
           </Card>
 
           {result && (
             <div className="space-y-4">
-              <h3 className="text-lg font-bold text-[#F7DC78]">Execution Result</h3>
+              <h3 className="text-lg font-bold text-[#F7DC78]">
+                Execution Result {result.dry_run === false ? '(live)' : '(dry run)'}
+              </h3>
+              {result.error && (
+                <Card variant="default">
+                  <p className="text-sm text-red-400">{String(result.error)}</p>
+                </Card>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                   label="Governance"
-                  value={result.governance.approved ? '✓ Approved' : '✗ Blocked'}
+                  value={result.governance?.approved ? '✓ Approved' : '✗ Blocked'}
                   variant="success"
                   icon={<CheckCircle className="w-5 h-5" />}
                 />
                 <StatCard
                   label="Quality Score"
-                  value={`${result.execution.qualityScore}%`}
+                  value={result.execution ? `${result.execution.qualityScore}%` : '—'}
                   variant="info"
                   icon={<TrendingUp className="w-5 h-5" />}
                 />
                 <StatCard
                   label="Verification"
-                  value={result.verification.passed ? '✓ Passed' : '✗ Failed'}
+                  value={result.verification ? (result.verification.passed ? '✓ Passed' : '✗ Failed') : '—'}
                   variant="success"
                 />
                 <StatCard
                   label="Reputation"
-                  value={`+${result.reputation.reputationChange}`}
+                  value={result.reputation ? `${result.reputation.reputationChange >= 0 ? '+' : ''}${result.reputation.reputationChange}` : '—'}
                   variant="warning"
                   icon={<Users className="w-5 h-5" />}
                 />
               </div>
 
-              <Card variant="default">
-                <div className="space-y-2">
-                  <p className="text-xs text-[#E0E5EE] uppercase tracking-widest font-semibold">Plan Hash</p>
-                  <p className="font-mono text-sm text-[#F7DC78] break-all">{result.planHash}</p>
-                </div>
-              </Card>
+              {result.planHash && (
+                <Card variant="default">
+                  <div className="space-y-2">
+                    <p className="text-xs text-[#E0E5EE] uppercase tracking-widest font-semibold">Plan Hash</p>
+                    <p className="font-mono text-sm text-[#F7DC78] break-all">{result.planHash}</p>
+                  </div>
+                </Card>
+              )}
             </div>
           )}
         </div>
@@ -621,24 +741,41 @@ export default function TrinityDashboard() {
       key: 'discover',
       label: 'Discover Jobs',
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {jobs.map(j => (
-            <Card key={j.id} variant="gold">
-              <div className="space-y-3">
-                <h4 className="font-bold text-[#F8FAFC]">{j.title}</h4>
-                <div className="flex gap-2 flex-wrap">
-                  <Badge>{j.platform}</Badge>
-                  <Badge>
-                    {j.difficulty === 'easy' ? '⭐ Easy' : j.difficulty === 'medium' ? '⭐⭐ Medium' : '⭐⭐⭐ Hard'}
-                  </Badge>
-                </div>
-                <p className="text-sm text-[#E0E5EE]">{j.reward} SOL</p>
-                <Button variant="secondary" size="sm" onClick={() => handleUseJob(j)} type="button">
-                  Use Job
-                </Button>
-              </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-[#E0E5EE]">
+              {jobsLoading ? 'Discovering live jobs...' : `${liveJobs.length} live jobs from bounty sources`}
+            </p>
+            <Button variant="secondary" size="sm" onClick={loadJobs} disabled={jobsLoading} type="button">
+              {jobsLoading ? '...' : '↻ Refresh'}
+            </Button>
+          </div>
+          {!jobsLoading && liveJobs.length === 0 && (
+            <Card variant="default">
+              <p className="text-sm text-[#E0E5EE]">
+                No live jobs returned from /api/trinity/discover right now. Try refresh — sources are GitHub bounties and Immunefi.
+              </p>
             </Card>
-          ))}
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {liveJobs.map(j => (
+              <Card key={j.id} variant="gold">
+                <div className="space-y-3">
+                  <h4 className="font-bold text-[#F8FAFC]">{j.title}</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge>{j.platform}</Badge>
+                    <Badge>
+                      {j.difficulty === 'easy' ? '⭐ Easy' : j.difficulty === 'medium' ? '⭐⭐ Medium' : '⭐⭐⭐ Hard'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-[#E0E5EE]">{j.reward} {j.currency}</p>
+                  <Button variant="secondary" size="sm" onClick={() => handleUseJob(j)} type="button">
+                    Use Job
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       ),
     },
@@ -646,20 +783,42 @@ export default function TrinityDashboard() {
       key: 'history',
       label: 'History',
       content: (
-        <Table
-          columns={[
-            { key: 'jobTitle', label: 'Job Title', align: 'left' },
-            {
-              key: 'status',
-              label: 'Status',
-              render: (status: unknown) => <Badge>{status === 'success' ? '✓ Success' : '✗ Failed'}</Badge>,
-            },
-            { key: 'execTimeMs', label: 'Time (ms)', align: 'center' },
-            { key: 'created', label: 'Created', align: 'right' },
-          ]}
-          rows={historyData}
-          sortable
-        />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-[#E0E5EE]">
+              {historyLoading ? 'Loading history...' : `${historyRows.length} executions from database`}
+            </p>
+            <Button variant="secondary" size="sm" onClick={loadHistory} disabled={historyLoading} type="button">
+              {historyLoading ? '...' : '↻ Refresh'}
+            </Button>
+          </div>
+          {!historyLoading && historyRows.length === 0 ? (
+            <Card variant="default">
+              <p className="text-sm text-[#E0E5EE]">
+                No execution history yet. Run a live orchestration to record the first execution.
+              </p>
+            </Card>
+          ) : (
+            <Table
+              columns={[
+                { key: 'jobTitle', label: 'Job Title', align: 'left' },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  render: (status: unknown) => (
+                    <Badge>
+                      {status === 'success' ? '✓ Success' : status === 'pending' ? '⏳ Pending' : '✗ Failed'}
+                    </Badge>
+                  ),
+                },
+                { key: 'execTimeMs', label: 'Time (ms)', align: 'center' },
+                { key: 'created', label: 'Created', align: 'right' },
+              ]}
+              rows={historyRows}
+              sortable
+            />
+          )}
+        </div>
       ),
     },
     {
@@ -737,7 +896,13 @@ export default function TrinityDashboard() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-bold text-[#F7DC78]">{step.agent}</span>
                           <Badge>
-                            {step.status === 'pending' ? '⏳ Pending' : step.status === 'running' ? '🔄 Running' : '✓ Done'}
+                            {step.status === 'pending'
+                              ? '⏳ Pending'
+                              : step.status === 'running'
+                                ? '🔄 Running'
+                                : step.status === 'error'
+                                  ? '✗ Error'
+                                  : '✓ Done'}
                           </Badge>
                         </div>
                         {step.result && <p className="text-sm text-[#E0E5EE]">{step.result}</p>}
@@ -785,9 +950,20 @@ export default function TrinityDashboard() {
       <div className="mb-8">
         <h1 className="gradient-text text-3xl md:text-4xl font-black mb-2">Trinity AI Orchestration</h1>
         <p className="text-[#E0E5EE] mb-4">5-Agent Multi-Agent System for Job Discovery, Execution, Verification & Settlement</p>
-        <div className="flex items-center gap-2 text-emerald-400">
+        <div className="flex items-center gap-2 text-emerald-400 flex-wrap">
           <span className={`inline-block w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-          {isConnected ? '● Real-time Connected' : '● Connection Lost'}
+          {isConnected ? '● Live API Connected' : '● Connection Lost'}
+          {systemStatus?.flowStats && (
+            <span className="text-xs text-[#E0E5EE]/60 ml-3">
+              discovered {systemStatus.flowStats.discovered} · in progress {systemStatus.flowStats.inProgress} · verified {systemStatus.flowStats.verified} · paid {systemStatus.flowStats.paid}
+            </span>
+          )}
+          {systemStatus?.milestones && (
+            <span className="text-xs ml-3">
+              <Badge>M1 {systemStatus.milestones.M1?.status}</Badge>{' '}
+              <Badge>M2 {systemStatus.milestones.M2?.status}</Badge>
+            </span>
+          )}
         </div>
       </div>
 
