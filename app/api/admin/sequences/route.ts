@@ -19,8 +19,8 @@ export async function GET(request: Request) {
     }
 
     // Get sequences with steps and templates
-    // @ts-ignore - email_sequences table added in migration, not yet in generated types
-    const { data: sequences } = await supabase
+    const typedSupabase = supabase as any;
+    const { data: sequences } = await typedSupabase
       .from('email_sequences')
       .select(`
         *,
@@ -58,8 +58,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // @ts-ignore - email_sequences table added in migration, not yet in generated types
-    const { data: sequence, error } = await supabase
+    const typedSupabase = supabase as any;
+    const { data: sequence, error } = await typedSupabase
       .from('email_sequences')
       .insert({
         name,

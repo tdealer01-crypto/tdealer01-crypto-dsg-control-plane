@@ -1,4 +1,4 @@
-import { unsubscribeLead } from '../../../lib/emails/sequences';
+import { unsubscribeLead } from '../../../../lib/emails/sequences';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

@@ -8,12 +8,21 @@ interface SequenceTriggerEvent {
   lead: Lead;
 }
 
+// Helper to bypass TypeScript schema validation for new email tables
+let cachedSupabase: any = null;
+
+async function getSupabaseAny() {
+  if (!cachedSupabase) {
+    cachedSupabase = await createClient();
+  }
+  return cachedSupabase as any;
+}
+
 // Trigger a sequence for a lead
 export async function triggerSequenceForLead(event: SequenceTriggerEvent) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
 
   // Check if lead is unsubscribed
-  // @ts-ignore - email_unsubscribes table added in migration, not yet in generated types
   const { data: unsubscribed } = await supabase
     .from('email_unsubscribes')
     .select('id')
@@ -24,7 +33,6 @@ export async function triggerSequenceForLead(event: SequenceTriggerEvent) {
   if (unsubscribed) return; // Skip unsubscribed leads
 
   // Find matching sequences for this event
-  // @ts-ignore - email_sequences table added in migration, not yet in generated types
   const { data: sequences } = await supabase
     .from('email_sequences')
     .select('*')
@@ -53,10 +61,9 @@ export async function triggerSequenceForLead(event: SequenceTriggerEvent) {
 
 // Schedule sequence steps for a lead
 async function scheduleSequenceSteps(leadId: string, sequenceId: string) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
 
   // Get all steps for this sequence
-  // @ts-ignore - email_sequence_steps table added in migration, not yet in generated types
   const { data: steps } = await supabase
     .from('email_sequence_steps')
     .select('*')
@@ -72,7 +79,6 @@ async function scheduleSequenceSteps(leadId: string, sequenceId: string) {
     const scheduledFor = new Date(now);
     scheduledFor.setDate(scheduledFor.getDate() + step.delay_days);
 
-    // @ts-ignore - email_scheduled_sends table added in migration, not yet in generated types
     await supabase.from('email_scheduled_sends').insert({
       lead_id: leadId,
       sequence_id: sequenceId,
@@ -84,11 +90,10 @@ async function scheduleSequenceSteps(leadId: string, sequenceId: string) {
 
 // Send pending emails (called by cron job)
 export async function sendPendingEmails(limit: number = 100) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
   const now = new Date().toISOString();
 
   // Get pending sends
-  // @ts-ignore - email_scheduled_sends table added in migration, not yet in generated types
   const { data: sends } = await supabase
     .from('email_scheduled_sends')
     .select(
@@ -132,7 +137,6 @@ export async function sendPendingEmails(limit: number = 100) {
       });
 
       // Mark as sent
-      // @ts-ignore - email_scheduled_sends table added in migration, not yet in generated types
       await supabase
         .from('email_scheduled_sends')
         .update({ sent_at: now })
@@ -142,7 +146,6 @@ export async function sendPendingEmails(limit: number = 100) {
     } catch (err) {
       console.error(`Failed to send email ${send.id}:`, err);
 
-      // @ts-ignore - email_scheduled_sends table added in migration, not yet in generated types
       await supabase
         .from('email_scheduled_sends')
         .update({
@@ -205,9 +208,8 @@ export async function recordEmailEngagement(
   eventType: 'opened' | 'clicked' | 'bounced' | 'unsubscribed',
   clickedLink?: string
 ) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
 
-  // @ts-ignore - email_engagement table added in migration, not yet in generated types
   await supabase.from('email_engagement').insert({
     scheduled_send_id: scheduledSendId,
     lead_id: leadId,
@@ -218,9 +220,8 @@ export async function recordEmailEngagement(
 
 // Unsubscribe a lead
 export async function unsubscribeLead(email: string, reason?: string) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
 
-  // @ts-ignore - email_unsubscribes table added in migration, not yet in generated types
   await supabase.from('email_unsubscribes').upsert({
     lead_email: email,
     reason,
@@ -229,9 +230,8 @@ export async function unsubscribeLead(email: string, reason?: string) {
 
 // Get sequence templates
 export async function getSequenceTemplates(sequenceId: string) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
 
-  // @ts-ignore - email_sequence_steps table added in migration, not yet in generated types
   const { data } = await supabase
     .from('email_sequence_steps')
     .select('id, step_order, delay_days, email_templates(*)')
@@ -243,22 +243,19 @@ export async function getSequenceTemplates(sequenceId: string) {
 
 // Get engagement stats for a sequence
 export async function getSequenceEngagementStats(sequenceId: string) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseAny();
 
-  // @ts-ignore - email_scheduled_sends table added in migration, not yet in generated types
   const { data: sends } = await supabase
     .from('email_scheduled_sends')
     .select('id')
     .eq('sequence_id', sequenceId);
 
-  // @ts-ignore - email_engagement table added in migration, not yet in generated types
   const { data: opens } = await supabase
     .from('email_engagement')
     .select('id', { count: 'exact' })
     .eq('event_type', 'opened')
     .in('scheduled_send_id', sends?.map(s => s.id) || []);
 
-  // @ts-ignore - email_engagement table added in migration, not yet in generated types
   const { data: clicks } = await supabase
     .from('email_engagement')
     .select('id', { count: 'exact' })
