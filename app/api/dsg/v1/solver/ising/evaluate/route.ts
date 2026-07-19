@@ -190,7 +190,6 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: 'solver_error',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500, headers: rateLimitHeaders },
     );
