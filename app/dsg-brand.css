@@ -11,8 +11,8 @@
   /* Dark Theme Backgrounds */
   --dsg-black: #07080b;
   --dsg-black-2: #1a1c22;
-  --dsg-panel: rgba(26, 28, 34, 0.86);
-  --dsg-panel-2: rgba(26, 28, 34, 0.92);
+  --dsg-panel: rgba(31, 41, 55, 0.95);
+  --dsg-panel-2: rgba(31, 41, 55, 0.98);
 
   /* Primary Brand Color - Emerald Green */
   --dsg-tertiary-primary: #00d4aa;
@@ -132,7 +132,7 @@ body::after {
 }
 
 .dsg-card {
-  border: 1px solid rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.26);
   background: linear-gradient(180deg, rgba(0,212,170,0.03), rgba(34,211,238,0.02)), var(--dsg-panel);
   box-shadow: var(--shadow-md);
   border-radius: var(--radius-md);
@@ -140,7 +140,7 @@ body::after {
 }
 
 .dsg-card:hover {
-  border-color: rgba(34, 211, 238, 0.2);
+  border-color: rgba(34, 211, 238, 0.34);
   box-shadow: var(--shadow-lg);
 }
 
@@ -212,7 +212,7 @@ a.dsg-btn-tertiary {
 .dsg-btn-tertiary:hover,
 a.dsg-btn-primary:hover,
 a.dsg-btn-tertiary:hover {
-  background: #00c294;
+  background: #00a86d;
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
@@ -815,8 +815,8 @@ header {
   }
 
   .dsg-card {
-    background: white;
-    border-color: rgba(34, 211, 238, 0.2);
+    background: #f9fafb;
+    border-color: rgba(34, 211, 238, 0.3);
   }
 
   .dsg-card-tertiary {

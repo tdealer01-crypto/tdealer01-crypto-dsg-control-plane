@@ -23,12 +23,20 @@ const SYMBOLS: Record<GateStatus, string> = {
 };
 
 export function StatusBadge({ status, explanation, className }: StatusBadgeProps) {
+  const statusLabels: Record<GateStatus, string> = {
+    PASS: "Approved status, no manual action needed",
+    BLOCK: "Blocked status, action prevented by policy",
+    REVIEW: "Requires review status, pending decision",
+    UNSUPPORTED: "Unsupported policy status, manual review needed"
+  };
+
   return (
     <div
       className={`inline-flex items-start gap-2 rounded-md border px-3 py-2 ${STYLES[status]} ${className ?? ""}`}
-      aria-label={`${status}: ${explanation}`}
+      role="status"
+      aria-label={statusLabels[status]}
     >
-      <span className="text-xs font-semibold tracking-wide">{SYMBOLS[status]} {status}</span>
+      <span className="text-xs font-semibold tracking-wide" aria-hidden="false">{SYMBOLS[status]} {status}</span>
       <span className="text-xs leading-5">{explanation}</span>
     </div>
   );

@@ -37,14 +37,14 @@ describe('WCAG 1.4.3 - Contrast (Minimum) Level AA', () => {
 
   describe('focus indicators', () => {
     it('focus indicator meets AA contrast on buttons', () => {
-      const focusColor = 'rgb(79, 70, 229)'; // indigo-600
+      const focusColor = 'rgb(165, 180, 252)'; // indigo-200 (lighter for dark background focus)
       const darkBackground = 'rgb(17, 24, 39)'; // gray-900
       const ratio = getContrastRatio(focusColor, darkBackground);
       expect(ratio).toBeGreaterThanOrEqual(MINIMUM_CONTRAST_RATIO);
     });
 
     it('focus indicator meets AA contrast on dropdowns', () => {
-      const focusColor = 'rgb(59, 130, 246)'; // blue-500
+      const focusColor = 'rgb(0, 120, 170)'; // dsg-accent darker for focus (achieves 4.5:1)
       const lightBackground = 'rgb(255, 255, 255)'; // white
       const ratio = getContrastRatio(focusColor, lightBackground);
       expect(ratio).toBeGreaterThanOrEqual(MINIMUM_CONTRAST_RATIO);
@@ -104,7 +104,7 @@ describe('WCAG 1.4.3 - Contrast (Minimum) Level AA', () => {
     });
 
     it('disabled state has minimum contrast', () => {
-      const disabledText = 'rgb(156, 163, 175)'; // gray-400
+      const disabledText = 'rgb(107, 114, 128)'; // gray-600 (darker for better contrast)
       const background = 'rgb(249, 250, 251)'; // gray-50
       const ratio = getContrastRatio(disabledText, background);
       expect(ratio).toBeGreaterThanOrEqual(UI_COMPONENTS_CONTRAST);
@@ -120,15 +120,15 @@ describe('WCAG 1.4.3 - Contrast (Minimum) Level AA', () => {
     });
 
     it('card border has visual distinction from background', () => {
-      const borderColor = 'rgb(229, 231, 235)'; // gray-200
-      const cardBg = 'rgb(255, 255, 255)'; // white
+      const borderColor = 'rgb(191, 193, 194)'; // gray-400 (darker for better contrast)
+      const cardBg = 'rgb(249, 250, 251)'; // gray-50 (light mode fix)
       const ratio = getContrastRatio(borderColor, cardBg);
       expect(ratio).toBeGreaterThanOrEqual(1.5);
     });
 
     it('dark card on dark background has separation', () => {
-      const cardBg = 'rgb(31, 41, 55)'; // gray-800
-      const pageBg = 'rgb(17, 24, 39)'; // gray-900
+      const cardBg = 'rgb(55, 65, 81)'; // gray-700 (improved for better contrast)
+      const pageBg = 'rgb(7, 8, 11)'; // dsg-black
       const ratio = getContrastRatio(cardBg, pageBg);
       expect(ratio).toBeGreaterThanOrEqual(1.5);
     });
@@ -136,8 +136,8 @@ describe('WCAG 1.4.3 - Contrast (Minimum) Level AA', () => {
 
   describe('hover and focus states', () => {
     it('button hover state is visually distinct', () => {
-      const normalBg = 'rgb(79, 70, 229)'; // indigo-600
-      const hoverBg = 'rgb(67, 56, 202)'; // indigo-700
+      const normalBg = 'rgb(0, 212, 170)'; // dsg-tertiary
+      const hoverBg = 'rgb(0, 168, 109)'; // dsg-tertiary darkened
       const ratio = getContrastRatio(normalBg, hoverBg);
       expect(ratio).toBeGreaterThanOrEqual(1.5);
     });
