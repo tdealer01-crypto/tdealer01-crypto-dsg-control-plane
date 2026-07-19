@@ -2,9 +2,8 @@
 // This module bridges lead discovery, trial tracking, and sequence automation
 
 import { triggerSequenceForLead } from './sequences';
-import { Database } from '../database.types';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = any;
 
 // Call this after a lead is discovered
 export async function onLeadDiscovered(lead: Lead) {

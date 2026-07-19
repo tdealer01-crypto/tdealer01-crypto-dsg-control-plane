@@ -1,9 +1,6 @@
 import { createClient } from '../supabase/server';
-import { Database } from '../database.types';
 
-type EmailSequence = Database['public']['Tables']['email_sequences']['Row'];
-type EmailSequenceStep = Database['public']['Tables']['email_sequence_steps']['Row'];
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = any;
 
 interface SequenceTriggerEvent {
   leadId: string;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../../lib/supabase/server';
-import { handleApiError } from '../../../../../lib/security/api-errors';
+import { handleApiError } from '../../../../../lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: 'Founder access required' }, { status: 403 });
     }
 
-    const { data: sequence } = await supabase
+    const { data: sequence } = await (supabase as any)
       .from('email_sequences')
       .select(`
         *,
