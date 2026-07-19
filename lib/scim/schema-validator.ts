@@ -189,13 +189,13 @@ export function buildScimError(message: string, status: number = 400): ScimError
  * Example: 'userName eq "user@example.com"' or 'active eq true'
  */
 export function parseScimFilter(filter: string): { field: string; operator: string; value: string } | null {
-  const match = filter.match(/(\w+)\s+(eq|ne|co|sw|ew)\s+"?([^"]+)"?$/i);
+  const match = filter.match(/^(\w+)\s+(eq|ne|co|sw|ew)\s+(?:"([^"]*)"|([^\s]+))$/i);
   if (!match) return null;
 
   return {
     field: match[1],
     operator: match[2].toLowerCase(),
-    value: match[3],
+    value: match[3] || match[4] || '',
   };
 }
 
