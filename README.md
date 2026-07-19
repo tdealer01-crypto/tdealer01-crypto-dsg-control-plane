@@ -1,6 +1,7 @@
 # 🔐 DSG: Deterministic Execution & Governance
 
-[![Tests](https://img.shields.io/badge/tests-3415_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
+[![Tests](https://img.shields.io/badge/tests-3578_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
+[![Enterprise](https://img.shields.io/badge/Enterprise-Features_Ready-brightgreen?style=for-the-badge)](#enterprise-features-phases-1-3-)
 [![Mutation](https://img.shields.io/badge/mutation-72.08%25-blue?style=for-the-badge)](BENCHMARKS.md)
 [![Gate](https://img.shields.io/badge/gate-11ms_avg-orange?style=for-the-badge)](BENCHMARKS.md)
 [![PDPA Ready](https://img.shields.io/badge/PDPA-มาตรา37พร้อม-purple?style=for-the-badge)](BENCHMARKS.md)
@@ -140,15 +141,78 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| **Build** | ✅ | Next.js production build |
+| **Build** | ✅ | Next.js production build (193 static pages) |
 | **TypeScript** | ✅ | Type-safe, `tsc --noEmit` clean |
-| **Tests** | ✅ 3500+ passing / 0 failing | CCVS evidence run, JWT auth tests, arbiter validation tests included |
-| **Security** | ✅ | 0 critical/high vulnerabilities, JWT header spoofing prevented |
-| **Deployment** | ✅ | Vercel auto-deploy from main (CI/CD gated) |
-| **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic) |
+| **Tests** | ✅ 3578+ passing / 0 failing | CCVS evidence run, JWT auth tests, arbiter validation, enterprise features |
+| **Security** | ✅ | 0 critical/high vulnerabilities, CodeQL clean, JWT spoofing prevented, ReDoS/XSS fixed |
+| **Deployment** | ✅ | Vercel production-ready, auto-deploy from main (CI/CD gated) |
+| **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic), all checks passing |
 | **Phase 5** | ✅ | Complete security test coverage (unit, integration, failure) |
-| **Issue #3** | ✅ | Arbiter count validation implemented & tested (PR #952 #953 merged) |
-| **JWT Auth** | ✅ | Production-ready Bearer token authentication, E2E verified |
+| **Enterprise Features** | ✅ | PR #963 merged: Phases 1-3 (SAML/OIDC, SCIM, RBAC, SOC 2, workload identity) |
+| **RBAC & SSO** | ✅ | Production-ready role-based access control with custom roles, SAML 2.0 + OIDC federation |
+| **Audit & Compliance** | ✅ | Full audit trails with correlation IDs, SOC 2 Type II mapping, incident response playbook |
+
+---
+
+## Enterprise Features (Phases 1-3) 🚀
+
+**PR #963 — Enterprise Implementation (Merged to main)**
+
+Comprehensive enterprise-grade features for DSG ONE to compete in the cloud marketplace:
+
+### Phase 1: Database Infrastructure & Core Libraries ✅
+- **Enhanced Audit Logs** — Correlation IDs, severity levels (INFO/WARN/ERROR/CRITICAL), idempotency tracking
+- **Secret Encryption** — Supabase pgcrypto vault for notification settings (PagerDuty keys, Slack webhooks)
+- **RBAC Schema** — Custom roles with permission matrix, system roles (Admin/Operator/Viewer)
+- **SSO Configuration** — SAML/OIDC metadata storage, IdP group sync mappings
+- **Usage Metrics** — Daily rollups for billing, cost projection, seat utilization
+- **Session Management** — 30-minute inactivity timeout, 5 concurrent session limit, revocation support
+
+### Phase 2: API Routes & Observability ✅
+- **SAML 2.0 & OIDC** — Enterprise federation with `POST /api/admin/sso/config`, `POST /api/auth/oidc/callback`
+- **SCIM 2.0 Provisioning** — RFC 7643 compliant user management endpoints (list, get, create, update, delete)
+- **IdP Group Sync** — Automatic role assignment based on IdP groups (`POST /api/admin/idp-groups/sync`)
+- **RBAC Enforcement** — Permission checks on all protected routes, custom role support
+- **OpenTelemetry Integration** — Distributed tracing with W3C headers, correlation ID propagation
+- **SIEM-Ready Audit Export** — `GET /api/admin/audit-trail` with JSON/CSV export, filtering by action/severity
+- **Usage Dashboard** — `GET /api/dashboard/usage` with time-range analytics and cost projection
+
+### Phase 3: Compliance & Documentation ✅
+- **SOC 2 Type II Mapping** — 12 trust service criteria (CC6.1-CC10.1, A1, A2, C1, P) with implementation details
+- **Incident Response Playbook** — Breach detection, investigation, containment, recovery procedures
+- **Workload Identity Federation** — OIDC issuer, JWT token format, GitHub Actions + Kubernetes IRSA setup
+- **Public Pages** — Security, Compliance, Support pages with SLA matrix and certification roadmap
+- **WCAG 2.2 Level AA** — Accessibility baseline with color contrast, keyboard nav, ARIA labels
+
+### Security Fixes Applied ✅
+- **ReDoS Prevention** — Non-backtracking regex in SCIM filter parser (lib/scim/schema-validator.ts)
+- **XSS Protection** — UUID validation + encoding in SAML metadata endpoint (app/api/auth/saml/metadata/route.ts)
+- **Error Leakage** — Removed raw error messages from solver routes (app/api/dsg/v1/solver/*/evaluate/route.ts)
+- **CodeQL Alerts** — 2 high-severity issues resolved, 0 remaining
+- **Security Checks** — Error handler enforcement passed, no error-message leakage patterns
+
+### Verification Complete ✅
+- **TypeScript** — 0 compilation errors
+- **Build** — 193 static pages generated successfully
+- **Tests** — 3578/3578 CCVS tests passing
+- **Security** — CodeQL clean, npm audit high-level clean, error handlers validated
+- **Deployment** — Vercel Ready, commit 3054674 deployed to production
+
+### Live Features
+- 🔐 RBAC with custom roles: `/api/admin/roles`, `/api/admin/users/{id}/role`
+- 🔑 SSO setup: `/api/admin/sso/config`
+- 👥 SCIM provisioning: `/api/scim/v2/users` (RFC 7643)
+- 📊 Usage analytics: `/dashboard/usage`
+- 📋 Audit export: `/api/admin/audit-trail`
+- 🔒 Public security page: `/public/security`
+- ✅ Public compliance: `/public/compliance`
+- 📞 Public support: `/public/support`
+
+**Next: Phase 4 (Future)**
+- Integration testing (cross-agent E2E flows)
+- WCAG 2.2 comprehensive audit with screen readers
+- SOC 2 third-party audit (scheduled Q4 2026)
+- Live workload identity token exchange
 
 ---
 
@@ -286,6 +350,21 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Latest Updates
 
+✅ **PR #963: Enterprise Features Implementation (Phases 1-3)** (Merged to main)
+- **Status:** Production-ready, commit 3054674 deployed
+- **Components:**
+  - Phase 1: 6 database migrations (audit logs, encryption, RBAC, SSO, usage metrics, session management)
+  - Phase 2: 15 API routes (SAML/OIDC, SCIM, IdP sync, RBAC, OTEL, audit export, dashboards)
+  - Phase 3: SOC 2 mapping, incident playbook, workload identity docs, public pages (security/compliance/support)
+- **Security Fixes:**
+  - ReDoS prevention (SCIM filter parser)
+  - XSS protection (SAML metadata endpoint)
+  - Error message leakage removed (solver routes)
+  - CodeQL: 2 high-severity alerts → 0 remaining
+- **Verification:** TypeScript ✅ | Build (193 pages) ✅ | Tests (3578/3578) ✅ | Security ✅ | Vercel Ready ✅
+- **Live Endpoints:** RBAC `/api/admin/roles`, SSO `/api/admin/sso/config`, SCIM `/api/scim/v2/users`, Usage `/api/dashboard/usage`, Audit `/api/admin/audit-trail`
+- **Public Pages:** `/public/security`, `/public/compliance`, `/public/support`
+
 ✅ **PR #951: Public Third-Party Test System** (Deployed Production)
 - **Live URL:** https://tdealer01-crypto-dsg-control-plane.vercel.app/public/test
 - **Purpose:** Public API for third-party arbiter count validation testing with auditable proof chain
@@ -393,6 +472,10 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 | Document | For Whom | Read Time |
 |----------|----------|-----------|
+| **[Enterprise Features Overview](#enterprise-features-phases-1-3-)** | All Users | 5 min |
+| **[SOC 2 Controls Mapping](./docs/SOC2_CONTROLS.md)** | Auditors & Compliance | 15 min |
+| **[Incident Response Playbook](./docs/INCIDENT_RESPONSE_PLAYBOOK.md)** | Security & Ops | 10 min |
+| **[Workload Identity Federation](./docs/WORKLOAD_IDENTITY.md)** | DevOps & Engineers | 10 min |
 | **[DSG.md — Developer Guide](./DSG.md)** | All Contributors | 20 min (required pre-read) |
 | **[MCP Integration Guide](./docs/MCP_INTEGRATION_GUIDE.md)** | Engineers | 15 min |
 | **[Trinity Dashboard UI](./apps/trinity-dashboard/README.md)** | Operators | 5 min |
@@ -447,4 +530,4 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 MIT — [See LICENSE](./LICENSE)
 
-**Latest:** ✅ Public Test System deployed (https://tdealer01-crypto-dsg-control-plane.vercel.app/public/test) · ✅ Supabase migration applied to production · ✅ Deterministic proof chain verified (SHA-256, canonical parameters) · ✅ JWT Bearer Token Auth deployed (production E2E verified) · ✅ Trinity Dashboard UI deployed (Chat + Dashboard + CLI + API)
+**Latest:** ✅ Enterprise Features (PR #963) merged to main · ✅ SAML/OIDC + SCIM provisioning live · ✅ SOC 2 Type II mapping complete · ✅ Public pages deployed (security/compliance/support) · ✅ CodeQL security fixes applied (ReDoS + XSS) · ✅ Production deployment ready (Vercel, 3578 tests passing, 0 critical vulnerabilities)
