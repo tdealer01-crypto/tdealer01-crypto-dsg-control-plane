@@ -1,0 +1,313 @@
+{
+  "$schema": "https://claude.ai/design-system/v1",
+  "name": "DSG ONE Dark Prestige",
+  "version": "1.0.0",
+  "description": "Enterprise AI Runtime Control Plane brand system",
+  "releaseDate": "2026-07-19",
+  "targetPlatforms": ["vercel", "web", "control-plane", "customer-facing"],
+
+  "colors": {
+    "palette": {
+      "primary": {
+        "value": "#07080b",
+        "rgb": "7, 8, 11",
+        "name": "Primary Black",
+        "usage": "Main backgrounds, dark surfaces"
+      },
+      "secondary": {
+        "value": "#1a1c22",
+        "rgb": "26, 28, 34",
+        "name": "Secondary Dark",
+        "usage": "Cards, containers, elevated surfaces"
+      },
+      "tertiary": {
+        "value": "#00d4aa",
+        "rgb": "0, 212, 170",
+        "name": "Emerald Green",
+        "usage": "Primary CTAs, success states, highlights"
+      },
+      "accent": {
+        "value": "#22d3ee",
+        "rgb": "34, 211, 238",
+        "name": "Cyan Blue",
+        "usage": "Secondary actions, links, hover states"
+      },
+      "neutral": {
+        "value": "#f7f5f2",
+        "rgb": "247, 245, 242",
+        "name": "Light Neutral",
+        "usage": "Text on dark backgrounds, primary text"
+      }
+    },
+    "status": {
+      "success": "#10b981",
+      "warning": "#f59e0b",
+      "error": "#f43f5e",
+      "info": "#3b82f6",
+      "special": "#a855f7"
+    },
+    "semantic": {
+      "text": "#f7f5f2",
+      "textSecondary": "#D1D5DB",
+      "textTertiary": "#9CA3AF",
+      "background": "#07080b",
+      "backgroundSecondary": "#1a1c22",
+      "border": "rgba(255, 255, 255, 0.1)",
+      "borderLight": "rgba(255, 255, 255, 0.05)",
+      "hover": "rgba(255, 255, 255, 0.05)",
+      "active": "rgba(255, 255, 255, 0.1)"
+    },
+    "opacity": {
+      "disabled": "0.1",
+      "subtle": "0.3",
+      "medium": "0.5",
+      "full": "1"
+    }
+  },
+
+  "typography": {
+    "fontFamily": {
+      "primary": "Inter, system-ui, -apple-system, sans-serif",
+      "mono": "'Fira Code', 'Monaco', monospace"
+    },
+    "scales": {
+      "h1": {
+        "fontSize": "48px",
+        "fontWeight": 700,
+        "lineHeight": 1.1,
+        "letterSpacing": "-0.02em",
+        "description": "Page titles, hero sections"
+      },
+      "h2": {
+        "fontSize": "32px",
+        "fontWeight": 600,
+        "lineHeight": 1.2,
+        "letterSpacing": "-0.01em",
+        "description": "Section titles, card headers"
+      },
+      "h3": {
+        "fontSize": "24px",
+        "fontWeight": 600,
+        "lineHeight": 1.3,
+        "description": "Subsection titles"
+      },
+      "body": {
+        "fontSize": "14px",
+        "fontWeight": 400,
+        "lineHeight": 1.7,
+        "description": "Primary body text, paragraphs"
+      },
+      "bodySm": {
+        "fontSize": "12px",
+        "fontWeight": 400,
+        "lineHeight": 1.6,
+        "description": "Secondary content, captions"
+      },
+      "label": {
+        "fontSize": "12px",
+        "fontWeight": 500,
+        "lineHeight": 1.5,
+        "letterSpacing": "0.01em",
+        "description": "Button labels, form labels"
+      },
+      "mono": {
+        "fontSize": "12px",
+        "fontWeight": 400,
+        "lineHeight": 1.5,
+        "fontFamily": "'Fira Code', monospace",
+        "description": "Code blocks, technical content"
+      }
+    },
+    "weights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    }
+  },
+
+  "spacing": {
+    "unit": "4px",
+    "scale": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px",
+      "xxl": "48px"
+    },
+    "componentPadding": {
+      "button": {
+        "vertical": "8px",
+        "horizontal": "16px",
+        "description": "sm (v) × md (h)"
+      },
+      "input": {
+        "vertical": "8px",
+        "horizontal": "16px",
+        "description": "sm (v) × md (h)"
+      },
+      "card": {
+        "all": "16px",
+        "description": "md on all sides"
+      },
+      "section": {
+        "vertical": "24px",
+        "horizontal": "32px",
+        "description": "lg (v) × xl (h)"
+      }
+    }
+  },
+
+  "radius": {
+    "sm": "8px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "24px",
+    "full": "9999px",
+    "componentDefaults": {
+      "button": "8px",
+      "input": "8px",
+      "card": "12px",
+      "modal": "16px",
+      "avatar": "9999px"
+    }
+  },
+
+  "shadows": {
+    "sm": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+    "md": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+    "lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+    "xl": "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+    "componentDefaults": {
+      "button": "none",
+      "card": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+      "modal": "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+      "dropdown": "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+    }
+  },
+
+  "components": {
+    "button": {
+      "primary": {
+        "background": "#00d4aa",
+        "text": "#07080b",
+        "padding": "8px 16px",
+        "radius": "8px",
+        "fontSize": "12px",
+        "fontWeight": 500,
+        "states": {
+          "hover": {
+            "background": "#00c294"
+          },
+          "active": {
+            "background": "#009b7d"
+          },
+          "disabled": {
+            "background": "#1a1c22",
+            "text": "#9CA3AF",
+            "opacity": 0.5
+          }
+        }
+      },
+      "secondary": {
+        "background": "#1a1c22",
+        "text": "#f7f5f2",
+        "border": "1px solid rgba(255, 255, 255, 0.2)",
+        "padding": "8px 16px",
+        "radius": "8px",
+        "states": {
+          "hover": {
+            "borderColor": "rgba(255, 255, 255, 0.4)"
+          }
+        }
+      },
+      "danger": {
+        "background": "#f43f5e",
+        "text": "#ffffff",
+        "padding": "8px 16px",
+        "radius": "8px",
+        "states": {
+          "hover": {
+            "background": "#e63f5e"
+          }
+        }
+      }
+    },
+    "card": {
+      "background": "#1a1c22",
+      "border": "1px solid rgba(255, 255, 255, 0.1)",
+      "padding": "16px",
+      "radius": "12px",
+      "shadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+      "states": {
+        "hover": {
+          "shadow": "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+        }
+      }
+    },
+    "input": {
+      "background": "#07080b",
+      "border": "1px solid rgba(255, 255, 255, 0.2)",
+      "text": "#f7f5f2",
+      "placeholder": "#9CA3AF",
+      "padding": "8px 16px",
+      "radius": "8px",
+      "states": {
+        "focus": {
+          "borderColor": "#22d3ee",
+          "outline": "none"
+        }
+      }
+    }
+  },
+
+  "breakpoints": {
+    "mobile": "0px",
+    "tablet": "640px",
+    "desktop": "1024px",
+    "wide": "1280px"
+  },
+
+  "accessibility": {
+    "contrastRatios": {
+      "neutralOnPrimary": "WCAG AAA",
+      "primaryOnSecondary": "WCAG AA",
+      "textOnBackground": "WCAG AAA"
+    },
+    "focusStyles": {
+      "outline": "2px solid #22d3ee",
+      "outlineOffset": "2px"
+    }
+  },
+
+  "exports": {
+    "formats": [
+      "react-components",
+      "tailwind-config",
+      "css-variables",
+      "json",
+      "figma",
+      "canva"
+    ],
+    "vercelDeployment": {
+      "enabled": true,
+      "deploymentZone": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+      "cssPath": "app/dsg-brand.css"
+    }
+  },
+
+  "metadata": {
+    "created": "2026-07-19",
+    "updated": "2026-07-19",
+    "maintainer": "DSG Design Team",
+    "documentation": "DESIGN.md",
+    "status": "active",
+    "compatibility": {
+      "claudeDesign": ">=1.0.0",
+      "react": ">=18.0.0",
+      "nextjs": ">=15.0.0",
+      "tailwind": ">=3.0.0"
+    }
+  }
+}

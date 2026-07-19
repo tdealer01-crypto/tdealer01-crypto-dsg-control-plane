@@ -1,0 +1,200 @@
+{
+  "version": "1.0.0",
+  "name": "DSG ONE Design-to-Code Sync",
+  "description": "Bidirectional sync between Claude Design and DSG ONE codebase",
+  "releaseDate": "2026-07-19",
+
+  "designSystem": {
+    "source": "../design-system.json",
+    "brandGuide": "../DESIGN.md",
+    "cssVariables": "app/dsg-brand.css",
+    "components": "app/components"
+  },
+
+  "sync": {
+    "direction": "bidirectional",
+    "autoSync": true,
+    "syncIntervals": {
+      "design_to_code": "on-save",
+      "code_to_design": "on-push"
+    }
+  },
+
+  "commands": {
+    "design_sync_in": {
+      "trigger": "/design-sync",
+      "description": "Pull design system into Claude Code",
+      "action": "import_design_system",
+      "sources": ["design-system.json", "DESIGN.md"],
+      "target": "project_context"
+    },
+    "design_create": {
+      "trigger": "/design",
+      "description": "Create or edit designs without leaving the terminal",
+      "action": "open_design_editor",
+      "context": "current_project"
+    },
+    "design_export": {
+      "trigger": "/design-export",
+      "description": "Export design to code",
+      "actions": [
+        "export_to_react",
+        "export_to_figma",
+        "export_to_canva",
+        "export_to_vercel"
+      ]
+    }
+  },
+
+  "componentLibrary": {
+    "path": "app/components",
+    "structure": {
+      "base": ["Button", "Input", "Card", "Modal", "Alert", "Badge"],
+      "layout": ["Header", "Footer", "Sidebar", "Grid", "Flex", "Container"],
+      "form": ["TextField", "Checkbox", "Radio", "Select", "Textarea", "FormGroup"],
+      "data": ["Table", "List", "Tree", "Pagination", "Breadcrumb"],
+      "feedback": ["Toast", "Tooltip", "Popover", "Spinner", "Progress"],
+      "navigation": ["Tabs", "Menu", "Dropdown", "Navbar", "Stepper"]
+    },
+    "exportFormats": [
+      {
+        "format": "React",
+        "extension": ".tsx",
+        "location": "app/components",
+        "include": ["TypeScript", "Props", "Stories"]
+      },
+      {
+        "format": "CSS Modules",
+        "extension": ".module.css",
+        "location": "app/components",
+        "include": ["Tailwind", "CSS Variables"]
+      },
+      {
+        "format": "Figma",
+        "extension": ".figma",
+        "location": "designs/figma",
+        "autoSync": true
+      },
+      {
+        "format": "Canva",
+        "extension": ".canva",
+        "location": "designs/canva",
+        "autoSync": false
+      }
+    ]
+  },
+
+  "pages": {
+    "control_plane": {
+      "path": "app/dashboard",
+      "theme": "dark",
+      "brand": "DSG ONE Dark Prestige",
+      "components": ["base", "layout", "form", "data", "feedback", "navigation"],
+      "description": "Internal operators and admins dashboard"
+    },
+    "customer_facing": {
+      "path": "app/products",
+      "theme": "dark",
+      "brand": "DSG ONE Dark Prestige",
+      "components": ["base", "layout", "form", "feedback", "navigation"],
+      "description": "Customer-facing portal and product pages"
+    },
+    "marketing": {
+      "path": "app",
+      "theme": "both",
+      "brand": "DSG ONE Dark Prestige",
+      "components": ["base", "layout", "feedback", "navigation"],
+      "description": "Public marketing and landing pages"
+    }
+  },
+
+  "deployment": {
+    "platform": "vercel",
+    "url": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+    "environment": "production",
+    "previewDeployments": true,
+    "autoSync": {
+      "onPush": true,
+      "onPullRequest": true
+    },
+    "exportSettings": {
+      "format": "vercel",
+      "imageOptimization": true,
+      "cssMinification": true,
+      "components": "optimized"
+    }
+  },
+
+  "brandConsistency": {
+    "enabled": true,
+    "rules": {
+      "colorPalette": {
+        "enforcement": "strict",
+        "allowCustom": false,
+        "validation": "on-save"
+      },
+      "typography": {
+        "enforcement": "strict",
+        "allowCustom": false,
+        "validation": "on-save"
+      },
+      "spacing": {
+        "enforcement": "strict",
+        "baseUnit": "4px",
+        "allowedMultiples": [1, 2, 3, 4, 6, 8],
+        "validation": "on-save"
+      },
+      "radius": {
+        "enforcement": "strict",
+        "allowedValues": ["8px", "12px", "16px", "24px", "9999px"],
+        "validation": "on-save"
+      }
+    },
+    "warnings": {
+      "unusedColors": true,
+      "inconsistentSpacing": true,
+      "accessibilityIssues": true,
+      "responsiveBreakpoints": true
+    },
+    "reports": {
+      "generateOnChange": true,
+      "location": "qa-logs/design-consistency",
+      "frequency": "on-save"
+    }
+  },
+
+  "accessibility": {
+    "wcagLevel": "AA",
+    "autoValidation": true,
+    "checks": [
+      "color-contrast",
+      "semantic-html",
+      "alt-text",
+      "focus-management",
+      "keyboard-navigation"
+    ]
+  },
+
+  "versions": {
+    "current": "1.0.0",
+    "history": [
+      {
+        "version": "1.0.0",
+        "releaseDate": "2026-07-19",
+        "changes": [
+          "Initial brand system release",
+          "Design-to-code workflow setup",
+          "Component library structure",
+          "Design-sync configuration"
+        ]
+      }
+    ]
+  },
+
+  "team": {
+    "maintainer": "DSG Design Team",
+    "reviewers": ["Design Team Lead", "Frontend Lead"],
+    "slack": "#design-system",
+    "documentation": "DESIGN.md"
+  }
+}
