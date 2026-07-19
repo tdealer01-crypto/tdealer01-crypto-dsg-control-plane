@@ -1,4 +1,5 @@
 import { unsubscribeLead } from '../../../../lib/emails/sequences';
+import { handleApiError } from '../../../../lib/security/api-error';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -16,8 +17,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: `${email} unsubscribed` });
   } catch (err) {
-    console.error('Unsubscribe error:', err);
-    return NextResponse.json({ error: 'Failed to unsubscribe' }, { status: 500 });
+    return handleApiError('POST /api/emails/unsubscribe', err);
   }
 }
 
@@ -60,7 +60,30 @@ export async function GET(request: Request) {
       }
     );
   } catch (err) {
-    console.error('Unsubscribe error:', err);
-    return new Response('Failed to unsubscribe', { status: 500 });
+    handleApiError('GET /api/emails/unsubscribe', err);
+    // Return HTML error page
+    return new Response(
+      `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Error</title>
+          <style>
+            body { font-family: system-ui; text-align: center; padding: 40px; }
+            .container { max-width: 500px; margin: 0 auto; }
+            h1 { color: #ef4444; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>✗ Error</h1>
+            <p>Failed to process your unsubscribe request.</p>
+            <p>Please try again later.</p>
+          </div>
+        </body>
+      </html>
+      `,
+      { status: 500, headers: { 'Content-Type': 'text/html' } }
+    );
   }
 }

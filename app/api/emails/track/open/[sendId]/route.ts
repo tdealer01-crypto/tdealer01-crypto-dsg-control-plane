@@ -2,6 +2,7 @@ import { recordEmailEngagement } from '../../../../../../lib/emails/sequences';
 
 export const dynamic = 'force-dynamic';
 
+// ERROR_HANDLER_EXEMPT - tracking pixel always returns 1x1 GIF regardless of errors
 // 1x1 pixel tracking image for email opens
 export async function GET(
   req: Request,
