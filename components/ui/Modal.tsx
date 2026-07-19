@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface ModalAction {
   label: string;
@@ -24,14 +24,50 @@ const sizeMap: Record<string, string> = {
 };
 
 export function Modal({ isOpen, onClose, title, children, actions = [], size = 'md' }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useRef(`modal-title-${Math.random().toString(36).substr(2, 9)}`).current;
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
+
     document.body.style.overflow = 'hidden';
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Tab') handleTabKey(e);
+    };
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (!dialogRef.current) return;
+      const focusableElements = dialogRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement?.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement?.focus();
+      }
+    };
+
     window.addEventListener('keydown', handleKey);
+
+    const timer = setTimeout(() => {
+      const firstButton = dialogRef.current?.querySelector('button') as HTMLElement;
+      firstButton?.focus();
+    }, 0);
+
     return () => {
+      clearTimeout(timer);
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKey);
+      previousFocusRef.current?.focus();
     };
   }, [isOpen, onClose]);
 
@@ -41,15 +77,21 @@ export function Modal({ isOpen, onClose, title, children, actions = [], size = '
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="presentation"
     >
       <div
+        ref={dialogRef}
         className={`relative w-[90%] ${sizeMap[size]} max-h-[90vh] flex flex-col rounded-2xl border border-[rgba(247,220,120,0.16)] bg-[#0B0B0F] shadow-2xl`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(247,220,120,0.10)]">
-          <h2 className="text-base font-semibold text-[#F8FAFC]">{title}</h2>
+          <h2 id={titleId} className="text-base font-semibold text-[#F8FAFC]">{title}</h2>
           <button
             onClick={onClose}
+            aria-label="Close modal"
             className="text-[#AAB3C5] hover:text-[#F8FAFC] transition-colors text-xl leading-none p-1"
           >
             ✕
