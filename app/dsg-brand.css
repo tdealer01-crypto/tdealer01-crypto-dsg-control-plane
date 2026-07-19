@@ -1,37 +1,43 @@
 :root {
-  /* Colors - Dark Theme */
-  --dsg-black: #050507;
-  --dsg-black-2: #090b12;
-  --dsg-panel: rgba(9, 11, 18, 0.86);
-  --dsg-panel-2: rgba(14, 18, 28, 0.92);
+  /* DSG ONE Dark Prestige - Brand Colors */
 
-  /* Primary Colors */
-  --dsg-red: #e10600;
-  --dsg-red-deep: #7f0509;
-  --dsg-red-glow: rgba(225, 6, 0, 0.22);
+  /* Core Brand Colors */
+  --dsg-primary: #07080b;
+  --dsg-secondary: #1a1c22;
+  --dsg-tertiary: #00d4aa;
+  --dsg-accent: #22d3ee;
+  --dsg-neutral: #f7f5f2;
 
-  /* Accent Colors */
-  --dsg-gold: #d4af37;
-  --dsg-gold-soft: #f7dc78;
-  --dsg-gold-glow: rgba(212, 175, 55, 0.13);
+  /* Dark Theme Backgrounds */
+  --dsg-black: #07080b;
+  --dsg-black-2: #1a1c22;
+  --dsg-panel: rgba(26, 28, 34, 0.86);
+  --dsg-panel-2: rgba(26, 28, 34, 0.92);
 
-  /* Sapphire/Blue */
-  --dsg-sapphire: #0f52ba;
-  --dsg-sapphire-soft: #4f8cff;
-  --dsg-sapphire-glow: rgba(15, 82, 186, 0.28);
+  /* Primary Brand Color - Emerald Green */
+  --dsg-tertiary-primary: #00d4aa;
+  --dsg-tertiary-soft: #26e0b6;
+  --dsg-tertiary-glow: rgba(0, 212, 170, 0.2);
+
+  /* Secondary Brand Color - Cyan Blue */
+  --dsg-accent-secondary: #22d3ee;
+  --dsg-accent-soft: #4dd9f5;
+  --dsg-accent-glow: rgba(34, 211, 238, 0.2);
 
   /* Utility Colors */
-  --dsg-line: rgba(247, 220, 120, 0.16);
-  --dsg-text: #f8fafc;
-  --dsg-muted: #aab3c5;
+  --dsg-line: rgba(34, 211, 238, 0.16);
+  --dsg-text: #f7f5f2;
+  --dsg-text-secondary: #D1D5DB;
+  --dsg-muted: #9CA3AF;
 
-  /* Semantic Colors */
-  --dsg-success: #4caf50;
-  --dsg-warning: #ff9800;
-  --dsg-error: #e10600;
-  --dsg-info: #4f8cff;
+  /* Semantic Colors (Status) */
+  --dsg-success: #10b981;
+  --dsg-warning: #f59e0b;
+  --dsg-error: #f43f5e;
+  --dsg-info: #3b82f6;
+  --dsg-special: #a855f7;
 
-  /* Spacing Scale (base 4px) */
+  /* Spacing Scale (base 4px) - DSG ONE Brand */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
@@ -40,19 +46,18 @@
   --spacing-2xl: 48px;
   --spacing-3xl: 64px;
 
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 999px;
+  /* Border Radius - DSG ONE Brand Scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
 
-  /* Shadow Elevation */
-  --shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.12);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.16);
-  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.18);
-  --shadow-lg: 0 14px 34px rgba(212, 175, 55, 0.22);
-  --shadow-xl: 0 22px 80px rgba(0, 0, 0, 0.32);
+  /* Shadow Elevation - DSG ONE Brand */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
   /* Font Sizes */
