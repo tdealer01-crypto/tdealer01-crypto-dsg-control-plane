@@ -1,4 +1,5 @@
 import { sendPendingEmails } from '../../../../lib/emails/sequences';
+import { handleApiError } from '../../../../lib/security/api-error';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -24,10 +25,6 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error('Send pending emails error:', err);
-    return NextResponse.json(
-      { error: 'Failed to send emails', details: err instanceof Error ? err.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return handleApiError('send-pending-emails', err);
   }
 }
