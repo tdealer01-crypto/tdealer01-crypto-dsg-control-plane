@@ -195,6 +195,62 @@ describe('buildRateLimitHeaders', () => {
 
 // ─── isRateLimiterConfigured ──────────────────────────────────────────────────
 
+// ─── applyRateLimit (Redis path) ────────────────────────────────────────────
+
+describe('applyRateLimit (Redis path — configured)', () => {
+  let applyRateLimit: (opts: { key: string; limit: number; windowMs: number }) => Promise<{
+    allowed: boolean;
+    remaining: number;
+    resetAt: number;
+  }>;
+
+  beforeEach(async () => {
+    // Set up Redis env vars so Redis path is taken
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.example.com');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'mytoken');
+    vi.resetModules();
+    ({ applyRateLimit } = await import('../../../lib/security/rate-limit'));
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('returns success from Redis limiter', async () => {
+    const result = await applyRateLimit({ key: 'test:ip1', limit: 10, windowMs: 60_000 });
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(9); // Mocked to return 9
+  });
+
+  it('returns reset timestamp from Redis limiter', async () => {
+    const beforeCall = Date.now() + 60_000;
+    const result = await applyRateLimit({ key: 'test:ip1', limit: 10, windowMs: 60_000 });
+    expect(result.resetAt).toBeGreaterThanOrEqual(beforeCall - 1000); // Within 1s margin
+  });
+
+  it('falls back to in-memory when Redis limiter throws', async () => {
+    // Mock the Ratelimit constructor to throw on limit() call
+    const { Ratelimit } = await import('@upstash/ratelimit');
+    const mockRatelimit = vi.mocked(Ratelimit);
+
+    // Override the mocked instance to throw on limit()
+    mockRatelimit.mockImplementationOnce(() => ({
+      limit: vi.fn().mockRejectedValue(new Error('Redis connection failed')),
+    } as any));
+
+    vi.resetModules();
+    ({ applyRateLimit } = await import('../../../lib/security/rate-limit'));
+
+    // Should fall back to memory successfully
+    const result = await applyRateLimit({ key: 'test:fallback', limit: 5, windowMs: 60_000 });
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ─── isRateLimiterConfigured ──────────────────────────────────────────────────
+
 describe('isRateLimiterConfigured', () => {
   let isRateLimiterConfigured: () => boolean;
 
