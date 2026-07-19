@@ -1,4 +1,4 @@
-import { recordEmailEngagement } from '../../../../../lib/emails/sequences';
+import { recordEmailEngagement } from '../../../../../../lib/emails/sequences';
 
 export const dynamic = 'force-dynamic';
 

@@ -101,7 +101,7 @@ export async function sendPendingEmails(limit: number = 100) {
       leads(id, email, name, company, icp_score)
     `
     )
-    .is('sent_at', false)
+    .is('sent_at', null)
     .lte('scheduled_for', now)
     .limit(limit);
 
