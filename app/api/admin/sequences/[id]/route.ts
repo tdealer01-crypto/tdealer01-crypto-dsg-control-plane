@@ -21,7 +21,8 @@ export async function GET(
       return NextResponse.json({ error: 'Founder access required' }, { status: 403 });
     }
 
-    const { data: sequence } = await (supabase as any)
+    // @ts-ignore - email_sequences table added in migration, not yet in generated types
+    const { data: sequence } = await supabase
       .from('email_sequences')
       .select(`
         *,
@@ -62,6 +63,7 @@ export async function PATCH(
 
     const updates = await request.json();
 
+    // @ts-ignore - email_sequences table added in migration, not yet in generated types
     const { data: sequence, error } = await supabase
       .from('email_sequences')
       .update(updates)
@@ -94,6 +96,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Founder access required' }, { status: 403 });
     }
 
+    // @ts-ignore - email_sequences table added in migration, not yet in generated types
     const { error } = await supabase.from('email_sequences').delete().eq('id', id);
 
     if (error) throw error;
