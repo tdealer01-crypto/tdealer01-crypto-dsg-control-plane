@@ -664,6 +664,8 @@ curl -H "Authorization: Bearer $TOKEN" \
 | **[Z3 Formal Verification](./docs/VERIFICATION.md)** | Researchers | 20 min |
 | **[Thai PageAgent Integration](./lib/page-agent/README.md)** | Thai users | 5 min |
 | **[Marketplace Setup](./MARKETPLACE.md)** | Operators | 10 min |
+| **[Revenue Activation Quickstart](./docs/REVENUE_ACTIVATION_QUICKSTART.md)** | Product/Finance | 15 min |
+| **[Production Revenue Deployment](./docs/PRODUCTION_REVENUE_DEPLOYMENT.md)** | DevOps | 20 min |
 | **[Compliance Guide](./docs/COMPLIANCE.md)** | Auditors | 15 min |
 | **[API Reference](./docs/API.md)** | Developers | 20 min |
 
@@ -690,6 +692,10 @@ curl -H "Authorization: Bearer $TOKEN" \
 - **Solana Integration** — Blockchain settlement layer
 - **Thai Language Agent** — Natural language policy in Thai
 - **Stripe Marketplace** — Revenue & billing integration
+  - ✅ **[Phase 2-4 Activation Complete](./docs/REVENUE_ACTIVATION_QUICKSTART.md)** (2026-07-19)
+  - 📊 Checkout flow tested, webhook handler ready, billing sync cron configured
+  - 📋 Production deployment guide: [PRODUCTION_REVENUE_DEPLOYMENT.md](./docs/PRODUCTION_REVENUE_DEPLOYMENT.md)
+  - 🎯 Target: First $99 payment by 2026-07-21
 - **PageAgent** — Autonomous web interaction agent
 
 ---
@@ -707,4 +713,4 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 MIT — [See LICENSE](./LICENSE)
 
-**Latest:** ✅ Enterprise Features (PR #963) merged to main · ✅ SAML/OIDC + SCIM provisioning live · ✅ SOC 2 Type II mapping complete · ✅ Public pages deployed (security/compliance/support) · ✅ CodeQL security fixes applied (ReDoS + XSS) · ✅ Production deployment ready (Vercel, 3578 tests passing, 0 critical vulnerabilities)
+**Latest:** ✅ Enterprise Features (PR #963) merged to main · ✅ SAML/OIDC + SCIM provisioning live · ✅ SOC 2 Type II mapping complete · ✅ Public pages deployed (security/compliance/support) · ✅ CodeQL security fixes applied (ReDoS + XSS) · ✅ Production deployment ready (Vercel, 3578 tests passing, 0 critical vulnerabilities) · ✅ **Revenue Layer Phase 2-4 Activated** (Stripe checkout/webhook/cron ready, 2026-07-19) · ⏳ Phase 5: First customer acquisition (target 2026-07-21)
