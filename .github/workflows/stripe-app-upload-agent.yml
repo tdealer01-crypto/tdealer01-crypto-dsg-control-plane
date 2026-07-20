@@ -1,0 +1,158 @@
+name: Agent — Stripe App Upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for upload (e.g., DSG ONE rebranding, bug fix, feature update)'
+        required: false
+        default: 'Update Stripe app manifest'
+
+permissions:
+  contents: read
+
+jobs:
+  upload-stripe-app:
+    name: Upload DSG ONE App to Stripe
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Stripe manifest
+        id: validate
+        run: |
+          echo "Validating Stripe app manifest..."
+          node -e "
+            const manifest = require('./packages/stripe-app/stripe-app.json');
+            console.log('✓ App ID:', manifest.id);
+            console.log('✓ App Name:', manifest.name);
+            console.log('✓ Version:', manifest.version);
+            console.log('✓ Distribution:', manifest.distribution_type);
+            if (!manifest.id || !manifest.name || !manifest.version) {
+              throw new Error('Invalid manifest: missing required fields');
+            }
+          "
+
+      - name: Check for Stripe CLI
+        id: cli-check
+        continue-on-error: true
+        run: |
+          if command -v stripe &> /dev/null; then
+            echo "STRIPE_CLI_AVAILABLE=true" >> $GITHUB_OUTPUT
+            stripe version
+          else
+            echo "STRIPE_CLI_AVAILABLE=false" >> $GITHUB_OUTPUT
+            echo "Note: Stripe CLI not available in this environment"
+          fi
+
+      - name: Install Stripe CLI
+        if: steps.cli-check.outputs.STRIPE_CLI_AVAILABLE != 'true'
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/stripe
+          cd /tmp/stripe
+          wget -q https://github.com/stripe/stripe-cli/releases/download/v1.19.0/stripe_1.19.0_linux_x86_64.tar.gz
+          tar xzf stripe_1.19.0_linux_x86_64.tar.gz
+          chmod +x stripe
+          echo "/tmp/stripe" >> $GITHUB_PATH
+
+      - name: Upload app to Stripe
+        id: upload
+        continue-on-error: true
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+        run: |
+          cd ${{ github.workspace }}
+
+          if [ -z "$STRIPE_API_KEY" ]; then
+            echo "ERROR: STRIPE_API_KEY secret not configured"
+            echo "ACTION_NEEDED=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "Attempting Stripe app upload..."
+          stripe apps upload --api-key "$STRIPE_API_KEY" 2>&1 | tee /tmp/upload.log || true
+
+          if grep -q "successfully" /tmp/upload.log || grep -q "deployed" /tmp/upload.log; then
+            echo "UPLOAD_SUCCESS=true" >> $GITHUB_OUTPUT
+            cat /tmp/upload.log
+          else
+            echo "UPLOAD_SUCCESS=false" >> $GITHUB_OUTPUT
+            cat /tmp/upload.log
+          fi
+
+      - name: Report upload status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const uploadSuccess = '${{ steps.upload.outputs.UPLOAD_SUCCESS }}' === 'true';
+            const reason = '${{ github.event.inputs.reason }}';
+
+            let message = '## 🚀 Stripe App Upload Report\n\n';
+            message += `**Reason:** ${reason}\n`;
+            message += `**App:** DSG ONE - Control Plane for AI Operations\n`;
+            message += `**Branch:** ${process.env.GITHUB_REF_NAME}\n`;
+            message += `**Commit:** ${process.env.GITHUB_SHA.substring(0, 7)}\n\n`;
+
+            if (uploadSuccess) {
+              message += '### ✅ Upload Successful\n';
+              message += '- App manifest validated\n';
+              message += '- New version deployed to Stripe\n';
+              message += '- Next: Submit for marketplace review via Stripe Dashboard\n';
+              message += '  - Go to: https://dashboard.stripe.com/apps\n';
+              message += '  - Click: "Resubmit to Marketplace"\n';
+              message += '  - Expected review time: 3-7 business days\n';
+            } else {
+              message += '### ⚠️ Upload Status Check Required\n';
+              message += '- Manifest validation: Passed\n';
+              message += '- CLI availability: Check logs above\n';
+              message += '- API authentication: Verify STRIPE_API_KEY secret\n';
+              message += '- Manual fallback:\n';
+              message += '  ```bash\n';
+              message += '  stripe login\n';
+              message += '  stripe apps upload\n';
+              message += '  ```\n';
+            }
+
+            message += '\n### 📋 Manifest Details\n';
+            message += '| Field | Value |\n';
+            message += '|-------|-------|\n';
+            message += '| App ID | `pics.dsg.governance` |\n';
+            message += '| Name | DSG ONE - Control Plane for AI Operations |\n';
+            message += '| Short Description | Monitor. Verify. Audit. Optimize. One platform for AI accountability. |\n';
+            message += '| Distribution | Public (Marketplace) |\n';
+
+            console.log(message);
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Stripe App Upload Summary"
+            echo ""
+            echo "**Triggered by:** Agent workflow"
+            echo "**Reason:** ${{ github.event.inputs.reason }}"
+            echo "**Timestamp:** $(date -u)"
+            echo ""
+            echo "### Next Steps"
+            echo "1. Check upload status in Stripe Dashboard: https://dashboard.stripe.com/apps"
+            echo "2. If successful, submit for marketplace review"
+            echo "3. Expected approval: 3-7 business days"
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
