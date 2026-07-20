@@ -75,3 +75,4 @@ dsg-final-env-local-only.sh
 .projects/state.local.test.json
 reports/
 deployment-*.log
+final-deployment.log
