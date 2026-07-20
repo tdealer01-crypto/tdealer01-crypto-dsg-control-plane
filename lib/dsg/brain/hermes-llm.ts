@@ -1,15 +1,17 @@
 /**
  * Hermes LLM Integration for DSG Brain.
  *
- * Supports two backends:
- *   - Anthropic (ANTHROPIC_API_KEY)
+ * Supports three backends:
+ *   - NVIDIA Nemotron (NVIDIA_API_KEY, free tier ~40 RPM)
  *   - NousResearch Hermes (TOGETHER_API_KEY or OPENROUTER_API_KEY)
+ *   - Anthropic Claude (ANTHROPIC_API_KEY, production fallback)
  *
  * Set DSG_BRAIN_PROVIDER=nous-hermes to use Hermes models.
  * API keys are server-side only, never exposed to client.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { ConformanceViolation } from "./conformance-gate";
 import {
   generatePlanViaNousHermes,
@@ -181,6 +183,20 @@ Output MUST be valid JSON matching the required structure.`;
 }
 
 /**
+ * Check if NVIDIA API is available.
+ */
+function isNVIDIAAvailable(): boolean {
+  return !!process.env.NVIDIA_API_KEY;
+}
+
+/**
+ * Get NVIDIA model ID.
+ */
+function getNVIDIAModel(): string {
+  return process.env.NVIDIA_MODEL_ID || "nvidia/nemotron-3-ultra-550b-a55b";
+}
+
+/**
  * Parse JSON plan response from LLM.
  */
 function parsePlanResponse(content: string): {
@@ -218,22 +234,28 @@ function parsePlanResponse(content: string): {
 }
 
 /**
- * Generate a plan — dispatches to NousResearch Hermes or Anthropic based on config.
+ * Generate a plan — dispatches to NVIDIA, NousResearch Hermes, or Anthropic based on config.
  * IMPORTANT: API keys are loaded from environment only, server-side.
  */
 export async function generatePlanViaLLM(
   request: LLMPlanRequest,
   apiKey?: string,
 ): Promise<LLMPlanResponse> {
+  // Priority 1: NVIDIA Nemotron (free tier)
+  if (isNVIDIAAvailable()) {
+    return generatePlanViaNVIDIA(request);
+  }
+
   const config = buildDsgBrainModelConfig();
 
+  // Priority 2: NousResearch Hermes
   if (config.provider === 'nous-hermes') {
     const hosting = detectNousHosting();
     if (!hosting) throw new Error('TOGETHER_API_KEY or OPENROUTER_API_KEY not set for Hermes provider');
     return generatePlanViaNousHermes(request, config.model as HermesNousModel, hosting);
   }
 
-  // Anthropic path
+  // Priority 3: Anthropic Claude (production fallback)
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY not set. Cannot generate plans without API key.');
 
@@ -263,21 +285,94 @@ export async function generatePlanViaLLM(
 }
 
 /**
- * Generate a remediated plan — dispatches to NousResearch Hermes or Anthropic based on config.
+ * Generate plan via NVIDIA Nemotron (OpenAI-compatible API).
+ */
+async function generatePlanViaNVIDIA(request: LLMPlanRequest): Promise<LLMPlanResponse> {
+  const client = new OpenAI({
+    apiKey: process.env.NVIDIA_API_KEY,
+    baseURL: "https://integrate.api.nvidia.com/v1"
+  });
+
+  try {
+    const response = await client.chat.completions.create({
+      model: getNVIDIAModel(),
+      messages: [
+        { role: "system", content: buildPlanSystemPrompt() },
+        { role: "user", content: buildPlanUserPrompt(request) }
+      ],
+      max_tokens: 2048,
+      temperature: 0.3,
+      top_p: 0.9
+    });
+
+    const textContent = response.choices[0]?.message?.content;
+    if (!textContent) throw new Error('No text content in NVIDIA response');
+
+    const { plan, summary } = parsePlanResponse(textContent);
+    const riskTags: string[] = [];
+    if (request.allowedCommands.length === 0) riskTags.push('no-commands');
+    if (request.allowedPaths.length === 0) riskTags.push('no-paths');
+    if (plan.includes('TODO') || plan.includes('pending')) riskTags.push('incomplete');
+
+    return { canonicalPlan: plan, rationale: summary, riskTags };
+  } catch (err) {
+    throw new Error(`NVIDIA plan generation failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Remediate plan via NVIDIA Nemotron (OpenAI-compatible API).
+ */
+async function remediatePlanViaNVIDIA(request: LLMRemediationRequest): Promise<LLMRemediationResponse> {
+  const client = new OpenAI({
+    apiKey: process.env.NVIDIA_API_KEY,
+    baseURL: "https://integrate.api.nvidia.com/v1"
+  });
+
+  try {
+    const response = await client.chat.completions.create({
+      model: getNVIDIAModel(),
+      messages: [
+        { role: "system", content: buildRemediationSystemPrompt() },
+        { role: "user", content: buildRemediationUserPrompt(request) }
+      ],
+      max_tokens: 2048,
+      temperature: 0.3,
+      top_p: 0.9
+    });
+
+    const textContent = response.choices[0]?.message?.content;
+    if (!textContent) throw new Error('No text content in NVIDIA response');
+
+    const { plan, summary } = parsePlanResponse(textContent);
+    return { remediatedPlan: plan, changeDescription: summary };
+  } catch (err) {
+    throw new Error(`NVIDIA remediation failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Generate a remediated plan — dispatches to NVIDIA, NousResearch Hermes, or Anthropic based on config.
  */
 export async function remediatePlanViaLLM(
   request: LLMRemediationRequest,
   apiKey?: string,
 ): Promise<LLMRemediationResponse> {
+  // Priority 1: NVIDIA Nemotron (free tier)
+  if (isNVIDIAAvailable()) {
+    return remediatePlanViaNVIDIA(request);
+  }
+
   const config = buildDsgBrainModelConfig();
 
+  // Priority 2: NousResearch Hermes
   if (config.provider === 'nous-hermes') {
     const hosting = detectNousHosting();
     if (!hosting) throw new Error('TOGETHER_API_KEY or OPENROUTER_API_KEY not set for Hermes provider');
     return remediatePlanViaNousHermes(request, config.model as HermesNousModel, hosting);
   }
 
-  // Anthropic path
+  // Priority 3: Anthropic Claude (production fallback)
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY not set. Cannot remediate plans without API key.');
 

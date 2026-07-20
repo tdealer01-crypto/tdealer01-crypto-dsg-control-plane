@@ -32,19 +32,19 @@
       "id": "policy_enforcement",
       "title": "Real-Time Policy Evaluation",
       "description": "View ALLOW, BLOCK, or REVIEW decisions from the DSG control plane directly on payment details, with policy version and proof reference tracking.",
-      "imageUrl": "https://cdn.dsg.pics/stripe-app/policy-enforcement.png"
+      "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-1-allow.png"
     },
     {
       "id": "compliance_tracking",
       "title": "Governance Audit Trail",
       "description": "Every policy decision is timestamped and versioned, providing a complete audit trail for compliance reviews and regulatory reporting.",
-      "imageUrl": "https://cdn.dsg.pics/stripe-app/audit-trail.png"
+      "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-2-review.png"
     },
     {
       "id": "fallback_safety",
       "title": "Safe Failure Mode",
       "description": "If the governance service is unreachable, the app displays REVIEW status—never auto-allowing transactions. This ensures maximum safety during service interruptions.",
-      "imageUrl": "https://cdn.dsg.pics/stripe-app/fallback-mode.png"
+      "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-3-block.png"
     }
   ],
   "permissions": [
