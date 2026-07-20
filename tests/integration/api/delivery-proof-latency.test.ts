@@ -3,6 +3,14 @@
  *
  * Validates that delivery-proof reports are generated within SLA (5 minutes).
  * Must validate P95 < 300s and P99 < 420s.
+ *
+ * Note: This test requires staging environment with:
+ * - STRIPE_SECRET_KEY
+ * - SUPABASE_SERVICE_ROLE_KEY
+ * - NEXT_PUBLIC_SUPABASE_URL
+ * - Dev server running on localhost:3000
+ *
+ * Skipped in CI by default; run in staging environment.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -13,7 +21,14 @@ const LATENCY_SLA_MS = 300_000; // 5 minutes
 const P95_THRESHOLD_MS = 300_000;
 const P99_THRESHOLD_MS = 420_000; // 7 minutes (absolute max)
 
-describe('Delivery-Proof Latency SLA', () => {
+// Skip in CI environment without proper staging credentials
+const hasRequiredEnv = Boolean(
+  process.env.STRIPE_SECRET_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL
+);
+
+describe.skipIf(!hasRequiredEnv)('Delivery-Proof Latency SLA', () => {
   let stripe: Stripe;
   let supabase: ReturnType<typeof createClient>;
   let latencies: number[] = [];

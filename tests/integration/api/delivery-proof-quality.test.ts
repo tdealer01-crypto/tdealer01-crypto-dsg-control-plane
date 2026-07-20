@@ -5,11 +5,20 @@
  * - 3+ specific findings (not generic AI filler)
  * - Actionability score >= 0.8
  * - 80%+ of reports pass rubric across scenarios
+ *
+ * Note: This test requires staging environment with:
+ * - ANTHROPIC_API_KEY
+ * - Dev server running on localhost:3000
+ *
+ * Skipped in CI by default; run in staging environment.
  */
 
 import { describe, it, expect } from 'vitest';
 
-describe('Delivery-Proof Report Quality', () => {
+// Skip in CI environment without proper staging credentials
+const hasRequiredEnv = Boolean(process.env.ANTHROPIC_API_KEY);
+
+describe.skipIf(!hasRequiredEnv)('Delivery-Proof Report Quality', () => {
   interface ReportQualityTest {
     name: string;
     deliveryData: Record<string, unknown>;

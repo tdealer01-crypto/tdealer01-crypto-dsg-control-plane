@@ -5,13 +5,27 @@
  * - Duplicate webhooks (rapid fire within 1s)
  * - Out-of-order delivery (Stripe can deliver events out of order)
  * - Multiple subscription creations → exactly 1 DB entry
+ *
+ * Note: This test requires staging environment with:
+ * - STRIPE_SECRET_KEY
+ * - SUPABASE_SERVICE_ROLE_KEY
+ * - NEXT_PUBLIC_SUPABASE_URL
+ *
+ * Skipped in CI by default; run in staging environment.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
-describe('Billing Webhook Idempotency', () => {
+// Skip in CI environment without proper staging credentials
+const hasRequiredEnv = Boolean(
+  process.env.STRIPE_SECRET_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL
+);
+
+describe.skipIf(!hasRequiredEnv)('Billing Webhook Idempotency', () => {
   let stripe: Stripe;
   let supabase: ReturnType<typeof createClient>;
 
