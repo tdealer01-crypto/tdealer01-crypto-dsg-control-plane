@@ -705,11 +705,9 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     logWebhook('error', 'Webhook processing failed', {
       requestId,
-      error: errorMessage,
       duration,
       status: 'failed',
     });

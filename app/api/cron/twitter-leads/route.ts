@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error('[Twitter Leads Cron] Error:', err);
     return NextResponse.json(
-      { error: 'discovery failed', message: err instanceof Error ? err.message : 'unknown error' },
+      { error: 'discovery failed' },
       { status: 500, headers: auth.headers }
     );
   }
