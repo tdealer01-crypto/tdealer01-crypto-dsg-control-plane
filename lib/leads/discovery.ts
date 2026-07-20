@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
+import { onLeadDiscovered } from '../emails/lead-integrations';
 
 export type DiscoveryLead = {
   email: string;
@@ -211,7 +212,7 @@ export async function saveDiscoveredLeads(leads: DiscoveryLead[]): Promise<{ sav
   let skipped = 0;
 
   for (const lead of leads) {
-    const { error } = await (supabase as any)
+    const { data: upsertResult, error } = await (supabase as any)
       .from('leads')
       .upsert(
         {
@@ -226,13 +227,22 @@ export async function saveDiscoveredLeads(leads: DiscoveryLead[]): Promise<{ sav
           last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'email,source,coalesce(github_repo, \'\')' }
-      );
+      )
+      .select('id');
 
     if (error) {
       console.error(`[Save Lead] Error saving ${lead.email}:`, error);
       skipped++;
     } else {
       saved++;
+      // Trigger email sequence for newly discovered lead
+      if (upsertResult && upsertResult.length > 0) {
+        await onLeadDiscovered({
+          id: upsertResult[0].id,
+          email: lead.email,
+          source_platform: lead.source_platform,
+        });
+      }
     }
   }
 

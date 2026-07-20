@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
+import { onICPScoreUpdated } from '../emails/lead-integrations';
 
 export type LeadProfile = {
   id: string;
@@ -185,7 +186,7 @@ export async function updateLeadICPScores(limit: number = 100): Promise<{ update
   // Fetch leads without ICP scores
   const { data: leads, error } = await (supabase as any)
     .from('leads')
-    .select('id,email,company,job_title,github_repo,github_stars,framework,intent_score,source_platform')
+    .select('id,email,company,job_title,github_repo,github_stars,framework,intent_score,source_platform,icp_score')
     .is('icp_score', null)
     .limit(limit);
 
@@ -221,6 +222,11 @@ export async function updateLeadICPScores(limit: number = 100): Promise<{ update
 
       if (!updateErr) {
         updated++;
+        // Trigger email sequence if score crosses high-priority threshold (75+)
+        await onICPScoreUpdated(
+          { id: lead.id, email: lead.email, icp_score: icpScore.overall },
+          lead.icp_score || null
+        );
       } else {
         failed++;
       }

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase-server';
+import { onTrialStarted } from '../emails/lead-integrations';
 
 export type ConversionEvent = {
   lead_id: string;
@@ -31,6 +32,9 @@ export async function trackTrialStart(lead: { id: string; email: string }): Prom
     console.error('[Trial Start] Failed to track:', error);
     return false;
   }
+
+  // Trigger email sequence for trial start
+  await onTrialStarted(lead);
 
   return true;
 }
