@@ -6,7 +6,6 @@
   "buildCommand": "npm run build --if-present || true",
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs26.x",
       "memory": 1024,
       "maxDuration": 30
     }
