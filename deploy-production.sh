@@ -114,11 +114,6 @@ REQUIRED_VARS=(
   "ANTHROPIC_API_KEY"
 )
 
-OPTIONAL_VARS=(
-  "UPSTASH_REDIS_REST_URL"
-  "UPSTASH_REDIS_REST_TOKEN"
-)
-
 log "Checking required environment variables..."
 
 MISSING=()
@@ -264,7 +259,7 @@ PROJECTS=$(vercel projects --json 2>/dev/null | jq -r '.projects[].name' 2>/dev/
 if [ -z "$PROJECTS" ]; then
   warn "Could not list projects. Continue with manual steps?"
 else
-  success "Found projects: $(echo $PROJECTS | head -3)"
+  success "Found projects: $(echo "$PROJECTS" | head -3)"
 fi
 
 # ============================================================================
