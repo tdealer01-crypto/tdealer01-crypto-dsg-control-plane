@@ -13,8 +13,8 @@
     "views": [
       {
         "name": "payment.detail",
-        "title": "DSG Governance Gate",
-        "description": "Policy evaluation and compliance status for payment events"
+        "title": "DSG ONE - Policy Verification",
+        "description": "Real-time policy evaluation and compliance status. Every payment decision is verified, audited, and provable."
       }
     ],
     "content_security_policy": {
