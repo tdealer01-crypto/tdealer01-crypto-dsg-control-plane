@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "name": "z3-solver-api",
   "version": 2,
   "public": true,
   "installCommand": "npm ci",
