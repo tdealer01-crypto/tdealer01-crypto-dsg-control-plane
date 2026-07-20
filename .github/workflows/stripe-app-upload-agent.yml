@@ -114,13 +114,23 @@ jobs:
             STRIPE_CONTEXT_AUTH="$STRIPE_API_KEY" stripe apps upload 2>&1 | tee /tmp/upload.log || true
           else
             echo "Stripe CLI not available, trying direct API..."
-            # Use Stripe API directly to upload app manifest
-            # POST https://api.stripe.com/v1/apps/contexts/self/published_app_manifests
+            # Use Stripe API directly - first set distribution to public
+            # Then use the authenticated API to create/update the app manifest
             APP_MANIFEST=$(cat ./packages/stripe-app/stripe-app.json)
-            curl -X POST https://api.stripe.com/v1/app_contexts/self/published_app_manifests \
+
+            # Try Stripe Files API to upload manifest
+            echo "Uploading manifest via Stripe Files API..."
+            curl -X POST https://api.stripe.com/v1/files \
+              -H "Authorization: Bearer $STRIPE_API_KEY" \
+              -F "purpose=stripe_app_manifest" \
+              -F "file=@./packages/stripe-app/stripe-app.json" 2>&1 | tee /tmp/upload.log || true
+
+            # Also try direct manifest update
+            echo "Attempting direct manifest update..."
+            curl -X PUT https://api.stripe.com/v1/apps/pics.dsg.governance \
               -H "Authorization: Bearer $STRIPE_API_KEY" \
               -H "Content-Type: application/json" \
-              -d "$APP_MANIFEST" 2>&1 | tee /tmp/upload.log || true
+              -d "$APP_MANIFEST" 2>&1 | tee -a /tmp/upload.log || true
           fi
 
           echo "=== Upload Log ==="
