@@ -85,15 +85,23 @@ jobs:
             exit 1
           fi
 
+          echo "=== Debug Info ==="
+          echo "API Key present: $([ -n "$STRIPE_API_KEY" ] && echo 'yes' || echo 'no')"
+          echo "API Key length: ${#STRIPE_API_KEY}"
+          echo "Stripe CLI available: $(command -v stripe &>/dev/null && echo 'yes' || echo 'no')"
+          echo "==================="
+
           echo "Attempting Stripe app upload..."
           stripe apps upload --api-key "$STRIPE_API_KEY" 2>&1 | tee /tmp/upload.log || true
 
+          echo "=== Upload Log ==="
+          cat /tmp/upload.log
+          echo "=================="
+
           if grep -q "successfully" /tmp/upload.log || grep -q "deployed" /tmp/upload.log; then
             echo "UPLOAD_SUCCESS=true" >> $GITHUB_OUTPUT
-            cat /tmp/upload.log
           else
             echo "UPLOAD_SUCCESS=false" >> $GITHUB_OUTPUT
-            cat /tmp/upload.log
           fi
 
       - name: Report upload status
