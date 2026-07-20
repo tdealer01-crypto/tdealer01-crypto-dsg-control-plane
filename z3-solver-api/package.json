@@ -10,4 +10,7 @@
   "dependencies": {
     "z3-solver": "^4.16.0"
   },
+  "engines": {
+    "node": "24.x"
+  }
 }
