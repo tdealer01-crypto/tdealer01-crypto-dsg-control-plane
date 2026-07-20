@@ -144,7 +144,7 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 | **Build** | ✅ | Next.js production build (193 static pages) |
 | **TypeScript** | ✅ | Type-safe, `tsc --noEmit` clean |
 | **Tests** | ✅ **4026** passing / 0 failing | +1412 tests added (July 2026). CCVS evidence run, Z3 theorem proofs, webhook tests, agent gates |
-| **Code Coverage** | ✅ **89%** | Statement coverage; highest: Z3 (95%), Stripe (92%), Auth (91%) |
+| **Code Coverage** | ✅ **21.58%** overall | Critical modules: Z3 (95%), Stripe (92%), Auth (91%), Validation (83%), Usage (100%) |
 | **Security** | ✅ | 0 critical/high vulnerabilities, CodeQL clean, JWT spoofing prevented, ReDoS/XSS fixed |
 | **Deployment** | ✅ | Vercel production-ready, auto-deploy from main (CI/CD gated) |
 | **CI/CD** | ✅ | GitHub Secrets configured (Supabase, Stripe, Anthropic), all checks passing |
@@ -155,7 +155,7 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 | **Audit & Compliance** | ✅ | Full audit trails with correlation IDs, SOC 2 Type II mapping, incident response playbook |
 | **Phase 4: Accessibility** | ✅ | PR #969 merged: WCAG 2.2 AA compliance audit (89% conformance) with 145+ accessibility tests |
 | **Phase 7: Revenue Automation** | ✅ | Delivery Proof product live, 4 production test suites, RLS billing, rate limiting deployed |
-| **Last Updated** | ✅ | July 20, 2026 — Z3 verification complete, 89% coverage achieved |
+| **Last Updated** | ✅ | July 20, 2026 — Z3 verification complete, 21.58% overall coverage (95% Z3, 92% Stripe, 91% Auth) |
 
 ---
 
