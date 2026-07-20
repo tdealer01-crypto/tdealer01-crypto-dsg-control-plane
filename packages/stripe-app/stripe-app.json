@@ -2,7 +2,7 @@
   "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
   "name": "DSG ONE - Control Plane for AI Operations",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "icon": "./icon.png",
   "description": "Don't trust AI. Verify every decision. DSG ONE is the control plane for AI operations across your organization. Monitor every action. Verify before execution. Audit and replay proof. Optimize costs. Every AI decision has an owner—DSG ONE proves it.",
   "shortDescription": "Monitor. Verify. Audit. Optimize. One platform for AI accountability.",
