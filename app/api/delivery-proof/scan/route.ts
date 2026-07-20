@@ -8,6 +8,8 @@
  */
 
 import { NextResponse } from 'next/server';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { readJsonBody } from '../../../../lib/security/request-json';
 import { createClient } from '../../../../lib/supabase/server';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
@@ -15,6 +17,20 @@ import { requireActiveProfile } from '../../../../lib/auth/require-active-profil
 import { checkDeliveryProofEntitlement, recordDeliveryProofScan, type EntitlementCheck } from '../../../../lib/delivery-proof/entitlement';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Rate limiter: 10 scans per hour per IP
+ * (Pro accounts get higher limits via entitlement check)
+ */
+function getRateLimiter() {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null; // Rate limiting disabled if Redis not configured
+  }
+  return new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(10, '1 h'),
+  });
+}
 
 interface ScanInput {
   production_url?: string;
@@ -94,6 +110,26 @@ async function saveReport(
 }
 
 export async function POST(request: Request) {
+  // Apply rate limiting
+  const ratelimit = getRateLimiter();
+  if (ratelimit) {
+    const ip = request.headers.get('x-forwarded-for') ||
+               request.headers.get('x-real-ip') ||
+               'unknown';
+    const { success, remaining } = await ratelimit.limit(ip);
+
+    if (!success) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Rate limit exceeded. Maximum 10 scans per hour.',
+          remaining,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
   const parsed = await readJsonBody<ScanInput>(request, { maxBytes: 4_096 });
   if (!parsed.ok) {
     return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
