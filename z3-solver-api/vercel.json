@@ -7,7 +7,7 @@
   "buildCommand": "npm run build --if-present || true",
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs20.x",
+      "runtime": "nodejs26.x",
       "memory": 1024,
       "maxDuration": 30
     }
