@@ -1,11 +1,11 @@
 {
   "$schema": "https://stripe.com/stripe-app.schema.json",
   "id": "pics.dsg.governance",
-  "name": "DSG Governance Gate",
+  "name": "DSG ONE - Control Plane for AI Operations",
   "version": "2.6.1",
   "icon": "./icon.png",
-  "description": "DSG Platform provides automated risk governance and compliance infrastructure for digital enterprises. The DSG Governance Gate Stripe app evaluates policy decisions directly inside your payment detail view, surfacing real-time status details including policy versions, proof references, and clear verification time logs.",
-  "shortDescription": "Real-time governance and compliance status on payment details",
+  "description": "Don't trust AI. Verify every decision. DSG ONE is the control plane for AI operations across your organization. Monitor every action. Verify before execution. Audit and replay proof. Optimize costs. Every AI decision has an owner—DSG ONE proves it.",
+  "shortDescription": "Monitor. Verify. Audit. Optimize. One platform for AI accountability.",
   "documentationUrl": "https://dsg.pics/docs/stripe-app",
   "websiteUrl": "https://dsg.pics",
   "supportEmail": "support@dsg.pics",
@@ -13,8 +13,8 @@
     "views": [
       {
         "name": "payment.detail",
-        "title": "DSG Governance Gate",
-        "description": "Policy evaluation and compliance status for payment events"
+        "title": "DSG ONE - Policy Verification",
+        "description": "Real-time policy evaluation and compliance status. Every payment decision is verified, audited, and provable."
       }
     ],
     "content_security_policy": {
@@ -29,22 +29,28 @@
   "extensions": null,
   "features": [
     {
-      "id": "policy_enforcement",
-      "title": "Real-Time Policy Evaluation",
-      "description": "View ALLOW, BLOCK, or REVIEW decisions from the DSG control plane directly on payment details, with policy version and proof reference tracking.",
+      "id": "monitor_pillar",
+      "title": "👀 Monitor",
+      "description": "See every AI operation in your live dashboard. Real-time events, usage tracking, and alerts for high-risk decisions. Know what's happening across all your integrations.",
       "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-1-allow.png"
     },
     {
-      "id": "compliance_tracking",
-      "title": "Governance Audit Trail",
-      "description": "Every policy decision is timestamped and versioned, providing a complete audit trail for compliance reviews and regulatory reporting.",
+      "id": "verify_pillar",
+      "title": "✅ Verify",
+      "description": "Prevent mistakes before AI acts. Policy enforcement gates every decision. Human approval for critical operations. Risk detection blocks uncertain actions.",
       "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-2-review.png"
     },
     {
-      "id": "fallback_safety",
-      "title": "Safe Failure Mode",
-      "description": "If the governance service is unreachable, the app displays REVIEW status—never auto-allowing transactions. This ensures maximum safety during service interruptions.",
+      "id": "audit_pillar",
+      "title": "📜 Audit",
+      "description": "Prove every decision. Tamper-proof audit trail with SHA-256 hashing. Replay any decision years later for testing or regulatory proof. Export compliance evidence.",
       "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-3-block.png"
+    },
+    {
+      "id": "optimize_pillar",
+      "title": "📈 Optimize",
+      "description": "Control costs and reduce risk. Track AI spending by provider and operation type. Get insights to prevent budget surprises. Export reports for compliance audits.",
+      "imageUrl": "https://tdealer01-crypto-dsg-control-plane.vercel.app/stripe-listing-4-optimize.png"
     }
   ],
   "permissions": [

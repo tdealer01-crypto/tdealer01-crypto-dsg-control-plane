@@ -1,15 +1,17 @@
-# 🔐 DSG: Deterministic Execution & Governance
+# 🔐 DSG ONE: Control Plane for AI Operations
 
 [![Tests](https://img.shields.io/badge/tests-4026_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
 [![Coverage](https://img.shields.io/badge/coverage-89%25-brightgreen?style=for-the-badge)](TEST_COVERAGE.md)
-[![Z3 Verified](https://img.shields.io/badge/Z3_Formal-5_Theorems_Proved-blue?style=for-the-badge)](lib/gateway/z3/)
 [![Production](https://img.shields.io/badge/Production-LIVE-brightgreen?style=for-the-badge)](#production-status-)
 [![PDPA Ready](https://img.shields.io/badge/PDPA-มาตรา37พร้อม-purple?style=for-the-badge)](BENCHMARKS.md)
+[![Accountability](https://img.shields.io/badge/Every_Decision-Has_an_Owner-informational?style=for-the-badge)](#the-accountability-angle)
 
-> ### 🎯 ท้าพิสูจน์: ลองแก้หลักฐาน 1 ตัวอักษร ถ้าแก้แล้วผ่าน 
-> [▶️ กดลอง Tamper Test สดๆ ไม่ต้องสมัคร](/showcase) | [📊 ดู Benchmark เทียบตลาด](BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
+> ### 💡 Don't trust AI. Verify every decision.
+> **Monitor** every action. **Verify** before execution. **Audit** and replay proof. **Optimize** costs and risk.
+> 
+> [▶️ Try DSG ONE Free](/showcase) | [📊 View Benchmarks](BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
-**DSG ONE คืออะไรใน 1 บรรทัด:** พิมพ์ Policy ภาษาไทยว่า "ห้ามโอนเกิน 50,000" ระบบบล็อก AI อัตโนมัติใน 11ms พร้อมออกใบเสร็จ SHA-256 ที่ปลอมไม่ได้และทำซ้ำได้ 2 ปี
+**One-Sentence Pitch:** Write a policy once ("Only allow transfers under ฿50K"). DSG ONE gates every AI decision against it, proves why it decided, and exports tamper-proof evidence for audits.
 
 ---
 
@@ -21,97 +23,132 @@
 
 ---
 
-## The Problem
+## Why DSG ONE?
 
-Traditional AI systems can't be audited. They make decisions, but you can't:
-- ✗ Reproduce the decision (non-deterministic)
-- ✗ Prove it followed policy (no verification)
-- ✗ Show evidence to regulators (no audit trail)
-- ✗ Certify it for compliance (no formal proof)
+**The Problem:** AI makes decisions, but:
+- ❌ You don't see them happening
+- ❌ You can't verify they followed policy
+- ❌ You can't prove them to regulators
+- ❌ You have no accountability trail
 
-## The Solution: DSG
-
-**DSG is policy-controlled AI that proves every decision.**
-
-```
-Policy → Deterministic Solver → Formal Proof → Execution → Evidence
-         (Z3/QUBO)              (SHA-256)      (recorded)  (auditable)
-```
-
-**Every decision is:**
-- ✅ **Deterministic** — same input always produces same output
-- ✅ **Provable** — backed by Z3 formal verification
-- ✅ **Auditable** — full evidence chain with SHA-256 hashing
-- ✅ **Compliant** — CCVS L1-L5 evidence artifacts included
+**The Solution:** DSG ONE enforces policy + creates proof.
 
 ---
 
-## What is DSG?
+## The Four Pillars
 
-**A runtime governance engine for AI agents**
+### 👀 Monitor
+**See every AI operation in real-time.**
+- Live dashboard showing all actions
+- Event log with usage tracking
+- Alerts when high-risk decisions happen
+- Integration with Stripe, OpenAI, GitHub, Anthropic, MCP, and more
 
-Instead of letting AI decide directly, DSG:
+### ✅ Verify  
+**Prevent mistakes before AI acts.**
+- Human approval workflows for critical decisions
+- Policy enforcement gates (define rules once, apply everywhere)
+- Risk detection blocks uncertain actions
+- Secret protection (credentials never exposed in logs)
 
-1. **Policy Input** — Define rules in natural language (Thai/English supported)
-2. **Deterministic Gate** — Route through Z3 SMT solver or QUBO optimizer
-3. **Formal Verification** — Generate cryptographic proof (NVIDIA HPC + Z3)
-4. **Execution** — Run agent with provable decision context
-5. **Evidence** — Record audit trail with compliance artifacts
+### 📜 Audit
+**Prove every decision, replay it anytime.**
+- Full audit trail (SHA-256 tamper-proof)
+- Replay capability: re-run any decision years later with same output
+- Export compliance evidence (JSON, CSV, PDF)
+- CCVS L1–L5 artifacts + EU AI Act mapping included
 
-**Result:** AI decisions that can be replayed, audited, and certified 2+ years later.
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│ Client / Agent Request (Policy in Thai/English)              │
-└──────────────────────────────────────────────────────────────┘
-                         ↓
-┌──────────────────────────────────────────────────────────────┐
-│ Policy Parser & Constraint Normalizer                         │
-└──────────────────────────────────────────────────────────────┘
-                         ↓
-        ┌────────────────┴────────────────┐
-        ↓                                  ↓
-  ┌─────────────┐             ┌──────────────────┐
-  │ Z3 Solver   │             │ QUBO Optimizer   │
-  │ (Formal     │             │ (NVIDIA Ising)   │
-  │ Verification)             │ (advisoryonly)   │
-  └─────────────┘             └──────────────────┘
-        ↓                                  ↓
-        └────────────────┬────────────────┘
-                         ↓
-         ┌─────────────────────────────┐
-         │ DSG Policy Gate             │
-         │ (Decision + Proof)          │
-         └─────────────────────────────┘
-                         ↓
-         ┌─────────────────────────────┐
-         │ Deterministic Execution     │
-         │ (Z3/QUBO result applied)    │
-         └─────────────────────────────┘
-                         ↓
-         ┌─────────────────────────────┐
-         │ Evidence Store (Supabase)   │
-         │ + SHA-256 Merkle Ledger     │
-         │ (Auditable 2+ years)        │
-         └─────────────────────────────┘
-```
+### 📈 Optimize
+**Control costs and reduce risk.**
+- Cost tracking by AI provider and operation type
+- Analytics to find where AI spending goes
+- Insights to prevent budget surprises
+- Compliance reporting for audits and boards
 
 ---
 
-## Core Features
+## How DSG ONE Works
 
-| Feature | Why It Matters |
-|---------|---|
-| **Z3 Formal Verification** | Every decision has a cryptographic proof |
-| **Deterministic Execution** | Replay any decision with same inputs → same output |
-| **Evidence Chain** | CCVS L1-L5 compliance artifacts auto-generated |
-| **Policy Gateway** | Define rules once, enforce everywhere (no hardcoding) |
-| **Audit Trail** | Full SHA-256 hashed ledger, queryable back years |
-| **Multi-Solver** | QUBO (NVIDIA Ising) + Z3 (formal), pick best fit |
+### The Accountability Loop
+
+1. **You Write a Policy** — Define rules in natural language (Thai or English)
+   - Example: "Only approve transfers under ฿50K without human review"
+
+2. **DSG Verifies Every Decision** — Before any AI acts:
+   - Does this action match your policy? ✅ ALLOW / ⚠️ REVIEW / ❌ BLOCK
+   - Can I prove this decision? (cryptographic proof generated)
+   - Who approved this? (audit trail recorded)
+
+3. **Decision is Recorded** — Tamper-proof evidence stored:
+   - What happened and why
+   - Who approved it
+   - Full replay capability for audits
+   - Export for compliance reports
+
+4. **You Have Proof** — Show regulators:
+   - "Every decision was verified against policy"
+   - "Here's the evidence, unchangeable since [date]"
+   - "We can replay any decision to prove it"
+
+**Result:** Complete accountability. Every AI decision has an owner. Every proof is auditable.
+
+---
+
+---
+
+## The Accountability Angle (What Sets DSG ONE Apart)
+
+**Competitors focus on "logging." DSG ONE focuses on "who approved it" and "why it was allowed."**
+
+| Question | Traditional AI | Competitors | DSG ONE |
+|----------|---|---|---|
+| "What did AI decide?" | ✅ We logged it | ✅ We logged it | ✅ Decision visible in dashboard |
+| "Did it follow policy?" | ❌ Not provable | ⚠️ Claims it did | ✅ Policy gate enforced it |
+| "Who approved this?" | ❌ Nobody | ❌ Nobody | ✅ Human approval recorded |
+| "Can you replay it?" | ❌ Non-deterministic | ❌ Can't replay | ✅ Exact replay possible |
+| "Is this audit-ready?" | ❌ No proof | ⚠️ Just logs | ✅ Tamper-proof evidence |
+
+**Result:** Every AI decision has an owner. Every proof is unchangeable. Every audit is simple.
+
+---
+
+## Architecture: Policy → Gate → Proof → Evidence
+
+```
+User Policy (Thai/English)
+      ↓
+Policy Parser & Validator
+      ↓
+[DSG Verification Gate]
+  ├─ Does this action match policy?
+  ├─ Is there risk?
+  ├─ Does this need human approval?
+      ↓
+Decision: ✅ ALLOW / ⚠️ REVIEW / ❌ BLOCK
+      ↓
+[Cryptographic Proof Generated]
+  ├─ Policy version hash
+  ├─ Decision reason
+  ├─ Approval trail (if needed)
+      ↓
+[Evidence Recorded & Stored]
+  ├─ Audit log (SHA-256 tamper-proof)
+  ├─ Compliance export (JSON/CSV/PDF)
+  ├─ Replay capability (2+ years)
+```
+
+**Under the hood:** Z3 formal verification, SHA-256 hash chains, deterministic solvers ensure identical replay with identical inputs.
+
+---
+
+## Core Features (Mapped to 4 Pillars)
+
+| Pillar | Features | Why It Matters |
+|--------|----------|---|
+| **👀 Monitor** | Dashboard, events, usage alerts | See what's happening in real-time |
+| **✅ Verify** | Policy enforcement, approvals, risk detection | Prevent mistakes before they happen |
+| **📜 Audit** | Tamper-proof trail, replay, export, evidence | Prove decisions to regulators |
+| **📈 Optimize** | Cost tracking, analytics, compliance reports | Control budget and risk |
 
 ---
 
