@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error('[ICP Scores Cron] Error:', err);
     return NextResponse.json(
-      { error: 'scoring failed', message: err instanceof Error ? err.message : 'unknown error' },
+      { error: 'scoring failed' },
       { status: 500, headers: auth.headers }
     );
   }
