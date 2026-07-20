@@ -66,24 +66,24 @@ jobs:
         run: |
           mkdir -p /tmp/stripe
           cd /tmp/stripe
-          # Use a known stable version with apps upload support
-          STRIPE_VERSION="v1.18.0"
-          echo "Installing Stripe CLI: $STRIPE_VERSION"
-          # Try multiple download methods
-          if wget -q "https://github.com/stripe/stripe-cli/releases/download/${STRIPE_VERSION}/stripe_linux_x86_64.tar.gz" 2>/dev/null; then
-            echo "Downloaded via wget successfully"
-          elif curl -L -o stripe_linux_x86_64.tar.gz "https://github.com/stripe/stripe-cli/releases/download/${STRIPE_VERSION}/stripe_linux_x86_64.tar.gz" 2>/dev/null; then
-            echo "Downloaded via curl successfully"
-          else
-            echo "Failed to download Stripe CLI, will use API key approach"
-            exit 0
-          fi
-          tar xzf stripe_linux_x86_64.tar.gz 2>/dev/null || true
-          chmod +x stripe 2>/dev/null || true
-          if [ -f stripe ]; then
-            ./stripe version || true
-            echo "/tmp/stripe" >> $GITHUB_PATH
-          fi
+          # Try to get latest Stripe CLI version that has apps support
+          echo "Attempting to fetch latest Stripe CLI..."
+          for version in "v1.20.0" "v1.19.0" "v1.18.0"; do
+            echo "Trying Stripe CLI $version..."
+            if curl -L -o stripe_linux_x86_64.tar.gz "https://github.com/stripe/stripe-cli/releases/download/${version}/stripe_linux_x86_64.tar.gz" 2>/dev/null; then
+              echo "Successfully downloaded Stripe CLI $version"
+              tar xzf stripe_linux_x86_64.tar.gz 2>/dev/null || true
+              chmod +x stripe 2>/dev/null || true
+              if [ -f stripe ] && ./stripe apps --help 2>/dev/null | grep -q upload; then
+                echo "✓ Stripe CLI $version has apps upload support"
+                ./stripe version || true
+                echo "/tmp/stripe" >> $GITHUB_PATH
+                exit 0
+              fi
+            fi
+          done
+          echo "Note: Could not find Stripe CLI with apps support, proceeding without CLI"
+          exit 0
 
       - name: Upload app to Stripe
         id: upload
@@ -105,44 +105,43 @@ jobs:
           echo "Stripe CLI available: $(command -v stripe &>/dev/null && echo 'yes' || echo 'no')"
           echo "==================="
 
-          # Try multiple upload strategies
-          echo "Strategy 1: Trying Stripe CLI if available..."
+          # Try Stripe CLI if available and has apps command
           if command -v stripe &>/dev/null; then
             echo "Stripe CLI version:"
             stripe version || true
-            echo "Attempting: stripe apps upload"
-            STRIPE_CONTEXT_AUTH="$STRIPE_API_KEY" stripe apps upload 2>&1 | tee /tmp/upload.log || true
-          else
-            echo "Stripe CLI not available, trying direct API..."
-            # Use Stripe API directly - first set distribution to public
-            # Then use the authenticated API to create/update the app manifest
-            APP_MANIFEST=$(cat ./packages/stripe-app/stripe-app.json)
 
-            # Try Stripe Files API to upload manifest
-            echo "Uploading manifest via Stripe Files API..."
-            curl -X POST https://api.stripe.com/v1/files \
-              -H "Authorization: Bearer $STRIPE_API_KEY" \
-              -F "purpose=stripe_app_manifest" \
-              -F "file=@./packages/stripe-app/stripe-app.json" 2>&1 | tee /tmp/upload.log || true
+            # Check if CLI has apps subcommand
+            if stripe apps --help 2>/dev/null | grep -q upload; then
+              echo "✓ Stripe CLI has apps upload support"
+              echo "Attempting: stripe apps upload"
+              STRIPE_CONTEXT_AUTH="$STRIPE_API_KEY" stripe apps upload 2>&1 | tee /tmp/upload.log || true
 
-            # Also try direct manifest update
-            echo "Attempting direct manifest update..."
-            curl -X PUT https://api.stripe.com/v1/apps/pics.dsg.governance \
-              -H "Authorization: Bearer $STRIPE_API_KEY" \
-              -H "Content-Type: application/json" \
-              -d "$APP_MANIFEST" 2>&1 | tee -a /tmp/upload.log || true
+              # Check for success
+              if grep -qi "success\|deployed\|version\|updated" /tmp/upload.log; then
+                echo "UPLOAD_SUCCESS=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            else
+              echo "⚠ Stripe CLI does not have 'apps upload' command"
+              echo "Available commands:"
+              stripe --help 2>/dev/null | grep -E "^\s+" || true
+            fi
           fi
 
-          echo "=== Upload Log ==="
-          cat /tmp/upload.log
-          echo "=================="
+          # If CLI approach didn't work, prepare manifest for manual upload
+          echo "Preparing app manifest for manual upload..."
+          APP_MANIFEST=$(cat ./packages/stripe-app/stripe-app.json)
+          echo "App manifest ready:"
+          echo "$APP_MANIFEST" | jq '.id, .name, .version, .distribution_type'
 
-          # Check for success indicators (various possible outputs)
-          if grep -qi "success\|deployed\|version\|uploaded\|app updated\|2.6.2\|published" /tmp/upload.log; then
-            echo "UPLOAD_SUCCESS=true" >> $GITHUB_OUTPUT
-          else
-            echo "UPLOAD_SUCCESS=false" >> $GITHUB_OUTPUT
-          fi
+          echo "Manual upload steps:"
+          echo "1. Go to: https://dashboard.stripe.com/developers/apps"
+          echo "2. Find app: pics.dsg.governance"
+          echo "3. Click: 'Edit app'"
+          echo "4. Update manifest (copy from CI logs)"
+          echo "5. Click: 'Save and upload'"
+
+          echo "UPLOAD_SUCCESS=false" >> $GITHUB_OUTPUT
 
       - name: Report upload status
         if: always()
