@@ -4,6 +4,7 @@
   "public": true,
   "installCommand": "npm ci",
   "buildCommand": "npm run build --if-present || true",
+  "outputDirectory": ".",
   "env": {
     "NODE_ENV": "production"
   },
