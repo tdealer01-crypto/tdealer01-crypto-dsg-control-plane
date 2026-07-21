@@ -7,42 +7,50 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
 import UsageBar from '../../../components/billing/UsageBar';
+import { GATE_PLANS, SKILLS_BUNDLES, type PlanKey } from '@/lib/billing/pricing-catalog';
 
-type PlanKey = 'pro' | 'business' | 'enterprise';
 type NudgeLevel = 'none' | 'soft' | 'hard' | 'blocked';
 type BillingInterval = 'monthly' | 'yearly';
+
+// Monthly prices come from the pricing catalog (single source of truth — the
+// same numbers /api/billing/checkout charges). Yearly display keeps this
+// page's ~20% discount convention; the Stripe yearly prices must be
+// reconciled against these per the catalog's pricing rule.
+function yearlyPerMonth(monthly: number): number {
+  return Math.round(monthly * 0.8);
+}
 
 const PLANS: { key: PlanKey; title: string; monthly: number; yearly: number; yearlyTotal: number; features: string[] }[] = [
   {
     key: 'pro',
     title: 'Pro',
-    monthly: 99,
-    yearly: 79,
-    yearlyTotal: 948,
+    monthly: GATE_PLANS.pro.displayMonthlyUsd,
+    yearly: yearlyPerMonth(GATE_PLANS.pro.displayMonthlyUsd),
+    yearlyTotal: yearlyPerMonth(GATE_PLANS.pro.displayMonthlyUsd) * 12,
     features: ['10,000 executions / mo', '60 req/min gate limit', '10 agents', 'PDF export'],
   },
   {
     key: 'business',
     title: 'Business',
-    monthly: 299,
-    yearly: 239,
-    yearlyTotal: 2868,
+    monthly: GATE_PLANS.business.displayMonthlyUsd,
+    yearly: yearlyPerMonth(GATE_PLANS.business.displayMonthlyUsd),
+    yearlyTotal: yearlyPerMonth(GATE_PLANS.business.displayMonthlyUsd) * 12,
     features: ['100,000 executions / mo', '300 req/min gate limit', '50 agents', 'Audit ledger'],
   },
   {
     key: 'enterprise',
     title: 'Enterprise',
-    monthly: 799,
-    yearly: 639,
-    yearlyTotal: 7668,
+    monthly: GATE_PLANS.enterprise.displayMonthlyUsd,
+    yearly: yearlyPerMonth(GATE_PLANS.enterprise.displayMonthlyUsd),
+    yearlyTotal: yearlyPerMonth(GATE_PLANS.enterprise.displayMonthlyUsd) * 12,
     features: ['1,000,000 executions / mo', 'Unlimited gates', 'Unlimited agents', 'SLA + support'],
   },
 ];
 
 const SKILL_BUNDLES = [
-  { id: 'finance_skills', name: 'Finance Governance', monthly: 199 },
-  { id: 'dev_skills', name: 'Dev Automation', monthly: 99 },
-  { id: 'compliance_skills', name: 'Compliance & Legal', monthly: 249 },
+  { id: 'finance_skills', name: 'Finance Governance', monthly: SKILLS_BUNDLES.finance_skills.amountMonthly / 100 },
+  { id: 'dev_skills', name: 'Dev Automation', monthly: SKILLS_BUNDLES.dev_skills.amountMonthly / 100 },
+  { id: 'compliance_skills', name: 'Compliance & Legal', monthly: SKILLS_BUNDLES.compliance_skills.amountMonthly / 100 },
 ];
 
 function UpgradeCard({

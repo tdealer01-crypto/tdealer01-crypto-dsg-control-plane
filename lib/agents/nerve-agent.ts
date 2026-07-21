@@ -83,7 +83,9 @@ export class NerveAgent {
         //   currency: job.reward.currency,
         //   tx_signature: signature,
         // });
-        console.log(`[${this.agentName}] ✅ Earnings persisted to Supabase`);
+        console.warn(
+          `[${this.agentName}] ⚠️ Earnings NOT persisted — agentProfileManager unavailable (recordEarnings disabled); tx ${signature} settled on-chain only`,
+        );
       } catch (err) {
         console.warn(`[${this.agentName}] ⚠️ Failed to persist earnings:`, err);
       }
