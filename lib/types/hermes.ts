@@ -5,6 +5,17 @@
 
 export type Decision = 'ALLOW' | 'BLOCK' | 'REVIEW' | 'UNSUPPORTED';
 
+export type ReviewGateStatus = 'PENDING' | 'APPROVED' | 'BLOCKED' | 'DELEGATED';
+
+export type ReviewGate = {
+  status: ReviewGateStatus;
+  /** Runtime decision id when the gate is backed by a persisted decision. */
+  decisionId?: string;
+  /** ISO timestamps used by UI countdown/expiry displays. */
+  createdAt?: string;
+  expiresAt?: string;
+};
+
 export type ToolStep = {
   id: string;
   toolId: string;
@@ -30,10 +41,7 @@ export type Message = {
     rollbackAvailable?: boolean;
   };
   collapsible?: boolean;
-  reviewGate?: {
-    status: 'PENDING' | 'APPROVED' | 'BLOCKED' | 'DELEGATED';
-    decisionId: string;
-  };
+  reviewGate?: ReviewGate;
 };
 
 export type SystemStatus = {
