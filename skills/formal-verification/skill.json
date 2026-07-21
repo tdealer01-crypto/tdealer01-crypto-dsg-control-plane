@@ -1,0 +1,76 @@
+{
+  "skill_id": "formal_verification",
+  "skill_version": "1.0.0",
+  "name": "Formal Verification",
+  "category": "Formal Methods",
+
+  "capabilities": [
+    "z3",
+    "spacer",
+    "horn-clause"
+  ],
+
+  "engine": {
+    "type": "z3-spacer",
+    "runtime": "python",
+    "entrypoint": "formal_verification.py"
+  },
+
+  "proof": {
+    "engine": "Spacer",
+    "mode": "Horn Clause",
+    "counterexample": true,
+    "inductive_invariant": true
+  },
+
+  "workflow": [
+    "parse",
+    "translate",
+    "generate_horn",
+    "prove",
+    "generate_evidence",
+    "audit"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "file": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "file"
+    ]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string"
+      },
+      "invariant": {
+        "type": "string"
+      },
+      "counterexample": {
+        "type": "array"
+      },
+      "evidence": {
+        "type": "string"
+      }
+    }
+  },
+
+  "verification": {
+    "deterministic": true,
+    "hash": "sha256"
+  },
+
+  "policy": {
+    "risk": "high",
+    "approval": true
+  },
+
+  "one_click": "dsg verify ${file}"
+}
