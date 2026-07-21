@@ -7,6 +7,18 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=zeyguilldygozufpgxms&read_only=true"
+    },
+    "runpod": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@runpod/mcp-server@latest"],
+      "env": {
+        "RUNPOD_API_KEY": "${RUNPOD_API_KEY}"
+      }
+    },
+    "runpod-docs": {
+      "type": "http",
+      "url": "https://docs.runpod.io/mcp"
     }
   }
 }
