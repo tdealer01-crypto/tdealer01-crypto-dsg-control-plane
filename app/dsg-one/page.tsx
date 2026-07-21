@@ -93,7 +93,7 @@ export default function DSGOneLanding() {
             </span>
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
-            Don't Trust AI. <span className="text-emerald-400">Verify Every Decision.</span>
+            Don&apos;t Trust AI. <span className="text-emerald-400">Verify Every Decision.</span>
           </h1>
           <p className="text-xl text-slate-300 mb-4">
             The control plane for AI operations across your entire organization.
