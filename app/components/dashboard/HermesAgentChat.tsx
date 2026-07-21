@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, Loader, AlertCircle, StopCircle } from 'lucide-react';
+import { ReviewGatePanel, type ReviewGateDecision } from '@/components/ui/ReviewGatePanel';
+import type { ReviewGate } from '@/lib/types/hermes';
 
 interface Message {
   id: string;
@@ -13,7 +15,16 @@ interface Message {
     steps: number;
     completed: boolean;
   };
+  preflight?: {
+    risk?: 'LOW' | 'MEDIUM' | 'HIGH';
+    affectedCount?: number;
+    rollbackAvailable?: boolean;
+    reason?: string;
+  };
+  reviewGate?: ReviewGate;
 }
+
+const REVIEW_GATE_TTL_MS = 5 * 60 * 1000;
 
 export function HermesAgentChat() {
   const [messages, setMessages] = useState<Message[]>([
@@ -151,6 +162,14 @@ export function HermesAgentChat() {
           const lastMsg = newMessages[newMessages.length - 1];
           if (lastMsg && lastMsg.role === 'agent' && executionSummary) {
             lastMsg.executionSummary = executionSummary;
+            if (executionSummary.decision === 'REVIEW') {
+              const now = Date.now();
+              lastMsg.reviewGate = {
+                status: 'PENDING',
+                createdAt: new Date(now).toISOString(),
+                expiresAt: new Date(now + REVIEW_GATE_TTL_MS).toISOString(),
+              };
+            }
           }
           return newMessages;
         });
@@ -180,6 +199,27 @@ export function HermesAgentChat() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleReviewDecision = (messageId: string, decision: ReviewGateDecision) => {
+    setMessages((prev) => {
+      const next = prev.map((msg) =>
+        msg.id === messageId && msg.reviewGate
+          ? { ...msg, reviewGate: { ...msg.reviewGate, status: decision } }
+          : msg
+      );
+      const label =
+        decision === 'APPROVED' ? '✅ Operator confirmed the REVIEW-gated action'
+        : decision === 'BLOCKED' ? '❌ Operator blocked the REVIEW-gated action'
+        : '🤔 Operator delegated the REVIEW-gated action';
+      next.push({
+        id: `msg-${Date.now()}-gate`,
+        role: 'system',
+        content: `${label} (message ${messageId}). This updates the chat session only — no runtime commit is issued from this panel.`,
+        timestamp: new Date(),
+      });
+      return next;
+    });
   };
 
   const handleStop = async () => {
@@ -249,6 +289,17 @@ export function HermesAgentChat() {
                     <p className="text-xs opacity-75">✓ Execution complete</p>
                   )}
                 </div>
+              )}
+
+              {msg.reviewGate && (
+                <ReviewGatePanel
+                  reviewGate={msg.reviewGate}
+                  risk={msg.preflight?.risk ?? 'HIGH'}
+                  affectedCount={msg.preflight?.affectedCount}
+                  rollbackAvailable={msg.preflight?.rollbackAvailable}
+                  reason={msg.preflight?.reason}
+                  onDecision={(decision) => handleReviewDecision(msg.id, decision)}
+                />
               )}
 
               <p className="text-xs opacity-60 mt-2">
