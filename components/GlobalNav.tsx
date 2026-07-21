@@ -129,7 +129,7 @@ export default function GlobalNav() {
                             <span className="ml-2 rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">New</span>
                           )}
                         </span>
-                        <span className="block text-xs text-slate-400">{item.description}</span>
+                        <span className="block text-xs text-slate-300">{item.description}</span>
                       </span>
                     </Link>
                   ))}
@@ -157,7 +157,7 @@ export default function GlobalNav() {
             {/* Language switcher */}
             <button
               onClick={() => languageStore.setLanguage(lang === 'th' ? 'en' : 'th')}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-slate-400 transition hover:border-amber-300/30 hover:text-amber-100"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-amber-300/30 hover:text-amber-100"
               aria-label="Switch language"
             >
               {lang === 'th' ? 'EN' : 'TH'}
@@ -239,7 +239,7 @@ export default function GlobalNav() {
                     </span>
                     <span>
                       <span className="block text-sm font-semibold text-slate-100">{item.title}</span>
-                      <span className="block text-xs text-slate-400">{item.description}</span>
+                      <span className="block text-xs text-slate-300">{item.description}</span>
                     </span>
                   </Link>
                 ))}

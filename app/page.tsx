@@ -267,31 +267,31 @@ export default function HomePage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /analyze</code>
-                <p className="text-xs text-slate-400">Discover services & confidence</p>
+                <p className="text-xs text-slate-200">Discover services & confidence</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /plan</code>
-                <p className="text-xs text-slate-400">Build phases & dependencies</p>
+                <p className="text-xs text-slate-200">Build phases & dependencies</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /approve</code>
-                <p className="text-xs text-slate-400">Verify canonical hash</p>
+                <p className="text-xs text-slate-200">Verify canonical hash</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /execute</code>
-                <p className="text-xs text-slate-400">Start orchestration</p>
+                <p className="text-xs text-slate-200">Start orchestration</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">GET /status/:id</code>
-                <p className="text-xs text-slate-400">Poll phase progress</p>
+                <p className="text-xs text-slate-200">Poll phase progress</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">GET /connectors</code>
-                <p className="text-xs text-slate-400">List providers & capabilities</p>
+                <p className="text-xs text-slate-200">List providers & capabilities</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">GET /vault/secrets</code>
-                <p className="text-xs text-slate-400">Org-scoped credentials</p>
+                <p className="text-xs text-slate-200">Org-scoped credentials</p>
               </div>
             </div>
           </div>
@@ -303,12 +303,12 @@ export default function HomePage() {
               <p className="mt-2 text-xs text-slate-300">Step through analyze → plan → approve → execute</p>
             </Link>
             <Link href="/docs/DSG_SETUP_GUIDE.md" className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 hover:border-white/20 transition">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 font-semibold">Docs</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-200 font-semibold">Docs</p>
               <h4 className="mt-2 text-lg font-bold text-white">Setup Guide</h4>
               <p className="mt-2 text-xs text-slate-300">Complete API reference with curl examples</p>
             </Link>
             <Link href="/docs/LICENSING.md" className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 hover:border-white/20 transition">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 font-semibold">Licensing</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-200 font-semibold">Licensing</p>
               <h4 className="mt-2 text-lg font-bold text-white">Pricing Tiers</h4>
               <p className="mt-2 text-xs text-slate-300">Starter, Pro, Enterprise with decision metering</p>
             </Link>
@@ -352,7 +352,7 @@ export default function HomePage() {
             <div className="border border-green-400/30 bg-green-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-5xl font-bold text-green-300 font-mono">3,389</div>
-                <div className="text-sm text-slate-400 mt-1">tests passing</div>
+                <div className="text-sm text-slate-200 mt-1">tests passing</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>0 failures</strong> across unit, integration, failure, and E2E test suites. Zero test debt.
@@ -365,7 +365,7 @@ export default function HomePage() {
             <div className="border border-blue-400/30 bg-blue-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-5xl font-bold text-blue-300 font-mono">72.08%</div>
-                <div className="text-sm text-slate-400 mt-1">mutation score</div>
+                <div className="text-sm text-slate-200 mt-1">mutation score</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>High resilience</strong> to code changes. Stryker mutation testing verifies test effectiveness.
@@ -378,7 +378,7 @@ export default function HomePage() {
             <div className="border border-purple-400/30 bg-purple-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-4xl font-bold text-purple-300 font-mono">L1–L5</div>
-                <div className="text-sm text-slate-400 mt-1">CCVS verified</div>
+                <div className="text-sm text-slate-200 mt-1">CCVS verified</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>Compliance matrix</strong> proves control flow: unit → integration → adversarial → mutation → provenance.
@@ -391,7 +391,7 @@ export default function HomePage() {
             <div className="border border-amber-400/30 bg-amber-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-3xl font-bold text-amber-300 font-mono">285</div>
-                <div className="text-sm text-slate-400 mt-1">test files</div>
+                <div className="text-sm text-slate-200 mt-1">test files</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>Comprehensive coverage</strong> across deterministic gates, spine execution, and licensing.
@@ -407,33 +407,33 @@ export default function HomePage() {
             <div className="grid gap-4 md:grid-cols-5">
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L1</div>
-                <p className="text-xs text-slate-400 mb-2"><strong>Unit Tests</strong></p>
-                <p className="text-xs text-slate-500">Isolated component verification</p>
+                <p className="text-xs text-slate-200 mb-2"><strong>Unit Tests</strong></p>
+                <p className="text-xs text-slate-300">Isolated component verification</p>
               </div>
               <div className="flex items-center justify-center text-slate-500">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L2</div>
-                <p className="text-xs text-slate-400 mb-2"><strong>Integration</strong></p>
-                <p className="text-xs text-slate-500">Cross-layer behavior</p>
+                <p className="text-xs text-slate-200 mb-2"><strong>Integration</strong></p>
+                <p className="text-xs text-slate-300">Cross-layer behavior</p>
               </div>
               <div className="flex items-center justify-center text-slate-500">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L3</div>
-                <p className="text-xs text-slate-400 mb-2"><strong>Adversarial</strong></p>
-                <p className="text-xs text-slate-500">Failure scenarios</p>
+                <p className="text-xs text-slate-200 mb-2"><strong>Adversarial</strong></p>
+                <p className="text-xs text-slate-300">Failure scenarios</p>
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-5 mt-6 pt-6 border-t border-white/10">
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-300 mb-2">L4</div>
-                <p className="text-xs text-slate-400 mb-2"><strong>Mutation</strong></p>
-                <p className="text-xs text-slate-500">Code resilience (72.08%)</p>
+                <p className="text-xs text-slate-200 mb-2"><strong>Mutation</strong></p>
+                <p className="text-xs text-slate-300">Code resilience (72.08%)</p>
               </div>
               <div className="flex items-center justify-center text-slate-500">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-300 mb-2">L5</div>
-                <p className="text-xs text-slate-400 mb-2"><strong>Provenance</strong></p>
-                <p className="text-xs text-slate-500">Build & deploy audit</p>
+                <p className="text-xs text-slate-200 mb-2"><strong>Provenance</strong></p>
+                <p className="text-xs text-slate-300">Build & deploy audit</p>
               </div>
               <div className="flex items-center justify-center text-slate-500 col-span-2"></div>
             </div>
@@ -474,12 +474,12 @@ export default function HomePage() {
           <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-slate-400">
+                <tr className="border-b border-white/10 text-slate-200">
                   <th className="px-5 py-4 font-semibold">Capability</th>
                   <th className="px-5 py-4 font-semibold text-emerald-200">DSG ONE</th>
-                  <th className="px-5 py-4 font-semibold">LangGraph</th>
-                  <th className="px-5 py-4 font-semibold">OpenAI Agents</th>
-                  <th className="px-5 py-4 font-semibold">Temporal</th>
+                  <th className="px-5 py-4 font-semibold text-slate-200">LangGraph</th>
+                  <th className="px-5 py-4 font-semibold text-slate-200">OpenAI Agents</th>
+                  <th className="px-5 py-4 font-semibold text-slate-200">Temporal</th>
                 </tr>
               </thead>
               <tbody>
