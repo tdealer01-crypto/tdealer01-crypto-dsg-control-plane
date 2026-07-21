@@ -7,6 +7,10 @@ import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
+import { requireOrgRole } from '@/lib/authz';
+import { executeToolSafely } from '@/lib/agent/executor';
+import { DSG_TOOLS } from '@/lib/agent/tools';
+import type { AgentContext } from '@/lib/agent/context';
 import {
   discoverJobsReal,
   executeJobReal,
@@ -95,9 +99,30 @@ const tools = [
       },
     },
   },
+  // DSG platform skills — executed only through executeToolSafely (Hermes + DSG gate).
+  ...DSG_TOOLS.map((tool) => ({
+    name: tool.id,
+    description: tool.description,
+    input_schema: {
+      type: 'object',
+      properties: Object.fromEntries(
+        Object.entries(tool.parameters).map(([key, param]) => [
+          key,
+          { type: param.type, description: param.description },
+        ]),
+      ),
+      required: Object.entries(tool.parameters)
+        .filter(([, param]) => param.required)
+        .map(([key]) => key),
+    },
+  })),
 ];
 
-async function processToolCall(toolName: string, toolInput: Record<string, unknown>): Promise<string> {
+async function processToolCall(
+  toolName: string,
+  toolInput: Record<string, unknown>,
+  context: AgentContext,
+): Promise<string> {
   switch (toolName) {
     case 'discover_jobs':
       return JSON.stringify(
@@ -142,8 +167,16 @@ async function processToolCall(toolName: string, toolInput: Record<string, unkno
       } catch (error) {
         return JSON.stringify({ error: 'Failed to read DSG.md' });
       }
-    default:
-      return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+    default: {
+      // DSG platform skills — always through executeToolSafely so the Hermes
+      // preflight, DSG gate (ALLOW/STABILIZE/BLOCK), and approval-token rules apply.
+      const dsgTool = DSG_TOOLS.find((tool) => tool.id === toolName);
+      if (!dsgTool) {
+        return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+      }
+      const result = await executeToolSafely(dsgTool, toolInput, context);
+      return JSON.stringify(result);
+    }
   }
 }
 
@@ -174,6 +207,11 @@ function createSSEStream(): ReadableStream<Uint8Array> {
 
 export async function POST(request: Request) {
   try {
+    const access = await requireOrgRole(['operator', 'org_admin'], request);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     const body = await request.json();
     const userMessage = body.message as string;
     const selectedAgent = body.agent as string || 'All';
@@ -183,6 +221,15 @@ export async function POST(request: Request) {
     if (!userMessage) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
+
+    const context: AgentContext = {
+      orgId: access.orgId,
+      role: access.grantedRoles.includes('org_admin') ? 'org_admin' : 'operator',
+      origin: new URL(request.url).origin,
+      authHeader: request.headers.get('authorization') || '',
+      cookieHeader: request.headers.get('cookie') || '',
+      approvalToken: typeof body?.approvalToken === 'string' ? body.approvalToken : undefined,
+    };
 
     // Load DSG.md for context
     let dsgContext = '';
@@ -214,6 +261,8 @@ Trinity: 5-Agent AI Orchestration
 - 🦴 Spine: DSG governance
 
 All tools are connected to real platforms and Supabase. Use them proactively.
+
+You also have DSG platform skills (write_code_file, run_code, terminal sandbox, browser_navigate, fetch_url, realtime_web_search, agent CRUD, execute_action). Write/critical skills run through the DSG gate and may return requiresApproval — report that honestly instead of claiming the action ran.
 
 Language: ${language === 'th' ? 'Thai' : 'English'}
 Agent: ${selectedAgent}${dsgContext}`;
@@ -256,7 +305,7 @@ Agent: ${selectedAgent}${dsgContext}`;
                 timestamp: new Date().toISOString(),
               });
 
-              const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+              const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input, context);
               toolCalls.push(toolUseBlock.name);
 
               sendEvent('tool_result', {
@@ -331,7 +380,7 @@ Agent: ${selectedAgent}${dsgContext}`;
       const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
       if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
 
-      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input, context);
       toolCalls.push(toolUseBlock.name);
 
       messages.push({ role: 'assistant', content: response.content });
