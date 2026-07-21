@@ -163,12 +163,25 @@ export async function discoverJobsReal(
 }
 
 /**
+ * Deterministic quality scoring — same rubric as /api/trinity/execute-job.
+ * Scores content properties (length, evidence markers, category weight);
+ * never fabricates a score from randomness.
+ */
+export function scoreDeliverableQuality(deliverable: string, category?: string): number {
+  let score = 60;
+  if (deliverable.length > 120) score += 10;
+  if (deliverable.includes('Evidence')) score += 10;
+  if (category === 'smart-contract-audit' || category === 'security-review') score += 10;
+  return Math.min(100, score);
+}
+
+/**
  * Execute job - track in Supabase execution table
  */
 export async function executeJobReal(
   jobId: string,
   deliverable: string,
-  executionTimeTarget?: number
+  _executionTimeTarget?: number
 ): Promise<any> {
   try {
     if (!supabase) {
@@ -177,6 +190,7 @@ export async function executeJobReal(
 
     const executionId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const startTime = Date.now();
+    const qualityScore = scoreDeliverableQuality(deliverable);
 
     const { data, error } = await supabase
       .from('trinity_executions')
@@ -185,11 +199,8 @@ export async function executeJobReal(
         job_id: jobId,
         deliverable,
         status: 'completed',
-        quality_score: 85 + Math.random() * 15,
-        execution_time_ms: Math.min(
-          executionTimeTarget || 3000,
-          Date.now() - startTime
-        ),
+        quality_score: qualityScore,
+        execution_time_ms: Date.now() - startTime,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -227,7 +238,29 @@ export async function verifyDeliverableReal(
       return { error: 'Database not configured' };
     }
 
-    const qualityScore = 80 + Math.random() * 20;
+    const startTime = Date.now();
+
+    // Fail-closed: score the stored deliverable content, never a fabricated value.
+    const { data: execution } = await supabase
+      .from('trinity_executions')
+      .select('execution_id, deliverable')
+      .eq('execution_id', deliverableId)
+      .maybeSingle();
+
+    if (!execution?.deliverable) {
+      return {
+        deliverable_id: deliverableId,
+        verification_status: 'review',
+        quality_score: null,
+        issues: ['Deliverable not found — cannot verify, routed to manual review'],
+        verification_time_ms: Date.now() - startTime,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const qualityScore = scoreDeliverableQuality(execution.deliverable, qualityCriteria);
+    const checksTotal = 10;
+    const checksPassed = Math.floor(qualityScore / 10);
 
     const { data, error } = await supabase
       .from('trinity_verifications')
@@ -236,8 +269,8 @@ export async function verifyDeliverableReal(
         quality_criteria: qualityCriteria,
         quality_score: qualityScore,
         verification_status: qualityScore >= 80 ? 'passed' : 'review',
-        checks_passed: Math.floor(qualityScore / 10),
-        checks_total: 12,
+        checks_passed: checksPassed,
+        checks_total: checksTotal,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -249,10 +282,10 @@ export async function verifyDeliverableReal(
       deliverable_id: deliverableId,
       verification_status: data.verification_status,
       quality_score: qualityScore,
-      checks_passed: data.checks_passed,
-      checks_total: 12,
-      issues: qualityScore < 80 ? ['Minor quality issues detected'] : [],
-      verification_time_ms: Math.random() * 1000,
+      checks_passed: checksPassed,
+      checks_total: checksTotal,
+      issues: qualityScore < 80 ? ['Deterministic rubric below pass threshold — needs review'] : [],
+      verification_time_ms: Date.now() - startTime,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
@@ -265,7 +298,10 @@ export async function verifyDeliverableReal(
 }
 
 /**
- * Settle payment - integrated with Supabase ledger
+ * Settle payment — fail-closed ledger entry, same posture as settleJob() in workflow.ts.
+ * Records the settlement request for manual review; never fabricates an on-chain
+ * transaction hash, confirmation count, or reputation delta. Real transfers go
+ * through NerveAgent.settlePayment (SolanaClient.transferSOL) only.
  */
 export async function settlePaymentReal(
   executionId: string,
@@ -276,16 +312,14 @@ export async function settlePaymentReal(
       return { error: 'Database not configured' };
     }
 
-    const transactionHash = Math.random().toString(16).slice(2, 66);
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('trinity_payments')
       .insert({
         execution_id: executionId,
         amount_sol: amountSol,
-        transaction_hash: transactionHash,
-        status: 'confirmed',
-        confirmations: 32,
+        transaction_hash: null,
+        status: 'pending_manual_review',
+        confirmations: 0,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -296,11 +330,10 @@ export async function settlePaymentReal(
     return {
       execution_id: executionId,
       amount_sol: amountSol,
-      transaction_hash: transactionHash,
-      status: 'confirmed',
-      confirmations: 32,
-      reputation_change: Math.random() * 5,
-      new_reputation: 50 + Math.random() * 50,
+      transaction_hash: null,
+      status: 'pending_manual_review',
+      confirmations: 0,
+      note: 'Settlement recorded fail-closed for manual review. No on-chain transfer was executed by this tool.',
       timestamp: new Date().toISOString(),
     };
   } catch (error) {

@@ -59,7 +59,7 @@ const tools = [
   },
   {
     name: 'settle_payment',
-    description: 'Settle payment with real tracking (Nerve Agent)',
+    description: 'Record a settlement request for manual review — fail-closed, no on-chain transfer (Nerve Agent)',
     input_schema: {
       type: 'object',
       properties: {
