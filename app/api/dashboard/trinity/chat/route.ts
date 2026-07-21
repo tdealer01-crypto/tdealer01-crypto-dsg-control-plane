@@ -3,6 +3,10 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 import { handleApiError } from '@/lib/security/api-error';
+import { requireOrgRole } from '@/lib/authz';
+import { executeToolSafely } from '@/lib/agent/executor';
+import { DSG_TOOLS } from '@/lib/agent/tools';
+import type { AgentContext } from '@/lib/agent/context';
 import {
   discoverJobsReal,
   executeJobReal,
@@ -59,7 +63,7 @@ const tools = [
   },
   {
     name: 'settle_payment',
-    description: 'Settle payment with real tracking (Nerve Agent)',
+    description: 'Record a settlement request for manual review — fail-closed, no on-chain transfer (Nerve Agent)',
     input_schema: {
       type: 'object',
       properties: {
@@ -91,10 +95,33 @@ const tools = [
       },
     },
   },
+  // DSG platform skills (code sandbox, terminal, browser, web search, agent CRUD).
+  // Executed exclusively through executeToolSafely — Hermes + DSG gate, and
+  // write/critical tools require an approvalToken per the Autonomy Dial.
+  ...DSG_TOOLS.map((tool) => ({
+    name: tool.id,
+    description: tool.description,
+    input_schema: {
+      type: 'object',
+      properties: Object.fromEntries(
+        Object.entries(tool.parameters).map(([key, param]) => [
+          key,
+          { type: param.type, description: param.description },
+        ]),
+      ),
+      required: Object.entries(tool.parameters)
+        .filter(([, param]) => param.required)
+        .map(([key]) => key),
+    },
+  })),
 ];
 
 // Real implementation using live data sources and Supabase
-async function processToolCall(toolName: string, toolInput: Record<string, unknown>): Promise<string> {
+async function processToolCall(
+  toolName: string,
+  toolInput: Record<string, unknown>,
+  context: AgentContext,
+): Promise<string> {
   switch (toolName) {
     case 'discover_jobs': {
       const result = await discoverJobsReal(
@@ -168,18 +195,40 @@ async function processToolCall(toolName: string, toolInput: Record<string, unkno
         });
       }
 
-    default:
-      return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+    default: {
+      // DSG platform skills — always through executeToolSafely so the Hermes
+      // preflight, DSG gate (ALLOW/STABILIZE/BLOCK), and approval-token rules apply.
+      const dsgTool = DSG_TOOLS.find((tool) => tool.id === toolName);
+      if (!dsgTool) {
+        return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+      }
+      const result = await executeToolSafely(dsgTool, toolInput, context);
+      return JSON.stringify(result);
+    }
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const access = await requireOrgRole(['operator', 'org_admin'], request);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     const body = await request.json();
     const userMessage = body.message as string;
     const selectedAgent = body.agent as string || 'All';
     const language = body.language as string || 'en';
     const modelProvider = (body.model || 'anthropic') as 'anthropic' | 'nvidia';
+
+    const context: AgentContext = {
+      orgId: access.orgId,
+      role: access.grantedRoles.includes('org_admin') ? 'org_admin' : 'operator',
+      origin: new URL(request.url).origin,
+      authHeader: request.headers.get('authorization') || '',
+      cookieHeader: request.headers.get('cookie') || '',
+      approvalToken: typeof body?.approvalToken === 'string' ? body.approvalToken : undefined,
+    };
 
     // Validate API key for selected model
     if (modelProvider === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {
@@ -233,6 +282,8 @@ You are part of Trinity, a multi-agent AI orchestration system:
 
 You have access to MCP tools. Use them proactively to answer questions.
 
+You also have DSG platform skills (write_code_file, run_code, terminal sandbox, browser_navigate, fetch_url, realtime_web_search, agent CRUD, execute_action). Write/critical skills run through the DSG gate and may return requiresApproval — report that honestly instead of claiming the action ran.
+
 DSG Framework:
 - Deterministic governance with Z3 formal verification
 - Evidence-driven (CCVS L1-L5) decision making
@@ -268,7 +319,7 @@ Always explain tool usage. Be helpful and efficient.`;
 
       if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
 
-      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input, context);
       toolCalls.push(toolUseBlock.name);
 
       // Add assistant response and tool result to messages
