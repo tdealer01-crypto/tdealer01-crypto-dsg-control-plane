@@ -1,4 +1,25 @@
-# 🔐 DSG ONE: Control Plane for AI Operations
+# 🔐 DSG ONE: Control Plane for AI Operations# Source of Truth
+
+> **The source of truth is the current implementation in this repository.**
+
+All capability statements, architecture descriptions, feature status, security claims, compliance mappings, and operational behavior **must be derived from verifiable evidence in the repository**, including:
+
+- Source code
+- Tests and test results
+- CI/CD workflows and execution results
+- Runtime evidence
+- Audit artifacts
+- Deployment artifacts
+- Production configuration
+- Version-controlled documentation that reflects the current implementation
+
+If any historical document, planning note, roadmap, draft, TODO, or archived documentation conflicts with the current implementation, **the implementation takes precedence**.
+
+Deprecated documents, including historical **"Do not claim yet"** notes or superseded planning documents, **must not be treated as the source of truth**.
+
+A capability may be documented only when it is supported by the current repository state and its corresponding evidence.
+
+When uncertainty exists, verify against the implementation and evidence before making any claim.
 
 [![Tests](https://img.shields.io/badge/tests-4026_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md)
 [![Coverage](https://img.shields.io/badge/coverage-89%25-brightgreen?style=for-the-badge)](TEST_COVERAGE.md)
