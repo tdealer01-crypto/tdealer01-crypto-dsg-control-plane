@@ -76,3 +76,4 @@ dsg-final-env-local-only.sh
 reports/
 deployment-*.log
 final-deployment.log
+*.bak.*
