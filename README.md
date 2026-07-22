@@ -175,12 +175,7 @@ Decision: ✅ ALLOW / ⚠️ REVIEW / ❌ BLOCK
 
 ## What the market doesn't have
 
-Agent frameworks help you **run** an AI workflow. None of them can replay a decision bit-for-bit, prove it against policy, or hand an auditor tamper-evident evidence. That gap is the product.
-
-- **Decision before the LLM — ~11ms.** The deterministic gate decides before any model runs; there is no LLM round-trip in the decision path. Agent frameworks route the decision through an LLM (≈0.8–1.5s) and can't replay it bit-for-bit.
-- **Formal proof, not vibes.** Policy invariants are proved with Z3 (8 theorems proved UNSAT at design time) and multi-agent task assignments are checked by a real Z3 solve. Mainstream agent stacks ship no formal verification.
-- **Evidence that survives an audit.** Every decision is a tamper-evident SHA-256 hash chain with CCVS L1–L5 artifacts and an EU AI Act Annex IV mapping — replayable years later.
-- **Fails safe.** `UNSUPPORTED` never becomes `PASS`: unknown risk maps to REVIEW or BLOCK, never ALLOW. Policy can be written in natural-language Thai or English.
+Agent frameworks help you **run**  REVIEW or BLOCK, never ALLOW. Policy can be written in natural-language Thai or English.
 
 | Capability | DSG ONE | LangGraph | OpenAI Agents | Temporal |
 |------------|:---:|:---:|:---:|:---:|
@@ -189,9 +184,7 @@ Agent frameworks help you **run** an AI workflow. None of them can replay a deci
 | Tamper-evident evidence chain | ✅ | ❌ | ❌ | ❌ |
 | Compliance pack (CCVS L1–L5 / EU AI Act) | ✅ | ❌ | ❌ | ❌ |
 | Runtime gate before execution | ✅ | Partial | ❌ | Partial |
-| Decision latency | ~11ms | 0.8–1.5s | 0.8–1.5s | 100–300ms |
-
-<sub>Comparison reflects each product's default, documented capabilities for governed AI execution. Latency is from the [live gate benchmark](BENCHMARKS.md); competitor values are typical LLM-in-the-loop ranges. Z3 proves policy invariants at design time and verifies multi-agent assignments at runtime; the per-request gate route does not invoke an external Z3 solver.</sub>
+| Decision latency | ~11ms | 0.8–1.5s | 0.8–1.5s 
 
 ---
 
