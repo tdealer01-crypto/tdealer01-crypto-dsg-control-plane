@@ -123,13 +123,7 @@ When uncertainty exists, verify against the implementation and evidence before m
 
 | Question | Traditional AI | Competitors | DSG ONE |
 |----------|---|---|---|
-| "What did AI decide?" | ✅ We logged it | ✅ We logged it | ✅ Decision visible in dashboard |
-| "Did it follow policy?" | ❌ Not provable | ⚠️ Claims it did | ✅ Policy gate enforced it |
-| "Who approved this?" | ❌ Nobody | ❌ Nobody | ✅ Human approval recorded |
-| "Can you replay it?" | ❌ Non-deterministic | ❌ Can't replay | ✅ Exact replay possible |
-| "Is this audit-ready?" | ❌ No proof | ⚠️ Just logs | ✅ Tamper-proof evidence |
-
-**Result:** Every AI decision has an owner. Every proof is unchangeable. Every audit is simple.
+| "What did AI decide?" | ✅ We logged
 
 ---
 
