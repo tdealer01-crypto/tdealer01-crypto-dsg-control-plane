@@ -72,7 +72,7 @@ export function validateConfig(config: DSGConfig): void {
 
   // Domain validation (if configured)
   if (config.domain?.name) {
-    if (!/^[a-z0-9-]+\.[a-z]{2,}$/.test(config.domain.name)) {
+    if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\.[a-z]{2,}$/.test(config.domain.name)) {
       errors.push('Domain name must be a valid domain');
     }
   }

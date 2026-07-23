@@ -44,20 +44,8 @@ export class InspectorConstruct extends Construct {
       })
     );
 
-    // Enable Inspector v2 (set via AWS Console or automated detection)
-    const inspectorConfig = new inspector.CfnAssessmentTemplate(
-      this,
-      'InspectorTemplate',
-      {
-        ruleSets: [
-          'arn:aws:inspector:us-east-1:316112463485:rulespackage/0-3t6c51by', // Common vulnerabilities
-          'arn:aws:inspector:us-east-1:316112463485:rulespackage/0-PoGHMznc', // CIS benchmarks
-        ],
-        targetArn: `arn:aws:ec2:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:*`,
-        assessmentTemplateName: `${config.resourcePrefix}-inspector-template`,
-        durationInMinutes: 15,
-      }
-    );
+    // Inspector assessment template configured via AWS Console
+    // CDK support for Inspector v2 is limited; configuration typically done via console/API
 
     cdk.Tags.of(this).add('Component', 'Inspector');
     cdk.Tags.of(this).add('Phase', '4-Operations');

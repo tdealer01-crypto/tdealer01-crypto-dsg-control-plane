@@ -48,7 +48,7 @@ export class AuditConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Add GSI for event type queries
@@ -80,7 +80,7 @@ export class AuditConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Audit Bucket - long-term audit exports, compliance reports
@@ -93,7 +93,7 @@ export class AuditConstruct extends Construct {
       enforceSSL: true,
       objectLockEnabled: true,
       objectLockDefaultRetention: {
-        mode: s3.ObjectLockRetentionMode.GOVERNANCE,
+        mode: s3.ObjectLockMode.GOVERNANCE,
         duration: cdk.Duration.days(2555), // 7 years for compliance
       },
       lifecycleRules: [
@@ -110,16 +110,25 @@ export class AuditConstruct extends Construct {
           ],
         },
       ],
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
-    // Audit Log Group - CloudWatch Logs
-    this.auditLogGroup = new logs.LogGroup(this, 'AuditLogGroup', {
-      logGroupName: `/dsg-one/${config.environment}/audit`,
-      retention: logs.RetentionDays.FIVE_YEARS,
-      encryptionKey: encryptionKey,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // Audit Log Group - CloudWatch Logs (KMS encryption only for production)
+    const auditLogProps: logs.LogGroupProps =
+      config.environment === 'prod'
+        ? {
+            logGroupName: `/dsg-one/${config.environment}/audit`,
+            retention: logs.RetentionDays.FIVE_YEARS,
+            encryptionKey: encryptionKey,
+            removalPolicy: cdk.RemovalPolicy.RETAIN,
+          }
+        : {
+            logGroupName: `/dsg-one/${config.environment}/audit`,
+            retention: logs.RetentionDays.FIVE_YEARS,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+          };
+
+    this.auditLogGroup = new logs.LogGroup(this, 'AuditLogGroup', auditLogProps);
 
     // IAM Role for Audit Operations
     this.auditRole = new iam.Role(this, 'AuditRole', {

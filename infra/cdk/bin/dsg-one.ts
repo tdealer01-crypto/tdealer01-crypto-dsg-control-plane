@@ -7,8 +7,8 @@
  */
 
 import * as cdk from 'aws-cdk-lib';
-import { DSGOneStack } from '../lib';
-import { getConfig } from '../lib/config';
+import { DSGOneStack } from '../lib/dsg-one-stack';
+import { getConfig } from '../lib/config/index';
 
 const app = new cdk.App();
 

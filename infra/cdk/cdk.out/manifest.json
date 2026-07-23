@@ -11,7 +11,7 @@
     },
     "DSGOneStack-dev": {
       "type": "aws:cloudformation:stack",
-      "environment": "aws://123456789012/us-east-1",
+      "environment": "aws://121205961822/us-east-1",
       "properties": {
         "templateFile": "DSGOneStack-dev.template.json",
         "terminationProtection": false,
@@ -21,16 +21,16 @@
           "ManagedBy": "CDK"
         },
         "validateOnSynth": false,
-        "assumeRoleArn": "arn:${AWS::Partition}:iam::123456789012:role/cdk-hnb659fds-deploy-role-123456789012-us-east-1",
-        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::123456789012:role/cdk-hnb659fds-cfn-exec-role-123456789012-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-123456789012-us-east-1/19d4025d00aa5caa71a69ceaacb914f23bfb3d41cb6ac8eee63db534e1a75dbc.json",
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::121205961822:role/cdk-hnb659fds-deploy-role-121205961822-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::121205961822:role/cdk-hnb659fds-cfn-exec-role-121205961822-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-121205961822-us-east-1/a1173b1df4cb915d300b0e253005db942ed278bc43c96d4e8fd07843c7cd711c.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
           "DSGOneStack-dev.assets"
         ],
         "lookupRole": {
-          "arn": "arn:${AWS::Partition}:iam::123456789012:role/cdk-hnb659fds-lookup-role-123456789012-us-east-1",
+          "arn": "arn:${AWS::Partition}:iam::121205961822:role/cdk-hnb659fds-lookup-role-121205961822-us-east-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }
@@ -505,21 +505,5 @@
       }
     }
   },
-  "missing": [
-    {
-      "key": "availability-zones:account=123456789012:region=us-east-1",
-      "provider": "availability-zones",
-      "props": {
-        "dummyValue": [
-          "dummy1a",
-          "dummy1b",
-          "dummy1c"
-        ],
-        "account": "123456789012",
-        "region": "us-east-1",
-        "lookupRoleArn": "arn:${AWS::Partition}:iam::123456789012:role/cdk-hnb659fds-lookup-role-123456789012-us-east-1"
-      }
-    }
-  ],
   "minimumCliVersion": "2.1132.1"
 }

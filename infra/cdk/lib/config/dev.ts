@@ -15,7 +15,7 @@ export const devConfig: DSGConfig = {
   },
 
   domain: {
-    name: 'dev.dsg-one.local',
+    name: 'dev.dsg-one.com',
   },
 
   networking: {
@@ -41,7 +41,7 @@ export const devConfig: DSGConfig = {
 
   waf: {
     enableWaf: false,
-    trustedIpRanges: ['0.0.0.0/0'],
+    trustedIpRanges: ['10.0.0.0/16'], // Internal VPC CIDR
   },
 
   backup: {
