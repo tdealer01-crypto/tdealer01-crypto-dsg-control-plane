@@ -24,7 +24,7 @@ export class GovernanceConstruct extends Construct {
 
     // Policy Table (policy versions, definitions, constraints)
     this.policyTable = new dynamodb.Table(this, 'PolicyTable', {
-      tableName: createTableName(config.env, 'policies'),
+      tableName: createTableName(config.env, 'policies-v2'),
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey,
@@ -38,7 +38,7 @@ export class GovernanceConstruct extends Construct {
 
     // Audit Table (immutable audit trail)
     this.auditTable = new dynamodb.Table(this, 'AuditTable', {
-      tableName: createTableName(config.env, 'audit_trail'),
+      tableName: createTableName(config.env, 'audit-trail-v2'),
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey,
@@ -58,7 +58,7 @@ export class GovernanceConstruct extends Construct {
 
     // Replay Proof Table (deterministic proof storage)
     this.replayProofTable = new dynamodb.Table(this, 'ReplayProofTable', {
-      tableName: createTableName(config.env, 'replay_proofs'),
+      tableName: createTableName(config.env, 'replay-proofs-v2'),
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey,
