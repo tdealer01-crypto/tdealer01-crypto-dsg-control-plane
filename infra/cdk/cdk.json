@@ -1,5 +1,5 @@
 {
-  "app": "node dist/bin/dsg-one.js",
+  "app": "node bin/dsg-one.js",
   "context": {
     "environment": "dev"
   }

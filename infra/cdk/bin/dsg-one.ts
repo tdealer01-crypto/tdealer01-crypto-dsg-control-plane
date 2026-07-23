@@ -21,7 +21,6 @@ const config = getConfig(environment);
 // Create stack
 new DSGOneStack(app, `DSGOneStack-${environment}`, {
   config,
-  description: `DSG ONE Infrastructure - ${environment} environment`,
 });
 
 // Synthesize
