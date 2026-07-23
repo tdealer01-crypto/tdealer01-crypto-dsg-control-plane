@@ -1,0 +1,32 @@
+{
+  "name": "@dsg/infra-cdk",
+  "version": "1.0.0",
+  "description": "DSG ONE Enterprise AWS CDK Infrastructure",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "cdk deploy",
+    "diff": "cdk diff",
+    "synth": "cdk synth",
+    "destroy": "cdk destroy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint lib/**/*.ts bin/**/*.ts",
+    "format": "prettier --write 'lib/**/*.ts' 'bin/**/*.ts' 'test/**/*.ts'"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "aws-cdk-lib": "^2.140.0",
+    "constructs": "^10.3.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0"
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "^1.0.0"
+  }
+}
