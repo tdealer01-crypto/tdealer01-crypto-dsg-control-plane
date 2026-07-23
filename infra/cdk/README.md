@@ -27,12 +27,19 @@ infra/cdk/
 │   │   ├── prod.ts                    # Prod environment config
 │   │   └── index.ts                   # Config loader
 │   ├── constructs/
-│   │   ├── networking.ts              # VPC, subnets, security groups
-│   │   ├── iam.ts                     # IAM roles and policies
-│   │   ├── kms.ts                     # KMS keys for encryption
-│   │   ├── secrets.ts                 # Secrets Manager integration
-│   │   ├── ecr.ts                     # ECR repositories
-│   │   ├── governance.ts              # Policy engine, audit trail, evidence
+│   │   ├── Phase 1: Foundation
+│   │   │   ├── networking.ts          # VPC, subnets, security groups
+│   │   │   ├── iam.ts                 # IAM roles and policies
+│   │   │   ├── kms.ts                 # KMS keys for encryption
+│   │   │   ├── secrets.ts             # Secrets Manager integration
+│   │   │   ├── ecr.ts                 # ECR repositories
+│   │   │   └── governance.ts          # Policy engine, audit trail, evidence
+│   │   ├── Phase 2: Compute & Observability
+│   │   │   ├── alb.ts                 # Application Load Balancer
+│   │   │   ├── ecs.ts                 # ECS/Fargate cluster & service
+│   │   │   ├── cloudwatch.ts          # CloudWatch dashboards & alarms
+│   │   │   ├── cloudtrail.ts          # CloudTrail audit logging
+│   │   │   └── xray.ts                # X-Ray distributed tracing
 │   │   └── index.ts                   # Constructs barrel export
 │   ├── utils/
 │   │   ├── tags.ts                    # Tag management utilities
@@ -152,7 +159,9 @@ ENVIRONMENT=prod npm run deploy
 
 ## Constructs Reference
 
-### 1. NetworkingConstruct
+### Phase 1: Foundation
+
+#### 1. NetworkingConstruct
 
 **Creates:** VPC, subnets, NAT gateways, security groups, VPC Flow Logs
 
@@ -199,6 +208,73 @@ networking: {
 - **AuditTable** — Immutable audit trail (DynamoDB Streams enabled)
 - **ReplayProofTable** — Deterministic proof storage
 - **EvidenceBucket** — S3 with versioning, encryption, intelligent tiering
+
+---
+
+### Phase 2: Compute & Observability
+
+#### 7. ALBConstruct
+
+**Creates:** Application Load Balancer, target group, HTTP/HTTPS listeners
+
+**Features:**
+- Multi-AZ load balancing
+- HTTP→HTTPS redirect (prod)
+- Health check configured for `/api/health`
+- TLS termination with ACM certificates (prod)
+
+#### 8. ECSConstruct
+
+**Creates:** ECS Cluster, Fargate task definition, ECS service
+
+**Features:**
+- Fargate launch type (serverless containers)
+- Configurable CPU/memory (256-4096 CPU, 512-8GB memory)
+- Container logging to CloudWatch
+- Health checks and monitoring
+- Auto-scaling (when enabled)
+- Integration with ALB
+- ECS Exec for debugging (dev/staging)
+
+**Deployment Strategies:**
+- ROLLING (default)
+- BLUE_GREEN (via CodeDeploy)
+- CANARY (via external controller)
+
+#### 9. CloudWatchConstruct
+
+**Creates:** CloudWatch dashboards and alarms
+
+**Metrics:**
+- ALB: request count, response time, error rates
+- Targets: healthy/unhealthy host count
+- ECS: running tasks, CPU/memory utilization
+
+**Alarms:**
+- Unhealthy targets
+- High CPU/memory
+- Slow response time (>1s)
+
+#### 10. CloudTrailConstruct
+
+**Creates:** CloudTrail trail, S3 audit bucket
+
+**Features:**
+- Multi-region support
+- File validation
+- KMS encryption
+- S3 versioning and lifecycle
+- Tracks S3, Lambda, and API events
+
+#### 11. XRayConstruct
+
+**Creates:** X-Ray sampling rules and anomaly groups
+
+**Features:**
+- Adaptive sampling (5% prod, 50% dev)
+- Error tracking (4xx/5xx)
+- Slow request tracking (>1s)
+- Anomaly detection
 
 ## Security Principles
 
@@ -330,28 +406,34 @@ npm run format
 
 ## Next Steps
 
-### Immediate (Phase 1)
+### ✅ Phase 1: Foundation (COMPLETE)
 
-- ✅ Core infrastructure (networking, IAM, KMS, secrets, ECR, governance)
-- [ ] ECS/Fargate compute layer
-- [ ] ALB for load balancing
-- [ ] Basic monitoring (CloudWatch)
+- ✅ Networking (VPC, subnets, security groups, VPC Flow Logs)
+- ✅ IAM (roles, policies, least-privilege)
+- ✅ KMS (encryption keys with rotation)
+- ✅ Secrets Manager (API, database, OAuth credentials)
+- ✅ ECR (container registries with scanning)
+- ✅ Governance (policy table, audit trail, evidence storage)
 
-### Short-term (Phase 2)
+### ✅ Phase 2: Compute & Observability (COMPLETE)
 
-- [ ] Auto-scaling configuration
-- [ ] Blue/green deployment
-- [ ] CloudTrail audit logging
-- [ ] X-Ray tracing
-- [ ] Security Hub integration
+- ✅ Application Load Balancer (HTTP/HTTPS, health checks)
+- ✅ ECS/Fargate cluster and service
+- ✅ CloudWatch dashboards and alarms
+- ✅ CloudTrail audit logging
+- ✅ X-Ray distributed tracing
 
-### Long-term (Phase 3)
+### ⏭️ Phase 3: Advanced Features
 
-- [ ] Multi-region failover
-- [ ] Disaster recovery (DR)
-- [ ] Advanced FinOps (cost anomaly detection, rightsizing)
-- [ ] Feature flags system
+- [ ] Auto-scaling policies (target tracking, step scaling)
+- [ ] Blue/green deployments (CodeDeploy integration)
+- [ ] Multi-region failover (active-active)
+- [ ] Disaster recovery (DR) automation
+- [ ] Advanced FinOps (cost anomaly, rightsizing)
+- [ ] Feature flags system (LaunchDarkly/custom)
 - [ ] Workspace isolation (multi-tenant)
+- [ ] Security Hub integration
+- [ ] GuardDuty findings automation
 
 ## References
 
