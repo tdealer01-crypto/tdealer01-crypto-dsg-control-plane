@@ -5,7 +5,7 @@
  * for DSG ONE / ProofGate control plane on AWS.
  */
 
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -42,6 +42,14 @@ interface DeploymentResult {
 }
 
 /**
+ * Safely escape a string for use in shell commands
+ */
+function shellEscape(value: string): string {
+  // Use single quotes and escape any single quotes within the string
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/**
  * Execute CDK synth to generate CloudFormation template
  */
 export async function synthStack(
@@ -53,8 +61,10 @@ export async function synthStack(
   try {
     console.log(`Synthesizing CDK stack for ${environment}...`);
 
-    const command = `cd ${cdkDir} && npx cdk synth --require-approval=never`;
-    const output = execSync(command, { encoding: "utf-8" });
+    const output = execSync("npx cdk synth --require-approval=never", {
+      encoding: "utf-8",
+      cwd: cdkDir,
+    });
 
     const stackFile = path.join(
       cdkDir,
@@ -129,11 +139,23 @@ export async function deployStack(
     }
 
     // Then deploy
-    const approvalFlag = options?.skipApproval ? "--require-approval=never" : "";
-    const command = `cd ${cdkDir} && npx cdk deploy ${approvalFlag}`;
+    const args = ["cdk", "deploy"];
+    if (options?.skipApproval) {
+      args.push("--require-approval=never");
+    }
 
-    console.log(`Running: ${command}`);
-    const output = execSync(command, { encoding: "utf-8", stdio: "inherit" });
+    console.log(`Running: npx ${args.join(" ")}`);
+    const result = spawnSync("npx", args, {
+      encoding: "utf-8",
+      stdio: "inherit",
+      cwd: cdkDir,
+    });
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    const output = result.stdout || "";
 
     return {
       success: true,
@@ -187,7 +209,7 @@ export async function verifyStack(
     // Check CloudFormation status
     try {
       const cfnCheck = execSync(
-        `aws cloudformation describe-stacks --stack-name ${stackName} --region us-east-1 --query 'Stacks[0].StackStatus' --output text`,
+        `aws cloudformation describe-stacks --stack-name ${shellEscape(stackName)} --region us-east-1 --query 'Stacks[0].StackStatus' --output text`,
         { encoding: "utf-8" }
       ).trim();
 
@@ -203,7 +225,7 @@ export async function verifyStack(
     // Check ECS cluster
     try {
       const ecsCheck = execSync(
-        `aws ecs describe-clusters --clusters ${stackName} --region us-east-1 --query 'clusters[0].status' --output text`,
+        `aws ecs describe-clusters --clusters ${shellEscape(stackName)} --region us-east-1 --query 'clusters[0].status' --output text`,
         { encoding: "utf-8" }
       ).trim();
 
@@ -278,7 +300,7 @@ export async function documentStack(
     if (fs.existsSync(captureScript)) {
       try {
         const output = execSync(
-          `bash ${captureScript} --stack-name ${stackName} --region us-east-1 --environment ${environment}`,
+          `bash ${shellEscape(captureScript)} --stack-name ${shellEscape(stackName)} --region us-east-1 --environment ${shellEscape(environment)}`,
           { encoding: "utf-8" }
         );
 
@@ -365,7 +387,7 @@ export async function troubleshootStack(
     // Check for stuck stacks
     try {
       const events = execSync(
-        `aws cloudformation describe-stack-events --stack-name ${stackName} --region us-east-1 --query 'StackEvents[0:5].[Timestamp,ResourceStatus,ResourceType,LogicalResourceId]' --output table`,
+        `aws cloudformation describe-stack-events --stack-name ${shellEscape(stackName)} --region us-east-1 --query 'StackEvents[0:5].[Timestamp,ResourceStatus,ResourceType,LogicalResourceId]' --output table`,
         { encoding: "utf-8" }
       );
 
