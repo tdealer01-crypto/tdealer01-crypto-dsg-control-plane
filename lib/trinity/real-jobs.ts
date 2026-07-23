@@ -266,7 +266,7 @@ export async function verifyDeliverableReal(
       .from('trinity_verifications')
       .insert({
         deliverable_id: deliverableId,
-        quality_criteria: qualityCriteria,
+        quality_criteria: qualityCriteria || null,
         quality_score: qualityScore,
         verification_status: qualityScore >= 80 ? 'passed' : 'review',
         checks_passed: checksPassed,
