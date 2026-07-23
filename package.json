@@ -75,7 +75,15 @@
     "revenue:monitor:marketplace": "node scripts/revenue/marketplace-monitor.mjs",
     "revenue:test:webhook": "node scripts/revenue/webhook-tester.mjs",
     "revenue:verify:setup": "node scripts/revenue/verify-setup.mjs",
-    "revenue:init": "npm run revenue:webhook:setup && npm run revenue:setup:hubspot"
+    "revenue:init": "npm run revenue:webhook:setup && npm run revenue:setup:hubspot",
+    "secrets:init": "bash scripts/secrets-manager.sh init",
+    "secrets:validate": "bash scripts/secrets-manager.sh validate",
+    "secrets:list": "bash scripts/secrets-manager.sh list",
+    "secrets:check": "bash scripts/secrets-manager.sh check",
+    "secrets:encrypt": "bash scripts/secrets-manager.sh encrypt",
+    "secrets:decrypt": "bash scripts/secrets-manager.sh decrypt",
+    "secrets:export": "bash scripts/secrets-manager.sh export",
+    "setup:github-secrets": "bash scripts/setup-github-secrets.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
