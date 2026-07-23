@@ -36,6 +36,165 @@ When uncertainty exists, verify against the implementation and evidence before m
 
 ---
 
+## Independent Verification
+
+**Do not trust this README alone.**
+
+Every major capability claim must be reproducible from this repository. The implementation is the source of truth.
+
+### How to Verify
+
+1. **Clone this repository**
+2. **Run the verification commands below**
+3. **Inspect the generated evidence**
+4. **Verify the implementation matches the claims**
+
+If evidence cannot be reproduced locally, the claim is **unverified**.
+
+---
+
+## Verification Commands
+
+Run these commands to verify every major claim in this README:
+
+### Core Quality Checks
+
+```bash
+# TypeScript compilation
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Production build
+npm run build
+
+# Unit tests (4026 passing)
+npm run test
+
+# Coverage report (89% coverage claimed)
+npm run test:coverage
+```
+
+### Deterministic & Formal Verification
+
+```bash
+# Verify deterministic module (same input → same output)
+npm run verify:deterministic
+
+# Policy verification (Z3 formal proof)
+npm run verify:policy
+
+# Local HPC verification (Z3 with Docker)
+npm run verify:policy:hpc:local
+
+# Parallel CCVS evidence pipeline (L1-L5)
+npm run ccvs:hpc-parallel
+```
+
+### Evidence & Compliance
+
+```bash
+# Generate CCVS evidence artifacts
+npm run ccvs:emit
+
+# Verify evidence chain integrity (SHA-256 hashing)
+npm run ccvs:verify
+
+# Generate compliance matrix (EU AI Act mapping)
+npm run ccvs:matrix
+
+# Full CCVS verification pipeline
+npm run ccvs:pipeline
+
+# Evidence test suite
+npm run test:evidence
+
+# Formal proofs
+npm run proof:revenue          # Revenue automation ready
+npm run proof:answer-gate      # Answer gate determinism
+```
+
+### Performance & Benchmarks
+
+```bash
+# Benchmark gateway performance (11ms latency)
+npm run benchmark
+
+# Full benchmark report
+npm run benchmark:full
+
+# Gateway comparison with vendors
+npm run benchmark:gateway:compare
+```
+
+### Production Readiness
+
+```bash
+# Go/No-Go gate check
+npm run go:no-go https://tdealer01-crypto-dsg-control-plane.vercel.app
+
+# Production manifest verification
+npm run verify:production-manifest
+
+# Security headers check
+npm run verify:security-headers
+
+# Live environment verification
+npm run verify:live-env
+```
+
+---
+
+## Evidence
+
+Evidence for claims comes from:
+
+### Source Code
+- Implementation files in `lib/`, `app/`, `tools/`
+- Proof scripts in `tools/proofs/`
+- Test files across all modules
+
+### Test Results
+- `npm run test` — 4026 tests (unit + integration + failure + migrations)
+- `npm run test:coverage` — Coverage report
+- `npm run test:evidence` — CCVS evidence tests
+
+### Benchmarks & Performance
+- `npm run benchmark` — Gateway latency benchmarks
+- `npm run benchmark:full` — Full benchmark suite
+- Performance reports in `BENCHMARKS.md`
+
+### Formal Verification
+- `npm run verify:deterministic` — Deterministic replay proof
+- `npm run verify:policy` — Z3 theorem proving
+- `npm run proof:revenue` — Revenue automation proof
+- `npm run proof:answer-gate` — Answer gate proof
+
+### Compliance & Audit Evidence
+- `npm run ccvs:emit` — CCVS L1-L5 evidence artifacts (JSON)
+- `npm run ccvs:verify` — Evidence chain integrity (SHA-256)
+- `npm run ccvs:matrix` — Compliance mapping (EU AI Act, PDPA, SOC 2)
+
+### CI/CD & Deployment
+- GitHub Actions workflows in `.github/workflows/`
+- Vercel deployment logs and build artifacts
+- Runtime status from production API endpoints
+
+### Live Runtime Proof
+```bash
+# Production health check
+curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/status
+
+# Response includes:
+# - Deployed commit hash
+# - Environment name
+# - Database connectivity status
+# - Build timestamp
+```
+
+---
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Build](https://img.shields.io/badge/Build-Pass-brightgreen)](https://vercel.com)
 [![Security](https://img.shields.io/badge/Security-0%20Critical-brightgreen)](./docs/SECURITY.md)
