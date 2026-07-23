@@ -22,13 +22,11 @@
       }
     ],
     "target": "ES2017",
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
       ]
-    },
-    "downlevelIteration": true
+    }
   },
   "include": [
     "next-env.d.ts",
