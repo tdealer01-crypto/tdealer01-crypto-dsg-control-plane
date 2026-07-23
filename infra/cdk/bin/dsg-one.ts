@@ -14,6 +14,6 @@ const config = getConfig(env);
 // Create the stack
 new DSGOneStack(app, `DSGOneStack-${env}`, {
   config,
-  stackName: `dsg-one-${env}`,
+  stackName: `dsg-one-${env}-v2`,
   description: `DSG ONE Infrastructure - ${env} environment`,
 });
