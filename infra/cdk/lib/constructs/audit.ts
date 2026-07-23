@@ -47,7 +47,7 @@ export class AuditConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -79,7 +79,7 @@ export class AuditConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -94,7 +94,7 @@ export class AuditConstruct extends Construct {
       objectLockEnabled: true,
       objectLockDefaultRetention: {
         mode: s3.ObjectLockRetentionMode.GOVERNANCE,
-        days: 2555, // 7 years for compliance
+        duration: cdk.Duration.days(2555), // 7 years for compliance
       },
       lifecycleRules: [
         {
@@ -117,7 +117,7 @@ export class AuditConstruct extends Construct {
     this.auditLogGroup = new logs.LogGroup(this, 'AuditLogGroup', {
       logGroupName: `/dsg-one/${config.environment}/audit`,
       retention: logs.RetentionDays.FIVE_YEARS,
-      encryption: encryptionKey,
+      encryptionKey: encryptionKey,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -132,7 +132,7 @@ export class AuditConstruct extends Construct {
     this.hashChainTable.grantReadWriteData(this.auditRole);
     this.auditBucket.grantReadWrite(this.auditRole);
     this.auditLogGroup.grantWrite(this.auditRole);
-    encryptionKey.grantDecryptEncrypt(this.auditRole);
+    encryptionKey.grantEncryptDecrypt(this.auditRole);
 
     // Deny deletion from audit table and bucket
     this.auditRole.attachInlinePolicy(

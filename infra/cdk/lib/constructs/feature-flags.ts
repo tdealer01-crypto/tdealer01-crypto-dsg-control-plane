@@ -48,7 +48,7 @@ export class FeatureFlagsConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -67,7 +67,7 @@ export class FeatureFlagsConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -109,7 +109,7 @@ export class FeatureFlagsConstruct extends Construct {
     // Grant permissions
     this.featureFlagsTable.grantReadWriteData(this.featureFlagsRole);
     this.featureRolloutsTable.grantReadWriteData(this.featureFlagsRole);
-    encryptionKey.grantDecryptEncrypt(this.featureFlagsRole);
+    encryptionKey.grantEncryptDecrypt(this.featureFlagsRole);
 
     // Grant AppConfig permissions
     this.featureFlagsRole.addToPrincipalPolicy(
