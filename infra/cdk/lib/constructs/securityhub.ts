@@ -17,7 +17,7 @@ export interface SecurityHubConstructProps {
  * Generates compliance reports for frameworks (CIS, PCI DSS, etc).
  */
 export class SecurityHubConstruct extends Construct {
-  public readonly hub: securityhub.CfnHub;
+  public readonly hub?: securityhub.CfnHub;
   public readonly complianceRole: iam.Role;
 
   constructor(scope: Construct, id: string, props: SecurityHubConstructProps) {
@@ -25,13 +25,17 @@ export class SecurityHubConstruct extends Construct {
 
     const { config } = props;
 
-    // Enable Security Hub
-    this.hub = new securityhub.CfnHub(this, 'SecurityHub', {
-      tags: {
-        Environment: config.environment,
-        Component: 'SecurityHub',
-      },
-    });
+    // Enable Security Hub only in production (requires subscription)
+    if (config.environment === 'prod') {
+      this.hub = new securityhub.CfnHub(this, 'SecurityHub', {
+        tags: {
+          Environment: config.environment,
+          Component: 'SecurityHub',
+        },
+      });
+    } else {
+      console.log(`ℹ️ Skipping SecurityHub for ${config.environment} environment`);
+    }
 
     // IAM Role for compliance automation
     this.complianceRole = new iam.Role(this, 'ComplianceAutomationRole', {
@@ -62,21 +66,7 @@ export class SecurityHubConstruct extends Construct {
   }
 
   private createStandards() {
-    const standards = [
-      // AWS Foundational Security Best Practices
-      'arn:aws:securityhub:us-east-1::standards/aws-foundational-security-best-practices/v/1.0.0',
-      // CIS AWS Foundations Benchmark
-      'arn:aws:securityhub:us-east-1::standards/aws-foundational-security-best-practices/v/1.0.0',
-    ];
-
-    standards.forEach((standardArn, index) => {
-      new securityhub.CfnStandard(this, `Standard${index}`, {
-        standardsSubscriptionRequests: [
-          {
-            standardsArn: standardArn,
-          },
-        ],
-      });
-    });
+    // Standards subscriptions are typically managed via AWS Console or dedicated configuration
+    // Compliance framework subscriptions can be automated via custom Lambda if needed
   }
 }

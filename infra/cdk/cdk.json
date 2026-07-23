@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --transpile-only bin/dsg-one.ts",
+  "app": "node dist/bin/dsg-one.js",
   "context": {
     "environment": "dev"
   }

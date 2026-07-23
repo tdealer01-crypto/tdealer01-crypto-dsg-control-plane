@@ -49,7 +49,7 @@ export class ComplianceConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Workspace Isolation Table - multi-tenant boundaries
@@ -68,7 +68,7 @@ export class ComplianceConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Compliance Status Table - compliance checks and gaps
@@ -87,7 +87,7 @@ export class ComplianceConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       timeToLiveAttribute: 'ttl',
     });
 
@@ -104,7 +104,7 @@ export class ComplianceConstruct extends Construct {
           noncurrentVersionExpiration: cdk.Duration.days(365),
         },
       ],
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // IAM Role for Compliance Operations

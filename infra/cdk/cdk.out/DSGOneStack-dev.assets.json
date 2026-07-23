@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "a1173b1df4cb915d300b0e253005db942ed278bc43c96d4e8fd07843c7cd711c": {
+      "displayName": "DSGOneStack-dev Template",
+      "source": {
+        "path": "DSGOneStack-dev.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "121205961822-us-east-1-981be64d": {
+          "bucketName": "cdk-hnb659fds-assets-121205961822-us-east-1",
+          "objectKey": "a1173b1df4cb915d300b0e253005db942ed278bc43c96d4e8fd07843c7cd711c.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::121205961822:role/cdk-hnb659fds-file-publishing-role-121205961822-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

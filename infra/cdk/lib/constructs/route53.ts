@@ -31,8 +31,8 @@ export class Route53Construct extends Construct {
       description: 'Role for Route53 DNS management',
     });
 
-    // Create hosted zone (if domain is configured)
-    if (config.domain?.name) {
+    // Create hosted zone (if domain is configured and in production)
+    if (config.domain?.name && config.environment === 'prod') {
       this.hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
         domainName: config.domain.name,
       });
@@ -45,12 +45,14 @@ export class Route53Construct extends Construct {
         this,
         'PrimaryHealthCheck',
         {
-          type: 'HTTPS',
-          resourcePath: '/api/health',
-          fullyQualifiedDomainName: `dsg-one-primary.${config.domain.name}`,
-          port: 443,
-          requestInterval: 30,
-          failureThreshold: 3,
+          healthCheckConfig: {
+            type: 'HTTPS',
+            resourcePath: '/api/health',
+            fullyQualifiedDomainName: `dsg-one-primary.${config.domain.name}`,
+            port: 443,
+            requestInterval: 30,
+            failureThreshold: 3,
+          },
           healthCheckTags: [
             {
               key: 'Name',
@@ -66,12 +68,14 @@ export class Route53Construct extends Construct {
         this,
         'SecondaryHealthCheck',
         {
-          type: 'HTTPS',
-          resourcePath: '/api/health',
-          fullyQualifiedDomainName: `dsg-one-secondary.${config.domain.name}`,
-          port: 443,
-          requestInterval: 30,
-          failureThreshold: 3,
+          healthCheckConfig: {
+            type: 'HTTPS',
+            resourcePath: '/api/health',
+            fullyQualifiedDomainName: `dsg-one-secondary.${config.domain.name}`,
+            port: 443,
+            requestInterval: 30,
+            failureThreshold: 3,
+          },
           healthCheckTags: [
             {
               key: 'Name',

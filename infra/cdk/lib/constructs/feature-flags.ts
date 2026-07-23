@@ -49,7 +49,7 @@ export class FeatureFlagsConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Feature Rollouts Table - gradual rollout and canary tracking
@@ -68,17 +68,17 @@ export class FeatureFlagsConstruct extends Construct {
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // AWS AppConfig Application for feature flags
     this.appConfigApp = new appconfig.CfnApplication(this, 'FeatureFlagApp', {
       name: `${resourcePrefix}-feature-flags`,
       description: 'Feature flag configuration for DSG ONE',
-      tags: {
-        Component: 'FeatureFlags',
-        Phase: '3-AI-Governance',
-      },
+      tags: [
+        { key: 'Component', value: 'FeatureFlags' },
+        { key: 'Phase', value: '3-AI-Governance' },
+      ],
     });
 
     // AWS AppConfig Environment
@@ -94,10 +94,10 @@ export class FeatureFlagsConstruct extends Construct {
           }).roleArn,
         },
       ],
-      tags: {
-        Component: 'FeatureFlags',
-        Environment: config.environment,
-      },
+      tags: [
+        { key: 'Component', value: 'FeatureFlags' },
+        { key: 'Environment', value: config.environment },
+      ],
     });
 
     // IAM Role for Feature Flag Operations

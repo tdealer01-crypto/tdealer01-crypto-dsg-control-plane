@@ -60,7 +60,7 @@ export class FinOpsConstruct extends Construct {
       budget: {
         budgetName: `${config.resourcePrefix}-monthly`,
         budgetLimit: {
-          amount: monthlyBudgetAmount.toString(),
+          amount: monthlyBudgetAmount,
           unit: 'USD',
         },
         timeUnit: 'MONTHLY',

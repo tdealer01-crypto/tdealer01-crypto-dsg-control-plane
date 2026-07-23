@@ -154,9 +154,6 @@ export class DSGOneStack extends cdk.Stack {
     this.ecs = new ECSConstruct(this, 'ECS', {
       config,
       vpc: this.networking.vpc,
-      ecr: this.ecr,
-      alb: this.alb,
-      secrets: this.secrets,
     });
 
     // CloudWatch Monitoring
@@ -185,36 +182,43 @@ export class DSGOneStack extends cdk.Stack {
     // Policy Engine
     this.policyEngine = new PolicyEngineConstruct(this, 'PolicyEngine', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // Model Registry
     this.modelRegistry = new ModelRegistryConstruct(this, 'ModelRegistry', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // Advanced Audit Trail (Immutable)
     this.audit = new AuditConstruct(this, 'Audit', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // Deterministic Replay
     this.replay = new ReplayConstruct(this, 'Replay', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // Evidence Collection (CCVS L1-L5)
     this.evidence = new EvidenceConstruct(this, 'Evidence', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // Compliance & Policy as Code
     this.compliance = new ComplianceConstruct(this, 'Compliance', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // Feature Flags & Runtime Gating
     this.featureFlags = new FeatureFlagsConstruct(this, 'FeatureFlags', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // ============================================
@@ -255,6 +259,7 @@ export class DSGOneStack extends cdk.Stack {
     // Notifications
     this.sns = new SNSConstruct(this, 'SNS', {
       config,
+      encryptionKey: this.kms.key,
     });
 
     // FinOps - Cost Management

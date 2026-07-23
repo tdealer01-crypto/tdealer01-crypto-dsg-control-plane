@@ -1,0 +1,137 @@
+{
+  "version": "54.0.0",
+  "title": "Validation Report",
+  "pluginReports": [
+    {
+      "pluginName": "CloudFormation Validate",
+      "pluginVersion": "1.5.0",
+      "conclusion": "success",
+      "violations": [
+        {
+          "ruleName": "W2531",
+          "description": "Runtime: Runtime 'nodejs18.x' was deprecated on '2025-09-01'. Creation was disabled on '2027-02-01' and update on '2027-03-03'. Please consider updating to 'nodejs24.x'",
+          "severity": "warning",
+          "ruleMetadata": {
+            "category": "Deprecation"
+          },
+          "violatingConstructs": [
+            {
+              "constructPath": "DSGOneStack-dev/PolicyEngine/PolicyEvaluationFunction/Resource",
+              "constructFqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+              "libraryVersion": "2.262.0",
+              "cloudFormationResource": {
+                "templatePath": "DSGOneStack-dev.template.json",
+                "logicalId": "PolicyEnginePolicyEvaluationFunctionEE3E5D15",
+                "propertyPaths": [
+                  "Properties.Runtime"
+                ]
+              },
+              "stackTraces": [
+                "...new Function2 in aws-cdk-lib...",
+                "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:141:41)",
+                "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
+                "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
+                "...node internals..."
+              ]
+            },
+            {
+              "constructPath": "DSGOneStack-dev/ModelRegistry/ModelRoutingFunction/Resource",
+              "constructFqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+              "libraryVersion": "2.262.0",
+              "cloudFormationResource": {
+                "templatePath": "DSGOneStack-dev.template.json",
+                "logicalId": "ModelRegistryModelRoutingFunction1B3FDCD9",
+                "propertyPaths": [
+                  "Properties.Runtime"
+                ]
+              },
+              "stackTraces": [
+                "...new Function2 in aws-cdk-lib...",
+                "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:156:37)",
+                "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
+                "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
+                "...node internals..."
+              ]
+            },
+            {
+              "constructPath": "DSGOneStack-dev/Replay/ReplayFunction/Resource",
+              "constructFqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+              "libraryVersion": "2.262.0",
+              "cloudFormationResource": {
+                "templatePath": "DSGOneStack-dev.template.json",
+                "logicalId": "ReplayReplayFunction58D58008",
+                "propertyPaths": [
+                  "Properties.Runtime"
+                ]
+              },
+              "stackTraces": [
+                "...new Function2 in aws-cdk-lib...",
+                "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:142:31)",
+                "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
+                "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
+                "...node internals..."
+              ]
+            },
+            {
+              "constructPath": "DSGOneStack-dev/Evidence/EvidenceCollectorFunction/Resource",
+              "constructFqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+              "libraryVersion": "2.262.0",
+              "cloudFormationResource": {
+                "templatePath": "DSGOneStack-dev.template.json",
+                "logicalId": "EvidenceEvidenceCollectorFunction9BA88C57",
+                "propertyPaths": [
+                  "Properties.Runtime"
+                ]
+              },
+              "stackTraces": [
+                "...new Function2 in aws-cdk-lib...",
+                "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:117:42)",
+                "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)",
+                "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
+                "...node internals..."
+              ]
+            },
+            {
+              "constructPath": "DSGOneStack-dev/Compliance/ComplianceEnforcerFunction/Resource",
+              "constructFqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+              "libraryVersion": "2.262.0",
+              "cloudFormationResource": {
+                "templatePath": "DSGOneStack-dev.template.json",
+                "logicalId": "ComplianceComplianceEnforcerFunction3F2BF997",
+                "propertyPaths": [
+                  "Properties.Runtime"
+                ]
+              },
+              "stackTraces": [
+                "...new Function2 in aws-cdk-lib...",
+                "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:137:35)",
+                "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
+                "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
+                "...node internals..."
+              ]
+            },
+            {
+              "constructPath": "DSGOneStack-dev/FeatureFlags/FeatureGateFunction/Resource",
+              "constructFqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+              "libraryVersion": "2.262.0",
+              "cloudFormationResource": {
+                "templatePath": "DSGOneStack-dev.template.json",
+                "logicalId": "FeatureFlagsFeatureGateFunction8B50B78A",
+                "propertyPaths": [
+                  "Properties.Runtime"
+                ]
+              },
+              "stackTraces": [
+                "...new Function2 in aws-cdk-lib...",
+                "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:139:36)",
+                "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
+                "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
+                "...node internals..."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

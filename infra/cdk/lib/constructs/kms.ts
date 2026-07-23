@@ -17,7 +17,7 @@ export class KMSConstruct extends Construct {
     this.key = new kms.Key(this, 'EncryptionKey', {
       description: `KMS key for ${config.environment} DSG ONE environment`,
       enableKeyRotation: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     this.key.addAlias(`dsg-one-${config.environment}`);

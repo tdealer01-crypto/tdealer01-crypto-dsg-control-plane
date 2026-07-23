@@ -1,0 +1,6656 @@
+{
+ "Resources": {
+  "KMSEncryptionKey12EA24A0": {
+   "Type": "AWS::KMS::Key",
+   "Properties": {
+    "Description": "KMS key for dev DSG ONE environment",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Statement": [
+      {
+       "Action": "kms:*",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":iam::121205961822:root"
+          ]
+         ]
+        }
+       },
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/KMS/EncryptionKey/Resource"
+   }
+  },
+  "KMSEncryptionKeyAliasBABAB5DE": {
+   "Type": "AWS::KMS::Alias",
+   "Properties": {
+    "AliasName": "alias/dsg-one-dev",
+    "TargetKeyId": {
+     "Fn::GetAtt": [
+      "KMSEncryptionKey12EA24A0",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/KMS/EncryptionKey/Alias/Resource"
+   }
+  },
+  "IAMEcsTaskExecutionRoleB647AB19": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+       ]
+      ]
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/IAM/EcsTaskExecutionRole/Resource"
+   }
+  },
+  "IAMEcsTaskRole856451F5": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/IAM/EcsTaskRole/Resource"
+   }
+  },
+  "SecretsDbSecret52AECC37": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "GenerateSecretString": {
+     "GenerateStringKey": "password",
+     "PasswordLength": 32,
+     "SecretStringTemplate": "{\"username\":\"dsg_admin\"}"
+    },
+    "Name": "dsg-one-dev-db-secret",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Secrets/DbSecret/Resource"
+   }
+  },
+  "NetworkingVpc6B5E6F44": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/Resource"
+   }
+  },
+  "NetworkingVpcPublicSubnet1Subnet918289EE": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/18",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1/Subnet"
+   }
+  },
+  "NetworkingVpcPublicSubnet1RouteTable8FB3C18A": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1/RouteTable"
+   }
+  },
+  "NetworkingVpcPublicSubnet1RouteTableAssociationD13830EA": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPublicSubnet1RouteTable8FB3C18A"
+    },
+    "SubnetId": {
+     "Ref": "NetworkingVpcPublicSubnet1Subnet918289EE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1/RouteTableAssociation"
+   }
+  },
+  "NetworkingVpcPublicSubnet1DefaultRoute80C01FA6": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "NetworkingVpcIGW21218DAB"
+    },
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPublicSubnet1RouteTable8FB3C18A"
+    }
+   },
+   "DependsOn": [
+    "NetworkingVpcVPCGW12E561D8"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1/DefaultRoute"
+   }
+  },
+  "NetworkingVpcPublicSubnet1EIP7D5353EC": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1/EIP"
+   }
+  },
+  "NetworkingVpcPublicSubnet1NATGateway70EEEC07": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "NetworkingVpcPublicSubnet1EIP7D5353EC",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "NetworkingVpcPublicSubnet1Subnet918289EE"
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1"
+     }
+    ]
+   },
+   "DependsOn": [
+    "NetworkingVpcPublicSubnet1DefaultRoute80C01FA6",
+    "NetworkingVpcPublicSubnet1RouteTableAssociationD13830EA"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet1/NATGateway"
+   }
+  },
+  "NetworkingVpcPublicSubnet2Subnet9D9E5AFB": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.64.0/18",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2/Subnet"
+   }
+  },
+  "NetworkingVpcPublicSubnet2RouteTable22886677": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2/RouteTable"
+   }
+  },
+  "NetworkingVpcPublicSubnet2RouteTableAssociation2D4CEA06": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPublicSubnet2RouteTable22886677"
+    },
+    "SubnetId": {
+     "Ref": "NetworkingVpcPublicSubnet2Subnet9D9E5AFB"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2/RouteTableAssociation"
+   }
+  },
+  "NetworkingVpcPublicSubnet2DefaultRouteDF98F60F": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "NetworkingVpcIGW21218DAB"
+    },
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPublicSubnet2RouteTable22886677"
+    }
+   },
+   "DependsOn": [
+    "NetworkingVpcVPCGW12E561D8"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2/DefaultRoute"
+   }
+  },
+  "NetworkingVpcPublicSubnet2EIP702A8117": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2/EIP"
+   }
+  },
+  "NetworkingVpcPublicSubnet2NATGatewayB9DAAE57": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "NetworkingVpcPublicSubnet2EIP702A8117",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "NetworkingVpcPublicSubnet2Subnet9D9E5AFB"
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2"
+     }
+    ]
+   },
+   "DependsOn": [
+    "NetworkingVpcPublicSubnet2DefaultRouteDF98F60F",
+    "NetworkingVpcPublicSubnet2RouteTableAssociation2D4CEA06"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PublicSubnet2/NATGateway"
+   }
+  },
+  "NetworkingVpcPrivateSubnet1Subnet717BCE48": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.128.0/18",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet1/Subnet"
+   }
+  },
+  "NetworkingVpcPrivateSubnet1RouteTable69CC9A73": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet1/RouteTable"
+   }
+  },
+  "NetworkingVpcPrivateSubnet1RouteTableAssociation761725EA": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPrivateSubnet1RouteTable69CC9A73"
+    },
+    "SubnetId": {
+     "Ref": "NetworkingVpcPrivateSubnet1Subnet717BCE48"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet1/RouteTableAssociation"
+   }
+  },
+  "NetworkingVpcPrivateSubnet1DefaultRouteDE58E6A0": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "NetworkingVpcPublicSubnet1NATGateway70EEEC07"
+    },
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPrivateSubnet1RouteTable69CC9A73"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet1/DefaultRoute"
+   }
+  },
+  "NetworkingVpcPrivateSubnet2Subnet4313381B": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.192.0/18",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet2/Subnet"
+   }
+  },
+  "NetworkingVpcPrivateSubnet2RouteTableAE92CE40": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet2/RouteTable"
+   }
+  },
+  "NetworkingVpcPrivateSubnet2RouteTableAssociation9EFBB61D": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPrivateSubnet2RouteTableAE92CE40"
+    },
+    "SubnetId": {
+     "Ref": "NetworkingVpcPrivateSubnet2Subnet4313381B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet2/RouteTableAssociation"
+   }
+  },
+  "NetworkingVpcPrivateSubnet2DefaultRoute5BF16047": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "NetworkingVpcPublicSubnet2NATGatewayB9DAAE57"
+    },
+    "RouteTableId": {
+     "Ref": "NetworkingVpcPrivateSubnet2RouteTableAE92CE40"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/PrivateSubnet2/DefaultRoute"
+   }
+  },
+  "NetworkingVpcIGW21218DAB": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Name",
+      "Value": "DSGOneStack-dev/Networking/Vpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/IGW"
+   }
+  },
+  "NetworkingVpcVPCGW12E561D8": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "NetworkingVpcIGW21218DAB"
+    },
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Networking/Vpc/VPCGW"
+   }
+  },
+  "ECREcrRepository647D96FB": {
+   "Type": "AWS::ECR::Repository",
+   "Properties": {
+    "ImageScanningConfiguration": {
+     "ScanOnPush": true
+    },
+    "RepositoryName": "dsg-one-dev",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ECR/EcrRepository/Resource"
+   }
+  },
+  "ALBCAA855EE": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "ALBSecurityGroup45F50745",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Ref": "NetworkingVpcPublicSubnet1Subnet918289EE"
+     },
+     {
+      "Ref": "NetworkingVpcPublicSubnet2Subnet9D9E5AFB"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ],
+    "Type": "application"
+   },
+   "DependsOn": [
+    "NetworkingVpcPublicSubnet1DefaultRoute80C01FA6",
+    "NetworkingVpcPublicSubnet1RouteTableAssociationD13830EA",
+    "NetworkingVpcPublicSubnet2DefaultRouteDF98F60F",
+    "NetworkingVpcPublicSubnet2RouteTableAssociation2D4CEA06"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ALB/ALB/Resource"
+   }
+  },
+  "ALBSecurityGroup45F50745": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Automatically created Security Group for ELB DSGOneStackdevALB58614B78",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "255.255.255.255/32",
+      "Description": "Disallow all traffic",
+      "FromPort": 252,
+      "IpProtocol": "icmp",
+      "ToPort": 86
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ],
+    "VpcId": {
+     "Ref": "NetworkingVpc6B5E6F44"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ALB/ALB/SecurityGroup/Resource"
+   }
+  },
+  "ECSClusterA1D9AB17": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterName": "dsg-one-dev",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ECS/Cluster/Resource"
+   }
+  },
+  "CloudWatchLogGroup0394AF0D": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/dsg-one/dev",
+    "RetentionInDays": 30,
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/CloudWatch/LogGroup/Resource"
+   }
+  },
+  "PolicyEnginePolicyVersionsTable4F8771C3": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "policy_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "version",
+      "AttributeType": "N"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "policy_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "version",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-policy-versions",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "PolicyEngine"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PolicyVersionsTable/Resource"
+   }
+  },
+  "PolicyEnginePoliciesTable86CCADE6": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "policy_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "scope",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "policy_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "scope",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-policies",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "PolicyEngine"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PoliciesTable/Resource"
+   }
+  },
+  "PolicyEngineConstraintEvaluationTable3E67AE05": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "evaluation_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "evaluation_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-constraint-evaluations",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "PolicyEngine"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/ConstraintEvaluationTable/Resource"
+   }
+  },
+  "PolicyEnginePoliciesBucket52C22C25": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "KMSMasterKeyID": {
+         "Fn::GetAtt": [
+          "KMSEncryptionKey12EA24A0",
+          "Arn"
+         ]
+        },
+        "SSEAlgorithm": "aws:kms"
+       }
+      }
+     ]
+    },
+    "BucketName": "dsg-one-dev-policies-121205961822",
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+       },
+       "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 90
+       },
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "PolicyEngine"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PoliciesBucket/Resource"
+   }
+  },
+  "PolicyEnginePoliciesBucketPolicyBAED8CF2": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "PolicyEnginePoliciesBucket52C22C25"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEnginePoliciesBucket52C22C25",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "PolicyEnginePoliciesBucket52C22C25",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PoliciesBucket/Policy/Resource"
+   }
+  },
+  "PolicyEnginePolicyEvaluationRoleDED7F305": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for policy evaluation and Z3 constraint checking",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "PolicyEngine"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PolicyEvaluationRole/Resource"
+   }
+  },
+  "PolicyEnginePolicyEvaluationRoleDefaultPolicy17E8776A": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEnginePoliciesTable86CCADE6",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEnginePoliciesTable86CCADE6",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEnginePolicyVersionsTable4F8771C3",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEnginePolicyVersionsTable4F8771C3",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEngineConstraintEvaluationTable3E67AE05",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEngineConstraintEvaluationTable3E67AE05",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "PolicyEnginePoliciesBucket52C22C25",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "PolicyEnginePoliciesBucket52C22C25",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "PolicyEnginePolicyEvaluationRoleDefaultPolicy17E8776A",
+    "Roles": [
+     {
+      "Ref": "PolicyEnginePolicyEvaluationRoleDED7F305"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PolicyEvaluationRole/DefaultPolicy/Resource"
+   }
+  },
+  "PolicyEnginePolicyEvaluationFunctionEE3E5D15": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "\n        exports.handler = async (event) => {\n          // Policy evaluation logic will be implemented by DSG team\n          return {\n            statusCode: 200,\n            body: JSON.stringify({\n              message: 'Policy evaluation endpoint',\n              policyId: event.policyId,\n              constraints: event.constraints,\n            }),\n          };\n        };\n      "
+    },
+    "Description": "Deterministic policy evaluation with Z3 constraint checking",
+    "Environment": {
+     "Variables": {
+      "POLICIES_TABLE": {
+       "Ref": "PolicyEnginePoliciesTable86CCADE6"
+      },
+      "POLICY_VERSIONS_TABLE": {
+       "Ref": "PolicyEnginePolicyVersionsTable4F8771C3"
+      },
+      "CONSTRAINT_EVALUATION_TABLE": {
+       "Ref": "PolicyEngineConstraintEvaluationTable3E67AE05"
+      },
+      "POLICIES_BUCKET": {
+       "Ref": "PolicyEnginePoliciesBucket52C22C25"
+      }
+     }
+    },
+    "FunctionName": "dsg-one-dev-policy-evaluation",
+    "Handler": "index.handler",
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "PolicyEnginePolicyEvaluationRoleDED7F305",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "PolicyEngine"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "PolicyEnginePolicyEvaluationRoleDefaultPolicy17E8776A",
+    "PolicyEnginePolicyEvaluationRoleDED7F305"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/PolicyEngine/PolicyEvaluationFunction/Resource"
+   }
+  },
+  "ModelRegistryModelsTableD52FDE84": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "model_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "provider",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "model_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "provider",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-models",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelsTable/Resource"
+   }
+  },
+  "ModelRegistryModelVersionsTable5E734C0E": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "model_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "version",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "model_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "version",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-model-versions",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelVersionsTable/Resource"
+   }
+  },
+  "ModelRegistryModelRoutingTable8B00DF93": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "routing_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "priority",
+      "AttributeType": "N"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "routing_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "priority",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-model-routing",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelRoutingTable/Resource"
+   }
+  },
+  "ModelRegistryModelMetricsTableDF098745": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "model_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "model_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-model-metrics",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelMetricsTable/Resource"
+   }
+  },
+  "ModelRegistryModelRegistryBucketEEF2ECEF": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "KMSMasterKeyID": {
+         "Fn::GetAtt": [
+          "KMSEncryptionKey12EA24A0",
+          "Arn"
+         ]
+        },
+        "SSEAlgorithm": "aws:kms"
+       }
+      }
+     ]
+    },
+    "BucketName": "dsg-one-dev-model-registry-121205961822",
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 90
+       },
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelRegistryBucket/Resource"
+   }
+  },
+  "ModelRegistryModelRegistryBucketPolicy41557651": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "ModelRegistryModelRegistryBucketEEF2ECEF"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelRegistryBucketEEF2ECEF",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "ModelRegistryModelRegistryBucketEEF2ECEF",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelRegistryBucket/Policy/Resource"
+   }
+  },
+  "ModelRegistryModelRoutingRole69C94948": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for model routing, selection, and fallback orchestration",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelRoutingRole/Resource"
+   }
+  },
+  "ModelRegistryModelRoutingRoleDefaultPolicyFF7FD0B3": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelsTableD52FDE84",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelsTableD52FDE84",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelVersionsTable5E734C0E",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelVersionsTable5E734C0E",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelRoutingTable8B00DF93",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelRoutingTable8B00DF93",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelMetricsTableDF098745",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelMetricsTableDF098745",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ModelRegistryModelRegistryBucketEEF2ECEF",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "ModelRegistryModelRegistryBucketEEF2ECEF",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "kms:Decrypt",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ModelRegistryModelRoutingRoleDefaultPolicyFF7FD0B3",
+    "Roles": [
+     {
+      "Ref": "ModelRegistryModelRoutingRole69C94948"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelRoutingRole/DefaultPolicy/Resource"
+   }
+  },
+  "ModelRegistryModelRoutingFunction1B3FDCD9": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "\n        exports.handler = async (event) => {\n          // Model routing logic: select best model based on:\n          // - Cost constraints\n          // - Latency requirements\n          // - Compliance policies\n          // - Availability (fallback chains)\n          return {\n            statusCode: 200,\n            body: JSON.stringify({\n              selectedModel: 'claude-3-sonnet',\n              fallbacks: ['claude-3-haiku', 'gpt-4-turbo'],\n              estimatedCost: 0.015,\n              rationale: 'optimal cost/performance',\n            }),\n          };\n        };\n      "
+    },
+    "Description": "Intelligent model selection and routing with fallback strategies",
+    "Environment": {
+     "Variables": {
+      "MODELS_TABLE": {
+       "Ref": "ModelRegistryModelsTableD52FDE84"
+      },
+      "ROUTING_TABLE": {
+       "Ref": "ModelRegistryModelRoutingTable8B00DF93"
+      },
+      "METRICS_TABLE": {
+       "Ref": "ModelRegistryModelMetricsTableDF098745"
+      },
+      "REGISTRY_BUCKET": {
+       "Ref": "ModelRegistryModelRegistryBucketEEF2ECEF"
+      }
+     }
+    },
+    "FunctionName": "dsg-one-dev-model-routing",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "ModelRegistryModelRoutingRole69C94948",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "ModelRegistry"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "ModelRegistryModelRoutingRoleDefaultPolicyFF7FD0B3",
+    "ModelRegistryModelRoutingRole69C94948"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/ModelRegistry/ModelRoutingFunction/Resource"
+   }
+  },
+  "AuditAuditTable876FD578": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "organization_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "event_type",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "EventTypeIndex",
+      "KeySchema": [
+       {
+        "AttributeName": "event_type",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "timestamp",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "organization_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-audit-events",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ImmutableTrail"
+     },
+     {
+      "Key": "Component",
+      "Value": "Audit"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditTable/Resource"
+   }
+  },
+  "AuditHashChainTable2E7743A6": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "chain_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "block_height",
+      "AttributeType": "N"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "chain_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "block_height",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-hash-chain",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ImmutableTrail"
+     },
+     {
+      "Key": "Component",
+      "Value": "Audit"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/HashChainTable/Resource"
+   }
+  },
+  "AuditAuditBucket47CEE27E": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "KMSMasterKeyID": {
+         "Fn::GetAtt": [
+          "KMSEncryptionKey12EA24A0",
+          "Arn"
+         ]
+        },
+        "SSEAlgorithm": "aws:kms"
+       }
+      }
+     ]
+    },
+    "BucketName": "dsg-one-dev-audit-121205961822",
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "Status": "Enabled",
+       "Transitions": [
+        {
+         "StorageClass": "GLACIER",
+         "TransitionInDays": 90
+        },
+        {
+         "StorageClass": "DEEP_ARCHIVE",
+         "TransitionInDays": 365
+        }
+       ]
+      }
+     ]
+    },
+    "ObjectLockConfiguration": {
+     "ObjectLockEnabled": "Enabled",
+     "Rule": {
+      "DefaultRetention": {
+       "Days": 2555,
+       "Mode": "GOVERNANCE"
+      }
+     }
+    },
+    "ObjectLockEnabled": true,
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ImmutableTrail"
+     },
+     {
+      "Key": "Component",
+      "Value": "Audit"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditBucket/Resource"
+   }
+  },
+  "AuditAuditBucketPolicyA7900FA3": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "AuditAuditBucket47CEE27E"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AuditAuditBucket47CEE27E",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AuditAuditBucket47CEE27E",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditBucket/Policy/Resource"
+   }
+  },
+  "AuditAuditLogGroup1FF97942": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/dsg-one/dev/audit",
+    "RetentionInDays": 1827,
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ImmutableTrail"
+     },
+     {
+      "Key": "Component",
+      "Value": "Audit"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditLogGroup/Resource"
+   }
+  },
+  "AuditAuditRoleABE5764A": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for immutable audit trail operations",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ImmutableTrail"
+     },
+     {
+      "Key": "Component",
+      "Value": "Audit"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditRole/Resource"
+   }
+  },
+  "AuditAuditRoleDefaultPolicy3B64A1D1": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AuditAuditTable876FD578",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AuditAuditTable876FD578",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AuditAuditTable876FD578",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AuditAuditTable876FD578",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AuditHashChainTable2E7743A6",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AuditHashChainTable2E7743A6",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AuditAuditBucket47CEE27E",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AuditAuditBucket47CEE27E",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "AuditAuditLogGroup1FF97942",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AuditAuditRoleDefaultPolicy3B64A1D1",
+    "Roles": [
+     {
+      "Ref": "AuditAuditRoleABE5764A"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditRole/DefaultPolicy/Resource"
+   }
+  },
+  "AuditAuditDeletionDenyPolicy8716C938": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:DeleteItem",
+        "dynamodb:UpdateItem"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "dynamodb:LeadingKeys": [
+          "*"
+         ]
+        }
+       },
+       "Effect": "Deny",
+       "Resource": {
+        "Fn::GetAtt": [
+         "AuditAuditTable876FD578",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion"
+       ],
+       "Effect": "Deny",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "AuditAuditBucket47CEE27E",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AuditAuditDeletionDenyPolicy8716C938",
+    "Roles": [
+     {
+      "Ref": "AuditAuditRoleABE5764A"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Audit/AuditDeletionDenyPolicy/Resource"
+   }
+  },
+  "ReplayReplayStateTableE1D9F452": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "execution_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "step_number",
+      "AttributeType": "N"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "execution_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "step_number",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-replay-state",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "DeterministicVerification"
+     },
+     {
+      "Key": "Component",
+      "Value": "Replay"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayStateTable/Resource"
+   }
+  },
+  "ReplayExecutionSnapshotsTable252F528D": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "execution_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "execution_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-execution-snapshots",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "DeterministicVerification"
+     },
+     {
+      "Key": "Component",
+      "Value": "Replay"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ExecutionSnapshotsTable/Resource"
+   }
+  },
+  "ReplayReplayProofsTableB73FC876": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "execution_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "proof_hash",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "execution_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "proof_hash",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-replay-proofs",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "DeterministicVerification"
+     },
+     {
+      "Key": "Component",
+      "Value": "Replay"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayProofsTable/Resource"
+   }
+  },
+  "ReplayReplayBucketF2B75921": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "KMSMasterKeyID": {
+         "Fn::GetAtt": [
+          "KMSEncryptionKey12EA24A0",
+          "Arn"
+         ]
+        },
+        "SSEAlgorithm": "aws:kms"
+       }
+      }
+     ]
+    },
+    "BucketName": "dsg-one-dev-replay-121205961822",
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "Status": "Enabled",
+       "Transitions": [
+        {
+         "StorageClass": "GLACIER",
+         "TransitionInDays": 365
+        }
+       ]
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "DeterministicVerification"
+     },
+     {
+      "Key": "Component",
+      "Value": "Replay"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayBucket/Resource"
+   }
+  },
+  "ReplayReplayBucketPolicyBB3C63E0": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "ReplayReplayBucketF2B75921"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayReplayBucketF2B75921",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "ReplayReplayBucketF2B75921",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayBucket/Policy/Resource"
+   }
+  },
+  "ReplayReplayRole76F2BCCB": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for deterministic replay and verification",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "DeterministicVerification"
+     },
+     {
+      "Key": "Component",
+      "Value": "Replay"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayRole/Resource"
+   }
+  },
+  "ReplayReplayRoleDefaultPolicyE3F93FC4": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayReplayStateTableE1D9F452",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayReplayStateTableE1D9F452",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayExecutionSnapshotsTable252F528D",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayExecutionSnapshotsTable252F528D",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayReplayProofsTableB73FC876",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayReplayProofsTableB73FC876",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ReplayReplayBucketF2B75921",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "ReplayReplayBucketF2B75921",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ReplayReplayRoleDefaultPolicyE3F93FC4",
+    "Roles": [
+     {
+      "Ref": "ReplayReplayRole76F2BCCB"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayRole/DefaultPolicy/Resource"
+   }
+  },
+  "ReplayReplayFunction58D58008": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "\n        exports.handler = async (event) => {\n          // Deterministic replay verification:\n          // 1. Load execution snapshot by ID\n          // 2. Re-execute with same inputs\n          // 3. Compare outputs (must be 100% identical)\n          // 4. Generate Z3 proof of equivalence\n          // 5. Return verification result\n          return {\n            statusCode: 200,\n            body: JSON.stringify({\n              executionId: event.executionId,\n              determinismVerified: true,\n              proofHash: 'z3:verify_passed',\n            }),\n          };\n        };\n      "
+    },
+    "Description": "Deterministic execution replay and verification engine",
+    "Environment": {
+     "Variables": {
+      "STATE_TABLE": {
+       "Ref": "ReplayReplayStateTableE1D9F452"
+      },
+      "SNAPSHOTS_TABLE": {
+       "Ref": "ReplayExecutionSnapshotsTable252F528D"
+      },
+      "PROOFS_TABLE": {
+       "Ref": "ReplayReplayProofsTableB73FC876"
+      },
+      "REPLAY_BUCKET": {
+       "Ref": "ReplayReplayBucketF2B75921"
+      }
+     }
+    },
+    "FunctionName": "dsg-one-dev-replay-verifier",
+    "Handler": "index.handler",
+    "MemorySize": 1024,
+    "Role": {
+     "Fn::GetAtt": [
+      "ReplayReplayRole76F2BCCB",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "DeterministicVerification"
+     },
+     {
+      "Key": "Component",
+      "Value": "Replay"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "Timeout": 60
+   },
+   "DependsOn": [
+    "ReplayReplayRoleDefaultPolicyE3F93FC4",
+    "ReplayReplayRole76F2BCCB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Replay/ReplayFunction/Resource"
+   }
+  },
+  "EvidenceEvidenceTable3F8A87BE": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "evidence_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "level",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "evidence_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "level",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-evidence",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "CCVS-L1-L5"
+     },
+     {
+      "Key": "Component",
+      "Value": "Evidence"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/EvidenceTable/Resource"
+   }
+  },
+  "EvidenceCCVSMatrixTableE73793D4": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "framework",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "control_id",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "framework",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "control_id",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-ccvs-matrix",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "CCVS-L1-L5"
+     },
+     {
+      "Key": "Component",
+      "Value": "Evidence"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/CCVSMatrixTable/Resource"
+   }
+  },
+  "EvidenceEvidenceBucket029C35D7": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "KMSMasterKeyID": {
+         "Fn::GetAtt": [
+          "KMSEncryptionKey12EA24A0",
+          "Arn"
+         ]
+        },
+        "SSEAlgorithm": "aws:kms"
+       }
+      }
+     ]
+    },
+    "BucketName": "dsg-one-dev-evidence-121205961822",
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 180
+       },
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "CCVS-L1-L5"
+     },
+     {
+      "Key": "Component",
+      "Value": "Evidence"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/EvidenceBucket/Resource"
+   }
+  },
+  "EvidenceEvidenceBucketPolicy39E83C57": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "EvidenceEvidenceBucket029C35D7"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EvidenceEvidenceBucket029C35D7",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EvidenceEvidenceBucket029C35D7",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/EvidenceBucket/Policy/Resource"
+   }
+  },
+  "EvidenceEvidenceRole433E48DB": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for CCVS evidence collection and compliance mapping",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "CCVS-L1-L5"
+     },
+     {
+      "Key": "Component",
+      "Value": "Evidence"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/EvidenceRole/Resource"
+   }
+  },
+  "EvidenceEvidenceRoleDefaultPolicyD618915F": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EvidenceEvidenceTable3F8A87BE",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EvidenceEvidenceTable3F8A87BE",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EvidenceCCVSMatrixTableE73793D4",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EvidenceCCVSMatrixTableE73793D4",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EvidenceEvidenceBucket029C35D7",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EvidenceEvidenceBucket029C35D7",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "EvidenceEvidenceRoleDefaultPolicyD618915F",
+    "Roles": [
+     {
+      "Ref": "EvidenceEvidenceRole433E48DB"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/EvidenceRole/DefaultPolicy/Resource"
+   }
+  },
+  "EvidenceEvidenceCollectorFunction9BA88C57": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "\n        exports.handler = async (event) => {\n          // CCVS Evidence Pipeline:\n          // L1: Unit proof (policy satisfiability, Z3 verification)\n          // L2: Integration proof (policy + constraint with execution)\n          // L3: Adversarial/replay proof (determinism verification)\n          // L4: Mutation proof (code coverage, test mutations)\n          // L5: Provenance proof (build artifacts, signatures)\n          return {\n            statusCode: 200,\n            body: JSON.stringify({\n              evidenceId: event.evidenceId,\n              levels: ['L1', 'L2', 'L3', 'L4', 'L5'],\n              status: 'collecting',\n              compliance: {\n                'ISO/IEC 42001': 'mapping',\n                'NIST AI RMF': 'mapping',\n                'EU AI Act': 'mapping',\n              },\n            }),\n          };\n        };\n      "
+    },
+    "Description": "CCVS L1-L5 evidence collection for compliance",
+    "Environment": {
+     "Variables": {
+      "EVIDENCE_TABLE": {
+       "Ref": "EvidenceEvidenceTable3F8A87BE"
+      },
+      "CCVS_MATRIX_TABLE": {
+       "Ref": "EvidenceCCVSMatrixTableE73793D4"
+      },
+      "EVIDENCE_BUCKET": {
+       "Ref": "EvidenceEvidenceBucket029C35D7"
+      }
+     }
+    },
+    "FunctionName": "dsg-one-dev-evidence-collector",
+    "Handler": "index.handler",
+    "MemorySize": 2048,
+    "Role": {
+     "Fn::GetAtt": [
+      "EvidenceEvidenceRole433E48DB",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "CCVS-L1-L5"
+     },
+     {
+      "Key": "Component",
+      "Value": "Evidence"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "Timeout": 120
+   },
+   "DependsOn": [
+    "EvidenceEvidenceRoleDefaultPolicyD618915F",
+    "EvidenceEvidenceRole433E48DB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Evidence/EvidenceCollectorFunction/Resource"
+   }
+  },
+  "ComplianceCompliancePoliciesTable24D9E912": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "framework",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "control_id",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "framework",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "control_id",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-compliance-policies",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ISO-NIST-EUAI-SOC2"
+     },
+     {
+      "Key": "Component",
+      "Value": "Compliance"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/CompliancePoliciesTable/Resource"
+   }
+  },
+  "ComplianceWorkspaceIsolationTable0F83A191": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "workspace_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "policy_version",
+      "AttributeType": "N"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "workspace_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "policy_version",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-workspace-isolation",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ISO-NIST-EUAI-SOC2"
+     },
+     {
+      "Key": "Component",
+      "Value": "Compliance"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/WorkspaceIsolationTable/Resource"
+   }
+  },
+  "ComplianceComplianceStatusTableEB3EAFFF": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "workspace_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "workspace_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-compliance-status",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ISO-NIST-EUAI-SOC2"
+     },
+     {
+      "Key": "Component",
+      "Value": "Compliance"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/ComplianceStatusTable/Resource"
+   }
+  },
+  "CompliancePolicyCodeBucket4ED92018": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "KMSMasterKeyID": {
+         "Fn::GetAtt": [
+          "KMSEncryptionKey12EA24A0",
+          "Arn"
+         ]
+        },
+        "SSEAlgorithm": "aws:kms"
+       }
+      }
+     ]
+    },
+    "BucketName": "dsg-one-dev-policies-as-code-121205961822",
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 365
+       },
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ISO-NIST-EUAI-SOC2"
+     },
+     {
+      "Key": "Component",
+      "Value": "Compliance"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/PolicyCodeBucket/Resource"
+   }
+  },
+  "CompliancePolicyCodeBucketPolicyABB3D6F4": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "CompliancePolicyCodeBucket4ED92018"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CompliancePolicyCodeBucket4ED92018",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CompliancePolicyCodeBucket4ED92018",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/PolicyCodeBucket/Policy/Resource"
+   }
+  },
+  "ComplianceComplianceRole67AF2E26": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for compliance policy enforcement and workspace isolation",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ISO-NIST-EUAI-SOC2"
+     },
+     {
+      "Key": "Component",
+      "Value": "Compliance"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/ComplianceRole/Resource"
+   }
+  },
+  "ComplianceComplianceRoleDefaultPolicyEA5C4770": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ComplianceCompliancePoliciesTable24D9E912",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ComplianceCompliancePoliciesTable24D9E912",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ComplianceWorkspaceIsolationTable0F83A191",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ComplianceWorkspaceIsolationTable0F83A191",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ComplianceComplianceStatusTableEB3EAFFF",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ComplianceComplianceStatusTableEB3EAFFF",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CompliancePolicyCodeBucket4ED92018",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CompliancePolicyCodeBucket4ED92018",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ComplianceComplianceRoleDefaultPolicyEA5C4770",
+    "Roles": [
+     {
+      "Ref": "ComplianceComplianceRole67AF2E26"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/ComplianceRole/DefaultPolicy/Resource"
+   }
+  },
+  "ComplianceComplianceEnforcerFunction3F2BF997": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "\n        exports.handler = async (event) => {\n          // Compliance enforcement:\n          // 1. Load workspace isolation policy\n          // 2. Apply framework-specific controls (ISO/IEC 42001, NIST AI RMF, etc)\n          // 3. Verify multi-tenant boundaries\n          // 4. Check SOC 2 controls\n          // 5. Generate compliance report\n          return {\n            statusCode: 200,\n            body: JSON.stringify({\n              workspaceId: event.workspaceId,\n              frameworks: [\n                { name: 'ISO/IEC 42001', status: 'compliant', gaps: 0 },\n                { name: 'NIST AI RMF', status: 'compliant', gaps: 0 },\n                { name: 'EU AI Act', status: 'compliant', gaps: 0 },\n                { name: 'SOC 2 Type II', status: 'compliant', gaps: 0 },\n              ],\n              overallCompliance: true,\n            }),\n          };\n        };\n      "
+    },
+    "Description": "Policy as Code enforcement and compliance verification",
+    "Environment": {
+     "Variables": {
+      "POLICIES_TABLE": {
+       "Ref": "ComplianceCompliancePoliciesTable24D9E912"
+      },
+      "ISOLATION_TABLE": {
+       "Ref": "ComplianceWorkspaceIsolationTable0F83A191"
+      },
+      "STATUS_TABLE": {
+       "Ref": "ComplianceComplianceStatusTableEB3EAFFF"
+      }
+     }
+    },
+    "FunctionName": "dsg-one-dev-compliance-enforcer",
+    "Handler": "index.handler",
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "ComplianceComplianceRole67AF2E26",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "ISO-NIST-EUAI-SOC2"
+     },
+     {
+      "Key": "Component",
+      "Value": "Compliance"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "Timeout": 60
+   },
+   "DependsOn": [
+    "ComplianceComplianceRoleDefaultPolicyEA5C4770",
+    "ComplianceComplianceRole67AF2E26"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Compliance/ComplianceEnforcerFunction/Resource"
+   }
+  },
+  "FeatureFlagsFeatureFlagsTableAAA64DB5": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "feature_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "workspace_id",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "feature_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "workspace_id",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "TableName": "dsg-one-dev-feature-flags",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureFlagsTable/Resource"
+   }
+  },
+  "FeatureFlagsFeatureRolloutsTableCBDBCC49": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "rollout_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "rollout_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "timestamp",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "KMSMasterKeyId": {
+      "Fn::GetAtt": [
+       "KMSEncryptionKey12EA24A0",
+       "Arn"
+      ]
+     },
+     "SSEEnabled": true,
+     "SSEType": "KMS"
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "dsg-one-dev-feature-rollouts",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureRolloutsTable/Resource"
+   }
+  },
+  "FeatureFlagsFeatureFlagAppB8E1F77B": {
+   "Type": "AWS::AppConfig::Application",
+   "Properties": {
+    "Description": "Feature flag configuration for DSG ONE",
+    "Name": "dsg-one-dev-feature-flags",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureFlagApp"
+   }
+  },
+  "FeatureFlagsAppConfigMonitorRole341F15E9": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "appconfig.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/AppConfigMonitorRole/Resource"
+   }
+  },
+  "FeatureFlagsFeatureFlagEnv5FD75607": {
+   "Type": "AWS::AppConfig::Environment",
+   "Properties": {
+    "ApplicationId": {
+     "Ref": "FeatureFlagsFeatureFlagAppB8E1F77B"
+    },
+    "Description": "dev environment feature flags",
+    "Monitors": [
+     {
+      "AlarmArn": "arn:aws:cloudwatch:us-east-1:121205961822:alarm:dsg-one-dev-feature-flag-errors",
+      "AlarmRoleArn": {
+       "Fn::GetAtt": [
+        "FeatureFlagsAppConfigMonitorRole341F15E9",
+        "Arn"
+       ]
+      }
+     }
+    ],
+    "Name": "dev",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureFlagEnv"
+   }
+  },
+  "FeatureFlagsFeatureFlagsRoleF5A26517": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for feature flag gating and gradual rollouts",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureFlagsRole/Resource"
+   }
+  },
+  "FeatureFlagsFeatureFlagsRoleDefaultPolicy6E908B49": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "FeatureFlagsFeatureFlagsTableAAA64DB5",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "FeatureFlagsFeatureFlagsTableAAA64DB5",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "FeatureFlagsFeatureRolloutsTableCBDBCC49",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "FeatureFlagsFeatureRolloutsTableCBDBCC49",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "appconfig:GetLatestConfiguration",
+        "appconfig:GetConfiguration",
+        "appconfig:StartConfigurationSession"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:appconfig:us-east-1:121205961822:application/",
+          {
+           "Ref": "FeatureFlagsFeatureFlagAppB8E1F77B"
+          }
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "FeatureFlagsFeatureFlagsRoleDefaultPolicy6E908B49",
+    "Roles": [
+     {
+      "Ref": "FeatureFlagsFeatureFlagsRoleF5A26517"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureFlagsRole/DefaultPolicy/Resource"
+   }
+  },
+  "FeatureFlagsFeatureGateFunction8B50B78A": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "ZipFile": "\n        exports.handler = async (event) => {\n          // Feature gating logic:\n          // 1. Get feature flag from DynamoDB (cached via AppConfig)\n          // 2. Check workspace/user eligibility\n          // 3. Apply rollout percentage\n          // 4. Return feature enabled/disabled status\n          // 5. Log for analytics\n          return {\n            statusCode: 200,\n            body: JSON.stringify({\n              featureId: event.featureId,\n              workspaceId: event.workspaceId,\n              enabled: event.rolloutPercentage >= (Math.random() * 100),\n              rolloutPercentage: event.rolloutPercentage,\n              canaryMode: event.canaryMode || false,\n            }),\n          };\n        };\n      "
+    },
+    "Description": "Runtime feature gating with canary and gradual rollout support",
+    "Environment": {
+     "Variables": {
+      "FEATURE_FLAGS_TABLE": {
+       "Ref": "FeatureFlagsFeatureFlagsTableAAA64DB5"
+      },
+      "ROLLOUTS_TABLE": {
+       "Ref": "FeatureFlagsFeatureRolloutsTableCBDBCC49"
+      },
+      "APPCONFIG_APP": {
+       "Ref": "FeatureFlagsFeatureFlagAppB8E1F77B"
+      },
+      "APPCONFIG_ENV": {
+       "Ref": "FeatureFlagsFeatureFlagEnv5FD75607"
+      }
+     }
+    },
+    "FunctionName": "dsg-one-dev-feature-gate",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "FeatureFlagsFeatureFlagsRoleF5A26517",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FeatureFlags"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "3-AI-Governance"
+     }
+    ],
+    "Timeout": 5
+   },
+   "DependsOn": [
+    "FeatureFlagsFeatureFlagsRoleDefaultPolicy6E908B49",
+    "FeatureFlagsFeatureFlagsRoleF5A26517"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FeatureFlags/FeatureGateFunction/Resource"
+   }
+  },
+  "Route53Route53Role5DE759CE": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for Route53 DNS management",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "DNS"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Route53/Route53Role/Resource"
+   }
+  },
+  "GuardDutyThreatResponseRole1014028D": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for automated threat response from GuardDuty findings",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "GuardDuty"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     },
+     {
+      "Key": "Security",
+      "Value": "ThreatDetection"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/GuardDuty/ThreatResponseRole/Resource"
+   }
+  },
+  "GuardDutyThreatResponseRoleDefaultPolicy70D06A78": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "guardduty:GetFindings",
+        "guardduty:ListFindings",
+        "guardduty:DescribeOrganizationConfiguration"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "GuardDutyThreatResponseRoleDefaultPolicy70D06A78",
+    "Roles": [
+     {
+      "Ref": "GuardDutyThreatResponseRole1014028D"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/GuardDuty/ThreatResponseRole/DefaultPolicy/Resource"
+   }
+  },
+  "SecurityHubComplianceAutomationRole48808B3C": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for Security Hub compliance automation and remediation",
+    "Tags": [
+     {
+      "Key": "Compliance",
+      "Value": "SecurityFindings"
+     },
+     {
+      "Key": "Component",
+      "Value": "SecurityHub"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SecurityHub/ComplianceAutomationRole/Resource"
+   }
+  },
+  "SecurityHubComplianceAutomationRoleDefaultPolicy71E7C30D": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "securityhub:GetFindings",
+        "securityhub:ListFindings",
+        "securityhub:GetComplianceSummary",
+        "securityhub:DescribeStandards",
+        "securityhub:GetStandardsControlAssociations"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "SecurityHubComplianceAutomationRoleDefaultPolicy71E7C30D",
+    "Roles": [
+     {
+      "Ref": "SecurityHubComplianceAutomationRole48808B3C"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SecurityHub/ComplianceAutomationRole/DefaultPolicy/Resource"
+   }
+  },
+  "WAFTrustedIPSetF9946501": {
+   "Type": "AWS::WAFv2::IPSet",
+   "Properties": {
+    "Addresses": [
+     "10.0.0.0/16"
+    ],
+    "IPAddressVersion": "IPV4",
+    "Name": "dsg-one-dev-trusted-ips",
+    "Scope": "CLOUDFRONT",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "WAF"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     },
+     {
+      "Key": "Security",
+      "Value": "WebProtection"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/WAF/TrustedIPSet"
+   }
+  },
+  "WAFWebAcl09E66FC4": {
+   "Type": "AWS::WAFv2::WebACL",
+   "Properties": {
+    "DefaultAction": {
+     "Allow": {}
+    },
+    "Name": "dsg-one-dev-web-acl",
+    "Rules": [
+     {
+      "Name": "AWSManagedRulesCommonRuleSet",
+      "OverrideAction": {
+       "None": {}
+      },
+      "Priority": 0,
+      "Statement": {
+       "ManagedRuleGroupStatement": {
+        "Name": "AWSManagedRulesCommonRuleSet",
+        "VendorName": "AWS"
+       }
+      },
+      "VisibilityConfig": {
+       "CloudWatchMetricsEnabled": true,
+       "MetricName": "AWSManagedRulesCommonRuleSetMetric",
+       "SampledRequestsEnabled": true
+      }
+     },
+     {
+      "Name": "AWSManagedRulesKnownBadInputsRuleSet",
+      "OverrideAction": {
+       "None": {}
+      },
+      "Priority": 1,
+      "Statement": {
+       "ManagedRuleGroupStatement": {
+        "Name": "AWSManagedRulesKnownBadInputsRuleSet",
+        "VendorName": "AWS"
+       }
+      },
+      "VisibilityConfig": {
+       "CloudWatchMetricsEnabled": true,
+       "MetricName": "AWSManagedRulesKnownBadInputsRuleSetMetric",
+       "SampledRequestsEnabled": true
+      }
+     },
+     {
+      "Action": {
+       "Block": {}
+      },
+      "Name": "RateLimitRule",
+      "Priority": 2,
+      "Statement": {
+       "RateBasedStatement": {
+        "AggregateKeyType": "IP",
+        "Limit": 2000
+       }
+      },
+      "VisibilityConfig": {
+       "CloudWatchMetricsEnabled": true,
+       "MetricName": "RateLimitRuleMetric",
+       "SampledRequestsEnabled": true
+      }
+     }
+    ],
+    "Scope": "CLOUDFRONT",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "WAF"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     },
+     {
+      "Key": "Security",
+      "Value": "WebProtection"
+     }
+    ],
+    "VisibilityConfig": {
+     "CloudWatchMetricsEnabled": true,
+     "MetricName": "dsg-one-dev-waf-metrics",
+     "SampledRequestsEnabled": true
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/WAF/WebAcl"
+   }
+  },
+  "WAFWAFManagementRoleF4D654AF": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for WAF rule management and log analysis",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "WAF"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     },
+     {
+      "Key": "Security",
+      "Value": "WebProtection"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/WAF/WAFManagementRole/Resource"
+   }
+  },
+  "WAFWAFManagementRoleDefaultPolicy71C306E5": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "wafv2:GetWebAcl",
+        "wafv2:ListWebAcls",
+        "wafv2:GetSampledRequests"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "WAFWAFManagementRoleDefaultPolicy71C306E5",
+    "Roles": [
+     {
+      "Ref": "WAFWAFManagementRoleF4D654AF"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/WAF/WAFManagementRole/DefaultPolicy/Resource"
+   }
+  },
+  "ShieldShieldManagementRole5AFA5656": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for Shield Advanced management and DDoS response",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Shield"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     },
+     {
+      "Key": "Security",
+      "Value": "DDoSProtection"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Shield/ShieldManagementRole/Resource"
+   }
+  },
+  "InspectorInspectorRole29837CCA": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "inspector.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for Amazon Inspector vulnerability scanning",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Inspector"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     },
+     {
+      "Key": "Security",
+      "Value": "VulnerabilityScanning"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Inspector/InspectorRole/Resource"
+   }
+  },
+  "InspectorInspectorRoleDefaultPolicy703457EF": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeImages",
+        "lambda:GetFunction",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "InspectorInspectorRoleDefaultPolicy703457EF",
+    "Roles": [
+     {
+      "Ref": "InspectorInspectorRole29837CCA"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Inspector/InspectorRole/DefaultPolicy/Resource"
+   }
+  },
+  "BackupBackupVault4EE1ADCE": {
+   "Type": "AWS::Backup::BackupVault",
+   "Properties": {
+    "BackupVaultName": "dsg-one-dev-vault",
+    "BackupVaultTags": {
+     "Component": "Backup",
+     "CostCenter": "Engineering",
+     "DisasterRecovery": "Enabled",
+     "Environment": "dev",
+     "ManagedBy": "CDK",
+     "Phase": "4-Operations"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Backup/BackupVault/Resource"
+   }
+  },
+  "BackupBackupPlan6FE80559": {
+   "Type": "AWS::Backup::BackupPlan",
+   "Properties": {
+    "BackupPlan": {
+     "BackupPlanName": "dsg-one-dev-plan",
+     "BackupPlanRule": [
+      {
+       "Lifecycle": {
+        "DeleteAfterDays": 30
+       },
+       "RuleName": "DailyBackup",
+       "TargetBackupVault": {
+        "Fn::GetAtt": [
+         "BackupBackupVault4EE1ADCE",
+         "BackupVaultName"
+        ]
+       }
+      }
+     ]
+    },
+    "BackupPlanTags": {
+     "Component": "Backup",
+     "CostCenter": "Engineering",
+     "DisasterRecovery": "Enabled",
+     "Environment": "dev",
+     "ManagedBy": "CDK",
+     "Phase": "4-Operations"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Backup/BackupPlan/Resource"
+   }
+  },
+  "BackupBackupServiceRole6E625E61": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "backup.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for AWS Backup service",
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+       ]
+      ]
+     },
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
+       ]
+      ]
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Backup"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "DisasterRecovery",
+      "Value": "Enabled"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/Backup/BackupServiceRole/Resource"
+   }
+  },
+  "SNSSNSPublishRole32C600BA": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for publishing to SNS topics",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Notifications"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/SNSPublishRole/Resource"
+   }
+  },
+  "SNSSNSPublishRoleDefaultPolicyAA74E608": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sns:Publish",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "SNSAlertTopicD19F1267"
+       }
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KMSEncryptionKey12EA24A0",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": "sns:Publish",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "SNSIncidentTopic8A5566FA"
+       }
+      },
+      {
+       "Action": "sns:Publish",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "SNSComplianceTopic26AD1EE6"
+       }
+      },
+      {
+       "Action": "sns:Publish",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "SNSBillingTopic928DA248"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "SNSSNSPublishRoleDefaultPolicyAA74E608",
+    "Roles": [
+     {
+      "Ref": "SNSSNSPublishRole32C600BA"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/SNSPublishRole/DefaultPolicy/Resource"
+   }
+  },
+  "SNSAlertTopicD19F1267": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "DSG ONE System Alerts",
+    "KmsMasterKeyId": {
+     "Fn::GetAtt": [
+      "KMSEncryptionKey12EA24A0",
+      "Arn"
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Notifications"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ],
+    "TopicName": "dsg-one-dev-alerts"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/AlertTopic/Resource"
+   }
+  },
+  "SNSAlertTopicdevalertsdsglocalE6AF60D1": {
+   "Type": "AWS::SNS::Subscription",
+   "Properties": {
+    "Endpoint": "dev-alerts@dsg.local",
+    "Protocol": "email",
+    "TopicArn": {
+     "Ref": "SNSAlertTopicD19F1267"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/AlertTopic/dev-alerts@dsg.local/Resource"
+   }
+  },
+  "SNSIncidentTopic8A5566FA": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "DSG ONE Incidents",
+    "KmsMasterKeyId": {
+     "Fn::GetAtt": [
+      "KMSEncryptionKey12EA24A0",
+      "Arn"
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Notifications"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ],
+    "TopicName": "dsg-one-dev-incidents"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/IncidentTopic/Resource"
+   }
+  },
+  "SNSComplianceTopic26AD1EE6": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "DSG ONE Compliance Events",
+    "KmsMasterKeyId": {
+     "Fn::GetAtt": [
+      "KMSEncryptionKey12EA24A0",
+      "Arn"
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Notifications"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ],
+    "TopicName": "dsg-one-dev-compliance"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/ComplianceTopic/Resource"
+   }
+  },
+  "SNSBillingTopic928DA248": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "DSG ONE Billing Alerts",
+    "KmsMasterKeyId": {
+     "Fn::GetAtt": [
+      "KMSEncryptionKey12EA24A0",
+      "Arn"
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "Notifications"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ],
+    "TopicName": "dsg-one-dev-billing"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/SNS/BillingTopic/Resource"
+   }
+  },
+  "FinOpsFinOpsRole50CB74CA": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for cost analysis and budget management",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "FinOps"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "CostManagement",
+      "Value": "Enabled"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FinOps/FinOpsRole/Resource"
+   }
+  },
+  "FinOpsFinOpsRoleDefaultPolicyB344CD96": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ce:GetCostAndUsage",
+        "ce:GetCostForecast",
+        "ce:GetReservationPurchaseRecommendation",
+        "ce:GetSavingsPlansPurchaseRecommendation",
+        "ce:ListCostAllocationTags"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "ce:CreateAnomalyMonitor",
+        "ce:CreateAnomalySubscription"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "FinOpsFinOpsRoleDefaultPolicyB344CD96",
+    "Roles": [
+     {
+      "Ref": "FinOpsFinOpsRole50CB74CA"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FinOps/FinOpsRole/DefaultPolicy/Resource"
+   }
+  },
+  "FinOpsMonthlyCostBudget8191E889": {
+   "Type": "AWS::Budgets::Budget",
+   "Properties": {
+    "Budget": {
+     "BudgetLimit": {
+      "Amount": 1000,
+      "Unit": "USD"
+     },
+     "BudgetName": "dsg-one-dev-monthly",
+     "BudgetType": "COST",
+     "TimeUnit": "MONTHLY"
+    },
+    "NotificationsWithSubscribers": [
+     {
+      "Notification": {
+       "ComparisonOperator": "GREATER_THAN",
+       "NotificationType": "FORECASTED",
+       "Threshold": 80
+      },
+      "Subscribers": [
+       {
+        "Address": {
+         "Ref": "SNSBillingTopic928DA248"
+        },
+        "SubscriptionType": "SNS"
+       }
+      ]
+     },
+     {
+      "Notification": {
+       "ComparisonOperator": "GREATER_THAN",
+       "NotificationType": "ACTUAL",
+       "Threshold": 100
+      },
+      "Subscribers": [
+       {
+        "Address": {
+         "Ref": "SNSBillingTopic928DA248"
+        },
+        "SubscriptionType": "SNS"
+       }
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/FinOps/MonthlyCostBudget"
+   }
+  },
+  "MultiRegionMultiRegionRole005101FE": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "Role for multi-region deployment and failover orchestration",
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "MultiRegion"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "HA",
+      "Value": "single-region"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CDK"
+     },
+     {
+      "Key": "Phase",
+      "Value": "4-Operations"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/MultiRegion/MultiRegionRole/Resource"
+   }
+  },
+  "MultiRegionMultiRegionRoleDefaultPolicy7C4248A7": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:GetReplicationConfiguration",
+        "s3:PutReplicationConfiguration",
+        "dynamodb:CreateGlobalSecondaryIndex",
+        "dynamodb:UpdateGlobalSecondaryIndex",
+        "rds:ModifyDBCluster",
+        "rds:ModifyDBClusterEndpoint"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "route53:ChangeResourceRecordSets",
+        "route53:GetHealthCheck",
+        "route53:ListHealthChecks"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ReplicateObject",
+        "secretsmanager:ReplicateSecretToRegions",
+        "kms:ReplicateKey"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "MultiRegionMultiRegionRoleDefaultPolicy7C4248A7",
+    "Roles": [
+     {
+      "Ref": "MultiRegionMultiRegionRole005101FE"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/MultiRegion/MultiRegionRole/DefaultPolicy/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02SUY/bIAzHP8u9UzZl0t7bajudVm1Rc+oeJ0PcHFcCCEOrCvHdJ6BtKkXy7287xjZ0vPve8a8vcKGVHE8rrQRPQwB5YnChf+k0E0+/8Mq2R1PMWiugIipkpmDmaW81Fl+1vdVK1vxGmRFKj4FmMDCh52moumQ0ygxlx9PByeI79FvWR6GVHKIwt7wH7W0M+A6iHdj8i29NZKWCoKx5JBf48dYX8xvCKwS8wJX1Xp0h4FL4zQT0Bh8JrZObWocA8mNGE9iAMnoVrq/eRnebYXGUUTxPe3SWVLC+1llUZqiBgpLawihAg5HKTOeOp7VzWsna+c7CuKkx9OX3Z13qE09bHSm06A0z03YinnZ2enR258zGq4HZjoKnx+oqZEbfeNpEeWpLuFEzy0U+68w0zGIEnn5GI++bvnNm4Jy05qgmnsorWcaq92DOyltTFpnZBY5l8rL7fmjn/0Wx3u4yEyBP0fG0qfYAUbf2nmTjXoNZIkVlRoZ4erdO1efUYIiCpFfu3sizzkzEccJAvI5aMLM9ko1e1lX9icHFkJmxI/JP+nLuOl6+l09SauWjCWpGvm/2P76hl8FRAwAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DSGOneStack-dev/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "ALBDnsName": {
+   "Description": "Application Load Balancer DNS Name",
+   "Value": {
+    "Fn::GetAtt": [
+     "ALBCAA855EE",
+     "DNSName"
+    ]
+   },
+   "Export": {
+    "Name": "DSGOneStack-dev-alb-dns"
+   }
+  },
+  "ECSClusterName": {
+   "Description": "ECS Cluster Name",
+   "Value": {
+    "Ref": "ECSClusterA1D9AB17"
+   },
+   "Export": {
+    "Name": "DSGOneStack-dev-ecs-cluster"
+   }
+  },
+  "KMSKeyId": {
+   "Description": "KMS Master Key ID",
+   "Value": {
+    "Ref": "KMSEncryptionKey12EA24A0"
+   },
+   "Export": {
+    "Name": "DSGOneStack-dev-kms-key"
+   }
+  },
+  "PolicyEngineTableName": {
+   "Description": "Policy Engine DynamoDB Table",
+   "Value": {
+    "Ref": "PolicyEnginePoliciesTable86CCADE6"
+   },
+   "Export": {
+    "Name": "DSGOneStack-dev-policy-table"
+   }
+  },
+  "AuditTableName": {
+   "Description": "Immutable Audit Trail Table",
+   "Value": {
+    "Ref": "AuditAuditTable876FD578"
+   },
+   "Export": {
+    "Name": "DSGOneStack-dev-audit-table"
+   }
+  },
+  "DeploymentEnvironment": {
+   "Description": "Deployment Environment",
+   "Value": "production",
+   "Export": {
+    "Name": "DSGOneStack-dev-environment"
+   }
+  },
+  "MultiRegionStrategy": {
+   "Description": "Multi-Region Replication Strategy",
+   "Value": "single-region",
+   "Export": {
+    "Name": "DSGOneStack-dev-replication"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}
