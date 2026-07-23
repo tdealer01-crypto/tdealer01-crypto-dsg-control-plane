@@ -48,7 +48,7 @@ export class PolicyEngineConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: environment === 'prod' ? undefined : 'ttl',
     });
@@ -68,7 +68,7 @@ export class PolicyEngineConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -87,7 +87,7 @@ export class PolicyEngineConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
@@ -124,7 +124,7 @@ export class PolicyEngineConstruct extends Construct {
     this.policiesBucket.grantReadWrite(this.evaluationRole);
 
     // Grant KMS permissions
-    encryptionKey.grantDecryptEncrypt(this.evaluationRole);
+    encryptionKey.grantEncryptDecrypt(this.evaluationRole);
 
     // Lambda function for policy evaluation
     this.policyEvaluationFunction = new lambda.Function(this, 'PolicyEvaluationFunction', {

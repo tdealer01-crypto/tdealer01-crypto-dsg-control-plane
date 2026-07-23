@@ -16,7 +16,7 @@ export interface WAFConstructProps {
  * Managed rule groups and custom rules for governance traffic.
  */
 export class WAFConstruct extends Construct {
-  public readonly webAcl: wafv2.CfnWebAcl;
+  public readonly webAcl: wafv2.CfnWebACL;
   public readonly ipSet: wafv2.CfnIPSet;
   public readonly wafRole: iam.Role;
 
@@ -34,7 +34,7 @@ export class WAFConstruct extends Construct {
     });
 
     // Web ACL with managed and custom rules
-    this.webAcl = new wafv2.CfnWebAcl(this, 'WebAcl', {
+    this.webAcl = new wafv2.CfnWebACL(this, 'WebAcl', {
       scope: 'CLOUDFRONT',
       defaultAction: { allow: {} },
       visibilityConfig: {

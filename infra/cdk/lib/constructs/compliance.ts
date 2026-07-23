@@ -48,7 +48,7 @@ export class ComplianceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -67,7 +67,7 @@ export class ComplianceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -86,7 +86,7 @@ export class ComplianceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
@@ -118,7 +118,7 @@ export class ComplianceConstruct extends Construct {
     this.workspaceIsolationTable.grantReadWriteData(this.complianceRole);
     this.complianceStatusTable.grantReadWriteData(this.complianceRole);
     this.policyCodeBucket.grantReadWrite(this.complianceRole);
-    encryptionKey.grantDecryptEncrypt(this.complianceRole);
+    encryptionKey.grantEncryptDecrypt(this.complianceRole);
 
     // Lambda function for compliance enforcement
     this.complianceEnforcer = new lambda.Function(this, 'ComplianceEnforcerFunction', {

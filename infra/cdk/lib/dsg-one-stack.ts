@@ -126,7 +126,6 @@ export class DSGOneStack extends cdk.Stack {
     // 3. Secrets (needs KMS)
     this.secrets = new SecretsConstruct(this, 'Secrets', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // 4. Networking (independent)
@@ -138,7 +137,6 @@ export class DSGOneStack extends cdk.Stack {
     // 6. Governance foundation
     this.governance = new GovernanceConstruct(this, 'Governance', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // ============================================
@@ -169,7 +167,6 @@ export class DSGOneStack extends cdk.Stack {
     // CloudTrail Audit Logging
     this.cloudtrail = new CloudTrailConstruct(this, 'CloudTrail', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // X-Ray Distributed Tracing
@@ -178,7 +175,6 @@ export class DSGOneStack extends cdk.Stack {
     // Auto Scaling
     this.autoscaling = new AutoScalingConstruct(this, 'AutoScaling', {
       config,
-      ecs: this.ecs,
     });
 
     // ============================================
@@ -189,43 +185,36 @@ export class DSGOneStack extends cdk.Stack {
     // Policy Engine
     this.policyEngine = new PolicyEngineConstruct(this, 'PolicyEngine', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // Model Registry
     this.modelRegistry = new ModelRegistryConstruct(this, 'ModelRegistry', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // Advanced Audit Trail (Immutable)
     this.audit = new AuditConstruct(this, 'Audit', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // Deterministic Replay
     this.replay = new ReplayConstruct(this, 'Replay', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // Evidence Collection (CCVS L1-L5)
     this.evidence = new EvidenceConstruct(this, 'Evidence', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // Compliance & Policy as Code
     this.compliance = new ComplianceConstruct(this, 'Compliance', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // Feature Flags & Runtime Gating
     this.featureFlags = new FeatureFlagsConstruct(this, 'FeatureFlags', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // ============================================
@@ -266,7 +255,6 @@ export class DSGOneStack extends cdk.Stack {
     // Notifications
     this.sns = new SNSConstruct(this, 'SNS', {
       config,
-      encryptionKey: this.kms.masterKey,
     });
 
     // FinOps - Cost Management
@@ -302,7 +290,7 @@ export class DSGOneStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'KMSKeyId', {
       description: 'KMS Master Key ID',
-      value: this.kms.masterKey.keyId,
+      value: this.kms.key.keyId,
       exportName: `${this.stackName}-kms-key`,
     });
 

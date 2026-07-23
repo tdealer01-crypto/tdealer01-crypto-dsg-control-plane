@@ -47,7 +47,7 @@ export class EvidenceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -66,7 +66,7 @@ export class EvidenceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -96,7 +96,7 @@ export class EvidenceConstruct extends Construct {
     this.evidenceTable.grantReadWriteData(this.evidenceRole);
     this.ccvsMatrixTable.grantReadWriteData(this.evidenceRole);
     this.evidenceBucket.grantReadWrite(this.evidenceRole);
-    encryptionKey.grantDecryptEncrypt(this.evidenceRole);
+    encryptionKey.grantEncryptDecrypt(this.evidenceRole);
 
     // Lambda function for evidence collection
     this.evidenceCollectorFunction = new lambda.Function(this, 'EvidenceCollectorFunction', {

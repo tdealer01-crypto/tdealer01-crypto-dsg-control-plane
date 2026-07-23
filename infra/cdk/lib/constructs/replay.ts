@@ -48,7 +48,7 @@ export class ReplayConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -67,7 +67,7 @@ export class ReplayConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
@@ -87,7 +87,7 @@ export class ReplayConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -123,7 +123,7 @@ export class ReplayConstruct extends Construct {
     this.executionSnapshotsTable.grantReadWriteData(this.replayRole);
     this.replayProofsTable.grantReadWriteData(this.replayRole);
     this.replayBucket.grantReadWrite(this.replayRole);
-    encryptionKey.grantDecryptEncrypt(this.replayRole);
+    encryptionKey.grantEncryptDecrypt(this.replayRole);
 
     // Lambda function for replay and verification
     this.replayFunction = new lambda.Function(this, 'ReplayFunction', {
