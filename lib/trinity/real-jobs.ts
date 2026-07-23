@@ -258,7 +258,7 @@ export async function verifyDeliverableReal(
       };
     }
 
-    const qualityScore = scoreDeliverableQuality(execution.deliverable, qualityCriteria);
+    const qualityScore = scoreDeliverableQuality(execution.deliverable);
     const checksTotal = 10;
     const checksPassed = Math.floor(qualityScore / 10);
 
