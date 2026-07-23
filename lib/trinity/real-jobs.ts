@@ -240,6 +240,9 @@ export async function verifyDeliverableReal(
 
     const startTime = Date.now();
 
+    // Sanitize user-supplied qualityCriteria: trim and validate length
+    const sanitizedCriteria = qualityCriteria?.trim().slice(0, 500) || null;
+
     // Fail-closed: score the stored deliverable content, never a fabricated value.
     const { data: execution } = await supabase
       .from('trinity_executions')
@@ -266,7 +269,7 @@ export async function verifyDeliverableReal(
       .from('trinity_verifications')
       .insert({
         deliverable_id: deliverableId,
-        quality_criteria: qualityCriteria || null,
+        quality_criteria: sanitizedCriteria,
         quality_score: qualityScore,
         verification_status: qualityScore >= 80 ? 'passed' : 'review',
         checks_passed: checksPassed,
