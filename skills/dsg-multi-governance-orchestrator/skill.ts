@@ -98,12 +98,11 @@ export async function runMultiGovernanceOrchestrator(
   // Determine overall orchestration status
   const allReady = sourcesStatus.every((s) => s.ready);
   const hasReviewNeeded = sourcesStatus.some((s) => s.gateStatus === 'REVIEW');
-  const hasBlockNeeded = sourcesStatus.some((s) => s.gateStatus === 'BLOCK');
 
   let orchestrationStatus: 'READY' | 'REVIEW' | 'BLOCKED' = 'BLOCKED';
   if (allReady) {
     orchestrationStatus = 'READY';
-  } else if (hasReviewNeeded && !hasBlockNeeded) {
+  } else if (hasReviewNeeded) {
     orchestrationStatus = 'REVIEW';
   }
 
