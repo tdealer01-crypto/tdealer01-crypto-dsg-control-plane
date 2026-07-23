@@ -22,7 +22,7 @@ export class ECRConstruct extends Construct {
       repositoryName: createResourceName(config.env, 'api'),
       imageScanOnPush: true,
       encryptionKey: undefined, // Use default KMS key
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
           tagStatus: ecr.TagStatus.UNTAGGED,
@@ -41,7 +41,7 @@ export class ECRConstruct extends Construct {
       repositoryName: createResourceName(config.env, 'worker'),
       imageScanOnPush: true,
       encryptionKey: undefined,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
           tagStatus: ecr.TagStatus.UNTAGGED,
