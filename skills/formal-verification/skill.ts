@@ -1,4 +1,6 @@
 import { runZ3AgentGate } from '@/lib/dsg/logic/z3-agent-gate';
+import { solveIsing } from '@/lib/ising/solver';
+import type { IsingProblem, IsingConfig } from '@/lib/ising/types';
 
 export interface FormalVerificationInput {
   policyName: string;
@@ -13,6 +15,8 @@ export interface FormalVerificationInput {
     expectedOutcome: 'satisfy' | 'violate';
   }>;
   mockState?: boolean;
+  useIsingSolver?: boolean;
+  isingConfig?: IsingConfig;
 }
 
 export interface FormalVerificationResult {
@@ -36,6 +40,15 @@ export interface FormalVerificationResult {
     violatedConstraints: number;
     verificationStatus: 'COMPLETE' | 'PARTIAL' | 'FAILED';
   };
+  isingVerification?: {
+    used: boolean;
+    satisfiable: boolean;
+    energy: number;
+    violatedConstraints: string[];
+    iterations: number;
+    timeMs: number;
+    solverVersion: string;
+  };
 }
 
 /**
@@ -50,6 +63,7 @@ export interface FormalVerificationResult {
  */
 export async function runFormalVerification(input: FormalVerificationInput): Promise<FormalVerificationResult> {
   const mockState = input.mockState ?? false;
+  const useIsing = input.useIsingSolver ?? false;
 
   // Call Z3 gate with verification-focused parameters
   const verificationResult = await runZ3AgentGate({
@@ -84,6 +98,33 @@ export async function runFormalVerification(input: FormalVerificationInput): Pro
   const satisfiedCount = theorems.filter((t) => t.proven).length;
   const violatedCount = theorems.length - satisfiedCount;
 
+  // Optional: Verify with Ising solver for constraint satisfaction
+  let isingVerification: FormalVerificationResult['isingVerification'] | undefined;
+  if (useIsing && !mockState) {
+    const isingProblem: IsingProblem = {
+      variables: Object.fromEntries(input.constraints.map((c) => [c.name, true])),
+      constraints: input.constraints.map((constraint) => ({
+        id: constraint.name,
+        type: 'hard' as const,
+        weight: 1.0,
+        variables: [constraint.name],
+        satisfactionFn: () => verificationResult.pass,
+        description: constraint.description,
+      })),
+    };
+
+    const isingSolution = await solveIsing(isingProblem, input.isingConfig);
+    isingVerification = {
+      used: true,
+      satisfiable: isingSolution.satisfiable,
+      energy: isingSolution.energy,
+      violatedConstraints: isingSolution.violatedConstraints,
+      iterations: isingSolution.iterations,
+      timeMs: isingSolution.time_ms,
+      solverVersion: isingSolution.solver_version,
+    };
+  }
+
   return {
     ok: !mockState && verificationResult.pass,
     policyName: input.policyName,
@@ -98,5 +139,6 @@ export async function runFormalVerification(input: FormalVerificationInput): Pro
       verificationStatus:
         violatedCount === 0 ? 'COMPLETE' : violatedCount < input.constraints.length ? 'PARTIAL' : 'FAILED',
     },
+    isingVerification,
   };
 }
