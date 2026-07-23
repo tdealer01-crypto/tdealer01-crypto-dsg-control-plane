@@ -144,6 +144,51 @@ Common root files:
 - `lib/ccvs/` — compliance/evidence matrix, evidence collection, drift detection.
 - `lib/commands/` — command normalization helpers.
 
+### Claude Code Skills
+
+Skills provide guidance and implementation for governance decision-making. Invoke with `/dsg-action-layer-ged`, `/formal-verification`, etc.:
+
+- `skills/dsg-action-layer-ged/` — Primary governance skill. Studio-style control: plan → deterministic gate → permission verdict → execution. Covers Deterministic Safety Gate (Z3/SMT), Replayable Governance, Compliance Evidence Pack, Runtime Lifecycle, and Hermes Executor. **When to use**: Agent action gating, compliance audits, credential-controlled execution, governance lifecycle management.
+  - `SKILL.md` — Decision flow documentation
+  - `skill.ts` — TypeScript implementation
+  - `references/` — Gate evaluation, replay, compliance, runtime, and Hermes executor guides
+
+- `skills/dsg-github-marketplace-action-controller/` — Package DSG gates and proofs as reusable GitHub Marketplace Actions. Deterministic GO/NO-GO validation, audit proof, secure deploy checks. **When to use**: Publishing governance-controlled actions to GitHub Marketplace.
+  - `SKILL.md` — Action controller documentation
+  - `skill.ts` — TypeScript implementation
+  - `references/` — action.yml spec and GO/NO-GO logic guides
+
+- `skills/dsg-multi-governance-orchestrator/` — Multi-source governance orchestration. UI trust upgrades, action-layer gates, deterministic execution, marketplace/enterprise cutover, architecture review, production GO/NO-GO. **When to use**: Coordinating multiple governance sources before production deployment.
+  - `SKILL.md` — Orchestrator documentation
+  - `skill.ts` — TypeScript implementation
+  - `references/` — Architecture template and M1-M2 checklist
+
+- `skills/formal-verification/` — Formal proof using Z3 SMT solver. Horn clauses, deterministic proof, invariant checking, counterexample generation, evidence production. **When to use**: Policy constraint verification, formal property checking, audit-ready proof generation.
+  - `SKILL.md` — Formal verification documentation
+  - `skill.ts` — TypeScript implementation
+  - `skill.json` — Configuration metadata
+
+- `skills/dsg-marketplace-fix/` — Remediation skill. Fixes premature README claims, verifies production OAuth endpoints, ensures compliance before marketplace launch. **When to use**: Preparing for marketplace publication, fixing compliance gaps, verifying production readiness.
+  - `SKILL.md` — Marketplace fix documentation
+  - `skill.ts` — TypeScript implementation
+
+**Skill invocation pattern**:
+```bash
+# Within Claude Code, invoke by name:
+/dsg-action-layer-ged <task description>
+
+# Or call via Skill tool with args
+Skill("dsg-action-layer-ged", "Goal: ..., Risk Level: medium, ...")
+```
+
+**Key skill design principles**:
+- Each skill encodes governance decision logic (PLAN → GATE → DECIDE → EXECUTE → COMMIT → REPLAY).
+- Skills call `runZ3AgentGate()` and `seedData()` from `lib/dsg/` for proof generation.
+- Gate status is always one of: `PASS`, `REVIEW`, `BLOCK`, `UNSUPPORTED`.
+- **UNSUPPORTED is never PASS** — it maps to REVIEW (low risk) or BLOCK (medium+).
+- Every skill returns `proofHash` for audit replay.
+- Mock state (`mockState: true`) disables production decisions.
+
 ### Tests and evidence
 
 - `tests/unit/` — unit tests.
