@@ -19,7 +19,7 @@ export class ECRConstruct extends Construct {
 
     // API Repository
     this.apiRepository = new ecr.Repository(this, 'APIRepository', {
-      repositoryName: createResourceName(config.env, 'api'),
+      repositoryName: createResourceName(config.env, 'api-v2'),
       imageScanOnPush: true,
       encryptionKey: undefined, // Use default KMS key
       removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
@@ -38,7 +38,7 @@ export class ECRConstruct extends Construct {
 
     // Worker Repository
     this.workerRepository = new ecr.Repository(this, 'WorkerRepository', {
-      repositoryName: createResourceName(config.env, 'worker'),
+      repositoryName: createResourceName(config.env, 'worker-v2'),
       imageScanOnPush: true,
       encryptionKey: undefined,
       removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
