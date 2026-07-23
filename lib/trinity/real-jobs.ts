@@ -238,6 +238,11 @@ export async function verifyDeliverableReal(
       return { error: 'Database not configured' };
     }
 
+    // Validate deliverable ID format (alphanumeric + hyphens, max 100 chars)
+    if (!deliverableId || !/^[a-zA-Z0-9\-]{1,100}$/.test(deliverableId)) {
+      return { error: 'Invalid deliverable_id format' };
+    }
+
     const startTime = Date.now();
 
     // Sanitize user-supplied qualityCriteria: trim and validate length
