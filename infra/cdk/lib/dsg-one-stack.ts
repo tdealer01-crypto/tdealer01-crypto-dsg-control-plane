@@ -13,6 +13,7 @@ import {
   CloudWatchConstruct,
   CloudTrailConstruct,
   XRayConstruct,
+  AutoScalingConstruct,
 } from './constructs';
 import { validateConfig } from './utils';
 
@@ -35,6 +36,9 @@ export class DSGOneStack extends cdk.Stack {
   public readonly cloudwatch: CloudWatchConstruct;
   public readonly cloudtrail: CloudTrailConstruct;
   public readonly xray: XRayConstruct;
+
+  // Phase 3: Advanced Features
+  public readonly autoscaling?: AutoScalingConstruct;
 
   constructor(scope: Construct, id: string, props: DSGOneStackProps) {
     super(scope, id, {
@@ -121,6 +125,16 @@ export class DSGOneStack extends cdk.Stack {
       taskRole: this.iam.ecsTaskRole,
     });
 
+    // Phase 3: Advanced Features
+    // 12. Auto-scaling (target tracking policies)
+    if (config.compute.enableAutoScaling) {
+      this.autoscaling = new AutoScalingConstruct(this, 'AutoScaling', {
+        config,
+        ecsService: this.ecs.service,
+        targetGroup: this.alb.targetGroup,
+      });
+    }
+
     // Outputs
     this.createOutputs(config);
   }
@@ -178,5 +192,23 @@ export class DSGOneStack extends cdk.Stack {
       value: this.cloudtrail.bucket.bucketName,
       description: 'S3 bucket for CloudTrail logs',
     });
+
+    // Phase 3 Outputs
+    if (config.compute.enableAutoScaling) {
+      new cdk.CfnOutput(this, 'AutoScalingTargetMinCapacity', {
+        value: (config.compute.minCapacity || 2).toString(),
+        description: 'Auto-scaling minimum task count',
+      });
+
+      new cdk.CfnOutput(this, 'AutoScalingTargetMaxCapacity', {
+        value: (config.compute.maxCapacity || 10).toString(),
+        description: 'Auto-scaling maximum task count',
+      });
+
+      new cdk.CfnOutput(this, 'AutoScalingCPUTarget', {
+        value: config.env === 'prod' ? '60%' : '70%',
+        description: 'CPU utilization target for auto-scaling',
+      });
+    }
   }
 }

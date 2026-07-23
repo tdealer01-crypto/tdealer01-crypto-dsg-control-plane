@@ -276,6 +276,36 @@ networking: {
 - Slow request tracking (>1s)
 - Anomaly detection
 
+---
+
+### Phase 3: Advanced Features
+
+#### 12. AutoScalingConstruct
+
+**Creates:** ECS auto-scaling policies with target tracking
+
+**Features:**
+- CPU-based scaling (target: 60% prod, 70% dev/staging)
+- Memory-based scaling (target: 75-80% utilization)
+- Request count scaling (target: 1000 requests/min per task)
+- Environment-specific thresholds (aggressive in prod, conservative in dev)
+- CloudWatch alarms for scale-up/down events
+- Configurable min/max task counts per environment
+
+**Configuration:**
+```typescript
+compute: {
+  minCapacity: 2,           // Minimum desired task count
+  maxCapacity: 10,          // Maximum desired task count
+}
+```
+
+**Scaling Triggers:**
+- CPU ≥ 70% → scale up (2-5 min cooldown)
+- Memory ≥ 80% → scale up (2-5 min cooldown)
+- Requests ≥ 1000/min → scale up (3 min cooldown)
+- CPU < 30% for 5 periods → scale down (5-10 min cooldown)
+
 ## Security Principles
 
 ### Least Privilege IAM
@@ -423,9 +453,9 @@ npm run format
 - ✅ CloudTrail audit logging
 - ✅ X-Ray distributed tracing
 
-### ⏭️ Phase 3: Advanced Features
+### ⏳ Phase 3: Advanced Features (IN PROGRESS)
 
-- [ ] Auto-scaling policies (target tracking, step scaling)
+- ✅ Auto-scaling policies (target tracking: CPU 70%, Memory 80%, Requests 1000/min)
 - [ ] Blue/green deployments (CodeDeploy integration)
 - [ ] Multi-region failover (active-active)
 - [ ] Disaster recovery (DR) automation
@@ -452,5 +482,5 @@ For issues, refer to:
 ---
 
 **Last Updated:** 2026-07-23
-**Version:** 1.0.0-alpha
-**Status:** Development Phase (Phase 1 complete)
+**Version:** 1.0.0-beta
+**Status:** Development Phase (Phase 1 & 2 complete, Phase 3 in progress)
