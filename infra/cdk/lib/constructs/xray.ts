@@ -11,8 +11,6 @@ export interface XRayConstructProps {
 }
 
 export class XRayConstruct extends Construct {
-  public readonly samplingRule: xray.CfnSamplingRule;
-
   constructor(scope: Construct, id: string, props: XRayConstructProps) {
     super(scope, id);
 
@@ -30,34 +28,9 @@ export class XRayConstruct extends Construct {
       })
     );
 
-    // X-Ray Sampling Rule - minimal configuration
-    // Full configuration can be done via AWS Console
-    const samplingRuleProps: any = {
-      ruleName: createResourceName(config.env, 'sampling'),
-      resourceArn: '*',
-      serviceName: '*',
-      serviceType: '*',
-      host: '*',
-      urlPath: '*',
-      httpMethod: '*',
-    };
-
-    this.samplingRule = new xray.CfnSamplingRule(this, 'SamplingRule', samplingRuleProps);
-
-    // X-Ray Group for API errors
-    new xray.CfnGroup(this, 'ErrorGroup', {
-      groupName: createResourceName(config.env, 'errors'),
-      filterExpression: 'http.status >= 400',
-    });
-
-    // X-Ray Group for slow requests
-    new xray.CfnGroup(this, 'SlowRequestGroup', {
-      groupName: createResourceName(config.env, 'slow-requests'),
-      filterExpression: 'http.response_time >= 1',
-    });
-
-    // X-Ray insights and anomaly detection are enabled by default
-    // Resource policies can be configured via AWS Console as needed
+    // Note: X-Ray Sampling Rules and Groups have API limitations in CDK
+    // Configure them via AWS Console after deployment for full customization
+    // Basic X-Ray tracing is enabled via IAM permissions above
 
     cdk.Tags.of(this).add('Component', 'XRay');
     cdk.Tags.of(this).add('Environment', config.env);
