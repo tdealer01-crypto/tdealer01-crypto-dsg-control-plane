@@ -30,35 +30,57 @@ function postHermesResult(
   result: unknown,
   startedAt: string,
 ): void {
-  const completedAt = new Date().toISOString();
-  const observedResultHash = createHash('sha256')
-    .update(JSON.stringify(result ?? null))
-    .digest('hex');
-  const body = {
-    workspaceId: envelope.workspaceId,
-    agentId: envelope.agentId,
-    sessionId: envelope.sessionId,
-    commandId: envelope.commandId,
-    envelopeId: envelope.envelopeId,
-    decisionHash: envelope.decisionHash,
-    status: 'SUCCESS',
-    startedAt,
-    completedAt,
-    observedResultHash,
-    evidenceItemIds: [`observe:${envelope.envelopeId}`],
-  };
-  fetch(`${context.origin}${envelope.mustReturnResultTo}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: context.authHeader,
-      cookie: context.cookieHeader,
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  }).catch(() => {
-    // fire-and-forget — result callback failure does not block the caller
-  });
+  try {
+    // Construct URL using constructor to prevent SSRF
+    const baseUrl = new URL(context.origin);
+    const path = envelope.mustReturnResultTo;
+
+    // Only allow relative paths
+    if (!path.startsWith('/')) {
+      console.warn(`[SSRF Protection] Blocked non-relative path: ${path}`);
+      return;
+    }
+
+    // Create full URL and verify same-origin
+    const resultUrl = new URL(path, baseUrl.origin);
+    if (resultUrl.origin !== baseUrl.origin) {
+      console.warn(`[SSRF Protection] Blocked cross-origin path: ${path}`);
+      return;
+    }
+
+    const completedAt = new Date().toISOString();
+    const observedResultHash = createHash('sha256')
+      .update(JSON.stringify(result ?? null))
+      .digest('hex');
+    const body = {
+      workspaceId: envelope.workspaceId,
+      agentId: envelope.agentId,
+      sessionId: envelope.sessionId,
+      commandId: envelope.commandId,
+      envelopeId: envelope.envelopeId,
+      decisionHash: envelope.decisionHash,
+      status: 'SUCCESS',
+      startedAt,
+      completedAt,
+      observedResultHash,
+      evidenceItemIds: [`observe:${envelope.envelopeId}`],
+    };
+
+    fetch(resultUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: context.authHeader,
+        cookie: context.cookieHeader,
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    }).catch(() => {
+      // fire-and-forget — result callback failure does not block the caller
+    });
+  } catch (err) {
+    console.warn(`[SSRF Protection] Failed to post result:`, err);
+  }
 }
 
 export async function executeToolSafely(
