@@ -26,7 +26,7 @@ export interface DsgActionLayerResult {
     reasoning: string;
     evidenceHashes: string[];
   };
-  violations: Array<{ code: string; severity: string }>;
+  violations: Array<{ code: string; message: string }>;
 }
 
 /**
@@ -46,7 +46,7 @@ export async function runDsgActionLayer(input: DsgActionLayerInput): Promise<Dsg
 
   // STEP 1: PLAN - Seed governance context
   const seedResult = await seedData({
-    dataType: 'governance_decision',
+    dataType: 'codebase_state',
     query: input.userGoal,
     requiredEvidence: true,
     context: JSON.stringify({
@@ -58,7 +58,7 @@ export async function runDsgActionLayer(input: DsgActionLayerInput): Promise<Dsg
 
   // STEP 2: GATE - Call deterministic safety gate
   const gateResult = await runZ3AgentGate({
-    agentType: 'governance-action-layer',
+    agentType: 'orchestrator',
     jobId: `gate-${Date.now()}`,
     workspaceId: 'dsg-control-plane',
     goalLocked: true,

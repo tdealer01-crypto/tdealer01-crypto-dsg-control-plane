@@ -53,7 +53,7 @@ export async function runFormalVerification(input: FormalVerificationInput): Pro
 
   // Call Z3 gate with verification-focused parameters
   const verificationResult = await runZ3AgentGate({
-    agentType: 'formal-verification',
+    agentType: 'security-gate',
     jobId: `verify-${input.policyName}-${Date.now()}`,
     workspaceId: 'dsg-control-plane',
     goalLocked: true,
