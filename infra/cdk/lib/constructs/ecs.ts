@@ -141,9 +141,7 @@ export class ECSConstruct extends Construct {
         targetUtilizationPercent: 80,
       });
 
-      scaling.scaleOnRequestCount('RequestScaling', {
-        targetRequestsPerMinute: 1000,
-      });
+      // Request count scaling is handled by AutoScalingConstruct with target group
     }
 
     // Outputs

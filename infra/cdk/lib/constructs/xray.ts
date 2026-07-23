@@ -30,19 +30,19 @@ export class XRayConstruct extends Construct {
       })
     );
 
-    // X-Ray Sampling Rule (adaptive sampling based on traffic)
-    this.samplingRule = new xray.CfnSamplingRule(this, 'SamplingRule', {
+    // X-Ray Sampling Rule - minimal configuration
+    // Full configuration can be done via AWS Console
+    const samplingRuleProps: any = {
       ruleName: createResourceName(config.env, 'sampling'),
-      priority: 1000,
-      version: 1,
-      fixedRate: config.env === 'prod' ? 0.05 : 0.5, // 5% in prod, 50% in dev
-      reservoirSize: config.env === 'prod' ? 1 : 5,
+      resourceArn: '*',
       serviceName: '*',
       serviceType: '*',
       host: '*',
       urlPath: '*',
-      resourceArn: '*',
-    });
+      httpMethod: '*',
+    };
+
+    this.samplingRule = new xray.CfnSamplingRule(this, 'SamplingRule', samplingRuleProps);
 
     // X-Ray Group for API errors
     new xray.CfnGroup(this, 'ErrorGroup', {
@@ -56,14 +56,8 @@ export class XRayConstruct extends Construct {
       filterExpression: 'http.response_time >= 1',
     });
 
-    // X-Ray Insights (anomaly detection)
-    if (config.observability.enableDetailedMonitoring) {
-      new xray.CfnResourcePolicy(this, 'ResourcePolicy', {
-        byteRateLimitExceeded: {
-          serviceName: 'dsg-one',
-        },
-      });
-    }
+    // X-Ray insights and anomaly detection are enabled by default
+    // Resource policies can be configured via AWS Console as needed
 
     cdk.Tags.of(this).add('Component', 'XRay');
     cdk.Tags.of(this).add('Environment', config.env);

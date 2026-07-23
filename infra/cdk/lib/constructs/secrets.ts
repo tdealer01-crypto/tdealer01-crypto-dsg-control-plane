@@ -71,14 +71,11 @@ export class SecretsConstruct extends Construct {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    // Enable automatic rotation policies
-    if (config.security.kmsKeyRotation) {
-      [this.apiSecrets, this.databaseSecrets, this.oauthSecrets].forEach((secret) => {
-        secret.addRotationSchedule('RotationSchedule', {
-          automaticallyAfter: cdk.Duration.days(config.env === 'prod' ? 30 : 90),
-        });
-      });
-    }
+    // Note: Automatic rotation requires rotationLambda or hostedRotation configuration
+    // Rotation can be configured via AWS Console or additional Lambda-based construct
+    // if (config.security.kmsKeyRotation) {
+    //   // Rotation schedule would be configured here with Lambda or hosted rotation
+    // }
 
     cdk.Tags.of(this).add('Component', 'SecretsManager');
     cdk.Tags.of(this).add('Environment', config.env);

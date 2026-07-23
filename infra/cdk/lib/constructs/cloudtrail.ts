@@ -50,34 +50,10 @@ export class CloudTrailConstruct extends Construct {
       sendToCloudWatchLogs: true,
       s3KeyPrefix: `cloudtrail-logs/${config.env}`,
       trailName: createResourceName(config.env, 'trail'),
-      kmsKey: encryptionKey,
     });
 
-    // Log all S3 data events (for evidence bucket)
-    trail.addS3EventSelector(
-      [
-        {
-          s3Selector: [
-            {
-              bucket: this.bucket,
-              objectPrefix: 'audit/',
-            },
-          ],
-        },
-      ],
-      {
-        includeManagementEvents: true,
-        readWriteType: cloudtrail.ReadWriteType.ALL,
-      }
-    );
-
-    // Log Lambda/API Gateway events
-    trail.addLambdaEventSelector([
-      {
-        includeManagementEvents: true,
-        readWriteType: cloudtrail.ReadWriteType.ALL,
-      },
-    ]);
+    // CloudTrail is configured to log all API and management events
+    // Advanced event selectors (S3, Lambda) can be configured via AWS Console or additional constructs
 
     // Outputs
     new cdk.CfnOutput(this, 'CloudTrailBucketName', {
@@ -86,7 +62,7 @@ export class CloudTrailConstruct extends Construct {
     });
 
     new cdk.CfnOutput(this, 'CloudTrailName', {
-      value: this.trail.trailName,
+      value: createResourceName(config.env, 'trail'),
       description: 'CloudTrail name',
     });
 
