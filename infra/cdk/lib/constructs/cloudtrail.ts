@@ -36,7 +36,7 @@ export class CloudTrailConstruct extends Construct {
               transitionAfter: cdk.Duration.days(90),
             },
           ],
-          expiration: cdk.Duration.days(Math.max(config.observability.cloudTrailRetentionDays, 91)),
+          expiration: cdk.Duration.days(Math.max(config.observability.cloudTrailRetentionDays, 92)),
         },
       ],
     });
