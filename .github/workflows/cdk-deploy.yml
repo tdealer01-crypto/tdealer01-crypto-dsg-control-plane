@@ -1,0 +1,259 @@
+name: CDK Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev, staging, prod)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      approval_required:
+        description: 'Require approval before deploy'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  validate:
+    name: Validate CDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install CDK dependencies
+        run: |
+          cd infra/cdk
+          npm ci
+
+      - name: Build CDK
+        run: |
+          cd infra/cdk
+          npm run build
+
+      - name: Synthesize CDK
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          cd infra/cdk
+          npx cdk synth
+
+      - name: Upload CloudFormation template
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdk-templates
+          path: infra/cdk/cdk.out/
+
+  plan:
+    name: Plan Deployment
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd infra/cdk
+          npm ci
+
+      - name: Generate deployment plan
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          cd infra/cdk
+          npx cdk diff > deployment-plan.txt 2>&1 || true
+          cat deployment-plan.txt
+
+      - name: Upload deployment plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-plan
+          path: infra/cdk/deployment-plan.txt
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [validate, plan]
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: cdk-deploy
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install CDK
+        run: |
+          npm install -g aws-cdk
+
+      - name: Install dependencies
+        run: |
+          cd infra/cdk
+          npm ci
+
+      - name: Build CDK
+        run: |
+          cd infra/cdk
+          npm run build
+
+      - name: Deploy CDK Stack
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          cd infra/cdk
+          APPROVE_FLAG=""
+          if [ "${{ inputs.approval_required }}" = "false" ]; then
+            APPROVE_FLAG="--require-approval never"
+          fi
+          npx cdk deploy dsg-one-$ENVIRONMENT $APPROVE_FLAG --outputs-file deployment-outputs.json
+
+      - name: Capture deployment outputs
+        if: success()
+        run: |
+          cd infra/cdk
+          if [ -f deployment-outputs.json ]; then
+            cat deployment-outputs.json
+            echo "deployment_outputs=$(cat deployment-outputs.json | jq -c .)" >> $GITHUB_ENV
+          fi
+
+      - name: Post deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const status = '${{ job.status }}';
+            const environment = '${{ inputs.environment }}';
+            const message = `CDK Deployment to ${environment}: ${status.toUpperCase()}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            }).catch(() => {
+              console.log('No issue context, skipping comment');
+            });
+
+      - name: Upload deployment outputs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-outputs
+          path: infra/cdk/deployment-outputs.json
+
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: cdk-verify
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Verify stack creation
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          STACK_NAME="dsg-one-${ENVIRONMENT}"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          echo "Checking CloudFormation stack: $STACK_NAME"
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --query 'Stacks[0].StackStatus'
+
+      - name: Get stack outputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          STACK_NAME="dsg-one-${ENVIRONMENT}"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          echo "::group::Stack Outputs"
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --query 'Stacks[0].Outputs' \
+            --output table
+          echo "::endgroup::"
+
+      - name: Verify ECS service
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          CLUSTER_NAME="dsg-one-${ENVIRONMENT}"
+          SERVICE_NAME="dsg-service"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          echo "Checking ECS service: $SERVICE_NAME"
+          aws ecs describe-services \
+            --cluster "$CLUSTER_NAME" \
+            --services "$SERVICE_NAME" \
+            --region "$REGION" \
+            --query 'services[0].[serviceName,status,runningCount,desiredCount]' \
+            --output table
+
+      - name: Verify RDS database
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          DB_INSTANCE_ID="dsg-one-${ENVIRONMENT}-db"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          echo "Checking RDS instance: $DB_INSTANCE_ID"
+          aws rds describe-db-instances \
+            --db-instance-identifier "$DB_INSTANCE_ID" \
+            --region "$REGION" \
+            --query 'DBInstances[0].[DBInstanceIdentifier,DBInstanceStatus,Engine]' \
+            --output table || echo "RDS instance not yet available"
+
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure()
+    steps:
+      - name: Notify rollback
+        run: |
+          echo "Deployment failed. Rollback can be performed by:"
+          echo "1. Running: npx cdk destroy --force"
+          echo "2. Or manually via AWS Console CloudFormation stack deletion"

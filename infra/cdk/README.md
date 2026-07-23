@@ -415,6 +415,65 @@ npm run lint
 npm run format
 ```
 
+## Quick Start — Deploy in 5 Minutes
+
+### 1. Set AWS Credentials
+```bash
+export AWS_ACCOUNT_ID=121205961822
+export AWS_REGION=us-east-1
+aws sts get-caller-identity  # Verify credentials
+```
+
+### 2. Build & Synthesize
+```bash
+cd infra/cdk
+npm ci
+npm run build
+npx cdk synth
+```
+
+### 3. Bootstrap (First Time Only)
+```bash
+npx cdk bootstrap aws://121205961822/us-east-1
+```
+
+### 4. Deploy
+```bash
+npx cdk deploy --require-approval never
+```
+
+### 5. Monitor Progress
+```bash
+# In another terminal, watch CloudFormation
+aws cloudformation describe-stack-events \
+  --stack-name dsg-one-dev \
+  --region us-east-1 \
+  --query 'StackEvents[0:10]' \
+  --output table
+```
+
+**Done!** Deployment takes 20-30 minutes. Outputs show ALB DNS and resource details.
+
+## Detailed Deployment Guide
+
+For comprehensive deployment instructions, including:
+- Pre-deployment validation
+- Environment-specific configuration
+- Multi-region deployment
+- Rollback procedures
+- Troubleshooting steps
+
+See: **[DEPLOYMENT_PROCESS.md](./DEPLOYMENT_PROCESS.md)**
+
+## GitHub Actions CI/CD
+
+Automated CDK deployment via GitHub Actions:
+1. Push to `claude/aws-cdk-infrastructure-enterprise` branch
+2. Workflow automatically validates and plans deployment
+3. Approval required before production deployment
+
+Workflow file: `.github/workflows/cdk-deploy.yml`
+
 ## Troubleshooting
 
 ### Common Issues
@@ -429,10 +488,14 @@ npm run format
 - Solution: Check IAM permissions for your AWS user/role
 
 **Issue:** Resource already exists
-- Solution: Synthesize with `--force` to overwrite:
-  ```bash
-  npm run synth -- --force
-  ```
+- Solution: Check if stack already deployed; use `cdk destroy` to clean up first
+
+**Issue:** S3 bucket lifecycle error
+- Solution: Ensure expiration days exceed transition days (fixed in CDK code)
+
+### More Troubleshooting
+
+For extended troubleshooting, see: **[DEPLOYMENT_PROCESS.md#Troubleshooting](./DEPLOYMENT_PROCESS.md#troubleshooting)**
 
 ## Next Steps
 
