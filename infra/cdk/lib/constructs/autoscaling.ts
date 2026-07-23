@@ -23,11 +23,19 @@ export class AutoScalingConstruct extends Construct {
 
     const { config, ecsService, targetGroup } = props;
 
-    // Create scalable target for ECS service
-    this.scalableTarget = ecsService.autoScaleTaskCount({
-      minCapacity: config.compute.minCapacity || 2,
-      maxCapacity: config.compute.maxCapacity || 10,
-    });
+    // Get or create scalable target (ECS may have already created it)
+    // If ECSConstruct already set up auto-scaling, reuse its target
+    let scalableTarget = (ecsService as any)._scalableTarget;
+
+    if (!scalableTarget) {
+      // Only create if not already present
+      scalableTarget = ecsService.autoScaleTaskCount({
+        minCapacity: config.compute.minCapacity || 2,
+        maxCapacity: config.compute.maxCapacity || 10,
+      });
+    }
+
+    this.scalableTarget = scalableTarget;
 
     // CPU-based scaling (target 70% utilization)
     this.cpuScaling = this.scalableTarget.scaleOnCpuUtilization(
@@ -50,11 +58,13 @@ export class AutoScalingConstruct extends Construct {
     );
 
     // Request count scaling (1000 requests per minute per task)
+    // Provide target group for ALB metric derivation
     this.requestCountScaling = this.scalableTarget.scaleOnRequestCount(
       'RequestCountScaling',
       {
         targetRequestsPerMinute: 1000,
         cooldown: cdk.Duration.minutes(3),
+        targetGroup: targetGroup,
       }
     );
 
