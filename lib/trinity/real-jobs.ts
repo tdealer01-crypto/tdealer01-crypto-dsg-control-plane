@@ -31,6 +31,14 @@ function getCachedOrFetch<T>(
   });
 }
 
+function scoreQuality(deliverable: string, category: string): number {
+  let score = 60;
+  if (deliverable.length > 120) score += 10;
+  if (deliverable.includes('Evidence')) score += 10;
+  if (category === 'smart-contract-audit' || category === 'security-review') score += 10;
+  return Math.min(100, score);
+}
+
 /**
  * Discover jobs from real platforms
  * Sources: GitHub Issues (bounty-labeled), Solana grant programs, internal DSG jobs
@@ -168,7 +176,8 @@ export async function discoverJobsReal(
 export async function executeJobReal(
   jobId: string,
   deliverable: string,
-  executionTimeTarget?: number
+  executionTimeTarget?: number,
+  category?: string
 ): Promise<any> {
   try {
     if (!supabase) {
@@ -177,6 +186,7 @@ export async function executeJobReal(
 
     const executionId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const startTime = Date.now();
+    const qualityScore = scoreQuality(deliverable, category || 'general');
 
     const { data, error } = await supabase
       .from('trinity_executions')
@@ -185,7 +195,7 @@ export async function executeJobReal(
         job_id: jobId,
         deliverable,
         status: 'completed',
-        quality_score: 85 + Math.random() * 15,
+        quality_score: qualityScore,
         execution_time_ms: Math.min(
           executionTimeTarget || 3000,
           Date.now() - startTime
@@ -220,14 +230,16 @@ export async function executeJobReal(
  */
 export async function verifyDeliverableReal(
   deliverableId: string,
-  qualityCriteria?: string
+  qualityCriteria?: string,
+  deliverable?: string,
+  category?: string
 ): Promise<any> {
   try {
     if (!supabase) {
       return { error: 'Database not configured' };
     }
 
-    const qualityScore = 80 + Math.random() * 20;
+    const qualityScore = scoreQuality(deliverable || qualityCriteria || '', category || 'general');
 
     const { data, error } = await supabase
       .from('trinity_verifications')
@@ -252,7 +264,7 @@ export async function verifyDeliverableReal(
       checks_passed: data.checks_passed,
       checks_total: 12,
       issues: qualityScore < 80 ? ['Minor quality issues detected'] : [],
-      verification_time_ms: Math.random() * 1000,
+      verification_time_ms: 250,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
@@ -266,6 +278,7 @@ export async function verifyDeliverableReal(
 
 /**
  * Settle payment - integrated with Supabase ledger
+ * Fail-closed: no live on-chain transfer, requires manual review or NerveAgent path
  */
 export async function settlePaymentReal(
   executionId: string,
@@ -276,16 +289,14 @@ export async function settlePaymentReal(
       return { error: 'Database not configured' };
     }
 
-    const transactionHash = Math.random().toString(16).slice(2, 66);
-
     const { data, error } = await supabase
       .from('trinity_payments')
       .insert({
         execution_id: executionId,
         amount_sol: amountSol,
-        transaction_hash: transactionHash,
-        status: 'confirmed',
-        confirmations: 32,
+        transaction_hash: null,
+        status: 'pending_manual_review',
+        confirmations: 0,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -294,13 +305,13 @@ export async function settlePaymentReal(
     if (error) throw error;
 
     return {
+      ok: true,
       execution_id: executionId,
       amount_sol: amountSol,
-      transaction_hash: transactionHash,
-      status: 'confirmed',
-      confirmations: 32,
-      reputation_change: Math.random() * 5,
-      new_reputation: 50 + Math.random() * 50,
+      transaction_hash: null,
+      status: 'pending_manual_review',
+      confirmations: 0,
+      note: 'On-chain transfer not executed. Settlement requires NerveAgent Solana path or manual review.',
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
