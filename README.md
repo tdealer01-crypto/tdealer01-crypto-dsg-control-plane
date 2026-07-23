@@ -1102,6 +1102,6 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## License
 
-MIT — [See LICENSE](./LICENSE)
+Apache License 2.0 — [See LICENSE](./LICENSE)
 
 **Latest:** ✅ Enterprise Features (PR #963) merged to main · ✅ SAML/OIDC + SCIM provisioning live · ✅ SOC 2 Type II mapping complete · ✅ Public pages deployed (security/compliance/support) · ✅ CodeQL security fixes applied (ReDoS + XSS) · ✅ Production deployment ready (Vercel, 3578 tests passing, 0 critical vulnerabilities)
