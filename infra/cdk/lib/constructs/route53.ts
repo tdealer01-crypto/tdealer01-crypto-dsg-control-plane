@@ -16,7 +16,7 @@ export interface Route53ConstructProps {
  * Supports zero-downtime deployments and disaster recovery.
  */
 export class Route53Construct extends Construct {
-  public readonly hostedZone?: route53.IHostedZone;
+  public readonly hostedZone: route53.IHostedZone;
   public readonly healthChecks: route53.CfnHealthCheck[] = [];
   public readonly dnsRole: iam.Role;
 
@@ -31,8 +31,8 @@ export class Route53Construct extends Construct {
       description: 'Role for Route53 DNS management',
     });
 
-    // Create hosted zone (if domain is configured and in production)
-    if (config.domain?.name && config.environment === 'prod') {
+    // Create hosted zone (if domain is configured)
+    if (config.domain?.name) {
       this.hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
         domainName: config.domain.name,
       });
@@ -45,14 +45,12 @@ export class Route53Construct extends Construct {
         this,
         'PrimaryHealthCheck',
         {
-          healthCheckConfig: {
-            type: 'HTTPS',
-            resourcePath: '/api/health',
-            fullyQualifiedDomainName: `dsg-one-primary.${config.domain.name}`,
-            port: 443,
-            requestInterval: 30,
-            failureThreshold: 3,
-          },
+          type: 'HTTPS',
+          resourcePath: '/api/health',
+          fullyQualifiedDomainName: `dsg-one-primary.${config.domain.name}`,
+          port: 443,
+          requestInterval: 30,
+          failureThreshold: 3,
           healthCheckTags: [
             {
               key: 'Name',
@@ -68,14 +66,12 @@ export class Route53Construct extends Construct {
         this,
         'SecondaryHealthCheck',
         {
-          healthCheckConfig: {
-            type: 'HTTPS',
-            resourcePath: '/api/health',
-            fullyQualifiedDomainName: `dsg-one-secondary.${config.domain.name}`,
-            port: 443,
-            requestInterval: 30,
-            failureThreshold: 3,
-          },
+          type: 'HTTPS',
+          resourcePath: '/api/health',
+          fullyQualifiedDomainName: `dsg-one-secondary.${config.domain.name}`,
+          port: 443,
+          requestInterval: 30,
+          failureThreshold: 3,
           healthCheckTags: [
             {
               key: 'Name',

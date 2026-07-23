@@ -47,7 +47,12 @@ export class BackupConstruct extends Construct {
     this.backupPlan.addRule(
       new backup.BackupPlanRule({
         ruleName: 'DailyBackup',
-        deleteAfter: cdk.Duration.days(retentionDays),
+        scheduleExpression: cdk.Schedule.cron({ hour: '3', minute: '0' }),
+        retention: cdk.Duration.days(retentionDays),
+        copyToRegion:
+          environment === 'prod'
+            ? `${config.aws.secondaryRegion || 'us-west-2'}`
+            : undefined,
       })
     );
 
@@ -56,7 +61,12 @@ export class BackupConstruct extends Construct {
       this.backupPlan.addRule(
         new backup.BackupPlanRule({
           ruleName: 'WeeklyBackup',
-          deleteAfter: cdk.Duration.days(1095), // 3 years
+          scheduleExpression: cdk.Schedule.cron({
+            dayOfWeek: 'SUN',
+            hour: '5',
+            minute: '0',
+          }),
+          retention: cdk.Duration.days(1095), // 3 years
         })
       );
     }

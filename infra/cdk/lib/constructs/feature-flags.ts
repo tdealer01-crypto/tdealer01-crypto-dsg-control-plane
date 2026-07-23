@@ -48,8 +48,8 @@ export class FeatureFlagsConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Feature Rollouts Table - gradual rollout and canary tracking
@@ -67,18 +67,18 @@ export class FeatureFlagsConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // AWS AppConfig Application for feature flags
     this.appConfigApp = new appconfig.CfnApplication(this, 'FeatureFlagApp', {
       name: `${resourcePrefix}-feature-flags`,
       description: 'Feature flag configuration for DSG ONE',
-      tags: [
-        { key: 'Component', value: 'FeatureFlags' },
-        { key: 'Phase', value: '3-AI-Governance' },
-      ],
+      tags: {
+        Component: 'FeatureFlags',
+        Phase: '3-AI-Governance',
+      },
     });
 
     // AWS AppConfig Environment
@@ -94,10 +94,10 @@ export class FeatureFlagsConstruct extends Construct {
           }).roleArn,
         },
       ],
-      tags: [
-        { key: 'Component', value: 'FeatureFlags' },
-        { key: 'Environment', value: config.environment },
-      ],
+      tags: {
+        Component: 'FeatureFlags',
+        Environment: config.environment,
+      },
     });
 
     // IAM Role for Feature Flag Operations
@@ -109,7 +109,7 @@ export class FeatureFlagsConstruct extends Construct {
     // Grant permissions
     this.featureFlagsTable.grantReadWriteData(this.featureFlagsRole);
     this.featureRolloutsTable.grantReadWriteData(this.featureFlagsRole);
-    encryptionKey.grantEncryptDecrypt(this.featureFlagsRole);
+    encryptionKey.grantDecryptEncrypt(this.featureFlagsRole);
 
     // Grant AppConfig permissions
     this.featureFlagsRole.addToPrincipalPolicy(

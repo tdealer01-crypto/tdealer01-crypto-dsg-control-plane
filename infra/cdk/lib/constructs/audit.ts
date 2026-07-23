@@ -47,8 +47,8 @@ export class AuditConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Add GSI for event type queries
@@ -79,8 +79,8 @@ export class AuditConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Audit Bucket - long-term audit exports, compliance reports
@@ -93,8 +93,8 @@ export class AuditConstruct extends Construct {
       enforceSSL: true,
       objectLockEnabled: true,
       objectLockDefaultRetention: {
-        mode: s3.ObjectLockMode.GOVERNANCE,
-        duration: cdk.Duration.days(2555), // 7 years for compliance
+        mode: s3.ObjectLockRetentionMode.GOVERNANCE,
+        days: 2555, // 7 years for compliance
       },
       lifecycleRules: [
         {
@@ -110,25 +110,16 @@ export class AuditConstruct extends Construct {
           ],
         },
       ],
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    // Audit Log Group - CloudWatch Logs (KMS encryption only for production)
-    const auditLogProps: logs.LogGroupProps =
-      config.environment === 'prod'
-        ? {
-            logGroupName: `/dsg-one/${config.environment}/audit`,
-            retention: logs.RetentionDays.FIVE_YEARS,
-            encryptionKey: encryptionKey,
-            removalPolicy: cdk.RemovalPolicy.RETAIN,
-          }
-        : {
-            logGroupName: `/dsg-one/${config.environment}/audit`,
-            retention: logs.RetentionDays.FIVE_YEARS,
-            removalPolicy: cdk.RemovalPolicy.DESTROY,
-          };
-
-    this.auditLogGroup = new logs.LogGroup(this, 'AuditLogGroup', auditLogProps);
+    // Audit Log Group - CloudWatch Logs
+    this.auditLogGroup = new logs.LogGroup(this, 'AuditLogGroup', {
+      logGroupName: `/dsg-one/${config.environment}/audit`,
+      retention: logs.RetentionDays.FIVE_YEARS,
+      encryption: encryptionKey,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
 
     // IAM Role for Audit Operations
     this.auditRole = new iam.Role(this, 'AuditRole', {
@@ -141,7 +132,7 @@ export class AuditConstruct extends Construct {
     this.hashChainTable.grantReadWriteData(this.auditRole);
     this.auditBucket.grantReadWrite(this.auditRole);
     this.auditLogGroup.grantWrite(this.auditRole);
-    encryptionKey.grantEncryptDecrypt(this.auditRole);
+    encryptionKey.grantDecryptEncrypt(this.auditRole);
 
     // Deny deletion from audit table and bucket
     this.auditRole.attachInlinePolicy(

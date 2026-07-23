@@ -49,8 +49,8 @@ export class ModelRegistryConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Model Versions Table - version history and deprecation
@@ -68,8 +68,8 @@ export class ModelRegistryConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Model Routing Table - routing rules and strategies
@@ -87,8 +87,8 @@ export class ModelRegistryConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Model Metrics Table - performance, cost, latency tracking
@@ -106,8 +106,8 @@ export class ModelRegistryConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
 
@@ -124,7 +124,7 @@ export class ModelRegistryConstruct extends Construct {
           noncurrentVersionExpiration: cdk.Duration.days(90),
         },
       ],
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // IAM Role for Model Routing

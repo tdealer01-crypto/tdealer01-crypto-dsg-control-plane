@@ -48,8 +48,8 @@ export class ComplianceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Workspace Isolation Table - multi-tenant boundaries
@@ -67,8 +67,8 @@ export class ComplianceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Compliance Status Table - compliance checks and gaps
@@ -86,8 +86,8 @@ export class ComplianceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
 
@@ -104,7 +104,7 @@ export class ComplianceConstruct extends Construct {
           noncurrentVersionExpiration: cdk.Duration.days(365),
         },
       ],
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // IAM Role for Compliance Operations
@@ -118,7 +118,7 @@ export class ComplianceConstruct extends Construct {
     this.workspaceIsolationTable.grantReadWriteData(this.complianceRole);
     this.complianceStatusTable.grantReadWriteData(this.complianceRole);
     this.policyCodeBucket.grantReadWrite(this.complianceRole);
-    encryptionKey.grantEncryptDecrypt(this.complianceRole);
+    encryptionKey.grantDecryptEncrypt(this.complianceRole);
 
     // Lambda function for compliance enforcement
     this.complianceEnforcer = new lambda.Function(this, 'ComplianceEnforcerFunction', {

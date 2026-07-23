@@ -47,8 +47,8 @@ export class EvidenceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // CCVS Matrix Table - compliance mapping
@@ -66,8 +66,8 @@ export class EvidenceConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Evidence Bucket - evidence artifacts, reports, proofs
@@ -83,7 +83,7 @@ export class EvidenceConstruct extends Construct {
           noncurrentVersionExpiration: cdk.Duration.days(180),
         },
       ],
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // IAM Role for Evidence Collection
@@ -96,7 +96,7 @@ export class EvidenceConstruct extends Construct {
     this.evidenceTable.grantReadWriteData(this.evidenceRole);
     this.ccvsMatrixTable.grantReadWriteData(this.evidenceRole);
     this.evidenceBucket.grantReadWrite(this.evidenceRole);
-    encryptionKey.grantEncryptDecrypt(this.evidenceRole);
+    encryptionKey.grantDecryptEncrypt(this.evidenceRole);
 
     // Lambda function for evidence collection
     this.evidenceCollectorFunction = new lambda.Function(this, 'EvidenceCollectorFunction', {

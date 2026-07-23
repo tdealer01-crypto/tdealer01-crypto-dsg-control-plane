@@ -18,7 +18,7 @@ export interface GuardDutyConstructProps {
  * Integrates with SecurityHub and sends alerts via SNS.
  */
 export class GuardDutyConstruct extends Construct {
-  public readonly detector?: guardduty.CfnDetector;
+  public readonly detector: guardduty.CfnDetector;
   public readonly threatResponse: iam.Role;
 
   constructor(scope: Construct, id: string, props: GuardDutyConstructProps) {
@@ -26,15 +26,12 @@ export class GuardDutyConstruct extends Construct {
 
     const { config, snsTopic } = props;
 
-    // Enable GuardDuty only in production (requires subscription)
-    if (config.environment === 'prod') {
-      this.detector = new guardduty.CfnDetector(this, 'GuardDutyDetector', {
-        enable: true,
-        findingPublishingFrequency: 'FIFTEEN_MINUTES',
-      });
-    } else {
-      console.log(`ℹ️ Skipping GuardDuty for ${config.environment} environment`);
-    }
+    // Enable GuardDuty
+    this.detector = new guardduty.CfnDetector(this, 'GuardDutyDetector', {
+      enable: true,
+      findingPublishingFrequency:
+        config.environment === 'prod' ? 'FIFTEEN_MINUTES' : 'ONE_HOUR',
+    });
 
     // IAM Role for threat response automation
     this.threatResponse = new iam.Role(this, 'ThreatResponseRole', {

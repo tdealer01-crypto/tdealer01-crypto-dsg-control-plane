@@ -48,8 +48,8 @@ export class PolicyEngineConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: environment === 'prod' ? undefined : 'ttl',
     });
 
@@ -68,8 +68,8 @@ export class PolicyEngineConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Constraint Evaluation Results Table - Z3 proof results
@@ -87,8 +87,8 @@ export class PolicyEngineConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
 
@@ -106,7 +106,7 @@ export class PolicyEngineConstruct extends Construct {
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
         },
       ],
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // IAM Role for Policy Evaluation
@@ -124,7 +124,7 @@ export class PolicyEngineConstruct extends Construct {
     this.policiesBucket.grantReadWrite(this.evaluationRole);
 
     // Grant KMS permissions
-    encryptionKey.grantEncryptDecrypt(this.evaluationRole);
+    encryptionKey.grantDecryptEncrypt(this.evaluationRole);
 
     // Lambda function for policy evaluation
     this.policyEvaluationFunction = new lambda.Function(this, 'PolicyEvaluationFunction', {

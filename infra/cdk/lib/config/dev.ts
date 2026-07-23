@@ -9,13 +9,13 @@ export const devConfig: DSGConfig = {
   resourcePrefix: 'dsg-one-dev',
 
   aws: {
-    account: process.env.AWS_ACCOUNT_ID || '121205961822',
+    account: process.env.AWS_ACCOUNT_ID || '123456789012',
     region: process.env.AWS_REGION || 'us-east-1',
     secondaryRegion: 'us-west-2',
   },
 
   domain: {
-    name: 'dev.dsg-one.com',
+    name: 'dev.dsg-one.local',
   },
 
   networking: {
@@ -41,7 +41,7 @@ export const devConfig: DSGConfig = {
 
   waf: {
     enableWaf: false,
-    trustedIpRanges: ['10.0.0.0/16'], // Internal VPC CIDR
+    trustedIpRanges: ['0.0.0.0/0'],
   },
 
   backup: {

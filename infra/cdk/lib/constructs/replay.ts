@@ -48,8 +48,8 @@ export class ReplayConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Execution Snapshots Table - input/output for determinism verification
@@ -67,8 +67,8 @@ export class ReplayConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
 
@@ -87,8 +87,8 @@ export class ReplayConstruct extends Construct {
       pointInTimeRecovery: true,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey: encryptionKey,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamSpecification.NEW_IMAGE,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Replay Bucket - snapshot exports for forensics
@@ -109,7 +109,7 @@ export class ReplayConstruct extends Construct {
           ],
         },
       ],
-      removalPolicy: config.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // IAM Role for Replay Operations
@@ -123,7 +123,7 @@ export class ReplayConstruct extends Construct {
     this.executionSnapshotsTable.grantReadWriteData(this.replayRole);
     this.replayProofsTable.grantReadWriteData(this.replayRole);
     this.replayBucket.grantReadWrite(this.replayRole);
-    encryptionKey.grantEncryptDecrypt(this.replayRole);
+    encryptionKey.grantDecryptEncrypt(this.replayRole);
 
     // Lambda function for replay and verification
     this.replayFunction = new lambda.Function(this, 'ReplayFunction', {
