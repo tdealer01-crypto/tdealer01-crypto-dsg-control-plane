@@ -19,7 +19,7 @@ export type AppBuilderTargetStack = {
   backend?: 'next-api' | 'express' | 'fastify' | 'supabase' | 'other';
   database?: 'supabase-postgres' | 'postgres' | 'mysql' | 'sqlite' | 'none';
   auth?: 'supabase-auth' | 'nextauth' | 'clerk' | 'custom' | 'none';
-  deploy?: 'vercel' | 'netlify' | 'cloudflare' | 'none';
+  deploy?: 'vercel' | 'cloudflare' | 'none';
 };
 
 export type AppBuilderGoalInput = {
