@@ -57,7 +57,7 @@ export async function runMultiGovernanceOrchestrator(
 
   // Seed orchestration context
   const seedResult = await seedData({
-    dataType: 'multi_governance_orchestration',
+    dataType: 'codebase_state',
     query: `Orchestration ${input.orchestrationId} for ${input.targetEnvironment}`,
     requiredEvidence: true,
     context: JSON.stringify({
@@ -71,7 +71,7 @@ export async function runMultiGovernanceOrchestrator(
   const sourcesStatus = await Promise.all(
     input.sources.map(async (source) => {
       const sourceGateResult = await runZ3AgentGate({
-        agentType: `multi-orchestrator-${source.type}`,
+        agentType: 'orchestrator',
         jobId: `orch-${source.name}-${Date.now()}`,
         workspaceId: 'dsg-control-plane',
         goalLocked: true,
@@ -98,11 +98,12 @@ export async function runMultiGovernanceOrchestrator(
   // Determine overall orchestration status
   const allReady = sourcesStatus.every((s) => s.ready);
   const hasReviewNeeded = sourcesStatus.some((s) => s.gateStatus === 'REVIEW');
+  const hasBlockNeeded = sourcesStatus.some((s) => s.gateStatus === 'BLOCK');
 
   let orchestrationStatus: 'READY' | 'REVIEW' | 'BLOCKED' = 'BLOCKED';
   if (allReady) {
     orchestrationStatus = 'READY';
-  } else if (hasReviewNeeded && !sourcesStatus.some((s) => s.gateStatus === 'BLOCK')) {
+  } else if (hasReviewNeeded && !hasBlockNeeded) {
     orchestrationStatus = 'REVIEW';
   }
 

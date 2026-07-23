@@ -51,7 +51,7 @@ export async function runMarketplaceFix(input: MarketplaceFixInput): Promise<Mar
 
   // Seed marketplace compliance data
   const seedResult = await seedData({
-    dataType: 'marketplace_compliance',
+    dataType: 'external_api',
     query: `Marketplace issue: ${input.issueName} (${input.issueType})`,
     requiredEvidence: true,
     context: JSON.stringify({
@@ -94,7 +94,7 @@ export async function runMarketplaceFix(input: MarketplaceFixInput): Promise<Mar
 
   // Gate evaluation for marketplace compliance
   const gateResult = await runZ3AgentGate({
-    agentType: 'marketplace-compliance',
+    agentType: 'security-gate',
     jobId: `mkt-fix-${input.issueName}-${Date.now()}`,
     workspaceId: 'dsg-control-plane',
     goalLocked: true,

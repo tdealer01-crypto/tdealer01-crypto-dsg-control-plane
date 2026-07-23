@@ -51,7 +51,7 @@ export async function runGitHubActionController(
 
   // Seed governance data for the action
   const seedResult = await seedData({
-    dataType: 'github_action',
+    dataType: 'external_api',
     query: `GitHub Action: ${input.actionName}@${input.actionVersion}`,
     requiredEvidence: true,
     context: JSON.stringify({
@@ -63,7 +63,7 @@ export async function runGitHubActionController(
 
   // Gate evaluation for marketplace readiness
   const gateResult = await runZ3AgentGate({
-    agentType: 'github-action-controller',
+    agentType: 'security-gate',
     jobId: `gh-action-${input.actionName}-${Date.now()}`,
     workspaceId: 'dsg-control-plane',
     goalLocked: true,
