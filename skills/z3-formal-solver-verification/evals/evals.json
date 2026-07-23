@@ -1,0 +1,29 @@
+{
+  "skill_name": "z3-formal-solver-verification",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "safe-policy-assignment",
+      "prompt": "I have a governance policy that says: 'Approve action if risk_score < 50 AND user_role IN [\"admin\", \"operator\"]'. I need to verify this policy is satisfiable and generate a formal proof. Can you use Z3 to find a safe assignment that satisfies all constraints, process it in parallel via an agent, and produce audit-ready evidence?",
+      "expected_output": "Proof showing SAT status with a model assignment (e.g., risk_score: 35, user_role: \"admin\"), proof hash, execution metrics (latency, solver calls), CCVS L1/L3 evidence JSON",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "eval_name": "violation-detection-unsat",
+      "prompt": "Here's a policy with a contradiction: 'Approve if risk_score < 50 AND risk_score >= 100'. This is obviously unsatisfiable. Can you use Z3 to detect this, generate the UNSAT proof, show the minimal violated core (the two contradictory constraints), and produce evidence for an audit trail?",
+      "expected_output": "Proof showing UNSAT status with minimal core [\"risk_score < 50\", \"risk_score >= 100\"], proof hash, execution metrics, CCVS evidence with violation details, counterexample or core explanation",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "eval_name": "deterministic-replay-verification",
+      "prompt": "I need to verify that formal proofs are deterministic and can be replayed. Take the first policy ('Approve if risk_score < 50 AND user_role IN [\"admin\", \"operator\"]') with the same safe assignment from test 1 (risk_score: 35, user_role: \"admin\"). Run Z3 on it again and verify that the proof hash is identical to test 1. Show that replay_deterministic = true and consistency = 100%.",
+      "expected_output": "Proof hash matching test 1 output exactly, replay_deterministic flag = true, consistency metrics showing 100% match, CCVS L3 evidence confirming determinism, execution time comparison",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}

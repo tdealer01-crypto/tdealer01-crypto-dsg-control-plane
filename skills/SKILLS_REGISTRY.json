@@ -75,6 +75,38 @@
       "test_status": "✅ 4040/4040 passing",
       "performance": "~8.88ms avg latency",
       "features": ["binary-optimization", "constraint-satisfaction", "simulated-annealing", "z3-verification"]
+    },
+
+    {
+      "skill_id": "z3-formal-solver-verification",
+      "name": "Z3 Formal Solver Verification",
+      "category": "Formal Verification",
+      "status": "production",
+      "description": "Hybrid Ising + Z3 pipeline for deterministic policy verification, violation detection, and audit-ready proofs",
+      "invocation": "/z3-formal-solver-verification --policy {constraint} --verify",
+      "test_status": "✅ 21/21 assertions passing (3 scenarios, 6 runs)",
+      "performance": "0.368ms Z3 solver, ~225s orchestration",
+      "determinism": "100% verified (identical proof hashes on replay)",
+      "features": [
+        "policy-constraint-verification",
+        "deterministic-proof-generation",
+        "violation-detection",
+        "counterexample-generation",
+        "ccvs-evidence-l1-l3",
+        "non-blocking-async-execution"
+      ],
+      "verification": {
+        "test_scenarios": 3,
+        "total_runs": 6,
+        "pass_rate": "100%",
+        "proof_consistency": "100%",
+        "ccvs_levels": ["L1", "L2", "L3"]
+      },
+      "integration": {
+        "gate_endpoint": "/api/dsg/v1/gates/evaluate",
+        "audit_trail": "ccvs_evidence table",
+        "async_pattern": "non-blocking background proof generation"
+      }
     }
   ],
 

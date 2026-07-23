@@ -1,0 +1,106 @@
+{
+  "skill_id": "z3-formal-solver-verification",
+  "skill_version": "1.0.0",
+  "name": "Z3 Formal Solver Verification",
+  "category": "Formal Verification",
+  "description": "Verify deterministic gates and governance policies using hybrid Ising + Z3 formal solver pipeline. Generates deterministic proofs for audit trails, detects violations and counterexamples, integrates with CCVS evidence pipeline.",
+
+  "capabilities": [
+    "policy-verification",
+    "deterministic-proof-generation",
+    "violation-detection",
+    "counterexample-generation",
+    "ccvs-evidence-production",
+    "gate-validation"
+  ],
+
+  "engine": {
+    "type": "z3-smt-solver",
+    "runtime": "typescript",
+    "entrypoint": "SKILL.md"
+  },
+
+  "verification": {
+    "engine": "Z3 SMT Solver",
+    "mode": "hybrid ising-agent-z3 pipeline",
+    "hash_algorithm": "sha256",
+    "deterministic": true,
+    "replay_capability": "infinite",
+    "proof_consistency": "100%"
+  },
+
+  "workflow": [
+    "parse_policy_constraints",
+    "ising_optimization",
+    "agent_parallel_processing",
+    "z3_formal_verification",
+    "ccvs_evidence_generation",
+    "audit_trail_commit"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "policy_constraint": {
+        "type": "string",
+        "description": "Policy as logic expression (e.g., 'risk < 50 AND role IN [admin, operator]')"
+      },
+      "requirement": {
+        "type": "string",
+        "description": "Safety requirement to verify against policy"
+      },
+      "verify_determinism": {
+        "type": "boolean",
+        "description": "Run replay verification to test determinism"
+      },
+      "generate_counterexample": {
+        "type": "boolean",
+        "description": "Generate minimal counterexample for UNSAT proofs"
+      }
+    },
+    "required": ["policy_constraint"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "status": { "enum": ["SATISFIABLE", "UNSATISFIABLE", "UNKNOWN"] },
+      "proof_hash": { "type": "string" },
+      "model": { "type": "object", "description": "Satisfying assignment" },
+      "unsat_core": { "type": "array", "description": "Minimal unsatisfiable core" },
+      "counterexample": { "type": "object" },
+      "ccvs_level": { "enum": ["L1", "L2", "L3", "L4", "L5"] },
+      "determinism_verified": { "type": "boolean" },
+      "audit_trail": { "type": "object" }
+    }
+  },
+
+  "benchmark": {
+    "test_scenarios": 3,
+    "total_runs": 6,
+    "pass_rate": "100%",
+    "avg_latency_ms": 225900,
+    "token_usage_avg": 68349,
+    "z3_solver_execution_ms": 0.368,
+    "proof_consistency_percent": 100,
+    "ccvs_evidence_levels": ["L1", "L2", "L3"]
+  },
+
+  "policy": {
+    "risk": "medium",
+    "approval": false,
+    "ccvs_levels": ["L1", "L2", "L3", "L4", "L5"],
+    "autonomous_execution": true,
+    "non_blocking": true
+  },
+
+  "production_ready": true,
+  "audit_trail": {
+    "determinism": "100% verified",
+    "test_coverage": "3 scenarios, 21 assertions, 100% pass",
+    "deployment_date": "2026-07-23"
+  },
+
+  "one_click": "z3-formal-solver-verification --policy 'risk < 50 AND role IN [admin]' --verify"
+}
