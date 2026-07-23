@@ -84,7 +84,7 @@ export class GovernanceConstruct extends Construct {
               transitionAfter: cdk.Duration.days(30),
             },
           ],
-          expiration: cdk.Duration.days(config.governance.evidenceRetentionDays),
+          expiration: cdk.Duration.days(Math.max(config.governance.evidenceRetentionDays, 31)),
         },
       ],
     });
