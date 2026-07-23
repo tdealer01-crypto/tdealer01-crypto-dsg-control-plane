@@ -13,8 +13,8 @@ export * from './cloudwatch';
 export * from './cloudtrail';
 export * from './xray';
 
-// Phase 3: Advanced features (stubs)
-// export * from './autoscaling';
+// Phase 3: Advanced features
+export * from './autoscaling';
 // export * from './compliance';
 // export * from './multi-region';
 // export * from './finops';
