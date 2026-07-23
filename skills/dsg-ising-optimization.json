@@ -1,0 +1,109 @@
+{
+  "skill_id": "dsg-ising-optimization",
+  "skill_version": "1.0.0",
+  "name": "DSG Ising Optimization - Binary Variable Constraint Satisfaction",
+  "category": "Optimization",
+  "description": "Binary variable optimization using Ising solver with simulated annealing and Z3 verification",
+
+  "capabilities": [
+    "binary-optimization",
+    "constraint-satisfaction",
+    "simulated-annealing",
+    "energy-minimization",
+    "z3-verification"
+  ],
+
+  "engine": {
+    "type": "ising-z3-hybrid",
+    "runtime": "typescript",
+    "solvers": ["ising-solver", "z3"]
+  },
+
+  "optimization": {
+    "variables_type": "binary",
+    "constraint_types": ["hard", "soft"],
+    "solver_mode": "hybrid",
+    "algorithm": "simulated-annealing"
+  },
+
+  "proof": {
+    "engine": "Z3 + Ising",
+    "mode": "Energy Minimization",
+    "hash_algorithm": "sha256",
+    "satisfiability_status": ["OPTIMAL", "FEASIBLE", "INFEASIBLE"]
+  },
+
+  "workflow": [
+    "parse_problem",
+    "build_constraints",
+    "run_ising_solver",
+    "minimize_energy",
+    "verify_with_z3",
+    "generate_evidence"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "problemName": { "type": "string" },
+      "variables": { "type": "object" },
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "type": { "enum": ["hard", "soft"] },
+            "weight": { "type": "number" },
+            "requiresSatisfaction": { "type": "boolean" },
+            "description": { "type": "string" }
+          }
+        }
+      }
+    },
+    "required": ["problemName", "variables", "constraints"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "optimizationStatus": { "enum": ["OPTIMAL", "FEASIBLE", "INFEASIBLE"] },
+      "solution": { "type": "object" },
+      "energy": { "type": "number" },
+      "iterations": { "type": "integer" },
+      "proofHash": { "type": "string" },
+      "satisfiedConstraints": { "type": "array" },
+      "violatedConstraints": { "type": "array" }
+    }
+  },
+
+  "verification": {
+    "deterministic": true,
+    "hash": "sha256",
+    "z3_verification": true,
+    "proof_consistency": "100%"
+  },
+
+  "policy": {
+    "risk": "high",
+    "approval": true,
+    "hard_constraint_blocking": true,
+    "ccvs_levels": ["L1", "L2", "L3", "L4", "L5"]
+  },
+
+  "performance": {
+    "avg_latency_ms": 8.88,
+    "proof_consistency_percent": 100,
+    "algorithm": "simulated-annealing"
+  },
+
+  "use_cases": [
+    "resource-allocation",
+    "scheduling",
+    "configuration-optimization",
+    "constraint-satisfaction-problems"
+  ],
+
+  "one_click": "dsg ising-optimize {problem} --constraints {file}"
+}

@@ -1,0 +1,87 @@
+{
+  "skill_id": "dsg-action-layer-ged",
+  "skill_version": "1.0.0",
+  "name": "DSG Action Layer - Governance Execution Determinism",
+  "category": "Governance",
+  "description": "Primary governance orchestrator implementing PLAN → GATE → DECIDE → EXECUTE → COMMIT → REPLAY flow",
+
+  "capabilities": [
+    "z3-agent-gate",
+    "deterministic-decision",
+    "approval-routing",
+    "evidence-generation",
+    "ccvs-compliance"
+  ],
+
+  "engine": {
+    "type": "z3-agent-gate",
+    "runtime": "typescript",
+    "entrypoint": "skill.ts"
+  },
+
+  "governance": {
+    "flow": ["PLAN", "GATE", "DECIDE", "EXECUTE", "COMMIT", "REPLAY"],
+    "agent_type": "orchestrator",
+    "gate_status": ["PASS", "REVIEW", "BLOCK"],
+    "approval_required": true
+  },
+
+  "proof": {
+    "engine": "Z3",
+    "mode": "SMT Solver",
+    "hash_algorithm": "sha256",
+    "replay_capability": "2+ years"
+  },
+
+  "workflow": [
+    "validate_action",
+    "evaluate_gate",
+    "assess_risk",
+    "generate_decision",
+    "commit_evidence",
+    "record_audit"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "actionName": { "type": "string" },
+      "agentType": { "type": "string" },
+      "riskLevel": { "enum": ["low", "medium", "high"] },
+      "policyNames": { "type": "array", "items": { "type": "string" } },
+      "requiresApproval": { "type": "boolean" },
+      "mockState": { "type": "boolean" }
+    },
+    "required": ["actionName"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "gateStatus": { "enum": ["PASS", "REVIEW", "BLOCK"] },
+      "z3ProofHash": { "type": "string" },
+      "approvalRequirements": { "type": "object" },
+      "evidence": { "type": "object" }
+    }
+  },
+
+  "verification": {
+    "deterministic": true,
+    "hash": "sha256",
+    "proof_consistency": "100%"
+  },
+
+  "policy": {
+    "risk": "high",
+    "approval": true,
+    "ccvs_levels": ["L1", "L2", "L3", "L4", "L5"]
+  },
+
+  "performance": {
+    "avg_latency_ms": 8,
+    "proof_consistency_percent": 100
+  },
+
+  "one_click": "dsg action-layer-ged {action} --risk {level}"
+}
