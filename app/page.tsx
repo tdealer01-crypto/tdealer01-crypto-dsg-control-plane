@@ -1,37 +1,26 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { ActionPathGraph } from '../components/ActionPathGraph';
-import { ConstraintChecklist } from '../components/ConstraintChecklist';
-import { EvidenceDrawer } from '../components/EvidenceDrawer';
-import { GateResultCard } from '../components/GateResultCard';
-import RefTracker from '../components/RefTracker';
 
+export const dynamic = 'force-static';
+export const revalidate = 3600; // ISR: revalidate every hour
+
+export const metadata = {
+  title: 'DSG ONE - AI Runtime Control Plane | Deterministic • Governed • Verifiable',
+  description: 'Enterprise-grade control plane for AI agent orchestration. Deterministic execution, complete audit trails, formal proof evidence, and zero-trust security.',
+  openGraph: {
+    title: 'DSG ONE - AI Runtime Control Plane',
+    description: 'Deterministic, governed, verifiable AI execution.',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  keywords: ['AI governance', 'agent control', 'deterministic execution', 'audit trail', 'compliance', 'control plane'],
+};
+
+// Placeholder for old component data - can be moved to /dashboard
 const trustBar = [
   'Deterministic Engine — Gap-free sequences · SHA-256 hash chains · Merkle tree proofs · SARIF export',
   'WORM Audit Trail — Every decision immutable · Chain verification · Tamper detection · Enterprise compliance',
   'EU AI Act Ready — Art. 12/14 evidence pack · ISO 42001 · CCVS v1.2 · 3,389 tests · 72.08% mutation score',
-];
-
-const painCards = [
-  {
-    title: 'Approvals are scattered',
-    body: 'Finance decisions still happen across email, chat, spreadsheets, ERP notes, and shared folders. That makes policy enforcement inconsistent and hard to prove.',
-  },
-  {
-    title: 'Audit evidence is rebuilt by hand',
-    body: 'When audit asks who approved a payment, why it was approved, and what evidence was reviewed, teams often reconstruct the story after the fact.',
-  },
-  {
-    title: 'Exceptions are risky and invisible',
-    body: 'Urgent payments, missing documents, high-risk vendors, and threshold overrides need controlled escalation before money moves.',
-  },
-];
-
-const howSteps = [
-  'Submit a high-risk AI, workflow, finance, or deployment action.',
-  'DSG ONE resolves policy, entitlement, risk, and approval context.',
-  'The deterministic gate returns PASS, BLOCK, REVIEW, or UNSUPPORTED.',
-  'The system records proof/gate evidence for audit review.',
 ];
 
 const launchLinks = [
