@@ -1,6 +1,6 @@
 # 🔐 DSG ONE: Control Plane for AI Operations# Source of Truth
 
-> **The source of truth is the current implementation in this repository.**
+> **The source of truth is the current. implementation in this repository.**
 
 All capability statements, architecture descriptions, feature status, security claims, compliance mappings, and operational behavior **must be derived from verifiable evidence in the repository**, including:
 
