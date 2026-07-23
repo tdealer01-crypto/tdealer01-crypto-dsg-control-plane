@@ -1,0 +1,84 @@
+{
+  "skill_id": "dsg-multi-governance-orchestrator",
+  "skill_version": "1.0.0",
+  "name": "DSG Multi-Governance Orchestrator",
+  "category": "Governance",
+  "description": "Orchestrate multiple governance sources with architecture review and production GO/NO-GO determination",
+
+  "capabilities": [
+    "multi-source-coordination",
+    "architecture-review",
+    "go-no-go-gate",
+    "blocker-detection",
+    "policy-synthesis"
+  ],
+
+  "engine": {
+    "type": "z3-agent-gate",
+    "runtime": "typescript",
+    "entrypoint": "skill.ts"
+  },
+
+  "governance": {
+    "sources": ["ui-trust", "action-layer", "deterministic", "marketplace", "enterprise"],
+    "orchestration_status": ["APPROVED", "REQUIRES_REVIEW", "BLOCKED"],
+    "approval_required": true
+  },
+
+  "proof": {
+    "engine": "Z3",
+    "mode": "Policy Synthesis",
+    "hash_algorithm": "sha256",
+    "replay_capability": "2+ years"
+  },
+
+  "workflow": [
+    "coordinate_sources",
+    "review_architecture",
+    "identify_blockers",
+    "synthesize_policy",
+    "generate_go_no_go",
+    "record_decision"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "coordinationTask": { "type": "string" },
+      "governanceSources": { "type": "array", "items": { "type": "string" } },
+      "requiresArchitectureReview": { "type": "boolean" },
+      "riskLevel": { "enum": ["low", "medium", "high"] }
+    },
+    "required": ["coordinationTask"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "orchestrationStatus": { "enum": ["APPROVED", "REQUIRES_REVIEW", "BLOCKED"] },
+      "blockersDetected": { "type": "array" },
+      "approvalRequirements": { "type": "array" },
+      "goNoGoDecision": { "type": "string" },
+      "proofHash": { "type": "string" }
+    }
+  },
+
+  "verification": {
+    "deterministic": true,
+    "hash": "sha256",
+    "proof_consistency": "100%"
+  },
+
+  "policy": {
+    "risk": "high",
+    "approval": true,
+    "ccvs_levels": ["L1", "L2", "L3", "L4", "L5"]
+  },
+
+  "performance": {
+    "avg_latency_ms": 12,
+    "proof_consistency_percent": 100
+  },
+
+  "one_click": "dsg orchestrate-governance {task} --sources {list}"
+}

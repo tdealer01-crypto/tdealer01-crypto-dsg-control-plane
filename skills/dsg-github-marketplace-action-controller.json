@@ -1,0 +1,86 @@
+{
+  "skill_id": "dsg-github-marketplace-action-controller",
+  "skill_version": "1.0.0",
+  "name": "DSG GitHub Marketplace Action Controller",
+  "category": "Integration",
+  "description": "Package DSG governance gates as reusable GitHub Marketplace Actions",
+
+  "capabilities": [
+    "action-yml-generation",
+    "go-no-go-mapping",
+    "secrets-isolation",
+    "compliance-packing",
+    "github-distribution"
+  ],
+
+  "engine": {
+    "type": "z3-agent-gate",
+    "runtime": "typescript",
+    "entrypoint": "skill.ts"
+  },
+
+  "governance": {
+    "action_decision": ["GO", "NO-GO"],
+    "secrets_handling": "isolated",
+    "compliance_packing": true
+  },
+
+  "proof": {
+    "engine": "Z3",
+    "mode": "Action Verification",
+    "hash_algorithm": "sha256",
+    "proof_inclusion": "action outputs"
+  },
+
+  "workflow": [
+    "parse_gate_logic",
+    "generate_action_yml",
+    "map_decisions",
+    "isolate_secrets",
+    "pack_evidence",
+    "validate_github_format"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "actionName": { "type": "string" },
+      "gateLogic": { "type": "object" },
+      "inputs": { "type": "object" },
+      "outputs": { "type": "object" },
+      "secrets": { "type": "array" }
+    },
+    "required": ["actionName", "gateLogic"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "actionYml": { "type": "string" },
+      "gateDecision": { "enum": ["GO", "NO-GO"] },
+      "proofHash": { "type": "string" },
+      "complianceMetadata": { "type": "object" },
+      "distributionReady": { "type": "boolean" }
+    }
+  },
+
+  "verification": {
+    "deterministic": true,
+    "hash": "sha256",
+    "github_validation": true
+  },
+
+  "policy": {
+    "risk": "high",
+    "approval": true,
+    "ccvs_levels": ["L1", "L2", "L3", "L4", "L5"]
+  },
+
+  "integration": {
+    "platform": "GitHub",
+    "marketplace_ready": true,
+    "reusable": true
+  },
+
+  "one_click": "dsg package-action {name} --gate {logic} --distribute"
+}

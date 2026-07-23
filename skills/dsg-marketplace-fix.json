@@ -1,0 +1,75 @@
+{
+  "skill_id": "dsg-marketplace-fix",
+  "skill_version": "1.0.0",
+  "name": "DSG Marketplace Fix - Pre-Publication Compliance",
+  "category": "Compliance",
+  "description": "Remediation skill for pre-marketplace compliance checks and OAuth endpoint verification",
+
+  "capabilities": [
+    "claim-verification",
+    "oauth-validation",
+    "compliance-remediation",
+    "marketplace-readiness",
+    "endpoint-testing"
+  ],
+
+  "engine": {
+    "type": "z3-agent-gate",
+    "runtime": "typescript",
+    "entrypoint": "skill.ts"
+  },
+
+  "governance": {
+    "approval_gates": ["compliance-check", "oauth-validation", "marketplace-ready"],
+    "fix_status": ["READY", "IN_PROGRESS", "BLOCKED"]
+  },
+
+  "proof": {
+    "engine": "Z3",
+    "mode": "Compliance Verification",
+    "hash_algorithm": "sha256"
+  },
+
+  "workflow": [
+    "scan_claims",
+    "detect_premature_claims",
+    "verify_oauth_endpoints",
+    "validate_compliance",
+    "generate_fixes",
+    "approve_marketplace"
+  ],
+
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "remediationScope": { "type": "string" },
+      "readmeContent": { "type": "string" },
+      "oauthEndpoints": { "type": "array", "items": { "type": "string" } },
+      "complianceFramework": { "type": "string" }
+    },
+    "required": ["remediationScope"]
+  },
+
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "fixStatus": { "enum": ["READY", "IN_PROGRESS", "BLOCKED"] },
+      "marketplaceApprovalStatus": { "enum": ["APPROVED", "REQUIRES_FIXES", "BLOCKED"] },
+      "issues": { "type": "array" },
+      "recommendations": { "type": "array" }
+    }
+  },
+
+  "verification": {
+    "deterministic": true,
+    "hash": "sha256"
+  },
+
+  "policy": {
+    "risk": "medium",
+    "approval": true,
+    "ccvs_levels": ["L2", "L3", "L4"]
+  },
+
+  "one_click": "dsg marketplace-fix {scope} --check compliance"
+}

@@ -7,13 +7,10 @@ import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  discoverJobsReal,
-  executeJobReal,
-  verifyDeliverableReal,
-  settlePaymentReal,
-  validateGovernanceReal,
-} from '@/lib/trinity/real-jobs';
+import { requireOrgRole } from '@/lib/authz';
+import { executeToolSafely } from '@/lib/agent/executor';
+import type { AgentContext } from '@/lib/agent/context';
+import { DSG_TOOLS } from '@/lib/agent/tools';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -21,129 +18,44 @@ const anthropic = new Anthropic({
 
 export const dynamic = 'force-dynamic';
 
-// MCP Tools
-const tools = [
-  {
-    name: 'discover_jobs',
-    description: 'Discover available jobs across real platforms (Mind Agent)',
-    input_schema: {
-      type: 'object',
-      properties: {
-        category: { type: 'string', description: 'Job category filter' },
-        difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
-        min_reward: { type: 'number', description: 'Minimum reward in SOL' },
-      },
-      required: ['category'],
-    },
+const tools = DSG_TOOLS.map((tool) => ({
+  name: tool.id,
+  description: tool.description,
+  input_schema: {
+    type: 'object' as const,
+    properties: Object.fromEntries(
+      Object.entries(tool.parameters).map(([k, p]) => [
+        k,
+        {
+          type: p.type,
+          description: p.description,
+          required: p.required,
+        },
+      ]),
+    ),
+    required: Object.entries(tool.parameters)
+      .filter(([, p]) => p.required)
+      .map(([k]) => k),
   },
-  {
-    name: 'execute_job',
-    description: 'Execute a job with real tracking (Hand Agent)',
-    input_schema: {
-      type: 'object',
-      properties: {
-        job_id: { type: 'string' },
-        deliverable: { type: 'string' },
-        execution_time_target: { type: 'number' },
-      },
-      required: ['job_id', 'deliverable'],
-    },
-  },
-  {
-    name: 'verify_deliverable',
-    description: 'Verify deliverable quality (Eye Agent)',
-    input_schema: {
-      type: 'object',
-      properties: {
-        deliverable_id: { type: 'string' },
-        quality_criteria: { type: 'string' },
-      },
-      required: ['deliverable_id'],
-    },
-  },
-  {
-    name: 'settle_payment',
-    description: 'Settle payment with real tracking (Nerve Agent)',
-    input_schema: {
-      type: 'object',
-      properties: {
-        execution_id: { type: 'string' },
-        amount_sol: { type: 'number' },
-      },
-      required: ['execution_id', 'amount_sol'],
-    },
-  },
-  {
-    name: 'validate_governance',
-    description: 'Validate against real DSG policies (Spine Agent)',
-    input_schema: {
-      type: 'object',
-      properties: {
-        policy_name: { type: 'string' },
-        constraints: { type: 'object' },
-      },
-      required: ['policy_name'],
-    },
-  },
-  {
-    name: 'read_dsg_documentation',
-    description: 'Read DSG.md documentation',
-    input_schema: {
-      type: 'object',
-      properties: {
-        section: { type: 'string' },
-      },
-    },
-  },
-];
+}));
 
-async function processToolCall(toolName: string, toolInput: Record<string, unknown>): Promise<string> {
-  switch (toolName) {
-    case 'discover_jobs':
-      return JSON.stringify(
-        await discoverJobsReal(
-          toolInput.category as string | undefined,
-          toolInput.difficulty as string | undefined,
-          toolInput.min_reward as number | undefined
-        )
-      );
-    case 'execute_job':
-      return JSON.stringify(
-        await executeJobReal(toolInput.job_id as string, toolInput.deliverable as string, toolInput.execution_time_target as number | undefined)
-      );
-    case 'verify_deliverable':
-      return JSON.stringify(
-        await verifyDeliverableReal(toolInput.deliverable_id as string, toolInput.quality_criteria as string | undefined)
-      );
-    case 'settle_payment':
-      return JSON.stringify(await settlePaymentReal(toolInput.execution_id as string, toolInput.amount_sol as number));
-    case 'validate_governance':
-      return JSON.stringify(
-        await validateGovernanceReal(toolInput.policy_name as string, toolInput.constraints as Record<string, any> | undefined)
-      );
-    case 'read_dsg_documentation':
-      try {
-        const dsgPath = path.join(process.cwd(), 'DSG.md');
-        const dsgContent = fs.readFileSync(dsgPath, 'utf-8');
-        const section = toolInput.section as string;
-        if (section) {
-          const sectionRegex = new RegExp(`## ${section}[\\s\\S]*?(?=##|$)`, 'i');
-          const match = dsgContent.match(sectionRegex);
-          return JSON.stringify({
-            section,
-            found: !!match,
-            content: match ? match[0].slice(0, 2000) : `Section "${section}" not found`,
-          });
-        }
-        return JSON.stringify({
-          section: 'overview',
-          content: dsgContent.slice(0, 2000),
-        });
-      } catch (error) {
-        return JSON.stringify({ error: 'Failed to read DSG.md' });
-      }
-    default:
-      return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+async function processToolCall(
+  toolName: string,
+  toolInput: Record<string, unknown>,
+  context: AgentContext,
+): Promise<string> {
+  const tool = DSG_TOOLS.find((t) => t.id === toolName);
+  if (!tool) {
+    return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+  }
+  try {
+    const result = await executeToolSafely(tool, toolInput, context);
+    return JSON.stringify(result);
+  } catch (err) {
+    return JSON.stringify({
+      error: `Tool execution failed: ${toolName}`,
+      message: err instanceof Error ? err.message : 'Unknown error',
+    });
   }
 }
 
@@ -174,6 +86,11 @@ function createSSEStream(): ReadableStream<Uint8Array> {
 
 export async function POST(request: Request) {
   try {
+    const access = await requireOrgRole(['operator', 'org_admin']);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     const body = await request.json();
     const userMessage = body.message as string;
     const selectedAgent = body.agent as string || 'All';
@@ -183,6 +100,15 @@ export async function POST(request: Request) {
     if (!userMessage) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
+
+    const context: AgentContext = {
+      orgId: access.orgId,
+      role: access.grantedRoles.includes('org_admin') ? 'org_admin' : 'operator',
+      origin: new URL(request.url).origin,
+      authHeader: request.headers.get('authorization') || '',
+      cookieHeader: request.headers.get('cookie') || '',
+      approvalToken: typeof body?.approvalToken === 'string' ? body.approvalToken : undefined,
+    };
 
     // Load DSG.md for context
     let dsgContext = '';
@@ -256,7 +182,7 @@ Agent: ${selectedAgent}${dsgContext}`;
                 timestamp: new Date().toISOString(),
               });
 
-              const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+              const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input, context);
               toolCalls.push(toolUseBlock.name);
 
               sendEvent('tool_result', {
@@ -331,7 +257,7 @@ Agent: ${selectedAgent}${dsgContext}`;
       const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
       if (!toolUseBlock || toolUseBlock.type !== 'tool_use') break;
 
-      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input);
+      const toolResult = await processToolCall(toolUseBlock.name, toolUseBlock.input, context);
       toolCalls.push(toolUseBlock.name);
 
       messages.push({ role: 'assistant', content: response.content });
