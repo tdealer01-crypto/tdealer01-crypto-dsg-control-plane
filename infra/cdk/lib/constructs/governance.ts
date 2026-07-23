@@ -31,9 +31,9 @@ export class GovernanceConstruct extends Construct {
       pointInTimeRecovery: true,
       partitionKey: { name: 'policyId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'version', type: dynamodb.AttributeType.NUMBER },
-      ttl: { name: 'expiresAt', enabled: true },
+      timeToLiveAttribute: 'expiresAt',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
     // Audit Table (immutable audit trail)
@@ -46,7 +46,7 @@ export class GovernanceConstruct extends Construct {
       partitionKey: { name: 'executionId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      stream: dynamodb.StreamSpecification.NEW_AND_OLD_IMAGES,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
     if (config.governance.immutableAuditEnabled) {
@@ -89,10 +89,8 @@ export class GovernanceConstruct extends Construct {
       ],
     });
 
-    // Enable MFA delete for immutable audit
-    if (config.governance.immutableAuditEnabled) {
-      this.evidenceBucket.addBlockPublicAccess(s3.BlockPublicAccess.BLOCK_ALL);
-    }
+    // Evidence bucket is configured with blockPublicAccess in constructor
+    // No additional configuration needed for immutable audit
 
     cdk.Tags.of(this).add('Component', 'Governance');
     cdk.Tags.of(this).add('Environment', config.env);

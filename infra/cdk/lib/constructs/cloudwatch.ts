@@ -48,18 +48,13 @@ export class CloudWatchConstruct extends Construct {
       })
     );
 
-    // ALB Error Rates
+    // ALB Response Metrics
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'ALB HTTP 4xx/5xx Errors',
+        title: 'ALB Response Time',
         left: [
-          alb.metricHttpCodeElb({
-            code: cloudwatch.HttpCodeElb.ELB_4XX,
-            statistic: 'Sum',
-          }),
-          alb.metricHttpCodeElb({
-            code: cloudwatch.HttpCodeElb.ELB_5XX,
-            statistic: 'Sum',
+          alb.metricTargetResponseTime({
+            statistic: 'Average',
           }),
         ],
         width: 12,
@@ -70,7 +65,7 @@ export class CloudWatchConstruct extends Construct {
           targetGroup.metricHealthyHostCount({
             statistic: 'Average',
           }),
-          targetGroup.metricUnHealthyHostCount({
+          targetGroup.metricUnhealthyHostCount({
             statistic: 'Average',
           }),
         ],
@@ -83,8 +78,14 @@ export class CloudWatchConstruct extends Construct {
       new cloudwatch.GraphWidget({
         title: 'ECS Running Task Count',
         left: [
-          service.metricRunningCount({
+          new cloudwatch.Metric({
+            namespace: 'AWS/ECS',
+            metricName: 'RunningCount',
             statistic: 'Average',
+            dimensionsMap: {
+              ServiceName: service.serviceName,
+              ClusterName: service.cluster.clusterName,
+            },
           }),
         ],
         width: 12,
@@ -92,8 +93,14 @@ export class CloudWatchConstruct extends Construct {
       new cloudwatch.GraphWidget({
         title: 'ECS Desired Task Count',
         left: [
-          service.metricDesiredTaskCount({
+          new cloudwatch.Metric({
+            namespace: 'AWS/ECS',
+            metricName: 'DesiredTaskCount',
             statistic: 'Average',
+            dimensionsMap: {
+              ServiceName: service.serviceName,
+              ClusterName: service.cluster.clusterName,
+            },
           }),
         ],
         width: 12,
@@ -126,7 +133,7 @@ export class CloudWatchConstruct extends Construct {
     if (config.observability.enableDetailedMonitoring) {
       // ALB Unhealthy Host Alarm
       new cloudwatch.Alarm(this, 'UnhealthyHostsAlarm', {
-        metric: targetGroup.metricUnHealthyHostCount(),
+        metric: targetGroup.metricUnhealthyHostCount(),
         threshold: 1,
         evaluationPeriods: 2,
         alarmName: createResourceName(config.env, 'unhealthy-hosts'),
