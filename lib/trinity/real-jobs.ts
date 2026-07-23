@@ -188,6 +188,16 @@ export async function executeJobReal(
       return { error: 'Database not configured' };
     }
 
+    // Validate jobId format (alphanumeric + hyphens, max 100 chars)
+    if (!jobId || !/^[a-zA-Z0-9\-]{1,100}$/.test(jobId)) {
+      return { error: 'Invalid job_id format' };
+    }
+
+    // Validate deliverable size (max 1MB)
+    if (!deliverable || Buffer.byteLength(deliverable, 'utf-8') > 1024 * 1024) {
+      return { error: 'Deliverable exceeds 1MB size limit' };
+    }
+
     const executionId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const startTime = Date.now();
     const qualityScore = scoreDeliverableQuality(deliverable);
@@ -318,6 +328,15 @@ export async function settlePaymentReal(
   try {
     if (!supabase) {
       return { error: 'Database not configured' };
+    }
+
+    // Validate execution_id format and amount
+    if (!executionId || !/^[a-zA-Z0-9\-]{1,100}$/.test(executionId)) {
+      return { error: 'Invalid execution_id format' };
+    }
+
+    if (typeof amountSol !== 'number' || amountSol <= 0 || amountSol > 1000000) {
+      return { error: 'Invalid amount: must be positive and <= 1000000 SOL' };
     }
 
     const { error } = await supabase
