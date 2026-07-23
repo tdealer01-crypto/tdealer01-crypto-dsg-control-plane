@@ -32,7 +32,7 @@ export class GovernanceConstruct extends Construct {
       partitionKey: { name: 'policyId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'version', type: dynamodb.AttributeType.NUMBER },
       timeToLiveAttribute: 'expiresAt',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -45,7 +45,7 @@ export class GovernanceConstruct extends Construct {
       pointInTimeRecovery: true,
       partitionKey: { name: 'executionId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -65,7 +65,7 @@ export class GovernanceConstruct extends Construct {
       pointInTimeRecovery: true,
       partitionKey: { name: 'proofId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Evidence Bucket (S3 for compliance evidence, audit logs export)
@@ -75,7 +75,7 @@ export class GovernanceConstruct extends Construct {
       encryptionKey,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
           transitions: [

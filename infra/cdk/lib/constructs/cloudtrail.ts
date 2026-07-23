@@ -27,7 +27,7 @@ export class CloudTrailConstruct extends Construct {
       encryptionKey,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
           transitions: [

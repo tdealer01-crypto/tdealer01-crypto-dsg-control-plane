@@ -22,7 +22,7 @@ export class KMSConstruct extends Construct {
     this.masterKey = new kms.Key(this, 'MasterKey', {
       enableKeyRotation: config.security.kmsKeyRotation,
       description: `DSG ONE Master Key (${config.env})`,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     this.masterKey.addAlias(createResourceName(config.env, 'master-key'));
@@ -31,7 +31,7 @@ export class KMSConstruct extends Construct {
     this.dataKey = new kms.Key(this, 'DataKey', {
       enableKeyRotation: config.security.kmsKeyRotation,
       description: `DSG ONE Data Key (${config.env})`,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     this.dataKey.addAlias(createResourceName(config.env, 'data-key'));
@@ -40,7 +40,7 @@ export class KMSConstruct extends Construct {
     this.auditKey = new kms.Key(this, 'AuditKey', {
       enableKeyRotation: config.security.kmsKeyRotation,
       description: `DSG ONE Audit Key (${config.env})`,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     this.auditKey.addAlias(createResourceName(config.env, 'audit-key'));
