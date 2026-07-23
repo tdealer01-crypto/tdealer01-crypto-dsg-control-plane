@@ -24,7 +24,7 @@ export class GovernanceConstruct extends Construct {
 
     // Policy Table (policy versions, definitions, constraints)
     this.policyTable = new dynamodb.Table(this, 'PolicyTable', {
-      tableName: createTableName(config.env, 'policies'),
+      tableName: createTableName(config.env, 'policies-v2'),
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey,
@@ -32,20 +32,20 @@ export class GovernanceConstruct extends Construct {
       partitionKey: { name: 'policyId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'version', type: dynamodb.AttributeType.NUMBER },
       timeToLiveAttribute: 'expiresAt',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
     // Audit Table (immutable audit trail)
     this.auditTable = new dynamodb.Table(this, 'AuditTable', {
-      tableName: createTableName(config.env, 'audit_trail'),
+      tableName: createTableName(config.env, 'audit-trail-v2'),
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey,
       pointInTimeRecovery: true,
       partitionKey: { name: 'executionId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -58,14 +58,14 @@ export class GovernanceConstruct extends Construct {
 
     // Replay Proof Table (deterministic proof storage)
     this.replayProofTable = new dynamodb.Table(this, 'ReplayProofTable', {
-      tableName: createTableName(config.env, 'replay_proofs'),
+      tableName: createTableName(config.env, 'replay-proofs-v2'),
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
       encryptionKey,
       pointInTimeRecovery: true,
       partitionKey: { name: 'proofId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Evidence Bucket (S3 for compliance evidence, audit logs export)
@@ -75,7 +75,7 @@ export class GovernanceConstruct extends Construct {
       encryptionKey,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
           transitions: [
@@ -84,7 +84,7 @@ export class GovernanceConstruct extends Construct {
               transitionAfter: cdk.Duration.days(30),
             },
           ],
-          expiration: cdk.Duration.days(config.governance.evidenceRetentionDays),
+          expiration: cdk.Duration.days(Math.max(config.governance.evidenceRetentionDays, 31)),
         },
       ],
     });

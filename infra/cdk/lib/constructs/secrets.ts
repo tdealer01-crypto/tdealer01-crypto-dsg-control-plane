@@ -22,7 +22,7 @@ export class SecretsConstruct extends Construct {
 
     // API Secrets (keys, tokens, credentials)
     this.apiSecrets = new secretsmanager.Secret(this, 'APISecrets', {
-      secretName: createResourceName(config.env, 'api-secrets'),
+      secretName: createResourceName(config.env, 'api-secrets-v2'),
       description: 'API keys and tokens for DSG ONE',
       encryptionKey,
       generateSecretString: {
@@ -34,12 +34,12 @@ export class SecretsConstruct extends Construct {
         generateStringKey: 'SECRET_KEY',
         excludeCharacters: '"\'\\',
       },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Database Secrets (connection strings, credentials)
     this.databaseSecrets = new secretsmanager.Secret(this, 'DatabaseSecrets', {
-      secretName: createResourceName(config.env, 'database-secrets'),
+      secretName: createResourceName(config.env, 'database-secrets-v2'),
       description: 'Database credentials for DSG ONE',
       encryptionKey,
       generateSecretString: {
@@ -52,12 +52,12 @@ export class SecretsConstruct extends Construct {
         generateStringKey: 'password',
         excludeCharacters: '"\'@/\\',
       },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // OAuth Secrets (provider credentials)
     this.oauthSecrets = new secretsmanager.Secret(this, 'OAuthSecrets', {
-      secretName: createResourceName(config.env, 'oauth-secrets'),
+      secretName: createResourceName(config.env, 'oauth-secrets-v2'),
       description: 'OAuth provider credentials',
       encryptionKey,
       generateSecretString: {
@@ -68,7 +68,7 @@ export class SecretsConstruct extends Construct {
         generateStringKey: 'OAUTH_STATE_KEY',
         excludeCharacters: '"\'\\',
       },
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
     // Note: Automatic rotation requires rotationLambda or hostedRotation configuration

@@ -27,7 +27,7 @@ export class CloudTrailConstruct extends Construct {
       encryptionKey,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: config.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
         {
           transitions: [
@@ -36,7 +36,7 @@ export class CloudTrailConstruct extends Construct {
               transitionAfter: cdk.Duration.days(90),
             },
           ],
-          expiration: cdk.Duration.days(config.observability.cloudTrailRetentionDays),
+          expiration: cdk.Duration.days(Math.max(config.observability.cloudTrailRetentionDays, 92)),
         },
       ],
     });

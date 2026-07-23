@@ -1,0 +1,25 @@
+{
+  "name": "@dsg/production-readiness-validator",
+  "version": "1.0.0",
+  "description": "DSG Production Readiness Validator - comprehensive infrastructure, security, compliance, and governance validation",
+  "main": "skill.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint *.ts",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "dsg",
+    "production",
+    "readiness",
+    "validation",
+    "compliance",
+    "governance"
+  ],
+  "author": "DSG Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "^5.9.3"
+  }
+}

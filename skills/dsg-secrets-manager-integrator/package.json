@@ -1,0 +1,26 @@
+{
+  "name": "@dsg/secrets-manager-integrator",
+  "version": "1.0.0",
+  "description": "DSG Secrets Manager Integrator - AWS Secrets Manager integration with credential broker, IAM policies, and audit trail",
+  "main": "skill.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint *.ts",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "dsg",
+    "secrets",
+    "secrets-manager",
+    "aws",
+    "credential-broker",
+    "security"
+  ],
+  "author": "DSG Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.400.0",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.9.3"
+  }
+}
