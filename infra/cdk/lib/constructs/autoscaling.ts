@@ -13,10 +13,10 @@ export interface AutoScalingConstructProps {
 }
 
 export class AutoScalingConstruct extends Construct {
-  public readonly scalableTarget: autoscaling.ScalableTarget;
-  public readonly cpuScaling: autoscaling.TargetTrackingScalingPolicy;
-  public readonly memoryScaling: autoscaling.TargetTrackingScalingPolicy;
-  public readonly requestCountScaling: autoscaling.TargetTrackingScalingPolicy;
+  public readonly scalableTarget: any;
+  public readonly cpuScaling: any;
+  public readonly memoryScaling: any;
+  public readonly requestCountScaling: any;
 
   constructor(scope: Construct, id: string, props: AutoScalingConstructProps) {
     super(scope, id);
@@ -122,7 +122,15 @@ export class AutoScalingConstruct extends Construct {
 
     // Task count metric
     new cloudwatch.Alarm(this, 'DesiredTaskCountAlarm', {
-      metric: service.metricDesiredTaskCount(),
+      metric: new cloudwatch.Metric({
+        namespace: 'AWS/ECS',
+        metricName: 'DesiredTaskCount',
+        statistic: 'Average',
+        dimensionsMap: {
+          ServiceName: service.serviceName,
+          ClusterName: service.cluster.clusterName,
+        },
+      }),
       threshold: config.compute.maxCapacity || 10,
       evaluationPeriods: 2,
       alarmName: createResourceName(config.env, 'max-task-count'),
