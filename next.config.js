@@ -144,6 +144,8 @@ const nextConfig = {
       },
     ];
   },
+
+  turbopack: {},
 };
 
 module.exports = { ...markdocRest, ...nextConfig };
