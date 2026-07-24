@@ -28,6 +28,15 @@
         "SUPABASE_URL": "${SUPABASE_URL}",
         "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
       }
+    },
+    "dsg-rca-analyzer": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--loader", "ts-node/esm", "mcp-server/dsg-rca-analyzer.ts"],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
+      }
     }
   }
 }

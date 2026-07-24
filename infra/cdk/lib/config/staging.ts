@@ -9,7 +9,7 @@ export const stagingConfig: DSGConfig = {
   resourcePrefix: 'dsg-one-staging',
 
   aws: {
-    account: process.env.AWS_ACCOUNT_ID || '234567890123',
+    account: process.env.AWS_ACCOUNT_ID || '121205961822',
     region: process.env.AWS_REGION || 'us-east-1',
     secondaryRegion: 'us-west-2',
   },
