@@ -36,6 +36,49 @@ When uncertainty exists, verify against the implementation and evidence before m
 
 ---
 
+## 🧩 Claude Code Integration (Codex Plugin)
+
+The DSG Control Plane is available as a **Codex plugin** for Claude Code, enabling AI-native governance directly within the Claude ecosystem.
+
+### Install the Plugin
+
+```bash
+# Add the repository
+/plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+
+# Install the plugin
+/plugin install dsg-platform@tdealer01-crypto-dsg-control-plane
+```
+
+### Available Skills
+
+- **DSG Action Gate** - Gate AI actions through deterministic policy evaluation
+  - Endpoint: `POST /api/dsg/v1/gates/evaluate`
+  - Input: action, context, risk_level, policy_version
+  - Output: decision (PASS/REVIEW/BLOCK) with proof hash
+
+- **DSG Compliance Evidence** - Generate compliance evidence packs with audit trails
+  - Endpoint: `POST /api/compliance-evidence-pack`
+  - Input: execution_id, include_proofs, include_audit_trail
+  - Output: evidence with L1-L5 compliance matrix
+
+- **DSG Formal Proof** - Validate policy constraints using Z3 SMT solver
+  - Endpoint: `POST /api/dsg/v1/proofs/prove`
+  - Input: policy_constraint, execution_context, solver
+  - Output: proof with confidence level
+
+### Features
+
+✅ Deterministic action gating with formal constraints  
+✅ Compliance evidence collection (L1-L5 CCVS levels)  
+✅ Formal proof validation for policy constraints  
+✅ Immutable audit trails for all governance decisions  
+✅ Evidence-ready execution records for audit compliance  
+
+For complete plugin documentation, see [`.codex-plugin/README.md`](.codex-plugin/README.md)
+
+---
+
 ## Independent Verification
 
 **Do not trust this README alone.**
