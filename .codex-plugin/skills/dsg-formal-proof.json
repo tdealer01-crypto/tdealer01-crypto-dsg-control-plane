@@ -1,0 +1,68 @@
+{
+  "name": "dsg-formal-proof",
+  "version": "1.0.0",
+  "description": "Generate and validate formal proofs for policy constraints using Z3 SMT solver",
+  "endpoint": "/api/dsg/v1/proofs/prove",
+  "method": "POST",
+  "category": "Verification",
+  "input": {
+    "type": "object",
+    "properties": {
+      "policy_constraint": {
+        "type": "string",
+        "description": "The policy constraint to prove (e.g., Horn clause or SMT formula)"
+      },
+      "execution_context": {
+        "type": "object",
+        "description": "Execution context variables and values"
+      },
+      "solver": {
+        "type": "string",
+        "enum": ["z3", "cvc5"],
+        "description": "SMT solver to use (default: z3)",
+        "default": "z3"
+      }
+    },
+    "required": ["policy_constraint", "execution_context"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "valid": {
+        "type": "boolean",
+        "description": "Whether the constraint is satisfiable"
+      },
+      "proof": {
+        "type": "string",
+        "description": "SMT proof output or counterexample"
+      },
+      "proof_hash": {
+        "type": "string",
+        "description": "Deterministic hash of the proof"
+      },
+      "confidence": {
+        "type": "string",
+        "enum": ["CONFIRMED", "PLAUSIBLE"],
+        "description": "Proof confidence level"
+      }
+    }
+  },
+  "examples": [
+    {
+      "input": {
+        "policy_constraint": "(assert (=> (and (= agent \"trusted\") (= action \"read\")) (= allowed true)))",
+        "execution_context": {
+          "agent": "trusted",
+          "action": "read"
+        },
+        "solver": "z3"
+      },
+      "output": {
+        "valid": true,
+        "proof": "sat",
+        "proof_hash": "sha256:proof123...",
+        "confidence": "CONFIRMED"
+      }
+    }
+  ]
+}
