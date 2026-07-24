@@ -6,6 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { createClient } from "@supabase/supabase-js";
 import { analyzeIncident, type RCAInput } from "../lib/dsg/rca/rca-orchestrator.js";
+import { AnomalyOrchestrator } from "../lib/dsg/anomaly/anomaly-orchestrator.js";
 import { createHash } from "node:crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
@@ -138,6 +139,99 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["org_id"],
       },
     },
+    {
+      name: "detect_anomalies",
+      description: "Detect real-time anomalies by comparing current events against learned patterns",
+      inputSchema: {
+        type: "object",
+        properties: {
+          workspace_id: {
+            type: "string",
+            description: "Workspace ID",
+          },
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          time_window_minutes: {
+            type: "number",
+            description: "Look back window in minutes (default: 60)",
+            default: 60,
+          },
+          similarity_threshold: {
+            type: "number",
+            description: "Minimum similarity score (0-1, default: 0.7)",
+            default: 0.7,
+          },
+        },
+        required: ["workspace_id", "org_id"],
+      },
+    },
+    {
+      name: "subscribe_alerts",
+      description: "Create or update alert subscriptions for anomalies",
+      inputSchema: {
+        type: "object",
+        properties: {
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          workspace_id: {
+            type: "string",
+            description: "Workspace ID",
+          },
+          subscription_name: {
+            type: "string",
+            description: "Name for this alert subscription",
+          },
+          anomaly_types: {
+            type: "array",
+            items: { type: "string" },
+            description: "Types of anomalies to alert on (empty = all)",
+          },
+          severity_levels: {
+            type: "array",
+            items: { type: "string", enum: ["low", "medium", "high", "critical"] },
+            description: "Severity levels to alert on",
+          },
+          alert_channels: {
+            type: "array",
+            items: { type: "string", enum: ["email", "webhook", "slack", "pagerduty"] },
+            description: "Channels to send alerts to",
+          },
+        },
+        required: ["org_id", "workspace_id", "subscription_name", "alert_channels"],
+      },
+    },
+    {
+      name: "get_anomaly_status",
+      description: "Get status of recent anomalies and alerts for an organization",
+      inputSchema: {
+        type: "object",
+        properties: {
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          workspace_id: {
+            type: "string",
+            description: "Workspace ID (optional)",
+          },
+          status: {
+            type: "string",
+            enum: ["active", "investigating", "resolved", "dismissed"],
+            description: "Filter by status (optional)",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum results (default: 10)",
+            default: 10,
+          },
+        },
+        required: ["org_id"],
+      },
+    },
   ],
 }));
 
@@ -153,6 +247,12 @@ server.setRequestHandler(
         return await handleGetIncidentPatterns(args);
       } else if (name === "compare_incidents") {
         return await handleCompareIncidents(args);
+      } else if (name === "detect_anomalies") {
+        return await handleDetectAnomalies(args);
+      } else if (name === "subscribe_alerts") {
+        return await handleSubscribeAlerts(args);
+      } else if (name === "get_anomaly_status") {
+        return await handleGetAnomalyStatus(args);
       } else {
         return {
           content: [
