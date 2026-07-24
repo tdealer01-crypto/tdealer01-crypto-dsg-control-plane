@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
-
 export async function GET(request: Request) {
   try {
+    const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const org_id = searchParams.get("org_id");
     const root_cause_category = searchParams.get("root_cause_category");
@@ -20,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "org_id is required" }, { status: 400 });
     }
 
-    let query = supabase
+    let query = (supabase as any)
       .from("dsg_rca_patterns")
       .select(
         `

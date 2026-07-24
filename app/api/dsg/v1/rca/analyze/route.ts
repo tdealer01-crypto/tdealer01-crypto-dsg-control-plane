@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 import { analyzeIncident, type RCAInput } from "@/lib/dsg/rca/rca-orchestrator";
-import { createClient } from "@supabase/supabase-js";
-import { readJsonBody } from "@/lib/security/body-safety";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
-
 export async function POST(request: Request) {
   try {
-    const body = await readJsonBody(request, 1024 * 50); // 50KB limit
+    const supabase = getSupabaseAdmin();
+    const body = await request.json();
 
     const {
       workspace_id,
@@ -42,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch audit logs
-    const { data: auditLogs, error: auditError } = await supabase
+    const { data: auditLogs, error: auditError } = await (supabase as any)
       .from("ai_audit_logs")
       .select("*")
       .eq("org_id", org_id)
@@ -54,7 +48,7 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: true });
 
     // Fetch memory events
-    const { data: memoryEvents, error: memoryError } = await supabase
+    const { data: memoryEvents, error: memoryError } = await (supabase as any)
       .from("dsg_memory_events")
       .select("*")
       .eq("workspace_id", workspace_id)
@@ -114,7 +108,7 @@ export async function POST(request: Request) {
     const rcaResult = await analyzeIncident(rcaInput);
 
     // Store result
-    const { data: stored, error: storeError } = await supabase
+    const { data: stored, error: storeError } = await (supabase as any)
       .from("dsg_rca_analyses")
       .insert({
         org_id,
