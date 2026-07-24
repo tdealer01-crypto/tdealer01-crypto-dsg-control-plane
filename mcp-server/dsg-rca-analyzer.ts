@@ -7,6 +7,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { analyzeIncident, type RCAInput } from "../lib/dsg/rca/rca-orchestrator.js";
 import { AnomalyOrchestrator } from "../lib/dsg/anomaly/anomaly-orchestrator.js";
+import { RemediationOrchestrator } from "../lib/dsg/remediation/remediation-orchestrator.js";
 import { createHash } from "node:crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
@@ -232,6 +233,84 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["org_id"],
       },
     },
+    {
+      name: "propose_remediation",
+      description: "Propose an automated remediation plan based on anomaly context",
+      inputSchema: {
+        type: "object",
+        properties: {
+          anomaly_type: {
+            type: "string",
+            description: "Type of anomaly (pattern_deviation, frequency_spike, etc)",
+          },
+          severity: {
+            type: "string",
+            enum: ["low", "medium", "high", "critical"],
+            description: "Anomaly severity level",
+          },
+          context: {
+            type: "object",
+            description: "Additional context for plan generation",
+          },
+        },
+        required: ["anomaly_type", "severity"],
+      },
+    },
+    {
+      name: "execute_remediation",
+      description: "Execute an approved remediation plan",
+      inputSchema: {
+        type: "object",
+        properties: {
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          plan_id: {
+            type: "string",
+            description: "Remediation plan ID",
+          },
+          anomaly_id: {
+            type: "string",
+            description: "Associated anomaly ID (optional)",
+          },
+          credentials: {
+            type: "array",
+            items: { type: "object" },
+            description: "Required credential leases",
+          },
+        },
+        required: ["org_id", "plan_id"],
+      },
+    },
+    {
+      name: "get_remediation_status",
+      description: "Get status and history of remediation executions",
+      inputSchema: {
+        type: "object",
+        properties: {
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          plan_id: {
+            type: "string",
+            description: "Filter by plan ID (optional)",
+          },
+          status: {
+            type: "string",
+            enum: ["pending", "running", "success", "failed", "rolled_back"],
+            description: "Filter by execution status (optional)",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum results (default: 10)",
+            default: 10,
+          },
+        },
+        required: ["org_id"],
+      },
+    },
   ],
 }));
 
@@ -253,6 +332,12 @@ server.setRequestHandler(
         return await handleSubscribeAlerts(args);
       } else if (name === "get_anomaly_status") {
         return await handleGetAnomalyStatus(args);
+      } else if (name === "propose_remediation") {
+        return await handleProposeRemediation(args);
+      } else if (name === "execute_remediation") {
+        return await handleExecuteRemediation(args);
+      } else if (name === "get_remediation_status") {
+        return await handleGetRemediationStatus(args);
       } else {
         return {
           content: [
@@ -924,6 +1009,299 @@ Summary:
 - Active: ${anomalies?.filter((a: any) => a.status === "active").length || 0}
 - Investigating: ${anomalies?.filter((a: any) => a.status === "investigating").length || 0}
 - Resolved: ${anomalies?.filter((a: any) => a.status === "resolved").length || 0}
+    `.trim();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Status retrieval failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleProposeRemediation(args: any) {
+  const { anomaly_type, severity, context = {} } = args;
+
+  if (!anomaly_type || !severity) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "anomaly_type and severity are required",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    const orchestrator = new RemediationOrchestrator();
+    const plan = await orchestrator.proposePlan(anomaly_type, severity, context);
+
+    const report = `
+Remediation Plan Proposed
+==========================
+
+Plan ID: ${plan.id}
+Name: ${plan.name}
+Type: ${plan.planType}
+Status: ${plan.status}
+
+Trigger Configuration:
+- Anomaly Type: ${plan.triggerAnomalyType || "All"}
+- Severity Levels: ${plan.triggerSeverityLevel?.join(", ") || "All"}
+- Confidence Threshold: ${plan.triggerConfidenceThreshold || "N/A"}
+
+Execution Settings:
+- Requires Approval: ${plan.requiresApproval}
+- Auto Execute: ${plan.autoExecute}
+- Rollback on Failure: ${plan.rollbackOnFailure}
+- Max Concurrent: ${plan.maxConcurrentExecutions}
+
+Steps: ${plan.steps.length}
+${plan.steps.map((s) => `- ${s.name}: ${s.action}`).join("\n")}
+
+Plan Hash: ${plan.planHash}
+Created: ${plan.createdAt.toISOString()}
+
+Next: Review and approve plan before execution
+    `.trim();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Plan proposal failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleExecuteRemediation(args: any) {
+  const { org_id, plan_id, anomaly_id, credentials = [] } = args;
+
+  if (!org_id || !plan_id) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "org_id and plan_id are required",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    // Fetch plan from database
+    const { data: planData, error: planError } = await (supabase as any)
+      .from("dsg_remediation_plans")
+      .select("*")
+      .eq("id", plan_id)
+      .eq("org_id", org_id)
+      .single();
+
+    if (planError || !planData) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Plan not found: ${plan_id}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Reconstruct plan object
+    const plan = {
+      id: planData.id,
+      name: planData.name,
+      description: planData.description,
+      planType: planData.plan_type,
+      status: planData.status,
+      triggerAnomalyType: planData.trigger_anomaly_type,
+      triggerSeverityLevel: planData.trigger_severity_level,
+      triggerConfidenceThreshold: planData.trigger_confidence_threshold,
+      steps: planData.steps || [],
+      planHash: planData.plan_hash,
+      requiresApproval: planData.requires_approval,
+      autoExecute: planData.auto_execute,
+      rollbackOnFailure: planData.rollback_on_failure,
+      maxConcurrentExecutions: planData.max_concurrent_executions,
+      successCriteria: planData.success_criteria,
+      failureActions: planData.failure_actions,
+      createdAt: new Date(planData.created_at),
+      updatedAt: new Date(planData.updated_at),
+      createdBy: planData.created_by,
+      lastModifiedBy: planData.last_modified_by,
+    };
+
+    // Execute remediation
+    const orchestrator = new RemediationOrchestrator();
+    const result = await orchestrator.executeRemediationPlan(plan, {
+      planId: plan_id,
+      anomalyId,
+      credentials: credentials as any,
+      requestedBy: org_id,
+    });
+
+    // Store execution record
+    const { error: storeError } = await (supabase as any)
+      .from("dsg_remediation_executions")
+      .insert({
+        org_id,
+        workspace_id: planData.workspace_id,
+        plan_id,
+        anomaly_id,
+        execution_status: result.status === "success" ? "success" : result.status === "blocked" ? "failed" : "failed",
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        execution_result: result.results,
+        plan_hash_executed: plan.planHash,
+        commands_executed: result.results.map((r) => r.stepId),
+        conformance_verified: result.conformance.planHashMatches,
+        evidence: result.conformance,
+      });
+
+    if (storeError) {
+      console.error("Error storing execution:", storeError);
+    }
+
+    const report = `
+Remediation Execution Report
+=============================
+
+Execution ID: ${result.executionId}
+Plan ID: ${result.planId}
+Status: ${result.status.toUpperCase()}
+Duration: ${result.duration}ms
+
+Steps Executed: ${result.results.length}
+${result.results.map((r) => `- ${r.stepId}: ${r.success ? "✓ Success" : "✗ Failed"} (${r.duration}ms)`).join("\n")}
+
+Conformance Status: ${result.conformance.summary}
+Execution Hash: ${result.conformance.executionHash}
+
+${result.certificate}
+    `.trim();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleGetRemediationStatus(args: any) {
+  const { org_id, plan_id, status, limit = 10 } = args;
+
+  if (!org_id) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "org_id is required",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    let query = (supabase as any)
+      .from("dsg_remediation_executions")
+      .select("*")
+      .eq("org_id", org_id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (plan_id) {
+      query = query.eq("plan_id", plan_id);
+    }
+
+    if (status) {
+      query = query.eq("execution_status", status);
+    }
+
+    const { data: executions, error } = await query;
+
+    if (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error fetching executions: ${error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const statusSummary = {
+      pending: executions?.filter((e: any) => e.execution_status === "pending").length || 0,
+      running: executions?.filter((e: any) => e.execution_status === "running").length || 0,
+      success: executions?.filter((e: any) => e.execution_status === "success").length || 0,
+      failed: executions?.filter((e: any) => e.execution_status === "failed").length || 0,
+      rolled_back: executions?.filter((e: any) => e.execution_status === "rolled_back").length || 0,
+    };
+
+    const report = `
+Remediation Execution Status
+=============================
+
+Organization: ${org_id}
+${plan_id ? `Plan Filter: ${plan_id}` : "Plan Filter: All"}
+${status ? `Status Filter: ${status}` : "Status Filter: All"}
+Limit: ${limit}
+
+Executions: ${executions?.length || 0}
+${executions?.map((e: any) => `- [${e.execution_status}] ${e.plan_id}: completed at ${e.completed_at}`).join("\n") || "- None"}
+
+Summary:
+- Pending: ${statusSummary.pending}
+- Running: ${statusSummary.running}
+- Success: ${statusSummary.success}
+- Failed: ${statusSummary.failed}
+- Rolled Back: ${statusSummary.rolled_back}
     `.trim();
 
     return {
