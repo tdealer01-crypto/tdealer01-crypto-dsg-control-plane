@@ -1,15 +1,4 @@
+dist/
 *.js
+*.js.map
 *.d.ts
-node_modules
-dist
-cdk.out
-*.log
-*.swp
-*~
-.DS_Store
-.env
-.env.local
-.env.*.local
-coverage
-.nyc_output
-*.tsbuildinfo

@@ -1,85 +1,94 @@
-import { DSGConfig, EnvironmentType } from './types';
+/**
+ * Staging Environment Configuration
+ */
+
+import { DSGConfig } from './types';
 
 export const stagingConfig: DSGConfig = {
-  env: 'staging' as EnvironmentType,
+  environment: 'staging',
+  resourcePrefix: 'dsg-one-staging',
+
   aws: {
-    account: process.env.AWS_ACCOUNT_ID || '',
+    account: process.env.AWS_ACCOUNT_ID || '234567890123',
     region: process.env.AWS_REGION || 'us-east-1',
     secondaryRegion: 'us-west-2',
   },
-  tags: {
-    Environment: 'staging',
-    ManagedBy: 'CDK',
-    Project: 'DSG-ONE',
-    CostCenter: 'Engineering',
+
+  domain: {
+    name: 'staging.dsg-one.dev',
   },
+
   networking: {
     vpcCidr: '10.1.0.0/16',
-    maxAzs: 2,
-    natGateways: 2,
     enableFlowLogs: true,
-    flowLogsRetentionDays: 30,
+    enableVpcEndpoints: true,
   },
-  compute: {
-    ecs: {
-      enableExecuteCommand: true,
-      enableContainerInsights: true,
-    },
+
+  ecs: {
     desiredCount: 2,
+    taskMemory: 1024,
+    taskCpu: 512,
+    enableAutoScaling: true,
     minCapacity: 2,
     maxCapacity: 4,
-    taskCpu: 512,
-    taskMemory: 1024,
-    enableAutoScaling: true,
-    deploymentStrategy: 'BLUE_GREEN',
   },
-  security: {
-    kmsKeyRotation: true,
+
+  database: {
+    engine: 'dynamodb',
+    backupRetention: 30,
+    enablePointInTimeRecovery: true,
+  },
+
+  waf: {
     enableWaf: true,
-    enableShield: false,
-    enableGuardDuty: true,
-    enableSecurityHub: true,
-    enableInspector: true,
-    mfaRequired: true,
-    sessionDurationHours: 4,
+    trustedIpRanges: ['10.0.0.0/8'],
   },
-  observability: {
-    cloudWatchRetentionDays: 30,
-    enableXRay: true,
-    enableCloudTrail: true,
-    cloudTrailRetentionDays: 30,
-    enableDetailedMonitoring: true,
-    logLevel: 'INFO',
+
+  backup: {
+    enableBackup: true,
+    retentionDays: 30,
+    enableCrossRegionReplication: true,
   },
-  governance: {
-    policyEngineEnabled: true,
-    approvalRequired: true,
-    replayProofRequired: true,
-    evidenceRetentionDays: 90,
-    auditLogRetentionDays: 90,
-    immutableAuditEnabled: true,
+
+  notifications: {
+    alertEmails: ['staging-alerts@dsg.local'],
+    incidentEmails: ['incidents@dsg.local'],
   },
+
   compliance: {
     iso42001: true,
     nistAiRmf: true,
-    euAiAct: false,
+    euAiAct: true,
     soc2: false,
-    complianceReportingEnabled: true,
-    policyAsCodeEnabled: true,
   },
+
   finops: {
-    budgetAlertThreshold: 2000,
+    monthlyBudgetUsd: 5000,
     enableCostAnomaly: true,
-    enableComputeOptimizer: true,
-    enableRightsizing: true,
-    savingsPlans: false,
+    enableReservationRecommendations: true,
   },
-  features: {
-    multiRegion: true,
-    multiTenant: false,
-    featureFlagsEnabled: true,
-    canaryDeployments: true,
-    blueGreenDeployments: true,
-    workspaceIsolation: false,
+
+  aiGovernance: {
+    enablePolicyEngine: true,
+    enableDeterministicReplay: true,
+    enableEvidenceCollection: true,
+    enableComplianceMapping: true,
+  },
+
+  featureFlags: {
+    enableCanaryDeployments: true,
+    canaryTrafficPercent: 10,
+  },
+
+  logging: {
+    cloudWatchRetentionDays: 30,
+    enableXRay: true,
+    enableVpcFlowLogs: true,
+  },
+
+  tags: {
+    Environment: 'staging',
+    ManagedBy: 'CDK',
+    CostCenter: 'Product',
   },
 };

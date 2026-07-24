@@ -1,21 +1,38 @@
-import { DSGConfig, EnvironmentType } from './types';
+/**
+ * Configuration Loader
+ *
+ * Load environment-specific configurations
+ */
+
+import { DSGConfig } from './types';
 import { devConfig } from './dev';
 import { stagingConfig } from './staging';
 import { prodConfig } from './prod';
 
-const configs: Record<EnvironmentType, DSGConfig> = {
-  dev: devConfig,
-  staging: stagingConfig,
-  prod: prodConfig,
-};
+export { DSGConfig, EnvironmentType } from './types';
 
-export function getConfig(env: EnvironmentType): DSGConfig {
-  const config = configs[env];
-  if (!config) {
-    throw new Error(`Unknown environment: ${env}`);
+export function getConfig(environment?: string): DSGConfig {
+  const env = environment || process.env.ENVIRONMENT || 'dev';
+
+  switch (env) {
+    case 'prod':
+      return prodConfig;
+    case 'staging':
+      return stagingConfig;
+    case 'dev':
+    default:
+      return devConfig;
   }
-  return config;
 }
 
-export { DSGConfig, EnvironmentType };
-export * from './types';
+export function loadAllConfigs(): {
+  dev: DSGConfig;
+  staging: DSGConfig;
+  prod: DSGConfig;
+} {
+  return {
+    dev: devConfig,
+    staging: stagingConfig,
+    prod: prodConfig,
+  };
+}
