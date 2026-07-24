@@ -100,10 +100,9 @@ create_kms_key() {
 
     # Check if key alias already exists
     if aws kms list-aliases --region "$AWS_REGION" 2>/dev/null | grep -q "\"AliasName\": \"$alias\""; then
-        log_warn "KMS key alias already exists: $alias"
-        kms_key_id=$(aws kms list-aliases --region "$AWS_REGION" | jq -r ".Aliases[] | select(.AliasName == \"$alias\") | .TargetKeyId")
+        kms_key_id=$(aws kms list-aliases --region "$AWS_REGION" 2>/dev/null | jq -r ".Aliases[] | select(.AliasName == \"$alias\") | .TargetKeyId" 2>/dev/null)
+        echo "KMS key alias already exists: $alias" >&2
     else
-        log_info "Creating new KMS key..."
         local key_response=$(aws kms create-key \
             --region "$AWS_REGION" \
             --description "Encryption key for $PROJECT_NAME $ENVIRONMENT Secrets Manager" \
@@ -112,7 +111,8 @@ create_kms_key() {
         kms_key_id=$(echo "$key_response" | jq -r '.KeyMetadata.KeyId' 2>/dev/null)
 
         if [ -z "$kms_key_id" ] || [ "$kms_key_id" = "null" ]; then
-            log_error "Failed to create KMS key"
+            echo "Failed to create KMS key" >&2
+            return 1
         fi
 
         # Create alias
@@ -121,11 +121,11 @@ create_kms_key() {
             --target-key-id "$kms_key_id" \
             --region "$AWS_REGION" 2>/dev/null || true
 
-        log_success "KMS key created: $kms_key_id"
+        echo "KMS key created: $kms_key_id" >&2
     fi
 
-    # Only output the key ID, no log messages
-    echo "$kms_key_id"
+    # ONLY output the key ID to stdout, nothing else
+    printf "%s" "$kms_key_id"
 }
 
 create_secrets() {
@@ -300,9 +300,9 @@ main() {
     check_prerequisites
     verify_aws_access
 
-    # Create KMS key (capture output only)
+    # Create KMS key (capture stdout only, logs go to stderr)
     log_info "Creating KMS encryption key for Secrets Manager..."
-    KMS_KEY_ID=$(create_kms_key 2>&1 | tail -1)
+    KMS_KEY_ID=$(create_kms_key)
 
     if [ -z "$KMS_KEY_ID" ] || [ "$KMS_KEY_ID" = "null" ]; then
         log_error "Failed to create or retrieve KMS key ID"
