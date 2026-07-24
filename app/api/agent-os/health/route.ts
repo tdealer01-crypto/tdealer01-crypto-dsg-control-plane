@@ -27,8 +27,6 @@ export async function GET() {
     ]);
 
     const init = await initializeAgentOS({
-      upstashUrl: values.UPSTASH_REDIS_REST_URL,
-      upstashToken: values.UPSTASH_REDIS_REST_TOKEN,
       redisUrl: values.REDIS_URL,
       supabaseUrl: values.NEXT_PUBLIC_SUPABASE_URL,
       supabaseServiceKey: values.SUPABASE_SERVICE_ROLE_KEY,

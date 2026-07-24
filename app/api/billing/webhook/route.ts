@@ -10,14 +10,6 @@ import { captureEvent } from '../../../../lib/telemetry/capture-event';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Structured logging helper for webhook operations
- */
-function logWebhook(level: 'info' | 'error', message: string, data: Record<string, unknown>) {
-  const timestamp = new Date().toISOString();
-  console.log(JSON.stringify({ timestamp, level, message, ...data }));
-}
 type SupabaseAdmin = ReturnType<typeof getSupabaseAdmin>;
 
 type PriceMapping = {
@@ -486,15 +478,11 @@ async function handleInvoiceEvent(
 }
 
 export async function POST(request: Request) {
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
   try {
     const stripe = getStripeClient();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      logWebhook('error', 'Missing STRIPE_WEBHOOK_SECRET', { requestId });
       return NextResponse.json(
         { error: 'Missing STRIPE_WEBHOOK_SECRET' },
         { status: 500 }
@@ -503,7 +491,6 @@ export async function POST(request: Request) {
 
     const signature = request.headers.get('stripe-signature');
     if (!signature) {
-      logWebhook('error', 'Missing stripe-signature header', { requestId });
       return NextResponse.json(
         { error: 'Missing stripe-signature header' },
         { status: 400 }
@@ -513,12 +500,6 @@ export async function POST(request: Request) {
     const body = await request.text();
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     const supabase = getSupabaseAdmin();
-
-    logWebhook('info', 'Webhook received', {
-      requestId,
-      eventType: event.type,
-      eventId: event.id,
-    });
 
     const claimed = await claimEventProcessing(supabase, event);
     if (!claimed) {
@@ -683,14 +664,6 @@ export async function POST(request: Request) {
         await handleInvoiceEvent(supabase, event, stripe);
       }
 
-      const duration = Date.now() - startTime;
-      logWebhook('info', 'Webhook processed successfully', {
-        requestId,
-        eventType: event.type,
-        eventId: event.id,
-        duration,
-        status: 'success',
-      });
       return NextResponse.json({ received: true, type: event.type });
     } catch (error) {
       try {
@@ -704,19 +677,7 @@ export async function POST(request: Request) {
       throw error;
     }
   } catch (error) {
-    const duration = Date.now() - startTime;
-
-    logWebhook('error', 'Webhook processing failed', {
-      requestId,
-      duration,
-      status: 'failed',
-    });
-
-    logApiError('api/billing/webhook', error, {
-      stage: 'unhandled',
-      requestId,
-    });
-
+    logApiError('api/billing/webhook', error, { stage: 'unhandled' });
     return NextResponse.json(
       { error: internalErrorMessage() },
       { status: 400 }

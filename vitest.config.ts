@@ -21,7 +21,6 @@ export default defineConfig({
       'playwright-report/**',
       'test-results/**',
     ],
-    setupFiles: ['./vitest.setup.ts'],
     testTimeout: 15_000,
     hookTimeout: 90_000,
     coverage: {

@@ -2,17 +2,6 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { GATE_PLANS } from '@/lib/billing/pricing-catalog';
-
-// Display prices derive from the pricing catalog — the same numbers
-// /api/billing/checkout charges for these plan keys. Yearly follows this
-// page's "2 months free" (×10) convention.
-function monthlyLabel(plan: keyof typeof GATE_PLANS): string {
-  return `US$${GATE_PLANS[plan].displayMonthlyUsd}/mo`;
-}
-function yearlyLabel(plan: keyof typeof GATE_PLANS): string {
-  return `US$${(GATE_PLANS[plan].displayMonthlyUsd * 10).toLocaleString('en-US')}/yr`;
-}
 
 type BillingInterval = 'monthly' | 'yearly';
 type PaidPlanKey = 'pro' | 'business' | 'enterprise';
@@ -48,8 +37,8 @@ const plans: PlanCard[] = [
   {
     key: 'pro',
     name: 'Growth',
-    monthlyPrice: monthlyLabel('pro'),
-    yearlyPrice: yearlyLabel('pro'),
+    monthlyPrice: 'US$99/mo',
+    yearlyPrice: 'US$990/yr',
     subtitle: 'Best for finance teams moving from spreadsheets and email into governed approvals',
     trial: '14-day free trial',
     features: [
@@ -63,18 +52,18 @@ const plans: PlanCard[] = [
   },
   {
     key: 'business',
-    name: 'Business',
-    monthlyPrice: monthlyLabel('business'),
-    yearlyPrice: yearlyLabel('business'),
+    name: 'Enterprise',
+    monthlyPrice: 'US$299/mo',
+    yearlyPrice: 'US$2,990/yr',
     subtitle: 'Best for audit-heavy deployments, identity integration, and governance-first rollout support',
-    trial: '14-day free trial',
+    trial: '30-day pilot',
     features: [
       'SSO and SCIM readiness',
       'Advanced segregation-of-duties support',
       'Evidence bundle export',
       'Governance onboarding support',
     ],
-    cta: 'Start Business Pilot',
+    cta: 'Start Enterprise Pilot',
   },
   {
     key: 'enterprise',
