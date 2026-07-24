@@ -228,13 +228,12 @@ export async function GET(): Promise<NextResponse<ArchitectureResponse>> {
         'Expires': '0'
       }
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  } catch {
     return NextResponse.json(
       {
         timestamp: new Date().toISOString(),
         environment: process.env.ENVIRONMENT || 'development',
-        error: errorMessage,
+        error: 'Failed to retrieve architecture information',
         components: {},
         layers: [],
         systemStatus: 'offline'
