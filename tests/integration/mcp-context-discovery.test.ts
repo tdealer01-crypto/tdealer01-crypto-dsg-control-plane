@@ -2,14 +2,19 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost:54321";
-const SUPABASE_SERVICE_KEY =
-  process.env.SUPABASE_SERVICE_KEY || "fake-service-key-for-testing";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const hasEnv = SUPABASE_URL && SUPABASE_SERVICE_KEY;
+const runLiveDb = process.env.RUN_LIVE_DB_TESTS === "true";
+const describeLive = hasEnv && runLiveDb ? describe : describe.skip;
 
-describe("DSG Context Discovery MCP Server", () => {
+describeLive("DSG Context Discovery MCP Server", () => {
   let supabase: ReturnType<typeof createClient>;
 
   beforeAll(() => {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      throw new Error("Missing SUPABASE credentials");
+    }
     supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
       auth: { persistSession: false },
     });
