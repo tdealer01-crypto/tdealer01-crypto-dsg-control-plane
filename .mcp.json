@@ -19,6 +19,15 @@
     "runpod-docs": {
       "type": "http",
       "url": "https://docs.runpod.io/mcp"
+    },
+    "dsg-context-discovery": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--loader", "ts-node/esm", "mcp-server/dsg-context-discovery.ts"],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
+      }
     }
   }
 }
