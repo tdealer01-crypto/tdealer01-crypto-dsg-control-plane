@@ -85,7 +85,9 @@
     "secrets:export": "bash scripts/secrets-manager.sh export",
     "setup:github-secrets": "bash scripts/setup-github-secrets.sh",
     "mcp:build:context-discovery": "tsc mcp-server/dsg-context-discovery.ts --outDir build/mcp --module esnext --target es2022",
-    "mcp:serve:context-discovery": "node --loader ts-node/esm mcp-server/dsg-context-discovery.ts"
+    "mcp:serve:context-discovery": "node --loader ts-node/esm mcp-server/dsg-context-discovery.ts",
+    "mcp:build:rca-analyzer": "tsc mcp-server/dsg-rca-analyzer.ts --outDir build/mcp --module esnext --target es2022",
+    "mcp:serve:rca-analyzer": "node --loader ts-node/esm mcp-server/dsg-rca-analyzer.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
