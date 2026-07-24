@@ -83,7 +83,9 @@
     "secrets:encrypt": "bash scripts/secrets-manager.sh encrypt",
     "secrets:decrypt": "bash scripts/secrets-manager.sh decrypt",
     "secrets:export": "bash scripts/secrets-manager.sh export",
-    "setup:github-secrets": "bash scripts/setup-github-secrets.sh"
+    "setup:github-secrets": "bash scripts/setup-github-secrets.sh",
+    "mcp:build:context-discovery": "tsc mcp-server/dsg-context-discovery.ts --outDir build/mcp --module esnext --target es2022",
+    "mcp:serve:context-discovery": "node --loader ts-node/esm mcp-server/dsg-context-discovery.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
