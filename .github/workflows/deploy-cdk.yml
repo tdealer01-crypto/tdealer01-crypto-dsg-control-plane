@@ -34,6 +34,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: cdk-deploy-${{ github.run_id }}
+          aws-region: us-east-1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -48,13 +55,6 @@ jobs:
           cd infra/cdk
           npm ci --legacy-peer-deps
           npm run build
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: cdk-deploy-${{ github.run_id }}
-          aws-region: us-east-1
 
       - name: Synthesize CloudFormation
         run: |
