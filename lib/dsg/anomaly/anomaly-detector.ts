@@ -73,7 +73,7 @@ export class AnomalyDetector {
 
     // Detect behavioral anomalies
     const behavioralAnomaly = this.detectBehavioralDeviation(events);
-    if (behavioralAnomaly && behavioralAnomaly.deviation > threshold) {
+    if (behavioralAnomaly && behavioralAnomaly.deviationScore > threshold) {
       results.push(behavioralAnomaly);
     }
 
