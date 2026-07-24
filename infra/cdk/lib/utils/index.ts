@@ -1,4 +1,5 @@
-export * from './tags';
-export * from './naming';
-export * from './permissions';
-export * from './validation';
+/**
+ * Utilities Barrel Export
+ */
+
+export { validateConfig } from './validation';

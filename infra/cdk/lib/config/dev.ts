@@ -1,84 +1,94 @@
-import { DSGConfig, EnvironmentType } from './types';
+/**
+ * Development Environment Configuration
+ */
+
+import { DSGConfig } from './types';
 
 export const devConfig: DSGConfig = {
-  env: 'dev' as EnvironmentType,
+  environment: 'dev',
+  resourcePrefix: 'dsg-one-dev',
+
   aws: {
-    account: process.env.AWS_ACCOUNT_ID || '',
+    account: process.env.AWS_ACCOUNT_ID || '123456789012',
     region: process.env.AWS_REGION || 'us-east-1',
+    secondaryRegion: 'us-west-2',
   },
-  tags: {
-    Environment: 'dev',
-    ManagedBy: 'CDK',
-    Project: 'DSG-ONE',
-    CostCenter: 'Engineering',
+
+  domain: {
+    name: 'dev.dsg-one.com',
   },
+
   networking: {
     vpcCidr: '10.0.0.0/16',
-    maxAzs: 2,
-    natGateways: 1,
     enableFlowLogs: true,
-    flowLogsRetentionDays: 7,
+    enableVpcEndpoints: false,
   },
-  compute: {
-    ecs: {
-      enableExecuteCommand: true,
-      enableContainerInsights: true,
-    },
+
+  ecs: {
     desiredCount: 1,
+    taskMemory: 512,
+    taskCpu: 256,
+    enableAutoScaling: false,
     minCapacity: 1,
     maxCapacity: 2,
-    taskCpu: 256,
-    taskMemory: 512,
-    enableAutoScaling: false,
-    deploymentStrategy: 'ROLLING',
   },
-  security: {
-    kmsKeyRotation: true,
+
+  database: {
+    engine: 'dynamodb',
+    backupRetention: 7,
+    enablePointInTimeRecovery: true,
+  },
+
+  waf: {
     enableWaf: false,
-    enableShield: false,
-    enableGuardDuty: true,
-    enableSecurityHub: true,
-    enableInspector: true,
-    mfaRequired: false,
-    sessionDurationHours: 8,
+    trustedIpRanges: ['10.0.0.0/16'], // Internal VPC CIDR
   },
-  observability: {
-    cloudWatchRetentionDays: 7,
-    enableXRay: true,
-    enableCloudTrail: true,
-    cloudTrailRetentionDays: 7,
-    enableDetailedMonitoring: true,
-    logLevel: 'DEBUG',
+
+  backup: {
+    enableBackup: true,
+    retentionDays: 7,
+    enableCrossRegionReplication: false,
   },
-  governance: {
-    policyEngineEnabled: true,
-    approvalRequired: false,
-    replayProofRequired: false,
-    evidenceRetentionDays: 30,
-    auditLogRetentionDays: 30,
-    immutableAuditEnabled: false,
+
+  notifications: {
+    alertEmails: ['dev-alerts@dsg.local'],
+    incidentEmails: [],
   },
+
   compliance: {
     iso42001: false,
     nistAiRmf: false,
     euAiAct: false,
     soc2: false,
-    complianceReportingEnabled: false,
-    policyAsCodeEnabled: true,
   },
+
   finops: {
-    budgetAlertThreshold: 500,
+    monthlyBudgetUsd: 1000,
     enableCostAnomaly: false,
-    enableComputeOptimizer: false,
-    enableRightsizing: false,
-    savingsPlans: false,
+    enableReservationRecommendations: false,
   },
-  features: {
-    multiRegion: false,
-    multiTenant: false,
-    featureFlagsEnabled: true,
-    canaryDeployments: false,
-    blueGreenDeployments: false,
-    workspaceIsolation: false,
+
+  aiGovernance: {
+    enablePolicyEngine: true,
+    enableDeterministicReplay: true,
+    enableEvidenceCollection: false,
+    enableComplianceMapping: false,
+  },
+
+  featureFlags: {
+    enableCanaryDeployments: false,
+    canaryTrafficPercent: 0,
+  },
+
+  logging: {
+    cloudWatchRetentionDays: 7,
+    enableXRay: false,
+    enableVpcFlowLogs: true,
+  },
+
+  tags: {
+    Environment: 'dev',
+    ManagedBy: 'CDK',
+    CostCenter: 'Engineering',
   },
 };
