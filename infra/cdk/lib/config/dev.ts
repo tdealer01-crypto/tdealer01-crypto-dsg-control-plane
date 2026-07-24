@@ -9,7 +9,7 @@ export const devConfig: DSGConfig = {
   resourcePrefix: 'dsg-one-dev',
 
   aws: {
-    account: process.env.AWS_ACCOUNT_ID || '123456789012',
+    account: process.env.AWS_ACCOUNT_ID || '121205961822',
     region: process.env.AWS_REGION || 'us-east-1',
     secondaryRegion: 'us-west-2',
   },

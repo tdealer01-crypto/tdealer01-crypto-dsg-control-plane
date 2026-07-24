@@ -5,7 +5,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "eslint app/ lib/ components/ --ext .ts,.tsx,.js,.jsx",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/database.types.ts",
     "test": "vitest run",
@@ -83,7 +83,11 @@
     "secrets:encrypt": "bash scripts/secrets-manager.sh encrypt",
     "secrets:decrypt": "bash scripts/secrets-manager.sh decrypt",
     "secrets:export": "bash scripts/secrets-manager.sh export",
-    "setup:github-secrets": "bash scripts/setup-github-secrets.sh"
+    "setup:github-secrets": "bash scripts/setup-github-secrets.sh",
+    "mcp:build:context-discovery": "tsc mcp-server/dsg-context-discovery.ts --outDir build/mcp --module esnext --target es2022",
+    "mcp:serve:context-discovery": "node --loader ts-node/esm mcp-server/dsg-context-discovery.ts",
+    "mcp:build:rca-analyzer": "tsc mcp-server/dsg-rca-analyzer.ts --outDir build/mcp --module esnext --target es2022",
+    "mcp:serve:rca-analyzer": "node --loader ts-node/esm mcp-server/dsg-rca-analyzer.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
@@ -145,7 +149,9 @@
     "ws": "^8.20.1",
     "postcss": "^8.5.15",
     "esbuild": ">=0.25.0",
-    "form-data": ">=4.0.6"
+    "form-data": ">=4.0.6",
+    "uuid": "^14.0.1",
+    "sharp": "^0.35.3"
   },
   "version": "2.6.1"
 }

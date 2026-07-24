@@ -1,0 +1,79 @@
+{
+  "name": "dsg-compliance-evidence",
+  "version": "1.0.0",
+  "description": "Generate compliance evidence pack for AI execution with audit trails",
+  "endpoint": "/api/compliance-evidence-pack",
+  "method": "POST",
+  "category": "Compliance",
+  "input": {
+    "type": "object",
+    "properties": {
+      "execution_id": {
+        "type": "string",
+        "description": "The execution ID to generate evidence for"
+      },
+      "include_proofs": {
+        "type": "boolean",
+        "description": "Include formal proofs in evidence pack",
+        "default": true
+      },
+      "include_audit_trail": {
+        "type": "boolean",
+        "description": "Include full audit trail with timestamps",
+        "default": true
+      }
+    },
+    "required": ["execution_id"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "evidence_id": {
+        "type": "string",
+        "description": "Unique identifier for the evidence pack"
+      },
+      "execution_hash": {
+        "type": "string",
+        "description": "Cryptographic hash of the execution"
+      },
+      "policy_version": {
+        "type": "string",
+        "description": "Policy version used during execution"
+      },
+      "compliance_matrix": {
+        "type": "object",
+        "description": "Compliance level assessment (L1-L5 evidence)"
+      },
+      "audit_trail": {
+        "type": "array",
+        "description": "Timestamped audit events"
+      }
+    }
+  },
+  "examples": [
+    {
+      "input": {
+        "execution_id": "exec-abc123",
+        "include_proofs": true,
+        "include_audit_trail": true
+      },
+      "output": {
+        "evidence_id": "evidence-abc123",
+        "execution_hash": "sha256:exec123abc...",
+        "policy_version": "1.0",
+        "compliance_matrix": {
+          "L1": "unit evidence ✓",
+          "L2": "integration evidence ✓",
+          "L3": "adversarial replay ✓"
+        },
+        "audit_trail": [
+          {
+            "timestamp": "2026-07-24T10:30:00Z",
+            "event": "policy_evaluated",
+            "decision": "PASS"
+          }
+        ]
+      }
+    }
+  ]
+}

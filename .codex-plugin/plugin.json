@@ -1,0 +1,46 @@
+{
+  "name": "dsg-platform",
+  "version": "1.0.0",
+  "description": "DSG ONE / ProofGate AI governance and control plane for runtime execution with deterministic gates and compliance evidence.",
+  "author": {
+    "name": "DSG Labs",
+    "email": "t.dealer01@dsg.pics",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+  },
+  "homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
+  "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "license": "MIT",
+  "keywords": [
+    "governance",
+    "ai-control-plane",
+    "deterministic-gates",
+    "compliance-evidence",
+    "runtime-execution",
+    "audit-trail"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DSG Control Plane",
+    "shortDescription": "AI runtime governance with deterministic gates",
+    "longDescription": "Gate AI/agent actions before execution with deterministic policies, record evidence/audit trails, and ensure compliance with formal proofs.",
+    "developerName": "DSG Labs",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Deterministic action gating",
+      "Runtime intent governance",
+      "Compliance evidence collection",
+      "Formal proof validation",
+      "Audit trail recording",
+      "Policy-driven execution",
+      "Multi-agent orchestration"
+    ],
+    "defaultPrompt": [
+      "Help me gate an AI action with deterministic governance.",
+      "Generate a compliance evidence pack for this execution.",
+      "Verify formal proof for this policy constraint."
+    ],
+    "brandColor": "#1E90FF",
+    "composerIcon": "./assets/composer-icon.svg",
+    "logo": "./assets/logo.svg"
+  }
+}
