@@ -33,11 +33,12 @@ export async function POST(
     const { path } = await params
     const segment = path?.[0] ?? ''
 
-    if (!validateZapierSignature(request, process.env.ZAPIER_WEBHOOK_SECRET || '')) {
+    const rawBody = await request.text()
+    const signature = request.headers.get('x-zapier-signature')
+
+    if (!validateZapierSignature(rawBody, signature)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
-
-    const rawBody = await request.text()
 
     let payload: unknown
     try {
