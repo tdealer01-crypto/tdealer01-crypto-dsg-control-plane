@@ -1,0 +1,50 @@
+name: Supabase Migrations
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Run database migrations
+        run: supabase db push --linked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Generate TypeScript types
+        run: npm run db:types
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      - name: Commit generated types if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add lib/database.types.ts
+          git commit -m "chore: regenerate Supabase types after migrations" || true
+          git push
+
+      - name: Notify on migration failure
+        if: failure()
+        run: |
+          echo "::error::Database migration failed. Check logs and recovery steps in docs/RUNBOOK_DEPLOY.md"

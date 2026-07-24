@@ -88,7 +88,7 @@ const comparisonRows: Array<{ cap: string; dsg: string; lang: string; oai: strin
 
 function ComparisonCell({ value }: { value: string }) {
   if (value === 'yes') return <span className="font-semibold text-emerald-300">✓</span>;
-  if (value === 'no') return <span className="text-slate-600">—</span>;
+  if (value === 'no') return <span className="text-slate-300">—</span>;
   if (value === 'partial') return <span className="text-amber-300">partial</span>;
   return <span className="text-slate-200">{value}</span>;
 }
@@ -170,7 +170,7 @@ export default function HomePage() {
             <div className="border border-amber-300/20 bg-black/30 p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between border-b border-white/10 pb-5">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Runtime Control Room</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-300">Runtime Control Room</p>
                   <h2 className="mt-2 text-2xl font-semibold text-white">Governed Action Stack</h2>
                 </div>
                 <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-200">
@@ -191,15 +191,15 @@ export default function HomePage() {
 
               <div className="mt-6 grid gap-3 md:grid-cols-3">
                 <div className="border border-white/10 bg-[#111317] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Policy</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Policy</p>
                   <p className="mt-2 text-lg font-semibold text-slate-100">Route by policy</p>
                 </div>
                 <div className="border border-white/10 bg-[#111317] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Evidence</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Evidence</p>
                   <p className="mt-2 text-lg font-semibold text-slate-100">Evidence at decision time</p>
                 </div>
                 <div className="border border-white/10 bg-[#111317] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Exceptions</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Exceptions</p>
                   <p className="mt-2 text-lg font-semibold text-slate-100">Review with controls</p>
                 </div>
               </div>
@@ -247,19 +247,19 @@ export default function HomePage() {
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Vault</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Vault</p>
               <p className="text-sm font-semibold text-white">AES-256-GCM encrypted credentials</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Event Bus</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Event Bus</p>
               <p className="text-sm font-semibold text-white">Pub-sub for audit trail</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Rollback</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Rollback</p>
               <p className="text-sm font-semibold text-white">Reverse on failure</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Capability Engine</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Capability Engine</p>
               <p className="text-sm font-semibold text-white">Provider-agnostic resolution</p>
             </div>
           </div>
@@ -412,13 +412,13 @@ export default function HomePage() {
                 <p className="text-xs text-slate-400 mb-2"><strong>Unit Tests</strong></p>
                 <p className="text-xs text-slate-500">Isolated component verification</p>
               </div>
-              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="flex items-center justify-center text-slate-300">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L2</div>
                 <p className="text-xs text-slate-400 mb-2"><strong>Integration</strong></p>
                 <p className="text-xs text-slate-500">Cross-layer behavior</p>
               </div>
-              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="flex items-center justify-center text-slate-300">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L3</div>
                 <p className="text-xs text-slate-400 mb-2"><strong>Adversarial</strong></p>
@@ -431,7 +431,7 @@ export default function HomePage() {
                 <p className="text-xs text-slate-400 mb-2"><strong>Mutation</strong></p>
                 <p className="text-xs text-slate-500">Code resilience (72.08%)</p>
               </div>
-              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="flex items-center justify-center text-slate-300">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-300 mb-2">L5</div>
                 <p className="text-xs text-slate-400 mb-2"><strong>Provenance</strong></p>
@@ -497,7 +497,7 @@ export default function HomePage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-4 text-xs leading-6 text-slate-500">
+          <p className="mt-4 text-xs leading-6 text-slate-300">
             Comparison reflects each product&apos;s default, documented capabilities for governed AI execution. Latency figures
             are from <Link href="/showcase" className="text-emerald-300 underline">the live gate benchmark</Link>; competitor
             values are typical LLM-in-the-loop ranges. Z3 proves policy invariants at design time and verifies multi-agent
@@ -511,7 +511,7 @@ export default function HomePage() {
           {painCards.map((card) => (
             <article key={card.title} className="border-t border-red-400/30 bg-white/[0.02] px-0 py-0">
               <div className="p-6">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Risk Signal</p>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-300">Risk Signal</p>
                 <h2 className="mt-4 text-2xl font-semibold text-amber-50">{card.title}</h2>
                 <p className="mt-4 text-sm leading-7 text-slate-300">{card.body}</p>
               </div>
@@ -523,7 +523,7 @@ export default function HomePage() {
       <section className="border-y border-white/10 bg-[#0b0d10]">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Launch Paths</p>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-300">Launch Paths</p>
             <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">Move from one governed workflow to a real operating surface.</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
               Finance Governance is one governed workflow under DSG ONE. Start with a single invoice or payment path, prove control quality in a bounded pilot, then expand into the daily approval workspace with shared evidence and runtime checks.
@@ -532,7 +532,7 @@ export default function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             {launchLinks.map((item) => (
               <article key={item.title} className={'highlight' in item && item.highlight ? 'border border-emerald-400/30 bg-emerald-400/5 p-6' : 'border border-white/10 bg-white/[0.03] p-6'}>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">
                   {'highlight' in item && item.highlight ? '🆕 New' : 'Path'}
                 </p>
                 <h3 className="mt-4 text-2xl font-semibold text-white">{item.title}</h3>
