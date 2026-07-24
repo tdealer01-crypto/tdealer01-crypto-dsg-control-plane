@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import type { RemediationPlan, RemediationStep } from "./plan-manager";
 
 export interface ExecutionContext {
@@ -229,7 +229,7 @@ export class ControlledExecutor {
     plan: RemediationPlan,
     credentials: CredentialLease[] = []
   ): ExecutionContext {
-    const executionId = `exec-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const executionId = `exec-${Date.now()}-${randomBytes(6).toString('hex')}`;
     const credentialLeases = new Map<string, CredentialLease>();
 
     credentials.forEach((lease) => {

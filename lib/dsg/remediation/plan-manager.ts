@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 
 export interface RemediationStep {
   id: string;
@@ -58,7 +58,7 @@ export interface PlanValidationResult {
 
 export class PlanManager {
   createPlan(input: Omit<RemediationPlan, "id" | "planHash" | "createdAt" | "updatedAt">): RemediationPlan {
-    const id = `plan-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const id = `plan-${Date.now()}-${randomBytes(6).toString('hex')}`;
     const planHash = this.hashPlan(input.steps);
 
     return {
