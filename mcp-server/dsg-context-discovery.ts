@@ -200,8 +200,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request;
+server.setRequestHandler(
+  CallToolRequestSchema,
+  async (request: { name: string; arguments: Record<string, unknown> }) => {
+    const { name, arguments: args } = request;
 
   try {
     if (name === "query_memory_events") {
@@ -234,7 +236,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: true,
     };
   }
-});
+);
+
 
 async function handleQueryMemoryEvents(args: any) {
   const {
