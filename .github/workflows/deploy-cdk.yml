@@ -1,0 +1,117 @@
+name: Deploy CDK Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/cdk/**'
+      - '.github/workflows/deploy-cdk.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy CDK to ${{ inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'dev' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CDK
+        run: |
+          cd infra/cdk
+          npm ci
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: cdk-deploy-${{ github.run_id }}
+          aws-region: us-east-1
+
+      - name: Synthesize CloudFormation
+        run: |
+          cd infra/cdk
+          npx cdk synth --context environment=${{ inputs.environment || 'dev' }}
+
+      - name: Deploy CDK stack
+        run: |
+          cd infra/cdk
+          npx cdk deploy \
+            --context environment=${{ inputs.environment || 'dev' }} \
+            --require-approval never
+        env:
+          ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+
+      - name: Get stack outputs
+        id: stack-outputs
+        run: |
+          cd infra/cdk
+          STACK_NAME="DSGOneStack-${{ inputs.environment || 'dev' }}"
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs' \
+            --output table
+
+      - name: Verify deployment
+        run: |
+          cd infra/cdk
+          STACK_NAME="DSGOneStack-${{ inputs.environment || 'dev' }}"
+          STATUS=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].StackStatus' \
+            --output text)
+
+          if [[ "$STATUS" == "CREATE_COMPLETE" ]] || [[ "$STATUS" == "UPDATE_COMPLETE" ]]; then
+            echo "✅ Stack deployed successfully: $STATUS"
+            exit 0
+          else
+            echo "❌ Stack deployment failed: $STATUS"
+            exit 1
+          fi
+
+      - name: Post deployment summary
+        if: always()
+        run: |
+          echo "## CDK Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment || 'dev' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | us-east-1 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ CDK deployment failed"
+          echo "Environment: ${{ inputs.environment || 'dev' }}"
+          echo "Check workflow logs for details"
