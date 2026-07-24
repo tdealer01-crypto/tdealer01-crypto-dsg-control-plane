@@ -16,7 +16,7 @@ export interface Route53ConstructProps {
  * Supports zero-downtime deployments and disaster recovery.
  */
 export class Route53Construct extends Construct {
-  public readonly hostedZone: route53.IHostedZone;
+  public readonly hostedZone?: route53.IHostedZone;
   public readonly healthChecks: route53.CfnHealthCheck[] = [];
   public readonly dnsRole: iam.Role;
 

@@ -6,3 +6,4 @@
 
 export { DSGOneStack, DSGOneStackProps } from './dsg-one-stack';
 export { DSGConfig, getConfig, loadAllConfigs } from './config';
+export { validateConfig } from './utils';
