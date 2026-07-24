@@ -6,7 +6,7 @@
  */
 
 import { SolanaClient } from '../solana/client';
-import { agentProfileManager } from '../supabase/agent-profile';
+// import { agentProfileManager } from '../supabase/agent-profile'; // TODO: Reactivate when agent_profiles table exists
 import type {
   JobListing,
   AgentProfile,
@@ -73,19 +73,17 @@ export class NerveAgent {
         timestamp: new Date().toISOString(),
       };
 
-      // Persist to Supabase
-      try {
-        await agentProfileManager.recordEarnings({
-          job_id: job.id,
-          agent_id: profile.agentId,
-          amount: job.reward.amount,
-          currency: job.reward.currency,
-          tx_signature: signature,
-        });
-        console.log(`[${this.agentName}] ✅ Earnings persisted to Supabase`);
-      } catch (err) {
-        console.warn(`[${this.agentName}] ⚠️ Failed to persist earnings:`, err);
-      }
+      // Supabase persistence not wired yet — do not log success for a write that
+      // never happened. The earnings record is returned to the caller only.
+      // TODO: Reactivate when agentProfileManager is available
+      // await agentProfileManager.recordEarnings({
+      //   job_id: job.id,
+      //   agent_id: profile.agentId,
+      //   amount: job.reward.amount,
+      //   currency: job.reward.currency,
+      //   tx_signature: signature,
+      // });
+      console.log(`[${this.agentName}] ⚠️ Earnings NOT persisted to Supabase (persistence pending; record returned in-memory only)`);
 
       console.log(`[${this.agentName}] ✅ Payment successful: ${signature.substring(0, 20)}...`);
 

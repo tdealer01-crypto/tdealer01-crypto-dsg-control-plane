@@ -94,34 +94,38 @@ verify_aws_access() {
 }
 
 create_kms_key() {
-    log_info "Creating KMS encryption key for Secrets Manager..."
-
     local key_name="${PROJECT_NAME}-${ENVIRONMENT}-secrets-key"
     local alias="alias/${key_name}"
+    local kms_key_id=""
 
     # Check if key alias already exists
-    if aws kms list-aliases --region "$AWS_REGION" | grep -q "\"AliasName\": \"$alias\""; then
-        log_warn "KMS key alias already exists: $alias"
-        KMS_KEY_ID=$(aws kms list-aliases --region "$AWS_REGION" | jq -r ".Aliases[] | select(.AliasName == \"$alias\") | .TargetKeyId")
+    if aws kms list-aliases --region "$AWS_REGION" 2>/dev/null | grep -q "\"AliasName\": \"$alias\""; then
+        kms_key_id=$(aws kms list-aliases --region "$AWS_REGION" 2>/dev/null | jq -r ".Aliases[] | select(.AliasName == \"$alias\") | .TargetKeyId" 2>/dev/null)
+        echo "KMS key alias already exists: $alias" >&2
     else
-        log_info "Creating new KMS key..."
         local key_response=$(aws kms create-key \
             --region "$AWS_REGION" \
             --description "Encryption key for $PROJECT_NAME $ENVIRONMENT Secrets Manager" \
-            --tags TagKey=Environment,TagValue="$ENVIRONMENT" TagKey=Project,TagValue="$PROJECT_NAME")
+            --tags TagKey=Environment,TagValue="$ENVIRONMENT" TagKey=Project,TagValue="$PROJECT_NAME" 2>/dev/null)
 
-        KMS_KEY_ID=$(echo "$key_response" | jq -r '.KeyMetadata.KeyId')
+        kms_key_id=$(echo "$key_response" | jq -r '.KeyMetadata.KeyId' 2>/dev/null)
+
+        if [ -z "$kms_key_id" ] || [ "$kms_key_id" = "null" ]; then
+            echo "Failed to create KMS key" >&2
+            return 1
+        fi
 
         # Create alias
         aws kms create-alias \
             --alias-name "$alias" \
-            --target-key-id "$KMS_KEY_ID" \
-            --region "$AWS_REGION"
+            --target-key-id "$kms_key_id" \
+            --region "$AWS_REGION" 2>/dev/null || true
 
-        log_success "KMS key created: $KMS_KEY_ID"
+        echo "KMS key created: $kms_key_id" >&2
     fi
 
-    echo "$KMS_KEY_ID"
+    # ONLY output the key ID to stdout, nothing else
+    printf "%s" "$kms_key_id"
 }
 
 create_secrets() {
@@ -296,8 +300,15 @@ main() {
     check_prerequisites
     verify_aws_access
 
-    # Create KMS key
+    # Create KMS key (capture stdout only, logs go to stderr)
+    log_info "Creating KMS encryption key for Secrets Manager..."
     KMS_KEY_ID=$(create_kms_key)
+
+    if [ -z "$KMS_KEY_ID" ] || [ "$KMS_KEY_ID" = "null" ]; then
+        log_error "Failed to create or retrieve KMS key ID"
+    fi
+
+    log_success "KMS Key ID: $KMS_KEY_ID"
 
     # Create secrets
     create_secrets "$KMS_KEY_ID"

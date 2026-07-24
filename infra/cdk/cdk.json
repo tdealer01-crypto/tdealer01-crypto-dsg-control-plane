@@ -1,11 +1,6 @@
 {
-  "app": "npx ts-node --project tsconfig.json bin/dsg-one.ts",
-  "watch": {
-    "include": ["**"],
-    "exclude": ["README.md", "cdk.json", "package*.json", "tsconfig.json", "node_modules"]
-  },
+  "app": "node dist/bin/dsg-one.js",
   "context": {
-    "env": "dev",
-    "aws:cdk:enable-path-metadata": true
+    "environment": "dev"
   }
 }

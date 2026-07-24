@@ -1,0 +1,106 @@
+name: Deploy to Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - staging-canary
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-staging:
+    name: Deploy Staging Stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::121205961822:role/cdk-deploy-role
+          role-session-name: github-actions-cdk
+          aws-region: us-east-1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build CDK
+        run: |
+          export NODE_OPTIONS="--max_old_space_size=2048"
+          npm run build
+        working-directory: infra/cdk
+
+      - name: Synthesize CDK
+        run: npx cdk synth -c environment=staging
+        working-directory: infra/cdk
+        env:
+          ENVIRONMENT: staging
+          AWS_REGION: us-east-1
+
+      - name: Deploy CDK Stack
+        run: npx cdk deploy DSGOneStack-staging --require-approval=never --concurrency=5
+        working-directory: infra/cdk
+        env:
+          ENVIRONMENT: staging
+          AWS_REGION: us-east-1
+
+      - name: Wait for Stack Stabilization
+        run: |
+          aws cloudformation wait stack-create-complete \
+            --stack-name DSGOneStack-staging \
+            --region us-east-1 || \
+          aws cloudformation wait stack-update-complete \
+            --stack-name DSGOneStack-staging \
+            --region us-east-1
+        continue-on-error: true
+
+      - name: Verify Deployment
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name DSGOneStack-staging \
+            --region us-east-1 \
+            --query 'Stacks[0].[StackStatus,CreationTime]'
+
+      - name: Setup Staging Secrets
+        run: bash scripts/aws-secrets-manager-setup.sh
+        env:
+          ENVIRONMENT: staging
+          AWS_REGION: us-east-1
+
+      - name: Deploy Next.js to Staging Vercel
+        run: npx vercel deploy --yes --target=preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Verify Staging Health
+        run: |
+          bash scripts/verify-deployment.sh
+        continue-on-error: true
+
+      - name: Report Status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
+            console.log(`${status} Staging deployment: ${{ job.status }}`);

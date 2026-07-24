@@ -1,0 +1,72 @@
+{
+  "name": "dsg-action-gate",
+  "version": "1.0.0",
+  "description": "Gate an AI action through DSG deterministic policy engine with formal proof validation",
+  "endpoint": "/api/dsg/v1/gates/evaluate",
+  "method": "POST",
+  "category": "Governance",
+  "input": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "description": "The action to be gated (e.g., 'execute_code', 'modify_data', 'access_secret')"
+      },
+      "context": {
+        "type": "object",
+        "description": "Contextual data about the action (agent_id, user_id, resource, intent)"
+      },
+      "policy_version": {
+        "type": "string",
+        "description": "Policy version to evaluate against (default: latest)"
+      },
+      "risk_level": {
+        "type": "string",
+        "enum": ["low", "medium", "high"],
+        "description": "Risk assessment level for the action"
+      }
+    },
+    "required": ["action", "context"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "decision": {
+        "type": "string",
+        "enum": ["PASS", "REVIEW", "BLOCK"],
+        "description": "Gate decision: PASS for approved, REVIEW for escalation, BLOCK for denied"
+      },
+      "reason": {
+        "type": "string",
+        "description": "Explanation of the gate decision"
+      },
+      "proof_hash": {
+        "type": "string",
+        "description": "Deterministic proof hash for audit replay"
+      },
+      "policy_version": {
+        "type": "string",
+        "description": "Policy version that was evaluated"
+      }
+    }
+  },
+  "examples": [
+    {
+      "input": {
+        "action": "execute_code",
+        "context": {
+          "agent_id": "agent-123",
+          "resource": "production-database",
+          "intent": "SELECT query analysis"
+        },
+        "risk_level": "medium"
+      },
+      "output": {
+        "decision": "PASS",
+        "reason": "Action approved under policy_v1.0: READ-ONLY access permitted",
+        "proof_hash": "sha256:abc123def456...",
+        "policy_version": "1.0"
+      }
+    }
+  ]
+}

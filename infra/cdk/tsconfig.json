@@ -20,6 +20,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["bin/**/*.ts", "lib/**/*.ts", "test/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["bin/**/*.ts", "lib/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test"]
 }

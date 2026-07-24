@@ -1,19 +1,27 @@
 #!/usr/bin/env node
+
+/**
+ * DSG ONE CDK App Entry Point
+ *
+ * Deploy DSG ONE infrastructure to AWS
+ */
+
 import * as cdk from 'aws-cdk-lib';
 import { DSGOneStack } from '../lib/dsg-one-stack';
-import { getConfig, EnvironmentType } from '../lib/config';
+import { getConfig } from '../lib/config/index';
 
 const app = new cdk.App();
 
-// Get environment from context or environment variable
-const env = (app.node.tryGetContext('env') || process.env.ENVIRONMENT || 'dev') as EnvironmentType;
+// Get environment from context or env var
+const environment = app.node.tryGetContext('environment') || process.env.ENVIRONMENT || 'dev';
 
-// Load configuration for the environment
-const config = getConfig(env);
+// Load configuration
+const config = getConfig(environment);
 
-// Create the stack
-new DSGOneStack(app, `DSGOneStack-${env}`, {
+// Create stack
+new DSGOneStack(app, `DSGOneStack-${environment}`, {
   config,
-  stackName: `dsg-one-${env}-v2`,
-  description: `DSG ONE Infrastructure - ${env} environment`,
 });
+
+// Synthesize
+app.synth();

@@ -1,85 +1,98 @@
-import { DSGConfig, EnvironmentType } from './types';
+/**
+ * Production Environment Configuration
+ */
+
+import { DSGConfig } from './types';
 
 export const prodConfig: DSGConfig = {
-  env: 'prod' as EnvironmentType,
+  environment: 'prod',
+  resourcePrefix: 'dsg-one-prod',
+
   aws: {
-    account: process.env.AWS_ACCOUNT_ID || '',
+    account: process.env.AWS_ACCOUNT_ID || '345678901234',
     region: process.env.AWS_REGION || 'us-east-1',
     secondaryRegion: 'us-west-2',
   },
-  tags: {
-    Environment: 'prod',
-    ManagedBy: 'CDK',
-    Project: 'DSG-ONE',
-    CostCenter: 'Operations',
+
+  domain: {
+    name: 'dsg-one.com',
+    alternateNames: ['www.dsg-one.com', 'api.dsg-one.com', 'dashboard.dsg-one.com'],
   },
+
   networking: {
     vpcCidr: '10.2.0.0/16',
-    maxAzs: 3,
-    natGateways: 3,
     enableFlowLogs: true,
-    flowLogsRetentionDays: 90,
+    enableVpcEndpoints: true,
   },
-  compute: {
-    ecs: {
-      enableExecuteCommand: false,
-      enableContainerInsights: true,
-    },
+
+  ecs: {
     desiredCount: 3,
+    taskMemory: 2048,
+    taskCpu: 1024,
+    enableAutoScaling: true,
     minCapacity: 3,
     maxCapacity: 10,
-    taskCpu: 1024,
-    taskMemory: 2048,
-    enableAutoScaling: true,
-    deploymentStrategy: 'CANARY',
   },
-  security: {
-    kmsKeyRotation: true,
+
+  database: {
+    engine: 'dynamodb',
+    backupRetention: 365,
+    enablePointInTimeRecovery: true,
+  },
+
+  waf: {
     enableWaf: true,
-    enableShield: true,
-    enableGuardDuty: true,
-    enableSecurityHub: true,
-    enableInspector: true,
-    mfaRequired: true,
-    sessionDurationHours: 2,
+    trustedIpRanges: ['10.0.0.0/8', '203.0.113.0/24'],
   },
-  observability: {
-    cloudWatchRetentionDays: 90,
-    enableXRay: true,
-    enableCloudTrail: true,
-    cloudTrailRetentionDays: 365,
-    enableDetailedMonitoring: true,
-    logLevel: 'WARN',
+
+  backup: {
+    enableBackup: true,
+    retentionDays: 365,
+    enableCrossRegionReplication: true,
   },
-  governance: {
-    policyEngineEnabled: true,
-    approvalRequired: true,
-    replayProofRequired: true,
-    evidenceRetentionDays: 2555,
-    auditLogRetentionDays: 2555,
-    immutableAuditEnabled: true,
+
+  notifications: {
+    alertEmails: ['prod-alerts@dsg.com'],
+    incidentEmails: ['incidents@dsg.com', 'on-call@dsg.com'],
+    slackWebhookUrl: process.env.SLACK_WEBHOOK_URL,
   },
+
   compliance: {
     iso42001: true,
     nistAiRmf: true,
     euAiAct: true,
     soc2: true,
-    complianceReportingEnabled: true,
-    policyAsCodeEnabled: true,
   },
+
   finops: {
-    budgetAlertThreshold: 10000,
+    monthlyBudgetUsd: 50000,
     enableCostAnomaly: true,
-    enableComputeOptimizer: true,
-    enableRightsizing: true,
-    savingsPlans: true,
+    enableReservationRecommendations: true,
   },
-  features: {
-    multiRegion: true,
-    multiTenant: true,
-    featureFlagsEnabled: true,
-    canaryDeployments: true,
-    blueGreenDeployments: true,
-    workspaceIsolation: true,
+
+  aiGovernance: {
+    enablePolicyEngine: true,
+    enableDeterministicReplay: true,
+    enableEvidenceCollection: true,
+    enableComplianceMapping: true,
+  },
+
+  featureFlags: {
+    enableCanaryDeployments: true,
+    canaryTrafficPercent: 5,
+  },
+
+  logging: {
+    cloudWatchRetentionDays: 365,
+    enableXRay: true,
+    enableVpcFlowLogs: true,
+  },
+
+  tags: {
+    Environment: 'prod',
+    ManagedBy: 'CDK',
+    CostCenter: 'Operations',
+    Compliance: 'Required',
+    BackupRequired: 'true',
   },
 };
