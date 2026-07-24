@@ -6,6 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { createClient } from "@supabase/supabase-js";
 import { analyzeIncident, type RCAInput } from "../lib/dsg/rca/rca-orchestrator.js";
+import { AnomalyOrchestrator } from "../lib/dsg/anomaly/anomaly-orchestrator.js";
 import { createHash } from "node:crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
@@ -138,6 +139,99 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["org_id"],
       },
     },
+    {
+      name: "detect_anomalies",
+      description: "Detect real-time anomalies by comparing current events against learned patterns",
+      inputSchema: {
+        type: "object",
+        properties: {
+          workspace_id: {
+            type: "string",
+            description: "Workspace ID",
+          },
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          time_window_minutes: {
+            type: "number",
+            description: "Look back window in minutes (default: 60)",
+            default: 60,
+          },
+          similarity_threshold: {
+            type: "number",
+            description: "Minimum similarity score (0-1, default: 0.7)",
+            default: 0.7,
+          },
+        },
+        required: ["workspace_id", "org_id"],
+      },
+    },
+    {
+      name: "subscribe_alerts",
+      description: "Create or update alert subscriptions for anomalies",
+      inputSchema: {
+        type: "object",
+        properties: {
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          workspace_id: {
+            type: "string",
+            description: "Workspace ID",
+          },
+          subscription_name: {
+            type: "string",
+            description: "Name for this alert subscription",
+          },
+          anomaly_types: {
+            type: "array",
+            items: { type: "string" },
+            description: "Types of anomalies to alert on (empty = all)",
+          },
+          severity_levels: {
+            type: "array",
+            items: { type: "string", enum: ["low", "medium", "high", "critical"] },
+            description: "Severity levels to alert on",
+          },
+          alert_channels: {
+            type: "array",
+            items: { type: "string", enum: ["email", "webhook", "slack", "pagerduty"] },
+            description: "Channels to send alerts to",
+          },
+        },
+        required: ["org_id", "workspace_id", "subscription_name", "alert_channels"],
+      },
+    },
+    {
+      name: "get_anomaly_status",
+      description: "Get status of recent anomalies and alerts for an organization",
+      inputSchema: {
+        type: "object",
+        properties: {
+          org_id: {
+            type: "string",
+            description: "Organization ID",
+          },
+          workspace_id: {
+            type: "string",
+            description: "Workspace ID (optional)",
+          },
+          status: {
+            type: "string",
+            enum: ["active", "investigating", "resolved", "dismissed"],
+            description: "Filter by status (optional)",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum results (default: 10)",
+            default: 10,
+          },
+        },
+        required: ["org_id"],
+      },
+    },
   ],
 }));
 
@@ -153,6 +247,12 @@ server.setRequestHandler(
         return await handleGetIncidentPatterns(args);
       } else if (name === "compare_incidents") {
         return await handleCompareIncidents(args);
+      } else if (name === "detect_anomalies") {
+        return await handleDetectAnomalies(args);
+      } else if (name === "subscribe_alerts") {
+        return await handleSubscribeAlerts(args);
+      } else if (name === "get_anomaly_status") {
+        return await handleGetAnomalyStatus(args);
       } else {
         return {
           content: [
@@ -448,6 +548,403 @@ ${incidents?.map((i: any) => `- [${(i.confidence_score * 100).toFixed(0)}%] ${i.
       },
     ],
   };
+}
+
+async function handleDetectAnomalies(args: any) {
+  const { workspace_id, org_id, time_window_minutes = 60, similarity_threshold = 0.7 } = args;
+
+  if (!workspace_id || !org_id) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "workspace_id and org_id are required",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    const timeWindowMs = time_window_minutes * 60 * 1000;
+    const startTime = new Date(Date.now() - timeWindowMs).toISOString();
+
+    // Fetch events
+    const { data: auditLogs, error: auditError } = await supabase
+      .from("ai_audit_logs")
+      .select("*")
+      .eq("org_id", org_id)
+      .gte("created_at", startTime)
+      .order("created_at", { ascending: true });
+
+    const { data: memoryEvents, error: memoryError } = await supabase
+      .from("dsg_memory_events")
+      .select("*")
+      .eq("workspace_id", workspace_id)
+      .gte("created_at", startTime)
+      .order("created_at", { ascending: true });
+
+    // Fetch active subscriptions
+    const { data: subscriptions, error: subError } = await supabase
+      .from("dsg_anomaly_subscriptions")
+      .select("*")
+      .eq("org_id", org_id)
+      .eq("workspace_id", workspace_id)
+      .eq("is_active", true);
+
+    // Fetch learned patterns
+    const { data: patterns, error: patternError } = await supabase
+      .from("dsg_rca_patterns")
+      .select("*")
+      .eq("org_id", org_id)
+      .eq("is_active", true);
+
+    if (auditError || memoryError || subError || patternError) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error fetching data: ${auditError?.message || memoryError?.message || subError?.message || patternError?.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Convert to AnomalyEvent format
+    const events = [
+      ...(auditLogs || []).map((log: any) => ({
+        id: log.id,
+        timestamp: new Date(log.created_at),
+        type: `audit:${log.event_type}`,
+        description: `${log.decision}: ${log.decision_reason}`,
+        metadata: { eventType: log.event_type, decision: log.decision },
+      })),
+      ...(memoryEvents || []).map((event: any) => ({
+        id: event.id,
+        timestamp: new Date(event.created_at),
+        type: `memory:${event.memory_kind}`,
+        description: event.normalized_summary || event.raw_text.substring(0, 100),
+        metadata: { memoryKind: event.memory_kind, trustLevel: event.trust_level },
+      })),
+    ];
+
+    // Convert to LearnedPattern format
+    const learnedPatterns = (patterns || []).map((p: any) => ({
+      id: p.id,
+      name: p.pattern_name,
+      category: p.root_cause_category,
+      triggerSet: p.trigger_events || [],
+      occurrences: p.occurrence_count,
+      confidence: p.confidence,
+      averageInterval: p.avg_interval_seconds,
+      averageDuration: p.avg_duration_seconds,
+    }));
+
+    // Convert to AnomalySubscription format
+    const anomalySubscriptions = (subscriptions || []).map((s: any) => ({
+      id: s.id,
+      orgId: s.org_id,
+      workspaceId: s.workspace_id,
+      name: s.name,
+      anomalyTypes: s.anomaly_types || [],
+      minSimilarityScore: s.min_similarity_score || 0.7,
+      severityLevels: s.severity_levels || ["high", "critical"],
+      alertChannels: s.alert_channels || [],
+      recipients: s.recipients || {},
+      autoInvestigate: s.auto_investigate || false,
+      autoResolveThreshold: s.auto_resolve_threshold,
+      isActive: s.is_active,
+    }));
+
+    // Run detection
+    const orchestrator = new AnomalyOrchestrator();
+    const detectionOutput = await orchestrator.detectAndAlert({
+      workspaceId: workspace_id,
+      orgId: org_id,
+      events,
+      patterns: learnedPatterns,
+      subscriptions: anomalySubscriptions,
+    });
+
+    // Store detected anomalies
+    if (detectionOutput.anomalies.length > 0) {
+      const anomaliesToStore = detectionOutput.anomalies.map((a) => ({
+        org_id,
+        workspace_id,
+        detected_at: new Date().toISOString(),
+        detection_method: detectionOutput.detectionMethod,
+        anomaly_type: a.type,
+        matched_pattern_id: a.patternId,
+        similarity_score: a.similarity,
+        deviation_score: a.deviation,
+        severity_level: a.severity,
+        status: "active",
+        detection_evidence: a.evidence,
+      }));
+
+      const { error: storeError } = await supabase
+        .from("dsg_anomalies")
+        .insert(anomaliesToStore);
+
+      if (storeError) {
+        console.error("Error storing anomalies:", storeError);
+      }
+    }
+
+    // Store alerts
+    if (detectionOutput.alerts.length > 0) {
+      const alertsToStore = detectionOutput.alerts.map((a) => ({
+        org_id,
+        workspace_id,
+        anomaly_id: a.anomalyId,
+        alert_type: "anomaly_detected",
+        channel: a.channels[0] || "webhook",
+        status: "pending",
+        recipients: a.recipients,
+      }));
+
+      const { error: alertError } = await supabase
+        .from("dsg_anomaly_alerts")
+        .insert(alertsToStore);
+
+      if (alertError) {
+        console.error("Error storing alerts:", alertError);
+      }
+    }
+
+    const report = `
+Anomaly Detection Report
+========================
+
+Detection Method: ${detectionOutput.detectionMethod}
+Timestamp: ${detectionOutput.timestamp.toISOString()}
+
+Anomalies Detected: ${detectionOutput.anomalies.length}
+${detectionOutput.anomalies.map((a) => `- [${a.severity}] ${a.type}: similarity=${(a.similarity * 100).toFixed(1)}%, deviation=${(a.deviation * 100).toFixed(1)}%`).join("\n") || "- None"}
+
+Alerts Generated: ${detectionOutput.alerts.length}
+${detectionOutput.alerts.map((alert) => `- Subscription: ${alert.subscriptionId}, Channels: ${alert.channels.join(", ")}`).join("\n") || "- None"}
+
+Time Window: Last ${time_window_minutes} minutes
+Similarity Threshold: ${similarity_threshold}
+    `.trim();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Detection failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleSubscribeAlerts(args: any) {
+  const { org_id, workspace_id, subscription_name, anomaly_types = [], severity_levels = [], alert_channels = [], recipients = {} } = args;
+
+  if (!org_id || !workspace_id || !subscription_name || alert_channels.length === 0) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "org_id, workspace_id, subscription_name, and alert_channels are required",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    const { data: subscription, error } = await supabase
+      .from("dsg_anomaly_subscriptions")
+      .insert({
+        org_id,
+        workspace_id,
+        name: subscription_name,
+        anomaly_types: anomaly_types.length > 0 ? anomaly_types : null,
+        severity_levels: severity_levels.length > 0 ? severity_levels : ["high", "critical"],
+        alert_channels,
+        recipients,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error creating subscription: ${error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const report = `
+Alert Subscription Created
+==========================
+
+Subscription ID: ${subscription?.id || "unknown"}
+Name: ${subscription_name}
+Organization: ${org_id}
+Workspace: ${workspace_id}
+
+Configuration:
+- Anomaly Types: ${anomaly_types.length > 0 ? anomaly_types.join(", ") : "All"}
+- Severity Levels: ${severity_levels.length > 0 ? severity_levels.join(", ") : "high, critical"}
+- Alert Channels: ${alert_channels.join(", ")}
+- Recipients: ${Object.keys(recipients).length} configured
+
+Status: Active
+Created: ${subscription?.created_at || new Date().toISOString()}
+    `.trim();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Subscription creation failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleGetAnomalyStatus(args: any) {
+  const { org_id, workspace_id, status, limit = 10 } = args;
+
+  if (!org_id) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "org_id is required",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    let anomalyQuery = supabase
+      .from("dsg_anomalies")
+      .select("*")
+      .eq("org_id", org_id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (workspace_id) {
+      anomalyQuery = anomalyQuery.eq("workspace_id", workspace_id);
+    }
+
+    if (status) {
+      anomalyQuery = anomalyQuery.eq("status", status);
+    }
+
+    const { data: anomalies, error: anomalyError } = await anomalyQuery;
+
+    if (anomalyError) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error fetching anomalies: ${anomalyError.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    let alertQuery = supabase
+      .from("dsg_anomaly_alerts")
+      .select("*")
+      .eq("org_id", org_id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (workspace_id) {
+      alertQuery = alertQuery.eq("workspace_id", workspace_id);
+    }
+
+    const { data: alerts, error: alertError } = await alertQuery;
+
+    if (alertError) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error fetching alerts: ${alertError.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const report = `
+Anomaly Status Report
+=====================
+
+Organization: ${org_id}
+${workspace_id ? `Workspace: ${workspace_id}` : "Workspace: All"}
+${status ? `Status Filter: ${status}` : "Status Filter: None"}
+Limit: ${limit}
+
+Anomalies: ${anomalies?.length || 0}
+${anomalies?.map((a: any) => `- [${a.severity_level}] ${a.anomaly_type} (${a.status}): ${(a.similarity_score * 100).toFixed(0)}% similarity, detected at ${a.detected_at}`).join("\n") || "- None"}
+
+Alerts: ${alerts?.length || 0}
+${alerts?.map((a: any) => `- Channel: ${a.channel}, Status: ${a.status}, Created: ${a.created_at}`).join("\n") || "- None"}
+
+Summary:
+- Total Anomalies: ${anomalies?.length || 0}
+- Active: ${anomalies?.filter((a: any) => a.status === "active").length || 0}
+- Investigating: ${anomalies?.filter((a: any) => a.status === "investigating").length || 0}
+- Resolved: ${anomalies?.filter((a: any) => a.status === "resolved").length || 0}
+    `.trim();
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Status retrieval failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
 }
 
 const transport = new StdioServerTransport();
