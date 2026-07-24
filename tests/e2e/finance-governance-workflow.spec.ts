@@ -111,17 +111,26 @@ test.describe('finance governance workflow e2e', () => {
     await page.route('**/api/**', createFinanceRouteHandler(orgStore));
 
     await page.goto('/finance-governance/live/workflow');
+    await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Pending approvals').locator('..').getByText('2')).toBeVisible();
-    await page.getByRole('button', { name: 'Submit selected workflow item' }).click();
-    await expect(page.getByText('Submitted for review. Next status: pending.')).toBeVisible();
-    await expect(page.getByText('Ready exports').locator('..').getByText('1')).toBeVisible();
+    const pendingCount = page.getByText('Pending approvals').locator('..').getByText('2');
+    await expect(pendingCount).toBeVisible({ timeout: 10000 });
+
+    const submitBtn = page.getByRole('button', { name: 'Submit selected workflow item' });
+    await expect(submitBtn).toBeEnabled({ timeout: 10000 });
+    await submitBtn.click();
+
+    await expect(page.getByText('Submitted for review. Next status: pending.')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Ready exports').locator('..').getByText('1')).toBeVisible({ timeout: 10000 });
 
     const row = page.locator('tr', { hasText: 'APR-1001' });
-    await row.getByRole('button', { name: 'Approve' }).click();
-    await expect(page.getByText('Approval completed. Next status: approved.')).toBeVisible();
-    await expect(row.getByText('approved')).toBeVisible();
-    await expect(page.getByText('Pending approvals').locator('..').getByText('1')).toBeVisible();
+    const approveBtn = row.getByRole('button', { name: 'Approve' });
+    await expect(approveBtn).toBeEnabled({ timeout: 10000 });
+    await approveBtn.click();
+
+    await expect(page.getByText('Approval completed. Next status: approved.')).toBeVisible({ timeout: 10000 });
+    await expect(row.getByText('approved')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Pending approvals').locator('..').getByText('1')).toBeVisible({ timeout: 10000 });
   });
 
   test('org isolation keeps workflow state separate between org headers', async ({ browser }) => {
@@ -132,16 +141,22 @@ test.describe('finance governance workflow e2e', () => {
     const orgAPage = await orgA.newPage();
     await orgAPage.route('**/api/**', handler);
     await orgAPage.goto('/finance-governance/live/workflow');
-    await orgAPage.getByRole('button', { name: 'Submit selected workflow item' }).click();
-    await expect(orgAPage.getByText('Ready exports').locator('..').getByText('1')).toBeVisible();
+    await orgAPage.waitForLoadState('networkidle');
+
+    const orgASubmitBtn = orgAPage.getByRole('button', { name: 'Submit selected workflow item' });
+    await expect(orgASubmitBtn).toBeEnabled({ timeout: 10000 });
+    await orgASubmitBtn.click();
+
+    await expect(orgAPage.getByText('Ready exports').locator('..').getByText('1')).toBeVisible({ timeout: 10000 });
 
     const orgB = await browser.newContext({ extraHTTPHeaders: { 'x-org-id': 'org-b' } });
     const orgBPage = await orgB.newPage();
     await orgBPage.route('**/api/**', handler);
     await orgBPage.goto('/finance-governance/live/workflow');
+    await orgBPage.waitForLoadState('networkidle');
 
-    await expect(orgBPage.getByText('Ready exports').locator('..').getByText('0')).toBeVisible();
-    await expect(orgBPage.getByText('Pending approvals').locator('..').getByText('2')).toBeVisible();
+    await expect(orgBPage.getByText('Ready exports').locator('..').getByText('0')).toBeVisible({ timeout: 10000 });
+    await expect(orgBPage.getByText('Pending approvals').locator('..').getByText('2')).toBeVisible({ timeout: 10000 });
 
     await orgA.close();
     await orgB.close();
@@ -152,17 +167,24 @@ test.describe('finance governance workflow e2e', () => {
     await page.route('**/api/**', createFinanceRouteHandler(orgStore));
 
     await page.goto('/finance-governance/live/workflow-persistent');
+    await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: 'Submit sample workflow item' }).click();
+    const submitBtn = page.getByRole('button', { name: 'Submit sample workflow item' });
+    await expect(submitBtn).toBeEnabled({ timeout: 10000 });
+    await submitBtn.click();
+
     const row = page.locator('tr', { hasText: 'APR-1001' });
-    await row.getByRole('button', { name: 'Approve' }).click();
+    const approveBtn = row.getByRole('button', { name: 'Approve' });
+    await expect(approveBtn).toBeEnabled({ timeout: 10000 });
+    await approveBtn.click();
 
-    await expect(page.getByText('Ready exports').locator('..').getByText('1')).toBeVisible();
-    await expect(row.getByText('approved')).toBeVisible();
+    await expect(page.getByText('Ready exports').locator('..').getByText('1')).toBeVisible({ timeout: 10000 });
+    await expect(row.getByText('approved')).toBeVisible({ timeout: 10000 });
 
     await page.reload();
+    await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Ready exports').locator('..').getByText('1')).toBeVisible();
-    await expect(page.locator('tr', { hasText: 'APR-1001' }).getByText('approved')).toBeVisible();
+    await expect(page.getByText('Ready exports').locator('..').getByText('1')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('tr', { hasText: 'APR-1001' }).getByText('approved')).toBeVisible({ timeout: 10000 });
   });
 });
