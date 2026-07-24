@@ -8165,6 +8165,150 @@ export type Database = {
           },
         ]
       }
+      zapier_communication_events: {
+        Row: {
+          created_at: string
+          customer_id: string
+          email: string
+          id: string
+          org_id: string | null
+          raw_payload: Json
+          status: string
+          subject: string | null
+          type: string
+          occurred_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          email: string
+          id?: string
+          org_id?: string | null
+          raw_payload?: Json
+          status: string
+          subject?: string | null
+          type: string
+          occurred_at: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          email?: string
+          id?: string
+          org_id?: string | null
+          raw_payload?: Json
+          status?: string
+          subject?: string | null
+          type?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_communication_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapier_payment_events: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          customer_id: string
+          id: string
+          invoice_number: string | null
+          org_id: string | null
+          payment_id: string
+          raw_payload: Json
+          status: string
+          occurred_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          customer_id: string
+          id?: string
+          invoice_number?: string | null
+          org_id?: string | null
+          payment_id: string
+          raw_payload?: Json
+          status: string
+          occurred_at: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          id?: string
+          invoice_number?: string | null
+          org_id?: string | null
+          payment_id?: string
+          raw_payload?: Json
+          status?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_payment_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapier_quota_events: {
+        Row: {
+          created_at: string
+          customer_id: string
+          health_status: string
+          id: string
+          org_id: string | null
+          quota_allocated: number
+          raw_payload: Json
+          service_type: string
+          usage_current: number
+          usage_percent: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          health_status: string
+          id?: string
+          org_id?: string | null
+          quota_allocated: number
+          raw_payload?: Json
+          service_type: string
+          usage_current: number
+          usage_percent: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          health_status?: string
+          id?: string
+          org_id?: string | null
+          quota_allocated?: number
+          raw_payload?: Json
+          service_type?: string
+          usage_current?: number
+          usage_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_quota_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       api_key_usage_summary: {
