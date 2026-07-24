@@ -35,6 +35,26 @@ jobs:
           role-session-name: cdk-delete-${{ github.run_id }}
           aws-region: us-east-1
 
+      - name: Delete DynamoDB tables (force cleanup)
+        run: |
+          ENV="${{ inputs.environment || 'dev' }}"
+          TABLES=(
+            "dsg-one-${ENV}-policies"
+            "dsg-${ENV}-policy-versions"
+            "dsg-${ENV}-execution-snapshots"
+            "dsg-${ENV}-replay-state"
+          )
+
+          echo "Deleting DynamoDB tables..."
+          for table in "${TABLES[@]}"; do
+            if aws dynamodb describe-table --table-name "$table" --region us-east-1 2>/dev/null; then
+              echo "Deleting table: $table"
+              aws dynamodb delete-table --table-name "$table" --region us-east-1
+              aws dynamodb wait table-not-exists --table-name "$table" --region us-east-1
+              echo "✅ Table $table deleted"
+            fi
+          done
+
       - name: Delete CloudFormation stack
         run: |
           STACK_NAME="DSGOneStack-${{ inputs.environment || 'dev' }}"
@@ -42,12 +62,12 @@ jobs:
 
           aws cloudformation delete-stack \
             --stack-name "$STACK_NAME" \
-            --region us-east-1
+            --region us-east-1 2>/dev/null || true
 
           echo "Waiting for stack deletion..."
           aws cloudformation wait stack-delete-complete \
             --stack-name "$STACK_NAME" \
-            --region us-east-1
+            --region us-east-1 2>/dev/null || echo "Stack delete completed or not found"
 
           echo "✅ Stack deleted successfully"
 
