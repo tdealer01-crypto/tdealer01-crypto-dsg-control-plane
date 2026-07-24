@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost:54321";
 const SUPABASE_SERVICE_KEY =
@@ -114,8 +115,7 @@ describe("DSG Context Discovery MCP Server", () => {
   describe("get_context_pack", () => {
     it("should create and store context pack", async () => {
       const contextText = "Test context for verification";
-      const contextHash = require("crypto")
-        .createHash("sha256")
+      const contextHash = createHash("sha256")
         .update(contextText)
         .digest("hex");
 
@@ -148,8 +148,7 @@ describe("DSG Context Discovery MCP Server", () => {
 
     it("should retrieve context pack by ID", async () => {
       const contextText = "Test context for retrieval";
-      const contextHash = require("crypto")
-        .createHash("sha256")
+      const contextHash = createHash("sha256")
         .update(contextText)
         .digest("hex");
 
@@ -261,8 +260,7 @@ describe("DSG Context Discovery MCP Server", () => {
 
       // Step 1: Get context pack
       const contextText = "Integration test flow";
-      const contextHash = require("crypto")
-        .createHash("sha256")
+      const contextHash = createHash("sha256")
         .update(contextText)
         .digest("hex");
 

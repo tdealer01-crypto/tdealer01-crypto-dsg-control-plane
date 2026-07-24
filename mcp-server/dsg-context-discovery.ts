@@ -5,6 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY!;
@@ -442,8 +443,7 @@ ${memoryRes.data?.map((m: MemoryEvent) => `- [${m.memory_kind}] ${m.normalized_s
         purpose,
         memory_ids: memoryIds,
         context_text: contextText,
-        context_hash: require("crypto")
-          .createHash("sha256")
+        context_hash: createHash("sha256")
           .update(contextText)
           .digest("hex"),
         gate_status: "PASS",
