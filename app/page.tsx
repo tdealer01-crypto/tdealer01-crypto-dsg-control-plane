@@ -6,6 +6,8 @@ import { EvidenceDrawer } from '../components/EvidenceDrawer';
 import { GateResultCard } from '../components/GateResultCard';
 import RefTracker from '../components/RefTracker';
 
+// Zapier webhook integration types added to database.types.ts
+
 const trustBar = [
   'Deterministic Engine — Gap-free sequences · SHA-256 hash chains · Merkle tree proofs · SARIF export',
   'WORM Audit Trail — Every decision immutable · Chain verification · Tamper detection · Enterprise compliance',
