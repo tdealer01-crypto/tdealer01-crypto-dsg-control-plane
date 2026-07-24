@@ -5,7 +5,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "eslint app/ lib/ components/ --ext .ts,.tsx,.js,.jsx",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/database.types.ts",
     "test": "vitest run",

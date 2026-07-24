@@ -5,8 +5,15 @@ import * as path from 'path';
 import { handleApiError } from '@/lib/security/api-error';
 import { requireOrgRole } from '@/lib/authz';
 import { executeToolSafely } from '@/lib/agent/executor';
-import type { AgentContext } from '@/lib/agent/context';
 import { DSG_TOOLS } from '@/lib/agent/tools';
+import type { AgentContext } from '@/lib/agent/context';
+import {
+  discoverJobsReal,
+  executeJobReal,
+  verifyDeliverableReal,
+  settlePaymentReal,
+  validateGovernanceReal,
+} from '@/lib/trinity/real-jobs';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -14,50 +21,196 @@ const anthropic = new Anthropic({
 
 export const dynamic = 'force-dynamic';
 
-const tools = DSG_TOOLS.map((tool) => ({
-  name: tool.id,
-  description: tool.description,
-  input_schema: {
-    type: 'object' as const,
-    properties: Object.fromEntries(
-      Object.entries(tool.parameters).map(([k, p]) => [
-        k,
-        {
-          type: p.type,
-          description: p.description,
-          required: p.required,
-        },
-      ]),
-    ),
-    required: Object.entries(tool.parameters)
-      .filter(([, p]) => p.required)
-      .map(([k]) => k),
+// MCP Tools available to agents
+const tools = [
+  {
+    name: 'discover_jobs',
+    description: 'Discover available jobs across real platforms (Mind Agent)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'Job category filter (e.g., smart-contract-audit, backend-dev)' },
+        difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
+        min_reward: { type: 'number', description: 'Minimum reward in SOL' },
+      },
+      required: ['category'],
+    },
   },
-}));
+  {
+    name: 'execute_job',
+    description: 'Execute a job with real tracking (Hand Agent)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        job_id: { type: 'string', description: 'Job ID to execute' },
+        deliverable: { type: 'string', description: 'Deliverable content' },
+        execution_time_target: { type: 'number', description: 'Target execution time in ms' },
+      },
+      required: ['job_id', 'deliverable'],
+    },
+  },
+  {
+    name: 'verify_deliverable',
+    description: 'Verify deliverable quality (Eye Agent)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        deliverable_id: { type: 'string', description: 'Deliverable ID to verify' },
+        quality_criteria: { type: 'string', description: 'Quality criteria to check' },
+      },
+      required: ['deliverable_id'],
+    },
+  },
+  {
+    name: 'settle_payment',
+    description: 'Record a settlement request for manual review — fail-closed, no on-chain transfer (Nerve Agent)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        execution_id: { type: 'string', description: 'Execution ID to settle' },
+        amount_sol: { type: 'number', description: 'Amount in SOL' },
+      },
+      required: ['execution_id', 'amount_sol'],
+    },
+  },
+  {
+    name: 'validate_governance',
+    description: 'Validate against real DSG governance policies (Spine Agent)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        policy_name: { type: 'string', description: 'DSG policy to validate against' },
+        constraints: { type: 'object', description: 'Constraints to verify' },
+      },
+      required: ['policy_name'],
+    },
+  },
+  {
+    name: 'read_dsg_documentation',
+    description: 'Read DSG.md documentation for governance and policy reference',
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', description: 'Section of DSG.md to read (e.g., truth-boundary, runtime-spine)' },
+      },
+    },
+  },
+  // DSG platform skills (code sandbox, terminal, browser, web search, agent CRUD).
+  // Executed exclusively through executeToolSafely — Hermes + DSG gate, and
+  // write/critical tools require an approvalToken per the Autonomy Dial.
+  ...DSG_TOOLS.map((tool) => ({
+    name: tool.id,
+    description: tool.description,
+    input_schema: {
+      type: 'object',
+      properties: Object.fromEntries(
+        Object.entries(tool.parameters).map(([key, param]) => [
+          key,
+          { type: param.type, description: param.description },
+        ]),
+      ),
+      required: Object.entries(tool.parameters)
+        .filter(([, param]) => param.required)
+        .map(([key]) => key),
+    },
+  })),
+];
 
+// Real implementation using live data sources and Supabase
 async function processToolCall(
   toolName: string,
   toolInput: Record<string, unknown>,
   context: AgentContext,
 ): Promise<string> {
-  const tool = DSG_TOOLS.find((t) => t.id === toolName);
-  if (!tool) {
-    return JSON.stringify({ error: `Unknown tool: ${toolName}` });
-  }
-  try {
-    const result = await executeToolSafely(tool, toolInput, context);
-    return JSON.stringify(result);
-  } catch (err) {
-    return JSON.stringify({
-      error: `Tool execution failed: ${toolName}`,
-      message: err instanceof Error ? err.message : 'Unknown error',
-    });
+  switch (toolName) {
+    case 'discover_jobs': {
+      const result = await discoverJobsReal(
+        toolInput.category as string | undefined,
+        toolInput.difficulty as string | undefined,
+        toolInput.min_reward as number | undefined
+      );
+      return JSON.stringify(result);
+    }
+
+    case 'execute_job': {
+      const result = await executeJobReal(
+        toolInput.job_id as string,
+        toolInput.deliverable as string,
+        toolInput.execution_time_target as number | undefined
+      );
+      return JSON.stringify(result);
+    }
+
+    case 'verify_deliverable': {
+      const result = await verifyDeliverableReal(
+        toolInput.deliverable_id as string,
+        toolInput.quality_criteria as string | undefined
+      );
+      return JSON.stringify(result);
+    }
+
+    case 'settle_payment': {
+      const result = await settlePaymentReal(
+        toolInput.execution_id as string,
+        toolInput.amount_sol as number
+      );
+      return JSON.stringify(result);
+    }
+
+    case 'validate_governance': {
+      const result = await validateGovernanceReal(
+        toolInput.policy_name as string,
+        toolInput.constraints as Record<string, any> | undefined
+      );
+      return JSON.stringify(result);
+    }
+
+    case 'read_dsg_documentation':
+      try {
+        const dsgPath = path.join(process.cwd(), 'DSG.md');
+        const dsgContent = fs.readFileSync(dsgPath, 'utf-8');
+
+        const section = toolInput.section as string;
+        if (section) {
+          const sectionRegex = new RegExp(`## ${section}[\\s\\S]*?(?=##|$)`, 'i');
+          const match = dsgContent.match(sectionRegex);
+          return JSON.stringify({
+            section,
+            found: !!match,
+            content: match ? match[0].slice(0, 2000) : `Section "${section}" not found`,
+            total_lines: dsgContent.split('\n').length,
+          });
+        }
+
+        return JSON.stringify({
+          section: 'overview',
+          content: dsgContent.slice(0, 2000),
+          total_size: dsgContent.length,
+          total_lines: dsgContent.split('\n').length,
+        });
+      } catch (error) {
+        return JSON.stringify({
+          error: 'Failed to read DSG.md',
+          available: false,
+        });
+      }
+
+    default: {
+      // DSG platform skills — always through executeToolSafely so the Hermes
+      // preflight, DSG gate (ALLOW/STABILIZE/BLOCK), and approval-token rules apply.
+      const dsgTool = DSG_TOOLS.find((tool) => tool.id === toolName);
+      if (!dsgTool) {
+        return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+      }
+      const result = await executeToolSafely(dsgTool, toolInput, context);
+      return JSON.stringify(result);
+    }
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const access = await requireOrgRole(['operator', 'org_admin']);
+    const access = await requireOrgRole(['operator', 'org_admin'], request);
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
@@ -67,10 +220,6 @@ export async function POST(request: Request) {
     const selectedAgent = body.agent as string || 'All';
     const language = body.language as string || 'en';
     const modelProvider = (body.model || 'anthropic') as 'anthropic' | 'nvidia';
-
-    if (!userMessage || userMessage.trim().length === 0) {
-      return NextResponse.json({ error: 'Message required' }, { status: 400 });
-    }
 
     const context: AgentContext = {
       orgId: access.orgId,
@@ -96,6 +245,10 @@ export async function POST(request: Request) {
         { error: 'API configuration error: NVIDIA_API_KEY not configured' },
         { status: 503 }
       );
+    }
+
+    if (!userMessage || userMessage.trim().length === 0) {
+      return NextResponse.json({ error: 'Message required' }, { status: 400 });
     }
 
     // Load DSG.md for context
@@ -128,6 +281,8 @@ You are part of Trinity, a multi-agent AI orchestration system:
 - 🦴 Spine Agent: DSG governance and audit trail
 
 You have access to MCP tools. Use them proactively to answer questions.
+
+You also have DSG platform skills (write_code_file, run_code, terminal sandbox, browser_navigate, fetch_url, realtime_web_search, agent CRUD, execute_action). Write/critical skills run through the DSG gate and may return requiresApproval — report that honestly instead of claiming the action ran.
 
 DSG Framework:
 - Deterministic governance with Z3 formal verification
