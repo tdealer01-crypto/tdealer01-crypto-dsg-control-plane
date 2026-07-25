@@ -60,7 +60,8 @@ jobs:
         run: |
           cd infra/cdk
           # Extract account ID from AWS STS caller identity
-          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}" >> $GITHUB_ENV
           npx cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-east-1
         env:
           ENVIRONMENT: ${{ inputs.environment || 'dev' }}
