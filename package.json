@@ -84,10 +84,13 @@
     "secrets:decrypt": "bash scripts/secrets-manager.sh decrypt",
     "secrets:export": "bash scripts/secrets-manager.sh export",
     "setup:github-secrets": "bash scripts/setup-github-secrets.sh",
-    "mcp:build:context-discovery": "tsc mcp-server/dsg-context-discovery.ts --outDir build/mcp --module esnext --target es2022",
+    "mcp:build:context-discovery": "tsc mcp-server/dsg-context-discovery.ts --outDir build/mcp --module esnext --target es2022 --ignoreConfig --lib es2022,dom --skipLibCheck",
     "mcp:serve:context-discovery": "node --loader ts-node/esm mcp-server/dsg-context-discovery.ts",
-    "mcp:build:rca-analyzer": "tsc mcp-server/dsg-rca-analyzer.ts --outDir build/mcp --module esnext --target es2022",
-    "mcp:serve:rca-analyzer": "node --loader ts-node/esm mcp-server/dsg-rca-analyzer.ts"
+    "mcp:build:rca-analyzer": "tsc mcp-server/dsg-rca-analyzer.ts --outDir build/mcp --module esnext --target es2022 --ignoreConfig --lib es2022,dom --skipLibCheck",
+    "mcp:serve:rca-analyzer": "node --loader ts-node/esm mcp-server/dsg-rca-analyzer.ts",
+    "mcp:build:gtm-pipeline": "tsc mcp-server/dsg-gtm-pipeline-server.ts --outDir build/mcp --module esnext --target es2022 --ignoreConfig --lib es2022,dom --skipLibCheck --allowJs",
+    "mcp:serve:gtm-pipeline": "node --loader ts-node/esm mcp-server/dsg-gtm-pipeline-server.ts",
+    "mcp:build:all": "npm run mcp:build:context-discovery && npm run mcp:build:rca-analyzer && npm run mcp:build:gtm-pipeline"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
