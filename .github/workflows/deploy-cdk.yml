@@ -56,6 +56,13 @@ jobs:
           npm ci --legacy-peer-deps
           npm run build
 
+      - name: Bootstrap CDK environment
+        run: |
+          cd infra/cdk
+          npx cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/us-east-1
+        env:
+          ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+
       - name: Synthesize CloudFormation
         run: |
           cd infra/cdk
