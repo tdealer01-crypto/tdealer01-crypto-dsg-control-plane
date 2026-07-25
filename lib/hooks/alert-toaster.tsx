@@ -6,13 +6,7 @@ export function AlertToaster() {
   const { alerts, dismissAlert } = useAlerts();
 
   return (
-    <div
-      className="pointer-events-none fixed right-0 top-0 z-50 flex flex-col gap-3 p-4"
-      role="region"
-      aria-label="Notifications"
-      aria-live="polite"
-      aria-atomic="false"
-    >
+    <div className="pointer-events-none fixed right-0 top-0 z-50 flex flex-col gap-3 p-4">
       {alerts.map((alert) => (
         <AlertToast key={alert.id} alert={alert} onDismiss={() => dismissAlert(alert.id)} />
       ))}
@@ -68,17 +62,9 @@ function AlertToast({ alert, onDismiss }: { alert: Alert; onDismiss: () => void 
           }
         }
       `}</style>
-      <div
-        className={`w-96 max-w-full rounded-lg border ${borderColor} ${bgColor} p-4 shadow-lg`}
-        role={isCritical ? 'alert' : 'status'}
-        aria-live={isCritical ? 'assertive' : 'polite'}
-        aria-atomic="true"
-      >
+      <div className={`w-96 max-w-full rounded-lg border ${borderColor} ${bgColor} p-4 shadow-lg`}>
         <div className="flex items-start gap-3">
-          <div
-            className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full text-sm ${isCritical ? 'animate-pulse' : ''}`}
-            aria-hidden="true"
-          >
+          <div className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full text-sm ${isCritical ? 'animate-pulse' : ''}`}>
             {icon}
           </div>
           <div className="flex-1">
@@ -89,7 +75,6 @@ function AlertToast({ alert, onDismiss }: { alert: Alert; onDismiss: () => void 
           <button
             type="button"
             onClick={onDismiss}
-            aria-label={`Close ${alert.type.toLowerCase()} notification`}
             className="pointer-events-auto mt-0.5 flex h-5 w-5 items-center justify-center rounded text-slate-500 transition hover:bg-white/10 hover:text-slate-300"
           >
             ✕

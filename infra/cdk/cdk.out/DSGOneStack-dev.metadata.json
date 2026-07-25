@@ -8,34 +8,6 @@
       ]
     },
     {
-      "type": "aws:cdk:error",
-      "data": "Need to perform AWS calls for account 123456789012, but no credentials have been configured",
-      "trace": [
-        "Annotations.addMessage (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/core/lib/annotations.js:1:3506)",
-        "Annotations.addError (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/core/lib/annotations.js:1:2738)",
-        "Annotations._addTrackableError (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/core/lib/annotations.js:1:2837)",
-        "ContextProvider.getValue (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/core/lib/context-provider.js:2:1906)",
-        "get availabilityZones (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/core/lib/stack.js:1:16139)",
-        "new Vpc2 (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:19312)",
-        "new Vpc2 (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/core/lib/prop-injectable.js:1:855)",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
-        "Object.<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
-        "Module._compile (node:internal/modules/cjs/loader:1705:14)",
-        "Object..js (node:internal/modules/cjs/loader:1838:10)",
-        "Module.load (node:internal/modules/cjs/loader:1441:32)",
-        "Function._load (node:internal/modules/cjs/loader:1263:12)",
-        "TracingChannel.traceSync (node:diagnostics_channel:328:14)",
-        "wrapModuleLoad (node:internal/modules/cjs/loader:237:24)",
-        "Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)",
-        "node:internal/main/run_main_module:36:49"
-      ]
-    },
-    {
-      "type": "aws:cdk:error-code",
-      "data": "ContextProviderError"
-    },
-    {
       "type": "aws:cdk:stack-tags",
       "data": [
         {
@@ -61,8 +33,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:233:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:199:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -76,8 +48,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:238:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:204:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -91,8 +63,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:243:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:209:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -106,8 +78,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:249:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:215:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -121,8 +93,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:254:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:220:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -136,8 +108,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:259:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:225:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -151,8 +123,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:265:9)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:228:14)",
+        "DSGOneStack.createOutputs (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:231:9)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:194:14)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -344,8 +316,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:98:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:92:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -359,8 +331,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:107:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:101:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -374,8 +346,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:56:22)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:206:20)",
+        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:53:22)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:172:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -389,8 +361,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:63:23)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:206:20)",
+        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:60:23)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:172:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -404,8 +376,8 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        "new FinOpsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/finops.js:78:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:219:23)",
+        "new FinOpsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/finops.js:76:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:185:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -434,8 +406,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Key2 in aws-cdk-lib...",
-        "new KMSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/kms.js:45:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:105:20)",
+        "new KMSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/kms.js:44:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:71:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -450,8 +422,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new IAMConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/iam.js:44:37)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:107:20)",
+        "new IAMConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/iam.js:42:37)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:73:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -466,8 +438,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new IAMConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/iam.js:48:28)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:107:20)",
+        "new IAMConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/iam.js:46:28)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:73:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -482,8 +454,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Secret2 in aws-cdk-lib...",
-        "new SecretsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/secrets.js:44:25)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:109:24)",
+        "new SecretsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/secrets.js:43:25)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:75:24)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -498,8 +470,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -514,8 +486,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -530,8 +502,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -546,8 +518,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Repository2 in aws-cdk-lib...",
-        "new ECRConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/ecr.js:45:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:115:20)",
+        "new ECRConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/ecr.js:44:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:81:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -562,8 +534,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new ApplicationLoadBalancer2 in aws-cdk-lib...",
-        "new ALBConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/alb.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:125:20)",
+        "new ALBConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/alb.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:91:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -578,8 +550,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Cluster2 in aws-cdk-lib...",
-        "new ECSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/ecs.js:44:24)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:130:20)",
+        "new ECSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/ecs.js:43:24)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:96:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -594,8 +566,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new LogGroup2 in aws-cdk-lib...",
-        "new CloudWatchConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/cloudwatch.js:45:25)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:135:27)",
+        "new CloudWatchConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/cloudwatch.js:44:25)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:101:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -610,8 +582,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:62:36)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)",
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:56:36)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -626,8 +598,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:81:30)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)",
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:75:30)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -642,8 +614,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:99:42)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)",
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:93:42)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -658,8 +630,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:118:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)",
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:112:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -674,8 +646,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:134:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)",
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:128:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -690,8 +662,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Function2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:147:41)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)",
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:141:41)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -706,8 +678,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:63:28)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:56:28)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -722,8 +694,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:81:35)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:74:35)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -738,8 +710,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:99:34)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:92:34)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -754,8 +726,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:117:34)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:110:34)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -770,8 +742,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:136:36)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:129:36)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -786,8 +758,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:151:33)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:144:33)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -802,8 +774,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Function2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:163:37)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)",
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:156:37)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -818,8 +790,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:61:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)",
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:56:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -834,8 +806,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:91:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)",
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:86:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -850,8 +822,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:109:28)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)",
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:104:28)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -866,8 +838,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new LogGroup2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:150:30)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)",
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:145:30)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -882,8 +854,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:152:26)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)",
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:147:26)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -898,8 +870,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Policy2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:163:43)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)",
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:158:43)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -914,8 +886,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:62:33)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)",
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:56:33)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -930,8 +902,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:80:40)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)",
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:74:40)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -946,8 +918,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:99:34)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)",
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:93:34)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -962,8 +934,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:117:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)",
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:111:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -978,8 +950,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:137:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)",
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:131:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -994,8 +966,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Function2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:148:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)",
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:142:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1010,8 +982,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:61:30)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:173:25)",
+        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:56:30)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1026,8 +998,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:79:32)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:173:25)",
+        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:74:32)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1042,8 +1014,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:97:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:173:25)",
+        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:92:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1058,8 +1030,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:112:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:173:25)",
+        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:107:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1074,8 +1046,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Function2 in aws-cdk-lib...",
-        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:122:42)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:173:25)",
+        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:117:42)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1090,8 +1062,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:62:40)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)",
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:56:40)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1106,8 +1078,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:80:40)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)",
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:74:40)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1122,8 +1094,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:98:38)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)",
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:92:38)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1138,8 +1110,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:117:33)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)",
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:111:33)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1154,8 +1126,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:132:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)",
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:126:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1170,8 +1142,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Function2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:143:35)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)",
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:137:35)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1186,8 +1158,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:62:34)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:56:34)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1202,8 +1174,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Table2 in aws-cdk-lib...",
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:80:37)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:74:37)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1218,8 +1190,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:114:35)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:108:35)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1234,8 +1206,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:125:33)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:119:33)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1250,8 +1222,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Function2 in aws-cdk-lib...",
-        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:145:36)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:183:29)",
+        "new FeatureFlagsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/feature-flags.js:139:36)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:149:29)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1266,8 +1238,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new Route53Construct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/route53.js:56:24)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:192:24)",
+        "new Route53Construct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/route53.js:54:24)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:24)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1282,8 +1254,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new GuardDutyConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/guardduty.js:65:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:199:26)",
+        "new GuardDutyConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/guardduty.js:63:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:165:26)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1298,8 +1270,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new SecurityHubConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/securityhub.js:68:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:204:28)",
+        "new SecurityHubConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/securityhub.js:66:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:170:28)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1314,8 +1286,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:127:24)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:206:20)",
+        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:124:24)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:172:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1330,8 +1302,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new ShieldConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/shield.js:56:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:208:23)",
+        "new ShieldConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/shield.js:54:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:174:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1346,8 +1318,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new InspectorConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/inspector.js:54:30)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:210:26)",
+        "new InspectorConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/inspector.js:52:30)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:176:26)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1362,8 +1334,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new BackupVault2 in aws-cdk-lib...",
-        "new BackupConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/backup.js:58:28)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:212:23)",
+        "new BackupConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/backup.js:55:28)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1378,8 +1350,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new BackupPlan2 in aws-cdk-lib...",
-        "new BackupConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/backup.js:63:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:212:23)",
+        "new BackupConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/backup.js:60:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1394,8 +1366,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new BackupConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/backup.js:81:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:212:23)",
+        "new BackupConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/backup.js:78:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1410,8 +1382,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:59:24)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:214:20)",
+        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:54:24)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:180:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1426,8 +1398,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Topic2 in aws-cdk-lib...",
-        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:64:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:214:20)",
+        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:59:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:180:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1442,8 +1414,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Topic2 in aws-cdk-lib...",
-        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:70:30)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:214:20)",
+        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:65:30)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:180:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1458,8 +1430,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Topic2 in aws-cdk-lib...",
-        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:76:32)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:214:20)",
+        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:71:32)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:180:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1474,8 +1446,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Topic2 in aws-cdk-lib...",
-        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:82:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:214:20)",
+        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:77:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:180:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1490,8 +1462,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new FinOpsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/finops.js:56:27)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:219:23)",
+        "new FinOpsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/finops.js:54:27)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:185:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1506,8 +1478,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Role2 in aws-cdk-lib...",
-        "new MultiRegionConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/multi-region.js:66:32)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:224:28)",
+        "new MultiRegionConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/multi-region.js:63:32)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:190:28)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1522,8 +1494,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.addAlias in aws-cdk-lib...",
-        "new KMSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/kms.js:50:18)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:105:20)",
+        "new KMSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/kms.js:49:18)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:71:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1537,7 +1509,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1551,7 +1523,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1565,7 +1537,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1579,11 +1551,11 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:208 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:208 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1598,8 +1570,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1614,8 +1586,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1629,7 +1601,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1643,7 +1615,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1657,7 +1629,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1671,11 +1643,11 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:208 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:208 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1690,8 +1662,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1706,8 +1678,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1721,7 +1693,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1735,7 +1707,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1749,7 +1721,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1764,8 +1736,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)"
       ]
     }
@@ -1778,7 +1750,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1792,7 +1764,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1806,7 +1778,7 @@
     {
       "type": "aws:cdk:creationStack",
       "data": [
-        ".../home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
+        ".../home/user/tdealer01-crypto-dsg-control-plane/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:270 in aws-cdk-lib...",
         "Array.forEach (:)",
         "...aws-cdk-lib..."
       ]
@@ -1821,8 +1793,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Vpc2 in aws-cdk-lib...",
-        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:113:27)",
+        "new NetworkingConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/networking.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:79:27)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)"
       ]
     }
@@ -1836,8 +1808,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new ApplicationLoadBalancer2 in aws-cdk-lib...",
-        "new ALBConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/alb.js:44:20)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:125:20)",
+        "new ALBConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/alb.js:43:20)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:91:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -1852,8 +1824,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:118:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:153:29)"
+        "new PolicyEngineConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/policy-engine.js:112:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:119:29)"
       ]
     }
   ],
@@ -1879,8 +1851,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:136:36)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:158:30)"
+        "new ModelRegistryConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/model-registry.js:129:36)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:124:30)"
       ]
     }
   ],
@@ -1906,8 +1878,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:109:28)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:163:22)"
+        "new AuditConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/audit.js:104:28)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:129:22)"
       ]
     }
   ],
@@ -1933,8 +1905,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:117:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:168:23)"
+        "new ReplayConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/replay.js:111:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:134:23)"
       ]
     }
   ],
@@ -1960,8 +1932,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:97:31)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:173:25)"
+        "new EvidenceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/evidence.js:92:31)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:139:25)"
       ]
     }
   ],
@@ -1987,8 +1959,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...new Bucket2 in aws-cdk-lib...",
-        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:117:33)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:178:27)"
+        "new ComplianceConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/compliance.js:111:33)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:144:27)"
       ]
     }
   ],
@@ -2027,8 +1999,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.<anonymous> in aws-cdk-lib...",
-        "new GuardDutyConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/guardduty.js:70:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:199:26)",
+        "new GuardDutyConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/guardduty.js:68:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:165:26)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -2043,8 +2015,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.<anonymous> in aws-cdk-lib...",
-        "new SecurityHubConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/securityhub.js:73:29)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:204:28)",
+        "new SecurityHubConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/securityhub.js:71:29)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:170:28)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -2059,8 +2031,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.<anonymous> in aws-cdk-lib...",
-        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:132:22)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:206:20)",
+        "new WAFConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/waf.js:129:22)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:172:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -2075,8 +2047,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.<anonymous> in aws-cdk-lib...",
-        "new InspectorConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/inspector.js:59:28)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:210:26)",
+        "new InspectorConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/inspector.js:57:28)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:176:26)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -2104,10 +2076,10 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.addSubscription in aws-cdk-lib...",
-        "/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:95: (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:95:3)",
+        "/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:90: (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:90:3)",
         "Array.forEach (:)",
-        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:94:46)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:214:20)",
+        "new SNSConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/sns.js:89:46)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:180:20)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -2122,8 +2094,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.<anonymous> in aws-cdk-lib...",
-        "new FinOpsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/finops.js:61:25)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:219:23)",
+        "new FinOpsConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/finops.js:59:25)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:185:23)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]
@@ -2138,8 +2110,8 @@
       "type": "aws:cdk:creationStack",
       "data": [
         "...WrappedClass.<anonymous> in aws-cdk-lib...",
-        "new MultiRegionConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/multi-region.js:71:30)",
-        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:224:28)",
+        "new MultiRegionConstruct (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/constructs/multi-region.js:68:30)",
+        "new DSGOneStack (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/lib/dsg-one-stack.js:190:28)",
         "<anonymous> (/home/user/tdealer01-crypto-dsg-control-plane/infra/cdk/dist/bin/dsg-one.js:51:1)",
         "...node internals..."
       ]

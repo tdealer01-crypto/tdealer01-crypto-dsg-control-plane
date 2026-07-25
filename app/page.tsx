@@ -6,20 +6,7 @@ import { EvidenceDrawer } from '../components/EvidenceDrawer';
 import { GateResultCard } from '../components/GateResultCard';
 import RefTracker from '../components/RefTracker';
 
-export const dynamic = 'force-static';
-export const revalidate = 3600; // ISR: revalidate every hour
-
-export const metadata = {
-  title: 'DSG ONE - AI Runtime Control Plane | Deterministic • Governed • Verifiable',
-  description: 'Enterprise-grade control plane for AI agent orchestration. Deterministic execution, complete audit trails, formal proof evidence, and zero-trust security.',
-  openGraph: {
-    title: 'DSG ONE - AI Runtime Control Plane',
-    description: 'Deterministic, governed, verifiable AI execution.',
-    type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
-  },
-  keywords: ['AI governance', 'agent control', 'deterministic execution', 'audit trail', 'compliance', 'control plane'],
-};
+// Zapier webhook integration types added to database.types.ts
 
 const trustBar = [
   'Deterministic Engine — Gap-free sequences · SHA-256 hash chains · Merkle tree proofs · SARIF export',
@@ -101,7 +88,7 @@ const comparisonRows: Array<{ cap: string; dsg: string; lang: string; oai: strin
 
 function ComparisonCell({ value }: { value: string }) {
   if (value === 'yes') return <span className="font-semibold text-emerald-300">✓</span>;
-  if (value === 'no') return <span className="text-slate-600">—</span>;
+  if (value === 'no') return <span className="text-slate-300">—</span>;
   if (value === 'partial') return <span className="text-amber-300">partial</span>;
   return <span className="text-slate-200">{value}</span>;
 }
@@ -183,7 +170,7 @@ export default function HomePage() {
             <div className="border border-amber-300/20 bg-black/30 p-6 backdrop-blur-sm">
               <div className="flex items-center justify-between border-b border-white/10 pb-5">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Runtime Control Room</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-300">Runtime Control Room</p>
                   <h2 className="mt-2 text-2xl font-semibold text-white">Governed Action Stack</h2>
                 </div>
                 <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-200">
@@ -204,15 +191,15 @@ export default function HomePage() {
 
               <div className="mt-6 grid gap-3 md:grid-cols-3">
                 <div className="border border-white/10 bg-[#111317] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Policy</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Policy</p>
                   <p className="mt-2 text-lg font-semibold text-slate-100">Route by policy</p>
                 </div>
                 <div className="border border-white/10 bg-[#111317] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Evidence</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Evidence</p>
                   <p className="mt-2 text-lg font-semibold text-slate-100">Evidence at decision time</p>
                 </div>
                 <div className="border border-white/10 bg-[#111317] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Exceptions</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Exceptions</p>
                   <p className="mt-2 text-lg font-semibold text-slate-100">Review with controls</p>
                 </div>
               </div>
@@ -260,19 +247,19 @@ export default function HomePage() {
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Vault</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Vault</p>
               <p className="text-sm font-semibold text-white">AES-256-GCM encrypted credentials</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Event Bus</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Event Bus</p>
               <p className="text-sm font-semibold text-white">Pub-sub for audit trail</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Rollback</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Rollback</p>
               <p className="text-sm font-semibold text-white">Reverse on failure</p>
             </div>
             <div className="border border-white/10 bg-white/[0.03] p-4 rounded-lg">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Capability Engine</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300 mb-2">Capability Engine</p>
               <p className="text-sm font-semibold text-white">Provider-agnostic resolution</p>
             </div>
           </div>
@@ -282,31 +269,31 @@ export default function HomePage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /analyze</code>
-                <p className="text-xs text-slate-200">Discover services & confidence</p>
+                <p className="text-xs text-slate-400">Discover services & confidence</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /plan</code>
-                <p className="text-xs text-slate-200">Build phases & dependencies</p>
+                <p className="text-xs text-slate-400">Build phases & dependencies</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /approve</code>
-                <p className="text-xs text-slate-200">Verify canonical hash</p>
+                <p className="text-xs text-slate-400">Verify canonical hash</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">POST /execute</code>
-                <p className="text-xs text-slate-200">Start orchestration</p>
+                <p className="text-xs text-slate-400">Start orchestration</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">GET /status/:id</code>
-                <p className="text-xs text-slate-200">Poll phase progress</p>
+                <p className="text-xs text-slate-400">Poll phase progress</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">GET /connectors</code>
-                <p className="text-xs text-slate-200">List providers & capabilities</p>
+                <p className="text-xs text-slate-400">List providers & capabilities</p>
               </div>
               <div className="space-y-2">
                 <code className="text-xs font-mono text-amber-200">GET /vault/secrets</code>
-                <p className="text-xs text-slate-200">Org-scoped credentials</p>
+                <p className="text-xs text-slate-400">Org-scoped credentials</p>
               </div>
             </div>
           </div>
@@ -318,12 +305,12 @@ export default function HomePage() {
               <p className="mt-2 text-xs text-slate-300">Step through analyze → plan → approve → execute</p>
             </Link>
             <Link href="/docs/DSG_SETUP_GUIDE.md" className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 hover:border-white/20 transition">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-200 font-semibold">Docs</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 font-semibold">Docs</p>
               <h4 className="mt-2 text-lg font-bold text-white">Setup Guide</h4>
               <p className="mt-2 text-xs text-slate-300">Complete API reference with curl examples</p>
             </Link>
             <Link href="/docs/LICENSING.md" className="border border-white/10 bg-white/[0.03] rounded-2xl p-6 hover:border-white/20 transition">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-200 font-semibold">Licensing</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 font-semibold">Licensing</p>
               <h4 className="mt-2 text-lg font-bold text-white">Pricing Tiers</h4>
               <p className="mt-2 text-xs text-slate-300">Starter, Pro, Enterprise with decision metering</p>
             </Link>
@@ -367,7 +354,7 @@ export default function HomePage() {
             <div className="border border-green-400/30 bg-green-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-5xl font-bold text-green-300 font-mono">3,389</div>
-                <div className="text-sm text-slate-200 mt-1">tests passing</div>
+                <div className="text-sm text-slate-400 mt-1">tests passing</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>0 failures</strong> across unit, integration, failure, and E2E test suites. Zero test debt.
@@ -380,7 +367,7 @@ export default function HomePage() {
             <div className="border border-blue-400/30 bg-blue-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-5xl font-bold text-blue-300 font-mono">72.08%</div>
-                <div className="text-sm text-slate-200 mt-1">mutation score</div>
+                <div className="text-sm text-slate-400 mt-1">mutation score</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>High resilience</strong> to code changes. Stryker mutation testing verifies test effectiveness.
@@ -393,7 +380,7 @@ export default function HomePage() {
             <div className="border border-purple-400/30 bg-purple-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-4xl font-bold text-purple-300 font-mono">L1–L5</div>
-                <div className="text-sm text-slate-200 mt-1">CCVS verified</div>
+                <div className="text-sm text-slate-400 mt-1">CCVS verified</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>Compliance matrix</strong> proves control flow: unit → integration → adversarial → mutation → provenance.
@@ -406,7 +393,7 @@ export default function HomePage() {
             <div className="border border-amber-400/30 bg-amber-400/5 rounded-2xl p-6">
               <div className="mb-4">
                 <div className="text-3xl font-bold text-amber-300 font-mono">285</div>
-                <div className="text-sm text-slate-200 mt-1">test files</div>
+                <div className="text-sm text-slate-400 mt-1">test files</div>
               </div>
               <p className="text-xs text-slate-300 leading-6">
                 <strong>Comprehensive coverage</strong> across deterministic gates, spine execution, and licensing.
@@ -422,33 +409,33 @@ export default function HomePage() {
             <div className="grid gap-4 md:grid-cols-5">
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L1</div>
-                <p className="text-xs text-slate-200 mb-2"><strong>Unit Tests</strong></p>
-                <p className="text-xs text-slate-300">Isolated component verification</p>
+                <p className="text-xs text-slate-400 mb-2"><strong>Unit Tests</strong></p>
+                <p className="text-xs text-slate-500">Isolated component verification</p>
               </div>
-              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="flex items-center justify-center text-slate-300">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L2</div>
-                <p className="text-xs text-slate-200 mb-2"><strong>Integration</strong></p>
-                <p className="text-xs text-slate-300">Cross-layer behavior</p>
+                <p className="text-xs text-slate-400 mb-2"><strong>Integration</strong></p>
+                <p className="text-xs text-slate-500">Cross-layer behavior</p>
               </div>
-              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="flex items-center justify-center text-slate-300">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-300 mb-2">L3</div>
-                <p className="text-xs text-slate-200 mb-2"><strong>Adversarial</strong></p>
-                <p className="text-xs text-slate-300">Failure scenarios</p>
+                <p className="text-xs text-slate-400 mb-2"><strong>Adversarial</strong></p>
+                <p className="text-xs text-slate-500">Failure scenarios</p>
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-5 mt-6 pt-6 border-t border-white/10">
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-300 mb-2">L4</div>
-                <p className="text-xs text-slate-200 mb-2"><strong>Mutation</strong></p>
-                <p className="text-xs text-slate-300">Code resilience (72.08%)</p>
+                <p className="text-xs text-slate-400 mb-2"><strong>Mutation</strong></p>
+                <p className="text-xs text-slate-500">Code resilience (72.08%)</p>
               </div>
-              <div className="flex items-center justify-center text-slate-500">→</div>
+              <div className="flex items-center justify-center text-slate-300">→</div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-300 mb-2">L5</div>
-                <p className="text-xs text-slate-200 mb-2"><strong>Provenance</strong></p>
-                <p className="text-xs text-slate-300">Build & deploy audit</p>
+                <p className="text-xs text-slate-400 mb-2"><strong>Provenance</strong></p>
+                <p className="text-xs text-slate-500">Build & deploy audit</p>
               </div>
               <div className="flex items-center justify-center text-slate-500 col-span-2"></div>
             </div>
@@ -489,12 +476,12 @@ export default function HomePage() {
           <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-slate-200">
+                <tr className="border-b border-white/10 text-slate-400">
                   <th className="px-5 py-4 font-semibold">Capability</th>
                   <th className="px-5 py-4 font-semibold text-emerald-200">DSG ONE</th>
-                  <th className="px-5 py-4 font-semibold text-slate-200">LangGraph</th>
-                  <th className="px-5 py-4 font-semibold text-slate-200">OpenAI Agents</th>
-                  <th className="px-5 py-4 font-semibold text-slate-200">Temporal</th>
+                  <th className="px-5 py-4 font-semibold">LangGraph</th>
+                  <th className="px-5 py-4 font-semibold">OpenAI Agents</th>
+                  <th className="px-5 py-4 font-semibold">Temporal</th>
                 </tr>
               </thead>
               <tbody>
@@ -510,7 +497,7 @@ export default function HomePage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-4 text-xs leading-6 text-slate-500">
+          <p className="mt-4 text-xs leading-6 text-slate-300">
             Comparison reflects each product&apos;s default, documented capabilities for governed AI execution. Latency figures
             are from <Link href="/showcase" className="text-emerald-300 underline">the live gate benchmark</Link>; competitor
             values are typical LLM-in-the-loop ranges. Z3 proves policy invariants at design time and verifies multi-agent
@@ -524,7 +511,7 @@ export default function HomePage() {
           {painCards.map((card) => (
             <article key={card.title} className="border-t border-red-400/30 bg-white/[0.02] px-0 py-0">
               <div className="p-6">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Risk Signal</p>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-300">Risk Signal</p>
                 <h2 className="mt-4 text-2xl font-semibold text-amber-50">{card.title}</h2>
                 <p className="mt-4 text-sm leading-7 text-slate-300">{card.body}</p>
               </div>
@@ -536,7 +523,7 @@ export default function HomePage() {
       <section className="border-y border-white/10 bg-[#0b0d10]">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Launch Paths</p>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-300">Launch Paths</p>
             <h2 className="mt-4 text-4xl font-semibold leading-tight text-white">Move from one governed workflow to a real operating surface.</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
               Finance Governance is one governed workflow under DSG ONE. Start with a single invoice or payment path, prove control quality in a bounded pilot, then expand into the daily approval workspace with shared evidence and runtime checks.
@@ -545,7 +532,7 @@ export default function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             {launchLinks.map((item) => (
               <article key={item.title} className={'highlight' in item && item.highlight ? 'border border-emerald-400/30 bg-emerald-400/5 p-6' : 'border border-white/10 bg-white/[0.03] p-6'}>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">
                   {'highlight' in item && item.highlight ? '🆕 New' : 'Path'}
                 </p>
                 <h3 className="mt-4 text-2xl font-semibold text-white">{item.title}</h3>
@@ -631,3 +618,4 @@ export default function HomePage() {
     </main>
   );
 }
+

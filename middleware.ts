@@ -1,3 +1,4 @@
+// Middleware: Request routing and session validation
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSafeNext } from './lib/auth/safe-next';
@@ -197,4 +198,5 @@ export const config = {
     // API routes: body-size enforcement + correlation ID
     '/api/:path*',
   ],
-};
+};// Vercel production rebuild trigger - 1784958177
+// Force production live - 1784959274

@@ -66,6 +66,8 @@ function buildScriptSrc() {
 }
 
 const nextConfig = {
+  // Next.js 16 requires turbopack config when plugins add webpack configuration
+  turbopack: {},
 
   async redirects() {
     return [
@@ -144,8 +146,6 @@ const nextConfig = {
       },
     ];
   },
-
-  turbopack: {},
 };
 
 module.exports = { ...markdocRest, ...nextConfig };

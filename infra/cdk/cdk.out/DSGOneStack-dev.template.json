@@ -19,7 +19,7 @@
            {
             "Ref": "AWS::Partition"
            },
-           ":iam::123456789012:root"
+           ":iam::121205961822:root"
           ]
          ]
         }
@@ -210,7 +210,7 @@
   "NetworkingVpcPublicSubnet1Subnet918289EE": {
    "Type": "AWS::EC2::Subnet",
    "Properties": {
-    "AvailabilityZone": "dummy1a",
+    "AvailabilityZone": "us-east-1a",
     "CidrBlock": "10.0.0.0/18",
     "MapPublicIpOnLaunch": true,
     "Tags": [
@@ -377,7 +377,7 @@
   "NetworkingVpcPublicSubnet2Subnet9D9E5AFB": {
    "Type": "AWS::EC2::Subnet",
    "Properties": {
-    "AvailabilityZone": "dummy1b",
+    "AvailabilityZone": "us-east-1b",
     "CidrBlock": "10.0.64.0/18",
     "MapPublicIpOnLaunch": true,
     "Tags": [
@@ -544,7 +544,7 @@
   "NetworkingVpcPrivateSubnet1Subnet717BCE48": {
    "Type": "AWS::EC2::Subnet",
    "Properties": {
-    "AvailabilityZone": "dummy1a",
+    "AvailabilityZone": "us-east-1a",
     "CidrBlock": "10.0.128.0/18",
     "MapPublicIpOnLaunch": false,
     "Tags": [
@@ -642,7 +642,7 @@
   "NetworkingVpcPrivateSubnet2Subnet4313381B": {
    "Type": "AWS::EC2::Subnet",
    "Properties": {
-    "AvailabilityZone": "dummy1b",
+    "AvailabilityZone": "us-east-1b",
     "CidrBlock": "10.0.192.0/18",
     "MapPublicIpOnLaunch": false,
     "Tags": [
@@ -1177,7 +1177,7 @@
       }
      ]
     },
-    "BucketName": "dsg-one-dev-policies-123456789012",
+    "BucketName": "dsg-one-dev-policies-121205961822",
     "LifecycleConfiguration": {
      "Rules": [
       {
@@ -1899,7 +1899,7 @@
       }
      ]
     },
-    "BucketName": "dsg-one-dev-model-registry-123456789012",
+    "BucketName": "dsg-one-dev-model-registry-121205961822",
     "LifecycleConfiguration": {
      "Rules": [
       {
@@ -2522,7 +2522,7 @@
       }
      ]
     },
-    "BucketName": "dsg-one-dev-audit-123456789012",
+    "BucketName": "dsg-one-dev-audit-121205961822",
     "LifecycleConfiguration": {
      "Rules": [
       {
@@ -3235,7 +3235,7 @@
       }
      ]
     },
-    "BucketName": "dsg-one-dev-replay-123456789012",
+    "BucketName": "dsg-one-dev-replay-121205961822",
     "LifecycleConfiguration": {
      "Rules": [
       {
@@ -3824,7 +3824,7 @@
       }
      ]
     },
-    "BucketName": "dsg-one-dev-evidence-123456789012",
+    "BucketName": "dsg-one-dev-evidence-121205961822",
     "LifecycleConfiguration": {
      "Rules": [
       {
@@ -4447,7 +4447,7 @@
       }
      ]
     },
-    "BucketName": "dsg-one-dev-policies-as-code-123456789012",
+    "BucketName": "dsg-one-dev-policies-as-code-121205961822",
     "LifecycleConfiguration": {
      "Rules": [
       {
@@ -5096,7 +5096,7 @@
     "Description": "dev environment feature flags",
     "Monitors": [
      {
-      "AlarmArn": "arn:aws:cloudwatch:us-east-1:123456789012:alarm:dsg-one-dev-feature-flag-errors",
+      "AlarmArn": "arn:aws:cloudwatch:us-east-1:121205961822:alarm:dsg-one-dev-feature-flag-errors",
       "AlarmRoleArn": {
        "Fn::GetAtt": [
         "FeatureFlagsAppConfigMonitorRole341F15E9",
@@ -5299,7 +5299,7 @@
         "Fn::Join": [
          "",
          [
-          "arn:aws:appconfig:us-east-1:123456789012:application/",
+          "arn:aws:appconfig:us-east-1:121205961822:application/",
           {
            "Ref": "FeatureFlagsFeatureFlagAppB8E1F77B"
           }

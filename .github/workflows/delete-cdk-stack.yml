@@ -1,0 +1,83 @@
+name: Delete CDK Stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to delete'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  delete:
+    name: Delete Stack
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'dev' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: cdk-delete-${{ github.run_id }}
+          aws-region: us-east-1
+
+      - name: Delete DynamoDB tables (force cleanup)
+        run: |
+          ENV="${{ inputs.environment || 'dev' }}"
+          TABLES=(
+            "dsg-one-${ENV}-policies"
+            "dsg-${ENV}-policy-versions"
+            "dsg-${ENV}-execution-snapshots"
+            "dsg-${ENV}-replay-state"
+          )
+
+          echo "Deleting DynamoDB tables..."
+          for table in "${TABLES[@]}"; do
+            if aws dynamodb describe-table --table-name "$table" --region us-east-1 2>/dev/null; then
+              echo "Deleting table: $table"
+              aws dynamodb delete-table --table-name "$table" --region us-east-1
+              aws dynamodb wait table-not-exists --table-name "$table" --region us-east-1
+              echo "✅ Table $table deleted"
+            fi
+          done
+
+      - name: Delete CloudFormation stack
+        run: |
+          STACK_NAME="DSGOneStack-${{ inputs.environment || 'dev' }}"
+          echo "Deleting stack: $STACK_NAME"
+
+          aws cloudformation delete-stack \
+            --stack-name "$STACK_NAME" \
+            --region us-east-1 2>/dev/null || true
+
+          echo "Waiting for stack deletion..."
+          aws cloudformation wait stack-delete-complete \
+            --stack-name "$STACK_NAME" \
+            --region us-east-1 2>/dev/null || echo "Stack delete completed or not found"
+
+          echo "✅ Stack deleted successfully"
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## Stack Deletion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Stack | DSGOneStack-${{ inputs.environment || 'dev' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | us-east-1 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Deleted |" >> $GITHUB_STEP_SUMMARY

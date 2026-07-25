@@ -9,9 +9,7 @@ export type ReviewGateStatus = 'PENDING' | 'APPROVED' | 'BLOCKED' | 'DELEGATED';
 
 export type ReviewGate = {
   status: ReviewGateStatus;
-  /** Runtime decision id when the gate is backed by a persisted decision. */
   decisionId?: string;
-  /** ISO timestamps used by UI countdown/expiry displays. */
   createdAt?: string;
   expiresAt?: string;
 };

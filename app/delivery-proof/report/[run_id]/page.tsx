@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { GATE_PLANS } from '@/lib/billing/pricing-catalog';
 import { UpgradeCTA } from '../../_components/UpgradeCTA';
 import { ShareSection } from './ShareSection';
 
@@ -205,13 +204,13 @@ export default async function DeliveryProofReportPage({ params }: { params: Prom
                 href="/billing?plan=pro"
                 className="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-emerald-950 hover:bg-emerald-300 transition text-center"
               >
-                Upgrade to Pro — ${GATE_PLANS.pro.displayMonthlyUsd}/mo →
+                Upgrade to Pro — $99/mo →
               </a>
               <a
                 href="/billing?plan=business"
                 className="rounded-xl border border-emerald-300/50 bg-emerald-400/10 px-5 py-3 text-sm font-bold text-emerald-200 hover:bg-emerald-400/20 transition text-center"
               >
-                Business Plan — ${GATE_PLANS.business.displayMonthlyUsd}/mo →
+                Agency Plan — $299/mo →
               </a>
             </div>
           </div>

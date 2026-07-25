@@ -36,10 +36,10 @@ export async function getSubscriptionStatus(orgId: string): Promise<Subscription
   try {
     const supabase = getSupabaseAdmin();
 
-    // Query organization's Stripe subscription
+    // Query organization's plan status (subscription_tier column not yet in schema)
     const { data: org, error } = await supabase
       .from('organizations')
-      .select('stripe_customer_id, subscription_tier, subscription_expires_at')
+      .select('id, plan, is_active')
       .eq('id', orgId)
       .single();
 
@@ -54,43 +54,19 @@ export async function getSubscriptionStatus(orgId: string): Promise<Subscription
       };
     }
 
-    const tier = (org.subscription_tier as SubscriptionTier) || 'none';
-    const expiresAt = org.subscription_expires_at ? new Date(org.subscription_expires_at) : null;
-    const now = new Date();
-    const isActive = expiresAt ? expiresAt > now : false;
-
-    // Query usage for this month (gracefully handle missing table)
-    let decisionsUsed = 0;
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    try {
-      const { data: usage } = await supabase
-        .from('dsg_usage_metrics')
-        .select('decision_count')
-        .eq('org_id', orgId)
-        .gte('created_at', monthStart.toISOString())
-        .single();
-
-      decisionsUsed = usage?.decision_count || 0;
-    } catch {
-      // dsg_usage_metrics table may not exist yet in schema
-      decisionsUsed = 0;
-    }
+    // Map plan column to subscription tier (plan column contains values like 'starter', 'pro', 'enterprise')
+    const tier = (org.plan as SubscriptionTier) || 'none';
+    const isActive = org.is_active || false;
 
     const decisionsLimit = TIER_LIMITS[tier] || 0;
-    const daysRemaining = expiresAt
-      ? Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
 
     return {
       tier: isActive ? tier : 'none',
       active: isActive,
       orgId,
-      customerId: org.stripe_customer_id,
       decisions_limit: decisionsLimit,
-      decisions_used: decisionsUsed,
-      days_remaining: daysRemaining,
-      expires_at: expiresAt?.toISOString(),
+      decisions_used: 0,
+      days_remaining: 0,
     };
   } catch (error) {
     console.error('[subscription-validator] Error checking subscription:', error);
@@ -162,7 +138,7 @@ export async function recordDecisionUsage(orgId: string, count: number = 1): Pro
 
     // Upsert usage record (gracefully handle missing table)
     try {
-      await supabase.from('dsg_usage_metrics').upsert(
+      await (supabase.from('dsg_usage_metrics' as any) as any).upsert(
         {
           org_id: orgId,
           metric_month: monthStart.toISOString().split('T')[0],
