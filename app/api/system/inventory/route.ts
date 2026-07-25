@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Build query
-    let query = getSupabaseServer()
+    let query = getSupabaseAdmin()
       .from('dsg_system_components')
       .select('*', { count: 'exact' });
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServer } from '@/lib/supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { handleApiError } from '@/lib/security/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseServer();
+    const supabase = getSupabaseAdmin();
 
     // Parse question to determine search intent
     const question_lower = question.toLowerCase();
