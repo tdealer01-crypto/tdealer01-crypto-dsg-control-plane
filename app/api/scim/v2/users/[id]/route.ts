@@ -15,23 +15,9 @@ import {
   buildScimError,
 } from '@/lib/scim/schema-validator';
 import { initCorrelationContext } from '@/lib/audit/correlation-context';
+import { validateScimAuth } from '@/lib/scim/token-validator';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Verify SCIM API token authentication
- * In production, verify Bearer token against org_scim_tokens table
- */
-async function verifyScimAuth(request: Request, orgId: string): Promise<boolean> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return false;
-  }
-
-  // TODO: Verify token against org_scim_tokens table
-  // For now, basic validation
-  return authHeader.length > 10;
-}
 
 export async function GET(
   request: Request,
@@ -49,8 +35,12 @@ export async function GET(
     }
 
     // Verify auth
-    if (!(await verifyScimAuth(request, orgId))) {
-      return NextResponse.json(buildScimError('Unauthorized', 401), { status: 401 });
+    const authResult = await validateScimAuth(request, orgId);
+    if (!authResult.valid) {
+      return NextResponse.json(
+        buildScimError(`Unauthorized: ${authResult.reason || 'Invalid token'}`, 401),
+        { status: 401 },
+      );
     }
 
     const supabase = getSupabaseAdmin() as any;
@@ -136,8 +126,12 @@ export async function PATCH(
     }
 
     // Verify auth
-    if (!(await verifyScimAuth(request, orgId))) {
-      return NextResponse.json(buildScimError('Unauthorized', 401), { status: 401 });
+    const authResult = await validateScimAuth(request, orgId);
+    if (!authResult.valid) {
+      return NextResponse.json(
+        buildScimError(`Unauthorized: ${authResult.reason || 'Invalid token'}`, 401),
+        { status: 401 },
+      );
     }
 
     const supabase = getSupabaseAdmin() as any;
@@ -268,8 +262,12 @@ export async function DELETE(
     }
 
     // Verify auth
-    if (!(await verifyScimAuth(request, orgId))) {
-      return NextResponse.json(buildScimError('Unauthorized', 401), { status: 401 });
+    const authResult = await validateScimAuth(request, orgId);
+    if (!authResult.valid) {
+      return NextResponse.json(
+        buildScimError(`Unauthorized: ${authResult.reason || 'Invalid token'}`, 401),
+        { status: 401 },
+      );
     }
 
     const supabase = getSupabaseAdmin() as any;

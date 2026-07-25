@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { checkPermission } from '@/lib/rbac/require-permission';
 import { initCorrelationContext, updateCorrelationContext } from '@/lib/audit/correlation-context';
+import { getRateLimitKey, applyRateLimit, buildRateLimitHeaders } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,24 @@ export async function GET(request: Request) {
   const correlationId = initCorrelationContext();
 
   try {
+    // Rate limit: 20 requests per minute per IP (for audit export)
+    const rateLimitKey = getRateLimitKey(request, 'admin:audit-trail');
+    const rateLimitResult = await applyRateLimit({
+      key: rateLimitKey,
+      limit: 20,
+      windowMs: 60 * 1000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'rate_limited' },
+        {
+          status: 429,
+          headers: buildRateLimitHeaders(rateLimitResult, 20),
+        },
+      );
+    }
+
     const url = new URL(request.url);
     const userId = (request as any).userId;
     const orgId = (request as any).orgId;

@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { checkPermission } from '@/lib/rbac/require-permission';
 import { initCorrelationContext, updateCorrelationContext } from '@/lib/audit/correlation-context';
 import { isValidPermission, expandPermissions } from '@/lib/rbac/permission-matrix';
+import { getRateLimitKey, applyRateLimit, buildRateLimitHeaders } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,24 @@ export async function GET(request: Request) {
   const correlationId = initCorrelationContext();
 
   try {
+    // Rate limit: 30 requests per minute per IP (for RBAC management)
+    const rateLimitKey = getRateLimitKey(request, 'admin:roles');
+    const rateLimitResult = await applyRateLimit({
+      key: rateLimitKey,
+      limit: 30,
+      windowMs: 60 * 1000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'rate_limited' },
+        {
+          status: 429,
+          headers: buildRateLimitHeaders(rateLimitResult, 30),
+        },
+      );
+    }
+
     const userId = (request as any).userId;
     const orgId = (request as any).orgId;
 
@@ -109,6 +128,24 @@ export async function POST(request: Request) {
   const correlationId = initCorrelationContext();
 
   try {
+    // Rate limit: 10 role creation requests per minute per IP
+    const rateLimitKey = getRateLimitKey(request, 'admin:roles:create');
+    const rateLimitResult = await applyRateLimit({
+      key: rateLimitKey,
+      limit: 10,
+      windowMs: 60 * 1000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'rate_limited' },
+        {
+          status: 429,
+          headers: buildRateLimitHeaders(rateLimitResult, 10),
+        },
+      );
+    }
+
     const userId = (request as any).userId;
     const orgId = (request as any).orgId;
     const body = (await request.json()) as CreateRoleRequest;
