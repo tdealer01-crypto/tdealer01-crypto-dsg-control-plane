@@ -59,7 +59,9 @@ jobs:
       - name: Bootstrap CDK environment
         run: |
           cd infra/cdk
-          npx cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/us-east-1
+          # Extract account ID from AWS STS caller identity
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          npx cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-east-1
         env:
           ENVIRONMENT: ${{ inputs.environment || 'dev' }}
 
@@ -71,13 +73,15 @@ jobs:
       - name: Deploy CDK stacks
         run: |
           cd infra/cdk
+          # Get AWS account ID from current credentials
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           npx cdk deploy \
             --context environment=${{ inputs.environment || 'dev' }} \
             --require-approval never
         env:
           ENVIRONMENT: ${{ inputs.environment || 'dev' }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID || '' }}
+          AWS_REGION: us-east-1
           BEDROCK_REGISTRY_ID: ${{ secrets.BEDROCK_REGISTRY_ID }}
           COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
           COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
