@@ -19,7 +19,7 @@ import type {
   GenomeParameters,
   GenomeId,
   SimulationConfig,
-} from '../spine/types.js'; // Adjust path as needed
+} from '../../spine/types';
 
 import type {
   DeepTutorInput,

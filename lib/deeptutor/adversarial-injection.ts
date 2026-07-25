@@ -12,8 +12,8 @@
  * - Data quality attacks: confidence manipulation, citation spoofing
  */
 
-import type { SimulationInput, ExecutionRequest, WorldState } from '../spine/types.js';
-import type { DeepTutorFailureMode } from './types.js';
+import type { SimulationInput, ExecutionRequest, WorldState } from '../../spine/types';
+import type { DeepTutorFailureMode } from './types';
 
 /**
  * Adversarial attack configuration

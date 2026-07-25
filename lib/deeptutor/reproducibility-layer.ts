@@ -20,9 +20,9 @@ import type {
   ExecutionRequest,
   ExecutionResult,
   TelemetryEvent,
-} from '../spine/types.js';
-import type { AdversarialEvent } from './adversarial-injection.js';
-import type { ProofVerificationResult, VerificationReport } from './proof-verification.js';
+} from '../../spine/types';
+import type { AdversarialEvent } from './adversarial-injection';
+import type { ProofVerificationResult, VerificationReport } from './proof-verification';
 
 /**
  * Complete audit event log entry

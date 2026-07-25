@@ -11,7 +11,7 @@
  * Allows testing of AGI system behavior at dramatically accelerated timescales
  */
 
-import type { SimulationConfig } from '../spine/types.js';
+import type { SimulationConfig } from '../../spine/types';
 
 /**
  * Time acceleration configuration

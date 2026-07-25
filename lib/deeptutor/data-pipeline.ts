@@ -12,13 +12,13 @@
  */
 
 import { createHash } from 'crypto';
-import type { SimulationInput, SimulationConfig } from '../spine/types.js';
-import type { DeepTutorInput, DataQualityCertificate } from './types.js';
+import type { SimulationInput, SimulationConfig } from '../../spine/types';
+import type { DeepTutorInput, DataQualityCertificate } from './types';
 import {
   validateDeepTutorInput,
   hashDeepTutorInput,
   adaptDeepTutorToSimulation,
-} from './adapter.js';
+} from './adapter';
 
 /**
  * Pipeline execution metadata
