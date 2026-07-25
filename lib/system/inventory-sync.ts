@@ -33,9 +33,9 @@ export async function syncSystemInventory(): Promise<SyncResult> {
     const discovered = await discoverAllComponents();
 
     // Step 2: Get components from database
-    const { data: existing } = await (supabase
-      .from('dsg_system_components' as any)
-      .select('*') as any);
+    const { data: existing } = await supabase
+      .from('dsg_system_components')
+      .select('*');
 
     const existingMap = new Map(
       existing?.map((c: any) => [`${c.component_type}:${c.path_or_id}`, c]) || []
@@ -45,8 +45,8 @@ export async function syncSystemInventory(): Promise<SyncResult> {
     for (const comp of discovered) {
       const key = `${comp.type}:${comp.path_or_id}`;
       if (!existingMap.has(key)) {
-        const { error } = await (supabase
-          .from('dsg_system_components' as any)
+        const { error } = await supabase
+          .from('dsg_system_components')
           .insert({
             component_type: comp.type,
             name: comp.name,
@@ -55,7 +55,7 @@ export async function syncSystemInventory(): Promise<SyncResult> {
             tier: comp.tier,
             metadata: comp.metadata,
             status: 'active',
-          } as any) as any);
+          });
 
         if (error) {
           result.errors.push(`Failed to add ${comp.name}: ${error.message}`);
@@ -71,11 +71,11 @@ export async function syncSystemInventory(): Promise<SyncResult> {
         (d) => `${d.type}:${d.path_or_id}` === key
       );
 
-      if (discovered_key === -1 && (comp as any).status === 'active') {
-        const { error } = await (supabase
-          .from('dsg_system_components' as any)
+      if (discovered_key === -1 && comp.status === 'active') {
+        const { error } = await supabase
+          .from('dsg_system_components')
           .update({ status: 'deprecated' })
-          .eq('id', (comp as any).id) as any);
+          .eq('id', comp.id);
 
         if (!error) result.removed++;
       }
@@ -128,8 +128,8 @@ async function createInventorySnapshot(result: SyncResult): Promise<void> {
     JSON.stringify(snapshotData)
   ).toString('base64');
 
-  await (supabase
-    .from('dsg_inventory_snapshots' as any)
+  await supabase
+    .from('dsg_inventory_snapshots')
     .insert({
       snapshot_type: 'delta',
       components_added: result.added,
@@ -137,7 +137,7 @@ async function createInventorySnapshot(result: SyncResult): Promise<void> {
       components_modified: result.updated,
       snapshot_data: snapshotData,
       snapshot_hash: snapshotHash,
-    } as any) as any);
+    });
 }
 
 /**
@@ -153,20 +153,20 @@ export async function getInventoryHealth(): Promise<{
   const supabase = getSupabaseAdmin();
 
   try {
-    const { count: componentCount } = await (supabase
-      .from('dsg_system_components' as any)
-      .select('*', { count: 'exact', head: true }) as any);
+    const { count: componentCount } = await supabase
+      .from('dsg_system_components')
+      .select('*', { count: 'exact', head: true });
 
-    const { count: depCount } = await (supabase
-      .from('dsg_component_dependencies' as any)
-      .select('*', { count: 'exact', head: true }) as any);
+    const { count: depCount } = await supabase
+      .from('dsg_component_dependencies')
+      .select('*', { count: 'exact', head: true });
 
-    const { data: lastSnapshot } = await (supabase
-      .from('dsg_inventory_snapshots' as any)
+    const { data: lastSnapshot } = await supabase
+      .from('dsg_inventory_snapshots')
       .select('created_at')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single() as any);
+      .single();
 
     return {
       ok: (componentCount ?? 0) > 0,
