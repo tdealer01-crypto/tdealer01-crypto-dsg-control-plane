@@ -3,8 +3,10 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "ignoreCommand": "false",
+  "outputDirectory": ".next",
   "env": {
-    "VERCEL_REBUILD_TRIGGER": "1"
+    "VERCEL_REBUILD_TRIGGER": "1",
+    "SKIP_ENV_VALIDATION": "true"
   },
   "crons": [
     {
