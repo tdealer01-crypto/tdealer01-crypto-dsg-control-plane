@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
 
     // Query 1: Routes accessing specific table
     if (question_lower.includes('routes') && question_lower.includes('access') && question_lower.includes('table')) {
-      const tableMatch = question_lower.match(/table[s]?\s+([a-z_]+)|([a-z_]+)\s+table/);
+      // Safe regex: limit repetition to prevent ReDoS
+      const tableMatch = question_lower.match(/table(?:s)?\s+([a-z_]{1,64})|([a-z_]{1,64})\s+table/);
       if (tableMatch) {
         const tableName = tableMatch[1] || tableMatch[2];
 
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
 
     // Query 2: Constraint set capabilities
     if (question_lower.includes('constraint') && question_lower.includes('allow')) {
-      const constraintMatch = question_lower.match(/constraint[_\s]+set[_\s]+(?:named\s+)?([a-z_]+)|([a-z_]+)\s+constraint/);
+      // Safe regex: limit repetition to prevent ReDoS
+      const constraintMatch = question_lower.match(/constraint(?:[_\s])+set(?:[_\s])+(?:named\s+)?([a-z_]{1,64})|([a-z_]{1,64})\s+constraint/);
       if (constraintMatch) {
         const constraintName = constraintMatch[1] || constraintMatch[2];
 
