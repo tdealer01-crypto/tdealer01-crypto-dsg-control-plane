@@ -61,7 +61,7 @@ jobs:
           cd infra/cdk
           npx cdk synth --context environment=${{ inputs.environment || 'dev' }}
 
-      - name: Deploy CDK stack
+      - name: Deploy CDK stacks
         run: |
           cd infra/cdk
           npx cdk deploy \
@@ -69,16 +69,29 @@ jobs:
             --require-approval never
         env:
           ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          BEDROCK_REGISTRY_ID: ${{ secrets.BEDROCK_REGISTRY_ID }}
+          COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
 
       - name: Get stack outputs
         id: stack-outputs
         run: |
           cd infra/cdk
-          STACK_NAME="DSGOneStack-${{ inputs.environment || 'dev' }}"
+          ENV=${{ inputs.environment || 'dev' }}
+          echo "=== DSGOneStack-$ENV Outputs ==="
           aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
+            --stack-name "DSGOneStack-$ENV" \
             --query 'Stacks[0].Outputs' \
-            --output table
+            --output table || echo "No outputs for DSGOneStack"
+
+          echo ""
+          echo "=== BedrockAgentCoreStack-$ENV Outputs ==="
+          aws cloudformation describe-stacks \
+            --stack-name "BedrockAgentCoreStack-$ENV" \
+            --query 'Stacks[0].Outputs' \
+            --output table || echo "No outputs for BedrockAgentCoreStack"
 
       - name: Verify deployment
         run: |
