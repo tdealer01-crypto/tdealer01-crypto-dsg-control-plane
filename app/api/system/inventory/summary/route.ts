@@ -13,19 +13,19 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
 
     // Get component counts by type
-    const { data: byType, error: typeError } = await supabase
-      .from('dsg_system_components')
-      .select('component_type', { count: 'exact' });
+    const { data: byType, error: typeError } = await (supabase
+      .from('dsg_system_components' as any)
+      .select('component_type', { count: 'exact' }) as any);
 
     // Get component counts by category
-    const { data: byCategory, error: categoryError } = await supabase
-      .from('dsg_system_components')
-      .select('category', { count: 'exact' });
+    const { data: byCategory, error: categoryError } = await (supabase
+      .from('dsg_system_components' as any)
+      .select('category', { count: 'exact' }) as any);
 
     // Get component counts by status
-    const { data: byStatus, error: statusError } = await supabase
-      .from('dsg_system_components')
-      .select('status', { count: 'exact' });
+    const { data: byStatus, error: statusError } = await (supabase
+      .from('dsg_system_components' as any)
+      .select('status', { count: 'exact' }) as any);
 
     if (typeError || categoryError || statusError) {
       return NextResponse.json(

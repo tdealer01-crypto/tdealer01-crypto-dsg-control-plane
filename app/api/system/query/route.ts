@@ -39,27 +39,27 @@ export async function POST(request: NextRequest) {
         const tableName = tableMatch[1] || tableMatch[2];
 
         // Find table component
-        const { data: tableComp } = await supabase
-          .from('dsg_system_components')
+        const { data: tableComp } = await (supabase
+          .from('dsg_system_components' as any)
           .select('id')
-          .eq('path_or_id', tableName)
-          .single();
+          .eq('path_or_id' as any, tableName)
+          .single() as any);
 
         if (tableComp) {
           // Find dependencies pointing to this table
-          const { data: deps } = await supabase
-            .from('dsg_component_dependencies')
+          const { data: deps } = await (supabase
+            .from('dsg_component_dependencies' as any)
             .select('from_component_id')
-            .eq('to_component_id', tableComp.id);
+            .eq('to_component_id' as any, (tableComp as any).id) as any);
 
           if (deps && deps.length > 0) {
             const componentIds = deps.map((d: any) => d.from_component_id);
 
             // Get component details
-            const { data: components } = await supabase
-              .from('dsg_system_components')
+            const { data: components } = await (supabase
+              .from('dsg_system_components' as any)
               .select('*')
-              .in('id', componentIds);
+              .in('id' as any, componentIds) as any);
 
             results.answer = components || [];
             results.reasoning.push(`Found ${components?.length || 0} components accessing table "${tableName}"`);
@@ -76,20 +76,21 @@ export async function POST(request: NextRequest) {
       if (constraintMatch) {
         const constraintName = constraintMatch[1] || constraintMatch[2];
 
-        const { data: constraint } = await supabase
-          .from('dsg_constraint_sets')
+        const { data: constraint } = await (supabase
+          .from('dsg_constraint_sets' as any)
           .select('*')
-          .eq('set_name', constraintName)
-          .single();
+          .eq('set_name' as any, constraintName)
+          .single() as any);
 
         if (constraint) {
           results.answer = constraint;
+          const c = constraint as any;
           results.reasoning.push(
             `Constraint set "${constraintName}" allows:`,
-            `- Capabilities: ${constraint.allowed_capabilities?.join(', ') || 'none'}`,
-            `- Max output tokens: ${constraint.max_tokens_output || 'unlimited'}`,
-            `- Max duration: ${constraint.max_duration_seconds || 'unlimited'} seconds`,
-            `- Max cost: $${constraint.max_cost_per_execution || 'unlimited'}`
+            `- Capabilities: ${c.allowed_capabilities?.join(', ') || 'none'}`,
+            `- Max output tokens: ${c.max_tokens_output || 'unlimited'}`,
+            `- Max duration: ${c.max_duration_seconds || 'unlimited'} seconds`,
+            `- Max cost: $${c.max_cost_per_execution || 'unlimited'}`
           );
         }
       }
@@ -102,27 +103,27 @@ export async function POST(request: NextRequest) {
         const routePath = routeMatch[0];
 
         // Find route component
-        const { data: routeComp } = await supabase
-          .from('dsg_system_components')
+        const { data: routeComp } = await (supabase
+          .from('dsg_system_components' as any)
           .select('id')
-          .eq('path_or_id', routePath)
-          .single();
+          .eq('path_or_id' as any, routePath)
+          .single() as any);
 
         if (routeComp) {
           // Find guarding policies
-          const { data: deps } = await supabase
-            .from('dsg_component_dependencies')
+          const { data: deps } = await (supabase
+            .from('dsg_component_dependencies' as any)
             .select('from_component_id')
-            .eq('to_component_id', routeComp.id)
-            .eq('dependency_type', 'guards');
+            .eq('to_component_id' as any, (routeComp as any).id)
+            .eq('dependency_type' as any, 'guards') as any);
 
           if (deps && deps.length > 0) {
             const policyIds = deps.map((d: any) => d.from_component_id);
 
-            const { data: policies } = await supabase
-              .from('dsg_system_components')
+            const { data: policies } = await (supabase
+              .from('dsg_system_components' as any)
               .select('*')
-              .in('id', policyIds);
+              .in('id' as any, policyIds) as any);
 
             results.answer = policies || [];
             results.reasoning.push(`Found ${policies?.length || 0} policies guarding route "${routePath}"`);
@@ -133,11 +134,11 @@ export async function POST(request: NextRequest) {
 
     // Fallback: Return all active components if no specific match
     if (results.answer.length === 0) {
-      const { data: components } = await supabase
-        .from('dsg_system_components')
+      const { data: components } = await (supabase
+        .from('dsg_system_components' as any)
         .select('*')
-        .eq('status', 'active')
-        .limit(20);
+        .eq('status' as any, 'active')
+        .limit(20) as any);
 
       results.answer = components || [];
       results.reasoning.push(
