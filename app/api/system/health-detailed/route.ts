@@ -13,11 +13,11 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
 
     // Get all components with their health status
-    const { data: components, error } = await supabase
-      .from('dsg_system_components')
+    const { data: components, error } = await (supabase
+      .from('dsg_system_components' as any)
       .select('id, name, component_type, path_or_id, status, health_status, last_verified_at')
       .order('component_type')
-      .order('name');
+      .order('name') as any);
 
     if (error) {
       return NextResponse.json(
@@ -45,9 +45,9 @@ export async function GET() {
     const overallOk = healthStats.unhealthy === 0 && healthStats.degraded <= 2;
 
     // Get dependency stats
-    const { data: dependencies, count: depCount } = await supabase
-      .from('dsg_component_dependencies')
-      .select('*', { count: 'exact' });
+    const { data: dependencies, count: depCount } = await (supabase
+      .from('dsg_component_dependencies' as any)
+      .select('*', { count: 'exact' }) as any);
 
     // Group by type
     const componentsByType: Record<string, number> = {};
