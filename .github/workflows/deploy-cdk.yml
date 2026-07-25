@@ -76,7 +76,7 @@ jobs:
           cd infra/cdk
           # Get AWS account ID from current credentials
           AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          npx cdk deploy \
+          npx cdk deploy --all \
             --context environment=${{ inputs.environment || 'dev' }} \
             --require-approval never
         env:
