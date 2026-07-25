@@ -4,9 +4,11 @@
  * Defines all configuration interfaces for AWS CDK deployment
  */
 
+export type EnvironmentType = 'dev' | 'staging' | 'prod';
+
 export interface DSGConfig {
   // Core deployment
-  environment: 'dev' | 'staging' | 'prod';
+  environment: EnvironmentType;
   resourcePrefix: string;
 
   // AWS Account & Region

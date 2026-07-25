@@ -9,7 +9,7 @@ import { devConfig } from './dev';
 import { stagingConfig } from './staging';
 import { prodConfig } from './prod';
 
-export { DSGConfig } from './types';
+export { DSGConfig, EnvironmentType } from './types';
 
 export function getConfig(environment?: string): DSGConfig {
   const env = environment || process.env.ENVIRONMENT || 'dev';
