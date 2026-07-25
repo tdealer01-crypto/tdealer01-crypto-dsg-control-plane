@@ -104,6 +104,19 @@ export interface DSGConfig {
     enableVpcFlowLogs: boolean;
   };
 
+  // Bedrock Agent Core & MCP Registry
+  bedrock?: {
+    enableAgentCore: boolean;
+    registryId: string;
+    cognitoUserPoolId: string;
+    cognitoClientId: string;
+    mcpServers?: Array<{
+      name: string;
+      description: string;
+      version: string;
+    }>;
+  };
+
   // Tags
   tags: {
     [key: string]: string;

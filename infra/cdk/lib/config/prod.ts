@@ -77,6 +77,30 @@ export const prodConfig: DSGConfig = {
     enableComplianceMapping: true,
   },
 
+  bedrock: {
+    enableAgentCore: true,
+    registryId: process.env.BEDROCK_REGISTRY_ID || 'cGcvetJOMzWh3xmj',
+    cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID || 'us-east-1_ZtxWdHzFJ',
+    cognitoClientId: process.env.COGNITO_CLIENT_ID || '7njqeoh6bq64s6u44oo9vghfcg',
+    mcpServers: [
+      {
+        name: 'weather-mcp-server',
+        description: 'Weather data MCP server',
+        version: '1.0.0',
+      },
+      {
+        name: 'dsg-governance-mcp-server',
+        description: 'DSG ONE governance and AI control MCP server',
+        version: '1.0.0',
+      },
+      {
+        name: 'compliance-verification-mcp-server',
+        description: 'Compliance and evidence verification MCP server',
+        version: '1.0.0',
+      },
+    ],
+  },
+
   featureFlags: {
     enableCanaryDeployments: true,
     canaryTrafficPercent: 5,
