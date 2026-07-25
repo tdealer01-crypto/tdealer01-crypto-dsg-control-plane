@@ -5,7 +5,10 @@ import crypto from 'crypto';
  * Handles state signing, PKCE validation, and token generation
  */
 
-const STATE_SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '';
+// Helper to get STATE_SECRET at call time (not module load time) for test environment
+function getStateSecret(): string {
+  return process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '';
+}
 
 type StatePayload = {
   codeChallenge: string;
@@ -45,13 +48,14 @@ export function validatePKCE(codeVerifier: string, codeChallenge: string): boole
  * Format: base64url(payload).signature
  */
 export function generateSignedState(payload: StatePayload): string {
-  if (!STATE_SECRET) {
+  const secret = getStateSecret();
+  if (!secret) {
     throw new Error('STATE_SECRET not configured');
   }
 
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto
-    .createHmac('sha256', STATE_SECRET)
+    .createHmac('sha256', secret)
     .update(encoded)
     .digest('base64url');
 
@@ -62,7 +66,8 @@ export function generateSignedState(payload: StatePayload): string {
  * Verify HMAC-SHA256 signed state token
  */
 export function verifySignedState(state: string): StatePayload | null {
-  if (!STATE_SECRET) {
+  const secret = getStateSecret();
+  if (!secret) {
     throw new Error('STATE_SECRET not configured');
   }
 
@@ -73,7 +78,7 @@ export function verifySignedState(state: string): StatePayload | null {
 
   try {
     const expected = crypto
-      .createHmac('sha256', STATE_SECRET)
+      .createHmac('sha256', secret)
       .update(encoded)
       .digest('base64url');
 
