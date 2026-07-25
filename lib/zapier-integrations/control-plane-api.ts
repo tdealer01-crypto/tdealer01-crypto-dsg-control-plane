@@ -103,7 +103,7 @@ export async function handleRevenueWebhook(
     const orgId = await resolveOrgIdByCustomerId(payload.customer_id)
     const supabase = getSupabaseAdmin()
 
-    const { error } = await supabase.from('zapier_payment_events').upsert(
+    const { error } = await (supabase.from('zapier_payment_events' as any) as any).upsert(
       {
         org_id: orgId,
         customer_id: payload.customer_id,
@@ -146,7 +146,7 @@ export async function handleQuotaWebhook(
     const orgId = await resolveOrgIdByCustomerId(payload.customer_id)
     const supabase = getSupabaseAdmin()
 
-    const { error } = await supabase.from('zapier_quota_events').insert({
+    const { error } = await (supabase.from('zapier_quota_events' as any) as any).insert({
       org_id: orgId,
       customer_id: payload.customer_id,
       service_type: payload.service_type,
@@ -189,7 +189,7 @@ export async function handleCommunicationWebhook(
     const orgId = await resolveOrgIdByCustomerId(payload.customer_id)
     const supabase = getSupabaseAdmin()
 
-    const { error } = await supabase.from('zapier_communication_events').insert({
+    const { error } = await (supabase.from('zapier_communication_events' as any) as any).insert({
       org_id: orgId,
       customer_id: payload.customer_id,
       email: payload.email,
