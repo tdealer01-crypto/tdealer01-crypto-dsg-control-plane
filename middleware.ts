@@ -1,3 +1,4 @@
+// Middleware: Request routing and session validation
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSafeNext } from './lib/auth/safe-next';
