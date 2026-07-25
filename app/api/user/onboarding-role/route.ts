@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     try {
       const { error } = await admin
         .from('users')
-        .update({ onboarding_role: role })
+        .update({ onboarding_role: role } as any)
         .eq('id', user.id);
 
       if (error) {
