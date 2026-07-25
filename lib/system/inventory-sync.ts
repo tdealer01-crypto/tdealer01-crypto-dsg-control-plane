@@ -3,7 +3,7 @@
  * Continuously synchronizes the system inventory with actual component discovery
  */
 
-import { getSupabaseAdmin } from '../supabase-server';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 
 interface ComponentDiscovery {
   type: 'route' | 'table' | 'policy' | 'tool' | 'integration' | 'skill' | 'agent';
@@ -33,9 +33,9 @@ export async function syncSystemInventory(): Promise<SyncResult> {
     const discovered = await discoverAllComponents();
 
     // Step 2: Get components from database
-    const { data: existing } = await supabase
-      .from('dsg_system_components')
-      .select('*');
+    const { data: existing } = await (supabase
+      .from('dsg_system_components' as any)
+      .select('*') as any);
 
     const existingMap = new Map(
       existing?.map((c: any) => [`${c.component_type}:${c.path_or_id}`, c]) || []
@@ -45,8 +45,8 @@ export async function syncSystemInventory(): Promise<SyncResult> {
     for (const comp of discovered) {
       const key = `${comp.type}:${comp.path_or_id}`;
       if (!existingMap.has(key)) {
-        const { error } = await supabase
-          .from('dsg_system_components')
+        const { error } = await (supabase
+          .from('dsg_system_components' as any)
           .insert({
             component_type: comp.type,
             name: comp.name,
@@ -55,7 +55,7 @@ export async function syncSystemInventory(): Promise<SyncResult> {
             tier: comp.tier,
             metadata: comp.metadata,
             status: 'active',
-          });
+          } as any) as any);
 
         if (error) {
           result.errors.push(`Failed to add ${comp.name}: ${error.message}`);
@@ -72,10 +72,10 @@ export async function syncSystemInventory(): Promise<SyncResult> {
       );
 
       if (discovered_key === -1 && comp.status === 'active') {
-        const { error } = await supabase
-          .from('dsg_system_components')
+        const { error } = await (supabase
+          .from('dsg_system_components' as any)
           .update({ status: 'deprecated' })
-          .eq('id', comp.id);
+          .eq('id', comp.id) as any);
 
         if (!error) result.removed++;
       }
@@ -128,14 +128,16 @@ async function createInventorySnapshot(result: SyncResult): Promise<void> {
     JSON.stringify(snapshotData)
   ).toString('base64');
 
-  await supabase.from('dsg_inventory_snapshots').insert({
-    snapshot_type: 'delta',
-    components_added: result.added,
-    components_removed: result.removed,
-    components_modified: result.updated,
-    snapshot_data: snapshotData,
-    snapshot_hash: snapshotHash,
-  });
+  await (supabase
+    .from('dsg_inventory_snapshots' as any)
+    .insert({
+      snapshot_type: 'delta',
+      components_added: result.added,
+      components_removed: result.removed,
+      components_modified: result.updated,
+      snapshot_data: snapshotData,
+      snapshot_hash: snapshotHash,
+    } as any) as any);
 }
 
 /**
@@ -151,20 +153,20 @@ export async function getInventoryHealth(): Promise<{
   const supabase = getSupabaseAdmin();
 
   try {
-    const { count: componentCount } = await supabase
-      .from('dsg_system_components')
-      .select('*', { count: 'exact', head: true });
+    const { count: componentCount } = await (supabase
+      .from('dsg_system_components' as any)
+      .select('*', { count: 'exact', head: true }) as any);
 
-    const { count: depCount } = await supabase
-      .from('dsg_component_dependencies')
-      .select('*', { count: 'exact', head: true });
+    const { count: depCount } = await (supabase
+      .from('dsg_component_dependencies' as any)
+      .select('*', { count: 'exact', head: true }) as any);
 
-    const { data: lastSnapshot } = await supabase
-      .from('dsg_inventory_snapshots')
+    const { data: lastSnapshot } = await (supabase
+      .from('dsg_inventory_snapshots' as any)
       .select('created_at')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .single() as any);
 
     return {
       ok: (componentCount ?? 0) > 0,
