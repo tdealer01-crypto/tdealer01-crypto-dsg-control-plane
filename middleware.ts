@@ -198,4 +198,4 @@ export const config = {
     // API routes: body-size enforcement + correlation ID
     '/api/:path*',
   ],
-};
+};// Vercel production rebuild trigger - 1784958177
