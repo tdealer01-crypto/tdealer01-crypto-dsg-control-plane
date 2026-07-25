@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Build query
-    let query = (getSupabaseAdmin()
-      .from('dsg_system_components' as any)
-      .select('*', { count: 'exact' }) as any);
+    let query = getSupabaseAdmin()
+      .from('dsg_system_components')
+      .select('*', { count: 'exact' });
 
     // Apply filters
-    if (componentType) query = query.eq('component_type' as any, componentType);
-    if (category) query = query.eq('category' as any, category);
-    if (status) query = query.eq('status' as any, status);
-    if (tier) query = query.eq('tier' as any, tier);
+    if (componentType) query = query.eq('component_type', componentType);
+    if (category) query = query.eq('category', category);
+    if (status) query = query.eq('status', status);
+    if (tier) query = query.eq('tier', tier);
 
     // Apply pagination
     query = query.range(offset, offset + limit - 1);

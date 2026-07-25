@@ -39,27 +39,27 @@ export async function POST(request: NextRequest) {
         const tableName = tableMatch[1] || tableMatch[2];
 
         // Find table component
-        const { data: tableComp } = await (supabase as any)
-          .from('dsg_system_components' as any)
+        const { data: tableComp } = await supabase
+          .from('dsg_system_components')
           .select('id')
-          .eq('path_or_id' as any, tableName)
+          .eq('path_or_id', tableName)
           .single();
 
         if (tableComp) {
           // Find dependencies pointing to this table
-          const { data: deps } = await (supabase as any)
-            .from('dsg_component_dependencies' as any)
+          const { data: deps } = await supabase
+            .from('dsg_component_dependencies')
             .select('from_component_id')
-            .eq('to_component_id' as any, (tableComp as any).id);
+            .eq('to_component_id', tableComp.id);
 
           if (deps && deps.length > 0) {
             const componentIds = deps.map((d: any) => d.from_component_id);
 
             // Get component details
-            const { data: components } = await (supabase as any)
-              .from('dsg_system_components' as any)
+            const { data: components } = await supabase
+              .from('dsg_system_components')
               .select('*')
-              .in('id' as any, componentIds);
+              .in('id', componentIds);
 
             results.answer = components || [];
             results.reasoning.push(`Found ${components?.length || 0} components accessing table "${tableName}"`);
@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
       if (constraintMatch) {
         const constraintName = constraintMatch[1] || constraintMatch[2];
 
-        const { data: constraint } = await (supabase as any)
-          .from('dsg_constraint_sets' as any)
+        const { data: constraint } = await supabase
+          .from('dsg_constraint_sets')
           .select('*')
-          .eq('set_name' as any, constraintName)
+          .eq('set_name', constraintName)
           .single();
 
         if (constraint) {
@@ -103,27 +103,27 @@ export async function POST(request: NextRequest) {
         const routePath = routeMatch[0];
 
         // Find route component
-        const { data: routeComp } = await (supabase as any)
-          .from('dsg_system_components' as any)
+        const { data: routeComp } = await supabase
+          .from('dsg_system_components')
           .select('id')
-          .eq('path_or_id' as any, routePath)
+          .eq('path_or_id', routePath)
           .single();
 
         if (routeComp) {
           // Find guarding policies
-          const { data: deps } = await (supabase as any)
-            .from('dsg_component_dependencies' as any)
+          const { data: deps } = await supabase
+            .from('dsg_component_dependencies')
             .select('from_component_id')
-            .eq('to_component_id' as any, (routeComp as any).id)
-            .eq('dependency_type' as any, 'guards');
+            .eq('to_component_id', routeComp.id)
+            .eq('dependency_type', 'guards');
 
           if (deps && deps.length > 0) {
             const policyIds = deps.map((d: any) => d.from_component_id);
 
-            const { data: policies } = await (supabase as any)
-              .from('dsg_system_components' as any)
+            const { data: policies } = await supabase
+              .from('dsg_system_components')
               .select('*')
-              .in('id' as any, policyIds);
+              .in('id', policyIds);
 
             results.answer = policies || [];
             results.reasoning.push(`Found ${policies?.length || 0} policies guarding route "${routePath}"`);
@@ -134,10 +134,10 @@ export async function POST(request: NextRequest) {
 
     // Fallback: Return all active components if no specific match
     if (results.answer.length === 0) {
-      const { data: components } = await (supabase as any)
-        .from('dsg_system_components' as any)
+      const { data: components } = await supabase
+        .from('dsg_system_components')
         .select('*')
-        .eq('status' as any, 'active')
+        .eq('status', 'active')
         .limit(20);
 
       results.answer = components || [];
