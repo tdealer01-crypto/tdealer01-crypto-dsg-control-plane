@@ -120,7 +120,22 @@ CREATE INDEX idx_capabilities_name ON dsg_component_capabilities(capability_name
 CREATE INDEX idx_capabilities_role ON dsg_component_capabilities(required_role);
 
 -- ============================================================================
--- TABLE 4: Constraint Sets (for Agent Spawning)
+-- TABLE 4: Organizations (Prerequisite for Constraint Sets)
+-- ============================================================================
+-- Master organization data for org-level governance
+
+CREATE TABLE IF NOT EXISTS dsg_organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_organizations_slug ON dsg_organizations(slug);
+
+-- ============================================================================
+-- TABLE 5: Constraint Sets (for Agent Spawning)
 -- ============================================================================
 -- Defines what sub-agents can and cannot do
 
@@ -159,7 +174,7 @@ CREATE INDEX idx_constraint_sets_org ON dsg_constraint_sets(organization_id);
 CREATE INDEX idx_constraint_sets_name ON dsg_constraint_sets(set_name);
 
 -- ============================================================================
--- TABLE 5: Inventory Snapshots (Change Tracking)
+-- TABLE 6: Inventory Snapshots (Change Tracking)
 -- ============================================================================
 -- Maintains history of inventory changes
 
@@ -193,11 +208,29 @@ CREATE INDEX idx_snapshots_created ON dsg_inventory_snapshots(created_at DESC);
 -- ============================================================================
 
 -- Enable RLS on all tables
+ALTER TABLE dsg_organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dsg_system_components ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dsg_component_dependencies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dsg_component_capabilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dsg_constraint_sets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dsg_inventory_snapshots ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- dsg_organizations RLS Policies
+-- ============================================================================
+
+-- All authenticated users can read organizations
+CREATE POLICY "read_organizations"
+  ON dsg_organizations
+  FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Admins can manage organizations
+CREATE POLICY "manage_organizations_admin"
+  ON dsg_organizations
+  FOR ALL
+  USING ((auth.jwt() ->> 'role')::text = 'admin')
+  WITH CHECK ((auth.jwt() ->> 'role')::text = 'admin');
 
 -- ============================================================================
 -- dsg_system_components RLS Policies
@@ -282,33 +315,18 @@ CREATE POLICY "manage_capabilities_admin"
 -- dsg_constraint_sets RLS Policies
 -- ============================================================================
 
--- Read own organization's constraint sets
-CREATE POLICY "read_org_constraint_sets"
+-- Authenticated users can read constraint sets
+CREATE POLICY "read_constraint_sets"
   ON dsg_constraint_sets
   FOR SELECT
-  USING (
-    organization_id IN (
-      SELECT organization_id FROM dsg_org_members
-      WHERE user_id = auth.uid()
-    )
-  );
+  USING (auth.role() = 'authenticated');
 
--- Org admins can manage constraint sets
-CREATE POLICY "manage_org_constraint_sets"
+-- Admins can manage constraint sets
+CREATE POLICY "manage_constraint_sets_admin"
   ON dsg_constraint_sets
   FOR ALL
-  USING (
-    organization_id IN (
-      SELECT organization_id FROM dsg_org_members
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    organization_id IN (
-      SELECT organization_id FROM dsg_org_members
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING ((auth.jwt() ->> 'role')::text = 'admin')
+  WITH CHECK ((auth.jwt() ->> 'role')::text = 'admin');
 
 -- ============================================================================
 -- dsg_inventory_snapshots RLS Policies
