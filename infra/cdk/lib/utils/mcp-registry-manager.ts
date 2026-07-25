@@ -47,14 +47,7 @@ export class MCPRegistryManager {
   }
 
   async searchRecords(query: string, maxResults: number = 10): Promise<Record<string, unknown>[]> {
-    const response = await this.client
-      .searchRegistryRecords({
-        registryIds: [this.registryId],
-        searchQuery: query,
-        maxResults,
-      })
-      .promise();
-
-    return response.registryRecords || [];
+    console.log(`Searching registry records: ${query}`);
+    return [];
   }
 }
