@@ -42,11 +42,11 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // Fetch constraint set
-    const { data: constraint, error: constraintError } = await (supabase
+    const { data: constraint, error: constraintError } = await (supabase as any)
       .from('dsg_constraint_sets' as any)
       .select('*')
       .eq('set_name' as any, constraint_set_name)
-      .single() as any);
+      .single();
 
     if (constraintError || !constraint) {
       return NextResponse.json(
