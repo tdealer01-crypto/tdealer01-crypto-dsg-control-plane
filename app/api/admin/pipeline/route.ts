@@ -1,9 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { getRateLimitKey, applyRateLimit, buildRateLimitHeaders } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  // Rate limit: 10 calls per minute per IP
+  const rateLimitKey = getRateLimitKey(request, 'admin:pipeline');
+  const rateLimitResult = await applyRateLimit({
+    key: rateLimitKey,
+    limit: 10,
+    windowMs: 60 * 1000, // 1 minute
+  });
+
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      {
+        status: 429,
+        headers: buildRateLimitHeaders(rateLimitResult, 10),
+      },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token')
     ?? request.headers.get('authorization')?.replace('Bearer ', '');

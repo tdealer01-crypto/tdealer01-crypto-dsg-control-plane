@@ -47,7 +47,7 @@ function resolveCanonicalResponseOrigin() {
   return appOrigin
     || vercelProductionOrigin
     || vercelDeploymentOrigin
-    || 'https://tdealer01-crypto-dsg-control-plane.vercel.app';
+    || 'http://localhost:3000'; // Development fallback only
 }
 
 function buildConnectSrc() {
