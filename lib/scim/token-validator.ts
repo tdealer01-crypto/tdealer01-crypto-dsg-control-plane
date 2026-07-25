@@ -30,21 +30,44 @@ export async function verifyScimToken(orgId: string, token: string): Promise<boo
   }
 
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
     const tokenHash = hashScimToken(token);
 
-    // Call RPC function to verify token and update last_used_at
-    const { data, error } = await supabase.rpc('verify_scim_token', {
-      p_org_id: orgId,
-      p_token_hash: tokenHash,
-    });
+    // Query token directly - verify enabled and not expired
+    const { data, error } = await supabase
+      .from('org_scim_tokens')
+      .select('id, is_enabled, expires_at')
+      .eq('org_id', orgId)
+      .eq('token_hash', tokenHash)
+      .maybeSingle();
 
     if (error) {
-      console.error('[scim-token] RPC verify error:', error);
+      console.error('[scim-token] Query error:', error);
       return false;
     }
 
-    return data === true;
+    if (!data) {
+      return false;
+    }
+
+    // Check if enabled
+    if (!data.is_enabled) {
+      return false;
+    }
+
+    // Check if expired
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      return false;
+    }
+
+    // Update last_used_at for audit trail
+    await supabase
+      .from('org_scim_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', data.id)
+      .throwOnError() // Let errors be caught by outer try-catch
+
+    return true;
   } catch (error) {
     console.error('[scim-token] Verification exception:', error);
     return false;
