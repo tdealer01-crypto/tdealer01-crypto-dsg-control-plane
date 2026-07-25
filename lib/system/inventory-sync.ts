@@ -71,11 +71,11 @@ export async function syncSystemInventory(): Promise<SyncResult> {
         (d) => `${d.type}:${d.path_or_id}` === key
       );
 
-      if (discovered_key === -1 && comp.status === 'active') {
+      if (discovered_key === -1 && (comp as any).status === 'active') {
         const { error } = await (supabase
           .from('dsg_system_components' as any)
           .update({ status: 'deprecated' })
-          .eq('id', comp.id) as any);
+          .eq('id', (comp as any).id) as any);
 
         if (!error) result.removed++;
       }
