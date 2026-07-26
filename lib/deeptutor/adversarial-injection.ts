@@ -12,7 +12,7 @@
  * - Data quality attacks: confidence manipulation, citation spoofing
  */
 
-import type { SimulationInput, ExecutionRequest, WorldState } from '../../spine/types';
+import type { SimulationInput, ExecutionRequest, WorldState } from '../spine/types';
 import type { DeepTutorFailureMode } from './types';
 
 /**

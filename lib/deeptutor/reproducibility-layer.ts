@@ -20,7 +20,7 @@ import type {
   ExecutionRequest,
   ExecutionResult,
   TelemetryEvent,
-} from '../../spine/types';
+} from '../spine/types';
 import type { AdversarialEvent } from './adversarial-injection';
 import type { ProofVerificationResult, VerificationReport } from './proof-verification';
 

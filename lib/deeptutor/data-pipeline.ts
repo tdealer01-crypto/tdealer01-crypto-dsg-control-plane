@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'crypto';
-import type { SimulationInput, SimulationConfig } from '../../spine/types';
+import type { SimulationInput, SimulationConfig } from '../spine/types';
 import type { DeepTutorInput, DataQualityCertificate } from './types';
 import {
   validateDeepTutorInput,

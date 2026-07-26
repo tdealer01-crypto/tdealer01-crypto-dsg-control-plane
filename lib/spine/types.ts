@@ -72,3 +72,146 @@ export type SpineIntentPayload = {
     context: CanonicalRecord;
   };
 };
+
+// Z3 / Simulation Framework Types (DeepTutor Integration)
+
+export type GenomeId = string;
+
+export interface GenomeParameters {
+  rateLimitRpm: number;
+  blockThreshold: number;
+  allowThreshold: number;
+  maxConcurrentExecutions: number;
+  tokenBudgetPerUser: number;
+  confidenceThreshold: number;
+}
+
+export interface Genome {
+  id: GenomeId;
+  parameters: GenomeParameters;
+  fitness: number;
+  generation: number;
+}
+
+export interface SLAContract {
+  metric: string;
+  operator: 'lt' | 'lte' | 'gt' | 'gte';
+  threshold: number;
+  description: string;
+}
+
+export interface SecurityInvariant {
+  name: string;
+  expression: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface Z3ConstraintSet {
+  slaContracts: SLAContract[];
+  securityInvariants: SecurityInvariant[];
+  resourceLimits: {
+    maxConcurrentExecutions: number;
+    maxMemoryMB: number;
+    maxRpsPerAgent: number;
+  };
+  auditRequirements: Array<{
+    eventType: string;
+    required: boolean;
+  }>;
+}
+
+export interface FitnessScore {
+  latency: number;
+  throughput: number;
+  errorRate: number;
+  costEfficiency: number;
+  slaCompliance: boolean;
+  zeroDataLoss: boolean;
+  auditCompleteness: number;
+  humanOverrideRate: number;
+  quotaUtilization: number;
+  composite: number;
+}
+
+export interface RequestTypeDistribution {
+  [key: string]: number;
+}
+
+export interface SeasonalFactor {
+  tick: number;
+  multiplier: number;
+}
+
+export interface WorkloadTrace {
+  durationTicks: number;
+  requestsPerTick: number[];
+  requestTypes: RequestTypeDistribution;
+  seasonalFactors: SeasonalFactor[];
+  traceHash: string;
+}
+
+export interface HumanSignals {
+  overrides: number;
+  corrections: number;
+  averageResponseTime: number;
+  satisfactionScore: number;
+}
+
+export interface ApprovalPattern {
+  allowanceRate: number;
+  blockageRate: number;
+  overrideRate: number;
+}
+
+export interface SimulationConfig {
+  maxTicks: number;
+  populationSize: number;
+  eliteSize: number;
+  evolutionInterval: number;
+  mutationRate: number;
+  crossoverRate: number;
+  snapshotInterval: number;
+}
+
+export interface SimulationInput {
+  constraints: Z3ConstraintSet;
+  telemetryBaseline: FitnessScore;
+  workloadTrace: WorkloadTrace;
+  humanSignals: HumanSignals;
+  seedGenomes: Genome[];
+  config: SimulationConfig;
+  masterSeed: number;
+}
+
+export interface ExecutionRequest {
+  id: string;
+  type: string;
+  priority: number;
+  seed: number;
+}
+
+export interface ExecutionResult {
+  requestId: string;
+  decision: Decision;
+  latency: number;
+  status: 'success' | 'error' | 'timeout';
+  genomeId: GenomeId;
+}
+
+export interface WorldState {
+  tick: number;
+  activeAgents: number;
+  systemLoad: number;
+}
+
+export interface TelemetryEvent {
+  timestamp: number;
+  eventType: string;
+  data: Record<string, unknown>;
+}
+
+export interface Z3Proof {
+  proofHash: string;
+  constraintId: string;
+  satisfied: boolean;
+}

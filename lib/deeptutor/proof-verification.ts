@@ -19,8 +19,8 @@ import type {
   Genome,
   ExecutionResult,
   Z3Proof,
-} from '../../spine/types';
-import type { AdversarialEvent } from './adversarial-injection.js';
+} from '../spine/types';
+import type { AdversarialEvent } from './adversarial-injection';
 
 /**
  * Proof verification result
