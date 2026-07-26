@@ -277,7 +277,7 @@ export class AdversarialInjector {
       ...config,
     };
 
-    this.attacks = new Map([
+    this.attacks = new Map<AttackCategory, AttackVector>([
       ['replay', new ReplayAttack()],
       ['timing', new TimingAttack()],
       ['resource', new ResourceAttack()],
