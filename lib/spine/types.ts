@@ -78,19 +78,35 @@ export type SpineIntentPayload = {
 export type GenomeId = string;
 
 export interface GenomeParameters {
-  rateLimitRpm: number;
-  blockThreshold: number;
-  allowThreshold: number;
-  maxConcurrentExecutions: number;
-  tokenBudgetPerUser: number;
-  confidenceThreshold: number;
+  rateLimitRpm?: number;
+  rateLimitWindowMs?: number;
+  freeTierQuota?: number;
+  paidTierMultiplier?: number;
+  quotaWindowDays?: number;
+  cacheTtlMs?: number;
+  cacheMaxSize?: number;
+  maxConcurrentExecutions?: number;
+  queueDepth?: number;
+  executionTimeoutMs?: number;
+  webhookTimeoutMs?: number;
+  blockThreshold?: number;
+  reviewThreshold?: number;
+  allowThreshold?: number;
+  batchSize?: number;
+  batchWindowMs?: number;
+  tokenBudgetPerUser?: number;
+  confidenceThreshold?: number;
 }
 
 export interface Genome {
   id: GenomeId;
   parameters: GenomeParameters;
-  fitness: number;
-  generation: number;
+  fitness?: number;
+  generation?: number;
+  parentIds?: string[];
+  z3Verified?: boolean;
+  canaryValidated?: boolean;
+  createdAtTick?: number;
 }
 
 export interface SLAContract {
@@ -152,16 +168,23 @@ export interface WorkloadTrace {
 }
 
 export interface HumanSignals {
-  overrides: number;
-  corrections: number;
-  averageResponseTime: number;
-  satisfactionScore: number;
+  approvalPatterns?: ApprovalPattern[];
+  thresholdHistory?: unknown[];
+  incidentRootCauses?: unknown[];
+  overrides?: number;
+  corrections?: number;
+  averageResponseTime?: number;
+  satisfactionScore?: number;
 }
 
 export interface ApprovalPattern {
-  allowanceRate: number;
-  blockageRate: number;
-  overrideRate: number;
+  eventType?: string;
+  approved?: boolean;
+  threshold?: number;
+  timestamp?: number;
+  allowanceRate?: number;
+  blockageRate?: number;
+  overrideRate?: number;
 }
 
 export interface SimulationConfig {
