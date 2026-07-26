@@ -36,6 +36,135 @@ When uncertainty exists, verify against the implementation and evidence before m
 
 ---
 
+## 🚀 Z3 Formal Verification Framework (July 2026)
+
+**Status:** ✅ **DEPLOYED** | Published to Claude Plugin Hub
+
+Complete deterministic multi-agent governance framework for AI safety and AGI preparation:
+
+### What It Does
+- **Z3 SMT Solver** — Mathematical proofs of governance decisions
+- **Deterministic Simulation** — 1x-1000x time acceleration (10x default, 100x aggressive, 1000x HPC)
+- **Adversarial Testing** — 6 attack vectors: replay, timing, resource, availability, data-quality, consensus
+- **DeepTutor Integration** — Real RAG metrics → formal constraints
+- **Multi-Agent Governance** — Chat, Research, Quiz, Solve, Visualize, Partner, Co-Writer coordination
+- **Reproducible Audit Trails** — Hash-chain proof with exact replay capability
+- **Evidence-Ready** — CCVS L1-L5 compliance artifacts
+
+### Core Components
+| Module | Purpose | Status |
+|--------|---------|--------|
+| `lib/deeptutor/adapter.ts` | Transform real metrics to constraints | ✅ 405 lines |
+| `lib/deeptutor/acceleration-config.ts` | Time dilation + parallel execution | ✅ 340 lines |
+| `lib/deeptutor/adversarial-injection.ts` | 6 attack categories | ✅ 360 lines |
+| `lib/deeptutor/proof-verification.ts` | Z3 constraint verification | ✅ 380 lines |
+| `lib/deeptutor/reproducibility-layer.ts` | Hash-chain audit logs | ✅ 410 lines |
+| `tests/integration/deeptutor-pipeline.test.ts` | End-to-end validation | ✅ 466 lines |
+
+### Installation
+
+```bash
+# Bash (macOS/Linux)
+bash scripts/install-plugin.sh
+
+# Batch (Windows)
+scripts\install-plugin.bat
+
+# Manual
+git clone --branch main https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane.git
+cd tdealer01-crypto-dsg-control-plane
+npm ci && npm run typecheck
+```
+
+### Quick Example
+
+```typescript
+import { adaptDeepTutorToSimulation } from 'lib/deeptutor/adapter';
+import { DeepTutorDataPipeline } from 'lib/deeptutor/data-pipeline';
+
+// Transform real system metrics
+const simInput = adaptDeepTutorToSimulation(deepTutorMetrics);
+
+// Run with 100x acceleration + adversarial testing
+const pipeline = new DeepTutorDataPipeline();
+const result = await pipeline.execute(simInput, {
+  acceleration: 'aggressive',  // 100x speedup
+  adversarial: { enabled: true, injectionRate: 0.05 },
+  parallelAgents: 16
+});
+
+// Get proof + audit trail
+console.log('Proof:', result.proofs);
+console.log('Audit Trail:', result.auditLog);
+console.log('Replay Token:', result.reproducibilityToken);
+```
+
+**Documentation:** 
+- Installation: [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md)
+- Architecture: [`lib/deeptutor/README.md`](lib/deeptutor/README.md)
+- Publishing: [`docs/PLUGIN_PUBLISHING.md`](docs/PLUGIN_PUBLISHING.md)
+- API Reference: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
+
+---
+
+## 🔄 Continuous Simulation & Alternative Scenarios (July 2026)
+
+**Status:** ✅ **DEPLOYED** | Integrated with Z3 Formal Verification
+
+Framework for continuous simulation with alternative scenario exploration (วิวัตตนาการ) and contingency planning:
+
+### What It Does
+- **Scenario Explorer** — Discovers alternative Z3 satisfying assignments with probability distribution
+- **Contingency Planner** — Creates risk-based contingency plans with primary/fallback actions
+- **Continuous Simulator** — Runs indefinitely with configurable intervals, tracking multi-run statistics
+- **Decision Trees** — Builds scenario trees with branching factors and depth analysis
+- **Risk Assessment** — Evaluates scenarios as low/medium/high with confidence scores
+
+### Core Components
+| Module | Purpose | Status |
+|--------|---------|--------|
+| `lib/deeptutor/scenario-explorer.ts` | Finds alternative Z3 satisfying assignments | ✅ 249 lines |
+| `lib/deeptutor/contingency-planner.ts` | Creates adaptive contingency strategies | ✅ 267 lines |
+| `lib/deeptutor/continuous-simulator.ts` | Orchestrates continuous simulation loops | ✅ 240 lines |
+| `tests/integration/continuous-simulator.test.ts` | 20 integration tests | ✅ 291 lines |
+
+### Quick Example
+
+```typescript
+import { ContinuousSimulator } from 'lib/deeptutor/continuous-simulator';
+import { Z3ConstraintSet } from 'lib/spine/types';
+
+const simulator = new ContinuousSimulator({
+  interval: 100,           // Simulation cycle (ms)
+  maxScenarios: 5,         // Generate 5 scenarios per run
+  explorationDepth: 2,     // Decision tree depth
+  probabilityThreshold: 0.01,
+  timeAcceleration: 1,
+});
+
+// Start continuous simulation
+await simulator.startContinuousSimulation(constraints);
+
+// Later: stop and get statistics
+await simulator.stopContinuousSimulation();
+const report = simulator.getSummaryReport();
+console.log('Scenarios generated:', report.currentScenarios);
+console.log('Success rate:', report.successRate);
+console.log('Average duration:', report.averageDuration);
+```
+
+### Features
+
+✅ Alternative decision path exploration  
+✅ Probabilistic scenario ranking (earlier scenarios weighted higher)  
+✅ Risk-based contingency planning (APPROVE_FAST → APPROVE_WITH_REVIEW → BLOCK_AND_ESCALATE)  
+✅ Continuous operation with interval-based execution  
+✅ State tracking across multiple simulation runs  
+✅ Decision tree generation with branching analysis  
+✅ Failure recovery and error tracking  
+
+---
+
 ## 🧩 Claude Code Integration (Codex Plugin)
 
 The DSG Control Plane is available as a **Codex plugin** for Claude Code, enabling AI-native governance directly within the Claude ecosystem.
@@ -331,6 +460,7 @@ curl -fsSL https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/statu
 
 ## Architecture: Policy → Gate → Proof → Evidence
 
+### Traditional DSG Flow
 ```
 User Policy (Thai/English)
       ↓
@@ -354,7 +484,48 @@ Decision: ✅ ALLOW / ⚠️ REVIEW / ❌ BLOCK
   ├─ Replay capability (2+ years)
 ```
 
-**Under the hood:** Z3 formal verification, SHA-256 hash chains, deterministic solvers ensure identical replay with identical inputs.
+### Z3 Formal Verification Pipeline (New)
+```
+DeepTutor System Metrics (Real)
+      ↓
+[Adapter: Transform to SimulationInput]
+      ├─ Agent state metrics
+      ├─ RAG source quality
+      ├─ Request patterns
+      ├─ Response quality
+      ↓
+[Z3 Constraint Generation]
+  ├─ SLA contracts
+  ├─ Security invariants
+  ├─ Genome parameters (18 fields)
+      ↓
+[Adversarial Injection: 6 Attack Categories]
+  ├─ Replay attacks
+  ├─ Timing attacks
+  ├─ Resource exhaustion
+  ├─ Cascade failures
+  ├─ Data quality manipulation
+  ├─ Consensus attacks
+      ↓
+[Time Acceleration: 1x-1000x Speedup]
+  ├─ Parallel execution (1-256 agents)
+  ├─ Deterministic random seeding
+  ├─ Resource scaling
+      ↓
+[Proof Verification: Z3 SMT Solver]
+  ├─ Mathematical correctness proof
+  ├─ Constraint satisfaction
+  ├─ Policy version hash
+      ↓
+[Reproducible Audit Trail: Hash-Chain]
+  ├─ Every event cryptographically linked
+  ├─ Execution snapshots
+  ├─ Reproducibility token (exact replay)
+      ↓
+Evidence Ready for L1-L5 Compliance
+```
+
+**Under the hood:** Z3 formal verification, SHA-256 hash chains, deterministic solvers ensure identical replay with identical inputs, full adversarial robustness testing at 100x speed.
 
 ---
 
@@ -362,10 +533,19 @@ Decision: ✅ ALLOW / ⚠️ REVIEW / ❌ BLOCK
 
 | Pillar | Features | Why It Matters |
 |--------|----------|---|
-| **👀 Monitor** | Dashboard, events, usage alerts | See what's happening in real-time |
-| **✅ Verify** | Policy enforcement, approvals, risk detection | Prevent mistakes before they happen |
-| **📜 Audit** | Tamper-proof trail, replay, export, evidence | Prove decisions to regulators |
-| **📈 Optimize** | Cost tracking, analytics, compliance reports | Control budget and risk |
+| **👀 Monitor** | Dashboard, events, usage alerts + Z3 formal metrics | See what's happening in real-time + mathematical proof |
+| **✅ Verify** | Policy enforcement, approvals, risk detection + adversarial testing | Prevent mistakes + test robustness against attacks |
+| **📜 Audit** | Tamper-proof trail, replay, export, evidence + reproducibility tokens | Prove decisions + exact replay anytime |
+| **📈 Optimize** | Cost tracking, analytics, compliance reports + time acceleration | Control budget + simulate 1000x faster |
+
+### New Z3 Framework Features
+- ✅ **Z3 Formal Verification** — Mathematical proof of governance decisions
+- ✅ **Deterministic Simulation** — 1x-1000x time acceleration with parallel agents (1-256)
+- ✅ **Adversarial Robustness** — 6 attack categories (replay, timing, resource, availability, data-quality, consensus)
+- ✅ **Multi-Agent Coordination** — Unified governance across Chat, Research, Solve, Visualize, Partner, Co-Writer
+- ✅ **DeepTutor Integration** — Transform real RAG metrics to formal constraints
+- ✅ **Reproducible Audit** — Hash-chain with exact replay capability
+- ✅ **Evidence-Ready** — CCVS L1-L5 compliance artifacts, AGI governance preparation
 
 ---
 
@@ -404,7 +584,10 @@ Agent frameworks help you **run**  REVIEW or BLOCK, never ALLOW. Policy can be w
 | **Phase 7: Revenue Automation** | ✅ | Delivery Proof product live, 4 production test suites, RLS billing, rate limiting deployed |
 | **Claude Code Skills** | ✅ **COMPLETE** | 6 governance skills integrated: action-layer-ged, formal-verification, multi-governance-orchestrator, marketplace-fix, github-action-controller, ising-optimization |
 | **Ising Model Optimization** | ✅ | Binary variable optimization with simulated annealing + Z3 verification, 8.88ms latency, 100% deterministic proof consistency |
-| **Last Updated** | ✅ | July 23, 2026 — 6 governance skills integrated and deployed, Ising solver added to formal-verification skill |
+| **Z3 Formal Verification Framework** | ✅ **DEPLOYED** | Deterministic simulation + 100x time acceleration + adversarial testing (6 vectors) + multi-agent governance + reproducible audit trails. Published to Claude Plugin Hub. |
+| **DeepTutor Integration** | ✅ | Transform real RAG system metrics to Z3 formal constraints, 5 pipeline phases complete |
+| **Installation Scripts** | ✅ | Bash (macOS/Linux) + Windows batch with prerequisite checking and configuration generation |
+| **Last Updated** | ✅ | July 26, 2026 — Z3 Formal Verification Framework merged to main and published to Plugin Hub |
 
 ---
 

@@ -1,0 +1,43 @@
+{
+  "name": "cpd-u-QsPy3P3foWqOSXhAUdmMhkPLTwtgLePF-z3-formal-verification-framework",
+  "owner": {
+    "name": "Thanawat suparongsuwan"
+  },
+  "plugins": [
+    {
+      "id": "scenario-explorer",
+      "name": "Scenario Explorer",
+      "version": "1.0.0",
+      "path": "lib/deeptutor/scenario-explorer.ts",
+      "status": "deployed",
+      "lines": 249,
+      "description": "Discovers alternative Z3 satisfying assignments with probability distribution"
+    },
+    {
+      "id": "contingency-planner",
+      "name": "Contingency Planner",
+      "version": "1.0.0",
+      "path": "lib/deeptutor/contingency-planner.ts",
+      "status": "deployed",
+      "lines": 267,
+      "description": "Creates risk-based contingency plans with primary/fallback actions"
+    },
+    {
+      "id": "continuous-simulator",
+      "name": "Continuous Simulator",
+      "version": "1.0.0",
+      "path": "lib/deeptutor/continuous-simulator.ts",
+      "status": "deployed",
+      "lines": 240,
+      "description": "Orchestrates continuous simulation runs with state tracking"
+    },
+    {
+      "id": "z3-formal-verification",
+      "name": "Z3 Formal Verification Framework",
+      "version": "1.0.0",
+      "path": "lib/deeptutor/",
+      "status": "deployed",
+      "description": "Deterministic multi-agent governance with Z3 SMT solver"
+    }
+  ]
+}

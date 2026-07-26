@@ -1,0 +1,88 @@
+Company,Segment,Funding_Stage,Est_ARR_M,Fund_Movement_Type,Compliance_Pressure,Tech_Stack,Contact_Title,Decision_Maker,Email,LinkedIn,Score_Initial,Tier
+Coinbase Commerce,Crypto Exchange,Series D,50M+,Payouts & Withdrawals,HIGH,Stripe/Node.js,VP Finance,CFO,finance@coinbase.com,https://linkedin.com/company/coinbase,9,HOT
+Kraken,Crypto Exchange,Private,100M+,User Withdrawals & Refunds,HIGH,Proprietary,Finance Director,CFO,compliance@kraken.com,https://linkedin.com/company/kraken,9,HOT
+Gemini,Crypto Exchange,Series C,20M,Payouts & Settlements,HIGH,AWS,General Counsel,CCO,legal@gemini.com,https://linkedin.com/company/gemini-crypto,8,HOT
+BlockFi,Fintech/Crypto,Series C,10M,Interest Payments & Redemptions,HIGH,Node.js/MongoDB,CFO,CFO,investors@blockfi.com,https://linkedin.com/company/blockfi,8,HOT
+Nexo,Fintech,Series B,50M+,Loan Payouts & Withdrawals,MEDIUM,Proprietary,VP Ops,CFO,operations@nexo.com,https://linkedin.com/company/nexo,7,HOT
+Celsius,Fintech/Crypto,Series B,30M,Interest Distribution,HIGH,Proprietary,General Counsel,CCO,legal@celsius.network,https://linkedin.com/company/celsius-network,8,HOT
+YouHodler,Fintech,Series B,5M,Loan Disbursements,MEDIUM,Stripe/Node,CFO,CFO,info@youhodler.com,https://linkedin.com/company/youhodler,6,WARM
+Ledger,Hardware/Custody,Series C,100M+,None (custody only),LOW,Python/C++,VP Product,CFO,business@ledger.com,https://linkedin.com/company/ledger,5,WARM
+Paxos,Crypto Services,Series D,500M+,Stablecoin Issuance & Redemptions,CRITICAL,Node.js/AWS,VP Legal,Chief Legal Officer,legal@paxos.com,https://linkedin.com/company/paxos-trust-company,9,HOT
+Fireblocks,Custody,Series D,500M+,Transaction Signing & Approvals,CRITICAL,AWS/Kubernetes,VP Ops,COO,operations@fireblocks.com,https://linkedin.com/company/fireblocks,8,HOT
+Copper,Custody,Series B,50M,Digital Asset Custody,HIGH,AWS,VP Operations,COO,ops@copper.co,https://linkedin.com/company/copper-tech,7,HOT
+Mesha,Treasury,Seed,2M,Treasury Management,MEDIUM,Stripe/AWS,Founder,CEO,founders@mesha.io,https://linkedin.com/company/mesha-io,6,WARM
+Idle Finance,DeFi,Governance,5M,Staking Rewards & Distributions,MEDIUM,Ethereum/Solana,Treasury Lead,DAO,treasury@idle.finance,https://linkedin.com/company/idle-finance,6,WARM
+Lido,Staking,DAO,100M+,Staking Distributions,HIGH,Ethereum/Node,DAO Ops,Treasury Manager,operations@lido.finance,https://linkedin.com/company/lido-finance,7,HOT
+Rocket Pool,Staking,Protocol,10M,Minipool Rewards,MEDIUM,Ethereum,Treasurer,Treasury,contact@rocketpool.net,https://linkedin.com/company/rocket-pool,6,WARM
+Compound,DeFi,Governance,50M+,Governance Treasury,MEDIUM,Ethereum,Treasury Lead,Governance,governance@compound.finance,https://linkedin.com/company/compound-finance,6,WARM
+Aave,DeFi,Governance,100M+,Treasury & Safety Module,MEDIUM,Ethereum/Solana,Operations,Treasury,treasury@aave.com,https://linkedin.com/company/aave,7,HOT
+Uniswap,DeFi,Governance,200M+,Protocol Treasury,MEDIUM,Ethereum,Treasury Lead,Governance,governance@uniswap.org,https://linkedin.com/company/uniswap,6,WARM
+dYdX,DeFi,Governance,50M+,Community Treasury,MEDIUM,Cosmos/dYdX Chain,Treasury,DAO,treasury@dydx.foundation,https://linkedin.com/company/dydx,6,WARM
+Curve,DeFi,Governance,30M+,Treasury Management,MEDIUM,Ethereum,Treasury,Governance,governance@curve.fi,https://linkedin.com/company/curve-finance,6,WARM
+Balancer,DeFi,Governance,20M,Treasury Operations,MEDIUM,Ethereum,Operations,DAO,operations@balancer.fi,https://linkedin.com/company/balancer-labs,5,WARM
+MakerDAO,DeFi,Governance,500M+,MKR & DAI Treasury,MEDIUM,Ethereum,Treasurer,Governance,governance@makerdao.com,https://linkedin.com/company/makerdao,7,HOT
+Yearn,DeFi,Governance,50M+,Strategy Treasury,MEDIUM,Ethereum/Solana,Treasury,Governance,treasury@yearn.finance,https://linkedin.com/company/yearn-finance,6,WARM
+Convex,DeFi,Governance,20M,CRV Staking Rewards,MEDIUM,Ethereum,Operations,Treasury,operations@convex.finance,https://linkedin.com/company/convex-finance,5,WARM
+Frax,DeFi,Governance,10M,Protocol Treasury,MEDIUM,Ethereum/Solana,Treasury,DAO,treasury@frax.finance,https://linkedin.com/company/frax-finance,5,WARM
+Orca,Solana DeFi,Series B,50M,Liquidity Pool Rewards,MEDIUM,Solana,Finance,CFO,finance@orca.so,https://linkedin.com/company/orca-so,7,HOT
+Magic Eden,Solana NFT,Series B,100M,Royalty & Creator Payouts,MEDIUM,Solana/Node,VP Finance,CFO,business@magiceden.io,https://linkedin.com/company/magic-eden,7,HOT
+Marinade,Solana Staking,Series B,50M,Stake Distributions,HIGH,Solana,Operations,Treasury,operations@marinade.finance,https://linkedin.com/company/marinade-finance,7,HOT
+Raydium,Solana DeFi,Community,20M,Liquidity Incentives,MEDIUM,Solana,Community Lead,DAO,community@raydium.io,https://linkedin.com/company/raydium,5,WARM
+Serum,Solana DeFi,Governance,30M,Treasury & Rewards,MEDIUM,Solana,Treasury,Governance,governance@projectserum.com,https://linkedin.com/company/serum-ecosystem,5,WARM
+Phantom,Solana Wallet,Series B,100M,User Payouts & Incentives,LOW,Solana/Node,VP Business,CFO,business@phantom.app,https://linkedin.com/company/phantom-wallet,6,WARM
+Backpack,Solana Wallet,Series B,50M,Platform Rewards,LOW,Solana,Finance,CFO,contact@backpack.exchange,https://linkedin.com/company/backpack-exchange,5,WARM
+Drift,Solana DeFi,Series A,10M,Insurance Fund Management,MEDIUM,Solana,Operations,DAO,operations@drift.trade,https://linkedin.com/company/drift-protocol,5,WARM
+Marginfi,Solana Lending,Series A,5M,Liquidation Fund,MEDIUM,Solana,Finance,CEO,contact@marginfi.com,https://linkedin.com/company/marginfi,5,WARM
+Metaplex,Solana NFT,Grants,5M,Creator Program Payouts,LOW,Solana,Operations,Operations,operations@metaplex.com,https://linkedin.com/company/metaplex-foundation,4,COLD
+Flux Beacon,Solana Oracle,Series A,2M,Oracle Rewards,LOW,Solana,Ops,CEO,info@fluxbeacon.com,https://linkedin.com/company/flux-beacon,3,COLD
+Marinade Finance,Solana Staking,Series B,50M,Stake Distribution,HIGH,Solana,Operations,Treasury Manager,operations@marinade.finance,https://linkedin.com/company/marinade-finance,7,HOT
+Stakewiz,Solana/Multi Staking,Seed,1M,Staking Pool Management,LOW,Solana,Founder,CEO,contact@stakewiz.io,https://linkedin.com/company/stakewiz,3,COLD
+Hubble,Solana Lending,Series A,5M,Liquidation Management,MEDIUM,Solana,Finance,CFO,finance@hubbleprotocol.io,https://linkedin.com/company/hubble-protocol,5,WARM
+Switchboard,Solana Oracle,Series A,3M,Data Feed Settlement,MEDIUM,Solana,Operations,DAO,operations@switchboard.xyz,https://linkedin.com/company/switchboard,4,COLD
+Bonk DAO,Solana Community,Governance,5M,Community Treasury,LOW,Solana,Treasury,DAO,treasury@bonksol.io,https://linkedin.com/company/bonk-dao,4,COLD
+Jupiter,Solana AMM,Series A,20M,Fee Distribution,MEDIUM,Solana,Operations,Treasury,operations@jup.ag,https://linkedin.com/company/jupiter-aggregator,6,WARM
+Temporal,Web3 Fintech,Series B,20M,DeFi Yield Distribution,MEDIUM,Ethereum/Solana,VP Finance,CFO,finance@temporal.io,https://linkedin.com/company/temporal-finance,6,WARM
+Argent,Crypto Wallet,Series C,50M,User Rewards,MEDIUM,Ethereum/Polygon,VP Ops,COO,operations@argent.xyz,https://linkedin.com/company/argent,6,WARM
+Gnosis Safe,Multisig,Open Source,30M,Grant Program,LOW,Ethereum,Community,Operations,community@gnosis.io,https://linkedin.com/company/gnosis,4,COLD
+Ledger X,Crypto Derivatives,Series B,50M,Clearing & Settlement,HIGH,AWS/Node,VP Operations,CFO,operations@ledgerx.com,https://linkedin.com/company/ledgerx,8,HOT
+CME Group,Traditional Finance,Public,500M+,Clearing Systems,CRITICAL,Java/AWS,VP Technology,CTO,technology@cmegroup.com,https://linkedin.com/company/cme-group,7,HOT
+Intercontinental Exchange,Traditional Finance,Public,1B+,Settlement Systems,CRITICAL,Java/Oracle,VP Systems,CTO,systems@intercontinentalexchange.com,https://linkedin.com/company/intercontinental-exchange,7,HOT
+Ripple,Crypto/Fintech,Series D,200M+,Cross-Border Payments,HIGH,Node.js/Kubernetes,VP Operations,CFO,operations@ripple.com,https://linkedin.com/company/ripple,8,HOT
+Circle,Stablecoin,Series D,300M+,USDC Issuance & Redemptions,CRITICAL,AWS/Stripe,VP Ops,CFO,operations@circle.com,https://linkedin.com/company/circle,9,HOT
+Stripe,Fintech Platform,Private,50B+,Payment Processing,CRITICAL,Proprietary,VP Risk,Chief Risk Officer,risk@stripe.com,https://linkedin.com/company/stripe,8,HOT
+Brex,Fintech,Public,10B+,Expense Management,HIGH,AWS/Java,VP Compliance,Chief Compliance Officer,compliance@brex.com,https://linkedin.com/company/brex,8,HOT
+Chime,Fintech Bank,Series D,1B+,Account Payouts,HIGH,AWS,VP Compliance,Chief Compliance Officer,compliance@chime.com,https://linkedin.com/company/chime,7,HOT
+Revolut,Fintech Bank,Series D,500M+,Transfers & Settlements,HIGH,Cloud/Microservices,VP Risk,Chief Risk Officer,risk@revolut.com,https://linkedin.com/company/revolut,8,HOT
+Wise,Fintech,Public,1B+,Cross-Border Transfers,HIGH,AWS/Kubernetes,VP Compliance,Chief Compliance Officer,compliance@wise.com,https://linkedin.com/company/wise,8,HOT
+Remitly,Fintech,Public,500M+,Remittance Processing,HIGH,AWS,VP Risk,Chief Risk Officer,risk@remitly.com,https://linkedin.com/company/remitly,7,HOT
+OKX,Crypto Exchange,Series D,200M+,Withdrawal Processing,HIGH,Java/Node.js,VP Finance,CFO,finance@okx.com,https://linkedin.com/company/okx,8,HOT
+Binance,Crypto Exchange,Private,500M+,Staking & Rewards Distribution,CRITICAL,Proprietary,VP Operations,CFO,operations@binance.com,https://linkedin.com/company/binance,9,HOT
+FTX (if operational),Crypto Exchange,Series C,500M+,User Withdrawals,CRITICAL,Rust/Node,VP Finance,CFO,finance@ftx.com,https://linkedin.com/company/ftx-trading,5,COLD
+Delta Exchange,Crypto Derivatives,Series B,20M,Settlement,MEDIUM,AWS/Node,VP Ops,CFO,operations@delta.exchange,https://linkedin.com/company/delta-exchange,6,WARM
+Bybit,Crypto Derivatives,Series B,100M+,Liquidation & Payout,HIGH,AWS/Node,VP Operations,CFO,operations@bybit.com,https://linkedin.com/company/bybit,7,HOT
+Deribit,Crypto Derivatives,Private,50M+,Options Settlement,HIGH,Java/Node,VP Ops,CFO,operations@deribit.com,https://linkedin.com/company/deribit,7,HOT
+Bitstamp,Crypto Exchange,Private,200M+,User Settlements,HIGH,Proprietary,VP Compliance,CCO,compliance@bitstamp.net,https://linkedin.com/company/bitstamp,8,HOT
+Kraken Futures,Crypto Derivatives,Series D,50M,Futures Settlement,HIGH,Rust/Kubernetes,VP Risk,Chief Risk Officer,risk@kraken.com,https://linkedin.com/company/kraken,7,HOT
+Lemonade,Fintech Insurance,Public,100M+,Claims Processing,HIGH,Cloud/Kubernetes,VP Compliance,Chief Compliance Officer,compliance@lemonade.com,https://linkedin.com/company/lemonade,7,HOT
+Root Insurance,Fintech Insurance,Series D,50M,Claims Payout,HIGH,Cloud,VP Operations,COO,operations@rootinsurance.com,https://linkedin.com/company/root-insurance,6,WARM
+Figure Technologies,Crypto Finance,Series C,200M,Loan Origination,MEDIUM,Blockchain/Node,VP Operations,CFO,operations@figure.com,https://linkedin.com/company/figure-technologies,6,WARM
+BlockFi Institutional,Crypto,Series C,500M,Institutional Custody,HIGH,AWS/Node,VP Ops,CFO,operations@blockfi.com,https://linkedin.com/company/blockfi,7,HOT
+Anchorage Digital,Custody,Series D,500M+,Institutional Custody & Staking,HIGH,AWS/Kubernetes,VP Operations,CFO,operations@anchorage.com,https://linkedin.com/company/anchorage-digital,8,HOT
+Custody X,Crypto Custody,Series B,50M,Multi-Sig Treasury,MEDIUM,Proprietary,VP Operations,CFO,operations@custodyx.io,https://linkedin.com/company/custody-x,6,WARM
+Zaaps,Treasury,Seed,3M,DeFi Yield Farming,LOW,Ethereum,Founder,CEO,founders@zaaps.io,https://linkedin.com/company/zaaps-io,3,COLD
+Enzyme,DeFi,Series B,20M,Fund Management,MEDIUM,Ethereum,Operations,CFO,operations@enzyme.finance,https://linkedin.com/company/enzyme-finance,5,WARM
+Robo Global,Fintech Advisor,Public,200M+,Advisory Payouts,MEDIUM,Cloud/SaaS,VP Risk,Chief Risk Officer,risk@roboglobal.com,https://linkedin.com/company/robo-global,6,WARM
+WisdomTree,Asset Management,Public,10B+,Distribution Management,HIGH,Cloud,VP Compliance,Chief Compliance Officer,compliance@wisdomtree.com,https://linkedin.com/company/wisdomtree,7,HOT
+Valkyrie,Crypto Asset Manager,Series B,100M,Fund Distribution,MEDIUM,AWS,VP Operations,CFO,operations@valkyrietr.com,https://linkedin.com/company/valkyrie,6,WARM
+21Shares,Crypto ETP Provider,Series B,500M+,Fund Distributions,HIGH,Cloud/SaaS,VP Ops,CFO,operations@21shares.com,https://linkedin.com/company/21shares-ag,7,HOT
+Grayscale,Crypto Asset Manager,Private,10B+,Fund Management,HIGH,AWS/Proprietary,VP Operations,CFO,operations@grayscale.com,https://linkedin.com/company/grayscale,8,HOT
+Galaxy Digital,Crypto VC,Private,500M+,Investment Management,MEDIUM,AWS,VP Finance,CFO,finance@galaxydigital.io,https://linkedin.com/company/galaxy-digital,7,HOT
+Pantera Capital,Crypto VC,Private,200M+,Fund Management,MEDIUM,AWS,VP Operations,CFO,operations@panteracapital.com,https://linkedin.com/company/pantera-capital,6,WARM
+Polychain Capital,Crypto VC,Private,500M+,Investment Management,MEDIUM,Cloud,VP Operations,CFO,operations@polychain.capital,https://linkedin.com/company/polychain-capital,6,WARM
+Paradigm,Crypto VC,Private,500M+,Investment Operations,MEDIUM,AWS,VP Operations,CFO,operations@paradigm.xyz,https://linkedin.com/company/paradigm,6,WARM
+Electric Capital,Crypto VC,Private,200M+,Fund Management,MEDIUM,AWS,VP Operations,CFO,operations@electriccapital.com,https://linkedin.com/company/electric-capital,5,WARM
+Sequoia Capital,Traditional VC,Private,100B+,Portfolio Management,MEDIUM,Enterprise,Partner Operations,Managing Director,operations@sequoiacap.com,https://linkedin.com/company/sequoia-capital,5,WARM
+AndreessenHorowitz,VC,Private,50B+,Portfolio Management,MEDIUM,Enterprise,Partner Operations,Managing Director,operations@a16z.com,https://linkedin.com/company/andreessen-horowitz,5,WARM
+Tier1 Capital Partners,Crypto Fund,Series A,50M,Portfolio Operations,MEDIUM,AWS,Operations,Partner,operations@tier1cp.com,https://linkedin.com/company/tier1-capital-partners,5,WARM
+Multicoin Capital,Crypto VC,Private,200M+,Investment Operations,MEDIUM,AWS,VP Operations,CFO,operations@multicoin.capital,https://linkedin.com/company/multicoin-capital,6,WARM
+1confirmation,Crypto VC,Private,100M+,Fund Management,MEDIUM,AWS,Operations,General Partner,operations@1confirmation.com,https://linkedin.com/company/1confirmation,5,WARM

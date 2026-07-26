@@ -28,7 +28,8 @@
         "./*"
       ]
     },
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "ignoreDeprecations": "5.0"
   },
   "include": [
     "next-env.d.ts",

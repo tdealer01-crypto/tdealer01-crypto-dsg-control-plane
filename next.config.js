@@ -100,6 +100,10 @@ const nextConfig = {
 
     return [
       {
+        source: '/api/dsg/z3/:path*',
+        destination: '/api/dsg/z3/:path*',
+      },
+      {
         source: '/api/:path*',
         destination: `${remoteApiOrigin}/api/:path*`,
       },
