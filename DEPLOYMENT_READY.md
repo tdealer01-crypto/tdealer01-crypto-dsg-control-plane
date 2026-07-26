@@ -6,6 +6,16 @@
 
 ---
 
+## ⚠️ NOTE: See Updated Status
+
+**This document is from 2026-06-11 and documents Phase A+B UX deployment.**
+
+**For current deployment status (2026-07-25), see:** [`DEPLOYMENT_STATUS_CURRENT.md`](./DEPLOYMENT_STATUS_CURRENT.md)
+
+---
+
+---
+
 ## Build Status
 
 ✅ **TypeScript Typecheck:** PASS (0 errors)  
