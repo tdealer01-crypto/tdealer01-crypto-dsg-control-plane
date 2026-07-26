@@ -278,12 +278,12 @@ export class AdversarialInjector {
     };
 
     this.attacks = new Map<AttackCategory, AttackVector>([
-      ['replay', new ReplayAttack()],
-      ['timing', new TimingAttack()],
-      ['resource', new ResourceAttack()],
-      ['availability', new AvailabilityAttack()],
-      ['data-quality', new DataQualityAttack()],
-      ['consensus', new ConsensusAttack()],
+      ['replay', new ReplayAttack() as AttackVector],
+      ['timing', new TimingAttack() as AttackVector],
+      ['resource', new ResourceAttack() as AttackVector],
+      ['availability', new AvailabilityAttack() as AttackVector],
+      ['data-quality', new DataQualityAttack() as AttackVector],
+      ['consensus', new ConsensusAttack() as AttackVector],
     ]);
   }
 
