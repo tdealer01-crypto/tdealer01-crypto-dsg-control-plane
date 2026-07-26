@@ -116,14 +116,15 @@ export interface Z3ConstraintSet {
   };
   auditRequirements: Array<{
     eventType: string;
-    required: boolean;
+    requiredFields?: string[];
+    required?: boolean;
   }>;
 }
 
 export interface FitnessScore {
-  latency: number;
-  throughput: number;
+  latencyP99: number;
   errorRate: number;
+  throughput: number;
   costEfficiency: number;
   slaCompliance: boolean;
   zeroDataLoss: boolean;

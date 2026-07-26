@@ -120,37 +120,42 @@ function buildZ3ConstraintsFromAgents(agents: DeepTutorAgent[]): Z3ConstraintSet
         metric: 'latency_p99_ms',
         threshold: Math.ceil(avgLatencyP99 * 1.2), // 20% headroom
         operator: 'lte',
+        description: 'P99 latency must not exceed baseline + 20% headroom',
       },
       {
         metric: 'error_rate_pct',
         threshold: Math.ceil(avgErrorRate + 2), // 2% absolute headroom
         operator: 'lte',
+        description: 'Error rate must not exceed baseline + 2% absolute',
       },
       {
         metric: 'throughput_rps',
         threshold: Math.floor(avgThroughput * 0.8), // conservative floor
         operator: 'gte',
+        description: 'Throughput must not drop below 80% of baseline',
       },
     ],
     securityInvariants: [
       {
         name: 'no_token_exhaustion',
         expression: 'tokensUsed <= maxTokenBudget',
+        severity: 'high',
       },
       {
         name: 'rate_limit_enforcement',
         expression: 'requestsPerSecond <= maxRps',
+        severity: 'medium',
       },
       {
         name: 'cascade_prevention',
         expression: 'cascadeRiskScore <= maxCascadeRisk',
+        severity: 'critical',
       },
     ],
     resourceLimits: {
       maxConcurrentExecutions: agents.length * 10,
-      maxQueueDepth: agents.length * 100,
       maxMemoryMB: 4096,
-      maxCpuPercent: 90,
+      maxRpsPerAgent: Math.ceil(avgThroughput / agents.length),
     },
     auditRequirements: [
       {
