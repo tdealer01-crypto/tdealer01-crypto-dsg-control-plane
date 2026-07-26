@@ -107,6 +107,64 @@ console.log('Replay Token:', result.reproducibilityToken);
 
 ---
 
+## 🔄 Continuous Simulation & Alternative Scenarios (July 2026)
+
+**Status:** ✅ **DEPLOYED** | Integrated with Z3 Formal Verification
+
+Framework for continuous simulation with alternative scenario exploration (วิวัตตนาการ) and contingency planning:
+
+### What It Does
+- **Scenario Explorer** — Discovers alternative Z3 satisfying assignments with probability distribution
+- **Contingency Planner** — Creates risk-based contingency plans with primary/fallback actions
+- **Continuous Simulator** — Runs indefinitely with configurable intervals, tracking multi-run statistics
+- **Decision Trees** — Builds scenario trees with branching factors and depth analysis
+- **Risk Assessment** — Evaluates scenarios as low/medium/high with confidence scores
+
+### Core Components
+| Module | Purpose | Status |
+|--------|---------|--------|
+| `lib/deeptutor/scenario-explorer.ts` | Finds alternative Z3 satisfying assignments | ✅ 249 lines |
+| `lib/deeptutor/contingency-planner.ts` | Creates adaptive contingency strategies | ✅ 267 lines |
+| `lib/deeptutor/continuous-simulator.ts` | Orchestrates continuous simulation loops | ✅ 240 lines |
+| `tests/integration/continuous-simulator.test.ts` | 20 integration tests | ✅ 291 lines |
+
+### Quick Example
+
+```typescript
+import { ContinuousSimulator } from 'lib/deeptutor/continuous-simulator';
+import { Z3ConstraintSet } from 'lib/spine/types';
+
+const simulator = new ContinuousSimulator({
+  interval: 100,           // Simulation cycle (ms)
+  maxScenarios: 5,         // Generate 5 scenarios per run
+  explorationDepth: 2,     // Decision tree depth
+  probabilityThreshold: 0.01,
+  timeAcceleration: 1,
+});
+
+// Start continuous simulation
+await simulator.startContinuousSimulation(constraints);
+
+// Later: stop and get statistics
+await simulator.stopContinuousSimulation();
+const report = simulator.getSummaryReport();
+console.log('Scenarios generated:', report.currentScenarios);
+console.log('Success rate:', report.successRate);
+console.log('Average duration:', report.averageDuration);
+```
+
+### Features
+
+✅ Alternative decision path exploration  
+✅ Probabilistic scenario ranking (earlier scenarios weighted higher)  
+✅ Risk-based contingency planning (APPROVE_FAST → APPROVE_WITH_REVIEW → BLOCK_AND_ESCALATE)  
+✅ Continuous operation with interval-based execution  
+✅ State tracking across multiple simulation runs  
+✅ Decision tree generation with branching analysis  
+✅ Failure recovery and error tracking  
+
+---
+
 ## 🧩 Claude Code Integration (Codex Plugin)
 
 The DSG Control Plane is available as a **Codex plugin** for Claude Code, enabling AI-native governance directly within the Claude ecosystem.
