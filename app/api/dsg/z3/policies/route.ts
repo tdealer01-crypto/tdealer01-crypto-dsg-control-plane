@@ -4,8 +4,6 @@ import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
 
 export const dynamic = 'force-dynamic';
 
-// Z3 Policy API - Hermes integration point
-
 export async function OPTIONS(request: NextRequest) {
   return buildPreflightResponse(request);
 }
