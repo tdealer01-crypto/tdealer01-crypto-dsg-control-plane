@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
-  "comment": "Rebuild trigger for design-constitution page deployment",
   "buildCommand": "npm run build",
   "ignoreCommand": "false",
   "outputDirectory": ".next",
