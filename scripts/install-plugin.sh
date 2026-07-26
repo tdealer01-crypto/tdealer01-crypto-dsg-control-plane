@@ -21,7 +21,7 @@ PLUGIN_NAME="Z3 Formal Verification Framework"
 PLUGIN_SLUG="z3-formal-verification"
 PLUGIN_VERSION="1.0.0"
 REPO_URL="https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
-BRANCH="claude/z3-formal-verification-pt0udg"
+BRANCH="main"
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║         ${PLUGIN_NAME}${NC}"

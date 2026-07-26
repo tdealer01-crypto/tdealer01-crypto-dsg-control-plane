@@ -9,7 +9,7 @@ set PLUGIN_NAME=Z3 Formal Verification Framework
 set PLUGIN_SLUG=z3-formal-verification
 set PLUGIN_VERSION=1.0.0
 set REPO_URL=https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane
-set BRANCH=claude/z3-formal-verification-pt0udg
+set BRANCH=main
 
 echo.
 echo ========================================================================
