@@ -123,6 +123,10 @@ export interface SecurityInvariant {
 }
 
 export interface Z3ConstraintSet {
+  id?: string;
+  variables?: Record<string, string>;
+  constraints?: string[];
+  presets?: Record<string, number>;
   slaContracts: SLAContract[];
   securityInvariants: SecurityInvariant[];
   resourceLimits: {
