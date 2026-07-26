@@ -1,57 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm ci",
-  "buildCommand": "npm run build",
-  "ignoreCommand": "false",
+  "buildCommand": "next build",
   "outputDirectory": ".next",
-  "env": {
-    "VERCEL_REBUILD_TRIGGER": "2",
-    "SKIP_ENV_VALIDATION": "true"
-  },
-  "crons": [
-    {
-      "path": "/api/cron/billing-sync",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/flush-meter-outbox",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/reconcile-meter",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/cleanup-expired-leases",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/github-leads",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/marketing-agent",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/lead-followup",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/weekly-report",
-      "schedule": "0 9 * * 1"
-    },
-    {
-      "path": "/api/cron/superteam/auto-submit",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/superteam/content-generate",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/superteam/daily-revenue",
-      "schedule": "0 2 * * *"
-    }
-  ]
+  "github": {
+    "autoAlias": false,
+    "silent": false,
+    "autoJobCancelation": true
+  }
 }
