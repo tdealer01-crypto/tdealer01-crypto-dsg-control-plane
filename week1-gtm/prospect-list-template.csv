@@ -1,0 +1,4 @@
+Company_Name,Contact_Name,Title,Email,LinkedIn_URL,Funding_Stage,ARR_Est,Fund_Movement_Volume,Primary_Pain,Tech_Stack,Response_Channel,Lead_Score,Outreach_Status,Date_Added
+"Phantom Crypto","Sarah Chen","CFO","sarah@phantom.example.com","https://linkedin.com/in/sarah-chen","Series B","$5-10M","$50M monthly withdrawals","Manual audit prep (10 hours/audit)","Stripe, Solana integration","LinkedIn",0,"Not started","2026-07-25"
+"Marinade Finance","James Li","Operations Lead","james@marinade.example.com","https://linkedin.com/in/james-li","Series A","$2-5M","$100M+ staking distributions","Compliance proof, regulatory pressure","Solana, custom webhooks","Email",0,"Not started","2026-07-25"
+"Magic Eden","Revenue Ops Director","VP Finance","finance@magiceden.example.com","https://linkedin.com/company/magic-eden","Series C","$10M+","$500M+ monthly trading volume","Chargeback liability, audit delays","Stripe, API gateway","LinkedIn",0,"Not started","2026-07-25"
