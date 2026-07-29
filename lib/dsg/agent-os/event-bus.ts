@@ -45,17 +45,58 @@ export interface EventBusStats {
   eventsInMemory: number;
 }
 
+export interface RedisLikeClient {
+  ping(): Promise<string>;
+  lpush(key: string, ...values: string[]): Promise<number>;
+  lrange(key: string, start: number, stop: number): Promise<unknown[]>;
+  ltrim(key: string, start: number, stop: number): Promise<string>;
+}
+
+export interface UpstashInitInput {
+  url?: string;
+  token?: string;
+  client?: RedisLikeClient;
+}
+
 class EventBus {
   private subscriptions = new Map<string, Subscription>();
   private streams = new Map<string, Event[]>();
   private counter = 0;
   private redisUrl?: string;
   private usingRedis = false;
+  private redisClient?: RedisLikeClient;
 
   async initializeRedis(redisUrl: string): Promise<{ ok: boolean; error?: string }> {
     this.redisUrl = redisUrl;
-    // In a real implementation, connect to Redis here
-    // For now, just mark as using Redis
+    this.usingRedis = true;
+    return { ok: true };
+  }
+
+  async initializeUpstash(input: UpstashInitInput): Promise<{ ok: boolean; error?: string }> {
+    if (input.client) {
+      this.redisClient = input.client;
+      try {
+        await this.redisClient.ping();
+      } catch (error) {
+        this.usingRedis = false;
+        this.redisClient = undefined;
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : 'Upstash ping failed',
+        };
+      }
+
+      this.usingRedis = true;
+      return { ok: true };
+    }
+
+    if (!input.url || !input.token) {
+      this.usingRedis = false;
+      this.redisClient = undefined;
+      return { ok: false, error: 'Missing Upstash url/token/client' };
+    }
+
+    this.redisUrl = input.url;
     this.usingRedis = true;
     return { ok: true };
   }
@@ -64,6 +105,7 @@ class EventBus {
     this.subscriptions.clear();
     this.streams.clear();
     this.usingRedis = false;
+    this.redisClient = undefined;
   }
 
   private generateEventId(): string {
@@ -100,7 +142,6 @@ class EventBus {
       evidenceHash: '',
     };
 
-    // Compute evidence hash
     event.evidenceHash = sha256Json({
       id: event.id,
       type: event.type,
@@ -114,20 +155,27 @@ class EventBus {
       version: 'event-hash-v1',
     });
 
-    // Store in stream
     const streamKey = this.getStreamKey(event.type, event.targetAgentId);
     const stream = this.streams.get(streamKey) || [];
     stream.push(event);
     this.streams.set(streamKey, stream);
 
-    // Deliver to subscribers
+    if (this.usingRedis && this.redisClient) {
+      try {
+        await this.redisClient.lpush(
+          `agent-os:stream:${streamKey}`,
+          JSON.stringify(event)
+        );
+      } catch {
+        // ignore persistence failures
+      }
+    }
+
     for (const subscription of this.subscriptions.values()) {
-      // Match by event type OR if event has targetAgentId matching this subscription's agent
       const typeMatches = subscription.eventTypes.includes(event.type) || subscription.eventTypes.includes('*');
       const targetMatches = event.targetAgentId && event.targetAgentId === subscription.agentId;
-      
+
       if (typeMatches || targetMatches) {
-        // Async delivery
         setTimeout(() => {
           subscription.handler(event).catch(console.error);
         }, 0);
@@ -182,8 +230,33 @@ class EventBus {
   }
 
   async getEvents(streamKey: string, since?: string, limit = 100): Promise<Event[]> {
-    const stream = this.streams.get(streamKey) || [];
-    let events = stream;
+    const memoryStream = this.streams.get(streamKey) || [];
+
+    if (this.usingRedis && this.redisClient) {
+      try {
+        const redisKey = `agent-os:stream:${streamKey}`;
+        const entries = await this.redisClient.lrange(redisKey, 0, limit - 1);
+        const parsed: Event[] = [];
+        for (const entry of entries) {
+          if (typeof entry === 'string') {
+            try {
+              parsed.push(JSON.parse(entry) as Event);
+            } catch {
+              // ignore malformed entries
+            }
+          }
+        }
+
+        if (since) {
+          return parsed.filter((e) => e.timestamp > since);
+        }
+        return parsed;
+      } catch {
+        // fall back to memory
+      }
+    }
+
+    let events = memoryStream;
 
     if (since) {
       events = events.filter((e) => e.timestamp > since);

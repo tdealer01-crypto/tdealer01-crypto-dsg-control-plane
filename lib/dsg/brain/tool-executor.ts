@@ -413,65 +413,77 @@ export function executeGrepSearch(
 ): ToolExecutionResult {
   const startTime = Date.now();
   const operationId = `search.grep-${op.pattern.slice(0, 16)}-${startTime}`;
+  const flags = op.caseInsensitive ? 'i' : '';
+  const regex = new RegExp(op.pattern, flags);
+  const results: Array<{ file: string; line: number; match: string }> = [];
 
   try {
-    const flags = (op.caseInsensitive ? "i" : "") + "g";
-    const regex = new RegExp(op.pattern, flags);
+    const ignore = [
+      '**/node_modules/**',
+      '**/.git/**',
+      '**/.next/**',
+      '**/coverage/**',
+      '**/__pycache__/**',
+      '**/dist/**',
+    ];
 
-    // Simple implementation: scan current directory
-    // In production, this would integrate with globSync and handle large result sets
-    const results: Array<{ file: string; line: number; match: string }> = [];
+    const rawRoots =
+      _ctx.allowedPaths.length > 0 ? _ctx.allowedPaths : [process.cwd()];
+    const roots = rawRoots.map((root) =>
+      isAbsolute(root) ? normalize(root) : normalize(resolve(process.cwd(), root))
+    );
+    const files = new Set<string>();
 
-    const scanDir = (dir: string, depth = 0) => {
-      if (depth > 5) return; // Limit recursion
+    for (const root of roots) {
       try {
-        const entries = readdirSync(dir);
-        for (const entry of entries) {
-          const fullPath = join(dir, entry);
-          const stat = statSync(fullPath);
-          if (stat.isDirectory()) {
-            scanDir(fullPath, depth + 1);
-          } else if (stat.isFile() && fullPath.endsWith(".ts")) {
-            try {
-              const content = readFileSync(fullPath, "utf-8");
-              const lines = content.split("\n");
-              lines.forEach((line, lineNum) => {
-                if (regex.test(line)) {
-                  results.push({
-                    file: fullPath,
-                    line: lineNum + 1,
-                    match: line.trim(),
-                  });
-                }
-              });
-            } catch {
-              // Skip unreadable files
-            }
-          }
+        for (const match of globSync(op.fileGlob ?? '**/*.ts', {
+          cwd: root,
+          absolute: true,
+          ignore,
+          maxDepth: 5,
+        })) {
+          files.add(match);
         }
       } catch {
-        // Skip unreadable directories
+        // skip unreadable roots
       }
-    };
+    }
 
-    scanDir(process.cwd());
+    for (const fullPath of files) {
+      try {
+        const content = readFileSync(fullPath, 'utf-8');
+        const lines = content.split('\n');
+        lines.forEach((line, lineNum) => {
+          regex.lastIndex = 0;
+          if (regex.test(line)) {
+            results.push({
+              file: fullPath,
+              line: lineNum + 1,
+              match: line.trim(),
+            });
+          }
+        });
+      } catch {
+        // skip unreadable files
+      }
+    }
 
-    const resultHash = createHash("sha256")
-      .update(JSON.stringify(results.slice(0, 100))) // hash first 100 results
-      .digest("hex");
+    const resultHash = createHash('sha256')
+      .update(JSON.stringify(results.slice(0, 100)))
+      .digest('hex');
 
     return {
-      tool: "search.grep",
+      tool: 'search.grep',
       success: true,
       data: {
         pattern: op.pattern,
-        results: results.slice(0, 100), // Limit results
+        results: results.slice(0, 100),
         totalMatches: results.length,
         caseInsensitive: op.caseInsensitive,
       },
       hash: resultHash,
       evidence: {
-        type: "artifact",
+        type: 'artifact',
         id: operationId,
         hash: resultHash,
         timestamp: startTime,
@@ -480,13 +492,13 @@ export function executeGrepSearch(
   } catch (error) {
     const blockReason = `search.grep failed: ${error instanceof Error ? error.message : String(error)}`;
     return {
-      tool: "search.grep",
+      tool: 'search.grep',
       success: false,
       data: null,
-      hash: "",
+      hash: '',
       blockReason,
       evidence: {
-        type: "log",
+        type: 'log',
         id: operationId,
         hash: sha256Hash(blockReason),
         timestamp: startTime,
