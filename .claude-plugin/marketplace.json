@@ -7,6 +7,29 @@
   "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
   "plugins": [
     {
+      "name": "ising-agent",
+      "displayName": "DSG QUBO & Ising Compliance Agent",
+      "description": "Deterministic compliance and optimization plugin: Z3 formal constraint verification, QUBO/Ising policy optimization, continuous what-if simulation, and MCP gateway exports.",
+      "version": "3.0.0",
+      "source": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
+      "category": "compliance",
+      "tags": ["qubo", "ising", "z3", "compliance", "deterministic", "simulation", "mcp"],
+      "readme": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-/blob/main/README.md",
+      "skills": [
+        {
+          "name": "z3-compliance-review",
+          "description": "Z3 deterministic compliance verification and constraint review logic.",
+          "triggerPhrases": [
+            "z3 verify",
+            "formal verification",
+            "compliance review",
+            "deterministic proof",
+            "constraint check"
+          ]
+        }
+      ]
+    },
+    {
       "name": "dsg-governance",
       "displayName": "DSG Governance Control Plane",
       "description": "AI Governance Control Plane — every Agent decision provable, auditable, and replayable with Deterministic Gate (Z3/SMT), Cryptographic Proof, Compliance Evidence Pack, and Hermes Controlled Executor.",
