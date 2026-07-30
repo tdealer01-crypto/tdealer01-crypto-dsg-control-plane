@@ -6,7 +6,7 @@ import { VercelService } from './services/vercel-service.js';
 import { SpineService } from './services/spine-service.js';
 import { DSGBrainService } from './services/dsg-brain-service.js';
 import { ComplianceService } from './services/compliance-service.js';
-import { ToolRegistry, setupSupabaseTools, setupVercelTools, setupGovernanceTools } from './tools/index.js';
+import { ToolRegistry, setupSupabaseTools, setupVercelTools, setupGovernanceTools, setupZ3Tools } from './tools/index.js';
 
 async function main() {
   const server = new Server({
@@ -78,6 +78,8 @@ async function main() {
   }
 
   setupGovernanceTools(registry, spine, brain, compliance);
+  setupZ3Tools(registry);
+  console.error('[DSG MCP] Z3 Formal Proof tools initialized with 3 tools');
 
   // Handle tools/list request
   server.setRequestHandler('tools/list', async () => {
@@ -102,6 +104,11 @@ async function main() {
     if (compliance) {
       tools.push({ name: 'ccvs_list_audit_logs', description: 'List audit logs', inputSchema: {} as any });
     }
+
+    // Z3 Formal Proof tools
+    tools.push({ name: 'dsg_solve_ising_qubo', description: 'Solve regulatory policy optimization using Ising model + QUBO energy minimization', inputSchema: {} as any });
+    tools.push({ name: 'dsg_verify_z3_constraints', description: 'Verify that a policy solution satisfies all Z3 formal constraints', inputSchema: {} as any });
+    tools.push({ name: 'dsg_verify_audit_chain', description: 'Cryptographically verify integrity of audit chain using SHA-256 hash chain validation', inputSchema: {} as any });
 
     return { tools };
   });
@@ -143,8 +150,8 @@ async function main() {
 ================
 Status: Ready
 Services: ${Object.keys(services).join(', ')}
-Tools: 7+
-Phase: 3 (Testing) & 4 (Evaluation)`,
+Tools: 10+ (includes Z3 Formal Proof)
+Phase: 3 (Testing) & 4 (Evaluation) & 5 (Optimization)`,
           } as any,
         ],
       };
