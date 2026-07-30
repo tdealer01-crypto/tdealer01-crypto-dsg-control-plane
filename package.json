@@ -1,6 +1,10 @@
 {
   "name": "dsg-platform",
   "private": true,
+  "workspaces": [
+    ".",
+    "dsg-one-mcp-server"
+  ],
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -90,7 +94,12 @@
     "mcp:serve:rca-analyzer": "node --loader ts-node/esm mcp-server/dsg-rca-analyzer.ts",
     "mcp:build:gtm-pipeline": "tsc mcp-server/dsg-gtm-pipeline-server.ts --outDir build/mcp --module esnext --target es2022 --ignoreConfig --lib es2022,dom --skipLibCheck --allowJs",
     "mcp:serve:gtm-pipeline": "node --loader ts-node/esm mcp-server/dsg-gtm-pipeline-server.ts",
-    "mcp:build:all": "npm run mcp:build:context-discovery && npm run mcp:build:rca-analyzer && npm run mcp:build:gtm-pipeline"
+    "mcp:build:all": "npm run mcp:build:context-discovery && npm run mcp:build:rca-analyzer && npm run mcp:build:gtm-pipeline",
+    "mcp:one:build": "npm -w dsg-one-mcp-server run build",
+    "mcp:one:start": "npm -w dsg-one-mcp-server start",
+    "mcp:one:dev": "npm -w dsg-one-mcp-server run dev",
+    "mcp:one:inspect": "npm -w dsg-one-mcp-server run inspector",
+    "mcp:one:test": "npm -w dsg-one-mcp-server run test || true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
