@@ -32,9 +32,9 @@ interface ProofReport {
 
 export default function ProofDetailPage() {
   const params = useParams();
-  const proofId = Array.isArray(params.['proof-id'])
-    ? params.['proof-id'][0]
-    : params.['proof-id'];
+  const proofId = Array.isArray(params['proof-id'])
+    ? params['proof-id'][0]
+    : params['proof-id'];
 
   const [report, setReport] = useState<ProofReport | null>(null);
   const [loading, setLoading] = useState(true);
