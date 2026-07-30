@@ -207,9 +207,14 @@ ON CONFLICT DO NOTHING;
 -- SECTION 8: Initial Constraint Sets
 -- ============================================================================
 
--- Get the first org ID (for seeding)
-WITH first_org AS (
-  SELECT id FROM dsg_organizations LIMIT 1
+-- Ensure default organization exists
+INSERT INTO dsg_organizations (name, slug)
+VALUES ('Default', 'default')
+ON CONFLICT (slug) DO NOTHING;
+
+-- Get the default org ID (for seeding)
+WITH default_org AS (
+  SELECT id FROM dsg_organizations WHERE slug = 'default' LIMIT 1
 )
 INSERT INTO dsg_constraint_sets (set_name, description, allowed_components, allowed_capabilities, max_tokens_output, max_duration_seconds, max_cost_per_execution, organization_id)
 SELECT
@@ -220,8 +225,8 @@ SELECT
   8192,
   1800,
   0.05::decimal,
-  (SELECT id FROM first_org)
-WHERE EXISTS (SELECT 1 FROM first_org)
+  (SELECT id FROM default_org)
+WHERE EXISTS (SELECT 1 FROM default_org)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================

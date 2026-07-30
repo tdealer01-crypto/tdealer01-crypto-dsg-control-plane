@@ -40,7 +40,11 @@ function pluginError(pluginId: string, error: unknown): PluginOutput {
   };
 }
 
-export async function runPipeline(input: PluginInput): Promise<PipelineResult> {
+export interface PipelineConfig {
+  minArbiterCount?: number;
+}
+
+export async function runPipeline(input: PluginInput, config?: PipelineConfig): Promise<PipelineResult> {
   ensureSpinePluginsRegistered();
 
   const stages: PipelineResult['stages'] = [];
@@ -77,24 +81,34 @@ export async function runPipeline(input: PluginInput): Promise<PipelineResult> {
 
   if (gateOutput.decision !== 'BLOCK') {
     const arbiters = registry.getByKind('arbiter').sort((a, b) => a.id.localeCompare(b.id));
-    for (const arbiter of arbiters) {
-      const output = await arbiter.evaluate(input).catch((error) => pluginError(arbiter.id, error));
-      totalLatency += output.latency_ms;
-      stages.push({
-        plugin_id: arbiter.id,
-        decision: output.decision,
-        reason: output.reason,
-        latency_ms: output.latency_ms,
-        proof_hash: output.proof.proof_hash,
-      });
+    const minArbiterCount = config?.minArbiterCount ?? parseInt(process.env.DSG_SPINE_MIN_ARBITER_COUNT || '0', 10);
 
-      const combined = combineDecision(finalDecision, output.decision);
-      if (combined !== finalDecision && severity(output.decision) >= severity(finalDecision)) {
-        finalDecision = combined;
-        finalReason = output.reason;
-        finalPolicyVersion = output.policy_version;
-        authoritativePluginId = arbiter.id;
-        authoritativeProof = output.proof;
+    if (arbiters.length < minArbiterCount) {
+      finalDecision = 'BLOCK';
+      finalReason = `ARBITER_COUNT_INSUFFICIENT: got ${arbiters.length}, need ${minArbiterCount}`;
+      finalPolicyVersion = 'spine:arbiter-validator';
+      authoritativePluginId = 'spine:arbiter-validator';
+      authoritativeProof = defaultProof();
+    } else {
+      for (const arbiter of arbiters) {
+        const output = await arbiter.evaluate(input).catch((error) => pluginError(arbiter.id, error));
+        totalLatency += output.latency_ms;
+        stages.push({
+          plugin_id: arbiter.id,
+          decision: output.decision,
+          reason: output.reason,
+          latency_ms: output.latency_ms,
+          proof_hash: output.proof.proof_hash,
+        });
+
+        const combined = combineDecision(finalDecision, output.decision);
+        if (combined !== finalDecision && severity(output.decision) >= severity(finalDecision)) {
+          finalDecision = combined;
+          finalReason = output.reason;
+          finalPolicyVersion = output.policy_version;
+          authoritativePluginId = arbiter.id;
+          authoritativeProof = output.proof;
+        }
       }
     }
   }

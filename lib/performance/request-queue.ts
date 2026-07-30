@@ -240,23 +240,37 @@ export class RequestQueue {
    * Can be requeued with same priority or bumped up
    */
   requeue(request: QueuedRequest, priority?: RequestPriority): string | null {
-    // Don't requeue if too many attempts
+    // Don't requeue if too many attempts (max 3 retries = 4 total attempts)
     if (request.attemptCount > 3) {
-      console.warn(`Request ${request.id} failed after 3 attempts, dropping`);
+      console.warn(`Request ${request.id} failed after 4 attempts, dropping`);
       return null;
     }
 
     // Bump priority on retry (failures move up)
     const newPriority = (priority || Math.max(1, request.priority - 1)) as RequestPriority;
 
-    return this.enqueue({
+    // Check queue size before requeuing
+    const totalSize = Array.from(this.priorityQueues.values()).reduce((sum, q) => sum + q.length, 0);
+    if (totalSize >= this.MAX_QUEUE_SIZE) {
+      return null;
+    }
+
+    // Create new request preserving attemptCount for retry tracking
+    // This allows max retries check (attemptCount > 3) to work across requeue cycles
+    const requeuedRequest: QueuedRequest = {
+      ...request,
+      id: randomUUID(),
       priority: newPriority,
-      agentId: request.agentId,
-      delegationId: request.delegationId,
-      command: request.command,
       enqueuedAt: Date.now(),
-      deadline: Date.now() + this.REQUEST_TIMEOUT_MS
-    });
+      deadline: Date.now() + this.REQUEST_TIMEOUT_MS,
+      attemptCount: request.attemptCount // Preserve for retry limit enforcement
+    };
+
+    const queue = this.priorityQueues.get(newPriority)!;
+    queue.push(requeuedRequest);
+
+    this.stats.totalEnqueued++;
+    return requeuedRequest.id;
   }
 
   /**

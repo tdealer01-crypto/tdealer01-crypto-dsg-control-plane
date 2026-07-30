@@ -546,7 +546,7 @@ describe('RequestQueue - Requeue with Priority Bump', () => {
     expect(requeuedId).not.toBeNull();
 
     const requeued = queue.dequeue()!;
-    expect(requeued.attemptCount).toBe(1); // Fresh dequeue starts at 0, increments to 1
+    expect(requeued.attemptCount).toBe(3); // Preserves attemptCount=2, increments to 3 on dequeue
   });
 
   it('should reset deadline on requeue', () => {
@@ -1032,10 +1032,10 @@ describe('RequestQueue - Edge Cases and Integration', () => {
 
     queue.requeue(req1!);
     const req2 = queue.dequeue();
-    expect(req2?.attemptCount).toBe(1);
+    expect(req2?.attemptCount).toBe(2); // Preserves attemptCount=1, increments to 2
 
     queue.requeue(req2!);
     const req3 = queue.dequeue();
-    expect(req3?.attemptCount).toBe(1);
+    expect(req3?.attemptCount).toBe(3); // Preserves attemptCount=2, increments to 3
   });
 });
