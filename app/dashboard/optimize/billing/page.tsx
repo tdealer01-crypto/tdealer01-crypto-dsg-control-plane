@@ -188,7 +188,7 @@ function BillingContent() {
           {usage.usage_percentage > 80 && (
             <div className="mt-4 rounded-lg border-l-4 border-amber-500 bg-amber-500/10 p-4">
               <p className="text-sm text-amber-200">
-                You're using {usage.usage_percentage.toFixed(0)}% of your plan limit. Consider upgrading to avoid overages.
+                You&apos;re using {usage.usage_percentage.toFixed(0)}% of your plan limit. Consider upgrading to avoid overages.
               </p>
             </div>
           )}
