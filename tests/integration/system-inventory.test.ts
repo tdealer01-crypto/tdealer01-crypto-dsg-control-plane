@@ -40,7 +40,7 @@ describe('System Inventory Foundation', () => {
 
   async function seedTestData() {
     // Ensure default organization exists
-    let { data: orgs, error: orgError } = await adminClient
+    const { data: orgs, error: orgError } = await adminClient
       .from('dsg_organizations')
       .select('id')
       .eq('slug', 'default')
@@ -48,7 +48,7 @@ describe('System Inventory Foundation', () => {
 
     let orgId: string;
 
-    if (!orgs || orgs.length === 0) {
+    if (orgError || !orgs || orgs.length === 0) {
       const { data: inserted, error: insertError } = await adminClient
         .from('dsg_organizations')
         .insert({ name: 'Default', slug: 'default' })
@@ -56,37 +56,27 @@ describe('System Inventory Foundation', () => {
         .single();
 
       if (insertError) {
-        console.warn('⚠️ Organization insert failed:', insertError.code, insertError.message);
-      }
-      orgId = inserted?.id || '';
-
-      if (!orgId) {
-        const { data: fetched, error: fetchError } = await adminClient
+        console.log('Note: Could not seed organization, may already exist:', insertError.message);
+        // Try to fetch it again
+        const { data: fetched } = await adminClient
           .from('dsg_organizations')
           .select('id')
           .eq('slug', 'default')
           .limit(1);
-        if (fetchError) {
-          console.warn('⚠️ Organization fetch failed:', fetchError.message);
-        }
-        orgId = fetched?.[0]?.id || '';
+        orgId = fetched?.[0]?.id || 'unknown';
+      } else {
+        orgId = inserted?.id || 'unknown';
       }
     } else {
       orgId = orgs[0].id;
     }
 
-    if (!orgId) {
-      console.error('❌ CRITICAL: Could not establish organization_id for seeding');
-      return;
-    }
-
     // Seed component types if not present
-    const { count: compCount } = await adminClient
+    const { count } = await adminClient
       .from('dsg_system_components')
       .select('id', { count: 'exact' });
 
-    if (!compCount || compCount === 0) {
-      console.log('📦 Seeding system components...');
+    if (!count || count === 0) {
       const { error: compError } = await adminClient
         .from('dsg_system_components')
         .insert([
@@ -120,15 +110,11 @@ describe('System Inventory Foundation', () => {
         ]);
 
       if (compError) {
-        console.warn('⚠️ Component seeding error:', compError.code, compError.message);
-      } else {
-        console.log('✅ Components seeded');
+        console.log('Note: Could not seed components:', compError.message);
       }
-    } else {
-      console.log(`✅ Components already exist (${compCount})`);
     }
 
-    // Seed dependencies
+    // Seed dependencies if not present
     const { count: depCount } = await adminClient
       .from('dsg_component_dependencies')
       .select('id', { count: 'exact' });
@@ -136,11 +122,10 @@ describe('System Inventory Foundation', () => {
     if (!depCount || depCount === 0) {
       const { data: components } = await adminClient
         .from('dsg_system_components')
-        .select('id')
-        .limit(2);
+        .select('id, path_or_id')
+        .limit(3);
 
       if (components && components.length >= 2) {
-        console.log('📌 Seeding dependencies...');
         const { error: depError } = await adminClient
           .from('dsg_component_dependencies')
           .insert({
@@ -149,14 +134,14 @@ describe('System Inventory Foundation', () => {
             dependency_type: 'reads_from',
             strength: 'critical',
           });
-        if (depError) console.warn('⚠️ Dependency error:', depError.message);
-        else console.log('✅ Dependencies seeded');
+
+        if (depError) {
+          console.log('Note: Could not seed dependencies:', depError.message);
+        }
       }
-    } else {
-      console.log(`✅ Dependencies already exist (${depCount})`);
     }
 
-    // Seed capabilities
+    // Seed capabilities if not present
     const { count: capCount } = await adminClient
       .from('dsg_component_capabilities')
       .select('id', { count: 'exact' });
@@ -168,7 +153,6 @@ describe('System Inventory Foundation', () => {
         .limit(1);
 
       if (components && components.length > 0) {
-        console.log('🎯 Seeding capabilities...');
         const { error: capError } = await adminClient
           .from('dsg_component_capabilities')
           .insert({
@@ -177,24 +161,21 @@ describe('System Inventory Foundation', () => {
             capability_type: 'read',
             required_role: 'operator',
           });
-        if (capError) console.warn('⚠️ Capability error:', capError.message);
-        else console.log('✅ Capabilities seeded');
+
+        if (capError) {
+          console.log('Note: Could not seed capabilities:', capError.message);
+        }
       }
-    } else {
-      console.log(`✅ Capabilities already exist (${capCount})`);
     }
 
-    // Seed constraint set
-    const { data: constraints, error: csQueryError } = await adminClient
+    // Seed constraint set if not present
+    const { data: constraints } = await adminClient
       .from('dsg_constraint_sets')
       .select('id')
       .eq('set_name', 'sub_agent_default')
       .limit(1);
 
-    if (csQueryError) {
-      console.warn('⚠️ Constraint set query error:', csQueryError.message);
-    } else if (!constraints || constraints.length === 0) {
-      console.log('🔒 Seeding constraint set...');
+    if (!constraints || constraints.length === 0) {
       const { error: csError } = await adminClient
         .from('dsg_constraint_sets')
         .insert({
@@ -207,19 +188,18 @@ describe('System Inventory Foundation', () => {
           max_cost_per_execution: 0.05,
           organization_id: orgId,
         });
-      if (csError) console.warn('⚠️ Constraint set error:', csError.message);
-      else console.log('✅ Constraint set seeded');
-    } else {
-      console.log('✅ Constraint set already exists');
+
+      if (csError) {
+        console.log('Note: Could not seed constraint set:', csError.message);
+      }
     }
 
-    // Seed inventory snapshot
+    // Seed inventory snapshot if not present
     const { count: snapCount } = await adminClient
       .from('dsg_inventory_snapshots')
       .select('id', { count: 'exact' });
 
     if (!snapCount || snapCount === 0) {
-      console.log('📸 Seeding inventory snapshot...');
       const { error: snapError } = await adminClient
         .from('dsg_inventory_snapshots')
         .insert({
@@ -227,13 +207,11 @@ describe('System Inventory Foundation', () => {
           components_added: 1,
           snapshot_hash: 'test-hash',
         });
-      if (snapError) console.warn('⚠️ Snapshot error:', snapError.message);
-      else console.log('✅ Snapshot seeded');
-    } else {
-      console.log(`✅ Snapshot already exists (${snapCount})`);
-    }
 
-    console.log('✨ Test data seeding complete');
+      if (snapError) {
+        console.log('Note: Could not seed inventory snapshot:', snapError.message);
+      }
+    }
   }
 
   describe('Schema Verification', () => {
