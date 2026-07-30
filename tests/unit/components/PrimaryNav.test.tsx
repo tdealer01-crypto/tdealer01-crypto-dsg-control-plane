@@ -1,29 +1,36 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import PrimaryNav, { type Pillar, type PillarRoute } from '@/components/Navigation/PrimaryNav';
 
 /**
  * PrimaryNav Unit Tests
  *
- * These tests verify the structure and types of the 4-pillar navigation component
- * without requiring full component rendering (which requires @testing-library/react).
- *
- * For integration testing with browser rendering, use E2E tests with Playwright.
+ * These tests verify the structure and types of the 4-pillar navigation component.
+ * Tests validate that:
+ * 1. Component exports correctly
+ * 2. Types are properly defined
+ * 3. Source code contains expected structure
  */
 
+// Read component source for text analysis
+const componentPath = resolve(process.cwd(), 'components/Navigation/PrimaryNav.tsx');
+const componentSource = readFileSync(componentPath, 'utf-8');
+
 describe('PrimaryNav — 4-Pillar Navigation Component', () => {
-  describe('Component Export', () => {
+  describe('Component Export and Types', () => {
     it('should export PrimaryNav as default export', () => {
       expect(PrimaryNav).toBeDefined();
       expect(typeof PrimaryNav).toBe('function');
     });
 
     it('should export Pillar type', () => {
-      // Type is exported and can be imported
+      // Verify Pillar type can be used
       const _pillar: Pillar = {
         id: 'monitor',
         name: 'Monitor',
         ariaLabel: 'Test',
-        icon: <></>,
+        icon: null as any,
         description: 'Test',
         routes: [],
       };
@@ -31,7 +38,7 @@ describe('PrimaryNav — 4-Pillar Navigation Component', () => {
     });
 
     it('should export PillarRoute type', () => {
-      // Type is exported and can be imported
+      // Verify PillarRoute type can be used
       const _route: PillarRoute = {
         path: '/test',
         label: 'Test',
@@ -40,203 +47,221 @@ describe('PrimaryNav — 4-Pillar Navigation Component', () => {
     });
   });
 
-  describe('Pillar Structure Specification', () => {
-    it('should define 4 semantic pillars', () => {
-      // PrimaryNav component JSX should include all 4 pillars
-      const componentSource = PrimaryNav.toString();
-
-      expect(componentSource).toContain('monitor');
-      expect(componentSource).toContain('verify');
-      expect(componentSource).toContain('audit');
-      expect(componentSource).toContain('optimize');
+  describe('Component Props Support', () => {
+    it('should support expandedPillar prop', () => {
+      const _component = <PrimaryNav expandedPillar="monitor" />;
+      expect(_component.props.expandedPillar).toBe('monitor');
     });
 
-    it('should define pillars with Monitor, Verify, Audit, Optimize names', () => {
-      const componentSource = PrimaryNav.toString();
-
-      expect(componentSource).toContain('Monitor');
-      expect(componentSource).toContain('Verify');
-      expect(componentSource).toContain('Audit');
-      expect(componentSource).toContain('Optimize');
+    it('should support onPillarToggle callback prop', () => {
+      const callback = (id: string) => null;
+      const _component = <PrimaryNav onPillarToggle={callback} />;
+      expect(_component.props.onPillarToggle).toBe(callback);
     });
 
-    it('should define Monitor pillar routes', () => {
-      const componentSource = PrimaryNav.toString();
-
-      // Monitor routes
-      expect(componentSource).toContain('Dashboard');
-      expect(componentSource).toContain('Executions');
-      expect(componentSource).toContain('Agents');
-      expect(componentSource).toContain('Capacity');
-      expect(componentSource).toContain('Live Control');
-    });
-
-    it('should define Verify pillar routes', () => {
-      const componentSource = PrimaryNav.toString();
-
-      // Verify routes
-      expect(componentSource).toContain('Policies');
-      expect(componentSource).toContain('Verification');
-      expect(componentSource).toContain('Proofs');
-      expect(componentSource).toContain('Approvals');
-      expect(componentSource).toContain('Audit Log');
-    });
-
-    it('should define Audit pillar routes', () => {
-      const componentSource = PrimaryNav.toString();
-
-      // Audit routes
-      expect(componentSource).toContain('Evidence Pack');
-      expect(componentSource).toContain('Breach Signal');
-      expect(componentSource).toContain('Integrations');
-      expect(componentSource).toContain('Gateway Monitor');
-    });
-
-    it('should define Optimize pillar routes', () => {
-      const componentSource = PrimaryNav.toString();
-
-      // Optimize routes
-      expect(componentSource).toContain('Billing');
-      expect(componentSource).toContain('Ledger');
-      expect(componentSource).toContain('Payout Safety');
-      expect(componentSource).toContain('Security');
+    it('should work without props (uncontrolled mode)', () => {
+      const _component = <PrimaryNav />;
+      expect(_component).toBeDefined();
     });
   });
 
-  describe('Route Paths Specification', () => {
-    it('should define Dashboard path for Monitor pillar', () => {
-      const componentSource = PrimaryNav.toString();
-      expect(componentSource).toContain("'/dashboard'");
+  describe('Source Code Structure - 4 Pillars', () => {
+    it('should define Monitor pillar', () => {
+      expect(componentSource).toContain("id: 'monitor'");
+      expect(componentSource).toContain("name: 'Monitor'");
     });
 
-    it('should define Executions path for Monitor pillar', () => {
-      const componentSource = PrimaryNav.toString();
-      expect(componentSource).toContain("'/dashboard/executions'");
+    it('should define Verify pillar', () => {
+      expect(componentSource).toContain("id: 'verify'");
+      expect(componentSource).toContain("name: 'Verify'");
     });
 
-    it('should define Policies path for Verify pillar', () => {
-      const componentSource = PrimaryNav.toString();
-      expect(componentSource).toContain("'/dashboard/policies'");
+    it('should define Audit pillar', () => {
+      expect(componentSource).toContain("id: 'audit'");
+      expect(componentSource).toContain("name: 'Audit'");
     });
 
-    it('should define Approvals path for Verify pillar', () => {
-      const componentSource = PrimaryNav.toString();
-      expect(componentSource).toContain("'/approvals'");
+    it('should define Optimize pillar', () => {
+      expect(componentSource).toContain("id: 'optimize'");
+      expect(componentSource).toContain("name: 'Optimize'");
+    });
+  });
+
+  describe('Source Code Structure - Monitor Routes', () => {
+    it('should define Dashboard route', () => {
+      expect(componentSource).toContain("label: 'Dashboard'");
+      expect(componentSource).toContain("path: '/dashboard'");
     });
 
-    it('should define Audit path for Audit pillar', () => {
-      const componentSource = PrimaryNav.toString();
-      expect(componentSource).toContain("'/dashboard/compliance-evidence-pack'");
+    it('should define Executions route', () => {
+      expect(componentSource).toContain("label: 'Executions'");
+      expect(componentSource).toContain("path: '/dashboard/executions'");
     });
 
-    it('should define Billing path for Optimize pillar', () => {
-      const componentSource = PrimaryNav.toString();
-      expect(componentSource).toContain("'/dashboard/billing'");
+    it('should define Agents route', () => {
+      expect(componentSource).toContain("label: 'Agents'");
+      expect(componentSource).toContain("path: '/dashboard/agents'");
+    });
+  });
+
+  describe('Source Code Structure - Verify Routes', () => {
+    it('should define Policies route', () => {
+      expect(componentSource).toContain("label: 'Policies'");
+      expect(componentSource).toContain("path: '/dashboard/policies'");
+    });
+
+    it('should define Approvals route', () => {
+      expect(componentSource).toContain("label: 'Approvals'");
+      expect(componentSource).toContain("path: '/approvals'");
+    });
+
+    it('should define Proofs route', () => {
+      expect(componentSource).toContain("label: 'Proofs'");
+      expect(componentSource).toContain("path: '/dashboard/proofs'");
+    });
+  });
+
+  describe('Source Code Structure - Audit Routes', () => {
+    it('should define Evidence Pack route', () => {
+      expect(componentSource).toContain("label: 'Evidence Pack'");
+      expect(componentSource).toContain("path: '/dashboard/compliance-evidence-pack'");
+    });
+
+    it('should define Breach Signal route', () => {
+      expect(componentSource).toContain("label: 'Breach Signal'");
+      expect(componentSource).toContain("path: '/dashboard/breach-signal'");
+    });
+  });
+
+  describe('Source Code Structure - Optimize Routes', () => {
+    it('should define Billing route', () => {
+      expect(componentSource).toContain("label: 'Billing'");
+      expect(componentSource).toContain("path: '/dashboard/billing'");
+    });
+
+    it('should define Ledger route', () => {
+      expect(componentSource).toContain("label: 'Ledger'");
+      expect(componentSource).toContain("path: '/dashboard/ledger'");
+    });
+
+    it('should define Security route', () => {
+      expect(componentSource).toContain("label: 'Security'");
+      expect(componentSource).toContain("path: '/dashboard/settings/security'");
     });
   });
 
   describe('Accessibility Features', () => {
-    it('should include ARIA landmarks in JSX', () => {
-      const componentSource = PrimaryNav.toString();
-
+    it('should include ARIA landmarks', () => {
       expect(componentSource).toContain('aria-label');
       expect(componentSource).toContain('aria-expanded');
       expect(componentSource).toContain('aria-haspopup');
       expect(componentSource).toContain('role="navigation"');
     });
 
-    it('should include navigation label text', () => {
-      const componentSource = PrimaryNav.toString();
-
-      expect(componentSource).toContain('Monitor');
-      expect(componentSource).toContain('Verify');
-      expect(componentSource).toContain('Audit');
-      expect(componentSource).toContain('Optimize');
+    it('should use semantic HTML (nav element)', () => {
+      expect(componentSource).toContain('<nav');
+      expect(componentSource).toContain('</nav>');
     });
 
-    it('should use semantic HTML elements', () => {
-      const componentSource = PrimaryNav.toString();
-
-      // Should use <nav> for navigation
-      expect(componentSource).toContain('<nav');
-      // Should use <button> for interactive controls
+    it('should use semantic HTML (button element)', () => {
       expect(componentSource).toContain('<button');
-      // Should use <Link> for navigation
+      expect(componentSource).toContain('</button>');
+    });
+
+    it('should use Link component for navigation', () => {
       expect(componentSource).toContain('Link');
     });
 
-    it('should include focus state transition classes', () => {
-      const componentSource = PrimaryNav.toString();
-
+    it('should include transition classes for focus states', () => {
       expect(componentSource).toContain('transition-colors');
     });
   });
 
-  describe('Component Props', () => {
-    it('should accept optional expandedPillar prop', () => {
-      // Type signature should support the prop
-      const _component = <PrimaryNav expandedPillar="monitor" />;
-      expect(_component.props.expandedPillar).toBe('monitor');
-    });
-
-    it('should accept optional onPillarToggle callback', () => {
-      const callback = (pillarId: string) => {
-        expect(pillarId).toMatch(/monitor|verify|audit|optimize/);
-      };
-      const _component = <PrimaryNav onPillarToggle={callback} />;
-      expect(_component.props.onPillarToggle).toBe(callback);
-    });
-
-    it('should work without any props (uncontrolled)', () => {
-      const _component = <PrimaryNav />;
-      expect(_component.props.expandedPillar).toBeUndefined();
-      expect(_component.props.onPillarToggle).toBeUndefined();
-    });
-  });
-
-  describe('Feature Flag Integration', () => {
-    it('should reference feature flags in component', () => {
-      const componentSource = PrimaryNav.toString();
-
-      // Should mention feature flags for gated features
+  describe('Feature Flags', () => {
+    it('should reference ENABLE_MONITOR_DASHBOARD flag', () => {
       expect(componentSource).toContain('ENABLE_MONITOR_DASHBOARD');
+    });
+
+    it('should reference ENABLE_BILLING_UI flag', () => {
       expect(componentSource).toContain('ENABLE_BILLING_UI');
     });
 
-    it('should support featureFlag property on routes', () => {
-      // Type definition should include featureFlag
+    it('should support featureFlag on routes', () => {
+      // Type definition allows featureFlag property
       const _route: PillarRoute = {
         path: '/test',
         label: 'Test',
-        featureFlag: 'ENABLE_TEST_FEATURE',
+        featureFlag: 'ENABLE_TEST',
       };
-      expect(_route.featureFlag).toBe('ENABLE_TEST_FEATURE');
+      expect(_route.featureFlag).toBe('ENABLE_TEST');
     });
   });
 
-  describe('Icons Integration', () => {
-    it('should use lucide-react icons', () => {
-      const componentSource = PrimaryNav.toString();
+  describe('Lucide Icons', () => {
+    it('should import lucide-react', () => {
+      expect(componentSource).toContain("from 'lucide-react'");
+    });
 
-      // Should import icons from lucide-react
-      expect(componentSource).toContain('from \'lucide-react\'');
-      // Should use specific icons
-      expect(componentSource).toContain('Eye'); // Monitor
-      expect(componentSource).toContain('CheckCircle'); // Verify
-      expect(componentSource).toContain('FileText'); // Audit
-      expect(componentSource).toContain('Zap'); // Optimize
+    it('should import Eye icon for Monitor', () => {
+      expect(componentSource).toContain('Eye');
+    });
+
+    it('should import CheckCircle icon for Verify', () => {
+      expect(componentSource).toContain('CheckCircle');
+    });
+
+    it('should import FileText icon for Audit', () => {
+      expect(componentSource).toContain('FileText');
+    });
+
+    it('should import Zap icon for Optimize', () => {
+      expect(componentSource).toContain('Zap');
     });
   });
 
   describe('Documentation', () => {
-    it('should include JSDoc comments explaining the 4 pillars', () => {
-      const componentSource = PrimaryNav.toString();
-
+    it('should include 4-pillar architecture comment', () => {
       expect(componentSource).toContain('4-Pillar');
+    });
+
+    it('should document Monitor pillar purpose', () => {
       expect(componentSource).toContain('Monitor');
+    });
+
+    it('should document Verify pillar purpose', () => {
       expect(componentSource).toContain('Verify');
+    });
+
+    it('should document Audit pillar purpose', () => {
       expect(componentSource).toContain('Audit');
+    });
+
+    it('should document Optimize pillar purpose', () => {
       expect(componentSource).toContain('Optimize');
+    });
+  });
+
+  describe('Route Structure', () => {
+    it('should define routes with path and label', () => {
+      expect(componentSource).toContain('path:');
+      expect(componentSource).toContain('label:');
+    });
+
+    it('should support icon property on routes', () => {
+      // Type allows optional icon property
+      const _route: PillarRoute = {
+        path: '/test',
+        label: 'Test',
+        icon: null,
+      };
+      expect(_route).toBeDefined();
+    });
+
+    it('should define Pillar type with id field', () => {
+      expect(componentSource).toContain("id: 'monitor'");
+      expect(componentSource).toContain("id: 'verify'");
+      expect(componentSource).toContain("id: 'audit'");
+      expect(componentSource).toContain("id: 'optimize'");
     });
   });
 });

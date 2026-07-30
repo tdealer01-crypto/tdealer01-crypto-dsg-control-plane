@@ -155,20 +155,17 @@ function BillingContent() {
       {usage && (
         <div className="grid gap-6 md:grid-cols-3">
           <StatCard
-            label="Current Usage"
+            label="Current Usage (executions)"
             value={usage.current_usage.toLocaleString()}
-            unit="executions"
-            highlight={usage.usage_percentage > 80}
+            variant={usage.usage_percentage > 80 ? 'warning' : 'default'}
           />
           <StatCard
-            label="Plan Limit"
+            label="Plan Limit (executions/month)"
             value={usage.plan_limit.toLocaleString()}
-            unit="executions/month"
           />
           <StatCard
-            label="Overage Cost"
+            label="Overage Cost (this month)"
             value={`$${usage.overage_cost.toFixed(2)}`}
-            unit="this month"
           />
         </div>
       )}
@@ -178,7 +175,12 @@ function BillingContent() {
         <Card className="border-slate-700 bg-slate-900/30 p-6">
           <h3 className="text-sm font-semibold text-slate-400 uppercase">Usage This Month</h3>
           <div className="mt-4">
-            <UsageBar usage={usage.current_usage} limit={usage.plan_limit} />
+            <UsageBar
+              used={usage.current_usage}
+              limit={usage.plan_limit}
+              plan={profile?.plan || 'pro'}
+              nudge={usage.usage_percentage > 90 ? 'blocked' : usage.usage_percentage > 80 ? 'hard' : usage.usage_percentage > 70 ? 'soft' : 'none'}
+            />
           </div>
           <p className="mt-2 text-xs text-slate-500">
             {usage.usage_percentage.toFixed(1)}% of your monthly limit
@@ -276,11 +278,6 @@ export default function BillingPage() {
       <PageHeader
         title="Billing & Usage"
         description="Manage your subscription, view usage metrics, and download invoices."
-        breadcrumb={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Optimize', href: '/dashboard/optimize' },
-          { label: 'Billing' },
-        ]}
       />
 
       <Suspense

@@ -64,8 +64,13 @@ export async function GET(request: Request) {
       return serverErrorResponse();
     }
 
-    // Build compliance schema
-    const complianceSchema = buildComplianceSchema(access.orgId, auditLogs || [], daysBack);
+    // Build compliance schema (cast Supabase Json types to Record<string, unknown>)
+    const typedAuditLogs = (auditLogs || []).map(log => ({
+      ...log,
+      metadata: typeof log.metadata === 'object' ? log.metadata as Record<string, unknown> : undefined,
+      evidence: typeof log.evidence === 'object' ? log.evidence as Record<string, unknown> : undefined,
+    }));
+    const complianceSchema = buildComplianceSchema(access.orgId, typedAuditLogs, daysBack);
 
     if (format === "csv") {
       return exportAsCSV(complianceSchema);
@@ -208,7 +213,7 @@ function buildComplianceSchema(
     {
       requirement_id: "GDPR-5.1",
       requirement_name: "Lawfulness of Processing",
-      status: "PASS",
+      status: "MET",
       audit_events_matching: auditLogs.length,
       last_verified: now.toISOString(),
       notes: "All processing decisions are logged and can be audited.",
@@ -216,7 +221,7 @@ function buildComplianceSchema(
     {
       requirement_id: "GDPR-32",
       requirement_name: "Security of Processing (Technical Measures)",
-      status: auditLogs.length > 0 ? "PASS" : "REVIEW",
+      status: auditLogs.length > 0 ? "MET" : "REVIEW",
       audit_events_matching: auditLogs.length,
       last_verified: now.toISOString(),
       notes: "Append-only audit trail prevents tampering. Hash chain enforces integrity.",
@@ -228,7 +233,7 @@ function buildComplianceSchema(
     {
       requirement_id: "EU-AI-Act-6",
       requirement_name: "Risk-based Classification",
-      status: "PASS",
+      status: "MET",
       audit_events_matching: auditLogs.length,
       last_verified: now.toISOString(),
       notes: "Governance decisions are tracked with risk classification.",
@@ -236,7 +241,7 @@ function buildComplianceSchema(
     {
       requirement_id: "EU-AI-Act-8",
       requirement_name: "Transparency & Documentation",
-      status: "PASS",
+      status: "MET",
       audit_events_matching: auditLogs.length,
       last_verified: now.toISOString(),
       notes: "Complete audit trail and policy versions documented.",
