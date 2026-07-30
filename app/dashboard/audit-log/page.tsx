@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronUp, Download, Search } from 'lucide-react';
 
 interface AuditEvent {
@@ -51,7 +51,7 @@ export default function AuditLogPage() {
   const [sortAsc, setSortAsc] = useState(false);
 
   // Fetch audit logs
-  const fetchLogs = async (pageNum: number) => {
+  const fetchLogs = useCallback(async (pageNum: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -90,18 +90,18 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, dateRange, decision, agentId, search]);
 
   // Fetch on filter changes
   useEffect(() => {
     setPage(1);
     void fetchLogs(1);
-  }, [dateRange, search, decision, agentId]);
+  }, [dateRange, search, decision, agentId, fetchLogs]);
 
   // Fetch on page change
   useEffect(() => {
     void fetchLogs(page);
-  }, [page]);
+  }, [page, fetchLogs]);
 
   // Sort events
   const sortedEvents = useMemo(() => {

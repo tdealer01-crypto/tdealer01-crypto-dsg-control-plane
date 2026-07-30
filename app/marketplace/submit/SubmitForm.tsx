@@ -319,6 +319,7 @@ export function SubmitForm({ onSuccess }: SubmitFormProps) {
           {/* Image Preview */}
           {previewUrl && (
             <div className="mt-3 relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewUrl} alt="Preview" loading="lazy" className="max-w-xs max-h-48 rounded-lg border border-[rgba(247,220,120,0.16)]" />
               <button
                 type="button"
