@@ -8,9 +8,15 @@ describe('POST /api/audit-logs', () => {
   const testOrgId = randomUUID();
   const testAgentId = randomUUID();
 
-  beforeAll(() => {
+  beforeAll(async () => {
     try {
       supabase = getSupabaseAdmin();
+      // Create test organization for FK constraint
+      await supabase
+        .from('organizations')
+        .insert({ id: testOrgId, name: 'Test Org', type: 'test' })
+        .select()
+        .catch(() => {}); // Ignore if org already exists
     } catch (error) {
       console.log('⚠️ Skipping audit-logs integration tests: Supabase not configured');
       skipTests = true;

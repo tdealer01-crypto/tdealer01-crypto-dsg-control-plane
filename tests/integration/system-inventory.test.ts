@@ -44,7 +44,7 @@ describe('System Inventory Foundation', () => {
 
       const { data, error } = await adminClient
         .from('dsg_system_components')
-        .select('count(*)')
+        .select('count')
         .limit(1);
 
       expect(error).toBeNull();
@@ -59,7 +59,7 @@ describe('System Inventory Foundation', () => {
 
       const { data, error } = await adminClient
         .from('dsg_component_dependencies')
-        .select('count(*)')
+        .select('count')
         .limit(1);
 
       expect(error).toBeNull();
@@ -74,7 +74,7 @@ describe('System Inventory Foundation', () => {
 
       const { data, error } = await adminClient
         .from('dsg_component_capabilities')
-        .select('count(*)')
+        .select('count')
         .limit(1);
 
       expect(error).toBeNull();
@@ -89,7 +89,7 @@ describe('System Inventory Foundation', () => {
 
       const { data, error } = await adminClient
         .from('dsg_constraint_sets')
-        .select('count(*)')
+        .select('count')
         .limit(1);
 
       expect(error).toBeNull();
@@ -104,7 +104,7 @@ describe('System Inventory Foundation', () => {
 
       const { data, error } = await adminClient
         .from('dsg_inventory_snapshots')
-        .select('count(*)')
+        .select('count')
         .limit(1);
 
       expect(error).toBeNull();
