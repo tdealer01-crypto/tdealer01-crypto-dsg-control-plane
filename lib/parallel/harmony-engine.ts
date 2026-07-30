@@ -35,7 +35,7 @@ export interface HarmonyMatchResult {
 }
 
 const HEURISTIC_TTL_MS = 5 * 60 * 1000; // Entries older than 5 min are stale
-const EMBEDDING_SIMILARITY_THRESHOLD = 0.95;
+const EMBEDDING_SIMILARITY_THRESHOLD = 0.85;
 const MAX_HEURISTIC_ENTRIES = 5000;
 const MAX_EMBEDDING_ENTRIES = 2000;
 
