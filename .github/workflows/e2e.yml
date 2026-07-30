@@ -46,6 +46,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: E2E tests
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: npm run test:e2e
 
       - name: Check live E2E secrets
