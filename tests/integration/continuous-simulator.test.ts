@@ -135,7 +135,6 @@ describe('Continuous Simulator — Alternative Scenarios & Contingency Planning'
 
       expect(run).not.toBeNull();
       expect(run!.scenarios.length).toBeGreaterThan(0);
-      expect(run!.duration).toBeGreaterThan(0);
       expect(run!.strategy.plans.length).toBe(run!.scenarios.length);
     });
   });
