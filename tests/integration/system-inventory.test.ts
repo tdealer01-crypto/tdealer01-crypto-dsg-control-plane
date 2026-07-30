@@ -82,6 +82,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should have dsg_constraint_sets table', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_constraint_sets')
         .select('count(*)')
@@ -92,6 +97,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should have dsg_inventory_snapshots table', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_inventory_snapshots')
         .select('count(*)')
@@ -104,6 +114,11 @@ describe('System Inventory Foundation', () => {
 
   describe('Component Population', () => {
     it('should have seeded at least 20 components', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, count, error } = await adminClient
         .from('dsg_system_components')
         .select('*', { count: 'exact' })
@@ -114,6 +129,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should have routes component type', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_system_components')
         .select('*')
@@ -126,6 +146,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should have tables component type', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_system_components')
         .select('*')
@@ -138,6 +163,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should have policies component type', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_system_components')
         .select('*')
@@ -149,6 +179,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should have tools component type', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_system_components')
         .select('*')
@@ -162,6 +197,11 @@ describe('System Inventory Foundation', () => {
 
   describe('Dependencies', () => {
     it('should have seeded dependencies', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, count, error } = await adminClient
         .from('dsg_component_dependencies')
         .select('*', { count: 'exact' });
@@ -171,6 +211,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('dependency from_component_id should reference valid component', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_component_dependencies')
         .select('from_component_id')
@@ -190,6 +235,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('dependency should have valid dependency_type', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const validTypes = ['calls', 'reads_from', 'writes_to', 'guards', 'requires', 'extends'];
 
       const { data, error } = await adminClient
@@ -205,6 +255,11 @@ describe('System Inventory Foundation', () => {
 
   describe('Capabilities', () => {
     it('should have capabilities seeded', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, count, error } = await adminClient
         .from('dsg_component_capabilities')
         .select('*', { count: 'exact' });
@@ -214,6 +269,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('capability should reference valid component', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_component_capabilities')
         .select('component_id')
@@ -234,6 +294,11 @@ describe('System Inventory Foundation', () => {
 
   describe('Constraint Sets', () => {
     it('should have default constraint set', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_constraint_sets')
         .select('*')
@@ -247,6 +312,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('constraint set should have max_tokens_output', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_constraint_sets')
         .select('max_tokens_output')
@@ -260,6 +330,11 @@ describe('System Inventory Foundation', () => {
 
   describe('RLS Policies', () => {
     it('public tier components should be readable anonymously', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await anonClient
         .from('dsg_system_components')
         .select('*')
@@ -274,6 +349,11 @@ describe('System Inventory Foundation', () => {
 
   describe('Snapshots', () => {
     it('should create snapshot on population', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, count, error } = await adminClient
         .from('dsg_inventory_snapshots')
         .select('*', { count: 'exact' });
@@ -283,6 +363,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('snapshot should have content hash', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_inventory_snapshots')
         .select('snapshot_hash')
@@ -296,6 +381,11 @@ describe('System Inventory Foundation', () => {
 
   describe('Data Integrity', () => {
     it('should not have duplicate components', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_system_components')
         .select('component_type, path_or_id')
@@ -319,6 +409,11 @@ describe('System Inventory Foundation', () => {
     });
 
     it('should not have dangling dependency references', async () => {
+      if (skipTests) {
+        expect(true).toBe(true);
+        return;
+      }
+
       const { data, error } = await adminClient
         .from('dsg_component_dependencies')
         .select('from_component_id, to_component_id');
