@@ -32,8 +32,187 @@ describe('System Inventory Foundation', () => {
     } else if (connError?.message?.includes('does not exist')) {
       console.log('ℹ️ Skipping integration tests: Supabase tables not found. Run: supabase db push');
       skipTests = true;
+    } else {
+      // Seed test data if not already present
+      await seedTestData();
     }
   });
+
+  async function seedTestData() {
+    // Ensure default organization exists
+    const { data: orgs, error: orgError } = await adminClient
+      .from('dsg_organizations')
+      .select('id')
+      .eq('slug', 'default')
+      .limit(1);
+
+    let orgId: string;
+
+    if (orgError || !orgs || orgs.length === 0) {
+      const { data: inserted, error: insertError } = await adminClient
+        .from('dsg_organizations')
+        .insert({ name: 'Default', slug: 'default' })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.log('Note: Could not seed organization, may already exist:', insertError.message);
+        // Try to fetch it again
+        const { data: fetched } = await adminClient
+          .from('dsg_organizations')
+          .select('id')
+          .eq('slug', 'default')
+          .limit(1);
+        orgId = fetched?.[0]?.id || 'unknown';
+      } else {
+        orgId = inserted?.id || 'unknown';
+      }
+    } else {
+      orgId = orgs[0].id;
+    }
+
+    // Seed component types if not present
+    const { count } = await adminClient
+      .from('dsg_system_components')
+      .select('id', { count: 'exact' });
+
+    if (!count || count === 0) {
+      const { error: compError } = await adminClient
+        .from('dsg_system_components')
+        .insert([
+          {
+            component_type: 'table',
+            name: 'test_table',
+            display_name: 'Test Table',
+            path_or_id: 'test_table',
+            category: 'testing',
+            tier: 'internal',
+            status: 'active',
+          },
+          {
+            component_type: 'policy',
+            name: 'test_policy',
+            display_name: 'Test Policy',
+            path_or_id: 'test-policy',
+            category: 'testing',
+            tier: 'internal',
+            status: 'active',
+          },
+          {
+            component_type: 'tool',
+            name: 'test_tool',
+            display_name: 'Test Tool',
+            path_or_id: 'test.tool',
+            category: 'testing',
+            tier: 'internal',
+            status: 'active',
+          },
+        ]);
+
+      if (compError) {
+        console.log('Note: Could not seed components:', compError.message);
+      }
+    }
+
+    // Seed dependencies if not present
+    const { count: depCount } = await adminClient
+      .from('dsg_component_dependencies')
+      .select('id', { count: 'exact' });
+
+    if (!depCount || depCount === 0) {
+      const { data: components } = await adminClient
+        .from('dsg_system_components')
+        .select('id, path_or_id')
+        .limit(3);
+
+      if (components && components.length >= 2) {
+        const { error: depError } = await adminClient
+          .from('dsg_component_dependencies')
+          .insert({
+            from_component_id: components[0].id,
+            to_component_id: components[1].id,
+            dependency_type: 'reads_from',
+            strength: 'critical',
+          });
+
+        if (depError) {
+          console.log('Note: Could not seed dependencies:', depError.message);
+        }
+      }
+    }
+
+    // Seed capabilities if not present
+    const { count: capCount } = await adminClient
+      .from('dsg_component_capabilities')
+      .select('id', { count: 'exact' });
+
+    if (!capCount || capCount === 0) {
+      const { data: components } = await adminClient
+        .from('dsg_system_components')
+        .select('id')
+        .limit(1);
+
+      if (components && components.length > 0) {
+        const { error: capError } = await adminClient
+          .from('dsg_component_capabilities')
+          .insert({
+            component_id: components[0].id,
+            capability_name: 'test_capability',
+            capability_type: 'read',
+            required_role: 'operator',
+          });
+
+        if (capError) {
+          console.log('Note: Could not seed capabilities:', capError.message);
+        }
+      }
+    }
+
+    // Seed constraint set if not present
+    const { data: constraints } = await adminClient
+      .from('dsg_constraint_sets')
+      .select('id')
+      .eq('set_name', 'sub_agent_default')
+      .limit(1);
+
+    if (!constraints || constraints.length === 0) {
+      const { error: csError } = await adminClient
+        .from('dsg_constraint_sets')
+        .insert({
+          set_name: 'sub_agent_default',
+          description: 'Default constraint set for sub-agents',
+          allowed_components: ['bash.execute', 'file.read'],
+          allowed_capabilities: ['execute_governed_action'],
+          max_tokens_output: 8192,
+          max_duration_seconds: 1800,
+          max_cost_per_execution: 0.05,
+          organization_id: orgId,
+        });
+
+      if (csError) {
+        console.log('Note: Could not seed constraint set:', csError.message);
+      }
+    }
+
+    // Seed inventory snapshot if not present
+    const { count: snapCount } = await adminClient
+      .from('dsg_inventory_snapshots')
+      .select('id', { count: 'exact' });
+
+    if (!snapCount || snapCount === 0) {
+      const { error: snapError } = await adminClient
+        .from('dsg_inventory_snapshots')
+        .insert({
+          snapshot_type: 'full',
+          components_added: 1,
+          snapshot_hash: 'test-hash',
+        });
+
+      if (snapError) {
+        console.log('Note: Could not seed inventory snapshot:', snapError.message);
+      }
+    }
+  }
 
   describe('Schema Verification', () => {
     it('should have dsg_system_components table', async () => {
