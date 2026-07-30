@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { getSupabaseAdmin } from '../../../lib/supabase-server';
+import { randomUUID } from 'crypto';
 
 describe('POST /api/audit-logs', () => {
   let supabase: ReturnType<typeof getSupabaseAdmin>;
   let skipTests = false;
-  const testOrgId = 'test-org-audit-logs';
-  const testAgentId = 'test-agent-audit';
+  const testOrgId = randomUUID();
+  const testAgentId = randomUUID();
 
   beforeAll(() => {
     try {

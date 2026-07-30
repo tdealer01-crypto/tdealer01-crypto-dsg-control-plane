@@ -23,7 +23,7 @@ describe('System Inventory Foundation', () => {
     // Test connection before running full suite
     const { error: connError } = await adminClient
       .from('dsg_system_components')
-      .select('count(*)')
+      .select('count')
       .limit(1);
 
     if (connError?.message?.includes('connect ECONNREFUSED') || connError?.message?.includes('fetch failed')) {
