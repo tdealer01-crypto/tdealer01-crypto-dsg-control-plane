@@ -78,7 +78,7 @@ export class HarmonyEngine {
     const valueLen = cmd.value?.length ?? 0;
 
     return [
-      (opMap[cmd.operation] ?? 0) * 10, // Operation dominates similarity
+      (opMap[cmd.operation] ?? 0) * 100, // Operation heavily dominates to reject different ops
       elementHash[0], // Element identity features
       elementHash[1],
       valueLen % 97, // Value shape (length bucket)
