@@ -4,6 +4,15 @@ import { SpineService } from '../services/spine-service.js';
 import { DSGBrainService } from '../services/dsg-brain-service.js';
 import { ComplianceService } from '../services/compliance-service.js';
 import { formatError } from '../utils/errors.js';
+import {
+  solveisingQubo,
+  verifyZ3Constraints,
+  verifyAuditChain,
+  Z3FormalProofTools,
+  IsingZ3SolverInputSchema,
+  Z3FormalVerifyInputSchema,
+  AuditChainVerifyInputSchema,
+} from './z3-formal-proof-tools.js';
 
 export interface ToolHandler {
   name: string;
@@ -114,4 +123,36 @@ export function setupGovernanceTools(registry: ToolRegistry, spine?: SpineServic
       }
     });
   }
+}
+
+export function setupZ3Tools(registry: ToolRegistry) {
+  registry.registerTool('dsg_solve_ising_qubo', 'Solve regulatory policy optimization using Ising model + QUBO energy minimization', IsingZ3SolverInputSchema as any, async (input) => {
+    try {
+      const result = await solveisingQubo(input);
+      return JSON.stringify(result, null, 2);
+    } catch (error) {
+      const err = formatError(error);
+      throw new Error(`QUBO solver error: ${err.message}`);
+    }
+  });
+
+  registry.registerTool('dsg_verify_z3_constraints', 'Verify that a policy solution satisfies all Z3 formal constraints', Z3FormalVerifyInputSchema as any, async (input) => {
+    try {
+      const result = await verifyZ3Constraints(input);
+      return JSON.stringify(result, null, 2);
+    } catch (error) {
+      const err = formatError(error);
+      throw new Error(`Z3 verification error: ${err.message}`);
+    }
+  });
+
+  registry.registerTool('dsg_verify_audit_chain', 'Cryptographically verify integrity of audit chain using SHA-256 hash chain validation', AuditChainVerifyInputSchema as any, async (input) => {
+    try {
+      const result = await verifyAuditChain(input);
+      return JSON.stringify(result, null, 2);
+    } catch (error) {
+      const err = formatError(error);
+      throw new Error(`Audit chain verification error: ${err.message}`);
+    }
+  });
 }

@@ -1,4 +1,5 @@
 import { formatError } from '../utils/errors.js';
+import { solveisingQubo, verifyZ3Constraints, verifyAuditChain, IsingZ3SolverInputSchema, Z3FormalVerifyInputSchema, AuditChainVerifyInputSchema, } from './z3-formal-proof-tools.js';
 export class ToolRegistry {
     constructor() {
         this.handlers = new Map();
@@ -101,4 +102,36 @@ export function setupGovernanceTools(registry, spine, brain, compliance) {
             }
         });
     }
+}
+export function setupZ3Tools(registry) {
+    registry.registerTool('dsg_solve_ising_qubo', 'Solve regulatory policy optimization using Ising model + QUBO energy minimization', IsingZ3SolverInputSchema, async (input) => {
+        try {
+            const result = await solveisingQubo(input);
+            return JSON.stringify(result, null, 2);
+        }
+        catch (error) {
+            const err = formatError(error);
+            throw new Error(`QUBO solver error: ${err.message}`);
+        }
+    });
+    registry.registerTool('dsg_verify_z3_constraints', 'Verify that a policy solution satisfies all Z3 formal constraints', Z3FormalVerifyInputSchema, async (input) => {
+        try {
+            const result = await verifyZ3Constraints(input);
+            return JSON.stringify(result, null, 2);
+        }
+        catch (error) {
+            const err = formatError(error);
+            throw new Error(`Z3 verification error: ${err.message}`);
+        }
+    });
+    registry.registerTool('dsg_verify_audit_chain', 'Cryptographically verify integrity of audit chain using SHA-256 hash chain validation', AuditChainVerifyInputSchema, async (input) => {
+        try {
+            const result = await verifyAuditChain(input);
+            return JSON.stringify(result, null, 2);
+        }
+        catch (error) {
+            const err = formatError(error);
+            throw new Error(`Audit chain verification error: ${err.message}`);
+        }
+    });
 }
