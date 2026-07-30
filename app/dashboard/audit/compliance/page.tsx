@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Download, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface ComplianceControl {
@@ -73,7 +73,7 @@ export default function CompliancePage() {
   const [error, setError] = useState<string | null>(null);
   const [daysBack, setDaysBack] = useState(7);
 
-  const fetchCompliance = async () => {
+  const fetchCompliance = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -94,11 +94,11 @@ export default function CompliancePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [daysBack]);
 
   useEffect(() => {
     void fetchCompliance();
-  }, [daysBack]);
+  }, [daysBack, fetchCompliance]);
 
   const handleExport = async (format: 'json' | 'csv') => {
     const response = await fetch(`/api/compliance-export?format=${format}&days=${daysBack}`);

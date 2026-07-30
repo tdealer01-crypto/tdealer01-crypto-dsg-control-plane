@@ -157,7 +157,7 @@ export default function TestResultPage() {
         const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
         if (!url || !anonKey) {
-          setError(language === 'th' ? 'ไม่สามารถเข้าถึงฐานข้อมูล' : 'Unable to access database');
+          setError('db-error');
           setLoading(false);
           return;
         }
@@ -172,7 +172,7 @@ export default function TestResultPage() {
           .single();
 
         if (fetchError || !data) {
-          setError(language === 'th' ? 'ไม่พบผลการทดสอบ' : 'Test result not found');
+          setError('not-found');
           setLoading(false);
           return;
         }
@@ -189,7 +189,7 @@ export default function TestResultPage() {
 
         setLoading(false);
       } catch (err) {
-        setError(language === 'th' ? 'เกิดข้อผิดพลาดในการโหลดผลการทดสอบ' : 'Error loading test result');
+        setError('load-error');
         setLoading(false);
       }
     };
@@ -244,6 +244,7 @@ export default function TestResultPage() {
   }
 
   if (error || !result) {
+    const errorMessage = error === 'db-error' ? t.dbError : error === 'not-found' ? t.notFound : error === 'load-error' ? t.loadError : t.notFound;
     return (
       <main className="min-h-screen bg-[#07080a] text-white p-8">
         <div className="max-w-4xl mx-auto">
@@ -251,7 +252,7 @@ export default function TestResultPage() {
             {t.backToTest}
           </Link>
           <div className="border border-red-300/20 bg-red-400/5 rounded-lg p-6">
-            <p className="text-red-100">{error || t.notFound}</p>
+            <p className="text-red-100">{errorMessage}</p>
           </div>
         </div>
       </main>
