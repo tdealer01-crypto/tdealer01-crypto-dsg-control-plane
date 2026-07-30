@@ -133,7 +133,7 @@ describe('Continuous Simulator — Alternative Scenarios & Contingency Planning'
     it('should execute multiple simulation runs', async () => {
       await simulator.startContinuousSimulation(testConstraints);
 
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       await simulator.stopContinuousSimulation();
       const state = simulator.getState();
@@ -145,7 +145,7 @@ describe('Continuous Simulator — Alternative Scenarios & Contingency Planning'
     it('should track completion statistics', async () => {
       await simulator.startContinuousSimulation(testConstraints);
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       await simulator.stopContinuousSimulation();
       const state = simulator.getState();
