@@ -4,5 +4,5 @@
   "version": "3.0.0",
   "author": { "name": "DSG ONE / ProofGate" },
   "homepage": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
-  "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit"]
+  "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit", "rest-api", "policy-optimizer"]
 }
