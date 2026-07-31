@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { analyzeIncident, type RCAInput } from "@/lib/dsg/rca/rca-orchestrator";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { handleApiError } from "@/lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -60,13 +61,7 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: true });
 
     if (auditError || memoryError) {
-      return NextResponse.json(
-        {
-          error: "Failed to fetch incident data",
-          details: auditError?.message || memoryError?.message,
-        },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/rca/analyze", auditError || memoryError);
     }
 
     // Convert to timeline events
@@ -149,14 +144,7 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("RCA analysis error:", error);
-    return NextResponse.json(
-      {
-        error: "Analysis failed",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/rca/analyze", error);
   }
 }
 
