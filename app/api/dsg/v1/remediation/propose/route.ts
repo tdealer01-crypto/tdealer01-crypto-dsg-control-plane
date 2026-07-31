@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { RemediationOrchestrator } from "@/lib/dsg/remediation/remediation-orchestrator";
+import { handleApiError } from "@/lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -58,13 +59,7 @@ export async function POST(request: Request) {
       .single();
 
     if (storeError) {
-      return NextResponse.json(
-        {
-          error: "Failed to store proposed plan",
-          message: storeError.message,
-        },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/remediation/propose", storeError);
     }
 
     return NextResponse.json(
@@ -81,13 +76,6 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error proposing remediation plan:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to propose remediation plan",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/remediation/propose", error);
   }
 }
