@@ -78,8 +78,9 @@ const TRINITY_TOOLS = [
 // Auth + API hook
 // ─────────────────────────────────────────────────────────────────────────────
 
-function useTrinityAuth() {
-  const [token, setToken] = useState<string | null>(null);
+function useTrinityAuth(externalToken?: string | null) {
+  const [internalToken, setToken] = useState<string | null>(null);
+  const token = externalToken ?? internalToken;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -151,9 +152,14 @@ function useTrinityAuth() {
 // Chat Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function TrinityChatComponent() {
+interface TrinityChatComponentProps {
+  /** Reuse an already-authenticated Bearer token (e.g. from a parent dashboard's own login) instead of showing a second login form. */
+  token?: string | null;
+}
+
+export function TrinityChatComponent({ token: externalToken }: TrinityChatComponentProps = {}) {
   const { token, email, setEmail, password, setPassword, loggingIn, authError, login, callTool } =
-    useTrinityAuth();
+    useTrinityAuth(externalToken);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

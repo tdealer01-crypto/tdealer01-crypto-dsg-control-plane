@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { TrinityChatComponent } from './TrinityChatComponent';
 
 const AGENTS = [
   { id: 'mind', name: '🧠 Mind', role: 'Planner', color: '#3b82f6' },
@@ -337,6 +338,8 @@ export default function SuperDashboard() {
           </div>
         </div>
       </div>
+
+      <TrinityChatComponent token={token} />
 
       {lastResult && (
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
