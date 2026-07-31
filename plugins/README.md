@@ -31,6 +31,8 @@ or from a local checkout:
 /plugin install dsg-verify@dsg-plugins
 /plugin install evidence-guard@dsg-plugins
 /plugin install pr-body-helper@dsg-plugins
+/plugin install dsg-governance@dsg-plugins
+/plugin install compliance-ising-z3@dsg-plugins
 ```
 
 You can also browse and install interactively with `/plugin`.
@@ -43,7 +45,8 @@ You can also browse and install interactively with `/plugin`.
 | **dsg-verify** | Slash commands wrapping the verification ladder (only real npm scripts) | `/typecheck`, `/verify-route`, `/pre-pr-check` |
 | **evidence-guard** | Truth-boundary / claim-policy help plus an advisory hook that flags forbidden readiness claims | `claim-policy` skill, `PostToolUse` hook |
 | **pr-body-helper** | Generates the repo's mandatory PR body format | `/pr-body` command |
-| **ising-agent** | External deterministic Z3/QUBO compliance plugin (separate repo) | hosted at `tdealer01-crypto/Compliance-ising-z3-Deterministic-` |
+| **dsg-governance** | AI Governance Control Plane skills: action layer, GitHub Marketplace Action packager, and M1/M2 orchestrator | 3 skills (`dsg-action-layer-ged`, `dsg-github-marketplace-action-controller`, `dsg-multi-governance-orchestrator`) |
+| **compliance-ising-z3** | Deterministic QUBO/Ising optimization and Z3/SMT-style constraint verification, bundled from the source engine repo | `z3-compliance-review` skill, `compliance-agent` agent, reference scripts |
 
 ## Component boundaries
 

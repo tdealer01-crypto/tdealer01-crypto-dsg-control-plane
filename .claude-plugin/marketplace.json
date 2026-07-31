@@ -47,16 +47,22 @@
       "keywords": ["pull-request", "pr-body", "template", "workflow", "dsg"]
     },
     {
-      "name": "ising-agent",
-      "source": {
-        "source": "github",
-        "repo": "tdealer01-crypto/Compliance-ising-z3-Deterministic-"
-      },
-      "description": "External deterministic compliance and optimization plugin: Z3 formal constraint verification, QUBO/Ising policy optimization, what-if simulation, and MCP gateway exports. Hosted in a separate repository.",
+      "name": "dsg-governance",
+      "source": "./dsg-governance",
+      "description": "AI Governance Control Plane skills: studio-style action layer (plan, deterministic gate, permission verdict, browser-first execution after approval), a GitHub Marketplace Action packager with GO/NO-GO validation, and a multi-source governance orchestrator for M1/M2 cutover. Covers the deterministic gate scaffold, replayable governance, compliance evidence mapping, runtime lifecycle, and the Hermes controlled executor.",
+      "version": "1.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "governance",
+      "keywords": ["ai-governance", "deterministic-gate", "compliance", "audit", "replay", "hermes", "dsg", "proofgate"]
+    },
+    {
+      "name": "compliance-ising-z3",
+      "source": "./compliance-ising-z3",
+      "description": "Deterministic QUBO/Ising policy-optimization and Z3/SMT-style formal constraint verification, bundled locally from the tdealer01-crypto/Compliance-ising-z3-Deterministic- engine. Includes a z3-compliance-review skill, a compliance-agent subagent, and reference build/test scripts. Constraint checks are Z3/SMT-style in native Kotlin (no external Z3 process).",
       "version": "3.0.0",
       "author": { "name": "DSG ONE / ProofGate" },
       "category": "compliance",
-      "keywords": ["qubo", "ising", "z3", "compliance", "deterministic", "simulation", "mcp"]
+      "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit"]
     }
   ]
 }

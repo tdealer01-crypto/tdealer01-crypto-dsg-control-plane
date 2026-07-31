@@ -1,0 +1,8 @@
+{
+  "name": "compliance-ising-z3",
+  "description": "Deterministic QUBO/Ising policy-optimization and Z3/SMT-style formal constraint verification skills, bundled from the tdealer01-crypto/Compliance-ising-z3-Deterministic- engine. Covers deterministic simulated annealing (seeded PRNG, reproducible runs), Z3/SMT-style constraint logic, what-if counterfactual simulation, a SHA-256 provenance audit chain, and multi-regulatory framework mapping.",
+  "version": "3.0.0",
+  "author": { "name": "DSG ONE / ProofGate" },
+  "homepage": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
+  "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit"]
+}
