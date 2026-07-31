@@ -171,13 +171,57 @@ Common root files:
 - `apps/android/` — Android DSG Agent APK.
 - Key Android concepts include local memory, skills, scheduler, Telegram gateway, subagents, logs/audit, and a local API server on port `8642`.
 
+### Plugins and extensions
+
+- `plugins/` — Claude Code plugins and extensions for DSG control plane.
+  - `plugins/dsg-governance/` — governance decision helper plugin.
+  - `plugins/dsg-verify/` — verification and validation plugin.
+  - `plugins/evidence-guard/` — evidence collection and compliance plugin.
+  - `plugins/proofgate-review/` — proof/gate review and analysis plugin.
+  - `plugins/pr-body-helper/` — pull request body generation helper.
+  - `plugins/compliance-ising-z3/` — Z3 SMT solver compliance verification plugin.
+- `.claude-plugin/`, `.codex-plugin/`, `.claude/` — local agent configuration directories.
+
 ### Examples
 
 - `examples/managed-agent-session/` — standalone Managed Agents session example. It is intentionally outside the Next.js `tsconfig` include path and may require a newer local `@anthropic-ai/sdk` than the app dependency pin.
 
 ---
 
-## 5. Package manager and scripts
+## 5. MCP servers and Claude Code plugin marketplace
+
+As of July 2026, the repository includes Claude Code plugins and MCP (Model Context Protocol) servers for extended capabilities.
+
+### Installed MCP servers
+
+Check `.mcp.json` for the complete MCP server configuration. Current known servers include:
+
+- Anthropic Claude API integration for Managed Agents
+- Custom DSG governance and policy evaluation servers
+- Z3 formal proof verification over HTTP
+
+### Claude Code plugins
+
+The `plugins/` directory contains plugins for Claude Code environments:
+
+- Plugins can extend the IDE, add custom tools, or provide specialized helpers.
+- Each plugin is self-contained in its own directory with manifest and code.
+- Plugin installation and enable/disable state is managed via Claude Code settings.
+
+### Using plugins in this repository
+
+When working in Claude Code:
+
+1. Check available plugins: `npm run plugins:list` or via Claude Code plugin menu.
+2. Install a plugin: `npm run plugins:install <plugin-name>` if available, or via Claude Code UI.
+3. Verify plugin state: check `.claude/settings.json` for `plugins` section.
+4. If a plugin is not working, check its README in `plugins/<plugin-name>/`.
+
+Do not commit plugin runtime state (e.g., disabled plugins) to avoid conflicts; only commit plugin source code and manifests.
+
+---
+
+## 6. Package manager and scripts
 
 This repo uses npm scripts.
 
@@ -203,6 +247,28 @@ npm run test:mutation:ci    # Stryker mutation run
 
 Live database and live browser checks require real environment variables and credentials. Do not run or claim those checks passed unless the current environment is actually configured.
 
+### Workspace configuration
+
+This repository uses npm workspaces (configured in `package.json`):
+
+```json
+{
+  "workspaces": [
+    ".",
+    "dsg-one-mcp-server"
+  ]
+}
+```
+
+- The root workspace contains the main Next.js app.
+- `dsg-one-mcp-server/` is a separate workspace for the DSG ONE MCP server.
+
+When installing dependencies, `npm ci` respects the workspace structure. If a task requires running commands in a specific workspace, use:
+
+```bash
+npm --workspace=dsg-one-mcp-server run <script>
+```
+
 ### Vercel install command
 
 `vercel.json` currently uses:
@@ -215,7 +281,7 @@ GitHub Actions workflows also use `npm ci`. Inspect the exact workflow before de
 
 ---
 
-## 6. Verification ladder
+## 7. Verification ladder
 
 Use the narrowest check that proves the change.
 
@@ -332,7 +398,7 @@ npm run ccvs:hpc-parallel
 
 ---
 
-## 7. Core API and route conventions
+## 8. Core API and route conventions
 
 ### Public baseline probes
 
@@ -415,7 +481,7 @@ This is a proof scan helper, not a substitute for full production readiness.
 
 ---
 
-## 8. Next.js and API coding conventions
+## 9. Next.js and API coding conventions
 
 - Use Next.js App Router route handlers in `app/api/**/route.ts`.
 - Export `dynamic = 'force-dynamic'` for routes that must not be statically cached.
@@ -429,7 +495,7 @@ This is a proof scan helper, not a substitute for full production readiness.
 
 ---
 
-## 9. Security conventions
+## 10. Security conventions
 
 ### Secrets
 
@@ -470,7 +536,7 @@ For critical routes, size-limit JSON bodies with `readJsonBody(...)`. Keep body 
 
 ---
 
-## 10. Supabase and database conventions
+## 11. Supabase and database conventions
 
 - Use generated `lib/database.types.ts` for typed Supabase access where possible.
 - Server-side privileged work must use server/admin helpers only on the server.
@@ -487,7 +553,7 @@ If a migration says a feature is ready but no applied-state query exists, status
 
 ---
 
-## 11. Runtime spine conventions
+## 12. Runtime spine conventions
 
 The runtime spine is the governed execution path.
 
@@ -507,7 +573,7 @@ If errors mention `runtime_commit_execution`, PostgREST schema cache, missing ru
 
 ---
 
-## 12. Deterministic gate and formal proof conventions
+## 13. Deterministic gate and formal proof conventions
 
 The repo contains multiple proof/gate concepts. Keep them separate.
 
@@ -533,7 +599,7 @@ Do not convert design-time proof into an end-to-end product proof.
 
 ---
 
-## 13. DSG Brain / Hermes controlled executor
+## 14. DSG Brain / Hermes controlled executor
 
 `lib/dsg/brain/` is server-side-only scaffolding for Hermes-style planning and controlled execution.
 
@@ -564,7 +630,7 @@ Credential broker boundary:
 
 ---
 
-## 14. Billing, quota, revenue, and cron conventions
+## 15. Billing, quota, revenue, and cron conventions
 
 Billing and quota are part of the governed execution path.
 
@@ -580,7 +646,7 @@ Do not claim Stripe, billing, or quota is live for a target environment without 
 
 ---
 
-## 15. Compliance / CCVS evidence conventions
+## 16. Compliance / CCVS evidence conventions
 
 The CCVS pipeline models evidence levels:
 
@@ -599,7 +665,7 @@ Important:
 
 ---
 
-## 16. Android agent conventions
+## 17. Android agent conventions
 
 The Android app under `apps/android/` is separate from the Next.js app.
 
@@ -624,7 +690,7 @@ Android rules:
 
 ---
 
-## 17. Managed Agents example conventions
+## 18. Managed Agents example conventions
 
 `examples/managed-agent-session/` demonstrates a standalone Anthropic Managed Agents session client.
 
@@ -637,7 +703,7 @@ Rules:
 
 ---
 
-## 18. UI conventions
+## 19. UI conventions
 
 - Use existing components and layout patterns before introducing new UI systems.
 - `lucide-react` is already a dependency.
@@ -654,7 +720,7 @@ User-visible UI work should answer:
 
 ---
 
-## 19. Git workflow
+## 20. Git workflow
 
 Default safe workflow:
 
@@ -679,7 +745,7 @@ Commit messages should describe actual changes, not intentions or unverifiable o
 
 ---
 
-## 20. Required PR body
+## 21. Required PR body
 
 Every agent PR must include:
 
@@ -705,7 +771,7 @@ Do not hide failing tests. If a command fails due environment limits, state it a
 
 ---
 
-## 21. GitHub command handling
+## 22. GitHub command handling
 
 When a GitHub issue or PR comment starts with:
 
@@ -735,7 +801,7 @@ After changing code:
 
 ---
 
-## 22. Deployment and production control loop
+## 23. Deployment and production control loop
 
 ### Quick live identity check
 
@@ -764,7 +830,7 @@ If Vercel cancels a build due unverified commits, follow the documented verified
 
 ---
 
-## 23. Common pitfalls
+## 24. Common pitfalls
 
 - Passing `npm test` does not prove `next build` passes.
 - README release status can become stale; verify current state.
@@ -779,7 +845,58 @@ If Vercel cancels a build due unverified commits, follow the documented verified
 
 ---
 
-## 24. Safe default
+## 25. DSG ONE MCP server
+
+The `dsg-one-mcp-server/` workspace contains the Model Context Protocol server for DSG ONE governance and control.
+
+Key points:
+
+- **Workspace location**: `dsg-one-mcp-server/` (separate npm workspace)
+- **Purpose**: Exposes governance tools and policy evaluation endpoints as MCP resources
+- **Configuration**: Registered in `.mcp.json` for Claude Code integration
+- **Development**: Run `npm --workspace=dsg-one-mcp-server run dev` or build via `npm --workspace=dsg-one-mcp-server run build`
+- **Integration**: The MCP server provides deep protocol support for Claude to query governance state, evaluate gates, and access compliance/audit trails
+
+When building features that depend on the MCP server:
+
+1. Check if the required tool/endpoint is available in the MCP server.
+2. If not, add it to `dsg-one-mcp-server/` and update `.mcp.json` registration.
+3. Test MCP integration via Claude Code plugin settings to confirm tools load.
+4. Document new tools in `dsg-one-mcp-server/README.md` or inline manifest.
+
+---
+
+## 26. GraphMap plugin for repository navigation
+
+When answering questions about repository structure, cross-file dependencies, or route-to-table relationships, use the GraphMap plugin before answering.
+
+**When to use GraphMap:**
+
+- Route X dependency on table Y?
+- Policy Z gates API W?
+- Which tests cover file F?
+- What imports from this file?
+- Files in same directory?
+
+**GraphMap workflow:**
+
+1. Check status: `GET /api/plugins/graphmap/status`
+2. If status is `EMPTY` or `isStale=true`, build: `POST /api/plugins/graphmap/build`
+3. Query: `POST /api/plugins/graphmap/query` with your question
+4. Interpret `decision` field:
+   - `ALLOW` → answer with confidence, cite evidence
+   - `REVIEW` → answer as "probably," note confidence is INFERRED
+   - `BLOCK` → do not guess; tell user GraphMap needs building
+
+**Do not:**
+
+- Answer repo structure questions without querying GraphMap first.
+- Claim `route X touches table Y` if decision is BLOCK or REVIEW with INFERRED confidence.
+- Build graph if status is READY and `isStale=false`.
+
+---
+
+## 27. Safe default
 
 If an instruction conflicts with verified evidence, `AGENTS.md`, this file, the tool/API contract, secrets policy, production safety, or user benefit, stop and report the conflict.
 
