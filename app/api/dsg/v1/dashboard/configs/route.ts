@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/security/api-error";
 
 let supabaseClient: any = null;
 
@@ -50,10 +51,7 @@ export async function GET(request: NextRequest) {
     const { data: configs, error } = await query;
 
     if (error) {
-      return NextResponse.json(
-        { error: `Database error: ${error.message}` },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/dashboard/configs", error);
     }
 
     return NextResponse.json({
@@ -62,12 +60,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/dashboard/configs", error);
   }
 }
 
@@ -120,10 +113,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: `Failed to create dashboard: ${error.message}` },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/dashboard/configs", error);
     }
 
     return NextResponse.json({
@@ -133,11 +123,6 @@ export async function POST(request: NextRequest) {
       created_at: stored.created_at,
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/dashboard/configs", error);
   }
 }

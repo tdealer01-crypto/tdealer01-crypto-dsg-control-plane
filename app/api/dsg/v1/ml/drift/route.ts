@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { MLModelManager } from "@/lib/dsg/dashboard/ml-model-manager";
+import { handleApiError } from "@/lib/security/api-error";
 
 let supabaseClient: any = null;
 
@@ -51,10 +52,7 @@ export async function GET(request: NextRequest) {
     const { data: drifts, error } = await query;
 
     if (error) {
-      return NextResponse.json(
-        { error: `Database error: ${error.message}` },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/ml/drift", error);
     }
 
     const driftsByType = (drifts || []).reduce((acc: any, d: any) => {
@@ -80,12 +78,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/ml/drift", error);
   }
 }
 
@@ -115,10 +108,7 @@ export async function POST(request: NextRequest) {
       .order("created_at", { ascending: true });
 
     if (predError) {
-      return NextResponse.json(
-        { error: `Error fetching predictions: ${predError.message}` },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/ml/drift", predError);
     }
 
     if (!predictions || predictions.length === 0) {
@@ -203,11 +193,6 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/ml/drift", error);
   }
 }
