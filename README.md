@@ -1632,11 +1632,31 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Integrations
 
+### MCP Servers & Claude Code Plugins (July 2026)
+
+**DSG ONE MCP Server** ✅
+* 30+ governance and policy evaluation tools
+* Workspace: `dsg-one-mcp-server/` (separate npm workspace)
+* Registered in `.mcp.json` for Claude Code integration
+* Exposes runtime spine, deterministic gates, compliance audit trails, and evidence collection
+* [Development Guide](CLAUDE.md#25-dsg-one-mcp-server) | Docs: `docs/agents/CLAUDE_TOOL_API_CONTRACT.md`
+
+**Claude Code Plugins** ✅
+* 6 specialized plugins in `plugins/` directory:
+  * 🔐 **dsg-governance** — Governance decision helper and policy evaluation
+  * ✅ **dsg-verify** — Verification and validation tooling
+  * 📋 **evidence-guard** — Evidence collection and compliance automation
+  * 🔍 **proofgate-review** — Proof/gate review and analysis
+  * 📝 **pr-body-helper** — Pull request body generation from changes
+  * 🔗 **compliance-ising-z3** — Z3 SMT solver compliance verification
+* Installation: Available via Claude Code plugin marketplace
+* [Plugin Usage Guide](CLAUDE.md#5-mcp-servers-and-claude-code-plugin-marketplace)
+
 **Complete & Deployed:**
 
-* ✅ **MCP (Model Context Protocol)** — 4 production MCPs with 101+ tools
-  * [Setup Guide](docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools)
-  * Production-tested: Analytics, database management, deployment monitoring, solution discovery
+* ✅ **MCP (Model Context Protocol)** — 5+ production MCPs with 130+ tools
+  * [Setup Guide](docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools) + DSG ONE (30+ tools)
+  * Production-tested: Analytics, database management, deployment monitoring, solution discovery, governance decisions, compliance evidence
   * All security checks passed, comprehensive troubleshooting included
 * ✅ **Trinity Dashboard UI** — Real-time agent control plane (Chat + Dashboard + CLI + API)
   * [Dashboard](apps/trinity-dashboard/) | Quick Start: Deploy in <5 minutes
