@@ -1,13 +1,9 @@
 ---
 name: neon
 description: >-
-  Overview of the Neon platform for apps and agents, spanning Postgres, Auth, the
-  Data API, Object Storage, Compute Functions, and the AI Gateway. Start here to
-  route to the right Neon skill, set up the CLI or MCP server, and follow the
-  branch-first workflow. Use when "Neon" is mentioned, or when any of its
-  individual capabilities are the trigger: "object storage" or "S3", "buckets",
-  "serverless functions", "AI gateway", "call an LLM", "postgres", "database", or
-  "backend".
+  Overview of the Neon platform for apps and agents, spanning Postgres, Auth,
+  the Data API, Object Storage, Compute Functions, and the AI Gateway. Start
+  here to route to the right Neon skill, set up the
 ---
 
 # Neon
@@ -20,11 +16,11 @@ A Neon branch is an isolated, copy-on-write clone of your data, taken from its c
 
 Neon bundles several backend primitives for building apps and agents that all branch together:
 
-- **Postgres** — Serverless Postgres that scales and branches with your app. _Generally available._
-- **Auth** — Managed Better Auth with users and sessions stored in Postgres. _Generally available._
-- **Object Storage** — S3-compatible object storage that branches with your projects. _Public beta._
-- **Functions** — Neon's compute offering: long-running serverless functions that run close to your database, for WebSocket servers, long agent HTTP streams, APIs, and server-sent event servers. _Public beta._
-- **AI Gateway** — One API for frontier and open-source models, supporting the chat completions API and the responses API, powered by Databricks Unity AI Gateway. _Public beta._
+* **Postgres** — Serverless Postgres that scales and branches with your app. _Generally available._
+* **Auth** — Managed Better Auth with users and sessions stored in Postgres. _Generally available._
+* **Object Storage** — S3-compatible object storage that branches with your projects. _Public beta._
+* **Functions** — Neon's compute offering: long-running serverless functions that run close to your database, for WebSocket servers, long agent HTTP streams, APIs, and server-sent event servers. _Public beta._
+* **AI Gateway** — One API for frontier and open-source models, supporting the chat completions API and the responses API, powered by Databricks Unity AI Gateway. _Public beta._
 
 ### Public Beta Service Availability
 
@@ -73,15 +69,15 @@ Neon provides a set of agent skills in addition to the official documentation. W
 
 The skills below live in the [`neondatabase/agent-skills`](https://github.com/neondatabase/agent-skills) repo:
 
-| Skill | Use it for |
-| --- | --- |
-| `neon-postgres` | Working with databases, including connections, schemas, queries, and autoscaling: SQL development, schema design, performance optimization, and scaling decisions. |
-| `neon-postgres-branches` | Choosing or creating the right branch type for dev, preview, test, or CI workflows. Use this skill as a slash command. |
-| `neon-object-storage` | Storing and serving files (uploads, images, blobs), including branching them with the database. |
-| `neon-functions` | Deploying long-running or streaming serverless functions — APIs, agents, SSE/WebSocket servers. |
-| `neon-ai-gateway` | Calling an LLM or routing across model providers with one credential, including discovering the branch's servable models at runtime via the OpenAI-compatible `/v1/models` endpoint. |
-| `claimable-postgres` | Provisioning instant, claimable temporary Postgres databases (for example, one per end user or demo). |
-| `neon-postgres-egress-optimizer` | Diagnosing or fixing excessive Postgres egress (network data-transfer) costs in a codebase. |
+| Skill                            | Use it for                                                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `neon-postgres`                  | Working with databases, including connections, schemas, queries, and autoscaling: SQL development, schema design, performance optimization, and scaling decisions.                   |
+| `neon-postgres-branches`         | Choosing or creating the right branch type for dev, preview, test, or CI workflows. Use this skill as a slash command.                                                               |
+| `neon-object-storage`            | Storing and serving files (uploads, images, blobs), including branching them with the database.                                                                                      |
+| `neon-functions`                 | Deploying long-running or streaming serverless functions — APIs, agents, SSE/WebSocket servers.                                                                                      |
+| `neon-ai-gateway`                | Calling an LLM or routing across model providers with one credential, including discovering the branch's servable models at runtime via the OpenAI-compatible `/v1/models` endpoint. |
+| `claimable-postgres`             | Provisioning instant, claimable temporary Postgres databases (for example, one per end user or demo).                                                                                |
+| `neon-postgres-egress-optimizer` | Diagnosing or fixing excessive Postgres egress (network data-transfer) costs in a codebase.                                                                                          |
 
 For guidance on agent platforms that provision and operate Neon Postgres at scale, use `neon-postgres-agent-platforms`, which lives in a separate repo: [`neondatabase/neon-for-agent-platforms`](https://github.com/neondatabase/neon-for-agent-platforms).
 
@@ -95,9 +91,9 @@ npx skills add neondatabase/agent-skills -s <skill-name>
 
 Replace `<skill-name>` with the skill you need (for example, `neon-object-storage`, `neon-functions`, or `neon-ai-gateway`). Useful flags:
 
-- `-g` — install globally instead of into the current project.
-- `-y` — non-interactive mode (skip prompts).
-- `-a <agent-name>` — pick the target agent(s) for non-interactive mode.
+* `-g` — install globally instead of into the current project.
+* `-y` — non-interactive mode (skip prompts).
+* `-a <agent-name>` — pick the target agent(s) for non-interactive mode.
 
 For example, to install the object storage skill globally for a specific agent without prompts:
 
@@ -125,9 +121,9 @@ Use the `--agent` flag to run in a non-interactive, state-machine mode.
 
 This init command will guide you through installation of suggested Neon development tools. Everything is customizable. The defaults are:
 
-- Neon CLI installed globally
-- Neon MCP server installed globally
-- Neon Agent skills installed into the project
+* Neon CLI installed globally
+* Neon MCP server installed globally
+* Neon Agent skills installed into the project
 
 If `init` is run in an empty project, it will run the `bootstrap` command, offering to install one of our project templates.
 
@@ -142,11 +138,11 @@ The above `init` command will install the Neon CLI, but the CLI can also be inst
 These commands are included in the `init` command but can be run manually as needed.
 
 1. `neon link` — Interactively links the workspace to a Neon org, project, and branch, writing the IDs to a git-ignored `.neon` file. Run once per project. Once linked, project- and branch-scoped commands no longer need `--project-id` or `--branch` (for example, `neon branch list`). `neon link --agent` can be used to run in a non-interactive, state-machine mode.
-2. `neon checkout <branch-name>` — Pins a different branch in `.neon`, creating it if it doesn't exist yet, and pulls that branch's env. It drives the [Branch-First Dev Flow](#branch-first-dev-flow) described below.
+2. `neon checkout <branch-name>` — Pins a different branch in `.neon`, creating it if it doesn't exist yet, and pulls that branch's env. It drives the [Branch-First Dev Flow](SKILL.md#branch-first-dev-flow) described below.
 3. `neon config init` — Initializes a `neon.ts` file, which declares how you provision and manage Neon services, in the root of the project.
-4. `neon env pull` — Fetches the current branch's Neon environment variables (`DATABASE_URL`, …) into your existing `.env`, or `.env.local` if you don't have one (override the target with `--file`). No branch ID needed; it reads `.neon`. **`link` and `checkout` run this for you by default**, so you rarely call it directly.
+4.  `neon env pull` — Fetches the current branch's Neon environment variables (`DATABASE_URL`, …) into your existing `.env`, or `.env.local` if you don't have one (override the target with `--file`). No branch ID needed; it reads `.neon`. **`link` and `checkout` run this for you by default**, so you rarely call it directly.
 
-   Without `neon.ts` it pulls the vars of every service the branch actually has (Postgres, plus Neon Auth, the Data API, and bucket `AWS_*` once provisioned); with `neon.ts` it pulls only the services declared there and errors if the branch is missing one — and the AI Gateway vars are never pulled unless `neon.ts` declares `aiGateway`.
+    Without `neon.ts` it pulls the vars of every service the branch actually has (Postgres, plus Neon Auth, the Data API, and bucket `AWS_*` once provisioned); with `neon.ts` it pulls only the services declared there and errors if the branch is missing one — and the AI Gateway vars are never pulled unless `neon.ts` declares `aiGateway`.
 
 ### Getting Started with the Neon MCP Server
 
@@ -158,9 +154,9 @@ For full MCP server installation options, see https://neon.com/docs/ai/connect-m
 
 Useful MCP tools to initialize a project:
 
-- `list_projects` — Lists the first 10 Neon projects in your account, providing a summary of each project. If you can't find a specific project, increase the limit by passing a higher value to the `limit` parameter.
-- `create_project` — Creates a new Neon project in your Neon account. A project acts as a container for branches, databases, roles, and computes.
-- `get_connection_string` — Returns your database connection string.
+* `list_projects` — Lists the first 10 Neon projects in your account, providing a summary of each project. If you can't find a specific project, increase the limit by passing a higher value to the `limit` parameter.
+* `create_project` — Creates a new Neon project in your Neon account. A project acts as a container for branches, databases, roles, and computes.
+* `get_connection_string` — Returns your database connection string.
 
 ## Neon Infrastructure as Code
 
@@ -326,9 +322,9 @@ Neon branches enable a branch-first development flow, which we recommend when us
 
 Create a Neon branch any time you would create a git branch. Use the following commands if you have CLI access:
 
-- `neon checkout <branch-name>` — Creates the branch if it doesn't exist, or checks out the existing one, by updating only the branch pointer in `.neon`. Run without a name for an interactive picker. It does not touch code or local Postgres.
-- `neon env pull` — Fetches the current branch's Neon environment variables into your `.env` (see [Useful CLI Commands](#useful-cli-commands) above). **`link` and `checkout` run this for you by default**, so you rarely call it directly.
-- `neon diff` — Shows the schema diff between the child branch and its parent. Run this to see what changes have been made to the schema since the last branch was created and before you commit your changes.
+* `neon checkout <branch-name>` — Creates the branch if it doesn't exist, or checks out the existing one, by updating only the branch pointer in `.neon`. Run without a name for an interactive picker. It does not touch code or local Postgres.
+* `neon env pull` — Fetches the current branch's Neon environment variables into your `.env` (see [Useful CLI Commands](SKILL.md#useful-cli-commands) above). **`link` and `checkout` run this for you by default**, so you rarely call it directly.
+* `neon diff` — Shows the schema diff between the child branch and its parent. Run this to see what changes have been made to the schema since the last branch was created and before you commit your changes.
 
 ```bash
 neon link                     # once; also pulls the linked branch's env
@@ -345,14 +341,14 @@ When a `neon.ts` is present, `neon checkout` applies your policy as it **creates
 
 If env vars are injected at runtime instead of written to disk — or you simply don't want secrets in the working tree — pass `--no-env-pull` to `link` / `checkout` and supply the env another way:
 
-- `neon-env run -- <your dev command>` (from `@neon/env`) fetches the branch's vars from your `neon.ts` and injects them into the child process at runtime — no `.env` file needed. This is the runtime counterpart to the on-disk `env pull`.
-- `neon-env export` (from `@neon/env`) prints the branch's env to stdout as dotenv lines or, with `--format json`, JSON — for piping into another env manager rather than running a command. For example, [varlock](https://varlock.dev) can bulk-load it from a `.env.schema` with `@setValuesBulk(exec("neon-env export --format json"), format=json)`.
-- `fetchEnv` from `@neon/env` is the programmatic version of the same thing: resolve the branch's env in code at runtime instead of shelling out to `neon-env run`.
-- `neon dev` injects the same vars into your local dev server — it's part of Neon Functions local development (a public beta feature).
+* `neon-env run -- <your dev command>` (from `@neon/env`) fetches the branch's vars from your `neon.ts` and injects them into the child process at runtime — no `.env` file needed. This is the runtime counterpart to the on-disk `env pull`.
+* `neon-env export` (from `@neon/env`) prints the branch's env to stdout as dotenv lines or, with `--format json`, JSON — for piping into another env manager rather than running a command. For example, [varlock](https://varlock.dev) can bulk-load it from a `.env.schema` with `@setValuesBulk(exec("neon-env export --format json"), format=json)`.
+* `fetchEnv` from `@neon/env` is the programmatic version of the same thing: resolve the branch's env in code at runtime instead of shelling out to `neon-env run`.
+* `neon dev` injects the same vars into your local dev server — it's part of Neon Functions local development (a public beta feature).
 
 When an agent should not write a local `.env`, instruct it (for example in your `AGENTS.md`) to run `neon checkout <branch> --no-env-pull` and rely on runtime injection.
 
-For reading env you _already_ have on disk (typed and validated against your `neon.ts`), use `parseEnv` — see [Type-safe env vars with parseEnv](#type-safe-env-vars-with-parseenv) above.
+For reading env you _already_ have on disk (typed and validated against your `neon.ts`), use `parseEnv` — see [Type-safe env vars with parseEnv](SKILL.md#type-safe-env-vars-with-parseenv) above.
 
 ## Manage Neon Resources
 
@@ -366,11 +362,11 @@ If you're building agents that generate apps from prompts, your users want to bu
 
 Neon features for agents:
 
-- Instant Provisioning: your users never wait for infrastructure.
-- Snapshots: let users toggle between checkpoints of code and state together.
-- Low cost-per-Database: automatic scale to zero and 350ms cold starts.
-- Full-Stack, Batteries-Included: Neon Auth, Data API included at no added charge.
-- Granular API Controls: Track and control usage for flexible limits and invoicing.
+* Instant Provisioning: your users never wait for infrastructure.
+* Snapshots: let users toggle between checkpoints of code and state together.
+* Low cost-per-Database: automatic scale to zero and 350ms cold starts.
+* Full-Stack, Batteries-Included: Neon Auth, Data API included at no added charge.
+* Granular API Controls: Track and control usage for flexible limits and invoicing.
 
 All details here: https://neon.com/programs/agents.md
 

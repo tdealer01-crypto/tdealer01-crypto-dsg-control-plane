@@ -1,6 +1,9 @@
 ---
 name: dsg-multi-governance-orchestrator
-description: Use this skill for DSG multi-source governance work that combines UI trust upgrades, action-layer permission gates, deterministic execution, marketplace/enterprise cutover, portable SaaS architecture pages, DSG ONE architecture pages, Termux/Codex/Multica bootstrap planning, and production GO/NO-GO validation. Trigger when the user says DSG multi, 5 files, ผสานมัลติ, ทำเป็นสกิว, architecture page, action layer gate, marketplace cutover, M1/M2, deterministic execution, or launch readiness.
+description: >-
+  Use this skill for DSG multi-source governance work that combines UI trust
+  upgrades, action-layer permission gates, deterministic execution,
+  marketplace/enterprise cutover, portable SaaS architecture
 ---
 
 # DSG Multi Governance Orchestrator
@@ -22,9 +25,9 @@ Be direct. Protect production. Do not mix demo-only changes with launch readines
 
 Default release posture:
 
-- **NO-GO** when build, lockfile, health, readiness, manifest, or trust pages are missing/failing.
-- **GO** only when all gates are green with current evidence.
-- Never claim production readiness from static UI alone.
+* **NO-GO** when build, lockfile, health, readiness, manifest, or trust pages are missing/failing.
+* **GO** only when all gates are green with current evidence.
+* Never claim production readiness from static UI alone.
 
 ## Deterministic execution protocol
 
@@ -50,16 +53,16 @@ Only checkpoint the user for external login, new app connections, privileged ext
 
 Use only these permission verdicts:
 
-- `allow`
-- `needs user takeover`
-- `deny`
+* `allow`
+* `needs user takeover`
+* `deny`
 
 ## Production cutover standard
 
 Use only two production milestones:
 
-- `M1: Production Cutover`
-- `M2: Hardening + Launch`
+* `M1: Production Cutover`
+* `M2: Hardening + Launch`
 
 Reject mock routes, server-memory source of truth, localStorage persistence, demo-only workflows/actions/pages, and work unrelated to marketplace readiness.
 
@@ -81,10 +84,10 @@ npm run verify:production-manifest || true
 
 Required runtime checks:
 
-- `/api/health` returns HTTP 200 and `ok: true`.
-- `/api/readiness` returns HTTP 200 and `ok: true`.
-- `/terms`, `/privacy`, `/security`, `/support` are reachable.
-- Protected routes return expected `401` or `403` when unauthenticated.
+* `/api/health` returns HTTP 200 and `ok: true`.
+* `/api/readiness` returns HTTP 200 and `ok: true`.
+* `/terms`, `/privacy`, `/security`, `/support` are reachable.
+* Protected routes return expected `401` or `403` when unauthenticated.
 
 ## Architecture page generation
 
@@ -133,7 +136,7 @@ Avoid touching auth, billing, DB, runtime gates, production env, or deployment c
 
 ## Included references and assets
 
-- `references/source-inventory.md` maps the 5 uploaded files plus the patch file.
-- `references/multi-source-ui-action-reference.md` contains the UI, action-layer, deterministic, marketplace, and cutover operating standards.
-- `references/launch-gate-debug-report-2026-04-25.md` contains launch readiness evidence and blocker rules.
-- `scripts/apply-architecture-page.sh` contains a copy/paste helper for adding architecture pages to supported repo layouts.
+* `references/source-inventory.md` maps the 5 uploaded files plus the patch file.
+* `references/multi-source-ui-action-reference.md` contains the UI, action-layer, deterministic, marketplace, and cutover operating standards.
+* `references/launch-gate-debug-report-2026-04-25.md` contains launch readiness evidence and blocker rules.
+* `scripts/apply-architecture-page.sh` contains a copy/paste helper for adding architecture pages to supported repo layouts.

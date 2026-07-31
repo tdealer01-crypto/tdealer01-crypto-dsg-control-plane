@@ -1,35 +1,32 @@
 ---
 name: dsg-github-marketplace-action-controller
-description: >-
-  Use this skill when creating, packaging, validating, publishing, or
-  maintaining DSG GitHub Marketplace Actions. It turns DSG control-plane,
-  action-layer permission gates, deterministic GO/NO-GO validation, audit proof,
-  and secure deploy checks into reusable GitHub Action products.
 version: 1.0.0
 author: DSG Team
 license: MIT
+description: >-
+  Use this skill when creating, packaging, validating, publishing, or
+  maintaining DSG GitHub Marketplace Actions. It turns DSG control-plane,
+  action-layer permission gates, deterministic GO/NO-GO valida
 ---
 
 # DSG GitHub Marketplace Action Controller
 
-This skill packages the DSG Governance Control Plane capabilities as distributable
-**GitHub Marketplace Actions** — reusable CI/CD building blocks that any team can drop
-into their workflow to gate, audit, and prove AI agent actions.
+This skill packages the DSG Governance Control Plane capabilities as distributable **GitHub Marketplace Actions** — reusable CI/CD building blocks that any team can drop into their workflow to gate, audit, and prove AI agent actions.
 
----
+***
 
 ## When to use this skill
 
-| User asks about | Use this skill |
-|---|---|
-| "Create a GitHub Action that gates AI actions" | ✅ Yes |
-| "Package the DSG gate as a reusable action" | ✅ Yes |
-| "Publish DSG governance to the GitHub Marketplace" | ✅ Yes |
-| "Add a governance check to our CI pipeline" | ✅ Yes |
-| "Validate deployment readiness with DSG proof" | ✅ Yes |
-| "Writing a plain GitHub Action unrelated to DSG" | ❌ Out of scope |
+| User asks about                                    | Use this skill |
+| -------------------------------------------------- | -------------- |
+| "Create a GitHub Action that gates AI actions"     | ✅ Yes          |
+| "Package the DSG gate as a reusable action"        | ✅ Yes          |
+| "Publish DSG governance to the GitHub Marketplace" | ✅ Yes          |
+| "Add a governance check to our CI pipeline"        | ✅ Yes          |
+| "Validate deployment readiness with DSG proof"     | ✅ Yes          |
+| "Writing a plain GitHub Action unrelated to DSG"   | ❌ Out of scope |
 
----
+***
 
 ## Available DSG GitHub Actions
 
@@ -72,7 +69,7 @@ Output: `evidence_bundle_path`, `hash_manifest_path`, `matrix_json`
 
 Output: `go_no_go_decision`, `readiness_report_id`, `proof_hash`
 
----
+***
 
 ## Packaging a new DSG GitHub Action
 
@@ -129,42 +126,42 @@ runs:
   main: dist/index.js
 ```
 
----
+***
 
 ## GO/NO-GO decision rules (deterministic)
 
 A CI gate MUST fail the workflow when:
 
-| Condition | Decision |
-|---|---|
-| `gate_status == BLOCK` | NO-GO — halt job immediately |
-| `gate_status == REVIEW` and no human approval | NO-GO — require approval |
-| `gate_status == UNSUPPORTED` and `risk_level >= medium` | NO-GO |
-| `proof_hash` is empty or missing | NO-GO — evidence gap |
-| HTTP 402 (quota exceeded) | NO-GO — upgrade required |
-| HTTP 429 (rate limit) | Retry with backoff, then NO-GO |
+| Condition                                               | Decision                       |
+| ------------------------------------------------------- | ------------------------------ |
+| `gate_status == BLOCK`                                  | NO-GO — halt job immediately   |
+| `gate_status == REVIEW` and no human approval           | NO-GO — require approval       |
+| `gate_status == UNSUPPORTED` and `risk_level >= medium` | NO-GO                          |
+| `proof_hash` is empty or missing                        | NO-GO — evidence gap           |
+| HTTP 402 (quota exceeded)                               | NO-GO — upgrade required       |
+| HTTP 429 (rate limit)                                   | Retry with backoff, then NO-GO |
 
 A CI gate MUST pass when:
 
-| Condition | Decision |
-|---|---|
-| `gate_status == PASS` and `proof_hash` present | GO |
+| Condition                                              | Decision                    |
+| ------------------------------------------------------ | --------------------------- |
+| `gate_status == PASS` and `proof_hash` present         | GO                          |
 | `gate_status == REVIEW` and operator approval recorded | GO (with approval evidence) |
 
----
+***
 
 ## Security rules for action authors
 
-- **Never** echo `dsg_api_key` to logs — use `core.setSecret(apiKey)`.
-- **Never** store `dsg_api_key` in action outputs — only non-sensitive gate results.
-- Always use `secrets.*` for DSG API keys, never `vars.*`.
-- Pin action versions with SHA (`@sha256:...`) for supply-chain security.
-- Build with `ncc` or `esbuild` to produce a self-contained `dist/index.js`.
+* **Never** echo `dsg_api_key` to logs — use `core.setSecret(apiKey)`.
+* **Never** store `dsg_api_key` in action outputs — only non-sensitive gate results.
+* Always use `secrets.*` for DSG API keys, never `vars.*`.
+* Pin action versions with SHA (`@sha256:...`) for supply-chain security.
+* Build with `ncc` or `esbuild` to produce a self-contained `dist/index.js`.
 
----
+***
 
 ## References
 
-- <references/action-yml-spec.md> — Full `action.yml` field reference
-- <references/go-no-go-logic.md> — Complete GO/NO-GO decision tree
-- Gate evaluate API: see `dsg-action-layer-ged` skill → `references/gate-evaluate.md`
+* \<references/action-yml-spec.md> — Full `action.yml` field reference
+* \<references/go-no-go-logic.md> — Complete GO/NO-GO decision tree
+* Gate evaluate API: see `dsg-action-layer-ged` skill → `references/gate-evaluate.md`
