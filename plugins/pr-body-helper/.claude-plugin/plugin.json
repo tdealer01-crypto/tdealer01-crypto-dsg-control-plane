@@ -1,0 +1,8 @@
+{
+  "name": "pr-body-helper",
+  "description": "Generates a PR body matching the DSG Control Plane mandatory format (Goal / Files changed / Verification / Known limits / User-visible benefit / Next step), with honest 'Not run' handling for unrun checks.",
+  "version": "1.0.0",
+  "author": { "name": "DSG ONE / ProofGate" },
+  "homepage": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "keywords": ["pull-request", "pr-body", "template", "workflow", "dsg"]
+}
