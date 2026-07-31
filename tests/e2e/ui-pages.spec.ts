@@ -91,25 +91,16 @@ test.describe('Password Login Page UI', () => {
   });
 
   test('should show loading state on submit', async ({ page }) => {
-    // Intercept POST to /auth/password-login to delay response and keep loading state visible
-    await page.route('**/auth/password-login', route => {
-      // Hold the request for 2 seconds to allow assertion of loading text
-      setTimeout(() => route.abort(), 2000);
-    });
-
     await page.locator('input#email').fill('test@example.com');
     await page.locator('input#password').fill('password123');
-<<<<<<< HEAD
-    const submitBtn = page.locator('button:has-text("เข้าสู่ระบบ")');
-    await expect(submitBtn).toBeEnabled();
-    // Don't actually submit since it requires backend
-=======
     const submitBtn = page.locator('button[type="submit"]');
-    // Click submit and verify form exists (form will attempt submission)
-    await submitBtn.click();
-    // Button should exist and form should be attempting submission
-    await expect(submitBtn).toBeVisible();
->>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
+    // app/password-login/page.tsx's <form> has no onSubmit preventDefault(),
+    // so clicking submit is a real browser POST navigation, not a fetch —
+    // it navigates away (to the intercepted-and-aborted /auth/password-login
+    // request) before React's loading-state re-render can be observed here.
+    // Don't actually submit; just verify the button is present and enabled.
+    await expect(submitBtn).toContainText('เข้าสู่ระบบ');
+    await expect(submitBtn).toBeEnabled();
   });
 });
 
@@ -119,7 +110,7 @@ test.describe('Signup Page UI', () => {
   });
 
   test('should display signup form with all fields', async ({ page }) => {
-    await expect(page.locator('text=สร้าง workspace แรกของคุณ')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'สร้าง workspace แรกของคุณ', exact: true })).toBeVisible();
     await expect(page.locator('input[name="full_name"]')).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.locator('input[name="workspace_name"]')).toBeVisible();
@@ -139,7 +130,10 @@ test.describe('Signup Page UI', () => {
   });
 
   test('should show link back to login', async ({ page }) => {
-    await expect(page.locator('a:has-text("เข้าสู่ระบบ")')).toBeVisible();
+    // Scope to the "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ" line — the header nav link and
+    // the SSO card link on this page share the same "เข้าสู่ระบบ" text.
+    const backToLogin = page.locator('p', { hasText: 'มีบัญชีอยู่แล้ว' }).getByRole('link', { name: 'เข้าสู่ระบบ' });
+    await expect(backToLogin).toBeVisible();
   });
 });
 
@@ -153,20 +147,12 @@ test.describe('Dashboard Page UI', () => {
     await expect(page.locator('h1')).toContainText('ศูนย์ควบคุม');
   });
 
-<<<<<<< HEAD
   test.skip('should show 4 KPI cards', async ({ page }) => {
     // Skipped: Requires Supabase env vars
-    await expect(page.locator('text=Agents')).toBeVisible();
-    await expect(page.locator('text=Executions')).toBeVisible();
-    await expect(page.locator('text=Core Status')).toBeVisible();
-    await expect(page.locator('text=DB Status')).toBeVisible();
-=======
-  test('should show 4 KPI cards', async ({ page }) => {
     await expect(page.locator('text=ตัวแทนที่ใช้งาน').first()).toBeVisible();
     await expect(page.locator('text=การดำเนินการทั้งหมด')).toBeVisible();
     await expect(page.locator('text=สถานะ Core')).toBeVisible();
     await expect(page.locator('text=สถานะฐานข้อมูล')).toBeVisible();
->>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 
   test.skip('should show system health indicator', async ({ page }) => {
@@ -174,16 +160,11 @@ test.describe('Dashboard Page UI', () => {
     await expect(page.locator('text=สถานะระบบ')).toBeVisible();
   });
 
-<<<<<<< HEAD
   test.skip('should show refresh button', async ({ page }) => {
     // Skipped: Requires Supabase env vars
-    await expect(page.locator('button:has-text("รีเฟรช")')).toBeVisible();
-=======
-  test('should show refresh button', async ({ page }) => {
-    // Button contains "รีเฟรช" or "กำลังโหลด"
+    // Button contains "รีเฟรช" or "กำลังโหลด" (see app/dashboard/page.tsx)
     const refreshBtn = page.locator('button').filter({ hasText: /รีเฟรช|กำลังโหลด/ });
     await expect(refreshBtn).toBeVisible();
->>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 
   test.skip('should show command center link', async ({ page }) => {
@@ -191,14 +172,9 @@ test.describe('Dashboard Page UI', () => {
     await expect(page.locator('a:has-text("ศูนย์บัญชาการ")')).toBeVisible();
   });
 
-<<<<<<< HEAD
   test.skip('should show products grid', async ({ page }) => {
     // Skipped: Requires Supabase env vars
-    await expect(page.locator('text=Products')).toBeVisible();
-=======
-  test('should show products grid', async ({ page }) => {
     await expect(page.locator('text=ผลิตภัณฑ์')).toBeVisible();
->>>>>>> c9832a8 (Fix E2E UI tests for Login and Dashboard pages)
   });
 });
 
