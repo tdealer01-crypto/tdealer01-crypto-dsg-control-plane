@@ -1634,11 +1634,12 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### MCP Servers & Claude Code Plugins (July 2026)
 
-**DSG ONE MCP Server** ✅
-* 30+ governance and policy evaluation tools
+**DSG ONE MCP Server** 🚧 (In Development)
+* 30+ governance and policy evaluation tools planned
 * Workspace: `dsg-one-mcp-server/` (separate npm workspace)
-* Registered in `.mcp.json` for Claude Code integration
-* Exposes runtime spine, deterministic gates, compliance audit trails, and evidence collection
+* Status: Source complete, build/TS integration pending
+* Planned to expose: runtime spine, deterministic gates, compliance audit trails, and evidence collection
+* Setup: Run `npm --workspace=dsg-one-mcp-server run build` after resolving TypeScript compilation issues
 * [Development Guide](CLAUDE.md#25-dsg-one-mcp-server) | Docs: `docs/agents/CLAUDE_TOOL_API_CONTRACT.md`
 
 **Claude Code Plugins** ✅
