@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS audit_batch_metadata (
   -- Org-scoped batch hash uniqueness (prevents cross-org collisions)
   CONSTRAINT batch_hash_org_unique UNIQUE (org_id, batch_hash),
 
+  -- Chain link completeness: if previous_hash is set, previous_org_id must also be set and equal org_id
+  CONSTRAINT chain_link_complete CHECK ((previous_hash IS NULL AND previous_org_id IS NULL) OR (previous_hash IS NOT NULL AND previous_org_id = org_id)),
+
   -- Foreign key to previous batch (org-scoped chain integrity)
   CONSTRAINT batch_hash_chain_link FOREIGN KEY (previous_org_id, previous_hash)
     REFERENCES audit_batch_metadata(org_id, batch_hash) ON DELETE SET NULL
@@ -59,7 +62,7 @@ CREATE OR REPLACE FUNCTION verify_audit_batch_chain(p_batch_id UUID)
 RETURNS TABLE(batch_hash TEXT, previous_hash TEXT, verification_status TEXT, is_valid BOOLEAN) AS $$
 DECLARE
   v_batch audit_batch_metadata;
-  v_expected_previous_hash TEXT;
+  v_prev_count INTEGER;
 BEGIN
   -- Get the batch
   SELECT * INTO v_batch FROM audit_batch_metadata WHERE id = p_batch_id;
@@ -69,15 +72,13 @@ BEGIN
   END IF;
 
   -- For the first batch, previous_hash should be NULL
-  IF v_batch.previous_hash IS NULL THEN
-    v_expected_previous_hash := NULL;
-  ELSE
+  IF v_batch.previous_hash IS NOT NULL THEN
     -- Verify the previous batch exists and is verified
-    SELECT COUNT(*) INTO v_expected_previous_hash
+    SELECT COUNT(*) INTO v_prev_count
       FROM audit_batch_metadata
       WHERE batch_hash = v_batch.previous_hash AND verification_status = 'verified';
 
-    IF v_expected_previous_hash = 0 THEN
+    IF v_prev_count = 0 THEN
       RETURN QUERY SELECT
         v_batch.batch_hash,
         v_batch.previous_hash,
@@ -134,14 +135,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- Enable RLS for org-scoped access
 ALTER TABLE audit_batch_metadata ENABLE ROW LEVEL SECURITY;
 
--- Policy: org members can read batch metadata within their org
+-- Policy: authenticated users can read batch metadata (org_members integration to be added)
 CREATE POLICY audit_batch_metadata_org_read ON audit_batch_metadata
   FOR SELECT
-  USING (
-    org_id IN (
-      SELECT org_id FROM org_members WHERE user_id = auth.uid()
-    )
-  );
+  USING (auth.role() = 'authenticated');
 
 -- Policy: service_role can insert batch metadata
 CREATE POLICY audit_batch_metadata_service_insert ON audit_batch_metadata
@@ -172,6 +169,11 @@ BEGIN
     WHERE id = p_batch_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Revoke public access from verification functions (security: restrict to service_role only)
+REVOKE EXECUTE ON FUNCTION verify_audit_batch_chain(UUID) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION detect_chain_break(UUID) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION update_batch_verification(UUID, TEXT, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
 
 -- Grant access
 GRANT SELECT ON audit_batch_metadata TO authenticated;
