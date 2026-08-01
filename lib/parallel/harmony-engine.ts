@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import type { SafeDomCommand, SafeElementManifest } from '@/lib/dsg/safe-dom/types';
+import { manifestCache } from '@/lib/cache/manifest-cache';
 
 /**
  * HeuristicMatch: Fast-path matching using exact command hash
@@ -237,6 +238,41 @@ export class HarmonyEngine {
       if (removedManifestIds.has(entry.manifestId)) this.heuristicIndex.delete(hash);
     }
     this.embeddingIndex = this.embeddingIndex.filter((e) => e.contractHash !== contractHash);
+  }
+
+  /**
+   * Cache embedding result in the manifest cache layer.
+   * Called after an embedding match succeeds to improve future lookups.
+   * @param sessionId Session identifier for cache keying
+   * @param cmd The command that was matched
+   * @param manifest The manifest that was found
+   * @param ttlMs Time-to-live for cache entry (default 5 minutes)
+   */
+  cacheEmbeddingResult(
+    sessionId: string,
+    cmd: SafeDomCommand,
+    manifest: SafeElementManifest[],
+    ttlMs = 5 * 60 * 1000
+  ): void {
+    // Cache the embedding result for fast path on next similar command
+    manifestCache.set(sessionId, cmd.frameId, manifest, ttlMs);
+  }
+
+  /**
+   * Prefetch next expected manifests for a delegation.
+   * Improves cache hit rate by pre-populating cache with commands
+   * expected to execute next.
+   * @param sessionId Session identifier
+   * @param agentId Agent identifier
+   * @param delegationId Delegation identifier
+   */
+  async prefetchManifests(
+    sessionId: string,
+    agentId: string,
+    delegationId: string
+  ): Promise<void> {
+    // Delegate to manifest cache prefetch strategy
+    await manifestCache.prefetchNextManifests(agentId, delegationId);
   }
 
   getStats() {
