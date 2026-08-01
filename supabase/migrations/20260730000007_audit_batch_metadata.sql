@@ -14,15 +14,26 @@ CREATE TABLE IF NOT EXISTS org_members (
 CREATE INDEX IF NOT EXISTS idx_org_members_user ON org_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_org_members_org ON org_members(org_id);
 
+-- SECURITY DEFINER function to check org membership (bypasses RLS to avoid infinite recursion)
+CREATE OR REPLACE FUNCTION get_user_orgs(p_user_id UUID)
+RETURNS TABLE(org_id UUID) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT DISTINCT org_members.org_id
+  FROM org_members
+  WHERE org_members.user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 -- Enable RLS on org_members to prevent unauthorized membership changes
 ALTER TABLE org_members ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can read org memberships for orgs they belong to
+-- Policy: Users can read org memberships for orgs they belong to (via SECURITY DEFINER helper)
 CREATE POLICY org_members_read ON org_members
   FOR SELECT
   USING (
     org_id IN (
-      SELECT org_id FROM org_members WHERE user_id = auth.uid()
+      SELECT get_user_orgs(auth.uid())
     )
   );
 
@@ -73,8 +84,9 @@ CREATE TABLE IF NOT EXISTS audit_batch_metadata (
   CONSTRAINT chain_link_complete CHECK ((previous_hash IS NULL AND previous_org_id IS NULL) OR (previous_hash IS NOT NULL AND previous_org_id = org_id)),
 
   -- Foreign key to previous batch (org-scoped chain integrity)
+  -- RESTRICT: prevents deletion of predecessor batches to preserve chain link evidence
   CONSTRAINT batch_hash_chain_link FOREIGN KEY (previous_org_id, previous_hash)
-    REFERENCES audit_batch_metadata(org_id, batch_hash) ON DELETE SET NULL
+    REFERENCES audit_batch_metadata(org_id, batch_hash) ON DELETE RESTRICT
 );
 
 -- Indexes for efficient chain traversal and queries
@@ -175,12 +187,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- Enable RLS for org-scoped access
 ALTER TABLE audit_batch_metadata ENABLE ROW LEVEL SECURITY;
 
--- Policy: users can read batch metadata only for their org
+-- Policy: users can read batch metadata only for their org (via SECURITY DEFINER helper to avoid RLS recursion)
 CREATE POLICY audit_batch_metadata_org_read ON audit_batch_metadata
   FOR SELECT
   USING (
     org_id IN (
-      SELECT org_id FROM org_members WHERE user_id = auth.uid()
+      SELECT get_user_orgs(auth.uid())
     )
   );
 
@@ -224,6 +236,7 @@ GRANT SELECT ON org_members TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON org_members TO service_role;
 GRANT SELECT ON audit_batch_metadata TO authenticated;
 GRANT SELECT, INSERT ON audit_batch_metadata TO service_role;
+GRANT EXECUTE ON FUNCTION get_user_orgs TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION update_batch_verification TO service_role;
 GRANT EXECUTE ON FUNCTION verify_audit_batch_chain TO service_role;
 GRANT EXECUTE ON FUNCTION detect_chain_break TO service_role;
@@ -232,17 +245,22 @@ GRANT EXECUTE ON FUNCTION detect_chain_break TO service_role;
 COMMENT ON TABLE org_members IS
   'Multi-tenant organization membership. Links users to organizations for RLS enforcement.
 
-   SECURITY: All queries of audit_batch_metadata must join org_members to enforce tenant isolation.
-   SECURITY: RLS policies on org_members prevent users from reading/modifying other orgs memberships.
+   SECURITY: SECURITY DEFINER function get_user_orgs() provides membership checks without RLS recursion.
+   SECURITY: RLS policies on org_members and audit_batch_metadata use get_user_orgs() to avoid infinite loops.
    SECURITY: service_role only can insert/update memberships to prevent privilege escalation.';
+
+COMMENT ON FUNCTION get_user_orgs(UUID) IS
+  'SECURITY DEFINER helper to check organization membership without triggering RLS recursion.
+   Used by RLS policies on org_members and audit_batch_metadata tables to safely evaluate tenant access.';
 
 COMMENT ON TABLE audit_batch_metadata IS
   'Metadata for audit batches including hash chain state and verification status. Used for tamper detection.
 
    SECURITY: Org-scoped batch uniqueness (org_id, batch_hash) prevents cross-org chain links.
-   SECURITY: RLS policies enforce org membership checks via org_members join.
+   SECURITY: RLS policies use get_user_orgs() SECURITY DEFINER function to avoid recursion.
    SECURITY: Function-based update restrictions prevent mutation of immutable fields.
-   SECURITY: Verification functions filter by org_id to maintain tenant isolation.';
+   SECURITY: Verification functions filter by org_id to maintain tenant isolation.
+   SECURITY: FK ON DELETE RESTRICT prevents predecessor deletion that would hide tampering evidence.';
 
 COMMENT ON FUNCTION verify_audit_batch_chain(UUID) IS
   'Verify the integrity of a batch in the hash chain. Updates verification_status and chain_verified_at only.
