@@ -1,41 +1,36 @@
 ---
 name: dsg-production-readiness-validator
-description: >-
-  Validate DSG ONE / ProofGate control plane is production-ready across infrastructure,
-  compliance, security, and governance dimensions. Run comprehensive checks on AWS
-  resources, Supabase database, deterministic gates, evidence collection, audit trails,
-  and compliance matrices. Use when preparing for production GO/NO-GO decision, audit
-  preparation, certification compliance checks, or pre-deployment verification. Produces
-  compliance evidence pack, audit readiness report, governance validation, and GO/NO-GO
-  verdict with proof hash for deterministic replay.
 version: 1.0.0
 author: DSG Team
 license: MIT
+description: >-
+  Validate DSG ONE / ProofGate control plane is production-ready across
+  infrastructure, compliance, security, and governance dimensions. Run
+  comprehensive checks on AWS resources, Supabase database, det
 ---
 
 # DSG Production Readiness Validator
 
 Complete production readiness validation for **DSG ONE / ProofGate Control Plane**.
 
-Covers infrastructure health, security posture, compliance readiness, governance
-functionality, evidence collection, audit trails, and regulatory compliance.
+Covers infrastructure health, security posture, compliance readiness, governance functionality, evidence collection, audit trails, and regulatory compliance.
 
----
+***
 
 ## When to invoke this skill
 
-| Intent | Use this skill |
-|---|---|
-| "Is DSG production-ready?" | ✅ Yes — comprehensive validation |
-| "Prepare for production GO/NO-GO" | ✅ Yes — run full checklist |
-| "Generate compliance evidence pack" | ✅ Yes — evidence collection |
-| "Verify governance gates work" | ✅ Yes — gate evaluation tests |
-| "Check audit trail functionality" | ✅ Yes — audit readiness |
-| "Verify evidence collection" | ✅ Yes — CCVS L1-L5 checks |
-| "Prepare for SOC2/ISO27001 audit" | ✅ Yes — compliance mapping |
-| "Quick health check (5 min)" | ❌ Use infrastructure-deployer verify action |
+| Intent                              | Use this skill                              |
+| ----------------------------------- | ------------------------------------------- |
+| "Is DSG production-ready?"          | ✅ Yes — comprehensive validation            |
+| "Prepare for production GO/NO-GO"   | ✅ Yes — run full checklist                  |
+| "Generate compliance evidence pack" | ✅ Yes — evidence collection                 |
+| "Verify governance gates work"      | ✅ Yes — gate evaluation tests               |
+| "Check audit trail functionality"   | ✅ Yes — audit readiness                     |
+| "Verify evidence collection"        | ✅ Yes — CCVS L1-L5 checks                   |
+| "Prepare for SOC2/ISO27001 audit"   | ✅ Yes — compliance mapping                  |
+| "Quick health check (5 min)"        | ❌ Use infrastructure-deployer verify action |
 
----
+***
 
 ## Production Readiness Validation Framework
 
@@ -358,7 +353,7 @@ Checklist:
   ✓ New regulations monitored
 ```
 
----
+***
 
 ## Validation output
 
@@ -446,7 +441,7 @@ Status: NO-GO ✗
   - Re-run validation after fixes
 ```
 
----
+***
 
 ## CLI invocation examples
 
@@ -477,37 +472,37 @@ Status: NO-GO ✗
   --action go-no-go
 ```
 
----
+***
 
 ## Success criteria
 
 ✅ **Production GO when:**
 
-- All infrastructure checks pass
-- No security vulnerabilities (P0-P1)
-- Governance gates functional
-- Evidence collection active
-- Audit trail working
-- Compliance checklist ≥ 90% complete
-- Third-party audit in progress
-- Readiness score ≥ 90
-- Validated by platform lead
+* All infrastructure checks pass
+* No security vulnerabilities (P0-P1)
+* Governance gates functional
+* Evidence collection active
+* Audit trail working
+* Compliance checklist ≥ 90% complete
+* Third-party audit in progress
+* Readiness score ≥ 90
+* Validated by platform lead
 
 ❌ **Production NO-GO when:**
 
-- Infrastructure health score < 80
-- Any P0 security vulnerability
-- Governance gates returning BLOCK
-- Evidence collection not working
-- Audit trail gaps > 24 hours
-- Compliance violations unfixed
-- No third-party audit scheduled
-- Readiness score < 70
+* Infrastructure health score < 80
+* Any P0 security vulnerability
+* Governance gates returning BLOCK
+* Evidence collection not working
+* Audit trail gaps > 24 hours
+* Compliance violations unfixed
+* No third-party audit scheduled
+* Readiness score < 70
 
 ⚠️ **Conditional GO when:**
 
-- Readiness score 70-89
-- Minor compliance gaps with remediation plan
-- Governance audit scheduled
-- Production monitoring not fully mature
-- Requires executive sign-off before launch
+* Readiness score 70-89
+* Minor compliance gaps with remediation plan
+* Governance audit scheduled
+* Production monitoring not fully mature
+* Requires executive sign-off before launch

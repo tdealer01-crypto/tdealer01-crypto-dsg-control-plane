@@ -1,0 +1,2 @@
+# dsg-secrets-manager-integrator
+

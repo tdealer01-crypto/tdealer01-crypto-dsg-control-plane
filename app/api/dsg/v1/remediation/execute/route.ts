@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { RemediationOrchestrator } from "@/lib/dsg/remediation/remediation-orchestrator";
+import { handleApiError } from "@/lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -132,13 +133,6 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error executing remediation plan:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to execute remediation plan",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/remediation/execute", error);
   }
 }

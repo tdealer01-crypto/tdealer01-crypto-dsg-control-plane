@@ -1,0 +1,8 @@
+{
+  "name": "dsg-verify",
+  "description": "Slash commands that wrap the DSG Control Plane verification ladder: typecheck, targeted route verification, and a pre-PR check. References only npm scripts that exist in package.json.",
+  "version": "1.0.0",
+  "author": { "name": "DSG ONE / ProofGate" },
+  "homepage": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "keywords": ["verification", "typecheck", "vitest", "build", "ci", "dsg"]
+}

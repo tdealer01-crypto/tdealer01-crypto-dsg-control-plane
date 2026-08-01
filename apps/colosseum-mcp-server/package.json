@@ -1,0 +1,30 @@
+{
+  "name": "colosseum-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server exposing the Colosseum Solana hackathon resource corpus (sponsor tools, RPC providers, build-path docs) as tools for AI agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "colosseum-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "smoke-test": "npm run build && node smoke-test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "undici": "^8.9.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

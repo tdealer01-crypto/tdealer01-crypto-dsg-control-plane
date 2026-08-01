@@ -1,39 +1,34 @@
 ---
 name: dsg-infrastructure-deployer
-description: >-
-  Deploy and manage DSG ONE / ProofGate control plane infrastructure on AWS using
-  CDK. Automate the complete deployment pipeline: CloudFormation stack creation,
-  resource validation, Secrets Manager integration, ECS cluster setup, ALB configuration,
-  database provisioning, and post-deployment verification. Use this skill when deploying
-  to AWS (dev, staging, production), verifying infrastructure health, documenting AWS
-  resources, and troubleshooting CloudFormation issues. Also covers: stack naming
-  conventions, resource tagging, environment configuration, cost tracking, and
-  disaster recovery procedures.
 version: 1.0.0
 author: DSG Team
 license: MIT
+description: >-
+  Deploy and manage DSG ONE / ProofGate control plane infrastructure on AWS
+  using CDK. Automate the complete deployment pipeline: CloudFormation stack
+  creation, resource validation, Secrets Manager inte
 ---
 
 # DSG Infrastructure Deployer
 
 Automated deployment and lifecycle management of **DSG ONE / ProofGate Control Plane** infrastructure on AWS.
 
----
+***
 
 ## When to invoke this skill
 
-| Intent | Use this skill |
-|---|---|
-| "Deploy DSG to AWS dev/staging/production" | ✅ Yes — full CDK deployment pipeline |
-| "Verify AWS infrastructure is healthy" | ✅ Yes — health checks and diagnostics |
-| "Check deployment status and resource count" | ✅ Yes — CloudFormation status monitoring |
-| "Document AWS resource outputs" | ✅ Yes — automated capture and templating |
-| "Troubleshoot CloudFormation deployment failure" | ✅ Yes — error diagnosis and recovery |
-| "Update infrastructure configuration" | ✅ Yes — CDK synth and targeted updates |
-| "Set up production AWS accounts" | ✅ Yes — account setup and IAM configuration |
-| "Build a generic AWS app (not DSG)" | ❌ Out of scope — use AWS CDK docs directly |
+| Intent                                           | Use this skill                              |
+| ------------------------------------------------ | ------------------------------------------- |
+| "Deploy DSG to AWS dev/staging/production"       | ✅ Yes — full CDK deployment pipeline        |
+| "Verify AWS infrastructure is healthy"           | ✅ Yes — health checks and diagnostics       |
+| "Check deployment status and resource count"     | ✅ Yes — CloudFormation status monitoring    |
+| "Document AWS resource outputs"                  | ✅ Yes — automated capture and templating    |
+| "Troubleshoot CloudFormation deployment failure" | ✅ Yes — error diagnosis and recovery        |
+| "Update infrastructure configuration"            | ✅ Yes — CDK synth and targeted updates      |
+| "Set up production AWS accounts"                 | ✅ Yes — account setup and IAM configuration |
+| "Build a generic AWS app (not DSG)"              | ❌ Out of scope — use AWS CDK docs directly  |
 
----
+***
 
 ## Core deployment workflow
 
@@ -130,7 +125,7 @@ npx cdk deploy --require-approval=never
    ✓ CCVS pipeline ready for evidence collection
 ```
 
----
+***
 
 ## Configuration by environment
 
@@ -188,7 +183,7 @@ npx cdk deploy --require-approval=never
 }
 ```
 
----
+***
 
 ## Stack naming and versioning
 
@@ -206,12 +201,13 @@ Examples:
 ```
 
 **Why versioning?**
-- CloudFormation can get stuck in `DELETE_FAILED` if the old stack can't clean up resources
-- Incrementing version allows immediate redeployment without waiting
-- Old stacks can be manually cleaned up later
-- Resource naming also uses `-v{N}` suffix (e.g., `dsg-policy-table-v2`)
 
----
+* CloudFormation can get stuck in `DELETE_FAILED` if the old stack can't clean up resources
+* Incrementing version allows immediate redeployment without waiting
+* Old stacks can be manually cleaned up later
+* Resource naming also uses `-v{N}` suffix (e.g., `dsg-policy-table-v2`)
+
+***
 
 ## Common deployment scenarios
 
@@ -272,7 +268,7 @@ cd infra/cdk && npx cdk synth --require-approval=never
 npm run typecheck
 ```
 
----
+***
 
 ## Post-deployment tasks
 
@@ -345,15 +341,16 @@ aws sns subscribe \
   --notification-endpoint ops@dsg.pics
 ```
 
----
+***
 
 ## Troubleshooting
 
-### CloudFormation stack stuck in UPDATE_IN_PROGRESS
+### CloudFormation stack stuck in UPDATE\_IN\_PROGRESS
 
 **Cause:** Previous CDK deploy didn't complete or is still running
 
 **Solution:**
+
 ```bash
 # Option 1: Wait for process to finish
 ps aux | grep cdk
@@ -376,6 +373,7 @@ aws cloudformation describe-stack-events \
 **Cause:** ECS task is crashing or not responding to health checks
 
 **Solution:**
+
 ```bash
 # Check ECS task logs
 aws ecs describe-tasks \
@@ -397,6 +395,7 @@ aws logs tail /ecs/dsg-control-plane --follow
 **Cause:** CloudFormation tries to delete non-empty S3 buckets
 
 **Solution:**
+
 ```bash
 # Option 1: Empty buckets before deletion
 aws s3 rm s3://dsg-cloudtrail-bucket-<account> --recursive
@@ -416,6 +415,7 @@ aws cloudformation delete-stack --stack-name dsg-one-dev-v2
 **Cause:** Table names like `dsg-policy-table` already exist from previous deployment
 
 **Solution:**
+
 ```bash
 # Update table names with -v2 suffix in CDK
 # infra/cdk/lib/constructs/governance.ts
@@ -428,37 +428,37 @@ aws cloudformation delete-stack --stack-name dsg-one-dev-v2
 npx cdk deploy --require-approval=never
 ```
 
----
+***
 
 ## Deployment success criteria
 
 ✅ **Deployment is ready when:**
 
-- [ ] CloudFormation stack status: `CREATE_COMPLETE`
-- [ ] 75+ resources created successfully
-- [ ] ECS cluster running ≥1 task
-- [ ] ALB health checks passing
-- [ ] `GET /api/health` returns 200 OK
-- [ ] `GET /api/readiness` returns `ready: true`
-- [ ] `GET /api/agent/status` returns deployment info
-- [ ] All Secrets Manager secrets accessible
-- [ ] CloudTrail logging active
-- [ ] CloudWatch metrics being published
-- [ ] No DLQ messages or error logs
+* [ ] CloudFormation stack status: `CREATE_COMPLETE`
+* [ ] 75+ resources created successfully
+* [ ] ECS cluster running ≥1 task
+* [ ] ALB health checks passing
+* [ ] `GET /api/health` returns 200 OK
+* [ ] `GET /api/readiness` returns `ready: true`
+* [ ] `GET /api/agent/status` returns deployment info
+* [ ] All Secrets Manager secrets accessible
+* [ ] CloudTrail logging active
+* [ ] CloudWatch metrics being published
+* [ ] No DLQ messages or error logs
 
 ✅ **Production readiness when:**
 
-- [ ] All dev success criteria met
-- [ ] Compliance evidence pack generated
-- [ ] Security audit checklist completed
-- [ ] Load test passed (throughput/latency targets)
-- [ ] Disaster recovery tested (RDS backup/restore)
-- [ ] On-call rotation configured
-- [ ] Monitoring and alerting verified
-- [ ] Cost tracking enabled
-- [ ] `npm run go:no-go https://<PROD_URL>` passes
+* [ ] All dev success criteria met
+* [ ] Compliance evidence pack generated
+* [ ] Security audit checklist completed
+* [ ] Load test passed (throughput/latency targets)
+* [ ] Disaster recovery tested (RDS backup/restore)
+* [ ] On-call rotation configured
+* [ ] Monitoring and alerting verified
+* [ ] Cost tracking enabled
+* [ ] `npm run go:no-go https://<PROD_URL>` passes
 
----
+***
 
 ## Next steps
 

@@ -1,0 +1,8 @@
+{
+  "name": "evidence-guard",
+  "description": "Enforces the DSG Control Plane truth boundary and claim policy. Helps classify statements as verified fact / inference / pending / blocked / not verified and warns about forbidden readiness claims. Ships an advisory PostToolUse hook.",
+  "version": "1.0.0",
+  "author": { "name": "DSG ONE / ProofGate" },
+  "homepage": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "keywords": ["truth-boundary", "claim-policy", "evidence", "hooks", "governance", "dsg"]
+}

@@ -1,6 +1,9 @@
 ---
 name: dsg-github-marketplace-action-controller
-description: Use this skill when creating, packaging, validating, publishing, or maintaining DSG GitHub Marketplace Actions. It turns DSG control-plane, action-layer permission gates, deterministic GO/NO-GO validation, audit proof, and secure deploy checks into reusable GitHub Action products.
+description: >-
+  Use this skill when creating, packaging, validating, publishing, or
+  maintaining DSG GitHub Marketplace Actions. It turns DSG control-plane,
+  action-layer permission gates, deterministic GO/NO-GO valida
 ---
 
 # DSG GitHub Marketplace Action Controller
@@ -11,15 +14,15 @@ This skill controls the packaging path from DSG product logic into a GitHub Mark
 
 Primary action:
 
-- `DSG Secure Deploy Gate`
+* `DSG Secure Deploy Gate`
 
 Product promise:
 
-- Block unsafe production deployments.
-- Validate readiness and protected route behavior.
-- Emit deterministic `GO` / `NO-GO` output.
-- Produce an evidence hash for audit/proof workflows.
-- Keep the GitHub Action small, portable, and marketplace-ready.
+* Block unsafe production deployments.
+* Validate readiness and protected route behavior.
+* Emit deterministic `GO` / `NO-GO` output.
+* Produce an evidence hash for audit/proof workflows.
+* Keep the GitHub Action small, portable, and marketplace-ready.
 
 ## Marketplace rule
 
@@ -28,54 +31,53 @@ Do not publish the full SaaS control-plane repo as the Marketplace Action.
 Use one of these layouts:
 
 1. Preferred: separate public repository:
-   - `tdealer01-crypto/dsg-secure-deploy-gate-action`
-   - `action.yml` at repository root
-   - `scripts/dsg-gate.sh`
-   - `README.md`
-   - release tag `v1.0.0` then stable major tag `v1`
-
+   * `tdealer01-crypto/dsg-secure-deploy-gate-action`
+   * `action.yml` at repository root
+   * `scripts/dsg-gate.sh`
+   * `README.md`
+   * release tag `v1.0.0` then stable major tag `v1`
 2. Bootstrap from this control-plane repo:
-   - source scaffold lives at `marketplace-actions/dsg-secure-deploy-gate-action/`
-   - copy that folder into a fresh public action repo before publishing
+   * source scaffold lives at `marketplace-actions/dsg-secure-deploy-gate-action/`
+   * copy that folder into a fresh public action repo before publishing
 
 ## Allowed action scope
 
 The v1 action may check only:
 
-- readiness endpoint HTTP status
-- optional JSON `ok: true`
-- optional protected route returning expected `401` or `403`
-- deterministic evidence file hash
-- GitHub Actions step summary
+* readiness endpoint HTTP status
+* optional JSON `ok: true`
+* optional protected route returning expected `401` or `403`
+* deterministic evidence file hash
+* GitHub Actions step summary
 
 The v1 action must not:
 
-- store secrets
-- call arbitrary shell commands
-- deploy directly to production
-- mutate databases
-- run migrations
-- publish releases automatically
-- print sensitive tokens
+* store secrets
+* call arbitrary shell commands
+* deploy directly to production
+* mutate databases
+* run migrations
+* publish releases automatically
+* print sensitive tokens
 
 ## Inputs
 
 Required:
 
-- `readiness_url`
+* `readiness_url`
 
 Optional:
 
-- `expected_status` default `200`
-- `require_json_ok` default `true`
-- `protected_url` default empty
-- `protected_expected` default `401,403`
+* `expected_status` default `200`
+* `require_json_ok` default `true`
+* `protected_url` default empty
+* `protected_expected` default `401,403`
 
 ## Outputs
 
-- `verdict`: `GO` or `NO-GO`
-- `readiness_status`: HTTP status from readiness endpoint
-- `evidence_hash`: SHA256 hash of the evidence payload
+* `verdict`: `GO` or `NO-GO`
+* `readiness_status`: HTTP status from readiness endpoint
+* `evidence_hash`: SHA256 hash of the evidence payload
 
 ## Deterministic gate behavior
 

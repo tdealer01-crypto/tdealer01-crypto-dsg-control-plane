@@ -1,9 +1,12 @@
 ---
 name: vercel-cli-with-tokens
-description: Deploy and manage projects on Vercel using token-based authentication. Use when working with Vercel CLI using access tokens rather than interactive login — e.g. "deploy to vercel", "set up vercel", "add environment variables to vercel".
 metadata:
   author: vercel
-  version: "1.0.0"
+  version: 1.0.0
+description: >-
+  Deploy and manage projects on Vercel using token-based authentication. Use
+  when working with Vercel CLI using access tokens rather than interactive login
+  — e.g. "deploy to vercel", "set up vercel", "a
 ---
 
 # Vercel CLI with Tokens
@@ -52,7 +55,7 @@ export VERCEL_TOKEN=$(grep '^<VARIABLE_NAME>=' .env | cut -d= -f2-)
 
 If none of the above yield a token, ask the user to provide one. They can create a Vercel access token at vercel.com/account/tokens.
 
----
+***
 
 **Important:** Once `VERCEL_TOKEN` is exported as an environment variable, the Vercel CLI reads it natively — **do not pass it as a `--token` flag**. Putting secrets in command-line arguments exposes them in shell history and process listings.
 
@@ -180,19 +183,22 @@ If the project is already linked, check `orgId` in `.vercel/project.json` or `.v
 Git pushes trigger automatic Vercel deployments.
 
 1. **Ask the user before pushing.** Never push without explicit approval.
-2. Commit and push:
-   ```bash
-   git add .
-   git commit -m "deploy: <description of changes>"
-   git push
-   ```
+2.  Commit and push:
+
+    ```bash
+    git add .
+    git commit -m "deploy: <description of changes>"
+    git push
+    ```
 3. Vercel builds automatically. Non-production branches get preview deployments.
-4. Retrieve the deployment URL:
-   ```bash
-   sleep 5
-   vercel ls --format json --scope <team-slug>
-   ```
-   Find the latest entry in the `deployments` array.
+4.  Retrieve the deployment URL:
+
+    ```bash
+    sleep 5
+    vercel ls --format json --scope <team-slug>
+    ```
+
+    Find the latest entry in the `deployments` array.
 
 **B) CLI Deploy — no git remote**
 
@@ -208,22 +214,25 @@ vercel inspect <deployment-url>
 
 ### Deploying from a Remote Repository (code not cloned locally)
 
-1. Clone the repository:
-   ```bash
-   git clone <repo-url>
-   cd <repo-name>
-   ```
-2. Link to Vercel:
-   ```bash
-   vercel link --repo --scope <team-slug> -y
-   ```
+1.  Clone the repository:
+
+    ```bash
+    git clone <repo-url>
+    cd <repo-name>
+    ```
+2.  Link to Vercel:
+
+    ```bash
+    vercel link --repo --scope <team-slug> -y
+    ```
 3. Deploy via git push (if you have push access) or CLI deploy.
 
 ### About `.vercel/` Directory
 
 A linked project has either:
-- `.vercel/project.json` — from `vercel link`. Contains `projectId` and `orgId`.
-- `.vercel/repo.json` — from `vercel link --repo`. Contains `orgId`, `remoteName`, and a `projects` map.
+
+* `.vercel/project.json` — from `vercel link`. Contains `projectId` and `orgId`.
+* `.vercel/repo.json` — from `vercel link --repo`. Contains `orgId`, `remoteName`, and a `projects` map.
 
 Not needed when `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` are both set in the environment.
 
@@ -283,29 +292,29 @@ If this project is managed by Stripe Projects. **Ask the user before running any
 
 First run `stripe projects status --json` to confirm the Vercel resource's local name. The examples below assume the default (`vercel-plan`); substitute the actual name if it was renamed at `stripe projects add` time.
 
-- **Upgrade to Pro:** `stripe projects add vercel/pro` (or `stripe projects upgrade vercel-plan pro`)
-- **Downgrade to Hobby:** `stripe projects downgrade vercel-plan hobby`
+* **Upgrade to Pro:** `stripe projects add vercel/pro` (or `stripe projects upgrade vercel-plan pro`)
+* **Downgrade to Hobby:** `stripe projects downgrade vercel-plan hobby`
 
 ### What Pro gives you
 
-- $20/month platform fee, includes $20/month of usage credit.
-- Turbo build machines (30 vCPUs, 60 GB memory) by default for new projects — significantly faster builds than Hobby.
-- 1 deploying seat + unlimited free Viewer seats (read-only collaborators, preview comments).
-- Higher included allocations (1 TB Fast Data Transfer, 10M Edge Requests per month).
-- Paid add-ons available: SAML SSO, HIPAA BAA, Flags Explorer, Observability Plus, Speed Insights, Web Analytics Plus.
+* $20/month platform fee, includes $20/month of usage credit.
+* Turbo build machines (30 vCPUs, 60 GB memory) by default for new projects — significantly faster builds than Hobby.
+* 1 deploying seat + unlimited free Viewer seats (read-only collaborators, preview comments).
+* Higher included allocations (1 TB Fast Data Transfer, 10M Edge Requests per month).
+* Paid add-ons available: SAML SSO, HIPAA BAA, Flags Explorer, Observability Plus, Speed Insights, Web Analytics Plus.
 
 Full details: https://vercel.com/docs/plans/pro-plan
 
 ## Working Agreement
 
-- **Never pass `VERCEL_TOKEN` as a `--token` flag.** Export it as an environment variable and let the CLI read it natively.
-- **Check the environment for tokens before asking the user.** Look in the current env and `.env` files first.
-- **Default to preview deployments.** Only deploy to production when explicitly asked.
-- **Ask before pushing to git.** Never push commits without the user's approval.
-- **Do not modify `.vercel/` files directly.** The CLI manages this directory. Reading them (e.g. to verify `orgId`) is fine.
-- **Do not curl/fetch deployed URLs to verify.** Just return the link to the user.
-- **Use `--format json`** when structured output will help with follow-up steps.
-- **Use `-y`** on commands that prompt for confirmation to avoid interactive blocking.
+* **Never pass `VERCEL_TOKEN` as a `--token` flag.** Export it as an environment variable and let the CLI read it natively.
+* **Check the environment for tokens before asking the user.** Look in the current env and `.env` files first.
+* **Default to preview deployments.** Only deploy to production when explicitly asked.
+* **Ask before pushing to git.** Never push commits without the user's approval.
+* **Do not modify `.vercel/` files directly.** The CLI manages this directory. Reading them (e.g. to verify `orgId`) is fine.
+* **Do not curl/fetch deployed URLs to verify.** Just return the link to the user.
+* **Use `--format json`** when structured output will help with follow-up steps.
+* **Use `-y`** on commands that prompt for confirmation to avoid interactive blocking.
 
 ## Troubleshooting
 
@@ -321,9 +330,10 @@ grep -i vercel .env 2>/dev/null
 ### Authentication error
 
 If the CLI fails with `Authentication required`:
-- The token may be expired or invalid.
-- Verify: `vercel whoami` (uses `VERCEL_TOKEN` from environment).
-- Ask the user for a fresh token.
+
+* The token may be expired or invalid.
+* Verify: `vercel whoami` (uses `VERCEL_TOKEN` from environment).
+* Ask the user for a fresh token.
 
 ### Wrong team
 
@@ -342,9 +352,10 @@ vercel inspect <deployment-url> --logs
 ```
 
 Common causes:
-- Missing dependencies — ensure `package.json` is complete and committed.
-- Missing environment variables — add with `vercel env add`.
-- Framework misconfiguration — check `vercel.json`. Vercel auto-detects frameworks (Next.js, Remix, Vite, etc.) from `package.json`; override with `vercel.json` if detection is wrong.
+
+* Missing dependencies — ensure `package.json` is complete and committed.
+* Missing environment variables — add with `vercel env add`.
+* Framework misconfiguration — check `vercel.json`. Vercel auto-detects frameworks (Next.js, Remix, Vite, etc.) from `package.json`; override with `vercel.json` if detection is wrong.
 
 ### CLI not installed
 

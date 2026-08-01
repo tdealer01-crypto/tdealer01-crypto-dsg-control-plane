@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { handleApiError } from "@/lib/security/api-error";
 import { AnomalyOrchestrator } from "@/lib/dsg/anomaly/anomaly-orchestrator";
 import type {
   AnomalyEvent,
@@ -61,16 +62,9 @@ export async function POST(request: Request) {
       .eq("is_active", true);
 
     if (auditError || memoryError || subError || patternError) {
-      return NextResponse.json(
-        {
-          error: "Failed to fetch data",
-          message:
-            auditError?.message ||
-            memoryError?.message ||
-            subError?.message ||
-            patternError?.message,
-        },
-        { status: 500 }
+      return handleApiError(
+        "api/dsg/v1/anomaly/detect",
+        auditError || memoryError || subError || patternError
       );
     }
 
@@ -196,13 +190,6 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error detecting anomalies:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to detect anomalies",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/anomaly/detect", error);
   }
 }

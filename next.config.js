@@ -69,6 +69,14 @@ const nextConfig = {
   // Next.js 16 requires turbopack config when plugins add webpack configuration
   turbopack: {},
 
+  // Playwright's default e2e baseURL is http://127.0.0.1:3000 (see playwright.config.ts).
+  // Next dev treats 127.0.0.1 as cross-origin from the "localhost" the dev server binds to,
+  // so it silently blocks the Turbopack HMR bootstrap request for that origin. That bootstrap
+  // failure prevents client component hydration entirely on any page loaded via 127.0.0.1,
+  // which is why client-side useEffect data fetches (and anything gated on their state, like
+  // a submit button) never run in e2e runs. This does not affect `next build`/`next start`.
+  allowedDevOrigins: ['127.0.0.1'],
+
   async redirects() {
     return [
       {

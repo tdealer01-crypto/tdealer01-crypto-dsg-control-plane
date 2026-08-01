@@ -1,85 +1,68 @@
 {
-  "name": "dsg-control-plane-marketplace",
-  "displayName": "DSG Governance Control Plane — Claude Code Plugin Marketplace",
-  "description": "Official plugin marketplace for the DSG AI Governance Control Plane. Packages Deterministic Safety Gate, Replayable Governance, Compliance Evidence Pack, Runtime Governance, and Hermes Controlled Executor as distributable Claude Code skills.\n\nPitch: Cloudflare = Control Plane of the Internet. Datadog = Control Plane of Observability. DSG = Control Plane of AI Governance.",
-  "version": "1.0.0",
-  "maintainer": "tdealer01-crypto",
-  "repository": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "name": "dsg-plugins",
+  "owner": {
+    "name": "DSG ONE / ProofGate",
+    "url": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+  },
+  "metadata": {
+    "description": "Governance-first, evidence-first Claude Code plugins for working inside the DSG ONE / ProofGate Control Plane repository. Each plugin encodes the repo's own operating rules: truth-boundary claim policy, verification ladder, API route and security conventions, and the mandatory PR body format.",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
   "plugins": [
     {
-      "name": "ising-agent",
-      "displayName": "DSG QUBO & Ising Compliance Agent",
-      "description": "Deterministic compliance and optimization plugin: Z3 formal constraint verification, QUBO/Ising policy optimization, continuous what-if simulation, and MCP gateway exports.",
-      "version": "3.0.0",
-      "source": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-",
-      "category": "compliance",
-      "tags": ["qubo", "ising", "z3", "compliance", "deterministic", "simulation", "mcp"],
-      "readme": "https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-/blob/main/README.md",
-      "skills": [
-        {
-          "name": "z3-compliance-review",
-          "description": "Z3 deterministic compliance verification and constraint review logic.",
-          "triggerPhrases": [
-            "z3 verify",
-            "formal verification",
-            "compliance review",
-            "deterministic proof",
-            "constraint check"
-          ]
-        }
-      ]
+      "name": "proofgate-review",
+      "source": "./proofgate-review",
+      "description": "Governance-aware code review for the DSG Control Plane. Reviews changes against the repo's API route conventions, security conventions, truth boundary, runtime spine flow, deterministic gate boundary (UNSUPPORTED is never PASS), and Supabase/RLS rules. Includes a security-reviewer subagent.",
+      "version": "1.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "code-review",
+      "keywords": ["governance", "code-review", "security", "dsg", "proofgate", "evidence-first"]
+    },
+    {
+      "name": "dsg-verify",
+      "source": "./dsg-verify",
+      "description": "Slash commands that wrap the repo verification ladder: typecheck, targeted route verification, and a pre-PR check. Commands reference only npm scripts that exist in package.json.",
+      "version": "1.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "testing",
+      "keywords": ["verification", "typecheck", "vitest", "build", "ci", "dsg"]
+    },
+    {
+      "name": "evidence-guard",
+      "source": "./evidence-guard",
+      "description": "Enforces the repo truth boundary and claim policy. Helps classify statements as verified fact / inference / pending / blocked / not verified, and warns about forbidden readiness claims. Ships an advisory PostToolUse hook.",
+      "version": "1.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "governance",
+      "keywords": ["truth-boundary", "claim-policy", "evidence", "hooks", "governance", "dsg"]
+    },
+    {
+      "name": "pr-body-helper",
+      "source": "./pr-body-helper",
+      "description": "Generates a PR body that matches the repo's mandatory format (Goal / Files changed / Verification / Known limits / User-visible benefit / Next step), with honest 'Not run' handling for unrun checks.",
+      "version": "1.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "workflow",
+      "keywords": ["pull-request", "pr-body", "template", "workflow", "dsg"]
     },
     {
       "name": "dsg-governance",
-      "displayName": "DSG Governance Control Plane",
-      "description": "AI Governance Control Plane — every Agent decision provable, auditable, and replayable with Deterministic Gate (Z3/SMT), Cryptographic Proof, Compliance Evidence Pack, and Hermes Controlled Executor.",
+      "source": "./dsg-governance",
+      "description": "AI Governance Control Plane skills: studio-style action layer (plan, deterministic gate, permission verdict, browser-first execution after approval), a GitHub Marketplace Action packager with GO/NO-GO validation, and a multi-source governance orchestrator for M1/M2 cutover. Covers the deterministic gate scaffold, replayable governance, compliance evidence mapping, runtime lifecycle, and the Hermes controlled executor.",
       "version": "1.0.0",
-      "source": "./",
+      "author": { "name": "DSG ONE / ProofGate" },
       "category": "governance",
-      "tags": ["ai-governance", "deterministic", "compliance", "audit", "replay", "enterprise"],
-      "readme": "./README.md",
-      "skills": [
-        {
-          "name": "dsg-action-layer-ged",
-          "description": "Primary governance action layer — turns any user goal into an explainable plan, deterministic decision flow, permission verdicts, and browser-first execution after approval.",
-          "triggerPhrases": [
-            "gate this action",
-            "evaluate policy",
-            "check governance",
-            "get a proof",
-            "replay decision",
-            "audit trail",
-            "compliance evidence",
-            "hermes execute",
-            "controlled execution",
-            "DSG gate"
-          ]
-        },
-        {
-          "name": "dsg-github-marketplace-action-controller",
-          "description": "Package and publish DSG gates as GitHub Marketplace Actions with GO/NO-GO validation and audit proof.",
-          "triggerPhrases": [
-            "publish DSG action",
-            "github marketplace action",
-            "package governance",
-            "DSG github action",
-            "deploy governance action"
-          ]
-        },
-        {
-          "name": "dsg-multi-governance-orchestrator",
-          "description": "Multi-source governance for M1/M2 milestones, marketplace/enterprise cutover, and production GO/NO-GO validation.",
-          "triggerPhrases": [
-            "DSG multi",
-            "M1 cutover",
-            "M2 hardening",
-            "marketplace cutover",
-            "architecture page",
-            "production GO/NO-GO",
-            "governance orchestration"
-          ]
-        }
-      ]
+      "keywords": ["ai-governance", "deterministic-gate", "compliance", "audit", "replay", "hermes", "dsg", "proofgate"]
+    },
+    {
+      "name": "compliance-ising-z3",
+      "source": "./compliance-ising-z3",
+      "description": "Deterministic QUBO/Ising policy-optimization and Z3/SMT-style formal constraint verification, bundled locally from the tdealer01-crypto/Compliance-ising-z3-Deterministic- engine. Includes a z3-compliance-review skill, a compliance-agent subagent, and reference build/test scripts. Constraint checks are Z3/SMT-style in native Kotlin (no external Z3 process).",
+      "version": "3.0.0",
+      "author": { "name": "DSG ONE / ProofGate" },
+      "category": "compliance",
+      "keywords": ["qubo", "ising", "z3", "smt", "compliance", "deterministic", "simulation", "audit"]
     }
   ]
 }

@@ -115,12 +115,12 @@ test.describe('finance governance workflow e2e', () => {
     await page.waitForTimeout(1000);
 
     // Wait for workflow summary to be visible
-    await expect(page.getByText(/Pending approvals|Summary/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Pending approvals/i)).toBeVisible({ timeout: 15000 });
 
     const submitBtn = page.getByRole('button', { name: /Submit|Workflow/i });
     await submitBtn.first().click({ force: true });
 
-    await expect(page.getByText(/Submitted|pending/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Submitted for review/i)).toBeVisible({ timeout: 15000 });
 
     const row = page.locator('tr', { hasText: /APR|Northwind/i }).first();
     await expect(row).toBeVisible({ timeout: 15000 });
@@ -128,7 +128,7 @@ test.describe('finance governance workflow e2e', () => {
     const approveBtn = row.getByRole('button', { name: /Approve|Action/i });
     await approveBtn.click({ force: true });
 
-    await expect(page.getByText(/Approval|approved/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Approval completed/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('org isolation keeps workflow state separate between org headers', async ({ browser }) => {
@@ -179,7 +179,7 @@ test.describe('finance governance workflow e2e', () => {
     await approveBtn.click({ force: true });
 
     await expect(page.getByText(/Ready exports/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/approved/i)).toBeVisible({ timeout: 10000 });
+    await expect(row.getByText(/approved/i)).toBeVisible({ timeout: 10000 });
 
     await page.reload();
     await page.waitForLoadState('networkidle');

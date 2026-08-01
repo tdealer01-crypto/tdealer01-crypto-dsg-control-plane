@@ -1,42 +1,35 @@
 ---
 name: dsg-secrets-manager-integrator
-description: >-
-  Integrate DSG agents and services with AWS Secrets Manager for production-grade
-  secret management. Configure credential broker for Secrets Manager queries, create
-  IAM policies for secret access, update ECS task definitions with secret environment
-  variables, rotate API keys, manage secret versions, audit secret access, and test
-  credential leasing. Use this skill when: configuring agents for AWS Secrets Manager,
-  enabling Hermes controlled executor credential management, migrating from hardcoded
-  secrets to vault-based secrets, setting up automated key rotation, or auditing
-  credential access patterns. Removes hardcoded secrets, enables deterministic
-  credential leasing with fingerprints, and creates audit trail of secret access.
 version: 1.0.0
 author: DSG Team
 license: MIT
+description: >-
+  Integrate DSG agents and services with AWS Secrets Manager for
+  production-grade secret management. Configure credential broker for Secrets
+  Manager queries, create IAM policies for secret access, updat
 ---
 
 # DSG Secrets Manager Integrator
 
-Production secrets management via **AWS Secrets Manager** integration with DSG agents,
-credential broker, Hermes controlled executor, and deterministic governance.
+Production secrets management via **AWS Secrets Manager** integration with DSG agents, credential broker, Hermes controlled executor, and deterministic governance.
 
----
+***
 
 ## When to invoke this skill
 
-| Intent | Use this skill |
-|---|---|
-| "Configure credential broker for Secrets Manager" | ✅ Yes — broker integration |
-| "Set up Hermes executor with secret leasing" | ✅ Yes — controlled executor auth |
-| "Remove hardcoded secrets from environment" | ✅ Yes — migration to vault |
-| "Rotate API keys and database passwords" | ✅ Yes — key rotation |
-| "Audit which service accessed which secret" | ✅ Yes — access audit trail |
-| "Test credential lease expiration" | ✅ Yes — lease lifecycle |
-| "Create IAM policy for secret access" | ✅ Yes — policy generation |
-| "Enable ECS task to query Secrets Manager" | ✅ Yes — ECS integration |
-| "Quick health check on a single secret" | ❌ Use AWS CLI or Console directly |
+| Intent                                            | Use this skill                    |
+| ------------------------------------------------- | --------------------------------- |
+| "Configure credential broker for Secrets Manager" | ✅ Yes — broker integration        |
+| "Set up Hermes executor with secret leasing"      | ✅ Yes — controlled executor auth  |
+| "Remove hardcoded secrets from environment"       | ✅ Yes — migration to vault        |
+| "Rotate API keys and database passwords"          | ✅ Yes — key rotation              |
+| "Audit which service accessed which secret"       | ✅ Yes — access audit trail        |
+| "Test credential lease expiration"                | ✅ Yes — lease lifecycle           |
+| "Create IAM policy for secret access"             | ✅ Yes — policy generation         |
+| "Enable ECS task to query Secrets Manager"        | ✅ Yes — ECS integration           |
+| "Quick health check on a single secret"           | ❌ Use AWS CLI or Console directly |
 
----
+***
 
 ## Architecture overview
 
@@ -75,7 +68,7 @@ credential broker, Hermes controlled executor, and deterministic governance.
   └─────────────────┘
 ```
 
----
+***
 
 ## Secrets Manager structure
 
@@ -129,7 +122,7 @@ CREATE TABLE credential_access_audit (
 );
 ```
 
----
+***
 
 ## Credential broker implementation
 
@@ -198,7 +191,7 @@ async function getSecret(secretName: string, policyHash: string) {
 }
 ```
 
----
+***
 
 ## Integration patterns
 
@@ -270,7 +263,7 @@ async function executeControlledPlan(plan: Plan) {
 }
 ```
 
----
+***
 
 ## Setup: Step-by-step
 
@@ -473,37 +466,37 @@ export async function POST(request: Request) {
 }
 ```
 
----
+***
 
 ## Security best practices
 
 ### ✅ DO
 
-- Store secrets in Secrets Manager (never hardcoded)
-- Issue leases with short expiry (15 min default)
-- Return fingerprints to callers (never raw secrets)
-- Audit every secret access (who, what, when, why)
-- Use IAM roles (not API keys) for ECS task authentication
-- Rotate keys on schedule (90 days minimum)
-- Use KMS encryption for Secrets Manager
-- Enable CloudTrail for secret access audit trail
-- Test credential broker under load
-- Monitor lease expiration and renewal
+* Store secrets in Secrets Manager (never hardcoded)
+* Issue leases with short expiry (15 min default)
+* Return fingerprints to callers (never raw secrets)
+* Audit every secret access (who, what, when, why)
+* Use IAM roles (not API keys) for ECS task authentication
+* Rotate keys on schedule (90 days minimum)
+* Use KMS encryption for Secrets Manager
+* Enable CloudTrail for secret access audit trail
+* Test credential broker under load
+* Monitor lease expiration and renewal
 
 ### ❌ DON'T
 
-- Hardcode secrets in environment variables
-- Print secrets in logs (use fingerprints instead)
-- Return raw secrets to untrusted code
-- Allow unlimited lease duration
-- Skip audit logging
-- Use root credentials in applications
-- Store backup secrets in unencrypted files
-- Ignore secret rotation deadlines
-- Bypass the credential broker for "quick access"
-- Grant overly broad IAM permissions
+* Hardcode secrets in environment variables
+* Print secrets in logs (use fingerprints instead)
+* Return raw secrets to untrusted code
+* Allow unlimited lease duration
+* Skip audit logging
+* Use root credentials in applications
+* Store backup secrets in unencrypted files
+* Ignore secret rotation deadlines
+* Bypass the credential broker for "quick access"
+* Grant overly broad IAM permissions
 
----
+***
 
 ## Testing & verification
 
@@ -557,7 +550,7 @@ expect(auditRecords[0].fingerprint).toBeDefined();
 expect(auditRecords[0].requester_id).toBeDefined();
 ```
 
----
+***
 
 ## Rollback procedure
 
@@ -578,22 +571,22 @@ aws ecs update-service \
 # 5. Re-enable Secrets Manager
 ```
 
----
+***
 
 ## Maintenance & monitoring
 
 ### Key metrics to track
 
-- **Lease issuance rate** (leases/min) — should be < 10/min for most services
-- **Lease expiration rate** (expirations/min) — should match or exceed issuance
-- **Access denial rate** (denials/day) — investigate any denial spikes
-- **Secret rotation lag** (days since last rotation) — should be < 90
-- **Broker latency** (milliseconds) — p99 < 100ms
+* **Lease issuance rate** (leases/min) — should be < 10/min for most services
+* **Lease expiration rate** (expirations/min) — should match or exceed issuance
+* **Access denial rate** (denials/day) — investigate any denial spikes
+* **Secret rotation lag** (days since last rotation) — should be < 90
+* **Broker latency** (milliseconds) — p99 < 100ms
 
 ### Scheduled tasks
 
-- **Daily**: Review credential access audit logs
-- **Weekly**: Check lease expiration health
-- **Monthly**: Rotate long-lived API keys
-- **Quarterly**: Review and update IAM policies
-- **Annually**: Audit complete credential lifecycle
+* **Daily**: Review credential access audit logs
+* **Weekly**: Check lease expiration health
+* **Monthly**: Rotate long-lived API keys
+* **Quarterly**: Review and update IAM policies
+* **Annually**: Audit complete credential lifecycle

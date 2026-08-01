@@ -1,0 +1,8 @@
+{
+  "name": "proofgate-review",
+  "description": "Governance-aware code review for the DSG ONE / ProofGate Control Plane. Reviews changes against the repo's API route conventions, security conventions, truth boundary, runtime spine flow, deterministic gate boundary, and Supabase/RLS rules.",
+  "version": "1.0.0",
+  "author": { "name": "DSG ONE / ProofGate" },
+  "homepage": "https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+  "keywords": ["governance", "code-review", "security", "dsg", "proofgate"]
+}

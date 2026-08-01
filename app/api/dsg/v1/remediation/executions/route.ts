@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { handleApiError } from "@/lib/security/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +54,7 @@ export async function GET(request: Request) {
     const { data: executions, error } = await query;
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return handleApiError("api/dsg/v1/remediation/executions", error);
     }
 
     // Group executions by status
@@ -98,13 +96,6 @@ export async function GET(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching remediation executions:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to fetch execution history",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError("api/dsg/v1/remediation/executions", error);
   }
 }
