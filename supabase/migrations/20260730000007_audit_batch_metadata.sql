@@ -1,3 +1,41 @@
+-- Organization Members Table for multi-tenant org scoping
+-- Links users to organizations for RLS enforcement
+CREATE TABLE IF NOT EXISTS org_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL,
+  user_id UUID NOT NULL,
+  role TEXT DEFAULT 'member',
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  UNIQUE(org_id, user_id),
+  CONSTRAINT role_valid CHECK (role IN ('owner', 'admin', 'member', 'viewer'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_members_user ON org_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_org_members_org ON org_members(org_id);
+
+-- Enable RLS on org_members to prevent unauthorized membership changes
+ALTER TABLE org_members ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can read org memberships for orgs they belong to
+CREATE POLICY org_members_read ON org_members
+  FOR SELECT
+  USING (
+    org_id IN (
+      SELECT org_id FROM org_members WHERE user_id = auth.uid()
+    )
+  );
+
+-- Policy: Only service_role can insert/update org memberships
+CREATE POLICY org_members_insert ON org_members
+  FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY org_members_update ON org_members
+  FOR UPDATE
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
 -- Audit Batch Metadata Table for Hash Chain Integrity
 -- Tracks batch hashes, chain links, and verification state for audit trail integrity
 -- Implements tamper detection through hash chain validation
@@ -73,10 +111,12 @@ BEGIN
 
   -- For the first batch, previous_hash should be NULL
   IF v_batch.previous_hash IS NOT NULL THEN
-    -- Verify the previous batch exists and is verified
+    -- Verify the previous batch exists, is verified, and belongs to the same org (tenant isolation)
     SELECT COUNT(*) INTO v_prev_count
       FROM audit_batch_metadata
-      WHERE batch_hash = v_batch.previous_hash AND verification_status = 'verified';
+      WHERE batch_hash = v_batch.previous_hash
+        AND org_id = v_batch.previous_org_id
+        AND verification_status = 'verified';
 
     IF v_prev_count = 0 THEN
       RETURN QUERY SELECT
@@ -135,10 +175,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- Enable RLS for org-scoped access
 ALTER TABLE audit_batch_metadata ENABLE ROW LEVEL SECURITY;
 
--- Policy: authenticated users can read batch metadata (org_members integration to be added)
+-- Policy: users can read batch metadata only for their org
 CREATE POLICY audit_batch_metadata_org_read ON audit_batch_metadata
   FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (
+    org_id IN (
+      SELECT org_id FROM org_members WHERE user_id = auth.uid()
+    )
+  );
 
 -- Policy: service_role can insert batch metadata
 CREATE POLICY audit_batch_metadata_service_insert ON audit_batch_metadata
@@ -176,6 +220,8 @@ REVOKE EXECUTE ON FUNCTION detect_chain_break(UUID) FROM PUBLIC, anon, authentic
 REVOKE EXECUTE ON FUNCTION update_batch_verification(UUID, TEXT, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
 
 -- Grant access
+GRANT SELECT ON org_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON org_members TO service_role;
 GRANT SELECT ON audit_batch_metadata TO authenticated;
 GRANT SELECT, INSERT ON audit_batch_metadata TO service_role;
 GRANT EXECUTE ON FUNCTION update_batch_verification TO service_role;
@@ -183,15 +229,24 @@ GRANT EXECUTE ON FUNCTION verify_audit_batch_chain TO service_role;
 GRANT EXECUTE ON FUNCTION detect_chain_break TO service_role;
 
 -- Comments for documentation
+COMMENT ON TABLE org_members IS
+  'Multi-tenant organization membership. Links users to organizations for RLS enforcement.
+
+   SECURITY: All queries of audit_batch_metadata must join org_members to enforce tenant isolation.
+   SECURITY: RLS policies on org_members prevent users from reading/modifying other orgs memberships.
+   SECURITY: service_role only can insert/update memberships to prevent privilege escalation.';
+
 COMMENT ON TABLE audit_batch_metadata IS
   'Metadata for audit batches including hash chain state and verification status. Used for tamper detection.
 
    SECURITY: Org-scoped batch uniqueness (org_id, batch_hash) prevents cross-org chain links.
-   SECURITY: RLS policies + function-based update restrictions prevent mutation of immutable fields.
-   SECURITY: previous_org_id ensures chain integrity is scoped to single organization.';
+   SECURITY: RLS policies enforce org membership checks via org_members join.
+   SECURITY: Function-based update restrictions prevent mutation of immutable fields.
+   SECURITY: Verification functions filter by org_id to maintain tenant isolation.';
 
 COMMENT ON FUNCTION verify_audit_batch_chain(UUID) IS
-  'Verify the integrity of a batch in the hash chain. Updates verification_status and chain_verified_at only.';
+  'Verify the integrity of a batch in the hash chain. Updates verification_status and chain_verified_at only.
+   SECURITY: Filters previous batch lookup by org_id to prevent cross-tenant chain verification.';
 
 COMMENT ON FUNCTION detect_chain_break(UUID) IS
   'Detect chain breaks in audit trail for an organization (signs of tampering).';
