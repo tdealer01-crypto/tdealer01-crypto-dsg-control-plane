@@ -803,6 +803,35 @@ After changing code:
 
 ## 23. Deployment and production control loop
 
+### Vercel project configuration (consolidated)
+
+DSG ONE uses a **single consolidated Vercel project**: `tdealer01-crypto-dsg-control-plane`.
+
+This single project handles:
+
+- **Production deployments** from `main` branch
+- **Preview deployments** from all PRs (automatic)
+- **Development iteration** via Preview Deployments without needing separate staging projects
+
+**Environment configuration:**
+
+In Vercel Dashboard → **Settings** → **Environment Variables**, verify presence (by name only, never print values):
+
+- `SUPABASE_URL` (production database)
+- `SUPABASE_ANON_KEY` (public client key)
+- `SUPABASE_SERVICE_ROLE_KEY` (admin key, production only)
+- `ANTHROPIC_API_KEY` (or equivalent AI provider key)
+- `NEXT_PUBLIC_SUPABASE_URL` (public reference)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (public reference)
+- Any Stripe/billing keys (production only)
+- Any webhook secrets (production only)
+
+**GitHub integration:**
+
+- Vercel auto-deploys `main` branch to production
+- Vercel auto-deploys PRs to preview URLs
+- Branch deployments must have required env vars defined
+
 ### Quick live identity check
 
 ```bash
@@ -819,7 +848,7 @@ Typical sequence:
 
 1. Merge approved code to `main` only after PR gates pass.
 2. Confirm Vercel deployment is `Ready`.
-3. Confirm required env vars by name.
+3. Confirm required env vars by name in Settings.
 4. Confirm Supabase migrations are applied.
 5. Run public smoke checks.
 6. Run authenticated operator checks.
