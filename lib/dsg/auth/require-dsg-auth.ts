@@ -157,6 +157,7 @@ export interface DsgCallLog {
   statusCode?: number;
   gateStatus?: string;    // 'PASS' | 'BLOCK' | 'REVIEW'
   proofId?: string;
+  proofSource?: 'cached' | 'live'; // Hybrid proof strategy source
   durationMs?: number;
 }
 
@@ -172,7 +173,7 @@ export interface DsgCallLog {
 export async function logDsgApiCall(log: DsgCallLog): Promise<void> {
   try {
     const admin = getSupabaseAdmin();
-    await (admin as any).from('dsg_api_calls').insert({
+    const callData: any = {
       org_id:      log.orgId,
       actor_type:  log.actorType,
       user_id:     log.userId     ?? null,
@@ -183,7 +184,14 @@ export async function logDsgApiCall(log: DsgCallLog): Promise<void> {
       gate_status: log.gateStatus ?? null,
       proof_id:    log.proofId    ?? null,
       duration_ms: log.durationMs ?? null,
-    });
+    };
+
+    // Include proof_source if available (requires column in table)
+    if (log.proofSource) {
+      callData.proof_source = log.proofSource;
+    }
+
+    await (admin as any).from('dsg_api_calls').insert(callData);
   } catch (e) {
     // Never let audit log failure break the request
     console.warn('[dsg-auth] logDsgApiCall failed:', e);

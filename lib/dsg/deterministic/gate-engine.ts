@@ -1,5 +1,6 @@
 import type { DeterministicGateDecision, DeterministicProof, DeterministicProofStatus, DeterministicRiskLevel } from './types';
 import { proveDeterministicPlan } from './proof-engine';
+import { evaluateProofWithHybridStrategy } from './proof-cache';
 import type { DeterministicProofRequest } from './types';
 
 export function proofToGateStatus(
@@ -15,9 +16,39 @@ export function proofToGateStatus(
   return 'BLOCK';
 }
 
-export async function evaluateDeterministicGate(request: DeterministicProofRequest): Promise<DeterministicGateDecision> {
+export interface DeterministicGateOptions {
+  orgId?: string;
+  verifyFresh?: boolean;
+  recordResult?: boolean;
+}
+
+export async function evaluateDeterministicGate(
+  request: DeterministicProofRequest,
+  options?: DeterministicGateOptions,
+): Promise<DeterministicGateDecision & { source?: 'cached' | 'live' }> {
   const riskLevel = request.riskLevel ?? 'medium';
-  const proof: DeterministicProof = await proveDeterministicPlan(request);
+
+  let proof: DeterministicProof;
+  let source: 'cached' | 'live' | undefined;
+
+  if (options?.orgId) {
+    // Use hybrid caching strategy when orgId is provided
+    const hybrid = await evaluateProofWithHybridStrategy(
+      request,
+      {
+        orgId: options.orgId,
+        verifyFresh: options.verifyFresh,
+        recordResult: options.recordResult !== false, // Default to true
+      },
+      proveDeterministicPlan,
+    );
+    proof = hybrid.proof;
+    source = hybrid.source;
+  } else {
+    // Fall back to direct proof generation (backward compatibility)
+    proof = await proveDeterministicPlan(request);
+  }
+
   const gateStatus = proofToGateStatus(proof.status, riskLevel);
 
   return {
@@ -27,5 +58,6 @@ export async function evaluateDeterministicGate(request: DeterministicProofReque
     riskLevel,
     reason: gateStatus === 'PASS' ? undefined : proof.failureReasons[0]?.code ?? 'deterministic_gate_not_passed',
     proof,
+    source,
   };
 }
