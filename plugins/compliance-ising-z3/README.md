@@ -1,15 +1,32 @@
-# compliance-ising-z3
+# 🛡️ compliance-ising-z3
 
-A local Claude Code plugin bundled from the source repository
+> **Deterministic QUBO/Ising Policy Optimization & Z3/SMT Formal Constraint Verification Plugin**
+
+A Claude Code plugin bundled from the source repository
 [`tdealer01-crypto/Compliance-ising-z3-Deterministic-`](https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-)
 (branch `main`).
 
 The source repo is a native Kotlin/Android engine that performs deterministic
 QUBO/Ising policy optimization and Z3/SMT-style formal constraint verification.
-This plugin bundles the **agent-facing content** (a skill and an agent) plus
-the two reference build/test helper scripts, so an agent can reason about and
+This plugin bundles the **agent-facing content** (skills and agents) plus
+reference build/test helper scripts, so Claude can reason about and
 drive the engine. It does **not** bundle the Android app source, Gradle
 wrapper, assets, or binaries.
+
+## 🚀 Quick Start
+
+```bash
+# Install the plugin
+claude plugin install ./plugins/compliance-ising-z3
+
+# Use the compliance skill
+claude /z3-compliance-review
+
+# Or invoke the compliance agent
+claude @compliance-agent
+```
+
+See [INSTALL.md](INSTALL.md) for detailed setup instructions.
 
 ## Components
 
@@ -81,3 +98,32 @@ The source repo shipped its own custom-schema plugin manifest
 plugin schema. This bundle re-expresses the same content in the official format
 (`SKILL.md` + agent `.md` with YAML frontmatter) so it validates with
 `claude plugin validate`. No secrets or `.env` files were bundled.
+
+---
+
+## 📚 Documentation
+
+### For Users
+- **[INSTALL.md](INSTALL.md)** — Setup, prerequisites, and environment variables
+- **[Skill: z3-compliance-review](skills/z3-compliance-review/SKILL.md)** — How to frame and solve compliance problems
+- **[Agent: compliance-agent](agents/compliance-agent.md)** — Deterministic policy optimization agent
+- **[External APIs](references/external-apis.md)** — REST endpoints, health checks, schema details
+
+### For Contributors
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Development workflow, testing, PR guidelines
+- **[CHANGELOG.md](CHANGELOG.md)** — Version history and changes
+- **[LICENSE](LICENSE)** — MIT License
+
+### Related Resources
+- **Source Repository**: [tdealer01-crypto/Compliance-ising-z3-Deterministic-](https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-)
+- **DSG Control Plane**: [tdealer01-crypto/tdealer01-crypto-dsg-control-plane](https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane)
+- **Support Email**: support@dsg.pics
+
+---
+
+## 🤝 Getting Help
+
+- **Installation Issues**: See [INSTALL.md](INSTALL.md#troubleshooting)
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Bug Reports**: Open an issue on [GitHub](https://github.com/tdealer01-crypto/Compliance-ising-z3-Deterministic-/issues)
+- **Feature Requests**: Discuss in GitHub Discussions or email support@dsg.pics
