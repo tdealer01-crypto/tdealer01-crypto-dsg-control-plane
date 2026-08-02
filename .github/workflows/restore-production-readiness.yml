@@ -39,9 +39,9 @@ jobs:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
       BASE_URL: ${{ inputs.production_url }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
-      DSG_RECOVERY_BEARER_TOKEN: ${{ secrets.DSG_RECOVERY_BEARER_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://example.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY || 'ci-service-role-key-placeholder' }}
+      DSG_RECOVERY_BEARER_TOKEN: ${{ secrets.DSG_RECOVERY_BEARER_TOKEN || '' }}
     steps:
       - uses: actions/checkout@v4
 

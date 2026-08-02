@@ -22,8 +22,8 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://example.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY || 'ci-service-role-key-placeholder' }}
     outputs:
       status: ${{ steps.runtime.outputs.status }}
     steps:
@@ -56,8 +56,8 @@ jobs:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
       PLAYWRIGHT_BASE_URL: ${{ inputs.staging_url }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://example.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY || 'ci-service-role-key-placeholder' }}
     outputs:
       status: ${{ steps.stage.outputs.status }}
     steps:
