@@ -7,6 +7,18 @@ If this file conflicts with `AGENTS.md`, `docs/agents/CLAUDE_TOOL_API_CONTRACT.m
 
 ---
 
+## Repository scope
+
+This guide covers **tdealer01-crypto-dsg-control-plane** (main Next.js app and control plane).
+
+A secondary repository, **tdealer01-crypto/Compliance-ising-z3-Deterministic-**, handles Z3 formal proof and compliance plugins. When working across both repos:
+
+- Use separate branch names per repo.
+- Cross-repo PRs should reference both projects.
+- Compliance plugins may be developed in the secondary repo and integrated via npm workspaces or published packages.
+
+---
+
 ## 0. Required startup sequence
 
 Before making repository changes:
@@ -281,6 +293,38 @@ GitHub Actions workflows also use `npm ci`. Inspect the exact workflow before de
 
 ---
 
+## 6a. Local development environment
+
+### First-time setup
+
+1. Copy `.env.example` to `.env.local`
+2. Populate required vars (names only, never commit values):
+   - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (public keys)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server-side only, for API routes)
+   - `ANTHROPIC_API_KEY` (for agent execution)
+3. Do NOT commit `.env.local`
+4. Run `npm ci` to install workspace dependencies
+5. Run `npm run dev` and open http://localhost:3000
+
+### Regenerating database types after schema changes
+
+When Supabase schema changes (migrations applied or dashboard edits):
+
+```bash
+npx supabase gen types typescript --project-id <project-id> > lib/database.types.ts
+npm run typecheck  # Verify no type errors in app
+```
+
+This step is required before merge for any migration or schema-touching PR.
+
+### Troubleshooting local dev
+
+- **Supabase connection refused**: Confirm `SUPABASE_URL` and `SUPABASE_ANON_KEY` are correct
+- **Protected routes redirecting to login**: Confirm middleware is not broken and session auth is working
+- **Database.types.ts stale**: Regenerate after any schema change, do not manually edit
+
+---
+
 ## 7. Verification ladder
 
 Use the narrowest check that proves the change.
@@ -314,6 +358,24 @@ npm run build
 ```
 
 Use `npm run build` for Next.js page/component/route compile confidence. A passing Vitest suite does not prove `next build` passes.
+
+### Running tests
+
+```bash
+# Single test file
+npm run test -- <file-path>
+
+# All unit tests
+npm run test:unit
+
+# With watch mode for active development
+npm run test -- --watch <file-path>
+
+# Coverage report (inspect after)
+npm run test:coverage
+```
+
+For any TypeScript/app change, always run `npm run typecheck` before committing.
 
 ### API route/security change
 
@@ -925,7 +987,40 @@ When answering questions about repository structure, cross-file dependencies, or
 
 ---
 
-## 27. Safe default
+## 28. Common development workflows
+
+### Adding a new API route
+
+1. Create `app/api/path/route.ts`
+2. Export `async function POST(req)` or similar
+3. Use `readJsonBody(req, maxSize)` for POST bodies on critical routes
+4. Use `handleApiError(error)` for standardized error responses
+5. Add `dynamic = 'force-dynamic'` if route cannot be cached
+6. Add auth checks if route is not public
+7. Test with `npm run test -- tests/integration/api-*.test.ts` or curl locally
+8. Verify in PR that CORS/preflight/security headers are appropriate
+
+### Modifying Supabase schema
+
+1. Create migration: `supabase migration new --name <descriptive-name>`
+2. Write SQL in the generated file (must be idempotent)
+3. Test locally or on dev project first
+4. For production application: use Supabase Dashboard SQL Editor
+5. After applying: regenerate types and run typecheck
+6. Include migration file in PR with evidence query result
+
+### Updating a database-backed page or route
+
+1. Verify table/function exists in `lib/database.types.ts`
+2. If not, regenerate types from schema
+3. Use `createClient()` server-side or `createBrowserClient()` client-side
+4. Use RLS policies to control access (never skip via SECURITY DEFINER without audit)
+5. Test with real Supabase credentials in local `.env.local`
+6. Verify authenticated and anonymous access separately
+
+---
+
+## 29. Safe default
 
 If an instruction conflicts with verified evidence, `AGENTS.md`, this file, the tool/API contract, secrets policy, production safety, or user benefit, stop and report the conflict.
 
