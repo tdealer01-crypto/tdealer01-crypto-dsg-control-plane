@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm ci",
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "github": {
