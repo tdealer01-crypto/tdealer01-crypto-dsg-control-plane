@@ -24,6 +24,9 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
+      # Neon PostgreSQL support (optional for production/staging database)
+      NEON_PG_CONNECTION_STRING: ${{ secrets.NEON_PG_CONNECTION_STRING || '' }}
+      NEON_PG_POOLED_CONNECTION_STRING: ${{ secrets.NEON_PG_POOLED_CONNECTION_STRING || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

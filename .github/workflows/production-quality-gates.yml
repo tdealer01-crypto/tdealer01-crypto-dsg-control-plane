@@ -32,6 +32,9 @@ jobs:
       # silently fall back to a hardcoded fake JWT and fail against the real
       # project with a non-permission error.
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-anon-key-placeholder' }}
+      # Neon PostgreSQL support (optional for production/staging database)
+      NEON_PG_CONNECTION_STRING: ${{ secrets.NEON_PG_CONNECTION_STRING || '' }}
+      NEON_PG_POOLED_CONNECTION_STRING: ${{ secrets.NEON_PG_POOLED_CONNECTION_STRING || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
