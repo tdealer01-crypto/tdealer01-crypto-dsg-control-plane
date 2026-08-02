@@ -106,13 +106,14 @@ describe('Phase 2 Audit Schema Migrations', () => {
       expect(sql).toContain('CREATE TABLE IF NOT EXISTS audit_batch_metadata');
       expect(sql).toContain('id UUID PRIMARY KEY');
       expect(sql).toContain('org_id UUID NOT NULL');
-      expect(sql).toContain('batch_hash TEXT NOT NULL UNIQUE');
+      expect(sql).toContain('batch_hash TEXT NOT NULL');
       expect(sql).toContain('previous_hash TEXT');
       expect(sql).toContain('event_count INTEGER NOT NULL');
       expect(sql).toContain('batch_size_bytes INTEGER');
       expect(sql).toContain('created_at TIMESTAMPTZ DEFAULT now()');
       expect(sql).toContain('chain_verified_at TIMESTAMPTZ');
       expect(sql).toContain('verification_status TEXT DEFAULT \'pending\'');
+      expect(sql).toContain('batch_hash_org_unique UNIQUE (org_id, batch_hash)');
     });
 
     it('validates batch_hash format (SHA256)', () => {
@@ -157,8 +158,9 @@ describe('Phase 2 Audit Schema Migrations', () => {
         'utf8'
       );
       expect(sql).toContain('batch_hash_chain_link');
-      expect(sql).toContain('FOREIGN KEY (previous_hash)');
-      expect(sql).toContain('REFERENCES audit_batch_metadata(batch_hash)');
+      expect(sql).toContain('FOREIGN KEY (previous_org_id, previous_hash)');
+      expect(sql).toContain('REFERENCES audit_batch_metadata(org_id, batch_hash)');
+      expect(sql).toContain('ON DELETE RESTRICT');
     });
 
     it('creates indexes for chain traversal', () => {
@@ -219,9 +221,10 @@ describe('Phase 2 Audit Schema Migrations', () => {
         'utf8'
       );
       expect(sql).toContain('GRANT SELECT ON audit_batch_metadata TO authenticated');
-      expect(sql).toContain('GRANT SELECT, INSERT, UPDATE ON audit_batch_metadata TO service_role');
+      expect(sql).toContain('GRANT SELECT, INSERT ON audit_batch_metadata TO service_role');
       expect(sql).toContain('GRANT EXECUTE ON FUNCTION verify_audit_batch_chain TO service_role');
       expect(sql).toContain('GRANT EXECUTE ON FUNCTION detect_chain_break TO service_role');
+      expect(sql).toContain('GRANT EXECUTE ON FUNCTION update_batch_verification TO service_role');
     });
   });
 
@@ -278,7 +281,7 @@ describe('Phase 2 Audit Schema Migrations', () => {
         'supabase/migrations/20260730000007_audit_batch_metadata.sql',
         'utf8'
       );
-      expect(sql).toContain('REFERENCES audit_batch_metadata(batch_hash)');
+      expect(sql).toContain('REFERENCES audit_batch_metadata(org_id, batch_hash)');
     });
 
     it('previous_hash in agi_action_audit follows same SHA256 format', () => {
