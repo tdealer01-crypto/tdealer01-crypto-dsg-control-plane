@@ -94,7 +94,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await evaluateDeterministicGate(validated.value);
+  const result = await evaluateDeterministicGate(validated.value, {
+    orgId: caller.orgId,
+    verifyFresh: false,
+    recordResult: true,
+  });
 
   const response = NextResponse.json(
     {
@@ -128,6 +132,7 @@ export async function POST(request: Request) {
     statusCode: 200,
     gateStatus: result.gateStatus,
     proofId:    result.proof.proofId,
+    proofSource: result.source,
     durationMs: Date.now() - startMs,
   });
 
