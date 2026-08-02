@@ -3307,6 +3307,89 @@ export type Database = {
         }
         Relationships: []
       }
+      dsg_gate_decisions: {
+        Row: {
+          compliance_tags: string[] | null
+          constraint_set: Json
+          created_at: string
+          created_by: string | null
+          decision: string
+          decision_confidence: number | null
+          evidence_retention_until: string | null
+          id: string
+          input_hash: string
+          org_id: string
+          parent_decision_id: string | null
+          parent_proof_hash: string | null
+          policy_version: string
+          proof_format: string | null
+          proof_hash: string
+          z3_error: string | null
+          z3_satisfiable: boolean | null
+          z3_smt2_hash: string | null
+          z3_solver_version: string | null
+          z3_status: string | null
+          z3_time_ms: number | null
+          z3_trace: Json | null
+        }
+        Insert: {
+          compliance_tags?: string[] | null
+          constraint_set: Json
+          created_at?: string
+          created_by?: string | null
+          decision: string
+          decision_confidence?: number | null
+          evidence_retention_until?: string | null
+          id?: string
+          input_hash: string
+          org_id: string
+          parent_decision_id?: string | null
+          parent_proof_hash?: string | null
+          policy_version: string
+          proof_format?: string | null
+          proof_hash: string
+          z3_error?: string | null
+          z3_satisfiable?: boolean | null
+          z3_smt2_hash?: string | null
+          z3_solver_version?: string | null
+          z3_status?: string | null
+          z3_time_ms?: number | null
+          z3_trace?: Json | null
+        }
+        Update: {
+          compliance_tags?: string[] | null
+          constraint_set?: Json
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          decision_confidence?: number | null
+          evidence_retention_until?: string | null
+          id?: string
+          input_hash?: string
+          org_id?: string
+          parent_decision_id?: string | null
+          parent_proof_hash?: string | null
+          policy_version?: string
+          proof_format?: string | null
+          proof_hash?: string
+          z3_error?: string | null
+          z3_satisfiable?: boolean | null
+          z3_smt2_hash?: string | null
+          z3_solver_version?: string | null
+          z3_status?: string | null
+          z3_time_ms?: number | null
+          z3_trace?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dsg_gate_decisions_parent_decision_id_fkey"
+            columns: ["parent_decision_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_gate_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dsg_governance_decision_events: {
         Row: {
           action: string
@@ -6850,6 +6933,30 @@ export type Database = {
         }
         Relationships: []
       }
+      org_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          org_id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          org_id: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       org_onboarding_states: {
         Row: {
           bootstrap_status: string
@@ -9544,6 +9651,12 @@ export type Database = {
         Returns: string[]
       }
       get_org_health_summary: { Args: { p_org_id: string }; Returns: Json }
+      get_user_orgs: {
+        Args: { p_user_id: string }
+        Returns: {
+          org_id: string
+        }[]
+      }
       increment_quota_atomic: {
         Args: { p_agent_id: string; p_billing_period: string; p_org_id: string }
         Returns: undefined
@@ -9570,6 +9683,26 @@ export type Database = {
           p_template_id: string
         }
         Returns: undefined
+      }
+      record_z3_gate_decision: {
+        Args: {
+          p_confidence?: number
+          p_constraint_set: Json
+          p_decision: string
+          p_input_hash: string
+          p_org_id: string
+          p_parent_decision_id?: string
+          p_policy_version: string
+          p_proof_hash: string
+          p_z3_error?: string
+          p_z3_satisfiable?: boolean
+          p_z3_smt2_hash?: string
+          p_z3_solver_version?: string
+          p_z3_status?: string
+          p_z3_time_ms?: number
+          p_z3_trace?: Json
+        }
+        Returns: string
       }
       renew_mcp_subscription_period: {
         Args: {
@@ -9814,4 +9947,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
