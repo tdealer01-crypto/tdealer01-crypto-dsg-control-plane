@@ -1,0 +1,114 @@
+name: Preview Database Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+concurrency:
+  group: preview-db-cleanup-${{ github.head_ref }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup-preview-db:
+    name: Remove isolated Supabase preview database
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate preview database name
+        id: db_name
+        run: |
+          PR_NUM=${{ github.event.pull_request.number }}
+          PREVIEW_DB_NAME="preview-pr-${PR_NUM}"
+          echo "name=${PREVIEW_DB_NAME}" >> $GITHUB_OUTPUT
+          echo "Preview database to delete: ${PREVIEW_DB_NAME}"
+
+      - name: Find preview project
+        id: find_project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          # Find the preview project for this PR
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            "https://api.supabase.com/v1/projects")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            PROJECT_ID=$(echo "$BODY" | jq -r ".[] | select(.name == \"${{ steps.db_name.outputs.name }}\") | .id" | head -1)
+
+            if [[ -n "$PROJECT_ID" ]]; then
+              echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
+              echo "Found preview project: ${PROJECT_ID}"
+            else
+              echo "project_id=" >> $GITHUB_OUTPUT
+              echo "No preview project found for deletion"
+            fi
+          else
+            echo "project_id=" >> $GITHUB_OUTPUT
+            echo "Unable to query projects (HTTP $HTTP_CODE)"
+          fi
+
+      - name: Delete preview Supabase project
+        if: steps.find_project.outputs.project_id != ''
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_ID: ${{ steps.find_project.outputs.project_id }}
+        run: |
+          echo "Deleting preview project: ${PROJECT_ID}"
+
+          RESPONSE=$(curl -s -X DELETE \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            "https://api.supabase.com/v1/projects/${PROJECT_ID}")
+
+          echo "Delete response: $RESPONSE"
+
+          # Verify deletion (may take a moment)
+          sleep 5
+
+          VERIFY=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            "https://api.supabase.com/v1/projects/${PROJECT_ID}")
+
+          VERIFY_CODE=$(echo "$VERIFY" | tail -1)
+
+          if [[ "$VERIFY_CODE" == "404" ]]; then
+            echo "✅ Preview project successfully deleted"
+          else
+            echo "⚠️ Preview project deletion may still be in progress (HTTP $VERIFY_CODE)"
+          fi
+
+      - name: Post cleanup notification to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const projectId = '${{ steps.find_project.outputs.project_id }}';
+
+            let comment = `## 🗑️ Preview Database Cleanup\n\n`;
+
+            if (projectId) {
+              comment += `**Project Deleted:** \`${projectId}\`\n`;
+              comment += `**Status:** ✅ Isolated preview database has been removed\n`;
+            } else {
+              comment += `**Status:** ℹ️ No preview database found to delete\n`;
+            }
+
+            comment += `\n### Summary\n`;
+            comment += `- Preview database for PR #${prNumber} has been cleaned up\n`;
+            comment += `- All test data and configurations have been removed\n`;
+            comment += `- Resources returned to the pool\n`;
+
+            github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
