@@ -1,16 +1,20 @@
-# Vercel configuration for the `dsg-qubo-api` project only.
+# Minimal Python project manifest for the `dsg-qubo-api` project.
 #
 # That project builds the FastAPI app in solver/main.py, but Vercel looks for
-# the entrypoint in default locations and fails the build with:
+# the entrypoint in default locations and fails with:
 #
 #   Error: No FastAPI entrypoint found in default locations, but found
 #   potential entrypoints: solver/main.py (variable: app)
 #
 # Declaring it here is the fix Vercel's own error message asks for.
+# The [project] table is required by uv lock during the build.
 #
-# Deliberately minimal: no [project] and no [build-system] table. Every Vercel
-# project in this repository builds from the repository root, so this file is
-# visible to all of them, and a fuller Python manifest risks disturbing
-# framework detection for the Next.js projects that share this tree.
+# Every Vercel project in this repository builds from the repository root,
+# so this file is visible to all of them. The [project] table is kept minimal
+# to avoid disturbing framework detection for the Next.js projects.
+[project]
+name = "dsg-qubo-solver"
+version = "0.0.1"
+
 [tool.vercel]
 entrypoint = "solver.main:app"
