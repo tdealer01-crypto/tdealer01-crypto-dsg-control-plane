@@ -1,5 +1,7 @@
 // Base Agent Interface for CCVS Multi-Agent System
 
+import { createHash } from 'crypto';
+
 export interface AgentContext {
   commit: string;
   repoPath: string;
@@ -105,7 +107,6 @@ export abstract class BaseAgent implements Agent {
   }
 
   protected computeHash(content: string): string {
-    // In real implementation, use crypto.subtle.digest
-    return 'sha256:' + Buffer.from(content).toString('base64').slice(0, 32);
+    return 'sha256:' + createHash('sha256').update(content).digest('hex');
   }
 }
