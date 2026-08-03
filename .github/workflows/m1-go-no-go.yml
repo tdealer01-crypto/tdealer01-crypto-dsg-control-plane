@@ -22,8 +22,11 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://example.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY || 'ci-service-role-key-placeholder' }}
+      # Neon PostgreSQL support (optional for production/staging database)
+      NEON_PG_CONNECTION_STRING: ${{ secrets.NEON_PG_CONNECTION_STRING || '' }}
+      NEON_PG_POOLED_CONNECTION_STRING: ${{ secrets.NEON_PG_POOLED_CONNECTION_STRING || '' }}
     outputs:
       status: ${{ steps.runtime.outputs.status }}
     steps:
@@ -56,8 +59,11 @@ jobs:
       CI: true
       NEXT_TELEMETRY_DISABLED: 1
       PLAYWRIGHT_BASE_URL: ${{ inputs.staging_url }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://example.supabase.co' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY || 'ci-service-role-key-placeholder' }}
+      # Neon PostgreSQL support (optional for production/staging database)
+      NEON_PG_CONNECTION_STRING: ${{ secrets.NEON_PG_CONNECTION_STRING || '' }}
+      NEON_PG_POOLED_CONNECTION_STRING: ${{ secrets.NEON_PG_POOLED_CONNECTION_STRING || '' }}
     outputs:
       status: ${{ steps.stage.outputs.status }}
     steps:
