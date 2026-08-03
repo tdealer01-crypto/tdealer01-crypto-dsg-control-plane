@@ -16,6 +16,10 @@ const REQUIRED_ENV = [
   'STRIPE_WEBHOOK_SECRET',
   'STRIPE_METER_EVENT_NAME',
   'CRON_SECRET',
+  // getSupabaseAdmin() reads both of these. Checking only the service-role key
+  // let the report call Supabase satisfied while every query still failed on a
+  // missing URL — precisely the guesswork this endpoint exists to remove.
+  'NEXT_PUBLIC_SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
 ] as const;
 
