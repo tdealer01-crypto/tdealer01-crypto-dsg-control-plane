@@ -76,7 +76,7 @@ const CONTENT = `# DSG ONE — AI Runtime Control Plane / ProofGate
 
 ## Authentication
 
-- [GET/POST /auth/*](${BASE}/auth): Supabase SSR authentication — sign-in, sign-up, callback, sign-out. Session cookie managed by middleware.ts.
+- [GET/POST /auth/*](${BASE}/auth): Supabase SSR authentication — sign-in, sign-up, callback, sign-out. Session cookie managed by proxy.ts.
 
 ## MCP Integration
 

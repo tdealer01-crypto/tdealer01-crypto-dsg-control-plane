@@ -47,7 +47,7 @@ function readMarkdownFiles(dir: string, prefix = ''): Array<{ rel: string; conte
 }
 
 export async function GET() {
-  const docsDir = path.join(process.cwd(), 'docs');
+  const docsDir = path.join(/* turbopackIgnore: true */ process.cwd(), 'docs');
   const files = readMarkdownFiles(docsDir);
 
   const header = `# DSG ONE — AI Runtime Control Plane / ProofGate
@@ -76,7 +76,7 @@ export async function GET() {
 
   let rootDocs = '';
   for (const { path: filePath, label } of coreFiles) {
-    const full = path.join(process.cwd(), filePath);
+    const full = path.join(/* turbopackIgnore: true */ process.cwd(), filePath);
     try {
       const content = fs.readFileSync(full, 'utf-8');
       rootDocs += `${'─'.repeat(80)}\n## FILE: ${label}\n${'─'.repeat(80)}\n\n${content}\n\n`;

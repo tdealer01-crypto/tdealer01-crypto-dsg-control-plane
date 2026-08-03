@@ -8,7 +8,7 @@ vi.mock('@supabase/ssr', () => ({
   })),
 }));
 
-import { middleware } from '../../middleware';
+import { proxy } from '../../proxy';
 import { NextRequest } from 'next/server';
 
 function makeRequest(pathname: string, options: { method?: string; nextParam?: string } = {}) {
@@ -33,14 +33,14 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('middleware — protected path detection', () => {
+describe('proxy — protected path detection', () => {
   it('passes through unauthenticated request on public path (/about)', async () => {
-    const res = await middleware(makeRequest('/about'));
+    const res = await proxy(makeRequest('/about'));
     expect(res.status).toBe(200);
   });
 
   it('redirects unauthenticated user from /dashboard to /login?next=', async () => {
-    const res = await middleware(makeRequest('/dashboard'));
+    const res = await proxy(makeRequest('/dashboard'));
     expect(res.status).toBe(307);
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/login');
@@ -49,14 +49,14 @@ describe('middleware — protected path detection', () => {
   });
 
   it('redirects unauthenticated user from /approvals/123 to /login?next=', async () => {
-    const res = await middleware(makeRequest('/approvals/123'));
+    const res = await proxy(makeRequest('/approvals/123'));
     expect(res.status).toBe(307);
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('next=');
   });
 
   it('redirects unauthenticated user from /gateway/monitor to /login?next=', async () => {
-    const res = await middleware(makeRequest('/gateway/monitor'));
+    const res = await proxy(makeRequest('/gateway/monitor'));
     expect(res.status).toBe(307);
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('next=');
@@ -64,38 +64,38 @@ describe('middleware — protected path detection', () => {
 
   it('passes through authenticated user on /dashboard', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-    const res = await middleware(makeRequest('/dashboard'));
+    const res = await proxy(makeRequest('/dashboard'));
     expect(res.status).toBe(200);
   });
 });
 
-describe('middleware — OPTIONS passthrough', () => {
+describe('proxy — OPTIONS passthrough', () => {
   it('passes through OPTIONS request to /api/* without calling Supabase', async () => {
     const { createServerClient } = await import('@supabase/ssr');
     const mockCreate = vi.mocked(createServerClient);
     mockCreate.mockClear();
 
-    const res = await middleware(makeRequest('/api/billing/checkout', { method: 'OPTIONS' }));
+    const res = await proxy(makeRequest('/api/billing/checkout', { method: 'OPTIONS' }));
     expect(res.status).toBe(200);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 });
 
-describe('middleware — missing Supabase config', () => {
+describe('proxy — missing Supabase config', () => {
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   });
 
   it('returns 503 for protected path /dashboard when config is missing', async () => {
-    const res = await middleware(makeRequest('/dashboard'));
+    const res = await proxy(makeRequest('/dashboard'));
     expect(res.status).toBe(503);
     const text = await res.text();
     expect(text).toContain('unavailable');
   });
 
   it('redirects /app-shell to /login?next=/app-shell when config is missing', async () => {
-    const res = await middleware(makeRequest('/app-shell'));
+    const res = await proxy(makeRequest('/app-shell'));
     expect(res.status).toBe(307);
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/login');
@@ -104,15 +104,15 @@ describe('middleware — missing Supabase config', () => {
   });
 
   it('passes through public path /blog when config is missing', async () => {
-    const res = await middleware(makeRequest('/blog'));
+    const res = await proxy(makeRequest('/blog'));
     expect(res.status).toBe(200);
   });
 });
 
-describe('middleware — /login redirect for authenticated users', () => {
+describe('proxy — /login redirect for authenticated users', () => {
   it('redirects authenticated user from /login to /dashboard/executions (default)', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-    const res = await middleware(makeRequest('/login'));
+    const res = await proxy(makeRequest('/login'));
     expect(res.status).toBe(307);
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/dashboard/executions');
@@ -120,14 +120,14 @@ describe('middleware — /login redirect for authenticated users', () => {
 
   it('redirects authenticated user from /login?next=/approvals to /approvals', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-    const res = await middleware(makeRequest('/login', { nextParam: '/approvals' }));
+    const res = await proxy(makeRequest('/login', { nextParam: '/approvals' }));
     expect(res.status).toBe(307);
     const location = res.headers.get('location') ?? '';
     expect(location).toContain('/approvals');
   });
 
   it('does not redirect unauthenticated user from /login', async () => {
-    const res = await middleware(makeRequest('/login'));
+    const res = await proxy(makeRequest('/login'));
     expect(res.status).toBe(200);
   });
 });

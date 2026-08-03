@@ -1,4 +1,4 @@
-// Middleware: Request routing and session validation
+// Proxy: request routing and session validation
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSafeNext } from './lib/auth/safe-next';
@@ -20,7 +20,7 @@ function isProtectedPath(pathname: string) {
 
 const API_BODY_SIZE_LIMIT = 1_048_576; // 1 MB
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // ── Correlation ID ─────────────────────────────────────────────────────────
   // Propagate or generate a unique request ID for every request.
   // Downstream services receive it via X-Request-ID header.
