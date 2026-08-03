@@ -13,6 +13,7 @@
  */
 
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 
 export type PlanKey = 'pro' | 'business' | 'enterprise';
 export type BillingInterval = 'monthly' | 'yearly';
@@ -58,7 +59,7 @@ export function getStripeClient(): Stripe {
   if (!secretKey) {
     throw new Error('Missing STRIPE_SECRET_KEY environment variable');
   }
-  return new Stripe(secretKey);
+  return new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
 }
 
 /**

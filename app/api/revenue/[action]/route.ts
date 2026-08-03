@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '@supabase/supabase-js';
 import { PostHog } from 'posthog-node';
 import { handleApiError } from '@/lib/security/api-error';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 // ========== INIT ==========
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY || '');
+  return new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: STRIPE_API_VERSION });
 }
 
 function getSupabase() {

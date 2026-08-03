@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logApiError, internalErrorMessage } from '@/lib/security/api-error';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '@/lib/security/rate-limit';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export async function POST(request: Request, { params }: { params: Promise<Param
 
     // Dynamically import Stripe to avoid bundling issues
     const Stripe = require('stripe').default;
-    const stripe = new Stripe(stripeSecretKey);
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: STRIPE_API_VERSION });
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({

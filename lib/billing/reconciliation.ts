@@ -9,6 +9,7 @@
  */
 
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ const STUCK_THRESHOLD_MINUTES = 10;
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  return new Stripe(key);
+  return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
 function getMeterId(): string | null {

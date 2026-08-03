@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '@/lib/supabase/server';
 import { getTemplate } from '@/lib/marketplace/templates';
 
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'template_is_free' }, { status: 400 });
   }
 
-  const stripe = new Stripe(secret);
+  const stripe = new Stripe(secret, { apiVersion: STRIPE_API_VERSION });
   const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://localhost:3000';
 
   const checkoutSession = await stripe.checkout.sessions.create({

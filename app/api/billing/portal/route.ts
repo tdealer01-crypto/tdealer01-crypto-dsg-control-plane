@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '../../../../lib/supabase/server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
@@ -12,7 +13,7 @@ function getStripeClient() {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
 
-  return new Stripe(secretKey);
+  return new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
 }
 
 export async function POST(request: Request) {
