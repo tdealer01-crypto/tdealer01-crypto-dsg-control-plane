@@ -1,6 +1,7 @@
 // ERROR_HANDLER_EXEMPT - legacy error handling, migrate to handleApiError
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { requireVerifiedDsgActor } from '@/lib/dsg/server/context';
 import { getDsgSupabaseRpcConfig, readDsgRest, callDsgRpc } from '@/lib/dsg/server/supabase-rpc';
 import {
@@ -13,7 +14,7 @@ import type { DsgMarketTemplate } from '@/lib/dsg/app-builder/templates/template
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
-  return new Stripe(key);
+  return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
 type TemplateRow = {

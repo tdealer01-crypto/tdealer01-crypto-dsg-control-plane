@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { runReleaseGate } from '../../../../lib/release-gate/checker';
 import { hasReleaseGateProAccess } from '../../../../lib/release-gate/entitlements';
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   if (sessionId && process.env.STRIPE_SECRET_KEY) {
     try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION });
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       const email = session.customer_details?.email ?? null;
 

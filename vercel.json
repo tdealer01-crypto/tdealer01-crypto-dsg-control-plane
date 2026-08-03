@@ -5,5 +5,27 @@
     "autoAlias": false,
     "silent": false,
     "autoJobCancelation": true
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/flush-meter-outbox",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-meter",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/usage-alerts",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/trial-invite",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 10 * * 1"
+    }
+  ]
 }

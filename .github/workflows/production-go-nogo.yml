@@ -1,0 +1,172 @@
+name: Production GO/NO-GO Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      production_url:
+        description: 'Production URL to check (defaults to main deployment)'
+        required: false
+        default: 'https://tdealer01-crypto-dsg-control-plane.vercel.app'
+  schedule:
+    - cron: '0 2 * * *' # Daily health check at 2 AM UTC
+
+concurrency:
+  group: production-go-nogo
+  cancel-in-progress: false
+
+jobs:
+  production-gate:
+    name: Production GO/NO-GO Gate Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine production URL
+        id: url
+        run: |
+          if [[ -n "${{ github.event.inputs.production_url }}" ]]; then
+            echo "url=${{ github.event.inputs.production_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://tdealer01-crypto-dsg-control-plane.vercel.app" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run production gate checks
+        id: gate
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+        run: |
+          npx ts-node scripts/production-gate.ts "${{ steps.url.outputs.url }}" > gate-result.json 2>&1 || true
+
+          # Parse result for GitHub output
+          DECISION=$(jq -r '.decision' gate-result.json 2>/dev/null || echo "ERROR")
+          echo "decision=${DECISION}" >> $GITHUB_OUTPUT
+          echo "result=$(cat gate-result.json | jq -c .)" >> $GITHUB_OUTPUT
+
+      - name: Upload gate result as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-gate-result-${{ github.run_id }}
+          path: gate-result.json
+          retention-days: 30
+
+      - name: Post gate result to workflow run
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const result = JSON.parse(fs.readFileSync('gate-result.json', 'utf8'));
+
+            const decision = result.decision;
+            const checks = result.checks || [];
+            const summary = result.summary || 'No summary available';
+
+            // Build comment markdown
+            let comment = `## 🚀 Production GO/NO-GO Gate Report\n\n`;
+            comment += `**Decision:** `;
+
+            if (decision === 'GO') {
+              comment += `✅ **GO** - All checks passed\n`;
+            } else if (decision === 'NO-GO') {
+              comment += `❌ **NO-GO** - Production deployment blocked\n`;
+            } else {
+              comment += `⚠️ **REVIEW** - Manual review required\n`;
+            }
+
+            comment += `**URL:** \`${result.url}\`\n`;
+            comment += `**Time:** ${result.timestamp}\n`;
+            comment += `**Version:** ${result.gate_version}\n\n`;
+
+            comment += `### Check Results\n\n`;
+            comment += `| Check | Status | Details | Latency |\n`;
+            comment += `|-------|--------|---------|----------|\n`;
+
+            checks.forEach(check => {
+              const statusIcon =
+                check.status === 'PASS' ? '✅' :
+                check.status === 'FAIL' ? '❌' :
+                check.status === 'TIMEOUT' ? '⏱️' : '⊘';
+              comment += `| ${check.name} | ${statusIcon} ${check.status} | ${check.details} | ${check.latency_ms}ms |\n`;
+            });
+
+            comment += `\n### Summary\n\n`;
+            comment += `${summary}\n\n`;
+            comment += `**Rationale:** ${result.decision_rationale}\n`;
+
+            // Create or update issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['production-gate'],
+              per_page: 1
+            });
+
+            if (issues.length > 0) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body: comment
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Production Gate: ${decision}`,
+                body: comment,
+                labels: ['production-gate', decision.toLowerCase()]
+              });
+            }
+
+      - name: Set gate status check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const decision = '${{ steps.gate.outputs.decision }}';
+            const conclusion = decision === 'GO' ? 'success' : 'failure';
+
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Production GO/NO-GO Gate',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: conclusion,
+              output: {
+                title: `Production Gate: ${decision}`,
+                summary: decision === 'GO'
+                  ? 'All production readiness checks passed'
+                  : 'Production deployment blocked by gate checks'
+              }
+            });
+
+      - name: Block on NO-GO
+        if: steps.gate.outputs.decision == 'NO-GO'
+        run: |
+          echo "❌ Production gate decision: NO-GO"
+          echo "Production deployment is blocked."
+          echo "Review the gate results and fix failing checks before retrying."
+          exit 1

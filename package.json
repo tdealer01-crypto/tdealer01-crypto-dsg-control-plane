@@ -99,7 +99,11 @@
     "mcp:one:start": "npm -w dsg-one-mcp-server start",
     "mcp:one:dev": "npm -w dsg-one-mcp-server run dev",
     "mcp:one:inspect": "npm -w dsg-one-mcp-server run inspector",
-    "mcp:one:test": "npm -w dsg-one-mcp-server run test || true"
+    "mcp:one:test": "npm -w dsg-one-mcp-server run test || true",
+    "load:dev": "bash scripts/load-test.sh dev",
+    "load:staging": "bash scripts/load-test.sh staging",
+    "load:production": "bash scripts/load-test.sh production",
+    "load:production:go": "bash scripts/load-test.sh production-go"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '@/lib/supabase/server';
 import { logApiError, internalErrorMessage } from '@/lib/security/api-error';
 import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
@@ -93,7 +94,7 @@ export async function GET(
     }
 
     // Check Stripe account status to determine KYC verification
-    const stripe = new Stripe(stripeSecretKey);
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: STRIPE_API_VERSION });
 
     const stripeAccount = await stripe.accounts.retrieve(seller.stripe_account_id);
 

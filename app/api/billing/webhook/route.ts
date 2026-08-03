@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
 import type { Database, Json } from '../../../../lib/database.types';
@@ -24,7 +25,7 @@ function getStripeClient() {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
 
-  return new Stripe(secretKey);
+  return new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
 }
 
 function getPriceMap(): Map<string, PriceMapping> {
