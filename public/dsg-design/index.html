@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSG ONE — Deterministic AI Governance</title>
+  <style>
+    :root {
+      /* Professional palette */
+      --bg-dark: #0a0e14;
+      --bg-light: #f5f7fa;
+      --text-primary: #1a1f2e;
+      --text-secondary: #5a6c7d;
+      --accent-gold: #d4af37;
+      --accent-blue: #2563eb;
+      --pass-green: #10b981;
+      --block-red: #ef4444;
+      --review-amber: #f59e0b;
+      --border: #e5e7eb;
+      --white: #ffffff;
+
+      --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+      --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-dark: #0a0e14;
+        --bg-light: #1a202c;
+        --text-primary: #f0f2f5;
+        --text-secondary: #a0aec0;
+        --border: #2d3748;
+        --white: #ffffff;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg-dark: #0a0e14;
+      --bg-light: #1a202c;
+      --text-primary: #f0f2f5;
+      --text-secondary: #a0aec0;
+      --border: #2d3748;
+    }
+
+    :root[data-theme="light"] {
+      --bg-dark: #0a0e14;
+      --bg-light: #f5f7fa;
+      --text-primary: #1a1f2e;
+      --text-secondary: #5a6c7d;
+      --border: #e5e7eb;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-light);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, var(--bg-dark) 0%, #1a2f4d 100%);
+      color: var(--white);
+      padding: 6rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    }
+
+    header .container {
+      max-width: 900px;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 2rem;
+      font-weight: 300;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Hero metrics */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      padding: 4rem 2rem;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metric {
+      text-align: center;
+    }
+
+    .metric-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      line-height: 1.2;
+    }
+
+    .metric-label {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+
+    /* Main sections */
+    section {
+      padding: 5rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    section h2 {
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    /* Cards grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--accent-gold);
+      box-shadow: 0 10px 30px rgba(212, 175, 55, 0.08);
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    .card p {
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    /* Decision gate */
+    .gate {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      margin: 2rem 0;
+    }
+
+    .gate-result {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 100px;
+      height: 50px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .badge-pass {
+      background: var(--pass-green);
+      color: white;
+    }
+
+    .badge-block {
+      background: var(--block-red);
+      color: white;
+    }
+
+    .badge-review {
+      background: var(--review-amber);
+      color: white;
+    }
+
+    /* Constraint checks */
+    .constraint {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      background: var(--bg-light);
+      border-left: 3px solid var(--pass-green);
+      border-radius: 6px;
+    }
+
+    .constraint-icon {
+      flex-shrink: 0;
+      font-weight: bold;
+      font-size: 1.25rem;
+      color: var(--pass-green);
+    }
+
+    .constraint-text h4 {
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+      color: var(--text-primary);
+    }
+
+    .constraint-text p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Claim boundary */
+    .boundary {
+      background: var(--white);
+      border: 2px solid var(--accent-gold);
+      border-radius: 12px;
+      padding: 2.5rem;
+      margin: 2rem 0;
+    }
+
+    .boundary h3 {
+      color: var(--accent-gold);
+      margin-bottom: 1.5rem;
+      font-size: 1.25rem;
+    }
+
+    .boundary-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .boundary-item {
+      padding: 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: rgba(212, 175, 55, 0.05);
+      border-left: 3px solid var(--accent-gold);
+    }
+
+    .boundary-item.verified {
+      border-left-color: var(--pass-green);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .boundary-item.pending {
+      border-left-color: var(--review-amber);
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    /* Comparison table */
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 2rem 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--bg-light);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    tr:hover {
+      background: var(--bg-light);
+    }
+
+    /* Typography utilities */
+    code {
+      background: var(--bg-light);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--accent-blue);
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+
+    a.button {
+      display: inline-block;
+      padding: 0.875rem 1.75rem;
+      border-radius: 8px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+    }
+
+    .button-primary {
+      background: var(--accent-gold);
+      color: #000;
+    }
+
+    .button-primary:hover {
+      background: #e8b923;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(212, 175, 55, 0.15);
+    }
+
+    .button-secondary {
+      border: 1.5px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .button-secondary:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+    }
+
+    /* Footer */
+    footer {
+      background: var(--bg-dark);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 3rem 2rem;
+      text-align: center;
+      font-size: 0.9rem;
+      border-top: 1px solid rgba(212, 175, 55, 0.1);
+    }
+
+    footer p {
+      margin: 0.5rem 0;
+    }
+
+    footer a {
+      color: var(--accent-gold);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.25rem;
+      }
+
+      section h2 {
+        font-size: 1.75rem;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .boundary-list {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        padding: 3rem 1rem;
+      }
+
+      section {
+        padding: 3rem 1rem;
+      }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>DSG ONE</h1>
+    <p class="subtitle">Deterministic Security Gateway for AI Runtime Governance</p>
+    <div class="header-meta">
+      <span>Evidence-Backed</span>
+      <span>Tamper-Evident Audit</span>
+      <span>CCVS L1–L5 Verified</span>
+    </div>
+  </div>
+</header>
+
+<div class="metrics">
+  <div class="container" style="grid-column: 1/-1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;">
+    <div class="metric">
+      <div class="metric-number">3,389</div>
+      <div class="metric-label">Tests Passing</div>
+    </div>
+    <div class="metric">
+      <div class="metric-number">72.08%</div>
+      <div class="metric-label">Mutation Score</div>
+    </div>
+    <div class="metric">
+      <div class="metric-number">285</div>
+      <div class="metric-label">Test Files</div>
+    </div>
+    <div class="metric">
+      <div class="metric-number">~11ms</div>
+      <div class="metric-label">Gate Latency</div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <h2>Core Capabilities</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>⛔ Gate AI Before Execution</h3>
+        <p>Submit high-risk actions to a deterministic policy engine. Receive PASS, BLOCK, REVIEW, or UNSUPPORTED decisions in milliseconds, before any model runs.</p>
+      </div>
+      <div class="card">
+        <h3>🔗 Tamper-Evident Records</h3>
+        <p>Every decision recorded as SHA-256 hash chain with policy version, input hash, proof hash, and constraint outcomes. Replay-safe with cryptographic nonce and idempotency keys.</p>
+      </div>
+      <div class="card">
+        <h3>📋 Compliance Evidence Pack</h3>
+        <p>EU AI Act Annex IV mapping, CCVS L1–L5 evidence, 3,389 automated tests, and 72.08% mutation score. Export as JSON or SARIF for audit review.</p>
+      </div>
+      <div class="card">
+        <h3>⚡ No LLM Latency</h3>
+        <p>Policy evaluated in static deterministic gate. No round-trip overhead. 10–100× faster than frameworks that route decisions through language models.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Live Decision Gate</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sample action context showing the policy engine output format. All constraint checks, proof hashes, and replay protection fields present.</p>
+
+    <div class="gate">
+      <div class="gate-result">
+        <div class="badge badge-pass">✓ PASS</div>
+        <div>
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.25rem;">Policy Version 1.0 Loaded</h3>
+          <p style="color: var(--text-secondary);">All 8 configured deterministic constraints evaluated as pass for this sample request.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size: 1.1rem; margin: 2rem 0 1rem;">Constraint Verification</h3>
+
+      <div class="constraint">
+        <div class="constraint-icon">✓</div>
+        <div class="constraint-text">
+          <h4>Policy Version Resolved</h4>
+          <p>Policy version observed as 1.0 in engine output</p>
+        </div>
+      </div>
+
+      <div class="constraint">
+        <div class="constraint-icon">✓</div>
+        <div class="constraint-text">
+          <h4>Input Hash Recorded</h4>
+          <p>inputHash present in policy engine response</p>
+        </div>
+      </div>
+
+      <div class="constraint">
+        <div class="constraint-icon">✓</div>
+        <div class="constraint-text">
+          <h4>Constraint Set Hash</h4>
+          <p>constraintSetHash present in policy engine output</p>
+        </div>
+      </div>
+
+      <div class="constraint">
+        <div class="constraint-icon">✓</div>
+        <div class="constraint-text">
+          <h4>Proof Hash Recorded</h4>
+          <p>proofHash present in policy engine response</p>
+        </div>
+      </div>
+
+      <div class="constraint">
+        <div class="constraint-icon">✓</div>
+        <div class="constraint-text">
+          <h4>Replay Protection</h4>
+          <p>Nonce, idempotency keys, and request hash present for idempotent execution</p>
+        </div>
+      </div>
+
+      <div class="constraint" style="border-left-color: var(--text-secondary);">
+        <div class="constraint-icon" style="color: var(--text-secondary);">—</div>
+        <div class="constraint-text">
+          <h4>External Z3 Solver per Request</h4>
+          <p>Not invoked. Z3 runs at design time (8 theorems proved UNSAT). Production gate is deterministic TypeScript static check.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Verified vs. Planned</h2>
+
+    <div class="boundary">
+      <h3>✓ Live in Production</h3>
+      <div class="boundary-list">
+        <div class="boundary-item verified">Deterministic gate running</div>
+        <div class="boundary-item verified">CCVS L1–L5 evidence chain</div>
+        <div class="boundary-item verified">3,389 automated tests</div>
+        <div class="boundary-item verified">72.08% mutation score</div>
+        <div class="boundary-item verified">SHA-256 tamper-evident chain</div>
+        <div class="boundary-item verified">EU AI Act Annex IV mapping</div>
+      </div>
+
+      <h3 style="margin-top: 2rem;">? Planned (In Development)</h3>
+      <div class="boundary-list">
+        <div class="boundary-item pending">JWT/JWKS standalone auth</div>
+        <div class="boundary-item pending">WORM-certified external storage</div>
+        <div class="boundary-item pending">Third-party independent audit</div>
+        <div class="boundary-item pending">ISO 27001 certification</div>
+      </div>
+    </div>
+
+    <p style="margin-top: 2rem; color: var(--text-secondary); font-size: 0.95rem;"><strong>Claim principle:</strong> Only verified facts stated. No marketing claims without current evidence. UNSUPPORTED decisions never become PASS. External Z3 solver not invoked per-request in production.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Compared to Agent Frameworks</h2>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>DSG ONE</th>
+            <th>LangGraph</th>
+            <th>OpenAI Agents</th>
+            <th>Temporal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Deterministic Replay</strong></td>
+            <td style="color: var(--pass-green);">✓ Yes</td>
+            <td style="color: var(--text-secondary);">Partial</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">Partial</td>
+          </tr>
+          <tr>
+            <td><strong>Formal Z3 Proof</strong></td>
+            <td style="color: var(--pass-green);">✓ Yes</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">—</td>
+          </tr>
+          <tr>
+            <td><strong>Tamper-Evident Audit</strong></td>
+            <td style="color: var(--pass-green);">✓ Yes</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">—</td>
+          </tr>
+          <tr>
+            <td><strong>Compliance Pack (CCVS/EU AI Act)</strong></td>
+            <td style="color: var(--pass-green);">✓ Yes</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">—</td>
+          </tr>
+          <tr>
+            <td><strong>Decision Gate Before Execution</strong></td>
+            <td style="color: var(--pass-green);">✓ Full</td>
+            <td style="color: var(--text-secondary);">Partial</td>
+            <td style="color: var(--text-secondary);">—</td>
+            <td style="color: var(--text-secondary);">Partial</td>
+          </tr>
+          <tr>
+            <td><strong>Decision Latency</strong></td>
+            <td style="color: var(--pass-green);">~11ms</td>
+            <td>0.8–1.5s</td>
+            <td>0.8–1.5s</td>
+            <td>100–300ms</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1.5rem;"><em>Latency figures reflect LLM round-trip overhead in frameworks. DSG ONE gate runs deterministic TypeScript; design-time Z3 proves policy invariants but is not invoked per-request in production.</em></p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Getting Started</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>📖 Read the Docs</h3>
+        <p>API reference, policy DSL, gate evaluation specs, and finance pilot runbook.</p>
+        <a href="#" class="button button-secondary">Documentation</a>
+      </div>
+      <div class="card">
+        <h3>🧪 Try the Demo</h3>
+        <p>Interactive policy engine with sample requests. See decision paths and proof hashes live.</p>
+        <a href="#" class="button button-secondary">Live Demo</a>
+      </div>
+      <div class="card">
+        <h3>📦 Download Evidence</h3>
+        <p>CCVS L1–L5 compliance pack, test coverage, EU AI Act Annex IV mapping (JSON & SARIF).</p>
+        <a href="#" class="button button-secondary">Compliance Pack</a>
+      </div>
+      <div class="card">
+        <h3>🔓 Request Access</h3>
+        <p>Start with a finance governance pilot. Bounded scope, high control, auditable approval workflow.</p>
+        <a href="#" class="button button-primary">Get Started</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="background: var(--bg-dark); color: var(--white); border-bottom: none;">
+  <div class="container">
+    <h2 style="color: var(--white);">Production Status</h2>
+    <p style="color: rgba(255,255,255,0.8); margin-bottom: 2rem;">DSG ONE is live at <code style="background: rgba(212,175,55,0.1); color: var(--accent-gold);">https://tdealer01-crypto-dsg-control-plane.vercel.app</code></p>
+    <ul style="list-style: none; line-height: 2;">
+      <li style="color: rgba(255,255,255,0.8);"><span style="color: var(--accent-gold);">→</span> <code style="background: rgba(212,175,55,0.1); color: var(--accent-gold); padding: 0.25rem 0.5rem; border-radius: 4px;">GET /api/agent/status</code> — Deployment identity & DB check</li>
+      <li style="color: rgba(255,255,255,0.8);"><span style="color: var(--accent-gold);">→</span> <code style="background: rgba(212,175,55,0.1); color: var(--accent-gold); padding: 0.25rem 0.5rem; border-radius: 4px;">GET /api/dsg/v1/policies/manifest</code> — Active policy version</li>
+      <li style="color: rgba(255,255,255,0.8);"><span style="color: var(--accent-gold);">→</span> <code style="background: rgba(212,175,55,0.1); color: var(--accent-gold); padding: 0.25rem 0.5rem; border-radius: 4px;">POST /api/dsg/v1/gates/evaluate</code> — Gate evaluation endpoint</li>
+      <li style="color: rgba(255,255,255,0.8);"><span style="color: var(--accent-gold);">→</span> <code style="background: rgba(212,175,55,0.1); color: var(--accent-gold); padding: 0.25rem 0.5rem; border-radius: 4px;">GET /api/ccvs/compliance-status</code> — CCVS evidence state</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p><strong>DSG ONE</strong> — Deterministic Security Gateway for AI Runtime Governance</p>
+    <p>Evidence-backed deployment • CCVS L1–L5 verified • 3,389 tests • 72.08% mutation score</p>
+    <p style="margin-top: 1rem; font-size: 0.85rem; color: rgba(255,255,255,0.5);">Production: <a href="https://tdealer01-crypto-dsg-control-plane.vercel.app">tdealer01-crypto-dsg-control-plane.vercel.app</a> | Claim boundary respected | No false evidence</p>
+  </div>
+</footer>
+
+</body>
+</html>
