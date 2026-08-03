@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '@/lib/supabase/server';
 import { getTemplate } from '@/lib/marketplace/templates';
 import { dsgOneClient } from '@/lib/dsg-one/client';
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sessionId and templateId are required' }, { status: 400 });
   }
 
-  const stripe = new Stripe(secret);
+  const stripe = new Stripe(secret, { apiVersion: STRIPE_API_VERSION });
 
   const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
   if (checkoutSession.payment_status !== 'paid') {

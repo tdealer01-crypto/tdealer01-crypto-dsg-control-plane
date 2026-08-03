@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '../../../../lib/supabase/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { ensureUserWorkspace, isWorkspaceFailure } from '../../../../lib/auth/ensure-user-workspace';
@@ -29,7 +30,7 @@ function getStripeClient() {
     throw new Error('Missing STRIPE_SECRET_KEY');
   }
 
-  return new Stripe(secretKey);
+  return new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
 }
 
 function normalizePlan(value: unknown): PlanKey {

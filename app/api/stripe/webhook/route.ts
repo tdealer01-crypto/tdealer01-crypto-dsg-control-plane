@@ -14,6 +14,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 async function upsertSubscriptionEntitlement(stripe: Stripe, subscription: Stripe.Subscription) {
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'stripe_not_configured' }, { status: 501 });
   }
 
-  const stripe = new Stripe(secret);
+  const stripe = new Stripe(secret, { apiVersion: STRIPE_API_VERSION });
   const sig = req.headers.get('stripe-signature');
   const body = await req.text();
 

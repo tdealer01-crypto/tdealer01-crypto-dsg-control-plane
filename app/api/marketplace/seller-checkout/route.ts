@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '@/lib/supabase/server';
 import { logApiError, internalErrorMessage } from '@/lib/security/api-error';
 import {
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize Stripe client
-    const stripe = new Stripe(stripeKey);
+    const stripe = new Stripe(stripeKey, { apiVersion: STRIPE_API_VERSION });
     const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://localhost:3000';
 
     // Create Stripe Checkout Session with Stripe Connect transfer

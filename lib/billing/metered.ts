@@ -15,6 +15,7 @@
  */
 
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 
 type MeterEventResult =
   | { ok: true; eventId: string }
@@ -44,7 +45,7 @@ type OutboxRow = {
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  return new Stripe(key);
+  return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
 function getMeterEventName(): string | null {
