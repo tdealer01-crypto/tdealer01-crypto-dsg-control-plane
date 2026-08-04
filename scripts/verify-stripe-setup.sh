@@ -136,11 +136,6 @@ if [ ! -f "app/api/revenue/events/route.ts" ]; then
   ROUTES_OK=false
 fi
 
-if [ ! -f "app/api/cron/billing-sync/route.ts" ]; then
-  echo "❌ /api/cron/billing-sync not found"
-  ROUTES_OK=false
-fi
-
 if [ ! -f "app/api/cron/flush-meter-outbox/route.ts" ]; then
   echo "❌ /api/cron/flush-meter-outbox not found"
   ROUTES_OK=false

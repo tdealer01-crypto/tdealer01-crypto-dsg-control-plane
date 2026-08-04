@@ -28,13 +28,13 @@ vi.mock('stripe', () => {
 //
 // Skipped unless RUN_METERED_BILLING_LIVE=1 is set, even when the
 // service-role key / URL are present. Reason: every test in this suite
-// fetches http://localhost:3000/api/revenue/events or
-// /api/cron/billing-sync, so it can only pass with a locally running dev
-// server plus configured INTERNAL_SERVICE_TOKEN / CRON_SECRET. In CI the
-// server is not started and SUPABASE_SERVICE_ROLE_KEY is not injected into
-// the vitest step, so createClient() throws "supabaseKey is required"
-// before any assertion runs. Gate behind an explicit opt-in like the other
-// live-DB suites (see tests/integration/delegation-end-to-end.test.ts).
+// fetches http://localhost:3000/api/revenue/events, so it can only pass
+// with a locally running dev server plus configured
+// INTERNAL_SERVICE_TOKEN / CRON_SECRET. In CI the server is not started
+// and SUPABASE_SERVICE_ROLE_KEY is not injected into the vitest step, so
+// createClient() throws "supabaseKey is required" before any assertion
+// runs. Gate behind an explicit opt-in like the other live-DB suites
+// (see tests/integration/delegation-end-to-end.test.ts).
 describe.skipIf(
   process.env.RUN_METERED_BILLING_LIVE !== '1' ||
     !process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -187,90 +187,6 @@ describe.skipIf(
       const result = await response.json();
       expect(result.service).toBe('revenue-events');
       expect(['ready', 'misconfigured']).toContain(result.status);
-    });
-  });
-
-  describe('POST /api/cron/billing-sync', () => {
-    it('should require cron secret', async () => {
-      const response = await fetch('http://localhost:3000/api/cron/billing-sync', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-      });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should sync pending events on valid secret', async () => {
-      const response = await fetch('http://localhost:3000/api/cron/billing-sync', {
-        method: 'POST',
-        headers: {
-          'cron-secret': process.env.CRON_SECRET || 'test-secret',
-        },
-      });
-
-      expect(response.status).toBeGreaterThanOrEqual(200);
-      expect(response.status).toBeLessThanOrEqual(207);
-
-      const result = await response.json();
-      expect(result).toHaveProperty('summary');
-      expect(result.summary).toHaveProperty('total_processed');
-      expect(result.summary).toHaveProperty('synced');
-      expect(result.summary).toHaveProperty('failed');
-      expect(result.summary).toHaveProperty('duration_ms');
-    });
-
-    it('should respect sync state transitions', async () => {
-      // 1. Insert pending event
-      const { data: inserted } = await supabase
-        .from('billing_usage')
-        .insert({
-          org_id: 'org_sync_test_001',
-          event_name: 'policy_evaluations',
-          quantity: 250,
-          timestamp: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
-          synced_to_stripe: false,
-        })
-        .select();
-
-      expect(inserted).toHaveLength(1);
-      expect(inserted[0].synced_to_stripe).toBe(false);
-
-      // 2. Run sync cron
-      const syncResponse = await fetch('http://localhost:3000/api/cron/billing-sync', {
-        method: 'POST',
-        headers: {
-          'cron-secret': process.env.CRON_SECRET || 'test-secret',
-        },
-      });
-
-      expect(syncResponse.status).toBeGreaterThanOrEqual(200);
-
-      // 3. Verify state (would be synced_to_stripe=true if subscription exists)
-      // Note: This test assumes org_sync_test_001 either:
-      //   - Has a subscription (synced)
-      //   - Has no subscription (marked synced anyway to avoid retries)
-    });
-
-    it('should handle errors gracefully', async () => {
-      // Test with invalid org that causes Stripe errors
-      const response = await fetch('http://localhost:3000/api/cron/billing-sync', {
-        method: 'POST',
-        headers: {
-          'cron-secret': process.env.CRON_SECRET || 'test-secret',
-        },
-      });
-
-      // Should return 200 (success) or 207 (partial)
-      expect([200, 207]).toContain(response.status);
-
-      const result = await response.json();
-      expect(result).toHaveProperty('summary');
-      // If errors exist, they should be documented
-      if (result.errors) {
-        expect(Array.isArray(result.errors)).toBe(true);
-      }
     });
   });
 
