@@ -43,8 +43,12 @@ export async function POST(request: Request) {
     const checks = body.checks && typeof body.checks === 'object'
       ? body.checks as Record<string, unknown>
       : {};
-    const requestedScopes = Array.isArray(body.requestedScopes)
-      ? Array.from(new Set(body.requestedScopes.map((value: unknown) => String(value).trim()).filter(Boolean)))
+    const requestedScopes: string[] = Array.isArray(body.requestedScopes)
+      ? Array.from(new Set<string>(
+          body.requestedScopes
+            .map((value: unknown) => String(value).trim())
+            .filter((value: string) => value.length > 0),
+        ))
       : [];
 
     if (!workspaceId || !/^[a-f0-9]{7,64}$/i.test(commitSha) || requestedScopes.length === 0) {
