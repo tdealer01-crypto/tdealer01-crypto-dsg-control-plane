@@ -325,6 +325,48 @@ Billing:
 
 - `lib/billing/overage-config.ts`
 - `lib/billing/seat-activation.ts`
+- `lib/billing/pricing-catalog.ts` — single source of truth for plan/price
+  IDs; consumed by `app/api/billing/checkout/route.ts`.
+- `lib/billing/entitlements.ts` — `getQuotaForPlan()`, `ACTIVE_STATUSES`,
+  `REVOKED_STATUSES`, `effectivePlan()`.
+- `lib/billing/fulfillment.ts` — `fulfillSubscription()` /
+  `revokeSubscription()`; writes `organizations.plan` only (see "Known
+  unresolved billing gap" below for the scope limit of this).
+- `lib/billing/metered.ts` — `reportMeterEvent()` / `meterExecution()` /
+  `flushMeterOutbox()`; writes/reads the `billing_meter_outbox` table before
+  calling Stripe's Billing Meter Events API.
+- `lib/billing/reconciliation.ts` — `reconcileMeterOutbox()` /
+  `requeueStuckRows()`; cross-checks `billing_meter_outbox` against Stripe's
+  own meter-event records.
+- `lib/billing/revenue-readiness.ts` — backs `GET /api/revenue-readiness`
+  (imported directly by `app/api/revenue-readiness/route.ts`); reports
+  required/optional env var presence by name and aggregate DB counts, never
+  values or customer rows.
+
+Related API routes:
+
+- `app/api/billing/checkout/route.ts` — creates the Stripe Checkout session.
+- `app/api/billing/webhook/route.ts` — canonical, signature-verified,
+  idempotent Stripe webhook (fulfillment/revocation, invoice handling,
+  referral conversion tracking).
+- `app/api/cron/flush-meter-outbox/route.ts` — retries pending/failed
+  `billing_meter_outbox` rows; present in `vercel.json`'s cron list.
+- `app/api/cron/reconcile-meter/route.ts` — reconciles the outbox against
+  Stripe; present in `vercel.json`'s cron list.
+- `app/api/revenue-readiness/route.ts` — public probe backed by
+  `lib/billing/revenue-readiness.ts`.
+
+Removed/dead:
+
+- `app/api/cron/billing-sync/route.ts` was never listed in `vercel.json`'s
+  `crons` array (verified against the current `vercel.json`, which lists
+  only `flush-meter-outbox`, `reconcile-meter`, `usage-alerts`,
+  `trial-invite`, and `weekly-report`), queried an unmigrated
+  `billing_usage` table, and called `stripe.billing.meterEvents.create`
+  with a malformed payload shape. It is being deleted as dead code. If a
+  file still exists at this path when you read this, do not describe it as
+  a live/reachable part of the metering pipeline — check `vercel.json`
+  directly to confirm current reachability before relying on this note.
 
 Security:
 
@@ -443,3 +485,71 @@ Operational interpretation for this repository:
 
 - The April 11 control-plane inventory remains historically valid for that date; the April 17 historical baseline was 185 passed, 3 skipped; 62 files passed, 1 skipped (see PROJECT_TRUTH.md for current test baseline).
 - A `286/294` merge indicator should be handled as release-process metadata drift until a concrete failing required check is identified.
+
+## `/api/revenue-readiness` — code exists, live-production status not verified (2026-08-04)
+
+`app/api/revenue-readiness/route.ts` exists in the codebase and imports
+`getRevenueReadiness()` from `lib/billing/revenue-readiness.ts` — both
+verified present by direct file read.
+
+Do **not** claim this route returns 200 (or any other status) on the
+production custom domain right now. Direct verification (via `curl` and the
+Vercel API) shows the production custom domain
+`tdealer01-crypto-dsg-control-plane.vercel.app` is currently serving a
+stale, off-`main` deployment (`githubCommitRef: "feature/gtm-mcp-server"`,
+dirty working tree, deployed 2026-07-26), not the latest `main`-branch
+production build. This means whatever `/api/revenue-readiness` currently
+returns on that domain reflects an old commit, not the code described in
+this document.
+
+Status: `/api/revenue-readiness` route code = verified present in-repo.
+Live-production behavior on the custom domain = `not verified` /
+`pending re-deploy`. This is an operational/deployment gap (production
+pointing at a stale deployment), not a defect in the route's code.
+
+## Known unresolved billing gap: two independent quota checks (2026-08-04, tracked follow-up — not fixed in this pass)
+
+There are currently **two separate, independent quota-check code paths**,
+and they can disagree after a plan change:
+
+1. `lib/usage/quota.ts`'s `checkQuota()` reads `organizations.plan` joined
+   with `usage_counters`. This is called directly by
+   `app/api/spine/execute/route.ts` (`const quota = await
+   checkQuota(orgId, agentId)`), which is the implementation behind the
+   stable `/api/execute` entry and `/api/spine/execute`.
+2. `lib/spine/engine.ts` has its own, separate org-level quota check inside
+   `executeSpineIntent()`. It queries `billing_subscriptions` for
+   `plan_key`/`status`/`current_period_start`, then calls a local
+   `getIncludedExecutions(planKey)` helper that wraps
+   `INCLUDED_EXECUTIONS` from `lib/billing/overage-config.ts`, and compares
+   that limit against a separate aggregate read of `usage_counters`.
+
+`app/api/quickstart/execute/route.ts` and `app/api/mcp/call/route.ts` both
+import only `executeSpineIntent` / `issueSpineIntent` from
+`lib/spine/engine.ts` — neither imports or calls `checkQuota()` from
+`lib/usage/quota.ts` at all (verified by grep: no `checkQuota` match in
+either file). So those two routes are gated exclusively by the
+`billing_subscriptions.plan_key`-based check in `lib/spine/engine.ts`,
+while `app/api/spine/execute/route.ts` is gated by both checks.
+
+The failure mode: `lib/billing/fulfillment.ts`'s `fulfillSubscription()`
+and `revokeSubscription()` only write `organizations.plan` (see the
+`.update({ plan, ... })` / `.update({ plan: 'free', ... })` calls against
+the `organizations` table) — neither function touches
+`billing_subscriptions.plan_key`. `billing_subscriptions` rows are instead
+kept in sync separately, by the webhook's own
+`upsertBillingSubscription()` upserts on `customer.subscription.*` events.
+If those events are delayed, missed, or race with a cancellation, an org's
+`organizations.plan` can already read `free` while its most recent
+`billing_subscriptions` row still carries a stale `plan_key` — meaning
+`/api/quickstart/execute` and `/api/mcp/call` may keep granting the old
+plan's execution quota after a downgrade/cancellation, even though
+`checkQuota()`-gated routes have already correctly dropped to the free
+limit.
+
+Status: `not fixed in this pass`, `tracked follow-up`. Do not describe this
+as resolved until `lib/spine/engine.ts`'s quota check and
+`lib/usage/quota.ts`'s `checkQuota()` have been reconciled to a single
+source of truth (or `fulfillSubscription()`/`revokeSubscription()` are
+extended to also update `billing_subscriptions.plan_key`) and re-verified
+from current code.
