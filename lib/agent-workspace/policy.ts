@@ -26,7 +26,6 @@ export const DEFAULT_DEVELOPMENT_SCOPES = [
 ] as const;
 
 export const PRODUCTION_PROMOTION_SCOPES = [
-  'repo.merge.main',
   'deploy.production',
   'database.production.*',
   'stripe.live.*',
@@ -48,7 +47,6 @@ export const DEFAULT_WORKSPACE_PLAN = {
     'run local or preview browser workflows, builds, tests, security checks and evidence collection',
   ],
   excluded: [
-    'merging main without an approved promotion',
     'production deployment without an approved promotion',
     'production database mutation without an approved promotion',
     'Stripe live-mode write without an approved promotion',
