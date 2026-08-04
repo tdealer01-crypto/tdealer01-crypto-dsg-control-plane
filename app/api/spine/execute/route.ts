@@ -7,7 +7,7 @@ import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/securi
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 import { logQuotaConsumption } from '../../../../lib/database/quotas';
-import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
+import { checkQuota } from '../../../../lib/usage/quota';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { meterExecution } from '../../../../lib/billing/metered';
 import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
@@ -335,9 +335,11 @@ export async function POST(request: Request) {
       // Fire-and-forget side effects must not become unhandled rejections —
       // a rejected floating promise can take down the worker after the
       // response has already been returned.
-      void incrementQuota(orgId, agentId).catch((error) => {
-        console.error('[api/spine/execute] incrementQuota failed:', error);
-      });
+      //
+      // NOTE: usage_counters.executions is already incremented atomically
+      // inside the runtime_commit_execution RPC (invoked by
+      // executeSpineIntent() above), so no app-layer incrementQuota() call
+      // is made here — doing so would double-count every execution.
       void fireWebhook(orgId, 'execution.completed', {
         agent_id: agentId,
         decision: decision ?? null,

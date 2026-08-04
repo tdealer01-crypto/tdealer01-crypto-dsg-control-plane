@@ -173,6 +173,71 @@ describe('POST /api/stripe/webhook', () => {
     expect(body.error).toMatch(/entitlement_sync_failed/);
   });
 
+  it('resolves plan from subscription.metadata.plan_key', async () => {
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: { object: makeSubscription({ metadata: { plan_key: 'business' } }) },
+    });
+    const supabase = makeSupabaseAdmin();
+    mockGetSupabaseAdmin.mockReturnValue(supabase as any);
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    const upsertMock = supabase.from.mock.results[0].value.upsert;
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'business' }),
+      expect.anything()
+    );
+  });
+
+  it('resolves plan from price id via STRIPE_PRICE_* env mapping when metadata is absent', async () => {
+    process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY = 'price_ent_123';
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: makeSubscription({
+          items: { data: [{ price: { id: 'price_ent_123' } }] },
+        }),
+      },
+    });
+    const supabase = makeSupabaseAdmin();
+    mockGetSupabaseAdmin.mockReturnValue(supabase as any);
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    const upsertMock = supabase.from.mock.results[0].value.upsert;
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'enterprise' }),
+      expect.anything()
+    );
+    delete process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY;
+  });
+
+  it('falls back to plan: "unknown" (never "pro") when neither metadata nor price id match', async () => {
+    mockStripeInstance.webhooks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: makeSubscription({
+          items: { data: [{ price: { id: 'price_unmapped' } }] },
+        }),
+      },
+    });
+    const supabase = makeSupabaseAdmin();
+    mockGetSupabaseAdmin.mockReturnValue(supabase as any);
+
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    const upsertMock = supabase.from.mock.results[0].value.upsert;
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'unknown' }),
+      expect.anything()
+    );
+    expect(upsertMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'pro' }),
+      expect.anything()
+    );
+  });
+
   it('returns 200 for unknown event type without crashing', async () => {
     mockStripeInstance.webhooks.constructEvent.mockReturnValue({
       type: 'payment_intent.created',

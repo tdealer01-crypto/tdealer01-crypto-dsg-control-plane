@@ -4,8 +4,9 @@
  * The canonical, full billing webhook is `app/api/billing/webhook/route.ts`
  * (signature-verified, idempotent via billing_events, fulfills/revokes
  * organizations.plan, handles invoices + referrals). This route is a narrow
- * legacy "release gate" sync that only writes `release_gate_entitlements`
- * with a hardcoded plan='pro'.
+ * legacy "release gate" sync that only writes `release_gate_entitlements`.
+ * `plan` is derived from subscription metadata / price id (see
+ * resolvePlanKey below), not hardcoded.
  *
  * Keep the Stripe Dashboard webhook endpoint pointed at /api/billing/webhook.
  * This route is kept (not deleted) so any still-configured endpoint keeps
@@ -16,6 +17,58 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+
+/**
+ * Minimal, local price-id -> plan-key map. Deliberately duplicated (not
+ * imported) from app/api/billing/webhook/route.ts / lib/billing/pricing-catalog.ts
+ * — this route is frozen/deprecated (see file header) and must not gain a
+ * dependency on the canonical handler's internals.
+ */
+function getLocalPriceMap(): Map<string, string> {
+  const map = new Map<string, string>();
+  const entries: Array<[string, string]> = [
+    ['STRIPE_PRICE_PRO_MONTHLY', 'pro'],
+    ['STRIPE_PRICE_PRO_YEARLY', 'pro'],
+    ['STRIPE_PRICE_BUSINESS_MONTHLY', 'business'],
+    ['STRIPE_PRICE_BUSINESS_YEARLY', 'business'],
+    ['STRIPE_PRICE_ENTERPRISE_MONTHLY', 'enterprise'],
+    ['STRIPE_PRICE_ENTERPRISE_YEARLY', 'enterprise'],
+    ['STRIPE_PRICE_PRO', 'pro'],
+    ['STRIPE_PRICE_BUSINESS', 'business'],
+    ['STRIPE_PRICE_ENTERPRISE', 'enterprise'],
+  ];
+
+  for (const [envName, planKey] of entries) {
+    const value = process.env[envName];
+    if (value) {
+      map.set(value, planKey);
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Resolve the real plan for a subscription instead of hardcoding 'pro'.
+ * Priority: subscription.metadata.plan_key -> price id -> STRIPE_PRICE_*
+ * env mapping -> 'unknown'. Never silently defaults to 'pro'.
+ */
+function resolvePlanKey(subscription: Stripe.Subscription): string {
+  const metadataPlanKey = (subscription.metadata as Record<string, string> | undefined)?.plan_key;
+  if (metadataPlanKey) {
+    return metadataPlanKey;
+  }
+
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    const derived = getLocalPriceMap().get(priceId);
+    if (derived) {
+      return derived;
+    }
+  }
+
+  return 'unknown';
+}
 
 async function upsertSubscriptionEntitlement(stripe: Stripe, subscription: Stripe.Subscription) {
   const supabase = getSupabaseAdmin() as any;
@@ -40,7 +93,7 @@ async function upsertSubscriptionEntitlement(stripe: Stripe, subscription: Strip
       email,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscription.id,
-      plan: 'pro',
+      plan: resolvePlanKey(subscription),
       status: subscription.status,
       current_period_end: (subscription as any).current_period_end
         ? new Date((subscription as any).current_period_end * 1000).toISOString()
