@@ -139,7 +139,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'failed_to_resolve_workspace_agents' }, { status: 500, headers });
   }
 
-  const agentIds = (activeAgents ?? []).map((agent: { id: string }) => String(agent.id));
+  const agentIds = (Array.isArray(activeAgents) ? activeAgents : [])
+    .map((agent: unknown) => {
+      if (!agent || typeof agent !== 'object' || !('id' in agent)) return '';
+      return String((agent as { id: unknown }).id).trim();
+    })
+    .filter((agentId: string) => agentId.length > 0);
+
   if (agentIds.length === 0) {
     return NextResponse.json({ error: 'no_active_agents_in_organization' }, { status: 409, headers });
   }
