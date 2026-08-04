@@ -46,7 +46,7 @@ jobs:
     name: Verify Evidence, Approve Once, Deploy Exact Commit
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    environment: production
+    environment: "Production – dsg-qubo-api"
     steps:
       - name: Validate dispatch inputs
         shell: bash
