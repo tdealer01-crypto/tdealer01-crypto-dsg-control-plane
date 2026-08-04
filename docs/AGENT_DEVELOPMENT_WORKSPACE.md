@@ -1,16 +1,16 @@
 # DSG Agent Development Workspace
 
-Status: development implementation
+Status: development implementation on Draft PR #1054
 
 ## Purpose
 
-This workspace lets an authenticated DSG agent complete an approved development plan without asking for approval before every file edit, development migration, preview deployment, test, browser action, or development-tool creation.
+This workspace lets authenticated DSG agents finish an approved development plan without asking for approval before every repository edit, development migration, preview deployment, test, browser action, or development-tool registration.
 
-Development and preview are open within the recorded plan. Production is never globally unlocked. Each final production action requires a separate, short-lived promotion tied to complete evidence, an exact scope, and an exact commit SHA.
+Development and preview actions are authorized from the recorded plan and renewable agent lease. Production remains globally locked. A production deployment is possible only through the manual `Promoted Production Deployment` workflow after current evidence passes for the exact current `main` commit.
 
-## Active development resources
+## Verified development resources
 
-| Resource | Verified development target |
+| Resource | Development target |
 |---|---|
 | Workspace key | `dsg-agent-dev` |
 | Owner organization | `472a1980-f79b-4b09-9e79-e0a670da73f6` |
@@ -18,27 +18,29 @@ Development and preview are open within the recorded plan. Production is never g
 | Branch pattern | `agent-workspace/*` |
 | Supabase | `zeyguilldygozufpgxms` (`dsg-control-plane-dev`) |
 | Vercel project | `prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW` |
-| Vercel environment | Preview only |
+| Vercel development target | Preview |
 | Stripe account | `acct_1Tft0OAZNzhgTUPV` |
-| Stripe mode | Test only |
+| Stripe development mode | Test |
 | Production flags | Permanently locked |
+
+The IDs above were verified against the connected services. Repository deployments still require the corresponding GitHub secrets and Vercel project access.
 
 ## Membership
 
-The workspace is organization-scoped. An agent must:
+An agent must:
 
 - exist in `agents`
-- be active
+- have `status=active`
 - belong to the workspace owner organization
 - hold an explicit active lease for its exact agent ID
 
-Wildcard leases are not accepted. The historical wildcard lease remains only as a revoked record because audit references are append-only.
+Wildcard leases are rejected by the authorization RPC. A historical wildcard lease remains only as a revoked record because audit references are append-only.
 
-When an organization administrator bootstraps the workspace without `agentIds`, the API grants leases to all currently active agents in that administrator's organization. Agents from other organizations are excluded.
+When an organization administrator bootstraps the workspace without supplying `agentIds`, the API grants leases to all currently active agents in that administrator's organization. Agents from other organizations are excluded.
 
-## No repeated setup
+## One-time bootstrap, no repeated setup
 
-Agents load their current plan hash, lease, resource references, and tool registry directly from the workspace context endpoint. A plan update changes the database-owned plan hash; the next context load returns the new value automatically.
+Agents load the current plan hash, lease, resource references, and tool registry from the context endpoint:
 
 ```http
 POST /api/agent-workspaces/context
@@ -55,27 +57,31 @@ The bootstrap script requires only:
 
 - `DSG_AGENT_ID`
 - `DSG_AGENT_API_KEY`
-- application URL when it is not `http://localhost:3000`
+- `APP_URL` or `NEXT_PUBLIC_APP_URL` when the service is not at `http://localhost:3000`
 
-It no longer requires a copied service-role key, Supabase URL, or manually maintained plan hash.
+```bash
+node scripts/bootstrap-agent-workspace.mjs
+```
+
+It does not require the service-role key, a copied Supabase URL, or a manually maintained plan hash. Updating the approved plan intentionally changes the database-owned hash, and the next context load returns the new value.
 
 ## Authorization model
 
-The authorization decision checks:
+Each action checks:
 
-1. active, explicitly organization-scoped workspace
+1. workspace is active and explicitly scoped to an organization
 2. authenticated agent organization equals workspace organization
 3. submitted plan hash equals the database-authoritative hash
 4. exact active agent lease contains the requested scope and environment
-5. repository mutations identify a branch matching `agent-workspace/*`
-6. production scope is used only with the production environment
-7. production action supplies an approved, unexpired promotion and the exact promoted commit SHA
+5. repository mutation identifies a branch matching `agent-workspace/*`
+6. development and production scope namespaces do not overlap
+7. production authorization supplies an approved, unexpired promotion and the exact promoted commit SHA
 
-Every allow and denial is appended to `agent_workspace_audit_events`. Workspace, lease, and promotion records referenced by audit events use restrictive foreign keys and cannot be deleted from under the evidence.
+Every allow and denial is appended to `agent_workspace_audit_events`. Referenced workspace, lease, and promotion records cannot be deleted from under the audit evidence.
 
 ## Autonomous development scopes
 
-These scopes require no repeated human approval inside development or preview:
+No repeated human approval is required for these scopes inside development or preview:
 
 - `repo.read`
 - `repo.branch.*`
@@ -95,18 +101,19 @@ These scopes require no repeated human approval inside development or preview:
 - `evidence.*`
 - `workspace.*`
 
-`repo.write`, `repo.commit`, `repo.branch.*`, and `repo.pr.*` require `evidence.branch` or `evidence.head_branch` to match `agent-workspace/*`. Direct development writes to `main` are denied.
+`repo.write`, `repo.commit`, `repo.branch.*`, and `repo.pr.*` require `evidence.branch` or `evidence.head_branch` matching `agent-workspace/*`. A direct development write targeting `main` is denied.
 
-## Promotion-only scopes
+GitHub merge enforcement is not claimed by this subsystem. Merging uses the repository's PR checks and branch rules. Production is safe from an accidental merge because the normal deployment workflow no longer contains a production deployment job.
 
-Only these scopes may appear in a production promotion:
+## Production scopes
 
-- `repo.merge.main`
+The database recognizes these external production mutation namespaces:
+
 - `deploy.production`
 - `database.production.*`
 - `stripe.live.*`
 
-Development scopes do not overlap these namespaces. For example, `database.dev.write` cannot match `database.production.write`.
+Only `deploy.production` currently has a complete trusted release workflow. Production database and Stripe live mutation scopes remain blocked until dedicated workflows with equivalent evidence, rollback, and finalization controls are implemented.
 
 ## Authorize a development action
 
@@ -156,44 +163,94 @@ Content-Type: application/json
 }
 ```
 
-Only secret names or vault references may be stored. Raw secret values, private keys, bearer tokens, and Stripe keys are rejected. New tools always start with `production_enabled=false`.
+Tool registration is development/preview only. Tool scopes must match the development scope set. Raw secrets, credentials embedded in URLs, URL query strings/fragments, private keys, bearer tokens, and Stripe keys are rejected. New tools always start with `production_enabled=false`.
 
-## Production promotion
+## Request a production deployment
 
-Required check keys, each set to `true`, `pass`, `passed`, `success`, or `green`:
+An organization administrator creates a pending request after the candidate commit is the current `main` head:
 
-- `typecheck`
-- `unit_tests`
-- `build`
-- `preview_smoke`
-- `migration_check`
-- `security_check`
-- `rollback_ready`
+```http
+POST /api/agent-workspaces/promotions
+Content-Type: application/json
 
-A promotion also requires:
-
-- exact commit SHA
-- exact promotion-only scopes
-- 64-character evidence hash
-- future expiry
-- approver identity and approval timestamp
-
-The database trigger blocks approval when any item is missing. The production authorization request must send both `promotionId` and the same `commitSha`:
-
-```json
 {
-  "agentId": "<agent-id>",
-  "workspaceKey": "dsg-agent-dev",
-  "scope": "deploy.production",
-  "environment": "production",
-  "planHash": "<plan-hash-from-context>",
-  "promotionId": "<approved-promotion-id>",
-  "commitSha": "<exact-promoted-commit>",
-  "action": "deploy"
+  "action": "request",
+  "workspaceId": "<workspace-id>",
+  "commitSha": "<exact-current-main-sha>",
+  "requestedScopes": ["deploy.production"],
+  "reason": "release candidate passed PR checks"
 }
 ```
 
-A commit mismatch is denied even when the promotion is otherwise valid. The production flags remain locked before, during, and after the action; approval applies only to the recorded scope and commit until expiry.
+The API cannot approve a promotion. It creates `status=pending` only. An organization administrator may reject a pending or approved request.
+
+## Trusted production workflow
+
+Run `.github/workflows/promoted-production-deploy.yml` manually with:
+
+- `promotion_id`
+- `commit_sha`
+- `workspace_key=dsg-agent-dev`
+
+The workflow runs in the GitHub `production` environment and performs, in order:
+
+1. validate inputs
+2. verify checked-out commit equals the exact current `main` head
+3. install under Node 24
+4. check release-script syntax
+5. run TypeScript typecheck
+6. run the full unit suite
+7. run migration tests
+8. run `npm audit --audit-level=high`
+9. run the application production build
+10. deploy the exact commit to Vercel Preview
+11. verify Preview `/api/health`
+12. locate and health-check the current READY production deployment as the rollback target
+13. write trusted CI evidence and approve the exact pending promotion
+14. request `deploy.production` authorization for the exact commit
+15. build and deploy the prebuilt exact commit to Vercel Production
+16. verify Production `/api/health`
+17. mark the promotion `executed`, making it terminal and single-use
+
+If production health fails, the workflow invokes Vercel rollback to the previously verified deployment, rejects the promotion, and fails the run. If an earlier step fails, the pending or approved promotion is rejected.
+
+The Vercel CLI is pinned in workflow code instead of using `@latest`.
+
+## Required GitHub configuration
+
+Existing deployment secrets:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Agent workspace release secrets:
+
+- `AGENT_WORKSPACE_SUPABASE_URL` — URL of `zeyguilldygozufpgxms`
+- `AGENT_WORKSPACE_SUPABASE_SERVICE_ROLE_KEY` — service-role key for the workspace control database
+- `AGENT_WORKSPACE_RELEASE_AGENT_ID` — exact active agent ID in the owner organization with `deploy.production` lease scope
+
+Secret values must be stored in GitHub Secrets or the protected `production` environment, never in repository files or audit payloads.
+
+The `production` GitHub environment should require final reviewer approval. This is one release-level approval, not repeated permission for development actions.
+
+## Promotion evidence boundary
+
+A database trigger rejects approval unless all checks are `pass` and the row includes:
+
+- trusted approval mode
+- matching promotion ID
+- matching commit SHA
+- GitHub Actions run URL
+- Preview URL
+- rollback URL
+- 64-character evidence hash
+- future expiry
+- CI-formatted approver identity and timestamp
+
+The production authorization RPC independently compares the supplied commit with the promoted commit. A mismatch is denied even when every other field is valid.
 
 ## Emergency freeze
 
@@ -213,4 +270,26 @@ Resume only after inspecting append-only audit events and issuing new explicit l
 
 ## Truth boundary
 
-This implementation proves that the development authorization model and database enforcement exist in the verified development project. It does not by itself prove that every external connector is configured, every preview deployment succeeds, or production is ready. Those claims require current CI, preview, integration, security, rollback, and promotion evidence for the exact release commit.
+Verified in the development project:
+
+- owner-organization and exact-agent lease enforcement
+- plan hash enforcement
+- development allow and production deny paths
+- branch-pattern enforcement
+- development/production scope separation
+- incomplete evidence rejection
+- manual approver rejection
+- trusted-CI provenance acceptance
+- exact commit binding
+- promotion state transitions
+- permanent production-lock flags
+
+Not yet claimed:
+
+- current PR CI is green
+- GitHub production secrets are configured
+- Vercel Preview for this exact PR is healthy
+- production deployment workflow has been executed successfully
+- production database or Stripe live mutation workflow exists
+
+Those statuses require current external evidence for the exact commit.
