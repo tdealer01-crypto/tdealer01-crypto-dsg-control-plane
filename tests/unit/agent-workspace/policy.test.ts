@@ -36,11 +36,11 @@ describe('agent workspace policy', () => {
     expect(scopeMatches(DEFAULT_DEVELOPMENT_SCOPES, 'browser.production.fill')).toBe(false);
   });
 
-  it('reserves main merge and live mutations for promotion scopes', () => {
-    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'repo.merge.main')).toBe(true);
+  it('reserves external live mutations for promotion scopes', () => {
     expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'deploy.production')).toBe(true);
     expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'database.production.migrate')).toBe(true);
     expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'stripe.live.price.update')).toBe(true);
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'repo.merge.main')).toBe(false);
     expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'repo.write')).toBe(false);
     expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'database.dev.write')).toBe(false);
   });
