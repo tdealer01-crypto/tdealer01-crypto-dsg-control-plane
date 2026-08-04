@@ -1,6 +1,7 @@
 -- Initial agent workspace control-plane schema.
--- This migration records the development-only workspace that was created in
--- the Supabase development project before the autonomy v2 hardening migration.
+-- Schema only: development workspace data must be created explicitly through
+-- the admin API or a development-only operational action. Applying migrations
+-- to production must not create an active autonomous workspace.
 
 create extension if not exists pgcrypto;
 
@@ -65,59 +66,3 @@ alter table public.agent_workspaces enable row level security;
 alter table public.agent_workspace_capabilities enable row level security;
 alter table public.agent_workspace_runs enable row level security;
 alter table public.agent_workspace_promotions enable row level security;
-
-insert into public.agent_workspaces (
-  workspace_key,
-  name,
-  environment,
-  status,
-  repo_full_name,
-  git_branch_pattern,
-  vercel_team_slug,
-  vercel_project_slug,
-  stripe_mode,
-  production_access,
-  updated_at
-) values (
-  'dsg-agent-dev',
-  'DSG Agent Development Workspace',
-  'development',
-  'active',
-  'tdealer01-crypto/tdealer01-crypto-dsg-control-plane',
-  'agent-workspace/*',
-  'tdealer01-crypto-dsg-control-plane',
-  'tdealer01-crypto-dsg-control-plane',
-  'test',
-  false,
-  now()
-)
-on conflict (workspace_key) do update set
-  status = 'active',
-  stripe_mode = 'test',
-  production_access = false,
-  updated_at = now();
-
-insert into public.agent_workspace_capabilities (
-  workspace_id,
-  capability,
-  scope,
-  access_level,
-  requires_runtime_approval,
-  enabled
-)
-select w.id, capability, scope, access_level, requires_runtime_approval, true
-from public.agent_workspaces w
-cross join (values
-  ('repository', 'agent-workspace/*', 'admin', false),
-  ('supabase', 'zeyguilldygozufpgxms', 'admin', false),
-  ('vercel', 'preview', 'admin', false),
-  ('stripe', 'test_mode', 'admin', false),
-  ('tooling', 'workspace-local', 'admin', false),
-  ('production', 'production', 'read', true),
-  ('promotion', 'staging-or-production', 'write', true)
-) as seed(capability, scope, access_level, requires_runtime_approval)
-where w.workspace_key = 'dsg-agent-dev'
-on conflict (workspace_id, capability, scope) do update set
-  access_level = excluded.access_level,
-  requires_runtime_approval = excluded.requires_runtime_approval,
-  enabled = true;
