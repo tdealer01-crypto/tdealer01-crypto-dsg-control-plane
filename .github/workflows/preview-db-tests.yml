@@ -2,22 +2,25 @@ name: Preview Database Tests
 
 on:
   pull_request:
-    types: [opened, synchronize]
-  workflow_run:
-    workflows: ["Preview Database Create"]
-    types: [completed]
+    types: [opened, synchronize, reopened]
 
 concurrency:
-  group: preview-db-tests-${{ github.head_ref }}
+  group: preview-db-tests-${{ github.event.pull_request.number }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   test-preview-db:
-    name: Run tests against preview database
+    name: Run tests against configured isolated preview database
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
+    timeout-minutes: 20
+    env:
+      PREVIEW_DB_URL: ${{ secrets.PREVIEW_DB_URL }}
+      PREVIEW_DB_ANON_KEY: ${{ secrets.PREVIEW_DB_ANON_KEY }}
+      PREVIEW_DB_SERVICE_ROLE_KEY: ${{ secrets.PREVIEW_DB_SERVICE_ROLE_KEY }}
 
     steps:
       - name: Checkout code
@@ -26,79 +29,72 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
+          cache: npm
 
-      - name: Generate preview database credentials
-        id: preview_db
+      - name: Detect isolated preview database
+        id: config
+        shell: bash
         run: |
-          PR_NUM=${{ github.event.pull_request.number }}
-          PROJECT_ID="preview-pr-${PR_NUM}"
-          echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
-          echo "url=https://${PROJECT_ID}.supabase.co" >> $GITHUB_OUTPUT
+          if [[ -z "$PREVIEW_DB_URL" || -z "$PREVIEW_DB_ANON_KEY" || -z "$PREVIEW_DB_SERVICE_ROLE_KEY" ]]; then
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            echo "Preview database tests are skipped because no complete isolated preview database configuration is present."
+            echo "Development and production databases will not be used as fallbacks."
+            exit 0
+          fi
 
-      - name: Wait for preview database to be ready
-        timeout-minutes: 10
+          [[ "$PREVIEW_DB_URL" =~ ^https://[a-z0-9-]+\.supabase\.co/?$ ]] || {
+            echo "Configured PREVIEW_DB_URL is invalid."
+            exit 1
+          }
+
+          echo "run_tests=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify preview database is reachable
+        if: steps.config.outputs.run_tests == 'true'
+        shell: bash
         run: |
-          # Wait for preview database project to be created and ready
-          # This polls the Supabase API to check project status
-
-          RETRIES=0
-          MAX_RETRIES=60
-          INTERVAL=10
-
-          PROJECT_NAME="preview-pr-${{ github.event.pull_request.number }}"
-
-          while [[ $RETRIES -lt $MAX_RETRIES ]]; do
-            RESPONSE=$(curl -s -w "\n%{http_code}" \
-              -H "Authorization: Bearer ${{ secrets.SUPABASE_ACCESS_TOKEN }}" \
-              "https://api.supabase.com/v1/projects")
-
-            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | sed '$d')
-
-            if [[ "$HTTP_CODE" == "200" ]]; then
-              STATUS=$(echo "$BODY" | jq -r ".[] | select(.name == \"${PROJECT_NAME}\") | .status" 2>/dev/null)
-
-              if [[ "$STATUS" == "ACTIVE" ]]; then
-                echo "✅ Preview database is ready"
-                exit 0
-              elif [[ -n "$STATUS" ]]; then
-                echo "Database status: $STATUS (waiting...)"
-              fi
-            fi
-
-            RETRIES=$((RETRIES + 1))
-            if [[ $RETRIES -lt $MAX_RETRIES ]]; then
-              echo "Waiting for preview database... ($RETRIES/$MAX_RETRIES)"
-              sleep $INTERVAL
-            fi
-          done
-
-          echo "⚠️ Preview database not ready after 10 minutes"
-          echo "Tests will proceed with caution or be skipped"
+          STATUS=$(curl --silent --show-error --output /tmp/preview-db-health.json \
+            --write-out "%{http_code}" --max-time 20 \
+            -H "apikey: $PREVIEW_DB_ANON_KEY" \
+            -H "Authorization: Bearer $PREVIEW_DB_ANON_KEY" \
+            "${PREVIEW_DB_URL%/}/rest/v1/")
+          test "$STATUS" = "200" || {
+            echo "Preview database health check failed with HTTP $STATUS."
+            exit 1
+          }
 
       - name: Install dependencies
-        run: npm ci
+        if: steps.config.outputs.run_tests == 'true'
+        run: npm ci --ignore-scripts
 
       - name: Run integration tests against preview database
+        if: steps.config.outputs.run_tests == 'true'
         env:
-          SUPABASE_URL: ${{ steps.preview_db.outputs.url }}
-          SUPABASE_ANON_KEY: ${{ secrets.PREVIEW_DB_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PREVIEW_DB_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ env.PREVIEW_DB_URL }}
+          SUPABASE_ANON_KEY: ${{ env.PREVIEW_DB_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.PREVIEW_DB_SERVICE_ROLE_KEY }}
           RUN_PREVIEW_DB_TESTS: 'true'
         run: |
-          echo "Running integration tests against preview database..."
-          npm run test:integration -- tests/integration/api/ --reporter=verbose 2>&1 | tee test-results.log || true
+          npm run test:integration -- tests/integration/api/ --reporter=verbose 2>&1 | tee test-results.log
 
       - name: Run deterministic gate tests
+        if: steps.config.outputs.run_tests == 'true'
         env:
-          SUPABASE_URL: ${{ steps.preview_db.outputs.url }}
-          SUPABASE_ANON_KEY: ${{ secrets.PREVIEW_DB_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PREVIEW_DB_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ env.PREVIEW_DB_URL }}
+          SUPABASE_ANON_KEY: ${{ env.PREVIEW_DB_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.PREVIEW_DB_SERVICE_ROLE_KEY }}
           RUN_PREVIEW_DB_TESTS: 'true'
         run: |
-          echo "Running deterministic gate tests against preview database..."
-          npm run test -- tests/proofs/ --reporter=verbose 2>&1 | tee -a test-results.log || true
+          npm run test -- tests/proofs/ --reporter=verbose 2>&1 | tee -a test-results.log
+
+      - name: Record skipped result
+        if: steps.config.outputs.run_tests != 'true'
+        run: |
+          cat > test-results.log <<'EOF'
+          SKIPPED: No explicitly configured isolated preview database.
+          No development or production database was used as a fallback.
+          EOF
 
       - name: Upload test results
         if: always()
@@ -107,46 +103,29 @@ jobs:
           name: preview-db-test-results-${{ github.event.pull_request.number }}
           path: test-results.log
           retention-days: 30
+          if-no-files-found: error
 
       - name: Comment test results on PR
         if: always()
         uses: actions/github-script@v7
+        env:
+          RUN_TESTS: ${{ steps.config.outputs.run_tests }}
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const prNumber = context.issue.number;
+            const ran = process.env.RUN_TESTS === 'true';
+            const testResults = fs.existsSync('test-results.log')
+              ? fs.readFileSync('test-results.log', 'utf8')
+              : 'Test results unavailable';
 
-            let testResults = '⚠️ Test results unavailable';
-            try {
-              testResults = fs.readFileSync('test-results.log', 'utf8');
-            } catch (e) {
-              console.log('Could not read test results');
-            }
+            const body = ran
+              ? `## Preview Database Tests\n\nStatus: **EXECUTED**\n\n<details><summary>Test output</summary>\n\n\`\`\`\n${testResults.substring(0, 3000)}\n\`\`\`\n</details>`
+              : `## Preview Database Tests\n\nStatus: **SKIPPED — NOT CONFIGURED**\n\nNo isolated preview database was configured. The workflow did not fall back to development or production data.`;
 
-            // Extract summary from results
-            const passed = (testResults.match(/✓/g) || []).length;
-            const failed = (testResults.match(/✗/g) || []).length;
-
-            let comment = `## 🧪 Preview Database Tests\n\n`;
-            comment += `**Passed:** ${passed}\n`;
-            comment += `**Failed:** ${failed}\n`;
-
-            if (failed === 0) {
-              comment += `**Status:** ✅ All tests passed\n`;
-            } else {
-              comment += `**Status:** ❌ Some tests failed\n`;
-            }
-
-            comment += `\n<details>\n<summary>Test Output</summary>\n\n\`\`\`\n`;
-            comment += testResults.substring(0, 3000); // Limit output length
-            if (testResults.length > 3000) {
-              comment += `\n... (truncated, see artifacts for full results)\n`;
-            }
-            comment += `\`\`\`\n</details>\n`;
-
-            github.rest.issues.createComment({
-              issue_number: prNumber,
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
+              body,
             });
