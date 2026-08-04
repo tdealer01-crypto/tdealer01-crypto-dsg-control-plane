@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_DEVELOPMENT_SCOPES,
   DEFAULT_LEASE_SCOPES,
+  PRODUCTION_PROMOTION_SCOPES,
   canonicalJson,
   containsSecretMaterial,
   hashWorkspacePlan,
@@ -24,6 +26,23 @@ describe('agent workspace policy', () => {
     expect(scopeMatches(granted, 'production.deploy')).toBe(false);
     expect(scopeMatches(granted, 'repository.write')).toBe(false);
     expect(scopeMatches(DEFAULT_LEASE_SCOPES, 'deploy.production')).toBe(true);
+  });
+
+  it('keeps development database and browser scopes separate from production', () => {
+    expect(scopeMatches(DEFAULT_DEVELOPMENT_SCOPES, 'database.dev.write')).toBe(true);
+    expect(scopeMatches(DEFAULT_DEVELOPMENT_SCOPES, 'database.preview.migrate')).toBe(true);
+    expect(scopeMatches(DEFAULT_DEVELOPMENT_SCOPES, 'database.production.write')).toBe(false);
+    expect(scopeMatches(DEFAULT_DEVELOPMENT_SCOPES, 'browser.preview.fill')).toBe(true);
+    expect(scopeMatches(DEFAULT_DEVELOPMENT_SCOPES, 'browser.production.fill')).toBe(false);
+  });
+
+  it('reserves main merge and live mutations for promotion scopes', () => {
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'repo.merge.main')).toBe(true);
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'deploy.production')).toBe(true);
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'database.production.migrate')).toBe(true);
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'stripe.live.price.update')).toBe(true);
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'repo.write')).toBe(false);
+    expect(scopeMatches(PRODUCTION_PROMOTION_SCOPES, 'database.dev.write')).toBe(false);
   });
 
   it('limits autonomous operation to development and preview', () => {
