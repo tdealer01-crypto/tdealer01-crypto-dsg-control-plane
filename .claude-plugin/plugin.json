@@ -3,7 +3,7 @@
   "name": "dsg-governance",
   "displayName": "DSG Governance Control Plane",
   "description": "AI Governance Control Plane that makes every Agent decision provable, auditable, and replayable — Deterministic Safety Gate (Z3/SMT), Cryptographic Proof, Replayable Governance, Compliance Evidence Pack, and Hermes Controlled Executor. Built for VC, CTO, Enterprise Buyer, and Governance Team standards.",
-  "version": "1.0.0",  // Dynamic via git commit SHA for continuous updates; bumped by release workflow for milestones
+  "version": "1.0.0",
   "author": "DSG Team",
   "license": "MIT",
   "homepage": "https://tdealer01-crypto-dsg-control-plane.vercel.app",
