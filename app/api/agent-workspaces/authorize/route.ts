@@ -35,11 +35,19 @@ export async function POST(request: Request) {
   const action = String(body.action || 'execute').trim();
   const target = body.target == null ? null : String(body.target).trim();
   const evidence = body.evidence && typeof body.evidence === 'object' ? body.evidence : {};
-  const promotionId = body.promotionId ? String(body.promotionId) : null;
+  const promotionId = body.promotionId ? String(body.promotionId).trim() : null;
+  const commitSha = body.commitSha ? String(body.commitSha).trim() : null;
 
   if (!scope || !environment || !planHash) {
     return NextResponse.json(
       { ok: false, error: 'scope, environment and planHash are required' },
+      { status: 400, headers },
+    );
+  }
+
+  if (environment === 'production' && (!commitSha || !/^[a-f0-9]{7,64}$/i.test(commitSha))) {
+    return NextResponse.json(
+      { ok: false, error: 'production_authorization_requires_valid_commit_sha' },
       { status: 400, headers },
     );
   }
@@ -52,7 +60,7 @@ export async function POST(request: Request) {
   }
 
   const inputHash = createHash('sha256')
-    .update(JSON.stringify({ workspaceKey, scope, environment, action, target, evidence }))
+    .update(JSON.stringify({ workspaceKey, scope, environment, action, target, evidence, commitSha }))
     .digest('hex');
 
   const admin = getSupabaseAdmin() as any;
@@ -68,6 +76,7 @@ export async function POST(request: Request) {
     p_input_hash: inputHash,
     p_evidence: evidence,
     p_promotion_id: promotionId,
+    p_commit_sha: commitSha,
   });
 
   if (error) {
@@ -85,6 +94,7 @@ export async function POST(request: Request) {
       leaseId: decision?.lease_id ?? null,
       planHash: decision?.effective_plan_hash ?? null,
       productionLocked: decision?.production_locked ?? true,
+      commitSha,
       inputHash,
     },
     { status: allowed ? 200 : 403, headers },
