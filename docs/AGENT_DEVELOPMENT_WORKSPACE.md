@@ -13,6 +13,7 @@ The workspace does not grant unrestricted production access. Production mutation
 | Resource | Verified development target |
 |---|---|
 | Workspace key | `dsg-agent-dev` |
+| Owner organization | `472a1980-f79b-4b09-9e79-e0a670da73f6` |
 | Repository | `tdealer01-crypto/tdealer01-crypto-dsg-control-plane` |
 | Branch pattern | `agent-workspace/*` |
 | Supabase | `zeyguilldygozufpgxms` (`dsg-control-plane-dev`) |
@@ -24,16 +25,30 @@ The workspace does not grant unrestricted production access. Production mutation
 
 Read the current `plan_hash` from `GET /api/agent-workspaces`. Do not hardcode a historical hash in an agent because updating the approved plan intentionally changes the hash.
 
+## Membership
+
+The workspace is organization-scoped. An agent must satisfy all of the following:
+
+- exist in the normal `agents` table
+- be active
+- belong to the workspace owner organization
+- hold an explicit active lease for its own agent ID
+
+Wildcard leases are not accepted by the authorization RPC. A historical wildcard lease is retained as `revoked` only because audit references are append-only.
+
+When an organization administrator bootstraps the workspace without supplying `agentIds`, the API grants leases to all currently active agents in that administrator's organization. It does not include agents from other organizations.
+
 ## Authorization model
 
-The authorization decision has four layers:
+The authorization decision has five layers:
 
-1. The workspace must be active.
-2. The submitted `planHash` must equal the database-authoritative workspace plan hash.
-3. An active lease must include the requested scope and environment.
-4. A production action additionally requires an approved, unexpired promotion bound to an exact commit, evidence hash, and requested scope.
+1. The workspace must be active and explicitly scoped to an organization.
+2. The authenticated agent organization must equal the workspace organization.
+3. The submitted `planHash` must equal the database-authoritative workspace plan hash.
+4. An active lease for the exact agent ID must include the requested scope and environment.
+5. A production action additionally requires an approved, unexpired promotion bound to an exact commit, complete evidence, and requested scope.
 
-Every decision, including a denial, is inserted into the append-only `agent_workspace_audit_events` table.
+Every decision, including a denial, is inserted into the append-only `agent_workspace_audit_events` table. Workspace, lease, and promotion records referenced by audit events use restrictive foreign keys and cannot be deleted out from under the evidence.
 
 ## Default autonomous scopes
 
@@ -129,19 +144,29 @@ New tools are always created with `production_enabled=false`.
 
 ## Production promotion
 
-An organization administrator requests a promotion after the development branch has produced verifiable evidence.
+An organization administrator requests a promotion only after the development branch has produced verifiable evidence.
 
-Required fields:
+The following check keys are mandatory and each must be `true`, `pass`, `passed`, `success`, or `green`:
+
+- `typecheck`
+- `unit_tests`
+- `build`
+- `preview_smoke`
+- `migration_check`
+- `security_check`
+- `rollback_ready`
+
+A promotion also requires:
 
 - exact commit SHA
 - exact requested production scopes
-- structured checks, such as typecheck, tests, build, migration verification, preview smoke test, security checks, and rollback evidence
 - evidence hash
-- expiry
+- future expiry
+- approver identity and approval timestamp
 
-The promotion starts as `pending`. An organization administrator must approve it. The agent then supplies that promotion ID to the normal authorization endpoint for the exact production scope.
+The database trigger prevents a promotion entering `approved` when any required evidence is absent or failed. The promotion starts as `pending`; an organization administrator approves it only after the evidence gate passes. The agent then supplies that promotion ID to the normal authorization endpoint for the exact production scope.
 
-A promotion does not globally unlock production and does not disable `production_locked`. It authorizes only the recorded commit and scopes until expiry.
+A promotion does not globally unlock production and does not disable `production_locked`. It authorizes only the recorded scopes until expiry. The release executor must also verify that its checked-out commit equals the promotion commit before performing the external production mutation.
 
 ## Emergency freeze
 
@@ -159,7 +184,7 @@ where workspace_id = (
 );
 ```
 
-Resume only after inspecting the append-only audit events and issuing a new lease.
+Resume only after inspecting the append-only audit events and issuing new explicit agent leases.
 
 ## Truth boundary
 
