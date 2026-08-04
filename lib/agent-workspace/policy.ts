@@ -6,20 +6,27 @@ export const DEVELOPMENT_ENVIRONMENTS = ['development', 'preview'] as const;
 export type AgentWorkspaceEnvironment = (typeof DEVELOPMENT_ENVIRONMENTS)[number] | 'production';
 
 export const DEFAULT_DEVELOPMENT_SCOPES = [
-  'repo.*',
-  'database.*',
+  'repo.read',
+  'repo.branch.*',
+  'repo.write',
+  'repo.commit',
+  'repo.pr.*',
+  'database.dev.*',
+  'database.preview.*',
   'deploy.preview.*',
   'stripe.test.*',
   'tool.*',
   'test.*',
   'build.*',
-  'browser.*',
+  'browser.local.*',
+  'browser.preview.*',
   'logs.read',
   'evidence.*',
   'workspace.*',
 ] as const;
 
 export const PRODUCTION_PROMOTION_SCOPES = [
+  'repo.merge.main',
   'deploy.production',
   'database.production.*',
   'stripe.live.*',
@@ -33,14 +40,15 @@ export const DEFAULT_LEASE_SCOPES = [
 export const DEFAULT_WORKSPACE_PLAN = {
   goal: 'Complete DSG ONE development without repeated per-action approval inside isolated development and preview environments.',
   allowed: [
-    'inspect and modify repository branches',
+    'inspect the repository, modify agent-workspace branches, commit changes and open pull requests',
     'create tests, scripts, MCP tools and development utilities',
-    'read and mutate the development Supabase project including migrations',
+    'read and mutate the development or preview database including migrations',
     'create and inspect Vercel preview deployments',
     'read and mutate Stripe test-mode resources',
-    'run builds, tests, security checks and evidence collection',
+    'run local or preview browser workflows, builds, tests, security checks and evidence collection',
   ],
   excluded: [
+    'merging main without an approved promotion',
     'production deployment without an approved promotion',
     'production database mutation without an approved promotion',
     'Stripe live-mode write without an approved promotion',
