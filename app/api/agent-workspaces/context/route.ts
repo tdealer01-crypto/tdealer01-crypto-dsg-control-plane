@@ -3,6 +3,7 @@ import { requireWorkspaceAgent } from '../../../../lib/agent-workspace/auth';
 import { AGENT_WORKSPACE_KEY } from '../../../../lib/agent-workspace/policy';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+import { readJsonBody } from '../../../../lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +18,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'rate_limit_exceeded' }, { status: 429, headers });
   }
 
-  const body = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody<Record<string, unknown>>(request, { maxBytes: 4_000 });
+  if (!parsed.ok || !parsed.value) {
+    return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status, headers });
+  }
+  const body = parsed.value;
   const agentAccess = await requireWorkspaceAgent(request, body.agentId);
   if (!agentAccess.ok) {
     return NextResponse.json({ ok: false, error: agentAccess.error }, { status: agentAccess.status, headers });
   }
 
   const workspaceKey = String(body.workspaceKey || AGENT_WORKSPACE_KEY).trim();
+  if (!/^[a-z0-9][a-z0-9_-]{2,63}$/i.test(workspaceKey)) {
+    return NextResponse.json({ ok: false, error: 'invalid_workspace_key' }, { status: 400, headers });
+  }
+
   const admin = getSupabaseAdmin() as any;
   const { data: workspace, error: workspaceError } = await admin
     .from('agent_workspaces')
