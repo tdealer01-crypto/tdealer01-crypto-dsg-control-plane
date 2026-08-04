@@ -1,4 +1,4 @@
-name: Build & Deploy to Vercel
+name: Build & Deploy Preview to Vercel
 
 on:
   push:
@@ -10,7 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
+  VERCEL_CLI_VERSION: 58.0.0
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -24,29 +29,21 @@ jobs:
   validate:
     name: Validate & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
+          node-version: '24'
+          cache: npm
       - name: Install dependencies
-        run: npm ci
-
+        run: npm ci --ignore-scripts
       - name: Type check
         run: npm run typecheck
-        continue-on-error: false
-
-      - name: Run tests
+      - name: Run unit tests
         run: npm run test:unit
-        continue-on-error: false
-
       - name: Lint
         run: npm run lint
         continue-on-error: true
@@ -55,26 +52,21 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: validate
-    timeout-minutes: 15
-
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
+          node-version: '24'
+          cache: npm
       - name: Install dependencies
-        run: npm ci
-
+        run: npm ci --ignore-scripts
       - name: Build
         run: npm run build
-
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: next-build
+          name: next-build-${{ github.sha }}
           path: .next
           retention-days: 1
 
@@ -83,104 +75,55 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
-    timeout-minutes: 10
-
+    timeout-minutes: 15
+    environment: preview
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Deploy to Vercel (Preview)
-        id: preview
+          node-version: '24'
+          cache: npm
+      - name: Verify Vercel credentials
+        shell: bash
         run: |
-          PREVIEW_URL=$(vercel deploy \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --scope=${{ secrets.VERCEL_ORG_ID }} \
-            --project-id=${{ secrets.VERCEL_PROJECT_ID }} \
-            --meta=branch=${{ github.head_ref }} \
-            --meta=commit=${{ github.sha }})
-          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
-
+          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
+          test -n "$VERCEL_ORG_ID" || { echo "Missing VERCEL_ORG_ID"; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo "Missing VERCEL_PROJECT_ID"; exit 1; }
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Pull preview configuration
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - name: Deploy preview
+        id: preview
+        shell: bash
+        run: |
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
+            --meta=branch="${{ github.head_ref }}" \
+            --meta=commit="${{ github.event.pull_request.head.sha }}")
+          test -n "$PREVIEW_URL"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+      - name: Smoke preview health
+        run: curl --fail --retry 5 --retry-delay 5 "${{ steps.preview.outputs.preview_url }}/api/health"
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 Preview deployment ready!\n\n[Visit Preview](${{ steps.preview.outputs.preview_url }})`
+              body: `Preview verified: ${{ steps.preview.outputs.preview_url }}\n\nProduction was not deployed. Production requires the separate Promoted Production Deployment workflow.`
             })
 
-  deploy-production:
-    name: Deploy Production
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Deploy to Vercel (Production)
-        id: production
-        run: |
-          PROD_URL=$(vercel deploy \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --scope=${{ secrets.VERCEL_ORG_ID }} \
-            --project-id=${{ secrets.VERCEL_PROJECT_ID }} \
-            --prod \
-            --meta=commit=${{ github.sha }} \
-            --meta=author=${{ github.actor }})
-          echo "production_url=$PROD_URL" >> $GITHUB_OUTPUT
-
-      - name: Verify production deployment
-        run: |
-          echo "✅ Production deployed to: ${{ steps.production.outputs.production_url }}"
-          curl -f "${{ steps.production.outputs.production_url }}/api/health" || exit 1
-
-      - name: Create deployment notification
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `refs/tags/deployed-${new Date().toISOString().split('T')[0]}`,
-              sha: context.sha
-            }).catch(() => {})
-
   notify-failure:
-    name: Notify Deployment Failure
+    name: Report Validation or Preview Failure
     runs-on: ubuntu-latest
-    needs: [validate, build, deploy-production]
-    if: failure() && github.ref == 'refs/heads/main'
-
+    needs: [validate, build, deploy-preview]
+    if: always() && contains(needs.*.result, 'failure')
     steps:
-      - name: Send Telegram notification
-        if: vars.TELEGRAM_BOT_TOKEN != ''
+      - name: Record failure
         run: |
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\",
-              \"text\": \"❌ Production deployment failed for commit ${{ github.sha }}\n\nBranch: ${{ github.ref }}\nAuthor: ${{ github.actor }}\n\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-            }"
-        continue-on-error: true
+          echo "Validation, build, or preview deployment failed."
+          echo "Production deployment is not part of this workflow."
+          exit 1
