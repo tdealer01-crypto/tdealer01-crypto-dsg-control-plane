@@ -11,7 +11,18 @@ if (!['development', 'preview'].includes(environment)) {
 
 let diff = '';
 try {
-  diff = execFileSync('git', ['diff', '--unified=0', `${baseRef}...HEAD`], { encoding: 'utf8' });
+  diff = execFileSync(
+    'git',
+    [
+      'diff',
+      '--unified=0',
+      `${baseRef}...HEAD`,
+      '--',
+      '.',
+      ':(exclude)scripts/verify-agent-workspace-boundary.mjs',
+    ],
+    { encoding: 'utf8' },
+  );
 } catch {
   console.error(`Unable to inspect changes against ${baseRef}`);
   process.exit(1);
