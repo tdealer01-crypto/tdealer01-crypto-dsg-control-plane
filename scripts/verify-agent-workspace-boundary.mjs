@@ -86,9 +86,19 @@ if (!/vercel[^\n]*--prod/i.test(promotedWorkflow)) {
   failures.push('promoted production workflow contains no explicit production deployment command');
 }
 
+let vercelConfiguration;
+try {
+  vercelConfiguration = JSON.parse(readFileSync('vercel.json', 'utf8'));
+} catch {
+  failures.push('vercel.json must be valid JSON');
+}
+if (vercelConfiguration?.git?.deploymentEnabled?.['*'] !== false) {
+  failures.push('vercel.json must disable native Git deployments with git.deploymentEnabled["*"]=false');
+}
+
 if (failures.length > 0) {
   for (const failure of failures) console.error(`Blocked: ${failure}`);
   process.exit(1);
 }
 
-console.log('Agent workspace boundary PASS: production stays locked except for the verified manual promotion workflow.');
+console.log('Agent workspace boundary PASS: native Git deployments are disabled and production stays behind the verified manual promotion workflow.');
