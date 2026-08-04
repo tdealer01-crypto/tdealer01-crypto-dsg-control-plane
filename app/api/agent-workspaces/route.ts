@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const { data, error } = await admin
     .from('agent_workspaces')
     .select('id, workspace_key, name, environment, status, repo_full_name, git_branch_pattern, vercel_team_slug, vercel_project_slug, vercel_project_id, supabase_project_ref, stripe_mode, production_access, production_locked, allowed_environments, plan_hash, auto_authorize_plan_actions, allow_tool_creation, updated_at')
-    .or(`org_id.eq.${access.orgId},org_id.eq.system,org_id.is.null`)
+    .eq('org_id', access.orgId)
     .order('updated_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: 'failed_to_read_agent_workspaces' }, { status: 500 });
@@ -32,10 +32,9 @@ export async function POST(request: Request) {
   const workspaceKey = String(body.workspaceKey || AGENT_WORKSPACE_KEY).trim();
   const name = String(body.name || 'DSG Agent Development Workspace').trim();
   const plan = body.plan && typeof body.plan === 'object' ? body.plan : DEFAULT_WORKSPACE_PLAN;
-  const explicitAgentIds = Array.isArray(body.agentIds)
+  const requestedAgentIds = Array.isArray(body.agentIds)
     ? body.agentIds.map((value: unknown) => String(value).trim()).filter(Boolean)
-    : ['*'];
-  const agentIds = explicitAgentIds.length > 0 ? explicitAgentIds : ['*'];
+    : [];
   const leaseDays = Math.min(Math.max(Number(body.leaseDays || 30), 1), 365);
   const autoRenewDays = Math.min(Math.max(Number(body.autoRenewDays || 365), leaseDays), 730);
 
@@ -44,13 +43,36 @@ export async function POST(request: Request) {
   }
 
   const admin = getSupabaseAdmin() as any;
+  let agentQuery = admin
+    .from('agents')
+    .select('id')
+    .eq('org_id', access.orgId)
+    .eq('status', 'active');
+
+  if (requestedAgentIds.length > 0) {
+    agentQuery = agentQuery.in('id', requestedAgentIds);
+  }
+
+  const { data: activeAgents, error: agentsError } = await agentQuery;
+  if (agentsError) {
+    return NextResponse.json({ error: 'failed_to_resolve_workspace_agents' }, { status: 500 });
+  }
+
+  const agentIds = (activeAgents ?? []).map((agent: { id: string }) => String(agent.id));
+  if (agentIds.length === 0) {
+    return NextResponse.json({ error: 'no_active_agents_in_organization' }, { status: 409 });
+  }
+  if (requestedAgentIds.length > 0 && agentIds.length !== new Set(requestedAgentIds).size) {
+    return NextResponse.json({ error: 'one_or_more_agents_are_not_active_in_organization' }, { status: 403 });
+  }
+
   const now = new Date();
   const { data: workspace, error: workspaceError } = await admin
     .from('agent_workspaces')
     .upsert({
       workspace_key: workspaceKey,
       name,
-      org_id: body.systemWide === false ? access.orgId : 'system',
+      org_id: access.orgId,
       environment: 'development',
       status: 'active',
       repo_full_name: String(body.repoFullName || 'tdealer01-crypto/tdealer01-crypto-dsg-control-plane'),
@@ -87,7 +109,7 @@ export async function POST(request: Request) {
       .upsert({
         workspace_id: workspace.id,
         agent_id: agentId,
-        org_id: body.systemWide === false ? access.orgId : 'system',
+        org_id: access.orgId,
         scopes,
         environments: ['development', 'preview', 'production'],
         status: 'active',
@@ -96,7 +118,7 @@ export async function POST(request: Request) {
         auto_renew: true,
         auto_renew_until: new Date(now.getTime() + autoRenewDays * 86_400_000).toISOString(),
         issued_by: access.userId,
-        metadata: { planHash: workspace.plan_hash, userApproved: true },
+        metadata: { planHash: workspace.plan_hash, userApproved: true, membership: 'explicit_org_agent' },
         updated_at: now.toISOString(),
       }, { onConflict: 'workspace_id,agent_id' });
 
