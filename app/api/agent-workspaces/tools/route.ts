@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     p_input_hash: null,
     p_evidence: { kind, scope, risk, sourcePath, secretRefs },
     p_promotion_id: null,
+    p_commit_sha: null,
   });
 
   const decision = Array.isArray(authorization) ? authorization[0] : authorization;
