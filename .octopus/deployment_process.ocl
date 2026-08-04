@@ -5,7 +5,10 @@ step "hello-world-using-powershell" {
         action_type = "Octopus.Script"
         is_required = true
         properties = {
-            Octopus.Action.RunOnServer = "true"
+            Octopus.Action.EnabledFeatures = "Octopus.Features.JsonConfigurationVariables,Octopus.Features.ConfigurationVariables,Octopus.Features.ConfigurationTransforms,Octopus.Features.SubstituteInFiles,Octopus.Features.SelectPowerShellEditionForWindows"
+            Octopus.Action.Package.AutomaticallyRunConfigurationTransformationFiles = "True"
+            Octopus.Action.Package.AutomaticallyUpdateAppSettingsAndConnectionStrings = "True"
+            Octopus.Action.PowerShell.Edition = "Desktop"
             Octopus.Action.Script.ScriptBody = <<-EOT
                 Write-Host 'Hello world, using PowerShell'
                 
@@ -16,5 +19,6 @@ step "hello-world-using-powershell" {
             Octopus.Action.Script.ScriptSource = "Inline"
             Octopus.Action.Script.Syntax = "PowerShell"
         }
+        worker_pool = "hosted-windows"
     }
 }
