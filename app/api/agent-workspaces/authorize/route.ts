@@ -3,11 +3,13 @@ import { NextResponse } from 'next/server';
 import { requireWorkspaceAgent } from '../../../../lib/agent-workspace/auth';
 import {
   AGENT_WORKSPACE_KEY,
+  canonicalJson,
   containsSecretMaterial,
   normalizeWorkspaceEnvironment,
 } from '../../../../lib/agent-workspace/policy';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
+import { maxObjectDepth, readJsonBody } from '../../../../lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +24,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'rate_limit_exceeded' }, { status: 429, headers });
   }
 
-  const body = await request.json().catch(() => ({}));
+  const parsed = await readJsonBody<Record<string, unknown>>(request, { maxBytes: 32_000 });
+  if (!parsed.ok || !parsed.value) {
+    return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status, headers });
+  }
+  const body = parsed.value;
   const agentAccess = await requireWorkspaceAgent(request, body.agentId);
   if (!agentAccess.ok) {
     return NextResponse.json({ ok: false, error: agentAccess.error }, { status: agentAccess.status, headers });
@@ -34,20 +40,40 @@ export async function POST(request: Request) {
   const planHash = String(body.planHash || '').trim();
   const action = String(body.action || 'execute').trim();
   const target = body.target == null ? null : String(body.target).trim();
-  const evidence = body.evidence && typeof body.evidence === 'object' ? body.evidence : {};
+  const evidence = body.evidence
+    && typeof body.evidence === 'object'
+    && !Array.isArray(body.evidence)
+    ? body.evidence as Record<string, unknown>
+    : {};
   const promotionId = body.promotionId ? String(body.promotionId).trim() : null;
   const commitSha = body.commitSha ? String(body.commitSha).trim() : null;
 
-  if (!scope || !environment || !planHash) {
+  if (!/^[a-z0-9][a-z0-9_-]{2,63}$/i.test(workspaceKey)
+    || !scope
+    || scope.length > 160
+    || !environment
+    || !/^[a-f0-9]{64}$/i.test(planHash)
+    || !action
+    || action.length > 160
+    || (target?.length ?? 0) > 2_000
+    || !maxObjectDepth(evidence, 10)) {
     return NextResponse.json(
-      { ok: false, error: 'scope, environment and planHash are required' },
+      { ok: false, error: 'invalid_or_oversized_workspace_authorization_request' },
       { status: 400, headers },
     );
   }
 
-  if (environment === 'production' && (!commitSha || !/^[a-f0-9]{7,64}$/i.test(commitSha))) {
+  if (environment === 'production') {
+    if (!promotionId || !/^[a-f0-9-]{36}$/i.test(promotionId)
+      || !commitSha || !/^[a-f0-9]{7,64}$/i.test(commitSha)) {
+      return NextResponse.json(
+        { ok: false, error: 'production_authorization_requires_promotion_id_and_valid_commit_sha' },
+        { status: 400, headers },
+      );
+    }
+  } else if (promotionId || commitSha) {
     return NextResponse.json(
-      { ok: false, error: 'production_authorization_requires_valid_commit_sha' },
+      { ok: false, error: 'promotion_fields_are_production_only' },
       { status: 400, headers },
     );
   }
@@ -60,7 +86,7 @@ export async function POST(request: Request) {
   }
 
   const inputHash = createHash('sha256')
-    .update(JSON.stringify({ workspaceKey, scope, environment, action, target, evidence, commitSha }))
+    .update(canonicalJson({ workspaceKey, scope, environment, action, target, evidence, commitSha }))
     .digest('hex');
 
   const admin = getSupabaseAdmin() as any;
