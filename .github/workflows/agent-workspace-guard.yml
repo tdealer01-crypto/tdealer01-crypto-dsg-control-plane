@@ -1,0 +1,35 @@
+name: Agent Workspace Guard
+
+on:
+  push:
+    branches:
+      - 'agent-workspace/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify-development-boundary:
+    runs-on: ubuntu-latest
+    env:
+      AGENT_WORKSPACE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify no production unlock or secret material was introduced
+        run: node scripts/verify-agent-workspace-boundary.mjs origin/main
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Agent workspace policy tests
+        run: npx vitest run tests/unit/agent-workspace/policy.test.ts
+      - name: Unit suite
+        run: npm run test:unit
