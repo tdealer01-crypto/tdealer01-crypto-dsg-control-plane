@@ -312,8 +312,10 @@ describe('/api/spine/execute', () => {
       payload: expect.objectContaining({ agentId: 'agt_1', action: 'scan' }),
     });
     expect(issueSpineIntent).not.toHaveBeenCalled();
-    // Quota counter incremented on success
-    expect(incrementQuota).toHaveBeenCalledWith('org_1', 'agt_1');
+    // Quota counter is incremented atomically inside the runtime_commit_execution
+    // RPC (invoked by executeSpineIntent), not by this route — an app-layer
+    // incrementQuota() call here would double-count the execution.
+    expect(incrementQuota).not.toHaveBeenCalled();
   });
 
   it('issues intent and retries execute when no pending runtime intent exists', async () => {
