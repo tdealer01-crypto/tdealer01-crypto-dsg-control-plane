@@ -1,4 +1,4 @@
-name: DSG Deploy & Governance
+name: DSG Validation & Governance
 
 on:
   push:
@@ -6,14 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  NODE_VERSION: '22.x'
+  NODE_VERSION: '24.x'
 
 permissions:
   contents: read
 
 jobs:
-  # 1. Type Check & Lint
   typecheck:
     name: TypeCheck & Lint
     runs-on: ubuntu-latest
@@ -22,12 +25,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          cache: npm
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm run lint
 
-  # 2. Unit Tests
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -36,11 +38,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          cache: npm
+      - run: npm ci --ignore-scripts
       - run: npm run test:unit
 
-  # 3. Integration Tests
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -49,11 +50,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          cache: npm
+      - run: npm ci --ignore-scripts
       - run: npm run test:integration
 
-  # 3b. Agent OS Deterministic Tests
   test-agent-os:
     name: Agent OS Deterministic
     runs-on: ubuntu-latest
@@ -62,11 +62,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          cache: npm
+      - run: npm ci --ignore-scripts
       - run: npm run test -- tests/integration/agent-os-deterministic.test.ts
 
-  # 4. Z3 Proof Generation & Verification
   z3-gate:
     name: Z3 Gate Verification
     runs-on: ubuntu-latest
@@ -76,16 +75,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          cache: npm
+      - run: npm ci --ignore-scripts
       - name: Run Z3 Gate
-        run: |
-          npx tsx scripts/z3-gate.ts
+        run: npx tsx scripts/z3-gate.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
-  # 5. Security Audit
   security:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -94,48 +91,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          cache: npm
+      - run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
 
-  # 6. Post-Deploy Verification
-  # Production deploy is performed by the Vercel Git integration on push to main,
-  # so this workflow no longer shells out to the Vercel CLI. This job verifies the
-  # live production deploy once the gates pass. z3-gate-verify.ts retries the
-  # health/status probes so a just-finished deploy has time to become reachable.
-  verify-deploy:
-    name: Verify Production Deploy
+  governance-summary:
+    name: Governance Summary
     runs-on: ubuntu-latest
     needs: [typecheck, test-unit, test-integration, test-agent-os, z3-gate, security]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
-      - name: Verify production deploy (health + status + deterministic gate)
-        run: |
-          npx tsx scripts/z3-gate-verify.ts --env=production
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-
-  # 8. Notify
-  notify:
-    name: Notify
-    runs-on: ubuntu-latest
-    needs: [verify-deploy]
     if: always()
     steps:
-      - name: Notify Telegram
-        if: env.TELEGRAM_BOT_TOKEN != ''
+      - name: Require every validation job to pass
+        shell: bash
         run: |
-          STATUS="${{ needs.verify-deploy.result }}"
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="🚀 DSG Deploy: $STATUS - https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          test "${{ needs.typecheck.result }}" = "success"
+          test "${{ needs.test-unit.result }}" = "success"
+          test "${{ needs.test-integration.result }}" = "success"
+          test "${{ needs.test-agent-os.result }}" = "success"
+          test "${{ needs.z3-gate.result }}" = "success"
+          test "${{ needs.security.result }}" = "success"
+          echo "Validation complete. No production deployment occurs in this workflow."
