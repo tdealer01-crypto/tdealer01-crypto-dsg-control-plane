@@ -25,6 +25,7 @@ permissions:
   contents: read
 
 env:
+  VERCEL_CLI_VERSION: 58.0.0
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -109,13 +110,13 @@ jobs:
         run: npm run build
 
       - name: Pull Vercel preview configuration
-        run: npx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
       - name: Deploy exact commit to preview
         id: preview
         shell: bash
         run: |
-          PREVIEW_URL=$(npx vercel@latest deploy --yes --token="$VERCEL_TOKEN" \
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
             --meta=promotion_id="$PROMOTION_ID" \
             --meta=commit="$COMMIT_SHA" \
             --meta=release_stage=promotion-preview)
@@ -146,16 +147,16 @@ jobs:
         run: node scripts/approve-agent-workspace-promotion.mjs
 
       - name: Pull Vercel production configuration
-        run: npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build production artifact
-        run: npx vercel@latest build --prod --token="$VERCEL_TOKEN"
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy approved exact commit to production
         id: production
         shell: bash
         run: |
-          PRODUCTION_URL=$(npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
+          PRODUCTION_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
             --meta=promotion_id="$PROMOTION_ID" \
             --meta=evidence_hash="${{ steps.approve.outputs.evidence_hash }}" \
             --meta=commit="$COMMIT_SHA")
@@ -163,15 +164,39 @@ jobs:
           echo "production_url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"
 
       - name: Verify production health
+        id: production_health
+        continue-on-error: true
         run: curl --fail --retry 10 --retry-delay 6 "${{ steps.production.outputs.production_url }}/api/health"
 
+      - name: Roll back unhealthy production deployment
+        if: steps.production_health.outcome == 'failure'
+        shell: bash
+        run: |
+          npx --yes "vercel@$VERCEL_CLI_VERSION" rollback "${{ steps.rollback.outputs.rollback_url }}" \
+            --token="$VERCEL_TOKEN"
+          npx --yes "vercel@$VERCEL_CLI_VERSION" rollback status \
+            --token="$VERCEL_TOKEN" --timeout=120s
+          curl --fail --retry 10 --retry-delay 6 "${{ steps.rollback.outputs.rollback_url }}/api/health"
+
+      - name: Reject promotion after health-triggered rollback
+        if: steps.production_health.outcome == 'failure'
+        env:
+          PROMOTION_OUTCOME: rejected
+          FAILURE_REASON: Production health failed and traffic was rolled back to the verified previous deployment
+        run: node scripts/finalize-agent-workspace-promotion.mjs
+
+      - name: Fail workflow after rollback
+        if: steps.production_health.outcome == 'failure'
+        run: exit 1
+
       - name: Consume promotion after successful deployment
+        if: steps.production_health.outcome == 'success'
         env:
           PROMOTION_OUTCOME: executed
           PRODUCTION_URL: ${{ steps.production.outputs.production_url }}
         run: node scripts/finalize-agent-workspace-promotion.mjs
 
-      - name: Reject pending or approved promotion when workflow fails
+      - name: Reject pending or approved promotion when workflow fails early
         if: failure()
         continue-on-error: true
         env:
