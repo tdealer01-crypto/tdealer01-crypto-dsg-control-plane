@@ -6,6 +6,7 @@ import { join } from 'node:path';
 const baseRef = process.argv[2] || process.env.AGENT_WORKSPACE_BASE_REF || 'origin/main';
 const environment = process.env.AGENT_WORKSPACE_ENV || 'development';
 const promotedWorkflowPath = '.github/workflows/promoted-production-deploy.yml';
+const productionEnvironmentName = 'Production – dsg-qubo-api';
 
 if (!['development', 'preview'].includes(environment)) {
   console.error(`Agent workspace must run in development or preview, received: ${environment}`);
@@ -64,7 +65,7 @@ for (const fileName of readdirSync(workflowDirectory)) {
 const promotedWorkflow = readFileSync(promotedWorkflowPath, 'utf8');
 const requiredPromotionControls = [
   'workflow_dispatch:',
-  'environment: production',
+  `environment: "${productionEnvironmentName}"`,
   'Require exact current main commit',
   'npm audit --audit-level=high',
   'approve-agent-workspace-promotion.mjs',
@@ -101,4 +102,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('Agent workspace boundary PASS: native Git deployments are disabled and production stays behind the verified manual promotion workflow.');
+console.log(`Agent workspace boundary PASS: native Git deployments are disabled and production stays behind the verified manual promotion workflow in ${productionEnvironmentName}.`);
