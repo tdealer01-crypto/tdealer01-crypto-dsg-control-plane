@@ -2,157 +2,75 @@ name: Preview Database Create
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 concurrency:
-  group: preview-db-${{ github.head_ref }}
-  cancel-in-progress: false
+  group: preview-db-config-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  create-preview-db:
-    name: Create isolated Supabase preview database
+  validate-preview-db:
+    name: Validate isolated Supabase preview database configuration
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
+    timeout-minutes: 5
+    env:
+      PREVIEW_DB_URL: ${{ secrets.PREVIEW_DB_URL }}
+      PREVIEW_DB_ANON_KEY: ${{ secrets.PREVIEW_DB_ANON_KEY }}
+      PREVIEW_DB_SERVICE_ROLE_KEY: ${{ secrets.PREVIEW_DB_SERVICE_ROLE_KEY }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Generate preview database name
-        id: db_name
+      - name: Detect preview database configuration
+        id: config
+        shell: bash
         run: |
-          # Generate deterministic name from PR number
-          PR_NUM=${{ github.event.pull_request.number }}
-          PREVIEW_DB_NAME="preview-pr-${PR_NUM}"
-          echo "name=${PREVIEW_DB_NAME}" >> $GITHUB_OUTPUT
-          echo "Preview database: ${PREVIEW_DB_NAME}"
-
-      - name: Check if preview DB already exists
-        id: check_db
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          # Check if preview project already created for this PR
-          # Using Supabase management API
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-            "https://api.supabase.com/v1/projects?search=preview-pr-${{ github.event.pull_request.number }}")
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          if [[ "$HTTP_CODE" == "200" ]]; then
-            # Check if any projects match
-            COUNT=$(echo "$BODY" | jq -r '.[] | select(.name | contains("preview-pr-${{ github.event.pull_request.number }}")) | .id' | wc -l)
-            if [[ "$COUNT" -gt 0 ]]; then
-              echo "exists=true" >> $GITHUB_OUTPUT
-              echo "Preview database already exists for this PR"
-            else
-              echo "exists=false" >> $GITHUB_OUTPUT
-              echo "Preview database does not exist, will create"
-            fi
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Unable to check existing DBs (HTTP $HTTP_CODE), will proceed to create"
+          if [[ -z "$PREVIEW_DB_URL" || -z "$PREVIEW_DB_ANON_KEY" || -z "$PREVIEW_DB_SERVICE_ROLE_KEY" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "No complete isolated preview database configuration is present."
+            echo "No Supabase project will be created automatically and no shared database will be used."
+            exit 0
           fi
 
-      - name: Create preview Supabase project
-        if: steps.check_db.outputs.exists != 'true'
-        id: create_project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_ORG_ID: ${{ secrets.SUPABASE_ORG_ID }}
+          [[ "$PREVIEW_DB_URL" =~ ^https://[a-z0-9-]+\.supabase\.co/?$ ]] || {
+            echo "Configured PREVIEW_DB_URL is not a valid Supabase project URL."
+            exit 1
+          }
+
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify configured preview database is reachable
+        if: steps.config.outputs.configured == 'true'
+        shell: bash
         run: |
-          # Create new Supabase preview project via API
-          # Note: Actual project creation may require enterprise API access
-          # For now, use provisioning script approach
+          STATUS=$(curl --silent --show-error --output /tmp/preview-db-health.json \
+            --write-out "%{http_code}" --max-time 20 \
+            -H "apikey: $PREVIEW_DB_ANON_KEY" \
+            -H "Authorization: Bearer $PREVIEW_DB_ANON_KEY" \
+            "${PREVIEW_DB_URL%/}/rest/v1/")
+          test "$STATUS" = "200" || {
+            echo "Configured preview database health check failed with HTTP $STATUS."
+            exit 1
+          }
+          echo "Isolated preview database is configured and reachable."
 
-          echo "Creating Supabase preview project for PR #${{ github.event.pull_request.number }}"
-
-          PROJECT_NAME="preview-pr-${{ github.event.pull_request.number }}"
-          REGION="ap-southeast-2"  # Same region as production for consistency
-
-          RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"name\": \"${PROJECT_NAME}\",
-              \"organization_id\": \"${SUPABASE_ORG_ID}\",
-              \"db_pass\": \"$(openssl rand -base64 32)\",
-              \"region\": \"${REGION}\"
-            }" \
-            "https://api.supabase.com/v1/projects")
-
-          PROJECT_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
-
-          if [[ -z "$PROJECT_ID" ]]; then
-            echo "Warning: Could not create project via API. This may require manual setup."
-            echo "Response: $RESPONSE"
-            echo "project_id=manual-setup-required" >> $GITHUB_OUTPUT
-          else
-            echo "project_id=${PROJECT_ID}" >> $GITHUB_OUTPUT
-            echo "Created preview project: ${PROJECT_ID}"
-          fi
-
-      - name: Apply migrations to preview database
-        if: steps.check_db.outputs.exists != 'true' && steps.create_project.outputs.project_id != 'manual-setup-required'
-        env:
-          SUPABASE_PROJECT_ID: ${{ steps.create_project.outputs.project_id }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          echo "Applying migrations to preview database..."
-
-          # Install Supabase CLI if needed
-          if ! command -v supabase &> /dev/null; then
-            npm install -g supabase
-          fi
-
-          # Note: Migration application requires DB connection
-          # This would typically be done via API or local migration push
-          echo "Ready to apply migrations (requires connected database)"
-
-      - name: Post preview database URL to PR
-        if: steps.check_db.outputs.exists != 'true' || steps.create_project.outputs.project_id != ''
+      - name: Report preview database configuration
         uses: actions/github-script@v7
+        env:
+          CONFIGURED: ${{ steps.config.outputs.configured }}
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prNumber = context.issue.number;
-            const dbName = '${{ steps.db_name.outputs.name }}';
-            const projectId = '${{ steps.create_project.outputs.project_id }}';
+            const configured = process.env.CONFIGURED === 'true';
+            const body = configured
+              ? '## Preview Database\n\nStatus: **READY**\n\nAn explicitly configured isolated Supabase preview database is reachable. No project was auto-created.'
+              : '## Preview Database\n\nStatus: **SKIPPED — NOT CONFIGURED**\n\nNo isolated preview database secrets are configured. The workflow did not create a Supabase project and did not use development or production data.';
 
-            let comment = `## 🗄️ Preview Database Created\n\n`;
-            comment += `**Database Name:** \`${dbName}\`\n`;
-
-            if (projectId && projectId !== 'manual-setup-required') {
-              comment += `**Project ID:** \`${projectId}\`\n`;
-              comment += `**Status:** ✅ Provisioned and ready for testing\n`;
-            } else {
-              comment += `**Status:** ⚠️ Manual setup required\n`;
-              comment += `Please create a Supabase preview project named \`${dbName}\` and set the environment variables.\n`;
-            }
-
-            comment += `\n### Environment Variables for Tests\n`;
-            comment += `\`\`\`bash\n`;
-            comment += `export SUPABASE_URL="https://${projectId}.supabase.co"  # Once provisioned\n`;
-            comment += `export SUPABASE_ANON_KEY="..."  # From preview project settings\n`;
-            comment += `export SUPABASE_SERVICE_ROLE_KEY="..."  # From preview project settings\n`;
-            comment += `\`\`\`\n`;
-
-            comment += `\n### Next Steps\n`;
-            comment += `- Migrations will be automatically applied when database is ready\n`;
-            comment += `- Load tests can target this isolated database\n`;
-            comment += `- Database will be automatically cleaned up when PR is merged/closed\n`;
-
-            github.rest.issues.createComment({
-              issue_number: prNumber,
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
+              body,
             });

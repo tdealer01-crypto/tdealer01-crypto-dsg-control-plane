@@ -27,8 +27,8 @@ permissions:
 env:
   VERCEL_CLI_VERSION: 58.0.0
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_ORG_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
+  VERCEL_PROJECT_ID: prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -46,7 +46,7 @@ jobs:
     name: Verify Evidence, Approve Once, Deploy Exact Commit
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    environment: production
+    environment: "Production – dsg-qubo-api"
     steps:
       - name: Validate dispatch inputs
         shell: bash
@@ -74,16 +74,18 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Verify required secrets
+      - name: Verify required release configuration
         shell: bash
         run: |
           for name in \
-            VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID \
+            VERCEL_TOKEN \
             NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY \
             AGENT_WORKSPACE_SUPABASE_URL AGENT_WORKSPACE_SUPABASE_SERVICE_ROLE_KEY \
             AGENT_WORKSPACE_RELEASE_AGENT_ID; do
-            test -n "${!name}" || { echo "Missing required secret: $name"; exit 1; }
+            test -n "${!name}" || { echo "Missing required configuration: $name"; exit 1; }
           done
+          test "$VERCEL_ORG_ID" = "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Unexpected Vercel team"; exit 1; }
+          test "$VERCEL_PROJECT_ID" = "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Unexpected Vercel project"; exit 1; }
 
       - name: Install dependencies
         run: npm ci --ignore-scripts

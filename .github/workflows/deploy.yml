@@ -16,8 +16,8 @@ permissions:
 
 env:
   VERCEL_CLI_VERSION: 58.0.0
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_ORG_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
+  VERCEL_PROJECT_ID: prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -87,8 +87,8 @@ jobs:
         shell: bash
         run: |
           test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
-          test -n "$VERCEL_ORG_ID" || { echo "Missing VERCEL_ORG_ID"; exit 1; }
-          test -n "$VERCEL_PROJECT_ID" || { echo "Missing VERCEL_PROJECT_ID"; exit 1; }
+          test "$VERCEL_ORG_ID" = "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Unexpected Vercel team"; exit 1; }
+          test "$VERCEL_PROJECT_ID" = "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Unexpected Vercel project"; exit 1; }
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Pull preview configuration
