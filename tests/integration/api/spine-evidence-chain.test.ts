@@ -240,16 +240,18 @@ describe("/api/spine/execute — full evidence chain on success", () => {
     );
   });
 
-  it("increments quota on successful 200 response", async () => {
+  it("does not call the app-layer incrementQuota on successful 200 response", async () => {
     const POST = await loadPost();
     const req = makeSpineRequest({ agent_id: "agt_evidence_test" });
     const res = await POST(req as never);
 
     expect(res.status).toBe(200);
-    // Allow for the fire-and-forget pattern (void promise)
-    // incrementQuota is called but not awaited, so we wait a tick
+    // usage_counters is incremented atomically inside the runtime_commit_execution
+    // RPC (via executeSpineIntent()); the route no longer makes a redundant
+    // app-layer incrementQuota() call, which previously double-counted every
+    // execution against the org's quota.
     await new Promise((r) => setTimeout(r, 10));
-    expect(incrementQuotaMock).toHaveBeenCalledWith("org_evidence_test", "agt_evidence_test");
+    expect(incrementQuotaMock).not.toHaveBeenCalled();
   });
 
   it("response includes stop_reason field from execution state machine", async () => {

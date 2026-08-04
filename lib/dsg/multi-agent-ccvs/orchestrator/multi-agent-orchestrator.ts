@@ -2,6 +2,7 @@
 import { AGENTS, getAgentsByGroup, getExecutionOrder } from '../agents';
 import { AgentContext, AgentResult, EvidenceItem } from '../agents/base-agent';
 import { DiffusionAgent } from '../agents/diffusion-agent-base';
+import { createGHPRAutomation } from '../github/ghpr-automation';
 
 export interface OrchestratorConfig {
   maxTotalIterations: number;
@@ -12,6 +13,7 @@ export interface OrchestratorConfig {
   githubToken: string;
   repoOwner: string;
   repoName: string;
+  baseBranch: string;
 }
 
 export interface OrchestrationResult {
@@ -58,6 +60,7 @@ export class MultiAgentOrchestrator {
       githubToken: process.env.GITHUB_TOKEN || '',
       repoOwner: process.env.GITHUB_REPO_OWNER || 'tdealer01-crypto',
       repoName: process.env.GITHUB_REPO_NAME || 'tdealer01-crypto-dsg-control-plane',
+      baseBranch: process.env.GITHUB_BASE_BRANCH || 'main',
       ...config
     };
   }
@@ -121,13 +124,28 @@ export class MultiAgentOrchestrator {
       }
     }
 
-    // Create PR if enabled and all levels converged
-    let prUrl: string | undefined;
     const allConverged = levels.every(l => l.converged);
-    
+
+    // Metrics are computed before the PR attempt because a real PR body needs
+    // them, and prCreated must reflect whether a PR actually got created below.
+    const metrics: OrchestrationMetrics = {
+      totalDurationMs: Date.now() - startTime,
+      totalAgents: AGENTS.length,
+      successfulAgents: levels.flatMap(l => l.agents).filter(a => a.success).length,
+      failedAgents: levels.flatMap(l => l.agents).filter(a => !a.success).length,
+      totalEvidence: allEvidence.length,
+      prCreated: false,
+      simulationMode: context.simulationMode
+    };
+
+    // Create PR if enabled and all levels converged. createPullRequest only
+    // returns a URL when a real GitHub API call actually created the PR; it
+    // returns undefined (never a fabricated URL) whenever it could not.
+    let prUrl: string | undefined;
     if (this.config.createPR && allConverged && !context.simulationMode) {
-      prUrl = await this.createPullRequest(context, goal, levels, allEvidence);
+      prUrl = await this.createPullRequest(context, goal, levels, allEvidence, metrics);
     }
+    metrics.prCreated = !!prUrl;
 
     return {
       success: allConverged,
@@ -136,15 +154,7 @@ export class MultiAgentOrchestrator {
       prUrl,
       levels,
       totalEvidence: allEvidence,
-      metrics: {
-        totalDurationMs: Date.now() - startTime,
-        totalAgents: AGENTS.length,
-        successfulAgents: levels.flatMap(l => l.agents).filter(a => a.success).length,
-        failedAgents: levels.flatMap(l => l.agents).filter(a => !a.success).length,
-        totalEvidence: allEvidence.length,
-        prCreated: !!prUrl,
-        simulationMode: context.simulationMode
-      },
+      metrics,
       diffusionTrace: this.diffusionTrace
     };
   }
@@ -258,20 +268,63 @@ export class MultiAgentOrchestrator {
     return scores.reduce((a, b) => a + b, 0) / scores.length;
   }
 
+  /**
+   * Creates a real GitHub PR via GHPRAutomation (branch + evidence commit +
+   * PR + labels + status check, all through Octokit). Returns the real PR
+   * URL only when the GitHub API call actually succeeded.
+   *
+   * Never returns a fabricated URL. If no real GitHub token is configured,
+   * or the real API call fails, this returns undefined and logs a clear
+   * warning/error instead — per the repo's truth-boundary policy, an
+   * unbacked `github.com/.../pull/...` URL must never be returned.
+   */
   private async createPullRequest(
-    context: AgentContext, 
-    goal: string, 
-    levels: LevelResult[], 
-    evidence: EvidenceItem[]
-  ): Promise<string> {
+    context: AgentContext,
+    goal: string,
+    levels: LevelResult[],
+    evidence: EvidenceItem[],
+    metrics: OrchestrationMetrics
+  ): Promise<string | undefined> {
     console.log(`[Orchestrator] Creating PR for branch ${context.branchName}`);
-    
-    // In real implementation, use Octokit or GitHub CLI
-    // For now, return mock URL
-    const prUrl = `https://github.com/${context.repoOwner}/${context.repoName}/pull/CCVS-${context.commit.slice(0, 8)}`;
-    
-    console.log(`[Orchestrator] PR created: ${prUrl}`);
-    return prUrl;
+
+    if (!context.githubToken || context.githubToken.trim().length === 0) {
+      console.warn(
+        '[Orchestrator] PR creation skipped — no GitHub token configured (context.githubToken is empty). ' +
+        'No real GitHub API call was made, no PR was created.'
+      );
+      return undefined;
+    }
+
+    try {
+      const ghpr = createGHPRAutomation({
+        token: context.githubToken,
+        owner: context.repoOwner,
+        repo: context.repoName,
+        baseBranch: this.config.baseBranch
+      });
+
+      // OrchestrationResult-shaped view of the in-progress run, sufficient
+      // for GHPRAutomation to build the branch, evidence commit, and PR body.
+      const orchestrationForPR: OrchestrationResult = {
+        success: levels.every(l => l.converged),
+        commit: context.commit,
+        branchName: context.branchName,
+        levels,
+        totalEvidence: evidence,
+        metrics,
+        diffusionTrace: this.diffusionTrace
+      };
+
+      const pr = await ghpr.createCCVSPR(orchestrationForPR, goal);
+      console.log(`[Orchestrator] PR created: ${pr.url}`);
+      return pr.url;
+    } catch (error) {
+      console.error(
+        '[Orchestrator] PR creation failed — the real GitHub API call did not succeed, no PR was created:',
+        error
+      );
+      return undefined;
+    }
   }
 }
 
