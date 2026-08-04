@@ -5,7 +5,6 @@ import {
   AGENT_WORKSPACE_KEY,
   DEFAULT_LEASE_SCOPES,
   DEFAULT_WORKSPACE_PLAN,
-  hashWorkspacePlan,
 } from '../../../lib/agent-workspace/policy';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +32,6 @@ export async function POST(request: Request) {
   const workspaceKey = String(body.workspaceKey || AGENT_WORKSPACE_KEY).trim();
   const name = String(body.name || 'DSG Agent Development Workspace').trim();
   const plan = body.plan && typeof body.plan === 'object' ? body.plan : DEFAULT_WORKSPACE_PLAN;
-  const planHash = hashWorkspacePlan(plan);
   const explicitAgentIds = Array.isArray(body.agentIds)
     ? body.agentIds.map((value: unknown) => String(value).trim()).filter(Boolean)
     : ['*'];
@@ -67,7 +65,6 @@ export async function POST(request: Request) {
       production_locked: true,
       allowed_environments: ['development', 'preview'],
       approved_plan: plan,
-      plan_hash: planHash,
       auto_authorize_plan_actions: true,
       allow_tool_creation: true,
       created_by: access.userId,
@@ -99,7 +96,7 @@ export async function POST(request: Request) {
         auto_renew: true,
         auto_renew_until: new Date(now.getTime() + autoRenewDays * 86_400_000).toISOString(),
         issued_by: access.userId,
-        metadata: { planHash, userApproved: true },
+        metadata: { planHash: workspace.plan_hash, userApproved: true },
         updated_at: now.toISOString(),
       }, { onConflict: 'workspace_id,agent_id' });
 
