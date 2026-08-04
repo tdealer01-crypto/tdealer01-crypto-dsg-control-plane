@@ -15,6 +15,7 @@ permissions:
   pull-requests: write
 
 env:
+  VERCEL_CLI_VERSION: 58.0.0
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -91,12 +92,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Pull preview configuration
-        run: npx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
       - name: Deploy preview
         id: preview
         shell: bash
         run: |
-          PREVIEW_URL=$(npx vercel@latest deploy --yes --token="$VERCEL_TOKEN" \
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
             --meta=branch="${{ github.head_ref }}" \
             --meta=commit="${{ github.event.pull_request.head.sha }}")
           test -n "$PREVIEW_URL"
