@@ -34,6 +34,19 @@ function resolveVerificationMode(
   request: DeterministicProofRequest,
 ): DeterministicVerificationMode {
   if (request.verificationMode) return request.verificationMode;
+
+  const solverRequired = process.env.DSG_SOLVER_REQUIRED === "true";
+  const solverConfigured =
+    process.env.DSG_DETERMINISTIC_EXTERNAL_SOLVER_ENABLED === "true" &&
+    Boolean(process.env.DSG_EXTERNAL_SOLVER_URL);
+
+  if (solverRequired) return "external_required";
+
+  // Preserve the deterministic static gate when no external solver is wired.
+  // Deployments that require external verification must set DSG_SOLVER_REQUIRED
+  // or pass verificationMode="external_required" explicitly.
+  if (!solverConfigured) return "static_allowed";
+
   if (request.riskLevel === "high" || request.riskLevel === "critical") {
     return "external_required";
   }
