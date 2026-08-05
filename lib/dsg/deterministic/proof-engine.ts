@@ -4,6 +4,8 @@ import type {
   DeterministicProof,
   DeterministicProofRequest,
   DeterministicProofStatus,
+  DeterministicSolverEvidence,
+  DeterministicVerificationMode,
 } from "./types";
 import { buildProofHash, hashDeterministicValue } from "./proof-hash";
 import { getDeterministicPolicyManifest } from "./policy-manifest";
@@ -11,8 +13,7 @@ import { getDeterministicSolverMetadata } from "./solver-metadata";
 import {
   generateSmt2ForProof,
   invokeExternalSolver,
-  isValidExternalSolverResult,
-  type ExternalSolverResponse,
+  hashSmt2,
 } from "./external-solver";
 
 function boolValue(context: Record<string, unknown>, key: string) {
@@ -29,32 +30,41 @@ function statusFromFailures(
   return "PASS";
 }
 
-/**
- * Attempt to invoke external Z3 solver and update solver metadata.
- * Returns updated solver metadata if successful; original metadata on failure.
- * Always falls back to static check on error/timeout.
- */
-async function tryInvokeExternalSolverAndUpdateMetadata(
+function resolveVerificationMode(
+  request: DeterministicProofRequest,
+): DeterministicVerificationMode {
+  if (request.verificationMode) return request.verificationMode;
+  if (request.riskLevel === "high" || request.riskLevel === "critical") {
+    return "external_required";
+  }
+  if (request.riskLevel === "medium") return "external_preferred";
+  return "static_allowed";
+}
+
+async function resolveSolverEvidence(
   constraints: DeterministicConstraintResult[],
   request: DeterministicProofRequest,
-  defaultSolver: ReturnType<typeof getDeterministicSolverMetadata>,
-): Promise<ReturnType<typeof getDeterministicSolverMetadata>> {
-  // Generate SMT-LIB2 representation of the constraints
+): Promise<DeterministicSolverEvidence> {
+  const fallback = getDeterministicSolverMetadata();
   const smt2 = generateSmt2ForProof(request, constraints);
+  const result = await invokeExternalSolver(smt2, request);
 
-  // Attempt to invoke external solver
-  const solverResult = await invokeExternalSolver(smt2, request);
-
-  // If external solver failed or returned invalid result, return default
-  if (!solverResult || !isValidExternalSolverResult(solverResult)) {
-    return defaultSolver;
+  if (!result) {
+    return {
+      name: fallback.name,
+      version: fallback.version,
+      invoked: false,
+    };
   }
 
-  // External solver succeeded; update metadata
   return {
     name: "z3",
-    version: solverResult.solver_version,
-    externalSolverInvoked: true,
+    version: result.solver_version,
+    invoked: true,
+    status: result.status,
+    satisfiable: result.satisfiable,
+    smt2Hash: result.smt2_hash || hashSmt2(smt2),
+    timeMs: result.time_ms,
   };
 }
 
@@ -71,7 +81,7 @@ function deterministicProofTimestamp(inputHash: string) {
   return new Date(seconds * 1000).toISOString();
 }
 
-export function isProductionReadyDeterministicProof(
+export function isStructurallyCompleteDeterministicProof(
   proof: DeterministicProof,
 ): boolean {
   return (
@@ -90,38 +100,29 @@ export function isProductionReadyDeterministicProof(
   );
 }
 
+/** @deprecated Prefer isStructurallyCompleteDeterministicProof. */
+export const isProductionReadyDeterministicProof =
+  isStructurallyCompleteDeterministicProof;
+
 export async function proveDeterministicPlan(
   request: DeterministicProofRequest,
 ): Promise<DeterministicProof> {
   const manifest = getDeterministicPolicyManifest();
-  let solver = getDeterministicSolverMetadata();
   const policyRef = request.policyRef ?? manifest.policyRef;
   const policyVersion = request.policyVersion ?? manifest.policyVersion;
   const context = request.context ?? {};
+  const verificationMode = resolveVerificationMode(request);
 
   const constraints: DeterministicConstraintResult[] = manifest.constraints.map(
-    (constraint) => {
-      const passed = boolValue(context, constraint.evidenceKey);
-      return {
-        ...constraint,
-        passed,
-      };
-    },
+    (constraint) => ({
+      ...constraint,
+      passed: boolValue(context, constraint.evidenceKey),
+    }),
   );
 
-  // Try to invoke external Z3 solver (if enabled and configured)
-  if (
-    process.env.DSG_DETERMINISTIC_EXTERNAL_SOLVER_ENABLED === "true" &&
-    process.env.DSG_EXTERNAL_SOLVER_URL
-  ) {
-    solver = await tryInvokeExternalSolverAndUpdateMetadata(
-      constraints,
-      request,
-      solver,
-    );
-  }
+  const solver = await resolveSolverEvidence(constraints, request);
 
-  const failureReasons = constraints
+  const failureReasons: DeterministicFailureReason[] = constraints
     .filter((constraint) => !constraint.passed)
     .map((constraint) => ({
       code: constraint.constraintId,
@@ -130,13 +131,58 @@ export async function proveDeterministicPlan(
       severity: constraint.severity,
     }));
 
-  const status = statusFromFailures(failureReasons);
+  const localStatus = statusFromFailures(failureReasons);
+  let status = localStatus;
+
+  if (solver.invoked && solver.status === "unsat") {
+    if (localStatus === "PASS") {
+      failureReasons.push({
+        code: "external_solver_disagreement",
+        message:
+          "External Z3 returned UNSAT while local deterministic checks returned PASS.",
+        severity: "critical",
+      });
+    }
+    status = "BLOCK";
+  }
+
+  if (solver.invoked && solver.status === "sat" && localStatus !== "PASS") {
+    failureReasons.push({
+      code: "external_solver_disagreement",
+      message:
+        "External Z3 returned SAT while local deterministic checks found failed constraints.",
+      severity: "critical",
+    });
+    status = "BLOCK";
+  }
+
+  if (!solver.invoked && verificationMode === "external_required") {
+    failureReasons.push({
+      code: "external_solver_required",
+      message:
+        "External verification is required for this request but no verified solver result was available.",
+      severity: "critical",
+    });
+    status = "BLOCK";
+  }
+
+  if (!solver.invoked && verificationMode === "external_preferred" && status === "PASS") {
+    failureReasons.push({
+      code: "external_solver_unavailable",
+      message:
+        "External verification was preferred but unavailable; manual review is required.",
+      severity: "high",
+    });
+    status = "REVIEW";
+  }
+
   const inputHash = hashDeterministicValue({
     planId: request.planId ?? null,
     context,
     policyRef,
     policyVersion,
     riskLevel: request.riskLevel ?? "medium",
+    verificationMode,
     nonce: request.nonce,
     idempotencyKey: request.idempotencyKey,
   });
@@ -153,7 +199,7 @@ export async function proveDeterministicPlan(
     proofId,
     status,
     timestamp,
-    solver: { name: solver.name, version: solver.version },
+    solver,
     policyRef,
     policyVersion,
     constraintsChecked: constraints.length,
@@ -168,10 +214,7 @@ export async function proveDeterministicPlan(
     proofId,
     status,
     timestamp,
-    solver: {
-      name: solver.name,
-      version: solver.version,
-    },
+    solver,
     policyRef,
     policyVersion,
     constraintsChecked: constraints.length,
@@ -183,13 +226,14 @@ export async function proveDeterministicPlan(
     model: {
       planId: request.planId ?? null,
       riskLevel: request.riskLevel ?? "medium",
+      verificationMode,
     },
     failureReasons,
     constraints,
     evidenceBoundary: {
       statement:
-        "This DSG-native deterministic proof is evidence-derived from the checked policy constraints, replay-protection inputs, policy reference, constraint-set hash, proof hash, input hash, and solver metadata. It does not claim an external Z3 production solver, third-party certification, WORM-certified storage, or cryptographic-signing completion.",
-      externalSolverInvoked: solver.externalSolverInvoked,
+        "This DSG-native deterministic proof records checked policy constraints, replay-protection inputs, policy reference, constraint-set hash, proof hash, input hash, and verified solver evidence when available. It does not claim third-party certification, WORM-certified storage, or cryptographic-signing completion.",
+      externalSolverInvoked: solver.invoked,
       productionReadyClaim: false,
       externalZ3ProductionSolverClaim: false,
       certificationClaim: false,
@@ -200,7 +244,8 @@ export async function proveDeterministicPlan(
   };
 
   proof.evidenceBoundary.productionReadyClaim =
-    isProductionReadyDeterministicProof(proof);
+    isStructurallyCompleteDeterministicProof(proof) &&
+    (verificationMode !== "external_required" || solver.invoked);
 
   return proof;
 }
