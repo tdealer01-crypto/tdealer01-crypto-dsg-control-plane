@@ -8,6 +8,10 @@ export type DeterministicSolverName =
   | "rule_engine"
   | "static_check"
   | "none";
+export type DeterministicVerificationMode =
+  | "static_allowed"
+  | "external_preferred"
+  | "external_required";
 
 // Verification sentinel: export type DeterministicGateStatus = 'PASS' | 'BLOCK' | 'REVIEW'
 // Canonical DSG gate output intentionally excludes UNSUPPORTED.
@@ -42,14 +46,21 @@ export type DeterministicReplayProtection = {
   requestHash: string;
 };
 
+export type DeterministicSolverEvidence = {
+  name: DeterministicSolverName;
+  version: string;
+  invoked: boolean;
+  status?: "sat" | "unsat" | "unknown";
+  satisfiable?: boolean;
+  smt2Hash?: string;
+  timeMs?: number;
+};
+
 export type DeterministicProof = {
   proofId: string;
   status: DeterministicProofStatus;
   timestamp: string;
-  solver: {
-    name: DeterministicSolverName;
-    version: string;
-  };
+  solver: DeterministicSolverEvidence;
   policyRef: string;
   policyVersion: string;
   constraintsChecked: number;
@@ -149,6 +160,7 @@ export type DeterministicProofRequest = {
   policyRef?: string;
   policyVersion?: string;
   riskLevel?: DeterministicRiskLevel;
+  verificationMode?: DeterministicVerificationMode;
   previousProofHash?: string;
   nonce: string;
   idempotencyKey: string;

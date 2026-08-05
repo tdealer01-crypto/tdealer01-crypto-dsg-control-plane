@@ -1,19 +1,14 @@
 /**
  * Hybrid Proof Verification Strategy
  *
- * Path A (Cached): Fast deterministic replay from stored proof records
- * Path B (Live): Fresh Z3 solver invocation for verification/audit
- *
- * Decision flow:
- * 1. Try cache lookup by input_hash on dsg_gate_decisions table
- * 2. If hit && no verification flag: return cached proof (fast)
- * 3. If miss || verification flag: invoke live Z3 solver (fresh)
- * 4. Record/update decision in dsg_gate_decisions for future replay
+ * This module currently provides durable decision history plus live proof
+ * generation. Cached proof replay is intentionally disabled until full proof
+ * JSON is persisted and integrity-checked before reuse.
  */
 
 import type { DeterministicProof, DeterministicProofRequest } from './types';
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import { hashDeterministicValue } from './proof-hash';
 
 interface CachedProofRecord {
   id: string;
@@ -26,34 +21,31 @@ interface CachedProofRecord {
 }
 
 /**
- * Compute SHA256 hash of input constraints for cache lookup
+ * Compute the canonical request hash used by proof generation and persistence.
  */
 export function hashProofInput(request: DeterministicProofRequest): string {
-  const input = JSON.stringify({
+  return hashDeterministicValue({
     planId: request.planId ?? null,
     context: request.context ?? {},
-    policyRef: request.policyRef,
-    policyVersion: request.policyVersion,
+    policyRef: request.policyRef ?? null,
+    policyVersion: request.policyVersion ?? null,
     riskLevel: request.riskLevel ?? 'medium',
+    verificationMode: request.verificationMode ?? null,
     nonce: request.nonce,
     idempotencyKey: request.idempotencyKey,
   });
-  return crypto.createHash('sha256').update(input).digest('hex');
 }
 
 /**
- * Path A (Cached): Look up proof from dsg_gate_decisions table
- * Returns null if not found or verification requested
+ * Decision-history lookup only. Do not treat this record as a replayable proof
+ * until full proof JSON is stored and verified.
  */
 export async function tryGetCachedProof(
   orgId: string,
   inputHash: string,
   options: { verifyFresh?: boolean } = {},
 ): Promise<CachedProofRecord | null> {
-  if (options.verifyFresh) {
-    // Skip cache if verification requested
-    return null;
-  }
+  if (options.verifyFresh) return null;
 
   try {
     const supabase = createClient(
@@ -71,24 +63,20 @@ export async function tryGetCachedProof(
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found — expected on cache miss
-        return null;
-      }
-      console.warn('Cache lookup error:', error);
+      if (error.code === 'PGRST116') return null;
+      console.warn('Decision history lookup error:', error);
       return null;
     }
 
     return data as CachedProofRecord;
   } catch (err) {
-    console.warn('Proof cache lookup failed:', err);
+    console.warn('Decision history lookup failed:', err);
     return null;
   }
 }
 
 /**
- * Path B (Live): Record or update Z3 proof decision in dsg_gate_decisions
- * Called after proof generation to store for future cache hits
+ * Record the exact verified proof decision in dsg_gate_decisions.
  */
 export async function recordProofDecision(
   orgId: string,
@@ -103,7 +91,7 @@ export async function recordProofDecision(
 
     const { data, error } = await supabase
       .from('dsg_gate_decisions')
-      .insert({
+      .upsert({
         org_id: orgId,
         policy_version: policyVersionId || proof.policyVersion,
         input_hash: proof.inputHash,
@@ -116,12 +104,18 @@ export async function recordProofDecision(
                  proof.status === 'BLOCK' ? 'BLOCK' : 'REVIEW',
         decision_confidence: proof.status === 'PASS' ? 1.0 : 0.5,
         proof_hash: proof.proofHash,
-        proof_format: 'dsg-deterministic-v1',
-        z3_status: proof.solver?.name === 'z3' ? 'sat' : null,
-        z3_satisfiable: proof.status === 'PASS' || proof.status === 'REVIEW',
-        z3_solver_version: proof.solver?.version,
-        z3_smt2_hash: proof.inputHash,
-        z3_trace: proof.evidenceBoundary,
+        proof_format: 'dsg-deterministic-v2',
+        z3_status: proof.solver.invoked ? proof.solver.status ?? null : null,
+        z3_satisfiable: proof.solver.invoked ? proof.solver.satisfiable ?? null : null,
+        z3_solver_version: proof.solver.invoked ? proof.solver.version : null,
+        z3_smt2_hash: proof.solver.invoked ? proof.solver.smt2Hash ?? null : null,
+        z3_trace: {
+          solver: proof.solver,
+          evidenceBoundary: proof.evidenceBoundary,
+          replayProtection: proof.replayProtection,
+        },
+      }, {
+        onConflict: 'org_id,input_hash,policy_version,proof_hash',
       })
       .select('id')
       .single();
@@ -138,39 +132,31 @@ export async function recordProofDecision(
   }
 }
 
-/**
- * Hybrid wrapper: Check cache first, fall back to live solver
- */
 export interface HybridProofOptions {
   orgId: string;
-  verifyFresh?: boolean; // If true, skip cache and invoke live Z3
-  recordResult?: boolean; // If true, store result in cache
+  verifyFresh?: boolean;
+  recordResult?: boolean;
 }
 
 export async function evaluateProofWithHybridStrategy(
   request: DeterministicProofRequest,
   options: HybridProofOptions,
   proveFn: (req: DeterministicProofRequest) => Promise<DeterministicProof>,
-): Promise<{ proof: DeterministicProof; source: 'cached' | 'live' }> {
+): Promise<{ proof: DeterministicProof; source: 'live' }> {
   const inputHash = hashProofInput(request);
 
-  // Try Path A (Cached)
-  const cached = await tryGetCachedProof(options.orgId, inputHash, {
+  const previous = await tryGetCachedProof(options.orgId, inputHash, {
     verifyFresh: options.verifyFresh,
   });
 
-  if (cached) {
-    console.log(`[Proof Cache] HIT: ${inputHash.slice(0, 8)}...`);
-    // Return cached proof structure (reconstruct from record)
-    // For now, fall through to live to ensure we have full proof object
-    // TODO: Store full proof JSON in z3_trace to enable full replay
+  if (previous) {
+    console.log(
+      `[Proof History] MATCH: ${inputHash.slice(0, 8)}...; replay disabled pending full-proof verification`,
+    );
   }
 
-  // Path B (Live) or cache miss
-  console.log(`[Proof Cache] MISS/VERIFY: ${inputHash.slice(0, 8)}... (invoking live Z3)`);
   const proof = await proveFn(request);
 
-  // Record result for future cache hits
   if (options.recordResult) {
     await recordProofDecision(options.orgId, proof);
   }
