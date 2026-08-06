@@ -1,5 +1,6 @@
 import { resolveAgentFromApiKey } from '../agent-auth';
 import { getOverageRateUsd, INCLUDED_EXECUTIONS } from '../billing/overage-config';
+import { ACTIVE_STATUSES } from '../billing/entitlements';
 import { getSupabaseAdmin } from '../supabase-server';
 import { buildApprovalKey } from '../runtime/approval';
 import { canonicalHash, canonicalJson, type CanonicalInput } from '../runtime/canonical';
@@ -12,6 +13,23 @@ import { sendTelegram } from '../marketing/mcp-tools';
 function getIncludedExecutions(planKey?: string | null) {
   const normalized = String(planKey || 'trial').toLowerCase();
   return INCLUDED_EXECUTIONS[normalized] || INCLUDED_EXECUTIONS.trial;
+}
+
+/**
+ * billing_subscriptions rows are not deleted or reset to a "free" plan_key
+ * on cancellation — they keep the subscription's last plan_key with an
+ * updated `status`. Only honor that plan_key while the subscription is in
+ * an entitling status (mirrors ACTIVE_STATUSES used by the canonical
+ * webhook's revokeSubscription()/fulfillSubscription() gate); otherwise
+ * this org-level check would keep granting a canceled/unpaid/past-due
+ * subscription's old plan quota after checkQuota()'s organizations.plan
+ * has already correctly dropped the org to free.
+ */
+export function getOrgPlanLimit(subscription: { plan_key?: string | null; status?: string | null } | null | undefined) {
+  if (!subscription || !ACTIVE_STATUSES.has(subscription.status || '')) {
+    return getIncludedExecutions('trial');
+  }
+  return getIncludedExecutions(subscription.plan_key);
 }
 
 function buildUsage(used: number, limit: number) {
@@ -303,7 +321,7 @@ export async function executeSpineIntent(params: {
   }
 
   const orgExecutions = (orgCounters || []).reduce((sum, row) => sum + Number(row.executions || 0), 0);
-  const orgPlanLimit = getIncludedExecutions(subscription?.plan_key || 'trial');
+  const orgPlanLimit = getOrgPlanLimit(subscription);
   if (orgExecutions >= orgPlanLimit) {
     return {
       ok: false as const,

@@ -507,10 +507,14 @@ Live-production behavior on the custom domain = `not verified` /
 `pending re-deploy`. This is an operational/deployment gap (production
 pointing at a stale deployment), not a defect in the route's code.
 
-## Known unresolved billing gap: two independent quota checks (2026-08-04, tracked follow-up — not fixed in this pass)
+## Two independent quota checks (2026-08-04; stale-quota-after-cancellation failure mode fixed 2026-08-06)
 
 There are currently **two separate, independent quota-check code paths**,
-and they can disagree after a plan change:
+and they can still disagree in what limit number they use for a plan (the
+architectural split described below is unchanged) — but the specific
+failure mode of one path granting a **canceled/unpaid subscription's old
+paid quota** is fixed. See "What was fixed" below before reading the
+original gap description.
 
 1. `lib/usage/quota.ts`'s `checkQuota()` reads `organizations.plan` joined
    with `usage_counters`. This is called directly by
@@ -547,9 +551,43 @@ plan's execution quota after a downgrade/cancellation, even though
 `checkQuota()`-gated routes have already correctly dropped to the free
 limit.
 
-Status: `not fixed in this pass`, `tracked follow-up`. Do not describe this
-as resolved until `lib/spine/engine.ts`'s quota check and
-`lib/usage/quota.ts`'s `checkQuota()` have been reconciled to a single
-source of truth (or `fulfillSubscription()`/`revokeSubscription()` are
-extended to also update `billing_subscriptions.plan_key`) and re-verified
-from current code.
+### What was fixed (2026-08-06)
+
+`lib/spine/engine.ts`'s org-level check already selected `status` from
+`billing_subscriptions` alongside `plan_key`, but never read it before
+computing the limit — `getIncludedExecutions(subscription?.plan_key ||
+'trial')` used `plan_key` unconditionally. A new exported helper,
+`getOrgPlanLimit(subscription)`, now checks `subscription.status` against
+`ACTIVE_STATUSES` (`lib/billing/entitlements.ts` — `active`/`trialing`,
+the same set the canonical webhook's `revokeSubscription()` gate already
+uses) before honoring `plan_key`; a canceled/unpaid/past_due/expired
+subscription row now falls back to the `trial` limit (1,000) regardless of
+what `plan_key` its last active period carried. This directly closes the
+"`/api/quickstart/execute` and `/api/mcp/call` keep granting the old plan's
+quota after a downgrade/cancellation" failure mode described below, without
+needing `billing_subscriptions` writes to change.
+
+Verified: `tests/unit/spine/org-plan-limit.test.ts` (new, 7 cases covering
+active/trialing/canceled/unpaid/past_due/missing-subscription/null-status)
+plus the existing spine + billing suites — `npm run test -- tests/unit/spine
+tests/unit/billing tests/integration/api/spine-execute.test.ts
+tests/integration/api/execute-critical-path.test.ts
+tests/integration/api/spine-execute-safe-dom.test.ts
+tests/integration/metered-billing.test.ts` → 183 passed, 0 failed (11
+skipped, no live Supabase credentials in this environment). `npm run
+typecheck` → clean.
+
+### What is still open
+
+The two code paths themselves are still separate and still use different
+plan→limit tables (`lib/billing/entitlements.ts`'s `PLAN_QUOTA`, which has
+an explicit `free: 60` floor, vs. `lib/billing/overage-config.ts`'s
+`INCLUDED_EXECUTIONS`, which has no `free` entry and floors at `trial:
+1000`) — so a revoked org's two gates can still disagree on the exact
+number (60 vs. 1000), just no longer on whether a stale paid plan's much
+higher quota (10,000+) gets granted. Do not describe the two-path
+architecture itself as reconciled to a single source of truth until
+`lib/spine/engine.ts`'s quota check and `lib/usage/quota.ts`'s
+`checkQuota()` share one table, or `fulfillSubscription()`/
+`revokeSubscription()` are extended to also update
+`billing_subscriptions.plan_key` directly.
