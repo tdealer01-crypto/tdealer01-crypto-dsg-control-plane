@@ -225,9 +225,7 @@ export async function recordDeliveryProofScan(
 
       if (overage) {
         if (!entitlementRow.customer_id) {
-          throw new Error(
-            'delivery_proof_overage_has_no_stripe_customer',
-          );
+          throw new Error('delivery_proof_overage_has_no_stripe_customer');
         }
 
         const meterResult = await reportMeterEvent(
@@ -237,7 +235,7 @@ export async function recordDeliveryProofScan(
           `delivery-proof-${runId}`,
         );
 
-        if (meterResult.ok) {
+        if (meterResult.ok === true) {
           meterEventId = meterResult.eventId;
           await supabase
             .from('delivery_proof_scans')
@@ -246,12 +244,14 @@ export async function recordDeliveryProofScan(
               metered_event_sent: true,
             })
             .eq('run_id', runId);
-        } else if (!meterResult.durable) {
-          throw new Error(
-            `delivery_proof_meter_outbox_unavailable:${meterResult.error}`,
-          );
         } else {
-          retryableMeterError = meterResult.error;
+          const meterError = meterResult.error;
+          if (meterResult.durable === false) {
+            throw new Error(
+              `delivery_proof_meter_outbox_unavailable:${meterError}`,
+            );
+          }
+          retryableMeterError = meterError;
         }
       }
 
