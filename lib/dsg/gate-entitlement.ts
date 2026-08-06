@@ -16,6 +16,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 import {
   decideGateRevenueAccess,
   GATE_INCLUDED_EVALS,
+  shouldMeterRecordedEvaluation,
   type GateAccessMode,
   type GateTier,
 } from './gate-revenue-policy';
@@ -325,19 +326,20 @@ export async function recordGateEvaluation(
     const entitlement = await getOrCreateEntitlement(orgId);
     const plan = tierSpec(entitlement.tier);
     const limit = Number(entitlement.evals_per_month || plan.evalsPerMonth);
-    const used = await countEvalsThisPeriod(orgId);
-    const decision = decideGateRevenueAccess({
+    const usedAfterInsert = await countEvalsThisPeriod(orgId);
+    const meterCurrentEvaluation = shouldMeterRecordedEvaluation({
       tier: plan.tier,
       subscriptionStatus: entitlement.subscription_status,
       includedLimit: limit,
-      used,
+      used: usedAfterInsert,
+      usedAfterInsert,
       overageEnabled: entitlement.overage_enabled === true,
       hasStripeCustomer: Boolean(entitlement.stripe_customer_id),
       hasStripeSubscription: Boolean(entitlement.stripe_subscription_id),
       meteringConfigured: isMeteredBillingConfigured(),
     });
 
-    if (decision.accessMode === 'metered_overage' && entitlement.stripe_customer_id) {
+    if (meterCurrentEvaluation && entitlement.stripe_customer_id) {
       const meter = await reportMeterEvent(
         entitlement.stripe_customer_id,
         orgId,
