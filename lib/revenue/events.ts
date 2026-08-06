@@ -65,54 +65,74 @@ function toRecord(row: RevenueEventRow): RevenueEventRecord {
   };
 }
 
-function idempotencyMetadata(
+function eventIdempotencyKey(
   metadata: Record<string, unknown> | null | undefined,
-): Record<string, string> | null {
+): string | null {
   if (typeof metadata?.idempotency_key === 'string' && metadata.idempotency_key) {
-    return { idempotency_key: metadata.idempotency_key };
+    return metadata.idempotency_key;
   }
 
   if (typeof metadata?.stripe_event_id === 'string' && metadata.stripe_event_id) {
-    return { stripe_event_id: metadata.stripe_event_id };
+    return `stripe:${metadata.stripe_event_id}`;
   }
 
   return null;
 }
 
-export async function insertRevenueEvent(event: RevenueEventInput): Promise<RevenueEventRecord> {
-  const supabase = getSupabaseAdmin();
-  const dedupeMetadata = idempotencyMetadata(event.metadata);
+const EVENT_SELECT =
+  'id, created_at, org_id, user_id, event_type, plan_id, amount, currency, source, metadata';
 
-  if (dedupeMetadata) {
-    const duplicate = await (supabase as any)
+export async function insertRevenueEvent(event: RevenueEventInput): Promise<RevenueEventRecord> {
+  const supabase = getSupabaseAdmin() as any;
+  const idempotencyKey = eventIdempotencyKey(event.metadata);
+  const payload = {
+    org_id: event.orgId,
+    user_id: event.userId ?? null,
+    event_type: event.eventType,
+    plan_id: event.planId ?? null,
+    amount: event.amount ?? null,
+    currency: event.currency || 'USD',
+    source: event.source,
+    metadata: event.metadata ?? null,
+    idempotency_key: idempotencyKey,
+  };
+
+  if (idempotencyKey) {
+    const upsertResult = await supabase
       .from('revenue_events')
-      .select('id, created_at, org_id, user_id, event_type, plan_id, amount, currency, source, metadata')
-      .eq('org_id', event.orgId)
-      .contains('metadata', dedupeMetadata)
+      .upsert(payload, {
+        onConflict: 'org_id,idempotency_key',
+        ignoreDuplicates: true,
+      })
+      .select(EVENT_SELECT)
       .maybeSingle();
 
-    if (duplicate?.error) {
-      throw new Error(duplicate.error.message);
+    if (upsertResult.error) {
+      throw new Error(upsertResult.error.message);
     }
 
-    if (duplicate?.data) {
-      return toRecord(duplicate.data as RevenueEventRow);
+    if (upsertResult.data) {
+      return toRecord(upsertResult.data as RevenueEventRow);
     }
+
+    const existing = await supabase
+      .from('revenue_events')
+      .select(EVENT_SELECT)
+      .eq('org_id', event.orgId)
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle();
+
+    if (existing.error || !existing.data) {
+      throw new Error(existing.error?.message || 'failed_to_resolve_revenue_event');
+    }
+
+    return toRecord(existing.data as RevenueEventRow);
   }
 
-  const insertResult = await (supabase as any)
+  const insertResult = await supabase
     .from('revenue_events')
-    .insert({
-      org_id: event.orgId,
-      user_id: event.userId ?? null,
-      event_type: event.eventType,
-      plan_id: event.planId ?? null,
-      amount: event.amount ?? null,
-      currency: event.currency || 'USD',
-      source: event.source,
-      metadata: event.metadata ?? null,
-    })
-    .select('id, created_at, org_id, user_id, event_type, plan_id, amount, currency, source, metadata')
+    .insert(payload)
+    .select(EVENT_SELECT)
     .single();
 
   if (insertResult.error) {
@@ -126,12 +146,12 @@ export async function listRevenueEvents(
   orgId: string,
   options?: { limit?: number },
 ): Promise<RevenueEventRecord[]> {
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin() as any;
   const limit = Math.min(Math.max(options?.limit ?? 50, 1), 500);
 
-  const query = (supabase as any)
+  const query = supabase
     .from('revenue_events')
-    .select('id, created_at, org_id, user_id, event_type, plan_id, amount, currency, source, metadata')
+    .select(EVENT_SELECT)
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .limit(limit);
