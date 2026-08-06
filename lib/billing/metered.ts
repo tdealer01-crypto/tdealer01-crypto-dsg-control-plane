@@ -1,25 +1,26 @@
 /**
  * Stripe Metered Billing — Usage-Based Overage Charges
  *
- * Implements Stripe's Billing Meter API (2026) to report per-execution
- * usage events. This enables hybrid pricing: flat subscription +
- * metered overage for high-volume orgs.
+ * Implements Stripe's Billing Meter API to report per-execution usage events.
+ * A durable outbox row is always created before Stripe delivery so temporary
+ * provider failures can be retried without losing revenue evidence.
  *
- * Market context: Stripe Metering for AI agents (tokens, tasks, workflows)
- * became the industry standard in Q1 2026. This positions DSG ONE at the
- * frontier of enterprise AI billing.
- *
- * Required env vars (add to Vercel when enabling metered billing):
- *   STRIPE_METER_EVENT_NAME  – e.g., "dsg_execution"
- *   STRIPE_SECRET_KEY        – already configured
+ * Required env vars:
+ *   STRIPE_METER_EVENT_NAME  – e.g. "dsg_execution"
+ *   STRIPE_SECRET_KEY
  */
 
 import Stripe from 'stripe';
 import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 
-type MeterEventResult =
-  | { ok: true; eventId: string }
-  | { ok: false; error: string; skipped?: boolean };
+export type MeterEventResult =
+  | { ok: true; eventId: string; durable: true }
+  | {
+      ok: false;
+      error: string;
+      durable: boolean;
+      skipped?: boolean;
+    };
 
 export type MeterOutboxFlushResult = {
   scanned: number;
@@ -67,8 +68,6 @@ function idempotencyKeyForExecution(executionId: string): string {
 
 async function getOutboxClient() {
   const { getSupabaseAdmin } = await import('../supabase-server');
-  // billing_meter_outbox is introduced by a new migration in this branch.
-  // Cast to any until lib/database.types.ts is regenerated from Supabase.
   return getSupabaseAdmin() as any;
 }
 
@@ -78,7 +77,10 @@ async function createOutboxRow(input: {
   stripeCustomerId: string;
   eventName: string;
   quantity: number;
-}): Promise<{ ok: true; rowId: string; alreadySentEventId?: string } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; rowId: string; alreadySentEventId?: string }
+  | { ok: false; error: string }
+> {
   const supabase = await getOutboxClient();
 
   const { data, error } = await supabase
@@ -106,14 +108,21 @@ async function createOutboxRow(input: {
 
   if (existing?.id) {
     if (existing.status === 'sent' && existing.stripe_event_id) {
-      return { ok: true, rowId: existing.id, alreadySentEventId: existing.stripe_event_id };
+      return {
+        ok: true,
+        rowId: existing.id,
+        alreadySentEventId: existing.stripe_event_id,
+      };
     }
     return { ok: true, rowId: existing.id };
   }
 
   return {
     ok: false,
-    error: existingError?.message ?? error?.message ?? 'failed to create billing meter outbox row',
+    error:
+      existingError?.message ??
+      error?.message ??
+      'failed to create billing meter outbox row',
   };
 }
 
@@ -164,32 +173,24 @@ async function deliverMeterEvent(input: {
 
   const event = await input.stripe.billing.meterEvents.create(
     meterEventPayload,
-    { idempotencyKey }
+    { idempotencyKey },
   );
 
-  return { ok: true, eventId: event.identifier };
+  return { ok: true, eventId: event.identifier, durable: true };
 }
 
 /**
  * Report a single execution event to Stripe Metering.
  *
- * Called after a successful /api/execute response.
- * Execution-level idempotency prevents same-second org activity from being
- * silently deduped by Stripe while still making retries of the same execution safe.
- *
- * A durable outbox row is written before Stripe delivery. If Stripe fails,
- * the failed row remains retryable by /api/cron/flush-meter-outbox.
- *
- * @param stripeCustomerId  The org's Stripe customer ID (from billing_customers table)
- * @param orgId             DSG org ID
- * @param quantity          Number of executions to meter
- * @param executionId       Canonical execution/audit row ID for idempotency
+ * `durable: true` means a retryable outbox row exists, even when immediate
+ * Stripe delivery failed. `durable: false` means no trustworthy billing
+ * evidence exists and callers that deliver paid work must fail closed.
  */
 export async function reportMeterEvent(
   stripeCustomerId: string,
   orgId: string,
   quantity: number,
-  executionId: string
+  executionId: string,
 ): Promise<MeterEventResult> {
   const stripe = getStripe();
   const eventName = getMeterEventName();
@@ -197,11 +198,20 @@ export async function reportMeterEvent(
   const meteredQuantity = positiveQuantity(quantity);
 
   if (!normalizedExecutionId) {
-    return { ok: false, error: 'executionId is required for Stripe meter idempotency' };
+    return {
+      ok: false,
+      error: 'executionId is required for Stripe meter idempotency',
+      durable: false,
+    };
   }
 
   if (!stripe || !eventName) {
-    return { ok: false, error: 'Stripe metering not configured', skipped: true };
+    return {
+      ok: false,
+      error: 'Stripe metering not configured',
+      skipped: true,
+      durable: false,
+    };
   }
 
   const outbox = await createOutboxRow({
@@ -212,12 +222,16 @@ export async function reportMeterEvent(
     quantity: meteredQuantity,
   });
 
-  if ('error' in outbox) {
-    return { ok: false, error: outbox.error };
+  if (!outbox.ok) {
+    return { ok: false, error: outbox.error, durable: false };
   }
 
   if (outbox.alreadySentEventId) {
-    return { ok: true, eventId: outbox.alreadySentEventId };
+    return {
+      ok: true,
+      eventId: outbox.alreadySentEventId,
+      durable: true,
+    };
   }
 
   try {
@@ -238,14 +252,16 @@ export async function reportMeterEvent(
     const message = err instanceof Error ? err.message : String(err);
     console.error('[metered] Stripe meter event failed:', message);
     await markOutboxFailed(outbox.rowId, message);
-    return { ok: false, error: message };
+    return { ok: false, error: message, durable: true };
   }
 }
 
 /**
  * Retry pending and failed billing meter outbox rows.
  */
-export async function flushMeterOutbox(limit = 100): Promise<MeterOutboxFlushResult> {
+export async function flushMeterOutbox(
+  limit = 100,
+): Promise<MeterOutboxFlushResult> {
   const stripe = getStripe();
   const result: MeterOutboxFlushResult = {
     scanned: 0,
@@ -271,7 +287,10 @@ export async function flushMeterOutbox(limit = 100): Promise<MeterOutboxFlushRes
     .limit(limit);
 
   if (error) {
-    return { ...result, errors: [error.message ?? 'failed to load billing meter outbox'] };
+    return {
+      ...result,
+      errors: [error.message ?? 'failed to load billing meter outbox'],
+    };
   }
 
   const rows = (data ?? []) as OutboxRow[];
@@ -307,11 +326,9 @@ export async function flushMeterOutbox(limit = 100): Promise<MeterOutboxFlushRes
   return result;
 }
 
-/**
- * Lookup the Stripe customer ID for an org from the billing_customers table.
- * Returns null if no customer record exists (org not yet on Stripe).
- */
-export async function getStripeCustomerIdForOrg(orgId: string): Promise<string | null> {
+export async function getStripeCustomerIdForOrg(
+  orgId: string,
+): Promise<string | null> {
   const { getSupabaseAdmin } = await import('../supabase-server');
   const supabase = getSupabaseAdmin();
 
@@ -325,18 +342,21 @@ export async function getStripeCustomerIdForOrg(orgId: string): Promise<string |
 }
 
 /**
- * Combined: report meter event for an org if they have a Stripe customer.
- * Safe to call from /api/execute — never throws, skips gracefully if unconfigured.
+ * Legacy convenience path. Callers that must guarantee paid-delivery evidence
+ * should call reportMeterEvent directly and inspect `durable`.
  */
-export async function meterExecution(orgId: string, quantity: number, executionId: string): Promise<void> {
+export async function meterExecution(
+  orgId: string,
+  quantity: number,
+  executionId: string,
+): Promise<void> {
   const customerId = await getStripeCustomerIdForOrg(orgId);
   if (!customerId) return;
   await reportMeterEvent(customerId, orgId, quantity, executionId);
 }
 
-/**
- * Check if Stripe metered billing is configured.
- */
 export function isMeteredBillingConfigured(): boolean {
-  return !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_METER_EVENT_NAME);
+  return !!(
+    process.env.STRIPE_SECRET_KEY && process.env.STRIPE_METER_EVENT_NAME
+  );
 }
