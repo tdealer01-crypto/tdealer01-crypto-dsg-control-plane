@@ -147,7 +147,9 @@ async function getOrCreateEntitlement(orgId: string): Promise<GateEntitlementRow
     .maybeSingle();
 
   if (created.error || !created.data) {
-    throw new Error(created.error?.message || 'failed_to_create_dsg_gate_entitlement');
+    throw new Error(
+      created.error?.message || 'failed_to_create_dsg_gate_entitlement',
+    );
   }
 
   return created.data as GateEntitlementRow;
@@ -155,7 +157,9 @@ async function getOrCreateEntitlement(orgId: string): Promise<GateEntitlementRow
 
 async function countEvalsThisPeriod(orgId: string): Promise<number> {
   const supabase = getSupabaseAdmin() as any;
-  const rpcResult = await supabase.rpc('dsg_gate_evals_this_period', { p_org_id: orgId });
+  const rpcResult = await supabase.rpc('dsg_gate_evals_this_period', {
+    p_org_id: orgId,
+  });
 
   if (!rpcResult.error && typeof rpcResult.data === 'number') {
     return rpcResult.data;
@@ -204,7 +208,8 @@ export async function checkGateEntitlement(
       allowed: true,
       tier: 'free',
       evalsRemaining: GATE_INCLUDED_EVALS.free,
-      message: 'Free tier — authenticate to persist usage and unlock paid plans',
+      message:
+        'Free tier — authenticate to persist usage and unlock paid plans',
       requiresPayment: false,
       upgradeUrl: '/pricing#dsg-gate',
       accessMode: 'included_quota',
@@ -214,7 +219,9 @@ export async function checkGateEntitlement(
   try {
     const entitlement = await getOrCreateEntitlement(orgId);
     const plan = tierSpec(entitlement.tier);
-    const evalsPerMonth = Number(entitlement.evals_per_month || plan.evalsPerMonth);
+    const evalsPerMonth = Number(
+      entitlement.evals_per_month || plan.evalsPerMonth,
+    );
     const used = await countEvalsThisPeriod(orgId);
     const decision = decideGateRevenueAccess({
       tier: plan.tier,
@@ -231,7 +238,11 @@ export async function checkGateEntitlement(
       allowed: decision.allowed,
       tier: plan.tier,
       evalsRemaining: decision.remaining,
-      message: messageForAccessMode(decision.accessMode, plan.tier, decision.remaining),
+      message: messageForAccessMode(
+        decision.accessMode,
+        plan.tier,
+        decision.remaining,
+      ),
       requiresPayment: decision.requiresPayment,
       upgradeUrl: '/pricing#dsg-gate',
       accessMode: decision.accessMode,
@@ -242,7 +253,8 @@ export async function checkGateEntitlement(
       allowed: false,
       tier: 'unknown',
       evalsRemaining: 0,
-      message: 'Billing entitlement is temporarily unavailable; execution blocked to prevent unmetered usage',
+      message:
+        'Billing entitlement is temporarily unavailable; execution blocked to prevent unmetered usage',
       requiresPayment: false,
       upgradeUrl: '/pricing#dsg-gate',
       accessMode: 'billing_unavailable',
@@ -269,7 +281,9 @@ async function recordUsageAtomically(
     .maybeSingle();
 
   if (result.error || !result.data?.usage_id) {
-    throw new Error(result.error?.message || 'failed_to_record_dsg_gate_usage');
+    throw new Error(
+      result.error?.message || 'failed_to_record_dsg_gate_usage',
+    );
   }
 
   return {
@@ -308,12 +322,12 @@ export async function recordGateEvaluation(
 
     const entitlement = await getOrCreateEntitlement(orgId);
     const plan = tierSpec(entitlement.tier);
-    const limit = Number(entitlement.evals_per_month || plan.evalsPerMonth);
-    const usagePosition = usage.usagePosition ?? (await countEvalsThisPeriod(orgId));
+    const limit = Number(
+      entitlement.evals_per_month || plan.evalsPerMonth,
+    );
+    const usagePosition =
+      usage.usagePosition ?? (await countEvalsThisPeriod(orgId));
 
-    // Evaluate the slot immediately before this usage. The database assigns
-    // usagePosition under a per-organization advisory lock, so concurrent calls
-    // cannot both claim the same final included slot.
     const deliveryDecision = decideGateRevenueAccess({
       tier: plan.tier,
       subscriptionStatus: entitlement.subscription_status,
@@ -332,8 +346,6 @@ export async function recordGateEvaluation(
       };
     }
 
-    // A fully billed retry is complete. An incomplete duplicate must continue
-    // through the idempotent revenue-event and meter-outbox path.
     if (!usage.created && usage.billed) {
       return { recorded: true, meterEventId: usage.meterEventId };
     }
@@ -371,6 +383,13 @@ export async function recordGateEvaluation(
           .update({ billed: true, meter_event_id: meter.eventId })
           .eq('id', usage.id);
         return { recorded: true, meterEventId: meter.eventId };
+      }
+
+      if (!meter.durable) {
+        return {
+          recorded: false,
+          error: `meter_outbox_unavailable:${meter.error}`,
+        };
       }
 
       return { recorded: true, error: meter.error };
