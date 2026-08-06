@@ -44,8 +44,19 @@ export type GateRevenueDecision = {
   requiresPayment: boolean;
 };
 
+function overageBillingReady(input: GateRevenuePolicyInput): boolean {
+  return (
+    input.tier === 'pro' &&
+    isPaidSubscriptionActive(input.subscriptionStatus) &&
+    input.overageEnabled &&
+    input.hasStripeCustomer &&
+    input.hasStripeSubscription &&
+    input.meteringConfigured
+  );
+}
+
 /**
- * Pure, deterministic revenue gate.
+ * Pure, deterministic pre-execution revenue gate.
  *
  * Invariants:
  * - Paid tiers never execute while the subscription is inactive.
@@ -91,13 +102,7 @@ export function decideGateRevenueAccess(
   }
 
   if (input.tier === 'pro' && paidActive) {
-    const overageReady =
-      input.overageEnabled &&
-      input.hasStripeCustomer &&
-      input.hasStripeSubscription &&
-      input.meteringConfigured;
-
-    if (overageReady) {
+    if (overageBillingReady(input)) {
       return {
         allowed: true,
         remaining: 0,
@@ -120,4 +125,19 @@ export function decideGateRevenueAccess(
     accessMode: 'quota_exceeded',
     requiresPayment: true,
   };
+}
+
+/**
+ * Post-insert billing decision for the evaluation that was just recorded.
+ * `usedAfterInsert === includedLimit` is still included. Only usage strictly
+ * above the limit is an overage, preventing the last included call from being
+ * charged.
+ */
+export function shouldMeterRecordedEvaluation(
+  input: GateRevenuePolicyInput & { usedAfterInsert: number },
+): boolean {
+  const includedLimit = Math.max(0, Math.floor(input.includedLimit));
+  const usedAfterInsert = Math.max(0, Math.floor(input.usedAfterInsert));
+
+  return usedAfterInsert > includedLimit && overageBillingReady(input);
 }
