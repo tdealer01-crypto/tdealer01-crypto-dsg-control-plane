@@ -104,7 +104,7 @@ describe('Stripe metered billing', () => {
       'exec-001',
     );
     expect(result.ok).toBe(true);
-    if (result.ok) {
+    if (result.ok === true) {
       expect(result.eventId).toBe('mtr_evt_001');
       expect(result.durable).toBe(true);
     }
@@ -172,7 +172,7 @@ describe('Stripe metered billing', () => {
       '   ',
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error).toContain('executionId is required');
       expect(result.durable).toBe(false);
     }
@@ -189,7 +189,7 @@ describe('Stripe metered billing', () => {
       'exec-003',
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.skipped).toBe(true);
       expect(result.durable).toBe(false);
     }
@@ -207,7 +207,7 @@ describe('Stripe metered billing', () => {
       'exec-004',
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.skipped).toBe(true);
       expect(result.durable).toBe(false);
     }
@@ -231,7 +231,7 @@ describe('Stripe metered billing', () => {
     );
 
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.durable).toBe(false);
       expect(result.error).toContain('outbox lookup failed');
     }
@@ -248,7 +248,7 @@ describe('Stripe metered billing', () => {
       'exec-005',
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error).toContain('Stripe API error');
       expect(result.durable).toBe(true);
     }
