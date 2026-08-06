@@ -377,7 +377,7 @@ export async function recordGateEvaluation(
         `dsg-gate-${evalId}`,
       );
 
-      if (meter.ok) {
+      if (meter.ok === true) {
         await supabase
           .from('dsg_gate_usage')
           .update({ billed: true, meter_event_id: meter.eventId })
@@ -385,14 +385,15 @@ export async function recordGateEvaluation(
         return { recorded: true, meterEventId: meter.eventId };
       }
 
-      if (!meter.durable) {
+      const meterError = meter.error;
+      if (meter.durable === false) {
         return {
           recorded: false,
-          error: `meter_outbox_unavailable:${meter.error}`,
+          error: `meter_outbox_unavailable:${meterError}`,
         };
       }
 
-      return { recorded: true, error: meter.error };
+      return { recorded: true, error: meterError };
     }
 
     return { recorded: true };
