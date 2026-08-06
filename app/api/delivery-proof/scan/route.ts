@@ -1,10 +1,7 @@
 /**
  * POST /api/delivery-proof/scan
- * Accepts { repo_url, production_url, readiness_path } and runs a live proof check:
- *   1. GET production_url + readiness_path → checks HTTP status + ok field
- *   2. GET production_url/api/health → checks core_ok, db_ok, rateLimiter
- *   3. GET production_url protected routes → expects 401/403
- *   4. Assembles claim result and returns shareable run_id
+ * Runs a live delivery-proof check and returns a report only after authenticated
+ * usage evidence has been persisted safely.
  */
 
 import { NextResponse } from 'next/server';
@@ -12,7 +9,11 @@ import { readJsonBody } from '../../../../lib/security/request-json';
 import { createClient } from '../../../../lib/supabase/server';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { requireActiveProfile } from '../../../../lib/auth/require-active-profile';
-import { checkDeliveryProofEntitlement, recordDeliveryProofScan, type EntitlementCheck } from '../../../../lib/delivery-proof/entitlement';
+import {
+  checkDeliveryProofEntitlement,
+  recordDeliveryProofScan,
+  type EntitlementCheck,
+} from '../../../../lib/delivery-proof/entitlement';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ async function checkEndpoint(
     let jsonOk = true;
     if (expectJsonOk && res.ok) {
       try {
-        const json = await res.json() as Record<string, unknown>;
+        const json = (await res.json()) as Record<string, unknown>;
         jsonOk = json.ok === true;
       } catch {
         jsonOk = false;
@@ -58,10 +59,16 @@ async function checkEndpoint(
       status: pass ? 'pass' : 'fail',
       detail: pass
         ? `HTTP ${res.status} — ok`
-        : `HTTP ${res.status}${expectJsonOk && !jsonOk ? ' — ok field missing or false' : ''}`,
+        : `HTTP ${res.status}${
+            expectJsonOk && !jsonOk ? ' — ok field missing or false' : ''
+          }`,
     };
   } catch (e) {
-    return { name: label, status: 'fail', detail: `Network error: ${String(e).slice(0, 120)}` };
+    return {
+      name: label,
+      status: 'fail',
+      detail: `Network error: ${String(e).slice(0, 120)}`,
+    };
   }
 }
 
@@ -82,39 +89,55 @@ async function saveReport(
         mutation_score: null,
         requirements_pass: pass,
         requirements_total: total,
-        matrix_json: { checks, production_url: productionUrl, generated_at: new Date().toISOString() } as unknown as import('../../../../lib/database.types').Json,
+        matrix_json: {
+          checks,
+          production_url: productionUrl,
+          generated_at: new Date().toISOString(),
+        } as unknown as import('../../../../lib/database.types').Json,
         last_ci_run: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'run_id' },
     );
   } catch {
-    // non-fatal
+    // Report persistence is a separate best-effort read model. Paid delivery is
+    // controlled by recordDeliveryProofScan below.
   }
 }
 
 export async function POST(request: Request) {
   const parsed = await readJsonBody<ScanInput>(request, { maxBytes: 4_096 });
   if (!parsed.ok) {
-    return NextResponse.json({ ok: false, error: parsed.error }, { status: parsed.status });
+    return NextResponse.json(
+      { ok: false, error: parsed.error },
+      { status: parsed.status },
+    );
   }
 
-  const { production_url, repo_url, readiness_path = '/api/readiness' } = parsed.value ?? {};
+  const {
+    production_url,
+    repo_url,
+    readiness_path = '/api/readiness',
+  } = parsed.value ?? {};
 
   if (!production_url || typeof production_url !== 'string') {
-    return NextResponse.json({ ok: false, error: 'production_url is required' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: 'production_url is required' },
+      { status: 400 },
+    );
   }
 
-  // Sanitize base URL
   let base: string;
   try {
     const u = new URL(production_url);
     base = u.origin;
   } catch {
-    return NextResponse.json({ ok: false, error: 'production_url must be a valid URL' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: 'production_url must be a valid URL' },
+      { status: 400 },
+    );
   }
 
-  // Check entitlement for authenticated user
   let orgId: string | null = null;
   let entitlementCheck: EntitlementCheck | null = null;
 
@@ -124,56 +147,58 @@ export async function POST(request: Request) {
       orgId = profile.orgId;
       entitlementCheck = await checkDeliveryProofEntitlement(orgId);
 
-      // If not allowed, return 402 Payment Required
       if (!entitlementCheck.allowed) {
         return NextResponse.json(
           {
             ok: false,
             error: entitlementCheck.message,
-            requiresUpgrade: true,
+            requiresUpgrade: entitlementCheck.requiresPayment,
             tier: entitlementCheck.tier,
           },
-          { status: 402 },
+          { status: entitlementCheck.requiresPayment ? 402 : 503 },
         );
       }
     }
   } catch {
-    // Unauthenticated is OK — check as free tier
     const freeCheck = await checkDeliveryProofEntitlement(null);
     if (!freeCheck.allowed) {
       return NextResponse.json(
         {
           ok: false,
           error: freeCheck.message,
-          requiresUpgrade: true,
+          requiresUpgrade: freeCheck.requiresPayment,
         },
-        { status: 402 },
+        { status: freeCheck.requiresPayment ? 402 : 503 },
       );
     }
     entitlementCheck = freeCheck;
   }
 
   const checks: CheckResult[] = [];
-
-  // 1. Homepage
   checks.push(await checkEndpoint('Homepage', base, [200]));
 
-  // 2. Readiness endpoint
-  const readinessUrl = `${base}${readiness_path.startsWith('/') ? readiness_path : `/${readiness_path}`}`;
-  checks.push(await checkEndpoint('Readiness endpoint', readinessUrl, [200], true));
-
-  // 3. Health endpoint
-  checks.push(await checkEndpoint('Health endpoint', `${base}/api/health`, [200], true));
-
-  // 4. Protected route (should reject unauthenticated) — use GET /api/agent-executions which returns 401
-  const protectedCheck = await checkEndpoint('Protected route (auth gate)', `${base}/api/agent-executions`, [401, 403]);
-  checks.push(protectedCheck);
-
-  // 5. repo_url provided (just note it, no live check without token)
+  const readinessUrl = `${base}${
+    readiness_path.startsWith('/') ? readiness_path : `/${readiness_path}`
+  }`;
+  checks.push(
+    await checkEndpoint('Readiness endpoint', readinessUrl, [200], true),
+  );
+  checks.push(
+    await checkEndpoint('Health endpoint', `${base}/api/health`, [200], true),
+  );
+  checks.push(
+    await checkEndpoint(
+      'Protected route (auth gate)',
+      `${base}/api/agent-executions`,
+      [401, 403],
+    ),
+  );
   checks.push({
     name: 'GitHub repo',
     status: repo_url ? 'pass' : 'skip',
-    detail: repo_url ? `Repo URL provided: ${repo_url}` : 'No repo URL provided — skipped',
+    detail: repo_url
+      ? `Repo URL provided: ${repo_url}`
+      : 'No repo URL provided — skipped',
   });
 
   const passCount = checks.filter((c) => c.status === 'pass').length;
@@ -183,7 +208,6 @@ export async function POST(request: Request) {
   const runId = generateRunId();
   await saveReport(runId, checks, eligible, base);
 
-  // Record scan usage and metered billing
   const recordResult = await recordDeliveryProofScan(
     runId,
     orgId,
@@ -193,7 +217,24 @@ export async function POST(request: Request) {
     checks.filter((c) => c.status !== 'skip').length,
   );
 
-  // Fire webhook if caller is authenticated (best-effort).
+  if (!recordResult.scanRecorded) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'delivery_proof_usage_evidence_unavailable',
+        message:
+          'Report withheld because authenticated usage or billing evidence could not be completed safely.',
+      },
+      { status: 503 },
+    );
+  }
+
+  const billingStatus = recordResult.meterEventId
+    ? 'meter_sent'
+    : recordResult.error
+      ? 'meter_retry_pending'
+      : 'included_or_demo';
+
   void (async () => {
     try {
       const profile = await requireActiveProfile();
@@ -201,14 +242,16 @@ export async function POST(request: Request) {
         await fireWebhook(profile.orgId, 'proof.scan_completed', {
           run_id: runId,
           production_url: base,
-          claim_result: eligible ? 'EVIDENCE COMPLETE' : 'PRODUCTION BLOCKED',
+          claim_result: eligible
+            ? 'EVIDENCE COMPLETE'
+            : 'PRODUCTION BLOCKED',
           pass: passCount,
           tier: entitlementCheck?.tier,
-          metered: recordResult.meterEventId ? true : false,
+          billing_status: billingStatus,
         });
       }
     } catch {
-      // non-fatal
+      // Webhook delivery is downstream notification, not billing evidence.
     }
   })();
 
@@ -226,7 +269,12 @@ export async function POST(request: Request) {
     share_url: shareUrl,
     claim_result: eligible ? 'EVIDENCE COMPLETE' : 'PRODUCTION BLOCKED',
     checks,
-    summary: { pass: passCount, fail: failCount, skip: checks.filter((c) => c.status === 'skip').length },
+    summary: {
+      pass: passCount,
+      fail: failCount,
+      skip: checks.filter((c) => c.status === 'skip').length,
+    },
+    billing_status: billingStatus,
     entitlement: entitlementCheck
       ? {
           tier: entitlementCheck.tier,
