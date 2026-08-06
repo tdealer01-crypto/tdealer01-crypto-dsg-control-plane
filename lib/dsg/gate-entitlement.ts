@@ -310,7 +310,9 @@ export async function recordGateEvaluation(
       billed: false,
     });
 
-    if (!usage.created) {
+    // A fully billed retry is complete. An incomplete duplicate must continue
+    // through the idempotent revenue-event and meter-outbox path.
+    if (!usage.created && usage.billed) {
       return { recorded: true, meterEventId: usage.meterEventId };
     }
 
@@ -320,7 +322,12 @@ export async function recordGateEvaluation(
       amount: 1,
       currency: 'USD',
       source: `dsg_gate:${route}`,
-      metadata: { evalId, gateStatus, durationMs },
+      metadata: {
+        idempotency_key: `dsg-gate-usage-${orgId}-${evalId}`,
+        evalId,
+        gateStatus,
+        durationMs,
+      },
     });
 
     const entitlement = await getOrCreateEntitlement(orgId);
