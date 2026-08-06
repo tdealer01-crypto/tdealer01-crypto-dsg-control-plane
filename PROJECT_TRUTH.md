@@ -209,6 +209,30 @@ trusting this summary once time has passed.
 Also tracked, **not fixed in this pass** — a second, independent quota
 check: see `docs/REPO_TRUTH.md`'s "Known unresolved billing gap" section.
 
+## Documentation sprawl cleanup (2026-08-06)
+
+Repo root had 102 status/summary/report `.md` files and `docs/` had 541 —
+643 total, with no single current source of truth. 516 of those had zero
+reference from any code, script, or CI workflow (verified by grepping every
+non-markdown file in the repo for each filename) and were moved via `git mv`
+into `docs/archive/` (structure mirrored, content unchanged, full history
+preserved — see `docs/archive/README.md`). This did not touch `app/`,
+`lib/`, `tests/`, or any runtime behavior.
+
+Files left in place (not archived) fall into two groups: the canonical set
+listed above, and files actively read by application code or checked by
+scripts/CI (e.g. `DSG.md`, `DESIGN.md`, several `docs/*.md` files used by
+`scripts/validate-stripe-submission.sh` and similar). Those still need a
+human decision — this pass only removed the risk-free orphans.
+
+`README.md` root-relative links pointing at archived files were updated to
+their new `docs/archive/...` path. A handful of README links were already
+broken before this cleanup (`TEST_COVERAGE.md`, `docs/API.md`,
+`docs/Z3_FORMAL_SOLVER_README.md`, `docs/delivery-proof.md`,
+`docs/API_REFERENCE.md` — the last one exists only at root as
+`API_REFERENCE.md`, not under `docs/`); those are pre-existing and were not
+introduced by this change.
+
 ## Working rule for future sessions
 
 Before patching, deploying, or updating docs:

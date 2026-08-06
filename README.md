@@ -82,13 +82,13 @@ Every Z3-integrated skill decision must retain:
 Do not treat this policy as evidence that existing capabilities work. Run the applicable repository checks and inspect their outputs before changing a claim to `PASS` or `DEPLOYED`.
 {% endhint %}
 
-[![Tests](https://img.shields.io/badge/tests-4026_passing_0_failing-brightgreen?style=for-the-badge)](BENCHMARKS.md) [![Coverage](https://img.shields.io/badge/coverage-89%-brightgreen?style=for-the-badge)](TEST_COVERAGE.md) [![Production](https://img.shields.io/badge/Production-LIVE-brightgreen?style=for-the-badge)](./#production-status-) [![PDPA Ready](https://img.shields.io/badge/PDPA-%E0%B8%A1%E0%B8%B2%E0%B8%95%E0%B8%A3%E0%B8%B237%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1-purple?style=for-the-badge)](BENCHMARKS.md) [![Accountability](https://img.shields.io/badge/Every_Decision-Has_an_Owner-informational?style=for-the-badge)](./#the-accountability-angle)
+[![Tests](https://img.shields.io/badge/tests-4026_passing_0_failing-brightgreen?style=for-the-badge)](docs/archive/root/BENCHMARKS.md) [![Coverage](https://img.shields.io/badge/coverage-89%-brightgreen?style=for-the-badge)](TEST_COVERAGE.md) [![Production](https://img.shields.io/badge/Production-LIVE-brightgreen?style=for-the-badge)](./#production-status-) [![PDPA Ready](https://img.shields.io/badge/PDPA-%E0%B8%A1%E0%B8%B2%E0%B8%95%E0%B8%A3%E0%B8%B237%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1-purple?style=for-the-badge)](docs/archive/root/BENCHMARKS.md) [![Accountability](https://img.shields.io/badge/Every_Decision-Has_an_Owner-informational?style=for-the-badge)](./#the-accountability-angle)
 
 > ### 💡 Don't trust AI. Verify every decision.
 >
 > **Monitor** every action. **Verify** before execution. **Audit** and replay proof. **Optimize** costs and risk.
 >
-> [▶️ Try DSG ONE Free](showcase/) | [📊 View Benchmarks](BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
+> [▶️ Try DSG ONE Free](showcase/) | [📊 View Benchmarks](docs/archive/root/BENCHMARKS.md) | Live: https://tdealer01-crypto-dsg-control-plane.vercel.app
 
 **One-Sentence Pitch:** Write a policy once ("Only allow transfers under ฿50K"). DSG ONE gates every AI decision against it, proves why it decided, and exports tamper-proof evidence for audits.
 
@@ -161,7 +161,7 @@ console.log('Replay Token:', result.reproducibilityToken);
 
 **Documentation:**
 
-* Installation: [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md)
+* Installation: [`INSTALLATION_GUIDE.md`](docs/archive/root/INSTALLATION_GUIDE.md)
 * Architecture: [`lib/deeptutor/README.md`](lib/deeptutor/)
 * Publishing: [`docs/PLUGIN_PUBLISHING.md`](docs/PLUGIN_PUBLISHING.md)
 * API Reference: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
@@ -1535,7 +1535,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 * Live production data examples: 50+ PostHog tools, 25+ Supabase tools, 15+ Vercel tools, 11+ AWS tools
 * Security: Centralized error handling, no error-message leakage
 * All CI checks passed: security ✅, CCVS evidence ✅, CodeQL ✅, e2e tests ✅
-* [Read the Guide](docs/MCP_INTEGRATION_GUIDE.md)
+* [Read the Guide](docs/archive/MCP_INTEGRATION_GUIDE.md)
 
 ✅ **JWT Bearer Token Authentication** (PR #914 Merged)
 
@@ -1565,7 +1565,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 * ROI: $150k/year from saved incident response time (6 hours/day)
 * Incident diagnosis: 2 hours → 5 minutes; Cost per incident: $400 → $20
 * Documentation ready: [Trinity-DSG-Agents-Integration.md](docs/integration/Trinity-DSG-Agents-Integration.md)
-* Implementation guide: [INTEGRATION-CHECKLIST.md](docs/integration/INTEGRATION-CHECKLIST.md)
+* Implementation guide: [INTEGRATION-CHECKLIST.md](docs/archive/integration/INTEGRATION-CHECKLIST.md)
 * CCVS Evidence: 3413/3413 PASS ✅ | Security: 0 vulnerabilities ✅
 
 ✅ **PostHog Analytics & Event Instrumentation** (Deployed)
@@ -1613,19 +1613,19 @@ curl -H "Authorization: Bearer $TOKEN" \
 | [**Enterprise Features Overview**](./#enterprise-features-phases-1-3-)              | All Users                | 5 min                      |
 | [**SOC 2 Controls Mapping**](docs/SOC2_CONTROLS.md)                                 | Auditors & Compliance    | 15 min                     |
 | [**Incident Response Playbook**](docs/INCIDENT_RESPONSE_PLAYBOOK.md)                | Security & Ops           | 10 min                     |
-| [**Workload Identity Federation**](docs/WORKLOAD_IDENTITY.md)                       | DevOps & Engineers       | 10 min                     |
+| [**Workload Identity Federation**](docs/archive/WORKLOAD_IDENTITY.md)                       | DevOps & Engineers       | 10 min                     |
 | [**DSG.md — Developer Guide**](DSG.md)                                              | All Contributors         | 20 min (required pre-read) |
-| [**MCP Integration Guide**](docs/MCP_INTEGRATION_GUIDE.md)                          | Engineers                | 15 min                     |
+| [**MCP Integration Guide**](docs/archive/MCP_INTEGRATION_GUIDE.md)                          | Engineers                | 15 min                     |
 | [**Trinity Dashboard UI**](apps/trinity-dashboard/)                                 | Operators                | 5 min                      |
 | [**Trinity × DSG Integration**](docs/integration/Trinity-DSG-Agents-Integration.md) | Operators                | 10 min                     |
-| [**Integration Checklist**](docs/integration/INTEGRATION-CHECKLIST.md)              | Implementers             | 15 min                     |
+| [**Integration Checklist**](docs/archive/integration/INTEGRATION-CHECKLIST.md)              | Implementers             | 15 min                     |
 | [**Integration Benefits**](docs/integration/Trinity-DSG-Benefits.txt)               | Leadership               | 5 min                      |
-| [**Architecture Deep Dive**](docs/ARCHITECTURE.md)                                  | Engineers                | 15 min                     |
+| [**Architecture Deep Dive**](docs/archive/ARCHITECTURE.md)                                  | Engineers                | 15 min                     |
 | [**Security Audit**](docs/SECURITY.md)                                              | Security teams           | 10 min                     |
 | [**Z3 Formal Verification**](docs/VERIFICATION.md)                                  | Researchers              | 20 min                     |
 | [**Thai PageAgent Integration**](lib/page-agent/)                                   | Thai users               | 5 min                      |
-| [**Marketplace Setup**](MARKETPLACE.md)                                             | Operators                | 10 min                     |
-| [**Compliance Guide**](docs/COMPLIANCE.md)                                          | Auditors                 | 15 min                     |
+| [**Marketplace Setup**](docs/archive/root/MARKETPLACE.md)                                             | Operators                | 10 min                     |
+| [**Compliance Guide**](docs/archive/COMPLIANCE.md)                                          | Auditors                 | 15 min                     |
 | [**API Reference**](docs/API.md)                                                    | Developers               | 20 min                     |
 
 ***
@@ -1656,7 +1656,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 **Complete & Deployed:**
 
 * ✅ **MCP (Model Context Protocol)** — 5+ production MCPs with 130+ tools
-  * [Setup Guide](docs/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools) + DSG ONE (30+ tools)
+  * [Setup Guide](docs/archive/MCP_INTEGRATION_GUIDE.md) | PostHog (50+ tools) + Supabase (25+ tools) + Vercel (15+ tools) + AWS Marketplace (11+ tools) + DSG ONE (30+ tools)
   * Production-tested: Analytics, database management, deployment monitoring, solution discovery, governance decisions, compliance evidence
   * All security checks passed, comprehensive troubleshooting included
 * ✅ **Trinity Dashboard UI** — Real-time agent control plane (Chat + Dashboard + CLI + API)
@@ -1667,7 +1667,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 **Complete & Documented:**
 
 * ✅ **Trinity × DSG Agents Phase 5** — Full orchestration + cost tracking + audit trail + mode switching
-  * [Integration Guide](docs/integration/Trinity-DSG-Agents-Integration.md) | [Checklist](docs/integration/INTEGRATION-CHECKLIST.md) | [Benefits](docs/integration/Trinity-DSG-Benefits.txt)
+  * [Integration Guide](docs/integration/Trinity-DSG-Agents-Integration.md) | [Checklist](docs/archive/integration/INTEGRATION-CHECKLIST.md) | [Benefits](docs/integration/Trinity-DSG-Benefits.txt)
 
 **Optional Extensions:**
 
