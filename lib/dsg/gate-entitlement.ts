@@ -16,7 +16,6 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 import {
   decideGateRevenueAccess,
   GATE_INCLUDED_EVALS,
-  shouldMeterRecordedEvaluation,
   type GateAccessMode,
   type GateTier,
 } from './gate-revenue-policy';
@@ -93,6 +92,14 @@ type GateEntitlementRow = {
   overage_enabled: boolean | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+};
+
+type GateUsageRecord = {
+  id: string;
+  created: boolean;
+  billed: boolean;
+  meterEventId?: string;
+  usagePosition: number | null;
 };
 
 function monthBoundsUtc(now = new Date()) {
@@ -243,48 +250,37 @@ export async function checkGateEntitlement(
   }
 }
 
-async function insertUsageOnce(
+async function recordUsageAtomically(
   supabase: any,
-  payload: Record<string, unknown>,
-): Promise<{ id: string; created: boolean; billed: boolean; meterEventId?: string }> {
-  const inserted = await supabase
-    .from('dsg_gate_usage')
-    .upsert(payload, {
-      onConflict: 'org_id,eval_id',
-      ignoreDuplicates: true,
+  orgId: string,
+  evalId: string,
+  route: 'gates/evaluate' | 'proofs/prove',
+  gateStatus: string,
+  durationMs: number,
+): Promise<GateUsageRecord> {
+  const result = await supabase
+    .rpc('record_dsg_gate_usage', {
+      p_org_id: orgId,
+      p_eval_id: evalId,
+      p_route: route,
+      p_gate_status: gateStatus,
+      p_duration_ms: durationMs,
     })
-    .select('id,billed,meter_event_id')
     .maybeSingle();
 
-  if (inserted.error) {
-    throw new Error(inserted.error.message);
-  }
-
-  if (inserted.data?.id) {
-    return {
-      id: String(inserted.data.id),
-      created: true,
-      billed: inserted.data.billed === true,
-      meterEventId: inserted.data.meter_event_id || undefined,
-    };
-  }
-
-  const existing = await supabase
-    .from('dsg_gate_usage')
-    .select('id,billed,meter_event_id')
-    .eq('org_id', payload.org_id)
-    .eq('eval_id', payload.eval_id)
-    .maybeSingle();
-
-  if (existing.error || !existing.data?.id) {
-    throw new Error(existing.error?.message || 'failed_to_resolve_dsg_gate_usage');
+  if (result.error || !result.data?.usage_id) {
+    throw new Error(result.error?.message || 'failed_to_record_dsg_gate_usage');
   }
 
   return {
-    id: String(existing.data.id),
-    created: false,
-    billed: existing.data.billed === true,
-    meterEventId: existing.data.meter_event_id || undefined,
+    id: String(result.data.usage_id),
+    created: result.data.created === true,
+    billed: result.data.billed === true,
+    meterEventId: result.data.meter_event_id || undefined,
+    usagePosition:
+      typeof result.data.usage_position === 'number'
+        ? result.data.usage_position
+        : null,
   };
 }
 
@@ -301,14 +297,40 @@ export async function recordGateEvaluation(
     }
 
     const supabase = getSupabaseAdmin() as any;
-    const usage = await insertUsageOnce(supabase, {
-      org_id: orgId,
-      eval_id: evalId,
+    const usage = await recordUsageAtomically(
+      supabase,
+      orgId,
+      evalId,
       route,
-      gate_status: gateStatus,
-      duration_ms: durationMs,
-      billed: false,
+      gateStatus,
+      durationMs,
+    );
+
+    const entitlement = await getOrCreateEntitlement(orgId);
+    const plan = tierSpec(entitlement.tier);
+    const limit = Number(entitlement.evals_per_month || plan.evalsPerMonth);
+    const usagePosition = usage.usagePosition ?? (await countEvalsThisPeriod(orgId));
+
+    // Evaluate the slot immediately before this usage. The database assigns
+    // usagePosition under a per-organization advisory lock, so concurrent calls
+    // cannot both claim the same final included slot.
+    const deliveryDecision = decideGateRevenueAccess({
+      tier: plan.tier,
+      subscriptionStatus: entitlement.subscription_status,
+      includedLimit: limit,
+      used: Math.max(0, usagePosition - 1),
+      overageEnabled: entitlement.overage_enabled === true,
+      hasStripeCustomer: Boolean(entitlement.stripe_customer_id),
+      hasStripeSubscription: Boolean(entitlement.stripe_subscription_id),
+      meteringConfigured: isMeteredBillingConfigured(),
     });
+
+    if (!deliveryDecision.allowed) {
+      return {
+        recorded: false,
+        error: `delivery_blocked:${deliveryDecision.accessMode}`,
+      };
+    }
 
     // A fully billed retry is complete. An incomplete duplicate must continue
     // through the idempotent revenue-event and meter-outbox path.
@@ -327,26 +349,15 @@ export async function recordGateEvaluation(
         evalId,
         gateStatus,
         durationMs,
+        usagePosition,
+        accessMode: deliveryDecision.accessMode,
       },
     });
 
-    const entitlement = await getOrCreateEntitlement(orgId);
-    const plan = tierSpec(entitlement.tier);
-    const limit = Number(entitlement.evals_per_month || plan.evalsPerMonth);
-    const usedAfterInsert = await countEvalsThisPeriod(orgId);
-    const meterCurrentEvaluation = shouldMeterRecordedEvaluation({
-      tier: plan.tier,
-      subscriptionStatus: entitlement.subscription_status,
-      includedLimit: limit,
-      used: usedAfterInsert,
-      usedAfterInsert,
-      overageEnabled: entitlement.overage_enabled === true,
-      hasStripeCustomer: Boolean(entitlement.stripe_customer_id),
-      hasStripeSubscription: Boolean(entitlement.stripe_subscription_id),
-      meteringConfigured: isMeteredBillingConfigured(),
-    });
-
-    if (meterCurrentEvaluation && entitlement.stripe_customer_id) {
+    if (
+      deliveryDecision.accessMode === 'metered_overage' &&
+      entitlement.stripe_customer_id
+    ) {
       const meter = await reportMeterEvent(
         entitlement.stripe_customer_id,
         orgId,
