@@ -222,7 +222,7 @@ export async function reportMeterEvent(
     quantity: meteredQuantity,
   });
 
-  if (!outbox.ok) {
+  if (outbox.ok === false) {
     return { ok: false, error: outbox.error, durable: false };
   }
 
@@ -243,7 +243,7 @@ export async function reportMeterEvent(
       executionId: normalizedExecutionId,
     });
 
-    if (result.ok) {
+    if (result.ok === true) {
       await markOutboxSent(outbox.rowId, result.eventId);
     }
 
@@ -311,7 +311,7 @@ export async function flushMeterOutbox(
         executionId: row.execution_id,
       });
 
-      if (delivered.ok) {
+      if (delivered.ok === true) {
         await markOutboxSent(row.id, delivered.eventId);
         result.sent++;
       }
