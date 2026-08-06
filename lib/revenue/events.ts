@@ -65,19 +65,35 @@ function toRecord(row: RevenueEventRow): RevenueEventRecord {
   };
 }
 
+function idempotencyMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): Record<string, string> | null {
+  if (typeof metadata?.idempotency_key === 'string' && metadata.idempotency_key) {
+    return { idempotency_key: metadata.idempotency_key };
+  }
+
+  if (typeof metadata?.stripe_event_id === 'string' && metadata.stripe_event_id) {
+    return { stripe_event_id: metadata.stripe_event_id };
+  }
+
+  return null;
+}
+
 export async function insertRevenueEvent(event: RevenueEventInput): Promise<RevenueEventRecord> {
   const supabase = getSupabaseAdmin();
-  const eventId = typeof event.metadata?.stripe_event_id === 'string'
-    ? String(event.metadata.stripe_event_id)
-    : null;
+  const dedupeMetadata = idempotencyMetadata(event.metadata);
 
-  if (eventId) {
+  if (dedupeMetadata) {
     const duplicate = await (supabase as any)
       .from('revenue_events')
       .select('id, created_at, org_id, user_id, event_type, plan_id, amount, currency, source, metadata')
       .eq('org_id', event.orgId)
-      .contains('metadata', { stripe_event_id: eventId })
+      .contains('metadata', dedupeMetadata)
       .maybeSingle();
+
+    if (duplicate?.error) {
+      throw new Error(duplicate.error.message);
+    }
 
     if (duplicate?.data) {
       return toRecord(duplicate.data as RevenueEventRow);
@@ -108,7 +124,7 @@ export async function insertRevenueEvent(event: RevenueEventInput): Promise<Reve
 
 export async function listRevenueEvents(
   orgId: string,
-  options?: { limit?: number }
+  options?: { limit?: number },
 ): Promise<RevenueEventRecord[]> {
   const supabase = getSupabaseAdmin();
   const limit = Math.min(Math.max(options?.limit ?? 50, 1), 500);
