@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decideGateRevenueAccess,
   normalizeGateTier,
+  shouldMeterRecordedEvaluation,
 } from '../../../lib/dsg/gate-revenue-policy';
 
 describe('normalizeGateTier', () => {
@@ -117,5 +118,46 @@ describe('decideGateRevenueAccess', () => {
       meteringConfigured: false,
     });
     expect(canceled.allowed).toBe(false);
+  });
+});
+
+describe('shouldMeterRecordedEvaluation', () => {
+  const proBilling = {
+    tier: 'pro' as const,
+    subscriptionStatus: 'active',
+    includedLimit: 5_000,
+    used: 5_000,
+    overageEnabled: true,
+    hasStripeCustomer: true,
+    hasStripeSubscription: true,
+    meteringConfigured: true,
+  };
+
+  it('does not charge evaluation 5,000 because it is included', () => {
+    expect(
+      shouldMeterRecordedEvaluation({
+        ...proBilling,
+        usedAfterInsert: 5_000,
+      }),
+    ).toBe(false);
+  });
+
+  it('charges evaluation 5,001 when all billing dependencies exist', () => {
+    expect(
+      shouldMeterRecordedEvaluation({
+        ...proBilling,
+        usedAfterInsert: 5_001,
+      }),
+    ).toBe(true);
+  });
+
+  it('never charges an overage when metering is unavailable', () => {
+    expect(
+      shouldMeterRecordedEvaluation({
+        ...proBilling,
+        meteringConfigured: false,
+        usedAfterInsert: 5_001,
+      }),
+    ).toBe(false);
   });
 });
