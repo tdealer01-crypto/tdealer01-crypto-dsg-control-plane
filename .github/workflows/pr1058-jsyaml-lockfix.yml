@@ -4,19 +4,20 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   lockfix:
-    if: github.event_name != 'pull_request' || github.event.pull_request.number == 1058
+    if: github.event.pull_request.number == 1058
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          ref: codex/automatic-revenue-compliance-gate-20260806
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,20 +38,17 @@ jobs:
       - name: Verify production audit
         shell: bash
         run: |
-          set +e
-          npm audit --audit-level=high --omit=dev 2>&1 | tee npm-audit-after.log
-          status=${PIPESTATUS[0]}
-          echo "$status" > npm-audit-exit-code.txt
-          exit "$status"
+          npm audit --audit-level=high --omit=dev
 
-      - name: Upload lock fix evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr1058-jsyaml-lockfix
-          path: |
-            package-lock.json
-            jsyaml-lockfix.diff
-            npm-audit-after.log
-            npm-audit-exit-code.txt
-          retention-days: 3
+      - name: Commit verified lockfile fix
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already fixed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "fix(deps): update js-yaml to patched 4.3.1"
+          git push origin HEAD:codex/automatic-revenue-compliance-gate-20260806
