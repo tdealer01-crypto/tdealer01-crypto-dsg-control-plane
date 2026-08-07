@@ -1,0 +1,56 @@
+name: PR 1058 js-yaml Lock Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lockfix:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 1058
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Refresh js-yaml within existing semver ranges
+        shell: bash
+        run: |
+          npm update js-yaml --package-lock-only --ignore-scripts
+          npm ls js-yaml --omit=dev || true
+          git diff -- package.json package-lock.json | tee jsyaml-lockfix.diff
+
+      - name: Verify production audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=high --omit=dev 2>&1 | tee npm-audit-after.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > npm-audit-exit-code.txt
+          exit "$status"
+
+      - name: Upload lock fix evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr1058-jsyaml-lockfix
+          path: |
+            package-lock.json
+            jsyaml-lockfix.diff
+            npm-audit-after.log
+            npm-audit-exit-code.txt
+          retention-days: 3
