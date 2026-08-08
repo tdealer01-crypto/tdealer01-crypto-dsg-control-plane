@@ -19,33 +19,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Ising Solver Gate Evaluation Endpoint
- *
- * POST /api/dsg/v1/solver/ising/evaluate
- *
- * Evaluates deterministic gates using Ising model (Simulated Annealing)
- * instead of Z3 SMT solver. Useful for:
- * - Fast probabilistic constraint satisfaction
- * - Optimization problems on binary variables
- * - Resource-constrained environments
- *
- * Request:
- * {
- *   "planId": "string",
- *   "riskLevel": "low|medium|high",
- *   "context": { ... },
- *   "nonce": "string",
- *   "idempotencyKey": "string",
- *   "solverConfig": {
- *     "maxIterations": number,
- *     "initialTemperature": number,
- *     "coolingRate": number,
- *     "timeout_ms": number
- *   }
- * }
- */
-
 interface IsingEvaluateRequest {
   planId?: string;
   riskLevel?: 'low' | 'medium' | 'high';
@@ -60,17 +33,38 @@ interface IsingEvaluateRequest {
   };
 }
 
+function usageFailure(error?: string) {
+  const accessMode = error?.startsWith('delivery_blocked:')
+    ? error.slice('delivery_blocked:'.length)
+    : 'billing_unavailable';
+  const requiresUpgrade =
+    accessMode === 'quota_exceeded' || accessMode === 'subscription_inactive';
+
+  return {
+    status: requiresUpgrade ? 402 : 503,
+    body: {
+      ok: false,
+      error: 'usage_evidence_unavailable',
+      accessMode,
+      requiresUpgrade,
+      message:
+        requiresUpgrade
+          ? 'Solver result withheld because the current subscription does not authorize this usage slot.'
+          : 'Solver result withheld because usage evidence could not be completed safely.',
+      upgradeUrl: '/pricing#dsg-gate',
+    },
+  };
+}
+
 export async function POST(request: Request) {
-  // ── Auth ──────────────────────────────────────────────────────────────────
   const caller = await requireDsgAuth(request);
   if (!caller.ok) return dsgAuthError(caller as typeof caller & { ok: false });
 
   const startMs = Date.now();
 
-  // ── Rate limit ────────────────────────────────────────────────────────────
   const rateLimitResult = await applyRateLimit({
     key: getRateLimitKey(request, `dsg-ising:${caller.orgId}`),
-    limit: 100, // Higher limit for Ising (faster than Z3)
+    limit: 100,
     windowMs: 60_000,
   });
   const rateLimitHeaders = buildRateLimitHeaders(rateLimitResult, 100);
@@ -81,20 +75,24 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Entitlement ───────────────────────────────────────────────────────────
   const entitlement = await checkGateEntitlement(caller.orgId);
   if (!entitlement.allowed) {
     return NextResponse.json(
       {
         ok: false,
         error: entitlement.message,
-        requiresUpgrade: true,
+        requiresUpgrade: entitlement.requiresPayment,
+        tier: entitlement.tier,
+        accessMode: entitlement.accessMode,
+        upgradeUrl: entitlement.upgradeUrl,
       },
-      { status: 402, headers: rateLimitHeaders },
+      {
+        status: entitlement.requiresPayment ? 402 : 503,
+        headers: rateLimitHeaders,
+      },
     );
   }
 
-  // ── Parse request body ────────────────────────────────────────────────────
   const body = await readJsonBody(request, { maxBytes: 16_000 });
   if (!body.ok) {
     return NextResponse.json(
@@ -104,8 +102,6 @@ export async function POST(request: Request) {
   }
 
   const req = body.value as IsingEvaluateRequest;
-
-  // ── Validation ────────────────────────────────────────────────────────────
   const errors: string[] = [];
 
   if (!req.nonce || typeof req.nonce !== 'string' || !req.nonce.trim()) {
@@ -132,17 +128,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    // ── Get policy manifest and extract constraints ────────────────────────
     const manifest = getDeterministicPolicyManifest();
     const context = req.context ?? {};
-
-    // Build constraints from manifest
     const constraints = manifest.constraints.map((constraint) => ({
       ...constraint,
       passed: context[constraint.evidenceKey] === true,
     }));
 
-    // ── Build proof request with required fields ────────────────────────────
     const proofRequest: DeterministicProofRequest = {
       planId: req.planId,
       riskLevel: req.riskLevel ?? 'medium',
@@ -151,20 +143,29 @@ export async function POST(request: Request) {
       idempotencyKey: req.idempotencyKey,
     };
 
-    // ── Evaluate with Ising solver ────────────────────────────────────────
-    const result = await evaluateGateWithIsingSolver(constraints, proofRequest, req.solverConfig);
+    const result = await evaluateGateWithIsingSolver(
+      constraints,
+      proofRequest,
+      req.solverConfig,
+    );
+    const durationMs = Date.now() - startMs;
 
-    // ── Record usage ──────────────────────────────────────────────────────
-    const evalId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    await recordGateEvaluation(
-      evalId,
+    const usage = await recordGateEvaluation(
+      req.idempotencyKey.trim(),
       caller.orgId,
       'gates/evaluate',
       result.gateStatus,
-      Date.now() - startMs,
+      durationMs,
     );
 
-    // ── Response ──────────────────────────────────────────────────────────
+    if (!usage.recorded) {
+      const failure = usageFailure(usage.error);
+      return NextResponse.json(failure.body, {
+        status: failure.status,
+        headers: rateLimitHeaders,
+      });
+    }
+
     const response = NextResponse.json({
       ok: result.ok,
       gateStatus: result.gateStatus,
@@ -173,12 +174,17 @@ export async function POST(request: Request) {
       reason: result.reason,
       proof: result.proof,
       solver: 'ising-sa',
+      entitlement: {
+        tier: entitlement.tier,
+        evalsRemaining: entitlement.evalsRemaining,
+        accessMode: entitlement.accessMode,
+      },
       timestamp: new Date().toISOString(),
-      responseTime_ms: Date.now() - startMs,
+      responseTime_ms: durationMs,
     });
 
     response.headers.set('X-Solver', 'ising-sa');
-    response.headers.set('X-Response-Time', String(Date.now() - startMs));
+    response.headers.set('X-Response-Time', String(durationMs));
     Object.entries(rateLimitHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });

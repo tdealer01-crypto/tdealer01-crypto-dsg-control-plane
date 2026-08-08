@@ -1,37 +1,22 @@
 import { NextResponse } from 'next/server';
-import { solveHybrid, analyzeProblemDebug } from '../../../../../../../lib/ising/hybrid-solver';
-import type { DeterministicProofRequest } from '../../../../../../../lib/dsg/deterministic/types';
-import { readJsonBody } from '../../../../../../../lib/security/request-json';
+import { solveHybrid, analyzeProblemDebug } from '@/lib/ising/hybrid-solver';
+import type { DeterministicProofRequest } from '@/lib/dsg/deterministic/types';
+import { readJsonBody } from '@/lib/security/request-json';
 import {
   requireDsgAuth,
   dsgAuthError,
-} from '../../../../../../../lib/dsg/auth/require-dsg-auth';
+} from '@/lib/dsg/auth/require-dsg-auth';
 import {
   checkGateEntitlement,
   recordGateEvaluation,
-} from '../../../../../../../lib/dsg/gate-entitlement';
+} from '@/lib/dsg/gate-entitlement';
 import {
   applyRateLimit,
   buildRateLimitHeaders,
   getRateLimitKey,
-} from '../../../../../../../lib/security/rate-limit';
+} from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Hybrid Solver Gate Evaluation Endpoint
- *
- * POST /api/dsg/v1/solver/hybrid/evaluate
- *
- * Intelligently selects between Z3 and Ising solvers based on problem characteristics:
- * - Z3: Complex logic, exact proofs, small problems
- * - Ising: Many variables, fast decision, soft constraints
- * - Parallel: Both solvers racing, fastest wins
- *
- * Query params:
- * - forceParallel=true: Always use both solvers in parallel
- * - debug=true: Include problem analysis in response
- */
 
 interface HybridEvaluateRequest {
   planId?: string;
@@ -42,24 +27,21 @@ interface HybridEvaluateRequest {
 }
 
 export async function POST(request: Request) {
-  // ── Auth ──────────────────────────────────────────────────────────────────
   const caller = await requireDsgAuth(request);
   if (!caller.ok) return dsgAuthError(caller as typeof caller & { ok: false });
 
   const startMs = Date.now();
-
-  // ── Query params ──────────────────────────────────────────────────────────
   const url = new URL(request.url);
   const forceParallel = url.searchParams.get('forceParallel') === 'true';
   const debug = url.searchParams.get('debug') === 'true';
 
-  // ── Rate limit ────────────────────────────────────────────────────────────
   const rateLimitResult = await applyRateLimit({
     key: getRateLimitKey(request, `dsg-hybrid:${caller.orgId}`),
     limit: 100,
     windowMs: 60_000,
   });
   const rateLimitHeaders = buildRateLimitHeaders(rateLimitResult, 100);
+
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
       { ok: false, error: 'rate_limit_exceeded' },
@@ -67,20 +49,21 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Entitlement ───────────────────────────────────────────────────────────
   const entitlement = await checkGateEntitlement(caller.orgId);
   if (!entitlement.allowed) {
     return NextResponse.json(
       {
         ok: false,
         error: entitlement.message,
-        requiresUpgrade: true,
+        requiresUpgrade: entitlement.requiresPayment,
+        tier: entitlement.tier,
+        accessMode: entitlement.accessMode,
+        upgradeUrl: entitlement.upgradeUrl,
       },
-      { status: 402, headers: rateLimitHeaders },
+      { status: entitlement.requiresPayment ? 402 : 503, headers: rateLimitHeaders },
     );
   }
 
-  // ── Parse request body ────────────────────────────────────────────────────
   const body = await readJsonBody(request, { maxBytes: 16_000 });
   if (!body.ok) {
     return NextResponse.json(
@@ -90,8 +73,6 @@ export async function POST(request: Request) {
   }
 
   const req = body.value as HybridEvaluateRequest;
-
-  // ── Validation ────────────────────────────────────────────────────────────
   const errors: string[] = [];
 
   if (!req.nonce || typeof req.nonce !== 'string' || !req.nonce.trim()) {
@@ -111,14 +92,13 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: 'validation_failed',
-        details: errors.map((msg) => ({ message: msg })),
+        details: errors.map((message) => ({ message })),
       },
       { status: 400, headers: rateLimitHeaders },
     );
   }
 
   try {
-    // ── Build proof request with required fields ────────────────────────────
     const proofRequest: DeterministicProofRequest = {
       planId: req.planId,
       riskLevel: req.riskLevel ?? 'medium',
@@ -127,24 +107,32 @@ export async function POST(request: Request) {
       idempotencyKey: req.idempotencyKey,
     };
 
-    // ── Analyze problem ───────────────────────────────────────────────────
-    const problemAnalysis = debug ? (await analyzeProblemDebug(proofRequest)) : null;
-
-    // ── Solve with hybrid strategy ────────────────────────────────────────
+    const problemAnalysis = debug ? await analyzeProblemDebug(proofRequest) : null;
     const result = await solveHybrid(proofRequest, forceParallel);
+    const durationMs = Date.now() - startMs;
 
-    // ── Record usage ──────────────────────────────────────────────────────
-    const evalId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    await recordGateEvaluation(
-      evalId,
+    // The caller-provided idempotency key is the canonical usage ID. A retry of
+    // the same governed action cannot create a second billable usage record.
+    const usage = await recordGateEvaluation(
+      req.idempotencyKey.trim(),
       caller.orgId,
       'gates/evaluate',
       result.decision.gateStatus,
-      Date.now() - startMs,
+      durationMs,
     );
 
-    // ── Response ──────────────────────────────────────────────────────────
-    const responseBody: any = {
+    if (!usage.recorded) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'usage_recording_failed',
+          message: 'Solver result was withheld because billable usage evidence could not be persisted',
+        },
+        { status: 503, headers: rateLimitHeaders },
+      );
+    }
+
+    const responseBody: Record<string, unknown> = {
       ok: result.decision.ok,
       gateStatus: result.decision.gateStatus,
       riskLevel: req.riskLevel ?? 'medium',
@@ -152,10 +140,14 @@ export async function POST(request: Request) {
       solver_selected: result.selected,
       solver_strategy: result.solver,
       timestamp: new Date().toISOString(),
-      responseTime_ms: Date.now() - startMs,
+      responseTime_ms: durationMs,
+      entitlement: {
+        tier: entitlement.tier,
+        evalsRemaining: entitlement.evalsRemaining,
+        accessMode: entitlement.accessMode,
+      },
     };
 
-    // Include solver results if available
     if (result.z3_result) {
       responseBody.z3 = {
         ok: result.z3_result.ok,
@@ -174,7 +166,6 @@ export async function POST(request: Request) {
       };
     }
 
-    // Include problem analysis if debug requested
     if (problemAnalysis) {
       responseBody.analysis = {
         variables: problemAnalysis.characteristics.numVariables,
@@ -189,10 +180,9 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json(responseBody);
-
     response.headers.set('X-Solver-Strategy', result.solver);
     response.headers.set('X-Solver-Selected', result.selected);
-    response.headers.set('X-Response-Time', String(Date.now() - startMs));
+    response.headers.set('X-Response-Time', String(durationMs));
     Object.entries(rateLimitHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
@@ -201,10 +191,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Hybrid solver error:', error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'solver_error',
-      },
+      { ok: false, error: 'solver_error' },
       { status: 500, headers: rateLimitHeaders },
     );
   }

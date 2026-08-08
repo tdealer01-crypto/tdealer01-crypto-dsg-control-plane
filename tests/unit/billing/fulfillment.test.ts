@@ -1,95 +1,79 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockUpdate = vi.fn().mockResolvedValue({ error: null });
-const mockEq = vi.fn().mockReturnValue({ error: null });
-const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock('../../../lib/supabase-server', () => ({
-  getSupabaseAdmin: vi.fn(() => ({ from: mockFrom })),
+  getSupabaseAdmin: vi.fn(() => ({ rpc: mockRpc })),
 }));
 
-import { fulfillSubscription, revokeSubscription } from '../../../lib/billing/fulfillment';
-import { getSupabaseAdmin } from '../../../lib/supabase-server';
-
-function setupMock(error: unknown = null) {
-  const chain = { update: vi.fn(), eq: vi.fn() };
-  chain.update.mockReturnValue(chain);
-  chain.eq.mockResolvedValue({ error });
-  mockFrom.mockReturnValue(chain);
-  return chain;
-}
+import {
+  fulfillSubscription,
+  revokeSubscription,
+} from '../../../lib/billing/fulfillment';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRpc.mockResolvedValue({ error: null });
 });
 
 describe('fulfillSubscription', () => {
-  it('returns ok:false for empty orgId', async () => {
-    const result = await fulfillSubscription('', 'pro', 'active');
-    expect(result.ok).toBe(false);
-  });
-
-  it('returns ok:false for empty planKey', async () => {
-    const result = await fulfillSubscription('org-1', '', 'active');
-    expect(result.ok).toBe(false);
-  });
-
-  it('calls organizations.update with correct plan on active status', async () => {
-    const chain = setupMock(null);
-    const result = await fulfillSubscription('org-1', 'pro', 'active');
-    expect(result.ok).toBe(true);
-    expect(mockFrom).toHaveBeenCalledWith('organizations');
-    expect(chain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ plan: 'pro' })
+  it('rejects incomplete input', async () => {
+    await expect(fulfillSubscription('', 'pro', 'active')).resolves.toEqual(
+      expect.objectContaining({ ok: false }),
     );
-    expect(chain.eq).toHaveBeenCalledWith('id', 'org-1');
-  });
-
-  it('sets plan=free when status is canceled (via effectivePlan)', async () => {
-    const chain = setupMock(null);
-    const result = await fulfillSubscription('org-1', 'pro', 'canceled');
-    expect(result.ok).toBe(true);
-    expect(chain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ plan: 'free' })
+    await expect(fulfillSubscription('org-1', '', 'active')).resolves.toEqual(
+      expect.objectContaining({ ok: false }),
     );
+    await expect(fulfillSubscription('org-1', 'pro', '')).resolves.toEqual(
+      expect.objectContaining({ ok: false }),
+    );
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it('returns ok:false when supabase returns error', async () => {
-    setupMock({ message: 'DB error' });
+  it('calls the atomic database entitlement RPC', async () => {
     const result = await fulfillSubscription('org-1', 'pro', 'active');
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('DB error');
+
+    expect(result).toEqual({ ok: true });
+    expect(mockRpc).toHaveBeenCalledWith('sync_dsg_paid_entitlement', {
+      p_org_id: 'org-1',
+      p_plan_key: 'pro',
+      p_status: 'active',
+    });
   });
 
-  it('is idempotent: calling twice produces same final state', async () => {
-    const chain = setupMock(null);
-    await fulfillSubscription('org-1', 'pro', 'active');
-    await fulfillSubscription('org-1', 'pro', 'active');
-    expect(chain.update).toHaveBeenCalledTimes(2);
-    // Both calls write the same value — final state is deterministic
-    const calls = chain.update.mock.calls;
-    expect(calls[0][0].plan).toBe(calls[1][0].plan);
+  it('is retry-safe because every call writes the same target state', async () => {
+    await fulfillSubscription('org-1', 'enterprise', 'trialing');
+    await fulfillSubscription('org-1', 'enterprise', 'trialing');
+
+    expect(mockRpc).toHaveBeenCalledTimes(2);
+    expect(mockRpc.mock.calls[0]).toEqual(mockRpc.mock.calls[1]);
+  });
+
+  it('returns the database error and does not claim fulfillment', async () => {
+    mockRpc.mockResolvedValue({ error: { message: 'transaction failed' } });
+
+    await expect(
+      fulfillSubscription('org-1', 'pro', 'active'),
+    ).resolves.toEqual({ ok: false, error: 'transaction failed' });
   });
 });
 
 describe('revokeSubscription', () => {
-  it('returns ok:false for empty orgId', async () => {
-    const result = await revokeSubscription('');
-    expect(result.ok).toBe(false);
-  });
-
-  it('sets plan=free on organizations', async () => {
-    const chain = setupMock(null);
-    const result = await revokeSubscription('org-1');
-    expect(result.ok).toBe(true);
-    expect(chain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ plan: 'free' })
+  it('rejects an empty organization', async () => {
+    await expect(revokeSubscription('')).resolves.toEqual(
+      expect.objectContaining({ ok: false }),
     );
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it('returns ok:false on supabase error', async () => {
-    setupMock({ message: 'network timeout' });
+  it('revokes organization and gate access through the same RPC', async () => {
     const result = await revokeSubscription('org-1');
-    expect(result.ok).toBe(false);
+
+    expect(result).toEqual({ ok: true });
+    expect(mockRpc).toHaveBeenCalledWith('sync_dsg_paid_entitlement', {
+      p_org_id: 'org-1',
+      p_plan_key: 'free',
+      p_status: 'canceled',
+    });
   });
 });
