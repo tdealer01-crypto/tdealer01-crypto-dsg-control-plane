@@ -36,14 +36,14 @@ export function LaunchpadApp({ workspaceId }: { workspaceId: string }) {
       }
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) setAccessToken(session?.access_token ?? null);
     });
 
     return () => {
       mounted = false;
-      subscription.subscription.unsubscribe();
-      Object.values(saveTimers.current).forEach(clearTimeout);
+      data.subscription.unsubscribe();
+      Object.values(saveTimers.current).forEach((timer) => clearTimeout(timer));
     };
   }, []);
 
