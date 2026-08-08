@@ -43,6 +43,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: '/finance-governance/app', label: 'Finance Governance' },
       { href: '/dashboard/billing', label: 'Billing' },
+      { href: '/dashboard/billing/activation-proof', label: 'Activation Proof' },
       { href: '/dashboard/payout-safety', label: 'Payout Safety' },
       { href: '/dashboard/capacity', label: 'Capacity' },
       { href: '/dashboard/ledger', label: 'Ledger' },
