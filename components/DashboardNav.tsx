@@ -52,6 +52,7 @@ const SECTIONS: NavSection[] = [
     id: 'build',
     label: 'Build',
     items: [
+      { href: '/dashboard/launchpad', label: 'LaunchPad' },
       { href: '/dashboard/agents', label: 'Agents' },
       { href: '/dashboard/executions', label: 'Executions' },
       { href: '/dashboard/live-control', label: 'Live Control' },
