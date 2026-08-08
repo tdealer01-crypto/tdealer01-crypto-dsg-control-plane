@@ -3,14 +3,16 @@ import {
   GATE_PLANS,
   SKILLS_BUNDLES,
   DELIVERY_PROOF_PRICING,
-  DEFAULT_PRICE_IDS,
   getPriceId,
   isSkillsBundle,
 } from '../../../lib/billing/pricing-catalog';
 
 const ENV_KEYS = [
   'STRIPE_PRICE_PRO_MONTHLY',
+  'STRIPE_PRICE_PRO_YEARLY',
   'STRIPE_PRICE_PRO',
+  'STRIPE_PRICE_ENTERPRISE_MONTHLY',
+  'STRIPE_PRICE_ENTERPRISE_YEARLY',
 ] as const;
 const saved: Record<string, string | undefined> = {};
 for (const k of ENV_KEYS) saved[k] = process.env[k];
@@ -54,22 +56,28 @@ describe('pricing catalog — single source of truth', () => {
     expect(DELIVERY_PROOF_PRICING.unlimited.planKey).toBe('business');
   });
 
-  it('getPriceId: env var wins over legacy and defaults', () => {
+  it('getPriceId: interval-specific env var wins over legacy monthly env', () => {
     process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_env_first';
     process.env.STRIPE_PRICE_PRO = 'price_legacy';
     expect(getPriceId('pro', 'monthly')).toBe('price_env_first');
   });
 
-  it('getPriceId: legacy monthly env wins over hardcoded default', () => {
+  it('getPriceId: legacy monthly env remains compatible for Pro', () => {
     delete process.env.STRIPE_PRICE_PRO_MONTHLY;
     process.env.STRIPE_PRICE_PRO = 'price_legacy';
     expect(getPriceId('pro', 'monthly')).toBe('price_legacy');
   });
 
-  it('getPriceId: falls back to hardcoded live price IDs when no env set', () => {
+  it('getPriceId: missing config fails closed instead of using a hardcoded cross-account Price ID', () => {
     delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+    delete process.env.STRIPE_PRICE_PRO_YEARLY;
     delete process.env.STRIPE_PRICE_PRO;
-    expect(getPriceId('pro', 'monthly')).toBe(DEFAULT_PRICE_IDS.pro.monthly);
-    expect(getPriceId('enterprise', 'yearly')).toBe(DEFAULT_PRICE_IDS.enterprise.yearly);
+    delete process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY;
+    delete process.env.STRIPE_PRICE_ENTERPRISE_YEARLY;
+
+    expect(getPriceId('pro', 'monthly')).toBe('');
+    expect(getPriceId('pro', 'yearly')).toBe('');
+    expect(getPriceId('enterprise', 'monthly')).toBe('');
+    expect(getPriceId('enterprise', 'yearly')).toBe('');
   });
 });
