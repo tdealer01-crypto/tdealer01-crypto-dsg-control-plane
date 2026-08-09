@@ -19,8 +19,9 @@ jobs:
     timeout-minutes: 5
     env:
       BASE_URL: https://tdealer01-crypto-dsg-control-plane.onrender.com
+      FRAMER_ORIGIN: https://multidisciplinary-badger-803385.framer.app
     steps:
-      - name: Verify live DSG endpoints and fail-closed boundaries
+      - name: Verify live DSG endpoints and Framer CORS boundaries
         shell: bash
         run: |
           set -uo pipefail
@@ -51,6 +52,30 @@ jobs:
             --header 'Content-Type: application/json' \
             --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"dsg-live-smoke","version":"1.0.0"}}}' \
             "${BASE_URL}/api/framer/mcp"
+
+          allowed_code="$(curl --silent --show-error --max-time 30 \
+            --output /tmp/cors_allowed.body \
+            --dump-header /tmp/cors_allowed.headers \
+            --write-out '%{http_code}' \
+            --request OPTIONS \
+            --header "Origin: ${FRAMER_ORIGIN}" \
+            --header 'Access-Control-Request-Method: POST' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            "${BASE_URL}/api/framer/mcp")"
+          echo "cors_allowed_framer: HTTP ${allowed_code} (expected 204)"
+          if [[ "${allowed_code}" != "204" ]]; then
+            echo 'Framer origin preflight did not return 204'
+            cat /tmp/cors_allowed.headers || true
+            cat /tmp/cors_allowed.body || true
+            failures=$((failures + 1))
+          fi
+          allowed_origin="$(awk 'BEGIN{IGNORECASE=1} /^access-control-allow-origin:/ {sub(/^[^:]+:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' /tmp/cors_allowed.headers)"
+          echo "cors_allowed_origin: ${allowed_origin}"
+          if [[ "${allowed_origin}" != "${FRAMER_ORIGIN}" ]]; then
+            echo "Expected exact ACAO ${FRAMER_ORIGIN}"
+            cat /tmp/cors_allowed.headers || true
+            failures=$((failures + 1))
+          fi
 
           check_status cors_blocked 403 \
             --request OPTIONS \
