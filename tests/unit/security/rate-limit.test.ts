@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the Upstash packages before any module import so the source file never
-// tries to open a real network connection.
+// Mock Redis clients before any module import so tests never open a real
+// network connection.
 vi.mock('@upstash/redis', () => ({
   Redis: vi.fn().mockImplementation(() => ({})),
 }));
@@ -17,6 +17,15 @@ vi.mock('@upstash/ratelimit', () => ({
   ),
 }));
 
+vi.mock('redis', () => ({
+  createClient: vi.fn().mockImplementation(() => ({
+    isReady: true,
+    connect: vi.fn().mockResolvedValue(undefined),
+    eval: vi.fn().mockResolvedValue([1, 60_000]),
+    on: vi.fn(),
+  })),
+}));
+
 // ─── getRateLimitKey ──────────────────────────────────────────────────────────
 
 describe('getRateLimitKey', () => {
@@ -28,7 +37,7 @@ describe('getRateLimitKey', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('extracts IP from x-forwarded-for header', () => {
@@ -82,9 +91,10 @@ describe('applyRateLimit (in-memory fallback — no Redis)', () => {
   }>;
 
   beforeEach(async () => {
-    // Force the in-memory path by clearing the Upstash env vars.
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('REDIS_URL', '');
+    vi.stubEnv('NODE_ENV', 'test');
     vi.useFakeTimers();
     vi.resetModules();
     ({ applyRateLimit } = await import('../../../lib/security/rate-limit'));
@@ -93,7 +103,7 @@ describe('applyRateLimit (in-memory fallback — no Redis)', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('allows the first request and returns remaining = limit - 1', async () => {
@@ -104,21 +114,21 @@ describe('applyRateLimit (in-memory fallback — no Redis)', () => {
 
   it('decrements remaining on each subsequent request', async () => {
     const opts = { key: 'test:ip2', limit: 5, windowMs: 60_000 };
-    await applyRateLimit(opts); // 1st → remaining 4
-    const second = await applyRateLimit(opts); // 2nd → remaining 3
+    await applyRateLimit(opts);
+    const second = await applyRateLimit(opts);
     expect(second.allowed).toBe(true);
     expect(second.remaining).toBe(3);
-    const third = await applyRateLimit(opts); // 3rd → remaining 2
+    const third = await applyRateLimit(opts);
     expect(third.allowed).toBe(true);
     expect(third.remaining).toBe(2);
   });
 
   it('blocks the request when the limit is reached', async () => {
     const opts = { key: 'test:ip3', limit: 3, windowMs: 60_000 };
-    await applyRateLimit(opts); // 1
-    await applyRateLimit(opts); // 2
-    await applyRateLimit(opts); // 3 — limit reached
-    const result = await applyRateLimit(opts); // 4 — should be blocked
+    await applyRateLimit(opts);
+    await applyRateLimit(opts);
+    await applyRateLimit(opts);
+    const result = await applyRateLimit(opts);
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
   });
@@ -130,7 +140,6 @@ describe('applyRateLimit (in-memory fallback — no Redis)', () => {
     const blocked = await applyRateLimit(opts);
     expect(blocked.allowed).toBe(false);
 
-    // Advance time past the window so the bucket expires.
     vi.advanceTimersByTime(6_000);
 
     const afterReset = await applyRateLimit(opts);
@@ -142,6 +151,68 @@ describe('applyRateLimit (in-memory fallback — no Redis)', () => {
     const now = Date.now();
     const result = await applyRateLimit({ key: 'test:ip5', limit: 10, windowMs: 30_000 });
     expect(result.resetAt).toBeGreaterThan(now);
+  });
+});
+
+// ─── applyRateLimit (Render/standard Redis path) ──────────────────────────────
+
+describe('applyRateLimit (REDIS_URL backend)', () => {
+  let applyRateLimit: (opts: { key: string; limit: number; windowMs: number }) => Promise<{
+    allowed: boolean;
+    remaining: number;
+    resetAt: number;
+  }>;
+
+  beforeEach(async () => {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('REDIS_URL', 'redis://render-key-value.internal:6379');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    ({ applyRateLimit } = await import('../../../lib/security/rate-limit'));
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  it('uses the standard Redis backend when REDIS_URL is configured', async () => {
+    const result = await applyRateLimit({ key: 'execute:ip1', limit: 5, windowMs: 60_000 });
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(4);
+    expect(result.resetAt).toBeGreaterThan(Date.now());
+  });
+});
+
+// ─── applyRateLimit (production fail-closed) ─────────────────────────────────
+
+describe('applyRateLimit (production fail-closed)', () => {
+  let applyRateLimit: (opts: { key: string; limit: number; windowMs: number }) => Promise<{
+    allowed: boolean;
+    remaining: number;
+    resetAt: number;
+  }>;
+
+  beforeEach(async () => {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('REDIS_URL', '');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    ({ applyRateLimit } = await import('../../../lib/security/rate-limit'));
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  it('blocks when no distributed Redis backend is configured', async () => {
+    const result = await applyRateLimit({ key: 'execute:ip2', limit: 5, windowMs: 60_000 });
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+    expect(result.resetAt).toBeGreaterThan(Date.now());
   });
 });
 
@@ -159,7 +230,7 @@ describe('buildRateLimitHeaders', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('sets X-RateLimit-Limit to the given limit', () => {
@@ -173,7 +244,7 @@ describe('buildRateLimitHeaders', () => {
   });
 
   it('sets X-RateLimit-Reset to resetAt converted to seconds (floor)', () => {
-    const resetAt = 1_700_000_001_500; // 1700000001.5 seconds — should floor to 1700000001
+    const resetAt = 1_700_000_001_500;
     const headers = buildRateLimitHeaders({ allowed: false, remaining: 0, resetAt }, 10);
     expect(headers['X-RateLimit-Reset']).toBe('1700000001');
   });
@@ -202,15 +273,16 @@ describe('isRateLimiterConfigured', () => {
     vi.resetModules();
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('REDIS_URL', '');
     ({ isRateLimiterConfigured } = await import('../../../lib/security/rate-limit'));
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
-  it('returns false when both env vars are absent', () => {
+  it('returns false when no distributed Redis backend is configured', () => {
     expect(isRateLimiterConfigured()).toBe(false);
   });
 
@@ -224,10 +296,16 @@ describe('isRateLimiterConfigured', () => {
     expect(isRateLimiterConfigured()).toBe(false);
   });
 
-  it('returns true when both env vars are set', async () => {
+  it('returns true when both Upstash env vars are set', async () => {
     vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.example.com');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'mytoken');
-    // Re-import so the function reads the freshly-stubbed env vars.
+    vi.resetModules();
+    ({ isRateLimiterConfigured } = await import('../../../lib/security/rate-limit'));
+    expect(isRateLimiterConfigured()).toBe(true);
+  });
+
+  it('returns true when REDIS_URL is set', async () => {
+    vi.stubEnv('REDIS_URL', 'redis://render-key-value.internal:6379');
     vi.resetModules();
     ({ isRateLimiterConfigured } = await import('../../../lib/security/rate-limit'));
     expect(isRateLimiterConfigured()).toBe(true);

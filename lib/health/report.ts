@@ -57,7 +57,7 @@ export async function buildHealthReport() {
   // Health is an operator/monitoring signal, not an abuse-sensitive action.
   // It must not consume the production rate-limit bucket; otherwise uptime
   // checks can mask a healthy service as HTTP 429. Abuse-sensitive endpoints
-  // such as /api/execute remain fail-closed behind the Redis-backed limiter.
+  // such as /api/execute remain fail-closed behind the distributed limiter.
   let dbOk = false;
   try {
     const dbResult = await withTimeout(
@@ -111,8 +111,8 @@ export async function buildHealthReport() {
     rateLimiter: {
       ok: rateLimiterConfigured,
       detail: rateLimiterConfigured
-        ? 'configured; health endpoint does not consume limiter bucket'
-        : 'UPSTASH_REDIS_REST_URL not set — execute gate will fail closed',
+        ? 'distributed rate limiter configured; health endpoint does not consume limiter bucket'
+        : 'No distributed Redis configured (Upstash REST or REDIS_URL) — execute gate will fail closed',
     },
     core: {
       ok: core.ok && dbOk && readiness.ok,

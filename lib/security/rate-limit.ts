@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { createClient } from 'redis';
 
 type RateLimitOptions = {
   key: string;
@@ -48,32 +49,101 @@ function applyMemoryRateLimit(options: RateLimitOptions): RateLimitResult {
   return { allowed: true, remaining: Math.max(options.limit - existing.count, 0), resetAt: existing.resetAt };
 }
 
-let redis: Redis | null = null;
+let upstashRedis: Redis | null = null;
 const limiters = new Map<string, Ratelimit>();
-let warnedNoRedis = false;
+let warnedNoDistributedRedis = false;
 
-function getRedis(): Redis | null {
-  if (redis) return redis;
+type StandardRedisClient = ReturnType<typeof createClient>;
+let standardRedisClient: StandardRedisClient | null = null;
+let standardRedisConnectPromise: Promise<StandardRedisClient> | null = null;
+
+function getUpstashRedis(): Redis | null {
+  if (upstashRedis) return upstashRedis;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return null;
-  redis = new Redis({ url, token });
-  return redis;
+  upstashRedis = new Redis({ url, token });
+  return upstashRedis;
 }
 
-function getLimiter(prefix: string, limit: number, windowMs: number): Ratelimit | null {
-  const r = getRedis();
-  if (!r) return null;
+function getUpstashLimiter(prefix: string, limit: number, windowMs: number): Ratelimit | null {
+  const redis = getUpstashRedis();
+  if (!redis) return null;
   const key = `${prefix}:${limit}:${windowMs}`;
   if (!limiters.has(key)) {
     const windowSec = `${Math.ceil(windowMs / 1000)} s` as `${number} s`;
     limiters.set(key, new Ratelimit({
-      redis: r,
+      redis,
       limiter: Ratelimit.fixedWindow(limit, windowSec),
       prefix: `rl:${prefix}`,
     }));
   }
   return limiters.get(key)!;
+}
+
+function getStandardRedisUrl(): string | null {
+  const url = process.env.REDIS_URL?.trim();
+  return url || null;
+}
+
+async function getStandardRedisClient(): Promise<StandardRedisClient | null> {
+  const url = getStandardRedisUrl();
+  if (!url) return null;
+
+  if (!standardRedisClient) {
+    standardRedisClient = createClient({ url });
+    standardRedisClient.on('error', (error) => {
+      console.error('[rate-limit] Redis client error', error);
+    });
+  }
+
+  if (standardRedisClient.isReady) return standardRedisClient;
+
+  if (!standardRedisConnectPromise) {
+    standardRedisConnectPromise = standardRedisClient.connect()
+      .then(() => standardRedisClient!)
+      .catch((error) => {
+        standardRedisConnectPromise = null;
+        throw error;
+      });
+  }
+
+  return standardRedisConnectPromise;
+}
+
+async function applyStandardRedisRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
+  const client = await getStandardRedisClient();
+  if (!client) throw new Error('standard_redis_not_configured');
+
+  const script = `
+    local count = redis.call('INCR', KEYS[1])
+    if count == 1 then
+      redis.call('PEXPIRE', KEYS[1], ARGV[1])
+    end
+    local ttl = redis.call('PTTL', KEYS[1])
+    return {count, ttl}
+  `;
+
+  const result = await client.eval(script, {
+    keys: [`rl:${options.key}`],
+    arguments: [String(options.windowMs)],
+  });
+
+  if (!Array.isArray(result) || result.length < 2) {
+    throw new Error('invalid_redis_rate_limit_response');
+  }
+
+  const count = Number(result[0]);
+  const ttl = Math.max(Number(result[1]), 0);
+  if (!Number.isFinite(count) || !Number.isFinite(ttl)) {
+    throw new Error('invalid_redis_rate_limit_values');
+  }
+
+  return {
+    allowed: count <= options.limit,
+    remaining: Math.max(options.limit - count, 0),
+    resetAt: Date.now() + ttl,
+  };
 }
 
 export function getRateLimitKey(request: Request, prefix: string) {
@@ -85,23 +155,33 @@ export function getRateLimitKey(request: Request, prefix: string) {
 
 export async function applyRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
   const prefix = options.key.split(':')[0] || 'default';
-  const limiter = getLimiter(prefix, options.limit, options.windowMs);
+  const upstashLimiter = getUpstashLimiter(prefix, options.limit, options.windowMs);
 
-  if (!limiter) {
-    if (!warnedNoRedis) {
-      console.warn('[rate-limit] UPSTASH_REDIS_REST_URL not set — using in-memory fallback');
-      warnedNoRedis = true;
+  if (upstashLimiter) {
+    try {
+      const { success, remaining, reset } = await upstashLimiter.limit(options.key);
+      return { allowed: success, remaining, resetAt: reset };
+    } catch (error) {
+      console.error('[rate-limit] Upstash limiter error', error);
+      return isProduction() ? blockedResult(options.windowMs) : applyMemoryRateLimit(options);
     }
-    return applyMemoryRateLimit(options);
   }
 
-  try {
-    const { success, remaining, reset } = await limiter.limit(options.key);
-    return { allowed: success, remaining, resetAt: reset };
-  } catch (error) {
-    console.error('[rate-limit] Redis limiter error — falling back to in-memory', error);
-    return applyMemoryRateLimit(options);
+  if (getStandardRedisUrl()) {
+    try {
+      return await applyStandardRedisRateLimit(options);
+    } catch (error) {
+      console.error('[rate-limit] Redis limiter error', error);
+      return isProduction() ? blockedResult(options.windowMs) : applyMemoryRateLimit(options);
+    }
   }
+
+  if (!warnedNoDistributedRedis) {
+    console.warn('[rate-limit] No distributed Redis configured');
+    warnedNoDistributedRedis = true;
+  }
+
+  return isProduction() ? blockedResult(options.windowMs) : applyMemoryRateLimit(options);
 }
 
 export function buildRateLimitHeaders(result: RateLimitResult, limit: number) {
@@ -113,5 +193,8 @@ export function buildRateLimitHeaders(result: RateLimitResult, limit: number) {
 }
 
 export function isRateLimiterConfigured(): boolean {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  const upstashConfigured = !!(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
+  return upstashConfigured || !!getStandardRedisUrl();
 }
