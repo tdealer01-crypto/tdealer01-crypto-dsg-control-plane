@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '../supabase-server';
+import { getSupabaseAdmin, hasSupabaseServerCredential } from '../supabase-server';
 
 type ReadinessCheck = {
   name: string;
@@ -28,11 +28,16 @@ const REQUIRED_TABLES = [
 ];
 
 function envCheck(name: string): ReadinessCheck {
+  const configured = name === 'SUPABASE_SERVICE_ROLE_KEY'
+    ? hasSupabaseServerCredential()
+    : Boolean(process.env[name]);
+
   return {
+    // Preserve the existing check name for response-schema compatibility.
     name: `env:${name}`,
-    ok: Boolean(process.env[name]),
+    ok: configured,
     required: true,
-    message: process.env[name] ? 'configured' : 'missing',
+    message: configured ? 'configured' : 'missing',
   };
 }
 
