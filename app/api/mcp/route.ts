@@ -133,18 +133,19 @@ function toolList() {
 async function resolveUnifiedAuth(
   request: NextRequest,
   toolName: string,
+  rpcId: JsonRpcRequest['id'],
 ): Promise<UnifiedAuthContext | NextResponse> {
   const storedKey = await validateStoredUnifiedMcpKey(request, toolName);
   if (storedKey.presented) {
     if (storedKey.valid === false) {
-      return rpcError(null, -32001, storedKey.reason);
+      return rpcError(rpcId, -32001, storedKey.reason);
     }
     return storedKey.context;
   }
 
   const access = await requireOrgRole(['operator', 'org_admin'], request);
   if (!access.ok) {
-    return rpcError(null, -32001, access.error ?? 'Unauthorized');
+    return rpcError(rpcId, -32001, access.error ?? 'Unauthorized');
   }
   return {
     source: 'session',
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
     const args = rpc.params?.arguments ?? {};
 
     if ((UNIFIED_TOOL_NAMES as readonly string[]).includes(name)) {
-      const auth = await resolveUnifiedAuth(request, name);
+      const auth = await resolveUnifiedAuth(request, name, rpc.id);
       if (auth instanceof NextResponse) return auth;
 
       const unifiedResult = await callUnifiedTool(name as UnifiedToolName, args, auth);
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
     }
 
     if ((PLATFORM_DEPLOY_TOOL_NAMES as readonly string[]).includes(name)) {
-      const auth = await resolveUnifiedAuth(request, name);
+      const auth = await resolveUnifiedAuth(request, name, rpc.id);
       if (auth instanceof NextResponse) return auth;
 
       const deployResult = await callPlatformDeployTool(
