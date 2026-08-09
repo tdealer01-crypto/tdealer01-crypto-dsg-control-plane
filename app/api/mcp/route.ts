@@ -11,9 +11,12 @@ import {
   UNIFIED_TOOL_NAMES,
   UNIFIED_TOOL_SCHEMAS,
   callUnifiedTool,
-  isUnifiedMcpKeyAuthorized,
   type UnifiedToolName,
 } from '@/lib/mcp/unified-tools';
+import {
+  validateStoredUnifiedMcpKey,
+  type UnifiedAuthContext,
+} from '@/lib/mcp/unified-auth';
 import { requireOrgRole } from '@/lib/authz';
 
 export const dynamic = 'force-dynamic';
@@ -116,16 +119,29 @@ export async function POST(request: NextRequest) {
 
     const args = rpc.params?.arguments ?? {};
 
-    // Unified high-value tools require either the single MCP API key or an authenticated operator session.
     if ((UNIFIED_TOOL_NAMES as readonly string[]).includes(name)) {
-      if (!isUnifiedMcpKeyAuthorized(request)) {
-        const access = await requireOrgRole(['operator', 'org_admin']);
+      const storedKey = await validateStoredUnifiedMcpKey(request, name);
+      let auth: UnifiedAuthContext;
+
+      if (storedKey.presented) {
+        if (!storedKey.valid) {
+          return rpcError(rpc.id, -32001, storedKey.reason);
+        }
+        auth = storedKey.context;
+      } else {
+        const access = await requireOrgRole(['operator', 'org_admin'], request);
         if (!access.ok) {
           return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
         }
+        auth = {
+          source: 'session',
+          actorId: access.userId,
+          orgId: access.orgId,
+          roles: access.grantedRoles,
+        };
       }
 
-      const unifiedResult = await callUnifiedTool(name as UnifiedToolName, args);
+      const unifiedResult = await callUnifiedTool(name as UnifiedToolName, args, auth);
       if (unifiedResult.ok === false) {
         return rpcError(rpc.id, unifiedResult.code, unifiedResult.message);
       }
@@ -143,7 +159,7 @@ export async function POST(request: NextRequest) {
 
     // Route Hermes agent tools to the Hermes tool handler — requires auth.
     if ((HERMES_TOOL_NAMES as string[]).includes(name)) {
-      const access = await requireOrgRole(['operator', 'org_admin']);
+      const access = await requireOrgRole(['operator', 'org_admin'], request);
       if (!access.ok) {
         return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
       }
