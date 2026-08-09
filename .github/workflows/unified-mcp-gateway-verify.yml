@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'app/api/mcp/route.ts'
+      - 'lib/mcp/unified-auth.ts'
       - 'lib/mcp/unified-tools.ts'
       - 'scripts/verify-unified-mcp-gateway.mjs'
       - '.github/workflows/unified-mcp-gateway-verify.yml'
