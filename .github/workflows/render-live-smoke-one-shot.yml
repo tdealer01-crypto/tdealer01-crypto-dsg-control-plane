@@ -1,0 +1,60 @@
+name: Render Live Smoke One Shot
+
+on:
+  push:
+    branches:
+      - chore/render-live-smoke-20260809
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE_URL: https://tdealer01-crypto-dsg-control-plane.onrender.com
+    steps:
+      - name: Verify live DSG endpoints and fail-closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          check_status() {
+            local name="$1"
+            local expected="$2"
+            shift 2
+            local code
+            code="$(curl --silent --show-error --location --max-time 30 --retry 2 --retry-delay 2 --output "/tmp/${name}.body" --write-out '%{http_code}' "$@")"
+            echo "${name}: HTTP ${code} (expected ${expected})"
+            if [[ "${code}" != "${expected}" ]]; then
+              echo "Unexpected status for ${name}"
+              sed -n '1,40p' "/tmp/${name}.body"
+              exit 1
+            fi
+          }
+
+          check_status health 200 "${BASE_URL}/api/health"
+          check_status readiness 200 "${BASE_URL}/api/readiness"
+          check_status mcp_get 200 "${BASE_URL}/api/framer/mcp"
+
+          check_status mcp_initialize 200 \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"dsg-live-smoke","version":"1.0.0"}}}' \
+            "${BASE_URL}/api/framer/mcp"
+
+          check_status cors_blocked 403 \
+            --request OPTIONS \
+            --header 'Origin: https://not-allowed.invalid' \
+            --header 'Access-Control-Request-Method: POST' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            "${BASE_URL}/api/framer/mcp"
+
+          check_status protected_tool_unauthenticated 401 \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"dsg.deploy.status","arguments":{}}}' \
+            "${BASE_URL}/api/framer/mcp"
+
+          echo 'Render live smoke PASS'
