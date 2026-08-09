@@ -13,6 +13,7 @@ const requiredTools = [
   'dsg.aimo.solve',
   'dsg.aws.contract',
   'dsg.aws.deploy',
+  'dsg.repair.simulate',
 ];
 
 let failed = false;
@@ -117,6 +118,17 @@ if (tools.includes("verdict: 'REVIEW'") && tools.includes('post-deploy verificat
   pass('AWS dispatch cannot be reported as final PASS');
 } else {
   fail('AWS dispatch truth boundary is missing');
+}
+
+if (
+  tools.includes("'dsg.repair.simulate'") &&
+  tools.includes('runVerifiedRepair') &&
+  tools.includes('execute: false') &&
+  tools.includes('never mutates a repository')
+) {
+  pass('Verified Repair Simulator is exposed through the unified MCP front door as a plan-only tool');
+} else {
+  fail('Verified Repair Simulator MCP contract is missing or mutation boundary is unclear');
 }
 
 if (tools.includes("callDsgTool('dsg.evaluate'") && tools.includes("riskLevel: environment === 'prod' ? 'critical' : 'high'")) {
