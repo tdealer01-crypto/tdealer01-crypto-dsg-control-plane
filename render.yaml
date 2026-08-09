@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: dsg-control-plane
+    env: node
+    plan: standard
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        fromDatabase:
+          name: supabase
+          property: url
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        fromDatabase:
+          name: supabase
+          property: anonKey
+      - key: SUPABASE_URL
+        fromDatabase:
+          name: supabase
+          property: url
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        fromDatabase:
+          name: supabase
+          property: serviceRoleKey
+      - key: SUPABASE_SECRET_KEY
+        scope: build_time_and_runtime
+      - key: ANTHROPIC_API_KEY
+        scope: build_time_and_runtime
+      - key: DSG_ALLOWED_ORIGINS
+        scope: build_time_and_runtime
+      - key: DSG_CORE_MODE
+        scope: build_time_and_runtime
+      - key: REDIS_URL
+        scope: build_time_and_runtime
