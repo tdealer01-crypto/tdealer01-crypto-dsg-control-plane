@@ -30,6 +30,25 @@ if (route.includes("serverInfo: { name: 'dsg-control-plane-unified-mcp'")) {
   fail('MCP initialize does not identify the unified control-plane server');
 }
 
+if (
+  route.includes("rpc.method === 'notifications/initialized'") &&
+  route.includes('new NextResponse(null, { status: 202 })')
+) {
+  pass('MCP initialized notification is accepted as a one-way 202 response');
+} else {
+  fail('MCP initialized notification handshake is incomplete');
+}
+
+if (
+  route.includes('function rpcToolResult') &&
+  route.includes('content: [') &&
+  route.includes('structuredContent: structuredContent(value)')
+) {
+  pass('tools/call returns MCP CallToolResult content and structuredContent');
+} else {
+  fail('tools/call does not use a valid CallToolResult envelope');
+}
+
 for (const tool of requiredTools) {
   if (tools.includes(`'${tool}'`)) pass(`tool registered: ${tool}`);
   else fail(`missing unified tool: ${tool}`);
