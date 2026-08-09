@@ -14,6 +14,12 @@ import {
   type UnifiedToolName,
 } from '@/lib/mcp/unified-tools';
 import {
+  PLATFORM_DEPLOY_TOOL_NAMES,
+  PLATFORM_DEPLOY_TOOL_SCHEMAS,
+  callPlatformDeployTool,
+  type PlatformDeployToolName,
+} from '@/lib/mcp/platform-deploy-tools';
+import {
   validateStoredUnifiedMcpKey,
   type UnifiedAuthContext,
 } from '@/lib/mcp/unified-auth';
@@ -103,21 +109,59 @@ function unifiedToolList() {
   return UNIFIED_TOOL_NAMES.map((name) => ({ name, ...UNIFIED_TOOL_SCHEMAS[name] }));
 }
 
+function platformDeployToolList() {
+  return PLATFORM_DEPLOY_TOOL_NAMES.map((name) => ({
+    name,
+    ...PLATFORM_DEPLOY_TOOL_SCHEMAS[name],
+  }));
+}
+
 function hermesToolList() {
   return HERMES_TOOL_SCHEMAS;
 }
 
 function toolList() {
-  return [...unifiedToolList(), ...androidToolList(), ...dsgToolList(), ...hermesToolList()];
+  return [
+    ...unifiedToolList(),
+    ...platformDeployToolList(),
+    ...androidToolList(),
+    ...dsgToolList(),
+    ...hermesToolList(),
+  ];
+}
+
+async function resolveUnifiedAuth(
+  request: NextRequest,
+  toolName: string,
+  rpcId: JsonRpcRequest['id'],
+): Promise<UnifiedAuthContext | NextResponse> {
+  const storedKey = await validateStoredUnifiedMcpKey(request, toolName);
+  if (storedKey.presented) {
+    if (storedKey.valid === false) {
+      return rpcError(rpcId, -32001, storedKey.reason);
+    }
+    return storedKey.context;
+  }
+
+  const access = await requireOrgRole(['operator', 'org_admin'], request);
+  if (!access.ok) {
+    return rpcError(rpcId, -32001, access.error ?? 'Unauthorized');
+  }
+  return {
+    source: 'session',
+    actorId: access.userId,
+    orgId: access.orgId,
+    roles: access.grantedRoles,
+  };
 }
 
 export async function GET() {
   return NextResponse.json({
     ok: true,
     server: 'dsg-control-plane-unified-mcp',
-    version: '1.0.0',
+    version: '1.1.0',
     tools: toolList(),
-    note: 'One MCP front door for DSG Control Plane, AIMO, AWS governed deployment, runtime, and evidence tools.',
+    note: 'One MCP front door for DSG Control Plane, AIMO, AWS, Netlify, Render, Supabase, runtime, and evidence tools.',
   });
 }
 
@@ -129,7 +173,7 @@ export async function POST(request: NextRequest) {
     return rpcResult(rpc.id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'dsg-control-plane-unified-mcp', version: '1.0.0' },
+      serverInfo: { name: 'dsg-control-plane-unified-mcp', version: '1.1.0' },
     });
   }
 
@@ -149,26 +193,8 @@ export async function POST(request: NextRequest) {
     const args = rpc.params?.arguments ?? {};
 
     if ((UNIFIED_TOOL_NAMES as readonly string[]).includes(name)) {
-      const storedKey = await validateStoredUnifiedMcpKey(request, name);
-      let auth: UnifiedAuthContext;
-
-      if (storedKey.presented) {
-        if (storedKey.valid === false) {
-          return rpcError(rpc.id, -32001, storedKey.reason);
-        }
-        auth = storedKey.context;
-      } else {
-        const access = await requireOrgRole(['operator', 'org_admin'], request);
-        if (!access.ok) {
-          return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
-        }
-        auth = {
-          source: 'session',
-          actorId: access.userId,
-          orgId: access.orgId,
-          roles: access.grantedRoles,
-        };
-      }
+      const auth = await resolveUnifiedAuth(request, name, rpc.id);
+      if (auth instanceof NextResponse) return auth;
 
       const unifiedResult = await callUnifiedTool(name as UnifiedToolName, args, auth);
       if (unifiedResult.ok === false) {
@@ -179,6 +205,25 @@ export async function POST(request: NextRequest) {
         );
       }
       return rpcToolResult(rpc.id, unifiedResult.result);
+    }
+
+    if ((PLATFORM_DEPLOY_TOOL_NAMES as readonly string[]).includes(name)) {
+      const auth = await resolveUnifiedAuth(request, name, rpc.id);
+      if (auth instanceof NextResponse) return auth;
+
+      const deployResult = await callPlatformDeployTool(
+        name as PlatformDeployToolName,
+        args,
+        auth,
+      );
+      if (deployResult.ok === false) {
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: deployResult.code, message: deployResult.message } },
+          true,
+        );
+      }
+      return rpcToolResult(rpc.id, deployResult.result);
     }
 
     // Route DSG tools to the existing deterministic control-plane handler.
