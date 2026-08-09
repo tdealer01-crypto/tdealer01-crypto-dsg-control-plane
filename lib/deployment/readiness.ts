@@ -1,6 +1,6 @@
 import { getDSGCoreConfig, getDSGCoreHealth } from '../dsg-core';
 import { checkFinanceGovernanceReadiness } from '../finance-governance/readiness';
-import { getSupabaseAdmin } from '../supabase-server';
+import { getSupabaseAdmin, hasSupabaseServerCredential } from '../supabase-server';
 
 type CheckResult = {
   ok: boolean;
@@ -53,8 +53,13 @@ async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = RE
 }
 
 export async function getDeploymentReadiness(): Promise<ReadinessReport> {
-  const requiredEnv = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'DSG_CORE_MODE'];
+  const requiredEnv = ['NEXT_PUBLIC_SUPABASE_URL', 'DSG_CORE_MODE'];
   const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+  // Preserve the legacy readiness label for API compatibility while accepting
+  // the modern SUPABASE_SECRET_KEY as the preferred backend credential.
+  if (!hasSupabaseServerCredential()) {
+    missingEnv.splice(1, 0, 'SUPABASE_SERVICE_ROLE_KEY');
+  }
   const envCheck = buildCheck(missingEnv.length === 0, missingEnv.length ? `missing:${missingEnv.join(',')}` : undefined);
 
   const nextAuthSecret = buildCheck(Boolean(process.env.NEXTAUTH_SECRET), process.env.NEXTAUTH_SECRET ? undefined : 'NEXTAUTH_SECRET missing');
@@ -142,7 +147,7 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   };
 
   // Production readiness is fail-closed: a green release gate requires the
-  // environment, service-role DB probe, DSG core, and finance backend to pass.
+  // environment, privileged DB probe, DSG core, and finance backend to pass.
   // Local developers can opt out only with READINESS_STRICT=false; production
   // and preview deploys default to strict checks.
   const strictReadiness = parseBooleanFlag(process.env.READINESS_STRICT, process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
