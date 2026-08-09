@@ -42,6 +42,8 @@ const ALLOWLIST_INTENTIONALLY_PUBLIC: Record<string, string> = {
     'sandboxed to a hardcoded https host allowlist (wikipedia.org only), no DB access',
   '/api/dsg/midmarket-governance-autopilot/production-runtime':
     'pure computation over caller-supplied input, no DB access',
+  '/api/framer/mcp':
+    'CORS-safe proxy to /api/mcp with auth delegated to underlying unified MCP handlers (requireOrgRole, validateStoredUnifiedMcpKey)',
   '/api/playground/evaluate': 'stateless deterministic-gate playground demo, no DB access',
   '/api/stripe-app/gate/summary': 'scaffold — always returns hardcoded zero counts, not wired to storage',
   '/api/nvidia/stream':
