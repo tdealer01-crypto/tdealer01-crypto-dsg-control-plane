@@ -1,37 +1,61 @@
-// AI Chat trial endpoint — no auth required for demo.
-// Uses real LLM models: OpenRouter (primary) → NVIDIA (fallback)
+// Customer-facing DSG Assistant endpoint.
+// Provider order: OpenAI -> NVIDIA. If both are unavailable, fail closed with 503.
 
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const SYSTEM_PROMPT = `You are DSG Assistant, a helpful AI that explains DSG ONE / ProofGate AI control plane.
-Be concise, factual, and helpful. Support Thai language responses.
-Explain product features, governance, security, and how to get started.`;
+const SYSTEM_PROMPT = `You are DSG Assistant, a concise product assistant for DSG ONE.
+Explain only verified product concepts: AI governance, deterministic gates, PASS/REVIEW/BLOCK outcomes, audit evidence, and how customers get started.
+Do not invent production status, proof IDs, prices, trial terms, provider status, or compliance certification.
+If a requested fact is not available in the prompt or product configuration, say it is not verified.
+Support Thai and English.`;
 
-const FALLBACK_RESPONSE = `สวัสดีครับ ผมคือ DSG Assistant สามารถช่วยคุณได้ดังนี้:
+type Provider = 'openai' | 'nvidia';
 
-1. 🔍 ตรวจสอบความพร้อมของระบบ (readiness check)
-2. 👥 ดูรายชื่อ AI Agents ที่ลงทะเบียนไว้
-3. 📊 ดูประวัติการดำเนินการล่าสุด
-4. 💰 ตรวจสอบความจุและการใช้งาน
-5. 🔧 ปรับแต่ง workflow rules
+type ProviderResult = {
+  provider: Provider;
+  model: string;
+  content: string;
+};
 
-ลองถามคำถามเกี่ยวกับระบบ เช่น "ระบบทำงานอย่างไร" หรือ "ตรวจสอบความพร้อม"`;
+function extractMessage(body: unknown): string {
+  if (!body || typeof body !== 'object') return '';
+  const record = body as Record<string, unknown>;
 
-async function callOpenRouter(message: string): Promise<string | null> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (typeof record.message === 'string') {
+    return record.message.trim();
+  }
+
+  if (Array.isArray(record.messages)) {
+    for (let i = record.messages.length - 1; i >= 0; i -= 1) {
+      const item = record.messages[i];
+      if (
+        item &&
+        typeof item === 'object' &&
+        (item as Record<string, unknown>).role === 'user' &&
+        typeof (item as Record<string, unknown>).content === 'string'
+      ) {
+        return ((item as Record<string, unknown>).content as string).trim();
+      }
+    }
+  }
+
+  return '';
+}
+
+async function callOpenAI(message: string): Promise<ProviderResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
-  const model = process.env.OPENROUTER_MODEL_CHAT || 'openai/gpt-oss-120b:free';
+  const model = process.env.OPENAI_MODEL_CHAT || 'gpt-5-mini';
+
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://tdealer01-crypto-dsg-control-plane.vercel.app',
-        'X-Title': 'DSG ONE Assistant',
       },
       body: JSON.stringify({
         model,
@@ -39,41 +63,39 @@ async function callOpenRouter(message: string): Promise<string | null> {
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: message },
         ],
-        max_tokens: 700,
-        temperature: 0.7,
       }),
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!response.ok) {
-      console.warn(`[try/chat] OpenRouter ${response.status}`);
+      console.warn(`[try/chat] OpenAI ${response.status}`);
       return null;
     }
 
     const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ message?: { content?: string | null } }>;
     };
+    const content = data.choices?.[0]?.message?.content?.trim();
+    if (!content) return null;
 
-    const content = data.choices?.[0]?.message?.content;
-    if (content) {
-      console.log('[try/chat] OpenRouter response:', model);
-      return content;
-    }
-  } catch (err) {
-    console.warn('[try/chat] OpenRouter error:', err);
+    return { provider: 'openai', model, content };
+  } catch (error) {
+    console.warn('[try/chat] OpenAI unavailable:', error);
+    return null;
   }
-  return null;
 }
 
-async function callNvidia(message: string): Promise<string | null> {
+async function callNvidia(message: string): Promise<ProviderResult | null> {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) return null;
 
   const model = process.env.NVIDIA_MODEL_CHAT || 'nvidia/nemotron-3-ultra-550b-a55b';
+
   try {
     const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -83,8 +105,9 @@ async function callNvidia(message: string): Promise<string | null> {
           { role: 'user', content: message },
         ],
         max_tokens: 700,
-        temperature: 0.7,
+        temperature: 0.2,
       }),
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!response.ok) {
@@ -93,56 +116,50 @@ async function callNvidia(message: string): Promise<string | null> {
     }
 
     const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ message?: { content?: string | null } }>;
     };
+    const content = data.choices?.[0]?.message?.content?.trim();
+    if (!content) return null;
 
-    const content = data.choices?.[0]?.message?.content;
-    if (content) {
-      console.log('[try/chat] NVIDIA/Nemotron response:', model);
-      return content;
-    }
-  } catch (err) {
-    console.warn('[try/chat] NVIDIA error:', err);
+    return { provider: 'nvidia', model, content };
+  } catch (error) {
+    console.warn('[try/chat] NVIDIA unavailable:', error);
+    return null;
   }
-  return null;
 }
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const message = String(body.message || '').trim();
+  const body = await request.json().catch(() => null);
+  const message = extractMessage(body);
 
-    if (!message) {
-      return NextResponse.json({
-        error: 'message is required',
-        reply: 'ให้กรุณาพิมพ์คำถามหรือข้อความ',
-      }, { status: 400 });
-    }
-
-    // Try OpenRouter first
-    let response = await callOpenRouter(message);
-
-    // Fallback to NVIDIA if OpenRouter unavailable
-    if (!response) {
-      response = await callNvidia(message);
-    }
-
-    // Fallback to hardcoded response if all LLM backends unavailable
-    if (!response) {
-      response = FALLBACK_RESPONSE;
-    }
-
-    return NextResponse.json({
-      ok: true,
-      reply: response,
-      timestamp: new Date().toISOString(),
-      meta: {
-        provider: process.env.OPENROUTER_API_KEY ? 'openrouter' : (process.env.NVIDIA_API_KEY ? 'nvidia' : 'fallback'),
-        mode: 'llm',
-      },
-    });
-  } catch (err) {
-    console.error('[try/chat] Error:', err);
-    return NextResponse.json({ error: 'invalid request' }, { status: 400 });
+  if (!message) {
+    return NextResponse.json(
+      { ok: false, error: 'message is required' },
+      { status: 400 },
+    );
   }
+
+  const result = (await callOpenAI(message)) ?? (await callNvidia(message));
+
+  if (!result) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'DSG Assistant is temporarily unavailable because no configured live AI provider returned a valid response.',
+        meta: { mode: 'unavailable' },
+      },
+      { status: 503 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    reply: result.content,
+    timestamp: new Date().toISOString(),
+    meta: {
+      provider: result.provider,
+      model: result.model,
+      mode: 'llm',
+    },
+  });
 }
