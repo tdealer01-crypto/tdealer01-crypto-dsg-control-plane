@@ -188,7 +188,7 @@ jobs:
 
           STACK_STATUS=$(jq -r '.Stacks[0].StackStatus' evidence/aws/cloudformation-stack.json)
           case "$STACK_STATUS" in
-            CREATE_COMPLETE|UPDATE_COMPLETE|UPDATE_ROLLBACK_COMPLETE|IMPORT_COMPLETE)
+            CREATE_COMPLETE|UPDATE_COMPLETE|IMPORT_COMPLETE)
               echo "CloudFormation stack status: $STACK_STATUS"
               ;;
             *)
