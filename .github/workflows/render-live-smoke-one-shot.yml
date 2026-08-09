@@ -65,6 +65,15 @@ jobs:
             --data '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"dsg.deploy.status","arguments":{}}}' \
             "${BASE_URL}/api/framer/mcp"
 
+          # /api/execute applies the distributed rate limiter before auth.
+          # 401 proves the Redis limiter succeeded and the request reached auth;
+          # a Redis/backend failure in production would fail closed as 429.
+          check_status execute_limiter_then_auth 401 \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "${BASE_URL}/api/execute"
+
           if (( failures > 0 )); then
             echo "Render live smoke FAIL: ${failures} check(s) failed"
             exit 1
