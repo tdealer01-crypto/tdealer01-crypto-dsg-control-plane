@@ -1,4 +1,5 @@
 name: CDK Deploy Infrastructure
+run-name: DSG CDK ${{ inputs.environment }} ${{ inputs.idempotency_key }}
 
 on:
   workflow_dispatch:
@@ -20,10 +21,18 @@ on:
         options:
           - 'true'
           - 'false'
+      idempotency_key:
+        description: 'Stable request identifier; reuse on retries of the same intended deployment'
+        required: true
+        type: string
 
 permissions:
   id-token: write
   contents: read
+
+concurrency:
+  group: dsg-cdk-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -218,16 +227,19 @@ jobs:
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          IDEMPOTENCY_KEY: ${{ inputs.idempotency_key }}
         run: |
           jq -n \
             --arg environment "$ENVIRONMENT" \
             --arg region "$AWS_REGION" \
+            --arg idempotency_key "$IDEMPOTENCY_KEY" \
             --arg run_id "${{ github.run_id }}" \
             --arg commit_sha "${{ github.sha }}" \
             '{
               status: "PASS",
               environment: $environment,
               region: $region,
+              idempotency_key: $idempotency_key,
               github_run_id: $run_id,
               commit_sha: $commit_sha,
               evidence: [

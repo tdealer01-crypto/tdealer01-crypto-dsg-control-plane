@@ -7,6 +7,16 @@ import type { DsgToolName } from '@/lib/mcp/schemas';
 import { callDsgTool } from '@/lib/mcp/dsg-tools';
 import { HERMES_TOOL_SCHEMAS, HERMES_TOOL_NAMES } from '@/lib/mcp/hermes-tool-schemas';
 import { callHermesTool } from '@/lib/mcp/hermes-tools';
+import {
+  UNIFIED_TOOL_NAMES,
+  UNIFIED_TOOL_SCHEMAS,
+  callUnifiedTool,
+  type UnifiedToolName,
+} from '@/lib/mcp/unified-tools';
+import {
+  validateStoredUnifiedMcpKey,
+  type UnifiedAuthContext,
+} from '@/lib/mcp/unified-auth';
 import { requireOrgRole } from '@/lib/authz';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +36,34 @@ function rpcResult(id: JsonRpcRequest['id'], result: unknown) {
 }
 
 function rpcError(id: JsonRpcRequest['id'], code: number, message: string) {
-  return NextResponse.json({ jsonrpc: '2.0', id: id ?? null, error: { code, message } }, { status: code === -32601 ? 404 : 400 });
+  return NextResponse.json(
+    { jsonrpc: '2.0', id: id ?? null, error: { code, message } },
+    { status: code === -32601 ? 404 : code === -32001 ? 401 : 400 },
+  );
+}
+
+function structuredContent(value: unknown): Record<string, unknown> {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return { value };
+}
+
+function rpcToolResult(
+  id: JsonRpcRequest['id'],
+  value: unknown,
+  isError = false,
+) {
+  return rpcResult(id, {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(value ?? null),
+      },
+    ],
+    structuredContent: structuredContent(value),
+    ...(isError ? { isError: true } : {}),
+  });
 }
 
 function androidToolList() {
@@ -59,10 +96,11 @@ function androidToolList() {
 }
 
 function dsgToolList() {
-  return DSG_TOOL_NAMES.map((name) => ({
-    name,
-    ...DSG_TOOL_SCHEMAS[name],
-  }));
+  return DSG_TOOL_NAMES.map((name) => ({ name, ...DSG_TOOL_SCHEMAS[name] }));
+}
+
+function unifiedToolList() {
+  return UNIFIED_TOOL_NAMES.map((name) => ({ name, ...UNIFIED_TOOL_SCHEMAS[name] }));
 }
 
 function hermesToolList() {
@@ -70,16 +108,35 @@ function hermesToolList() {
 }
 
 function toolList() {
-  return [...androidToolList(), ...dsgToolList(), ...hermesToolList()];
+  return [...unifiedToolList(), ...androidToolList(), ...dsgToolList(), ...hermesToolList()];
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, tools: toolList(), note: 'Use POST JSON-RPC tools/list or tools/call.' });
+  return NextResponse.json({
+    ok: true,
+    server: 'dsg-control-plane-unified-mcp',
+    version: '1.0.0',
+    tools: toolList(),
+    note: 'One MCP front door for DSG Control Plane, AIMO, AWS governed deployment, runtime, and evidence tools.',
+  });
 }
 
 export async function POST(request: NextRequest) {
   const rpc = (await request.json().catch(() => null)) as JsonRpcRequest | null;
   if (!rpc || rpc.jsonrpc !== '2.0') return rpcError(null, -32600, 'Invalid JSON-RPC request');
+
+  if (rpc.method === 'initialize') {
+    return rpcResult(rpc.id, {
+      protocolVersion: '2024-11-05',
+      capabilities: { tools: {} },
+      serverInfo: { name: 'dsg-control-plane-unified-mcp', version: '1.0.0' },
+    });
+  }
+
+  // MCP initialization is a one-way notification and intentionally has no JSON-RPC response body.
+  if (rpc.method === 'notifications/initialized') {
+    return new NextResponse(null, { status: 202 });
+  }
 
   if (rpc.method === 'tools/list') {
     return rpcResult(rpc.id, { tools: toolList() });
@@ -91,29 +148,70 @@ export async function POST(request: NextRequest) {
 
     const args = rpc.params?.arguments ?? {};
 
-    // Route DSG tools to the DSG tool handler
+    if ((UNIFIED_TOOL_NAMES as readonly string[]).includes(name)) {
+      const storedKey = await validateStoredUnifiedMcpKey(request, name);
+      let auth: UnifiedAuthContext;
+
+      if (storedKey.presented) {
+        if (storedKey.valid === false) {
+          return rpcError(rpc.id, -32001, storedKey.reason);
+        }
+        auth = storedKey.context;
+      } else {
+        const access = await requireOrgRole(['operator', 'org_admin'], request);
+        if (!access.ok) {
+          return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
+        }
+        auth = {
+          source: 'session',
+          actorId: access.userId,
+          orgId: access.orgId,
+          roles: access.grantedRoles,
+        };
+      }
+
+      const unifiedResult = await callUnifiedTool(name as UnifiedToolName, args, auth);
+      if (unifiedResult.ok === false) {
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: unifiedResult.code, message: unifiedResult.message } },
+          true,
+        );
+      }
+      return rpcToolResult(rpc.id, unifiedResult.result);
+    }
+
+    // Route DSG tools to the existing deterministic control-plane handler.
     if ((DSG_TOOL_NAMES as readonly string[]).includes(name)) {
       const dsgResult = await callDsgTool(name as DsgToolName, args);
       if (dsgResult.ok === false) {
-        return rpcError(rpc.id, dsgResult.code, dsgResult.message);
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: dsgResult.code, message: dsgResult.message } },
+          true,
+        );
       }
-      return rpcResult(rpc.id, dsgResult.result);
+      return rpcToolResult(rpc.id, dsgResult.result);
     }
 
-    // Route Hermes agent tools to the Hermes tool handler — requires auth
+    // Route Hermes agent tools to the Hermes tool handler — requires auth.
     if ((HERMES_TOOL_NAMES as string[]).includes(name)) {
-      const access = await requireOrgRole(['operator', 'org_admin']);
+      const access = await requireOrgRole(['operator', 'org_admin'], request);
       if (!access.ok) {
         return rpcError(rpc.id, -32001, access.error ?? 'Unauthorized');
       }
       const hermesResult = await callHermesTool(name, args, request, access.orgId);
       if (hermesResult.ok === false) {
-        return rpcError(rpc.id, hermesResult.code, hermesResult.message);
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: hermesResult.code, message: hermesResult.message } },
+          true,
+        );
       }
-      return rpcResult(rpc.id, hermesResult.result);
+      return rpcToolResult(rpc.id, hermesResult.result);
     }
 
-    // Route Android tools to the command envelope builder
+    // Route Android tools to the command envelope builder. Execution still requires owner approval.
     try {
       const command = buildCommandEnvelope({
         sourceKind: 'mcp',
@@ -123,7 +221,7 @@ export async function POST(request: NextRequest) {
         toolName: name,
         args,
       });
-      return rpcResult(rpc.id, {
+      return rpcToolResult(rpc.id, {
         commandId: command.commandId,
         executionState: command.executionState,
         requiresOwnerApproval: command.policy.requiresOwnerApproval,
@@ -132,7 +230,11 @@ export async function POST(request: NextRequest) {
         note: 'MCP tools/call creates a command proposal only. Android execution still requires owner approval on device.',
       });
     } catch (error) {
-      return rpcError(rpc.id, -32602, error instanceof Error ? error.message : 'Invalid tool arguments');
+      return rpcToolResult(
+        rpc.id,
+        { error: { code: -32602, message: error instanceof Error ? error.message : 'Invalid tool arguments' } },
+        true,
+      );
     }
   }
 
