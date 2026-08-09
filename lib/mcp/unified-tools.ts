@@ -1,6 +1,7 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { Octokit } from '@octokit/rest';
 import { callDsgTool } from './dsg-tools';
+import type { UnifiedAuthContext } from './unified-auth';
 
 export const UNIFIED_TOOL_SCHEMAS = {
   'dsg.system.status': {
@@ -50,14 +51,20 @@ export const UNIFIED_TOOL_SCHEMAS = {
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   'dsg.aws.deploy': {
-    description: 'Gate and dispatch the repository CDK deployment workflow. Deployment remains REVIEW until post-deploy evidence verifies it.',
+    description: 'Gate and idempotently dispatch the repository CDK deployment workflow. Deployment remains REVIEW until post-deploy evidence verifies it.',
     inputSchema: {
       type: 'object',
       properties: {
         environment: { type: 'string', enum: ['dev', 'staging', 'prod'] },
         approved: { type: 'boolean', description: 'Explicit operator approval to dispatch the governed workflow.' },
+        idempotencyKey: {
+          type: 'string',
+          minLength: 8,
+          maxLength: 128,
+          description: 'Stable request identifier reused on retries of the same intended deployment.',
+        },
       },
-      required: ['environment', 'approved'],
+      required: ['environment', 'approved', 'idempotencyKey'],
       additionalProperties: false,
     },
   },
@@ -70,26 +77,16 @@ export type UnifiedToolResult =
   | { ok: true; result: unknown }
   | { ok: false; code: number; message: string };
 
-function secretEquals(actual: string, expected: string): boolean {
-  const actualBytes = Buffer.from(actual);
-  const expectedBytes = Buffer.from(expected);
-  if (actualBytes.length !== expectedBytes.length) return false;
-  return timingSafeEqual(actualBytes, expectedBytes);
-}
-
-export function isUnifiedMcpKeyAuthorized(request: Request): boolean {
-  const expected = process.env.DSG_MCP_API_KEY ?? process.env.DSG_API_KEY;
-  if (!expected) return false;
-
-  const bearer = request.headers.get('authorization');
-  const bearerValue = bearer?.startsWith('Bearer ') ? bearer.slice('Bearer '.length) : null;
-  const provided =
-    request.headers.get('x-dsg-api-key') ??
-    request.headers.get('x-api-key') ??
-    bearerValue;
-
-  return Boolean(provided && secretEquals(provided, expected));
-}
+type AwsGateEvidence = {
+  secret_bound: boolean;
+  dependency_resolved: boolean;
+  testable: boolean;
+  deploy_target_ready: boolean;
+  audit_hook_available: boolean;
+  environmentConfigured: boolean;
+  missingRepositorySecrets: string[];
+  workflowRef: string;
+};
 
 function dsgOneBaseUrl(): URL {
   const raw = process.env.DSG_ONE_MCP_BACKEND_URL ?? 'https://dsg-one-v1.vercel.app';
@@ -125,6 +122,10 @@ async function parseJson(response: Response): Promise<unknown> {
   } catch {
     return { raw: text.slice(0, 2000) };
   }
+}
+
+function hasMutationRole(auth: UnifiedAuthContext): boolean {
+  return auth.roles.includes('operator') || auth.roles.includes('org_admin');
 }
 
 async function handleAimoStatus(): Promise<UnifiedToolResult> {
@@ -204,7 +205,7 @@ async function handleAimoSolve(args: Record<string, unknown>): Promise<UnifiedTo
   }
 }
 
-function handleSystemStatus(): UnifiedToolResult {
+function handleSystemStatus(auth: UnifiedAuthContext): UnifiedToolResult {
   return {
     ok: true,
     result: {
@@ -212,6 +213,7 @@ function handleSystemStatus(): UnifiedToolResult {
       gateway: 'DSG Control Plane Unified MCP',
       version: '1.0.0',
       oneFrontDoor: true,
+      authenticatedBy: auth.source,
       adapters: {
         controlPlane: { configured: true, authoritativeGate: true },
         dsgOne: { configured: true, defaultUrlAvailable: true },
@@ -221,7 +223,7 @@ function handleSystemStatus(): UnifiedToolResult {
           workflow: '.github/workflows/cdk-deploy.yml',
         },
       },
-      userConfiguration: ['DSG_MCP_URL', 'DSG_API_KEY'],
+      userConfiguration: ['MCP URL', 'one issued DSG API key'],
       truthBoundary:
         'Adapter availability is not production readiness. PASS requires downstream evidence and verification; missing internal credentials fail closed.',
     },
@@ -237,6 +239,7 @@ function handleAwsContract(): UnifiedToolResult {
       workflow: '.github/workflows/cdk-deploy.yml',
       destructiveRollbackAutomatic: false,
       productionApprovalRequired: true,
+      idempotencyRequired: true,
       finalPassRule:
         'A workflow dispatch is REVIEW, never PASS. PASS requires accepted CloudFormation state plus captured AWS verification evidence.',
       currentInfrastructureBoundary:
@@ -245,35 +248,129 @@ function handleAwsContract(): UnifiedToolResult {
   };
 }
 
-async function handleAwsDeploy(args: Record<string, unknown>): Promise<UnifiedToolResult> {
+function decodeGitHubContent(content: string | undefined, encoding: string | undefined): string {
+  if (!content) return '';
+  return encoding === 'base64'
+    ? Buffer.from(content.replace(/\n/g, ''), 'base64').toString('utf8')
+    : content;
+}
+
+async function inspectAwsDeployEvidence(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  environment: string,
+  ref: string,
+): Promise<AwsGateEvidence> {
+  let workflow = '';
+  try {
+    const response = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: '.github/workflows/cdk-deploy.yml',
+      ref,
+    });
+    if (!Array.isArray(response.data) && 'content' in response.data) {
+      workflow = decodeGitHubContent(response.data.content, response.data.encoding);
+    }
+  } catch {
+    workflow = '';
+  }
+
+  const requiredSecrets = ['AWS_ROLE_TO_ASSUME', 'AWS_REGION', 'AWS_ACCOUNT_ID'];
+  const secretNames = new Set<string>();
+  try {
+    const response = await octokit.rest.actions.listRepoSecrets({ owner, repo, per_page: 100 });
+    for (const secret of response.data.secrets) secretNames.add(secret.name);
+  } catch {
+    // Lack of permission to verify secret bindings is a fail-closed condition.
+  }
+  const missingRepositorySecrets = requiredSecrets.filter((name) => !secretNames.has(name));
+
+  let environmentConfigured = false;
+  try {
+    await octokit.request('GET /repos/{owner}/{repo}/environments/{environment_name}', {
+      owner,
+      repo,
+      environment_name: environment,
+    });
+    environmentConfigured = true;
+  } catch {
+    environmentConfigured = false;
+  }
+
+  const dependencyResolved =
+    workflow.includes('aws-actions/configure-aws-credentials@v4') &&
+    workflow.includes('id-token: write') &&
+    workflow.includes('DSGOneStack-$ENVIRONMENT');
+  const testable =
+    workflow.includes('Verify Deployment') &&
+    workflow.includes('cloudformation describe-stacks') &&
+    workflow.includes('verification-manifest.json');
+  const auditHookAvailable =
+    workflow.includes('Upload verification evidence') &&
+    workflow.includes('aws-verification-evidence-');
+  const secretBound = missingRepositorySecrets.length === 0;
+
+  return {
+    secret_bound: secretBound,
+    dependency_resolved: dependencyResolved,
+    testable,
+    deploy_target_ready: environmentConfigured && secretBound && dependencyResolved,
+    audit_hook_available: auditHookAvailable,
+    environmentConfigured,
+    missingRepositorySecrets,
+    workflowRef: ref,
+  };
+}
+
+async function findExistingAwsDispatch(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  environment: string,
+  idempotencyKey: string,
+): Promise<{ id: number; status: string | null; conclusion: string | null; htmlUrl: string } | null> {
+  const expectedTitle = `DSG CDK ${environment} ${idempotencyKey}`;
+  const runs = await octokit.rest.actions.listWorkflowRuns({
+    owner,
+    repo,
+    workflow_id: 'cdk-deploy.yml',
+    per_page: 100,
+  });
+
+  for (const run of runs.data.workflow_runs) {
+    if (run.display_title === expectedTitle) {
+      return {
+        id: run.id,
+        status: run.status ?? null,
+        conclusion: run.conclusion ?? null,
+        htmlUrl: run.html_url,
+      };
+    }
+  }
+  return null;
+}
+
+async function handleAwsDeploy(
+  args: Record<string, unknown>,
+  auth: UnifiedAuthContext,
+): Promise<UnifiedToolResult> {
+  if (!hasMutationRole(auth)) {
+    return { ok: false, code: -32001, message: 'AWS deployment requires operator or org_admin entitlement.' };
+  }
+
   const environment = String(args.environment ?? '');
   if (!['dev', 'staging', 'prod'].includes(environment)) {
     return { ok: false, code: -32602, message: 'environment must be dev, staging, or prod' };
   }
 
-  const gate = await callDsgTool('dsg.evaluate', {
-    action: `deploy.aws.${environment}`,
-    actor: 'mcp:unified-control-plane',
-    tool: 'github-actions:cdk-deploy',
-    args: { environment },
-    env: {
-      riskLevel: environment === 'prod' ? 'critical' : 'high',
-      policyRef: 'dsg-aws-agent-toolkit-v1',
-    },
-  });
-
-  if (!gate.ok) return gate;
-  const decision = gate.result as Record<string, unknown>;
-  if (decision.gateStatus !== 'PASS') {
-    return {
-      ok: true,
-      result: {
-        verdict: decision.gateStatus ?? 'BLOCK',
-        dispatched: false,
-        gate: decision,
-        nextAction: 'Resolve the deterministic DSG gate before any AWS mutation.',
-      },
-    };
+  const idempotencyKey = String(args.idempotencyKey ?? '').trim();
+  if (idempotencyKey.length < 8 || idempotencyKey.length > 128) {
+    return { ok: false, code: -32602, message: 'idempotencyKey must contain 8 to 128 characters' };
+  }
+  if (!/^[A-Za-z0-9._:-]+$/.test(idempotencyKey)) {
+    return { ok: false, code: -32602, message: 'idempotencyKey contains unsupported characters' };
   }
 
   if (args.approved !== true) {
@@ -282,7 +379,6 @@ async function handleAwsDeploy(args: Record<string, unknown>): Promise<UnifiedTo
       result: {
         verdict: 'REVIEW',
         dispatched: false,
-        gate: decision,
         nextAction: 'Set approved=true only after the operator approves this exact deployment plan.',
       },
     };
@@ -303,15 +399,94 @@ async function handleAwsDeploy(args: Record<string, unknown>): Promise<UnifiedTo
     return { ok: false, code: -32031, message: 'DSG_CONTROL_PLANE_REPOSITORY must be owner/repo' };
   }
 
+  const workflowRef = process.env.DSG_AWS_DEPLOY_REF ?? 'main';
   const octokit = new Octokit({ auth: token });
+  const evidence = await inspectAwsDeployEvidence(
+    octokit,
+    owner,
+    repo,
+    environment,
+    workflowRef,
+  );
+
+  const gate = await callDsgTool('dsg.evaluate', {
+    action: `deploy.aws.${environment}`,
+    actor: auth.actorId,
+    tool: 'github-actions:cdk-deploy',
+    args: {
+      environment,
+      idempotencyKey,
+      secret_bound: evidence.secret_bound,
+      dependency_resolved: evidence.dependency_resolved,
+      testable: evidence.testable,
+      deploy_target_ready: evidence.deploy_target_ready,
+      audit_hook_available: evidence.audit_hook_available,
+    },
+    env: {
+      riskLevel: environment === 'prod' ? 'critical' : 'high',
+      policyRef: 'dsg-aws-agent-toolkit-v1',
+    },
+  });
+
+  if (!gate.ok) return gate;
+  const decision = gate.result as Record<string, unknown>;
+  if (decision.gateStatus !== 'PASS') {
+    const missingEvidence = [
+      ['secret_bound', evidence.secret_bound],
+      ['dependency_resolved', evidence.dependency_resolved],
+      ['testable', evidence.testable],
+      ['deploy_target_ready', evidence.deploy_target_ready],
+      ['audit_hook_available', evidence.audit_hook_available],
+    ]
+      .filter(([, passed]) => passed !== true)
+      .map(([name]) => name);
+
+    return {
+      ok: true,
+      result: {
+        verdict: decision.gateStatus ?? 'BLOCK',
+        dispatched: false,
+        gate: decision,
+        evidence,
+        missingEvidence,
+        nextAction: 'Resolve the reported AWS evidence bindings before any mutation.',
+      },
+    };
+  }
+
+  const existing = await findExistingAwsDispatch(
+    octokit,
+    owner,
+    repo,
+    environment,
+    idempotencyKey,
+  );
+  if (existing) {
+    return {
+      ok: true,
+      result: {
+        verdict: 'REVIEW',
+        dispatched: false,
+        duplicateSuppressed: true,
+        environment,
+        idempotencyKey,
+        existingRun: existing,
+        gate: decision,
+        evidence,
+        nextAction: 'Reuse the existing workflow run and its verification evidence instead of dispatching a duplicate.',
+      },
+    };
+  }
+
   await octokit.rest.actions.createWorkflowDispatch({
     owner,
     repo,
     workflow_id: 'cdk-deploy.yml',
-    ref: process.env.DSG_AWS_DEPLOY_REF ?? 'main',
+    ref: workflowRef,
     inputs: {
       environment,
       approval_required: 'true',
+      idempotency_key: idempotencyKey,
     },
   });
 
@@ -321,7 +496,9 @@ async function handleAwsDeploy(args: Record<string, unknown>): Promise<UnifiedTo
       verdict: 'REVIEW',
       dispatched: true,
       environment,
+      idempotencyKey,
       gate: decision,
+      evidence,
       workflow: 'cdk-deploy.yml',
       nextAction:
         'Wait for protected-environment approval and post-deploy verification evidence. Do not claim production readiness from dispatch success.',
@@ -332,11 +509,12 @@ async function handleAwsDeploy(args: Record<string, unknown>): Promise<UnifiedTo
 export async function callUnifiedTool(
   name: UnifiedToolName,
   args: Record<string, unknown>,
+  auth: UnifiedAuthContext,
 ): Promise<UnifiedToolResult> {
   try {
     switch (name) {
       case 'dsg.system.status':
-        return handleSystemStatus();
+        return handleSystemStatus(auth);
       case 'dsg.aimo.status':
         return await handleAimoStatus();
       case 'dsg.aimo.solve':
@@ -344,7 +522,7 @@ export async function callUnifiedTool(
       case 'dsg.aws.contract':
         return handleAwsContract();
       case 'dsg.aws.deploy':
-        return await handleAwsDeploy(args);
+        return await handleAwsDeploy(args, auth);
       default:
         return { ok: false, code: -32601, message: `Unknown unified tool: ${String(name)}` };
     }
