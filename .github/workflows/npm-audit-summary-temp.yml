@@ -1,4 +1,4 @@
-name: TEMP npm audit blocker summary
+name: TEMP safe npm audit repair
 
 on:
   pull_request:
@@ -9,35 +9,36 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  summarize:
+  repair:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --ignore-scripts
-      - name: Print high and critical audit blockers only
+      - name: Pin safe transitive patches
+        run: |
+          npm pkg set 'overrides.js-yaml=4.3.1'
+          npm pkg set 'overrides.nanoid=3.3.17'
+          npm install --package-lock-only --ignore-scripts
+      - name: Verify high/critical audit is clear
+        run: npm audit --audit-level=high
+      - name: Commit registry-generated lockfile
         shell: bash
         run: |
-          npm audit --json > audit.json || true
-          node <<'NODE'
-          const fs = require('node:fs');
-          const audit = JSON.parse(fs.readFileSync('audit.json', 'utf8'));
-          const blockers = Object.entries(audit.vulnerabilities || {})
-            .filter(([, v]) => v.severity === 'high' || v.severity === 'critical')
-            .map(([name, v]) => ({
-              name,
-              severity: v.severity,
-              direct: Boolean(v.isDirect),
-              via: (v.via || []).map((x) => typeof x === 'string' ? x : ({ name: x.name, title: x.title, url: x.url, range: x.range })),
-              range: v.range,
-              nodes: v.nodes,
-              fixAvailable: v.fixAvailable,
-            }));
-          console.log(JSON.stringify({ metadata: audit.metadata?.vulnerabilities, blockers }, null, 2));
-          NODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo 'No dependency repair changes required.'
+            exit 0
+          fi
+          git commit -m 'fix(security): patch js-yaml and nanoid audit findings'
+          git push origin HEAD:${{ github.head_ref }}
