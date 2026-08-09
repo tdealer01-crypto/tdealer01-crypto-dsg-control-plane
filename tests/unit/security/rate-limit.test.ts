@@ -37,7 +37,7 @@ describe('getRateLimitKey', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('extracts IP from x-forwarded-for header', () => {
@@ -103,7 +103,7 @@ describe('applyRateLimit (in-memory fallback — no Redis)', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('allows the first request and returns remaining = limit - 1', async () => {
@@ -174,7 +174,7 @@ describe('applyRateLimit (REDIS_URL backend)', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('uses the standard Redis backend when REDIS_URL is configured', async () => {
@@ -205,7 +205,7 @@ describe('applyRateLimit (production fail-closed)', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('blocks when no distributed Redis backend is configured', async () => {
@@ -230,7 +230,7 @@ describe('buildRateLimitHeaders', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('sets X-RateLimit-Limit to the given limit', () => {
@@ -279,7 +279,7 @@ describe('isRateLimiterConfigured', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns false when no distributed Redis backend is configured', () => {
