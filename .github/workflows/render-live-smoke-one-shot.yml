@@ -64,24 +64,32 @@ jobs:
             "${BASE_URL}/api/framer/mcp")"
           echo "cors_allowed_framer: HTTP ${allowed_code} (expected 204)"
           if [[ "${allowed_code}" != "204" ]]; then
-            echo 'Framer origin preflight did not return 204'
-            cat /tmp/cors_allowed.headers || true
-            cat /tmp/cors_allowed.body || true
             failures=$((failures + 1))
           fi
           allowed_origin="$(awk 'BEGIN{IGNORECASE=1} /^access-control-allow-origin:/ {sub(/^[^:]+:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' /tmp/cors_allowed.headers)"
           echo "cors_allowed_origin: ${allowed_origin}"
           if [[ "${allowed_origin}" != "${FRAMER_ORIGIN}" ]]; then
             echo "Expected exact ACAO ${FRAMER_ORIGIN}"
-            cat /tmp/cors_allowed.headers || true
             failures=$((failures + 1))
           fi
 
-          check_status cors_blocked 403 \
+          check_status cors_blocked_preflight 403 \
             --request OPTIONS \
             --header 'Origin: https://not-allowed.invalid' \
             --header 'Access-Control-Request-Method: POST' \
             --header 'Access-Control-Request-Headers: authorization,content-type' \
+            "${BASE_URL}/api/framer/mcp"
+
+          check_status cors_blocked_get 403 \
+            --request GET \
+            --header 'Origin: https://not-allowed.invalid' \
+            "${BASE_URL}/api/framer/mcp"
+
+          check_status cors_blocked_post 403 \
+            --request POST \
+            --header 'Origin: https://not-allowed.invalid' \
+            --header 'Content-Type: application/json' \
+            --data '{"jsonrpc":"2.0","id":3,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"bad-origin-smoke","version":"1.0.0"}}}' \
             "${BASE_URL}/api/framer/mcp"
 
           check_status protected_tool_unauthenticated 401 \
@@ -90,9 +98,6 @@ jobs:
             --data '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"dsg.deploy.status","arguments":{}}}' \
             "${BASE_URL}/api/framer/mcp"
 
-          # /api/execute applies the distributed rate limiter before auth.
-          # 401 proves the Redis limiter succeeded and the request reached auth;
-          # a Redis/backend failure in production would fail closed as 429.
           check_status execute_limiter_then_auth 401 \
             --request POST \
             --header 'Content-Type: application/json' \
