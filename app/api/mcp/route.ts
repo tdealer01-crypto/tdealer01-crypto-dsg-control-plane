@@ -42,6 +42,30 @@ function rpcError(id: JsonRpcRequest['id'], code: number, message: string) {
   );
 }
 
+function structuredContent(value: unknown): Record<string, unknown> {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return { value };
+}
+
+function rpcToolResult(
+  id: JsonRpcRequest['id'],
+  value: unknown,
+  isError = false,
+) {
+  return rpcResult(id, {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(value ?? null),
+      },
+    ],
+    structuredContent: structuredContent(value),
+    ...(isError ? { isError: true } : {}),
+  });
+}
+
 function androidToolList() {
   return Object.entries(TOOL_POLICY).map(([name, policy]) => ({
     name,
@@ -109,6 +133,11 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // MCP initialization is a one-way notification and intentionally has no JSON-RPC response body.
+  if (rpc.method === 'notifications/initialized') {
+    return new NextResponse(null, { status: 202 });
+  }
+
   if (rpc.method === 'tools/list') {
     return rpcResult(rpc.id, { tools: toolList() });
   }
@@ -143,18 +172,26 @@ export async function POST(request: NextRequest) {
 
       const unifiedResult = await callUnifiedTool(name as UnifiedToolName, args, auth);
       if (unifiedResult.ok === false) {
-        return rpcError(rpc.id, unifiedResult.code, unifiedResult.message);
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: unifiedResult.code, message: unifiedResult.message } },
+          true,
+        );
       }
-      return rpcResult(rpc.id, unifiedResult.result);
+      return rpcToolResult(rpc.id, unifiedResult.result);
     }
 
     // Route DSG tools to the existing deterministic control-plane handler.
     if ((DSG_TOOL_NAMES as readonly string[]).includes(name)) {
       const dsgResult = await callDsgTool(name as DsgToolName, args);
       if (dsgResult.ok === false) {
-        return rpcError(rpc.id, dsgResult.code, dsgResult.message);
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: dsgResult.code, message: dsgResult.message } },
+          true,
+        );
       }
-      return rpcResult(rpc.id, dsgResult.result);
+      return rpcToolResult(rpc.id, dsgResult.result);
     }
 
     // Route Hermes agent tools to the Hermes tool handler — requires auth.
@@ -165,9 +202,13 @@ export async function POST(request: NextRequest) {
       }
       const hermesResult = await callHermesTool(name, args, request, access.orgId);
       if (hermesResult.ok === false) {
-        return rpcError(rpc.id, hermesResult.code, hermesResult.message);
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: hermesResult.code, message: hermesResult.message } },
+          true,
+        );
       }
-      return rpcResult(rpc.id, hermesResult.result);
+      return rpcToolResult(rpc.id, hermesResult.result);
     }
 
     // Route Android tools to the command envelope builder. Execution still requires owner approval.
@@ -180,7 +221,7 @@ export async function POST(request: NextRequest) {
         toolName: name,
         args,
       });
-      return rpcResult(rpc.id, {
+      return rpcToolResult(rpc.id, {
         commandId: command.commandId,
         executionState: command.executionState,
         requiresOwnerApproval: command.policy.requiresOwnerApproval,
@@ -189,7 +230,11 @@ export async function POST(request: NextRequest) {
         note: 'MCP tools/call creates a command proposal only. Android execution still requires owner approval on device.',
       });
     } catch (error) {
-      return rpcError(rpc.id, -32602, error instanceof Error ? error.message : 'Invalid tool arguments');
+      return rpcToolResult(
+        rpc.id,
+        { error: { code: -32602, message: error instanceof Error ? error.message : 'Invalid tool arguments' } },
+        true,
+      );
     }
   }
 
