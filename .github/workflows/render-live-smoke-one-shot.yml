@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - chore/render-live-smoke-20260809
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/render-live-smoke-one-shot.yml
 
 permissions:
   contents: read
