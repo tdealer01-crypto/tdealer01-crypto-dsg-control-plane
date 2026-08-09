@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       let auth: UnifiedAuthContext;
 
       if (storedKey.presented) {
-        if (!storedKey.valid) {
+        if (storedKey.valid === false) {
           return rpcError(rpc.id, -32001, storedKey.reason);
         }
         auth = storedKey.context;
