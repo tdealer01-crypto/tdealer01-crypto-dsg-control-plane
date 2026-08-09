@@ -23,19 +23,22 @@ jobs:
       - name: Verify live DSG endpoints and fail-closed boundaries
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          failures=0
 
           check_status() {
             local name="$1"
             local expected="$2"
             shift 2
             local code
-            code="$(curl --silent --show-error --location --max-time 30 --retry 2 --retry-delay 2 --output "/tmp/${name}.body" --write-out '%{http_code}' "$@")"
+            if ! code="$(curl --silent --show-error --location --max-time 30 --retry 2 --retry-delay 2 --output "/tmp/${name}.body" --write-out '%{http_code}' "$@")"; then
+              code="000"
+            fi
             echo "${name}: HTTP ${code} (expected ${expected})"
             if [[ "${code}" != "${expected}" ]]; then
               echo "Unexpected status for ${name}"
-              sed -n '1,40p' "/tmp/${name}.body"
-              exit 1
+              sed -n '1,40p' "/tmp/${name}.body" 2>/dev/null || true
+              failures=$((failures + 1))
             fi
           }
 
@@ -61,5 +64,10 @@ jobs:
             --header 'Content-Type: application/json' \
             --data '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"dsg.deploy.status","arguments":{}}}' \
             "${BASE_URL}/api/framer/mcp"
+
+          if (( failures > 0 )); then
+            echo "Render live smoke FAIL: ${failures} check(s) failed"
+            exit 1
+          fi
 
           echo 'Render live smoke PASS'
