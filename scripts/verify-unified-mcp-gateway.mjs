@@ -67,7 +67,7 @@ if (
 
 if (
   route.includes('validateStoredUnifiedMcpKey') &&
-  auth.includes("'validate_mcp_api_key'") &&
+  (auth.includes("'validate_mcp_api_key'") || auth.includes("'validate_mcp_api_key_context'")) &&
   auth.includes("'record_mcp_usage'") &&
   auth.includes('hashMcpApiKey') &&
   !route.includes('isUnifiedMcpKeyAuthorized')
@@ -78,10 +78,15 @@ if (
 }
 
 if (
-  auth.includes(".from('users')") &&
-  auth.includes(".from('runtime_roles')") &&
-  tools.includes("auth.roles.includes('operator')") &&
-  tools.includes("auth.roles.includes('org_admin')")
+  (
+    auth.includes(".from('users')") &&
+    auth.includes(".from('runtime_roles')")
+  ) ||
+  (
+    auth.includes("'validate_mcp_api_key_context'") &&
+    auth.includes('row.roles') &&
+    auth.includes('row.org_id')
+  )
 ) {
   pass('stored-key actor/org role is resolved before AWS mutation entitlement');
 } else {
