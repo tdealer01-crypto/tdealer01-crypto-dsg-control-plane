@@ -18,7 +18,7 @@ function getStateSecret(): string {
  */
 export function getOAuthIssuer(request: Request): string {
   const configured = process.env.MCP_OAUTH_ISSUER?.trim();
-  if (configured) return configured.replace(/\\/+$/, '');
+  if (configured) return configured.replace(/\/+$/, '');
 
   const url = new URL(request.url);
   const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
