@@ -45,6 +45,25 @@ export function getDsgSupabaseRpcConfig(userAccessToken?: string): DsgSupabaseRp
   return { url: url.value.replace(/\/$/, ''), key: key.value, userAccessToken };
 }
 
+
+function isLegacySupabaseApiKey(key: string): boolean {
+  // Legacy anon/service_role keys are JWTs and must also be sent as Bearer.
+  // Modern sb_publishable_ and sb_secret_ keys authenticate via apikey only.
+  return !key.startsWith('sb_publishable_') && !key.startsWith('sb_secret_');
+}
+
+function buildSupabaseHeaders(
+  config: DsgSupabaseRpcConfig,
+): Record<string, string> {
+  const bearer = config.userAccessToken
+    ?? (isLegacySupabaseApiKey(config.key) ? config.key : undefined);
+
+  return {
+    apikey: config.key,
+    ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+  };
+}
+
 function parseJsonBody<T>(text: string): T | DsgRpcError | null {
   return text ? (JSON.parse(text) as T | DsgRpcError) : null;
 }
@@ -57,8 +76,7 @@ export async function callDsgRpc<T>(
   const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
     method: 'POST',
     headers: {
-      apikey: config.key,
-      Authorization: `Bearer ${config.userAccessToken ?? config.key}`,
+      ...buildSupabaseHeaders(config),
       'Content-Type': 'application/json',
       'Content-Profile': 'public',
       Prefer: 'return=representation',
@@ -89,8 +107,7 @@ export async function readDsgRest<T>(
 
   const response = await fetch(url, {
     headers: {
-      apikey: config.key,
-      Authorization: `Bearer ${config.key}`,
+      ...buildSupabaseHeaders(config),
       Accept: 'application/json',
       'Accept-Profile': 'public',
     },
