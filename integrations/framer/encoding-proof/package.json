@@ -1,0 +1,11 @@
+{
+  "name": "dsg-framer-encoding-proof-product",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "publish": "node publish.mjs"
+  },
+  "dependencies": {
+    "framer-api": "0.1.25"
+  }
+}
