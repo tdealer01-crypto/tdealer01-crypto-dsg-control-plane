@@ -168,6 +168,51 @@ export const DSG_TOOL_SCHEMAS = {
       required: ['ok', 'readinessLevel'],
     },
   },
+
+  'dsg.classifyRisk': {
+    description:
+      'Deterministically classify an AI-proposed action into an EU AI Act-aligned risk tier (low/medium/high/critical), sourced from docs/consult-toolkit/risk-classification-checklist.md. Caller supplies explicit capability flags; ambiguous or unanswered flags never lower the resulting tier.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        actionDescription: {
+          type: 'string',
+          description: 'Human-readable label for the action being classified (used in the returned record only, not in the classification logic).',
+        },
+        capabilities: {
+          type: 'object',
+          description: 'Explicit yes/no answers to the risk-classification checklist questions. Omitted flags are treated as false (lowest risk contribution), never as unknown-therefore-high.',
+          properties: {
+            canChangeProductionData: { type: 'boolean', default: false },
+            canSendExternalCommunication: { type: 'boolean', default: false },
+            canMoveMoneyOrApprovePayment: { type: 'boolean', default: false },
+            canDeploySoftware: { type: 'boolean', default: false },
+            canGrantAccessOrChangePermissions: { type: 'boolean', default: false },
+            canAccessRegulatedOrSensitiveData: { type: 'boolean', default: false },
+            canCallAdminOrInternalApis: { type: 'boolean', default: false },
+            canAffectMultipleTenants: { type: 'boolean', default: false },
+            hasNoCurrentAuditTrail: { type: 'boolean', default: false },
+            hasNoApprovalBeforeExecution: { type: 'boolean', default: false },
+          },
+          additionalProperties: false,
+        },
+      },
+      required: ['actionDescription'],
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        riskLevel: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
+        requiresApproval: { type: 'boolean' },
+        recommendedMode: { type: 'string' },
+        requiredEvidence: { type: 'array', items: { type: 'string' } },
+        triggeredBy: { type: 'array', items: { type: 'string' } },
+        escalated: { type: 'boolean' },
+        boundary: { type: 'object' },
+      },
+      required: ['riskLevel', 'requiresApproval', 'recommendedMode', 'requiredEvidence'],
+    },
+  },
 } as const;
 
 export type DsgToolName = keyof typeof DSG_TOOL_SCHEMAS;

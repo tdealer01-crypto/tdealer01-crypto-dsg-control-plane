@@ -62,7 +62,12 @@ A compromise of one derived token does not reveal the root key or make the other
 - `dsg.aimo.solve` — run DSG ONE -> AGI deterministic shards -> Cinema proof gate.
 - `dsg.aws.contract` — return the Plan -> Gate -> AWS execution -> Evidence -> Verification contract.
 - `dsg.aws.deploy` — inspect AWS deployment evidence, run the deterministic gate, require explicit approval, suppress duplicate retries, then dispatch the governed CDK workflow.
+- `dsg.classifyRisk` — deterministic EU AI Act-aligned risk-tier classification from caller-supplied capability flags, sourced from `docs/consult-toolkit/risk-classification-checklist.md`.
 - Existing DSG/Hermes/Android tools remain available through the same `/api/mcp` endpoint.
+
+## Auth on the DSG tool set
+
+`dsg.evaluate`, `dsg.verifyClaim`, `dsg.recordEvidence`, `dsg.exportComplianceBundle`, `dsg.getReadiness`, and `dsg.classifyRisk` require the same auth as the unified/platform-deploy tools (issued DSG API key or an operator/org_admin session). `dsg.recordEvidence` is documented to persist an evidence envelope into the CCVS chain, so it must not be callable anonymously.
 
 ## AWS authorization and evidence
 
