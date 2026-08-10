@@ -72,13 +72,11 @@ begin
   select
     u.id,
     u.org_id,
-    lower(coalesce(u.role, '')),
-    u.is_active
+    lower(coalesce(u.role, ''))
   into
     v_actor_id,
     v_org_id,
-    v_base_role,
-    v_runtime_role
+    v_base_role
   from public.users u
   where u.auth_user_id = v_key_actor_id
     and u.is_active = true
