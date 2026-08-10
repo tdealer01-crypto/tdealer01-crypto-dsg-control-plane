@@ -102,7 +102,7 @@ begin
   for v_runtime_role in
     select rr.role
     from public.runtime_roles rr
-    where rr.org_id = v_org_id
+    where rr.org_id = v_org_uuid
       and rr.user_id = v_actor_id
   loop
     if not (v_runtime_role = any(v_roles)) then
