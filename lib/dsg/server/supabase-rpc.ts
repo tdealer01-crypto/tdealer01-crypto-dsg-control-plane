@@ -31,9 +31,13 @@ export function getDsgSupabaseRpcConfig(userAccessToken?: string): DsgSupabaseRp
     'SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_URL',
   ]);
+  // Prefer the control-plane server credential. The DSG ONE alias is a
+  // compatibility fallback for older deployments and must not shadow a valid
+  // control-plane secret.
   const key = firstEnv([
-    'DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_SECRET_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
+    'DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY',
     'SUPABASE_ANON_KEY',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
