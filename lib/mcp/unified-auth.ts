@@ -3,7 +3,6 @@ import {
   callDsgRpc,
   getDsgSupabaseRpcConfig,
 } from '@/lib/dsg/server/supabase-rpc';
-import { getSupabaseAdmin } from '@/lib/supabase-server';
 import type { RuntimeRole } from '@/lib/authz';
 
 export type UnifiedAuthContext = {
@@ -19,7 +18,10 @@ export type UnifiedAuthContext = {
 
 type StoredKeyRow = {
   key_id: string;
+  key_actor_id: string;
   actor_id: string;
+  org_id: string;
+  roles: string[];
   plan_id: string;
   calls_used: number;
   calls_limit: number;
@@ -54,54 +56,6 @@ function normalizeRuntimeRole(value: string): RuntimeRole | null {
   return null;
 }
 
-async function resolveStoredKeyActor(
-  authUserId: string,
-): Promise<{ actorId: string; orgId: string; roles: RuntimeRole[] } | null> {
-  const admin = getSupabaseAdmin();
-  const profile = await admin
-    .from('users')
-    .select('id, org_id, is_active, role')
-    .eq('auth_user_id', authUserId)
-    .maybeSingle();
-
-  if (profile.error || !profile.data?.id || !profile.data?.org_id || !profile.data.is_active) {
-    return null;
-  }
-
-  const actorId = String(profile.data.id);
-  const orgId = String(profile.data.org_id);
-  const baseRole = String(profile.data.role ?? '').trim().toLowerCase();
-
-  const roleRows = await admin
-    .from('runtime_roles')
-    .select('role')
-    .eq('org_id', orgId)
-    .eq('user_id', actorId);
-
-  if (roleRows.error) return null;
-
-  const roles = new Set<RuntimeRole>();
-  for (const row of roleRows.data ?? []) {
-    const role = normalizeRuntimeRole(String(row.role));
-    if (role) roles.add(role);
-  }
-
-  // Match the established authz bootstrap behavior for owner/admin profiles.
-  if (baseRole === 'owner' || baseRole === 'admin') {
-    roles.add('org_admin');
-    roles.add('operator');
-    roles.add('reviewer');
-    roles.add('runtime_auditor');
-    roles.add('billing_admin');
-  } else {
-    const baseRuntimeRole = normalizeRuntimeRole(baseRole);
-    if (baseRuntimeRole) roles.add(baseRuntimeRole);
-    if (baseRole === 'viewer' || baseRole === 'guest_auditor') roles.add('reviewer');
-  }
-
-  return { actorId, orgId, roles: Array.from(roles).sort() };
-}
-
 export async function validateStoredUnifiedMcpKey(
   request: Request,
   toolName: string,
@@ -115,23 +69,37 @@ export async function validateStoredUnifiedMcpKey(
   try {
     const keyHash = await hashMcpApiKey(rawKey);
     const config = getDsgSupabaseRpcConfig();
-    const rows = await callDsgRpc<StoredKeyRow[]>(config, 'validate_mcp_api_key', {
-      p_key_hash: keyHash,
-    });
+    const rows = await callDsgRpc<StoredKeyRow[]>(
+      config,
+      'validate_mcp_api_key_context',
+      { p_key_hash: keyHash },
+    );
     const row = rows?.[0];
-    if (!row?.key_id || !row.actor_id) {
-      return { presented: true, valid: false, reason: 'MCP_KEY_REVOKED_EXPIRED_OR_QUOTA_EXCEEDED' };
+
+    if (!row?.key_id || !row.key_actor_id || !row.actor_id || !row.org_id) {
+      return {
+        presented: true,
+        valid: false,
+        reason: 'MCP_KEY_REVOKED_EXPIRED_OR_QUOTA_EXCEEDED',
+      };
     }
 
-    const actor = await resolveStoredKeyActor(String(row.actor_id));
-    if (!actor) {
+    const roles = Array.from(
+      new Set(
+        (Array.isArray(row.roles) ? row.roles : [])
+          .map((role) => normalizeRuntimeRole(String(role)))
+          .filter((role): role is RuntimeRole => Boolean(role)),
+      ),
+    ).sort();
+
+    if (roles.length === 0) {
       return { presented: true, valid: false, reason: 'MCP_KEY_ACTOR_NOT_ACTIVE' };
     }
 
-    // Meter only after the key and actor have both passed authorization checks.
+    // Meter only after the key, actor, and runtime roles pass authorization.
     await callDsgRpc<void>(config, 'record_mcp_usage', {
       p_key_id: row.key_id,
-      p_actor_id: row.actor_id,
+      p_actor_id: row.key_actor_id,
       p_tool_name: toolName,
     });
 
@@ -140,9 +108,9 @@ export async function validateStoredUnifiedMcpKey(
       valid: true,
       context: {
         source: 'api-key',
-        actorId: actor.actorId,
-        orgId: actor.orgId,
-        roles: actor.roles,
+        actorId: row.actor_id,
+        orgId: row.org_id,
+        roles,
         keyId: String(row.key_id),
         planId: String(row.plan_id),
         callsUsed: Number(row.calls_used),
