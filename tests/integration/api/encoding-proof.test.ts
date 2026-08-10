@@ -23,8 +23,8 @@ describe('POST /api/dsg/v1/encoding/prove - Integration Tests', () => {
           variableCount: 5,
           constant: '0',
           linear: [
-            { i: 0, weight: '1.5' },
-            { i: 2, weight: '-0.5' },
+            { index: 0, weight: '1.5' },
+            { index: 2, weight: '-0.5' },
           ],
           quadratic: [
             { i: 0, j: 1, weight: '2.0' },
@@ -259,7 +259,7 @@ describe('POST /api/dsg/v1/encoding/prove - Integration Tests', () => {
           kind: 'qubo-v1',
           variableCount: 2,
           linear: [
-            { i: 0, weight: NaN },
+            { index: 0, weight: NaN },
           ],
         } as any, // allow NaN for this test
         nonce: `nonce-${Date.now()}-009`,
@@ -327,7 +327,7 @@ describe('POST /api/dsg/v1/encoding/prove - Integration Tests', () => {
         encoding: {
           kind: 'qubo-v1',
           variableCount: 3,
-          linear: [{ i: 0, weight: '1.0' }],
+          linear: [{ index: 0, weight: '1.0' }],
         },
         nonce: 'nonce-idem-repeat',
         idempotencyKey: 'idem-repeat-001',

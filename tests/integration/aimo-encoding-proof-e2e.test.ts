@@ -30,8 +30,8 @@ describe('AIMO Encoding Proof E2E Pipeline', () => {
           variableCount: 4,
           constant: '0',
           linear: [
-            { i: 0, weight: '-3' },
-            { i: 1, weight: '-2' },
+            { index: 0, weight: '-3' },
+            { index: 1, weight: '-2' },
           ],
           quadratic: [
             { i: 0, j: 1, weight: '4' },
@@ -88,7 +88,7 @@ describe('AIMO Encoding Proof E2E Pipeline', () => {
         encoding: {
           kind: 'qubo-v1',
           variableCount: 3,
-          linear: [{ i: 0, weight: '1.0' }],
+          linear: [{ index: 0, weight: '1.0' }],
         },
         nonce: `nonce-chain-${Date.now()}-1`,
         idempotencyKey: 'idem-chain-1',
@@ -109,7 +109,7 @@ describe('AIMO Encoding Proof E2E Pipeline', () => {
         encoding: {
           kind: 'qubo-v1',
           variableCount: 3,
-          linear: [{ i: 1, weight: '2.0' }],
+          linear: [{ index: 1, weight: '2.0' }],
         },
         nonce: `nonce-chain-${Date.now()}-2`,
         idempotencyKey: 'idem-chain-2',
@@ -336,7 +336,7 @@ describe('AIMO Encoding Proof E2E Pipeline', () => {
         encoding: {
           kind: 'qubo-v1',
           variableCount: 3,
-          linear: [{ i: 0, weight: '1.0' }],
+          linear: [{ index: 0, weight: '1.0' }],
         },
         nonce: 'nonce-hash-diff-1',
         idempotencyKey: 'idem-hash-diff-1',
@@ -347,7 +347,7 @@ describe('AIMO Encoding Proof E2E Pipeline', () => {
         encoding: {
           kind: 'qubo-v1',
           variableCount: 3,
-          linear: [{ i: 0, weight: '2.0' }], // different
+          linear: [{ index: 0, weight: '2.0' }], // different
         },
         nonce: 'nonce-hash-diff-2',
         idempotencyKey: 'idem-hash-diff-2',
