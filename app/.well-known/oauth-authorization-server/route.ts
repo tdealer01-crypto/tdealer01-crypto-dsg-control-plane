@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthorizationServerMetadata } from '@/lib/mcp/oauth-helper';
+import { getAuthorizationServerMetadata, getOAuthIssuer } from '@/lib/mcp/oauth-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +20,7 @@ export const dynamic = 'force-dynamic';
  * - Client secret basic authentication
  */
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const issuer = `${url.protocol}//${url.host}`;
+  const issuer = getOAuthIssuer(request);
 
   const metadata = getAuthorizationServerMetadata(issuer);
 
