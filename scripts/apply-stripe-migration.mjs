@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Apply Supabase migration for stripe_app_tables using direct PostgreSQL connection with SSL disabled
+// Apply Supabase migration for stripe_app_tables using a caller-supplied PostgreSQL connection
 import pg from 'pg';
 
 const { Client } = pg;
@@ -9,7 +9,7 @@ const POSTGRES_URL = process.env.SUPABASE_DB_URL || 'postgres://postgres.zeyguil
 async function applyMigration() {
   const client = new Client({ 
     connectionString: POSTGRES_URL, 
-    ssl: false 
+    ssl: process.env.SUPABASE_DB_SSL === 'false' ? false : { rejectUnauthorized: false } 
   });
   
   try {
