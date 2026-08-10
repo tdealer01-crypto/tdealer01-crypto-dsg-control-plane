@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProtectedResourceMetadata } from '@/lib/mcp/oauth-helper';
+import { getProtectedResourceMetadata, getOAuthIssuer } from '@/lib/mcp/oauth-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +15,7 @@ export const dynamic = 'force-dynamic';
  * 3. Discover token endpoint and other related endpoints
  */
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const issuer = `${url.protocol}//${url.host}`;
+  const issuer = getOAuthIssuer(request);
 
   const metadata = getProtectedResourceMetadata(issuer);
 
