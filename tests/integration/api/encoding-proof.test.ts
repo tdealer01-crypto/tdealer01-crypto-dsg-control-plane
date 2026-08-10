@@ -5,7 +5,11 @@ import type {
   EncodingProofResponse,
 } from '@/lib/dsg/deterministic/encoding-proof-types';
 
-describe('POST /api/dsg/v1/encoding/prove - Integration Tests', () => {
+// Integration tests require dev server running on localhost:3000
+// Set SKIP_INTEGRATION_TESTS=true to skip in CI environments without server
+const shouldSkip = process.env.SKIP_INTEGRATION_TESTS === 'true' || process.env.CI === 'true';
+
+describe('POST /api/dsg/v1/encoding/prove - Integration Tests', { skip: shouldSkip }, () => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const apiKey = process.env.TEST_ENCODING_PROOF_API_KEY || 'test-key';
 

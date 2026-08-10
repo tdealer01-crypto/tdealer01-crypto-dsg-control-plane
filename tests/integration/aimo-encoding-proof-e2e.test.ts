@@ -14,8 +14,13 @@ import type {
  * 3. Solver only executes if encoding proof passes
  * 4. Cinema verifies candidate solutions
  * 5. Proof chain links all components
+ *
+ * NOTE: E2E tests require dev server running on localhost:3000
+ * Set SKIP_INTEGRATION_TESTS=true to skip in CI environments
  */
-describe('AIMO Encoding Proof E2E Pipeline', () => {
+const shouldSkip = process.env.SKIP_INTEGRATION_TESTS === 'true' || process.env.CI === 'true';
+
+describe('AIMO Encoding Proof E2E Pipeline', { skip: shouldSkip }, () => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const apiKey = process.env.TEST_ENCODING_PROOF_API_KEY || '';
 
