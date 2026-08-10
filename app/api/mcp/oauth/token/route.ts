@@ -39,28 +39,11 @@ type McpApiKey = {
  * POST /api/mcp/oauth/token
  *
  * OAuth 2.0 Token Endpoint (RFC 6749, RFC 7636)
- * Exchanges authorization code + PKCE verifier for access token
- *
- * Request (application/x-www-form-urlencoded):
- * - grant_type: 'authorization_code'
- * - code: authorization code from /authorize
- * - code_verifier: PKCE code verifier (43-128 chars)
- * - client_id: 'claude-ai-connector-v1'
- * - client_secret: (server-to-server only)
- * - redirect_uri: must match authorization request
- *
- * Response:
- * {
- *   access_token: "mcp_...",
- *   token_type: "Bearer",
- *   expires_in: 3600,
- *   scope: "mcp:execute",
- *   subscription_status: "active" | "expired" | "not_found"
- * }
+ * Exchanges authorization code + PKCE verifier for access token.
+ * Public PKCE clients omit client_secret; confidential clients may provide it.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Parse form data
     const contentType = request.headers.get('content-type');
     let tokenRequest: TokenRequest = {};
 
@@ -78,39 +61,38 @@ export async function POST(request: NextRequest) {
     } else if (contentType?.includes('application/json')) {
       tokenRequest = await request.json();
     } else {
-      return errorResponse('unsupported_media_type', 'Content-Type must be application/x-www-form-urlencoded or application/json');
+      return errorResponse(
+        'unsupported_media_type',
+        'Content-Type must be application/x-www-form-urlencoded or application/json',
+      );
     }
 
-    // Validate grant_type
     if (tokenRequest.grant_type === 'authorization_code') {
       return handleAuthorizationCodeGrant(tokenRequest);
     } else if (tokenRequest.grant_type === 'refresh_token') {
       return handleRefreshTokenGrant(tokenRequest);
-    } else {
-      return errorResponse('unsupported_grant_type', `grant_type ${tokenRequest.grant_type} is not supported`);
     }
+
+    return errorResponse(
+      'unsupported_grant_type',
+      `grant_type ${tokenRequest.grant_type} is not supported`,
+    );
   } catch (error) {
     console.error('[token POST] Error:', error);
     return errorResponse('server_error', 'An internal error occurred');
   }
 }
 
-/**
- * Handle authorization_code grant type
- */
 async function handleAuthorizationCodeGrant(req: TokenRequest) {
-  // Validate required parameters
-  if (!req.code || !req.code_verifier || !req.client_id || !req.client_secret) {
+  if (!req.code || !req.code_verifier || !req.client_id) {
     return errorResponse('invalid_request', 'Missing required parameters');
   }
 
-  // Validate client credentials
   if (!validateClientCredentials(req.client_id, req.client_secret)) {
     return errorResponse('invalid_client', 'Client authentication failed');
   }
 
   try {
-    // Lookup authorization code
     const supabaseAdmin = getSupabaseAdmin();
     const codeHash = hashAuthorizationCode(req.code);
 
@@ -128,12 +110,10 @@ async function handleAuthorizationCodeGrant(req: TokenRequest) {
 
     const code = codeResult.data;
 
-    // Validate redirect_uri
     if (code.redirect_uri !== req.redirect_uri) {
       return errorResponse('invalid_grant', 'redirect_uri mismatch');
     }
 
-    // Validate PKCE code_verifier
     try {
       if (!validatePKCE(req.code_verifier, code.code_challenge)) {
         return errorResponse('invalid_grant', 'PKCE verification failed');
@@ -142,27 +122,21 @@ async function handleAuthorizationCodeGrant(req: TokenRequest) {
       return errorResponse('invalid_grant', 'Invalid code_verifier');
     }
 
-    // Get or create MCP API key for user
     const actorId = code.actor_id;
     let mcpKey = await getMcpApiKeyForUser(actorId);
 
     if (!mcpKey) {
-      // Create new MCP API key
       mcpKey = await createMcpApiKey(actorId);
       if (!mcpKey) {
         return errorResponse('server_error', 'Failed to create API key');
       }
     }
 
-    // Check subscription status
     const subscriptionStatus = mcpKey.stripe_subscription_id ? 'active' : 'not_found';
-
-    // Generate access token
     const config = getOAuthClientConfig();
     const accessToken = generateAccessToken();
     const tokenHash = hashAccessToken(accessToken);
 
-    // Store token in database
     const dsgConfig = getDsgSupabaseRpcConfig();
     const tokenId = await callDsgRpc(dsgConfig, 'create_mcp_oauth_token', {
       p_actor_id: actorId,
@@ -176,13 +150,11 @@ async function handleAuthorizationCodeGrant(req: TokenRequest) {
       return errorResponse('server_error', 'Failed to create token');
     }
 
-    // Mark code as exchanged
     await (supabaseAdmin as any)
       .from('mcp_oauth_codes')
       .update({ exchanged_at: new Date().toISOString(), exchanged_token_id: tokenId })
       .eq('code_id', code.code_id);
 
-    // Return token response
     return NextResponse.json(
       {
         access_token: accessToken,
@@ -191,12 +163,7 @@ async function handleAuthorizationCodeGrant(req: TokenRequest) {
         scope: code.scope,
         subscription_status: subscriptionStatus,
       },
-      {
-        headers: {
-          'Cache-Control': 'no-store',
-          'Pragma': 'no-cache',
-        },
-      },
+      { headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' } },
     );
   } catch (error) {
     console.error('[handleAuthorizationCodeGrant] Error:', error);
@@ -204,16 +171,10 @@ async function handleAuthorizationCodeGrant(req: TokenRequest) {
   }
 }
 
-/**
- * Handle refresh_token grant type (placeholder for future implementation)
- */
-async function handleRefreshTokenGrant(req: TokenRequest) {
+async function handleRefreshTokenGrant(_req: TokenRequest) {
   return errorResponse('unsupported_grant_type', 'refresh_token grant is not yet supported');
 }
 
-/**
- * Get MCP API key for user
- */
 async function getMcpApiKeyForUser(actorId: string): Promise<McpApiKey | null> {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -231,9 +192,6 @@ async function getMcpApiKeyForUser(actorId: string): Promise<McpApiKey | null> {
   }
 }
 
-/**
- * Create new MCP API key for user
- */
 async function createMcpApiKey(actorId: string): Promise<McpApiKey | null> {
   try {
     const crypto = await import('crypto');
@@ -255,8 +213,6 @@ async function createMcpApiKey(actorId: string): Promise<McpApiKey | null> {
     });
 
     if (!keyId) return null;
-
-    // Fetch created key
     return await getMcpApiKeyForUser(actorId);
   } catch (error) {
     console.error('[createMcpApiKey] Error:', error);
@@ -264,9 +220,6 @@ async function createMcpApiKey(actorId: string): Promise<McpApiKey | null> {
   }
 }
 
-/**
- * Hash MCP API key (SHA-256)
- */
 async function hashMcpApiKey(rawKey: string): Promise<string> {
   const encoded = new TextEncoder().encode(rawKey);
   const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
@@ -275,25 +228,16 @@ async function hashMcpApiKey(rawKey: string): Promise<string> {
     .join('');
 }
 
-/**
- * Return OAuth error response (RFC 6749)
- */
 function errorResponse(
   error: string,
   errorDescription?: string,
   status: number = 400,
 ): NextResponse {
   return NextResponse.json(
-    {
-      error,
-      error_description: errorDescription,
-    },
+    { error, error_description: errorDescription },
     {
       status,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Pragma': 'no-cache',
-      },
+      headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
     },
   );
 }
