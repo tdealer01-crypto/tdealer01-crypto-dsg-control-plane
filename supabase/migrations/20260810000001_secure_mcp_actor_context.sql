@@ -27,6 +27,7 @@ declare
   v_calls_used   integer;
   v_actor_id     uuid;
   v_org_id       text;
+  v_org_uuid     uuid;
   v_base_role    text;
   v_runtime_role text;
   v_roles        text[] := '{}'::text[];
@@ -75,7 +76,7 @@ begin
     lower(coalesce(u.role, ''))
   into
     v_actor_id,
-    v_org_id,
+    v_org_uuid,
     v_base_role
   from public.users u
   where u.auth_user_id = v_key_actor_id
@@ -114,7 +115,7 @@ begin
     v_key_id,
     v_key_actor_id,
     v_actor_id,
-    v_org_id,
+    v_org_uuid::text,
     v_roles,
     v_plan_id,
     v_calls_used,
