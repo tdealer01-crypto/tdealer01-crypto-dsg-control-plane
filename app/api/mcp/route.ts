@@ -227,7 +227,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Route DSG tools to the existing deterministic control-plane handler.
+    // Requires the same auth as the unified/platform-deploy tools: these compute
+    // and (for dsg.recordEvidence) are documented to persist evidence envelopes,
+    // so an anonymous caller must not be able to invoke them.
     if ((DSG_TOOL_NAMES as readonly string[]).includes(name)) {
+      const auth = await resolveUnifiedAuth(request, name, rpc.id);
+      if (auth instanceof NextResponse) return auth;
+
       const dsgResult = await callDsgTool(name as DsgToolName, args);
       if (dsgResult.ok === false) {
         return rpcToolResult(

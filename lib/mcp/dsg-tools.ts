@@ -56,6 +56,8 @@ export async function callDsgTool(
         return handleExportComplianceBundle(args);
       case 'dsg.getReadiness':
         return handleGetReadiness();
+      case 'dsg.classifyRisk':
+        return handleClassifyRisk(args);
       default:
         return { ok: false, code: -32601, message: `Unknown DSG tool: ${String(name)}` };
     }
@@ -257,6 +259,92 @@ function handleExportComplianceBundle(args: Record<string, unknown>): DsgToolRes
   };
 
   return { ok: true, result: matrix };
+}
+
+type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+const RISK_ORDER: RiskLevel[] = ['low', 'medium', 'high', 'critical'];
+
+// Base tier per capability flag, sourced from docs/consult-toolkit/risk-classification-checklist.md.
+// hasNoCurrentAuditTrail / hasNoApprovalBeforeExecution are escalation modifiers, not base tiers,
+// matching the checklist's "Raises risk" wording rather than a standalone classification.
+const CAPABILITY_BASE_RISK: Record<string, RiskLevel> = {
+  canChangeProductionData: 'high',
+  canSendExternalCommunication: 'medium',
+  canMoveMoneyOrApprovePayment: 'critical',
+  canDeploySoftware: 'high',
+  canGrantAccessOrChangePermissions: 'critical',
+  canAccessRegulatedOrSensitiveData: 'high',
+  canCallAdminOrInternalApis: 'high',
+  canAffectMultipleTenants: 'critical',
+};
+
+const ESCALATION_FLAGS = ['hasNoCurrentAuditTrail', 'hasNoApprovalBeforeExecution'] as const;
+
+const REQUIRED_EVIDENCE_BY_LEVEL: Record<RiskLevel, string[]> = {
+  low: ['audit_log'],
+  medium: ['plan_check', 'request_hash', 'record_hash', 'audit_export'],
+  high: ['plan_check', 'approval_or_risk_control', 'invariant_check', 'audit_export'],
+  critical: ['block_by_default', 'explicit_approval_path', 'signed_evidence_bundle_when_available'],
+};
+
+const RECOMMENDED_MODE_BY_LEVEL: Record<RiskLevel, string> = {
+  low: 'log-and-monitor',
+  medium: 'plan-check',
+  high: 'approval-required',
+  critical: 'block-by-default',
+};
+
+function escalate(level: RiskLevel): RiskLevel {
+  const nextIndex = Math.min(RISK_ORDER.indexOf(level) + 1, RISK_ORDER.length - 1);
+  return RISK_ORDER[nextIndex];
+}
+
+function handleClassifyRisk(args: Record<string, unknown>): DsgToolResult {
+  const actionDescription = String(args.actionDescription ?? '').trim();
+  if (!actionDescription) {
+    return { ok: false, code: -32602, message: 'actionDescription is required' };
+  }
+
+  const capabilities = (args.capabilities && typeof args.capabilities === 'object')
+    ? args.capabilities as Record<string, unknown>
+    : {};
+
+  const triggeredBy: string[] = [];
+  let riskLevel: RiskLevel = 'low';
+  for (const [flag, baseLevel] of Object.entries(CAPABILITY_BASE_RISK)) {
+    if (capabilities[flag] === true) {
+      triggeredBy.push(flag);
+      if (RISK_ORDER.indexOf(baseLevel) > RISK_ORDER.indexOf(riskLevel)) {
+        riskLevel = baseLevel;
+      }
+    }
+  }
+
+  let escalated = false;
+  for (const flag of ESCALATION_FLAGS) {
+    if (capabilities[flag] === true) {
+      triggeredBy.push(flag);
+      riskLevel = escalate(riskLevel);
+      escalated = true;
+    }
+  }
+
+  return {
+    ok: true,
+    result: {
+      actionDescription,
+      riskLevel,
+      requiresApproval: riskLevel === 'high' || riskLevel === 'critical',
+      recommendedMode: RECOMMENDED_MODE_BY_LEVEL[riskLevel],
+      requiredEvidence: REQUIRED_EVIDENCE_BY_LEVEL[riskLevel],
+      triggeredBy,
+      escalated,
+      boundary: {
+        sourceDoc: 'docs/consult-toolkit/risk-classification-checklist.md',
+        statement: 'Deterministic classification from caller-supplied capability flags. Not a legal, security, or compliance review. Unanswered flags are treated as false, never as unknown-therefore-high — omit optimistic flags rather than guessing them true.',
+      },
+    },
+  };
 }
 
 function handleGetReadiness(): DsgToolResult {
