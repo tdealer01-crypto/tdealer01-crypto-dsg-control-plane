@@ -20,6 +20,12 @@ import {
   type PlatformDeployToolName,
 } from '@/lib/mcp/platform-deploy-tools';
 import {
+  VERIFIED_ACTION_TOOL_NAMES,
+  VERIFIED_ACTION_TOOL_SCHEMAS,
+  callVerifiedActionTool,
+  type VerifiedActionToolName,
+} from '@/lib/mcp/verified-action-tools';
+import {
   validateStoredUnifiedMcpKey,
   type UnifiedAuthContext,
 } from '@/lib/mcp/unified-auth';
@@ -116,6 +122,13 @@ function platformDeployToolList() {
   }));
 }
 
+function verifiedActionToolList() {
+  return VERIFIED_ACTION_TOOL_NAMES.map((name) => ({
+    name,
+    ...VERIFIED_ACTION_TOOL_SCHEMAS[name],
+  }));
+}
+
 function hermesToolList() {
   return HERMES_TOOL_SCHEMAS;
 }
@@ -123,6 +136,7 @@ function hermesToolList() {
 function toolList() {
   return [
     ...unifiedToolList(),
+    ...verifiedActionToolList(),
     ...platformDeployToolList(),
     ...androidToolList(),
     ...dsgToolList(),
@@ -159,9 +173,9 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     server: 'dsg-control-plane-unified-mcp',
-    version: '1.1.0',
+    version: '1.2.0',
     tools: toolList(),
-    note: 'One MCP front door for DSG Control Plane, AIMO, AWS, Netlify, Render, Supabase, runtime, and evidence tools.',
+    note: 'One MCP front door for DSG Control Plane, Verified Action Compiler, AIMO, AWS, Netlify, Render, Supabase, runtime, and evidence tools.',
   });
 }
 
@@ -173,7 +187,7 @@ export async function POST(request: NextRequest) {
     return rpcResult(rpc.id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'dsg-control-plane-unified-mcp', version: '1.1.0' },
+      serverInfo: { name: 'dsg-control-plane-unified-mcp', version: '1.2.0' },
     });
   }
 
@@ -205,6 +219,24 @@ export async function POST(request: NextRequest) {
         );
       }
       return rpcToolResult(rpc.id, unifiedResult.result);
+    }
+
+    if ((VERIFIED_ACTION_TOOL_NAMES as readonly string[]).includes(name)) {
+      const auth = await resolveUnifiedAuth(request, name, rpc.id);
+      if (auth instanceof NextResponse) return auth;
+
+      const actionResult = await callVerifiedActionTool(
+        name as VerifiedActionToolName,
+        args,
+      );
+      if (actionResult.ok === false) {
+        return rpcToolResult(
+          rpc.id,
+          { error: { code: actionResult.code, message: actionResult.message } },
+          true,
+        );
+      }
+      return rpcToolResult(rpc.id, actionResult.result);
     }
 
     if ((PLATFORM_DEPLOY_TOOL_NAMES as readonly string[]).includes(name)) {
