@@ -163,3 +163,28 @@ export type DeterministicGateDecision = {
   reason?: string;
   proof: DeterministicProof;
 };
+
+// Re-export encoding proof types for convenience
+export type {
+  EncodingType,
+  CheckStatus,
+  LinearTerm,
+  IsingLinearTerm,
+  QuadraticTerm,
+  QuboEncoding,
+  IsingEncoding,
+  ProblemEncoding,
+  EncodingCheck,
+  EncodingChecks,
+  EncodingMetadata,
+  EvidenceBoundary,
+  EncodingProof,
+  EncodingProveRequest,
+  EncodingProveSuccessResponse,
+  EncodingProveErrorResponse,
+  EncodingProveResponse,
+  EncodingPolicyConstraint,
+  RateLimitHeaders,
+  CachedEncodingProof,
+  HashChainEntry,
+} from './encoding-proof-types';
