@@ -2,24 +2,37 @@
  * Encoding Proof Gate API Route
  * POST /api/dsg/v1/encoding/prove
  *
- * Validates QUBO/Ising encodings and generates encoding proofs.
+ * Validates QUBO/Ising encodings and generates deterministic encoding proofs.
+ * Access is authenticated, org-rate-limited, and metered through the existing
+ * DSG gate entitlement pipeline.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createEncodingProof } from '@/lib/dsg/deterministic/encoding-proof-engine';
 import { handleApiError } from '@/lib/security/api-error';
 import {
+  applyRateLimit,
+  buildRateLimitHeaders,
+  getRateLimitKey,
+} from '@/lib/security/rate-limit';
+import { readJsonBody } from '@/lib/security/request-json';
+import {
+  requireDsgAuth,
+  dsgAuthError,
+  logDsgApiCall,
+} from '@/lib/dsg/auth/require-dsg-auth';
+import {
+  checkGateEntitlement,
+  recordGateEvaluation,
+} from '@/lib/dsg/gate-entitlement';
+import {
   ProblemEncoding,
-  EncodingProveRequest,
   EncodingProveSuccessResponse,
   EncodingProveErrorResponse,
 } from '@/lib/dsg/deterministic/encoding-proof-types';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Validate request payload structure
- */
 function validateRequest(data: any): { valid: boolean; error?: string } {
   if (!data.problemId || typeof data.problemId !== 'string') {
     return { valid: false, error: 'problemId is required and must be a string' };
@@ -48,10 +61,7 @@ function validateRequest(data: any): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-/**
- * Validate encoding structure
- */
-function validateEncoding(encoding: any): { valid: boolean; error?: string } {
+function validateEncoding(encoding: any, encodingType: string): { valid: boolean; error?: string } {
   if (!Number.isInteger(encoding.variableCount) || encoding.variableCount <= 0) {
     return { valid: false, error: 'variableCount must be a positive integer' };
   }
@@ -59,6 +69,10 @@ function validateEncoding(encoding: any): { valid: boolean; error?: string } {
   const kind = encoding.kind;
   if (!kind || !['qubo-v1', 'ising-v1'].includes(kind)) {
     return { valid: false, error: 'encoding.kind must be "qubo-v1" or "ising-v1"' };
+  }
+
+  if (kind !== encodingType) {
+    return { valid: false, error: 'encoding.kind must match encodingType' };
   }
 
   if (kind === 'qubo-v1') {
@@ -80,39 +94,55 @@ function validateEncoding(encoding: any): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-/**
- * POST /api/dsg/v1/encoding/prove
- *
- * Request body:
- * {
- *   "problemId": "string",
- *   "encodingType": "qubo-v1" | "ising-v1",
- *   "encoding": { ... },
- *   "nonce": "string",
- *   "idempotencyKey": "string"
- * }
- *
- * Response: EncodingProveResponse
- */
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const caller = await requireDsgAuth(req);
+  if (!caller.ok) return dsgAuthError(caller as typeof caller & { ok: false });
+
+  const startMs = Date.now();
+
+  const rateLimit = await applyRateLimit({
+    key: getRateLimitKey(req, `dsg-encoding-proof:${caller.orgId}`),
+    limit: 60,
+    windowMs: 60_000,
+  });
+  const rateLimitHeaders = buildRateLimitHeaders(rateLimit, 60);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'rate_limit_exceeded' },
+      { status: 429, headers: rateLimitHeaders },
+    );
+  }
+
+  const entitlement = await checkGateEntitlement(caller.orgId);
+  if (!entitlement.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: entitlement.message,
+        requiresUpgrade: true,
+        tier: entitlement.tier,
+        upgradeUrl: entitlement.upgradeUrl,
+      },
+      { status: 402, headers: rateLimitHeaders },
+    );
+  }
+
   try {
-    // Parse request body
-    let data: any;
-    try {
-      data = await req.json();
-    } catch (err) {
+    const parsedBody = await readJsonBody(req, { maxBytes: 32_000 });
+    if (!parsedBody.ok) {
       return NextResponse.json(
         {
           ok: false,
-          error: 'invalid_request_body',
+          error: parsedBody.error,
           status: 'BLOCK',
-          failureReasons: ['Request body must be valid JSON'],
+          failureReasons: [parsedBody.error],
         } satisfies EncodingProveErrorResponse,
-        { status: 400 }
+        { status: parsedBody.status, headers: rateLimitHeaders },
       );
     }
 
-    // Validate request structure
+    const data = parsedBody.value as any;
     const requestValidation = validateRequest(data);
     if (!requestValidation.valid) {
       return NextResponse.json(
@@ -122,12 +152,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 'BLOCK',
           failureReasons: [requestValidation.error || 'Invalid request format'],
         } satisfies EncodingProveErrorResponse,
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders },
       );
     }
 
-    // Validate encoding structure
-    const encodingValidation = validateEncoding(data.encoding);
+    const encodingValidation = validateEncoding(data.encoding, data.encodingType);
     if (!encodingValidation.valid) {
       return NextResponse.json(
         {
@@ -136,45 +165,61 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 'BLOCK',
           failureReasons: [encodingValidation.error || 'Invalid encoding structure'],
         } satisfies EncodingProveErrorResponse,
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders },
       );
     }
 
-    // Create encoding proof
-    const encoding = data.encoding as ProblemEncoding;
-    const proof = createEncodingProof(encoding);
+    const proof = createEncodingProof(data.encoding as ProblemEncoding);
+    const statusCode = proof.status === 'BLOCK' ? 422 : 200;
+    const headers = new Headers(rateLimitHeaders);
+    headers.set('X-Proof-ID', proof.proofId);
+    headers.set('X-Encoding-Hash', proof.encodingHash);
 
-    // Return success response
-    if (proof.status === 'PASS') {
-      return NextResponse.json(
-        {
-          ok: true,
-          proofId: proof.proofId,
-          status: proof.status,
-          proof,
-        } satisfies EncodingProveSuccessResponse,
-        {
-          status: 200,
-          headers: {
-            'X-Proof-ID': proof.proofId,
-            'X-Encoding-Hash': proof.encodingHash,
-          },
-        }
-      );
-    }
+    const response = proof.status === 'PASS'
+      ? NextResponse.json(
+          {
+            ok: true,
+            proofId: proof.proofId,
+            status: proof.status,
+            proof,
+          } satisfies EncodingProveSuccessResponse,
+          { status: statusCode, headers },
+        )
+      : NextResponse.json(
+          {
+            ok: false,
+            error: 'encoding_validation_failed',
+            status: proof.status,
+            failedChecks: proof.failedChecks,
+            failureReasons: proof.failureReasons,
+          } satisfies EncodingProveErrorResponse,
+          { status: statusCode, headers },
+        );
 
-    // Return block/review response
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'encoding_validation_failed',
-        status: proof.status,
-        failedChecks: proof.failedChecks,
-        failureReasons: proof.failureReasons,
-      } satisfies EncodingProveErrorResponse,
-      { status: proof.status === 'BLOCK' ? 422 : 200 }
+    void logDsgApiCall({
+      orgId: caller.orgId,
+      actorType: caller.actorType,
+      apiKeyId: caller.actorType === 'api_key' ? caller.apiKeyId : undefined,
+      userId: caller.actorType === 'user' ? caller.userId : undefined,
+      route: 'encoding/prove',
+      statusCode,
+      gateStatus: proof.status,
+      proofId: proof.proofId,
+      durationMs: Date.now() - startMs,
+    });
+
+    void recordGateEvaluation(
+      proof.proofId,
+      caller.orgId,
+      'encoding/prove',
+      proof.status,
+      Date.now() - startMs,
     );
+
+    return response;
   } catch (error) {
-    return handleApiError('api/dsg/v1/encoding/prove', error);
+    return handleApiError('api/dsg/v1/encoding/prove', error, {
+      headers: rateLimitHeaders,
+    });
   }
 }
