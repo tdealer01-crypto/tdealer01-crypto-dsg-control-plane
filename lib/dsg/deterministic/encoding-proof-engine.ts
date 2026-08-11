@@ -46,7 +46,6 @@ function computeConstraintSetHash(): string {
 function computeProofHash(
   proofId: string,
   status: 'PASS' | 'BLOCK' | 'REVIEW',
-  timestamp: string,
   checks: EncodingChecks,
   previousProofHash: string,
   constraintSetHash: string
@@ -55,7 +54,6 @@ function computeProofHash(
     {
       proofId,
       status,
-      timestamp,
       checks,
       previousProofHash,
       constraintSetHash,
@@ -172,7 +170,6 @@ export function createEncodingProof(
   const proofHash = computeProofHash(
     proofId,
     status,
-    timestamp,
     checks,
     previousProofHash,
     constraintSetHash
@@ -209,7 +206,6 @@ export function validateProofHash(proof: EncodingProof): boolean {
   const recomputedHash = computeProofHash(
     proof.proofId,
     proof.status,
-    proof.timestamp,
     proof.checks,
     proof.previousProofHash,
     proof.constraintSetHash
