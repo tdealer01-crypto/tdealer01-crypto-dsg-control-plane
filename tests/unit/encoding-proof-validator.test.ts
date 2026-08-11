@@ -39,7 +39,7 @@ describe('Encoding Proof Validator', () => {
       };
       const result = validateLinearTerms(encoding);
       expect(result.passed).toBe(false);
-      expect(result.reason).toContain('NaN');
+      expect(result.reason).toContain('finite numeric weight');
     });
 
     it('should fail on index out of bounds', () => {
@@ -271,8 +271,11 @@ describe('Encoding Proof Validator', () => {
       const encoding: ProblemEncoding = {
         kind: 'qubo-v1',
         variableCount: 5,
-        linear: [{ index: 0 }, { index: 4 }],
-        quadratic: [{ i: 2, j: 3 }],
+        linear: [
+          { index: 0, weight: '1.0' },
+          { index: 4, weight: '1.0' },
+        ],
+        quadratic: [{ i: 2, j: 3, weight: '1.0' }],
       };
       expect(validateVariableNamingConsistent(encoding).passed).toBe(true);
     });
@@ -317,7 +320,7 @@ describe('Encoding Proof Validator', () => {
       } as any;
       const result = validateEncodingTypeMatches(encoding);
       expect(result.passed).toBe(false);
-      expect(result.reason).toContain('h');
+      expect(result.reason).toContain('Ising fields');
     });
   });
 
