@@ -1,102 +1,66 @@
 /**
  * Encoding Proof Gate Type Definitions
  *
- * This module defines all types for the Encoding Proof Gate, which validates
- * QUBO and Ising problem encodings before solver execution.
+ * The proof validates the structural QUBO/Ising encoding that is about to be
+ * sent to a solver. It deliberately does not claim semantic equivalence to the
+ * user's original problem; that belongs to the preceding semantic/formal gate.
  */
 
-/**
- * Supported encoding types
- */
 export type EncodingType = 'qubo-v1' | 'ising-v1';
-
-/**
- * Validation check result status
- */
 export type CheckStatus = 'PASS' | 'BLOCK' | 'REVIEW';
+export type Coefficient = string | number;
 
-/**
- * A linear term in a QUBO encoding: coefficient for variable x_i
- */
 export interface LinearTerm {
   index: number;
-  weight: string; // Stored as string for precision
+  weight: Coefficient;
 }
 
-/**
- * A linear term in an Ising encoding: coefficient for spin s_i
- */
 export interface IsingLinearTerm {
   index: number;
-  weight: string;
+  weight: Coefficient;
 }
 
-/**
- * A quadratic term: coefficient for x_i * x_j or s_i * s_j
- */
 export interface QuadraticTerm {
   i: number;
   j: number;
-  weight: string;
+  weight: Coefficient;
 }
 
-/**
- * QUBO Problem Encoding (v1)
- *
- * Represents a quadratic unconstrained binary optimization problem:
- * minimize: E(x) = constant + Σ(linear_i * x_i) + Σ(quad_ij * x_i * x_j)
- * where x_i ∈ {0, 1}
- */
 export interface QuboEncoding {
   kind: 'qubo-v1';
   variableCount: number;
-  constant?: string | number;
+  constant?: Coefficient;
   linear?: LinearTerm[];
   quadratic?: QuadraticTerm[];
   objective?: 'min' | 'max';
 }
 
-/**
- * Ising Problem Encoding (v1)
- *
- * Represents an Ising model:
- * minimize: E(s) = constant + Σ(h_i * s_i) + Σ(j_ij * s_i * s_j)
- * where s_i ∈ {-1, +1}
- */
 export interface IsingEncoding {
   kind: 'ising-v1';
   variableCount: number;
-  constant?: string | number;
-  h?: IsingLinearTerm[]; // Linear terms
-  j?: QuadraticTerm[]; // Quadratic terms
+  constant?: Coefficient;
+  h?: IsingLinearTerm[];
+  j?: QuadraticTerm[];
   objective?: 'min' | 'max';
 }
 
-/**
- * Union type for any supported encoding
- */
 export type ProblemEncoding = QuboEncoding | IsingEncoding;
 
-/**
- * Individual encoding validation check
- */
 export interface EncodingCheck {
-  name: 'linear_terms_valid' |
-        'quadratic_terms_valid' |
-        'dimension_within_bounds' |
-        'coefficient_magnitude_bounded' |
-        'no_nan_or_infinity' |
-        'no_duplicate_edges' |
-        'variable_naming_consistent' |
-        'encoding_type_matches';
+  name:
+    | 'linear_terms_valid'
+    | 'quadratic_terms_valid'
+    | 'dimension_within_bounds'
+    | 'coefficient_magnitude_bounded'
+    | 'no_nan_or_infinity'
+    | 'no_duplicate_edges'
+    | 'variable_naming_consistent'
+    | 'encoding_type_matches';
   passed: boolean;
-  severity: 'critical' | 'high' | 'medium'; // For decision logic
-  reason?: string; // Failure reason if not passed
+  severity: 'critical' | 'high' | 'medium';
+  reason?: string;
 }
 
-/**
- * Collection of all 8 encoding checks
- */
 export interface EncodingChecks {
   linear_terms_valid: boolean;
   quadratic_terms_valid: boolean;
@@ -108,99 +72,80 @@ export interface EncodingChecks {
   encoding_type_matches: boolean;
 }
 
-/**
- * Metadata about the encoding
- */
 export interface EncodingMetadata {
   dimensionCount: number;
   linearTermsCount: number;
   quadraticTermsCount: number;
-  maxCoefficientValue: string; // As string for precision
+  maxCoefficientValue: string;
 }
 
-/**
- * Evidence boundary statement (required for all proofs)
- */
 export interface EvidenceBoundary {
   statement: string;
   externalVerifierInvoked: boolean;
-  certificationClaim: false; // Always false (no third-party audit)
+  certificationClaim: false;
 }
 
 /**
- * The main Encoding Proof object returned after validation
+ * Request identity bound into every proof. Raw nonce/idempotency values are not
+ * emitted in the proof; their hashes are sufficient for integrity/replay audit.
  */
+export interface EncodingProofSubject {
+  problemId: string;
+  encodingType: EncodingType;
+  requestHash: string;
+  nonceHash: string;
+  idempotencyKeyHash: string;
+}
+
 export interface EncodingProof {
-  // Identification
-  proofId: string; // epf_<hash>
-  proofHash: string; // SHA256(proof payload)
-  encodingHash: string; // SHA256(encoding)
-
-  // Validation checks (all 8)
+  proofId: string;
+  proofHash: string;
+  encodingHash: string;
+  subject: EncodingProofSubject;
   checks: EncodingChecks;
-
-  // Decision
-  status: CheckStatus; // PASS | BLOCK | REVIEW
-  failedChecks?: string[]; // Names of failed checks
-  failureReasons?: string[]; // Human-readable reasons
-
-  // Audit trail
-  constraintSetHash: string; // SHA256(constraint IDs)
-  previousProofHash: string; // Hash chain link
-  timestamp: string; // ISO 8601
-
-  // Policy
-  policyVersion: string; // e.g., "1.0"
-
-  // Metadata
+  status: CheckStatus;
+  failedChecks?: string[];
+  failureReasons?: string[];
+  constraintSetHash: string;
+  previousProofHash: string;
+  timestamp: string;
+  policyVersion: string;
   metadata: EncodingMetadata;
-
-  // Evidence boundary
   evidenceBoundary: EvidenceBoundary;
 }
 
-/**
- * Request to validate an encoding
- */
 export interface EncodingProveRequest {
   problemId: string;
   encodingType: EncodingType;
   encoding: ProblemEncoding;
-  nonce: string; // For replay protection
-  idempotencyKey: string; // For idempotency
+  nonce: string;
+  idempotencyKey: string;
 }
 
-/**
- * Success response from encoding proof gate
- */
 export interface EncodingProveSuccessResponse {
   ok: true;
   proofId: string;
   status: CheckStatus;
   proof: EncodingProof;
+  idempotentReplay?: boolean;
 }
 
-/**
- * Error response from encoding proof gate
- */
 export interface EncodingProveErrorResponse {
   ok: false;
-  error: string; // Error code (e.g., "encoding_validation_failed")
+  error: string;
   status: CheckStatus;
   failedChecks?: string[];
   failureReasons?: string[];
 }
 
-/**
- * Union response type
- */
 export type EncodingProveResponse =
   | EncodingProveSuccessResponse
   | EncodingProveErrorResponse;
 
-/**
- * Policy constraint for encoding validation
- */
+// Backward-compatible aliases used by the older integration suites.
+export type EncodingProofRequest = EncodingProveRequest;
+export type EncodingProofResponse = EncodingProveResponse;
+
 export interface EncodingPolicyConstraint {
   id: string;
   name: string;
@@ -211,28 +156,19 @@ export interface EncodingPolicyConstraint {
   maxCoefficientMagnitude?: number;
 }
 
-/**
- * Rate limit response headers
- */
 export interface RateLimitHeaders {
   'X-RateLimit-Limit': string;
   'X-RateLimit-Remaining': string;
   'X-RateLimit-Reset': string;
 }
 
-/**
- * Cached encoding proof (with TTL)
- */
 export interface CachedEncodingProof {
   proof: EncodingProof;
-  cachedAt: number; // Unix timestamp
-  expiresAt: number; // Unix timestamp
-  ttlSeconds: number; // 30 minutes default
+  cachedAt: number;
+  expiresAt: number;
+  ttlSeconds: number;
 }
 
-/**
- * Hash chain entry for audit trail
- */
 export interface HashChainEntry {
   sequence: number;
   proofHash: string;
