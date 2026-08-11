@@ -10,8 +10,6 @@ import type {
 export const MAX_ENCODING_VARIABLES = 62;
 export const MAX_ENCODING_COEFFICIENT_MAGNITUDE = 1e6;
 
-// Complete JSON-style decimal grammar. No prefix parsing and no whitespace
-// coercion: "1junk", " 1", null, false, NaN and Infinity are all rejected.
 const DECIMAL_GRAMMAR = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -30,11 +28,7 @@ function coefficientNumber(value: Coefficient): number {
 }
 
 function isLinearTermShape(value: unknown): value is LinearTerm {
-  return (
-    isRecord(value) &&
-    Number.isInteger(value.index) &&
-    isStrictCoefficient(value.weight)
-  );
+  return isRecord(value) && Number.isInteger(value.index) && isStrictCoefficient(value.weight);
 }
 
 function isQuadraticTermShape(value: unknown): value is QuadraticTerm {
@@ -46,11 +40,6 @@ function isQuadraticTermShape(value: unknown): value is QuadraticTerm {
   );
 }
 
-/**
- * Route-level runtime shape validation. This is intentionally stricter than
- * TypeScript types because JSON callers can send nulls, booleans and malformed
- * strings that the compiler never sees.
- */
 export function validateEncodingRuntimeShape(
   value: unknown,
   expectedType?: EncodingType,
@@ -143,6 +132,7 @@ export function validateLinearTerms(
 export function validateQuadraticTerms(
   encoding: ProblemEncoding,
 ): { passed: boolean; reason?: string } {
+  const seen = new Set<string>();
   for (const raw of quadraticTerms(encoding)) {
     if (!isQuadraticTermShape(raw)) {
       return { passed: false, reason: 'Quadratic term must contain integer i/j and finite numeric weight' };
@@ -159,6 +149,11 @@ export function validateQuadraticTerms(
         reason: `Quadratic term index j=${raw.j} out of bounds [0, ${encoding.variableCount - 1}]`,
       };
     }
+    const key = raw.i <= raw.j ? `${raw.i}:${raw.j}` : `${raw.j}:${raw.i}`;
+    if (seen.has(key)) {
+      return { passed: false, reason: `Duplicate quadratic edge detected: (${raw.i}, ${raw.j})` };
+    }
+    seen.add(key);
   }
   return { passed: true };
 }
