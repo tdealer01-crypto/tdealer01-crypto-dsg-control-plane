@@ -138,18 +138,18 @@ describe('fulfillSubscription', () => {
     );
   });
 
-  it('returns ok:false when organizations update fails', async () => {
+  it('throws when organizations update fails so Stripe can retry the webhook event', async () => {
     setupMock({ orgError: { message: 'DB error' } });
-    const result = await fulfillSubscription('org-1', 'pro', 'active');
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('DB error');
+    await expect(fulfillSubscription('org-1', 'pro', 'active')).rejects.toThrow(
+      'organization_entitlement_sync_failed:DB error',
+    );
   });
 
-  it('returns ok:false when gate entitlement synchronization fails', async () => {
+  it('throws when gate entitlement synchronization fails so partial access is not acknowledged', async () => {
     setupMock({ gateError: { message: 'gate DB error' } });
-    const result = await fulfillSubscription('org-1', 'pro', 'active');
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('gate_entitlement_sync_failed');
+    await expect(fulfillSubscription('org-1', 'pro', 'active')).rejects.toThrow(
+      'gate_entitlement_sync_failed:gate DB error',
+    );
   });
 
   it('is idempotent: repeated fulfillment writes the same final state', async () => {
@@ -184,9 +184,10 @@ describe('revokeSubscription', () => {
     );
   });
 
-  it('returns ok:false on organizations error', async () => {
+  it('throws on organizations revoke error so Stripe can retry', async () => {
     setupMock({ orgError: { message: 'network timeout' } });
-    const result = await revokeSubscription('org-1');
-    expect(result.ok).toBe(false);
+    await expect(revokeSubscription('org-1')).rejects.toThrow(
+      'organization_entitlement_revoke_failed:network timeout',
+    );
   });
 });
