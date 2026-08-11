@@ -1,9 +1,11 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "product": {
     "name": "DSG ONE",
-    "role": "Deterministic AI governance and autonomous-agent control plane",
-    "source_of_truth": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+    "role": "Deterministic AI governance, verified action compilation, and managed autonomous-agent control plane",
+    "source_of_truth": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane",
+    "latest_product_layer": "DSG Verified Action Runtime v1",
+    "latest_product_spec": "docs/product/VERIFIED_ACTION_RUNTIME_V1.md"
   },
   "agent_interface": {
     "canonical_path": "/api/mcp",
@@ -17,6 +19,8 @@
     "tool_call_method": "tools/call",
     "capability_scope": [
       "DSG Control Plane",
+      "Verified Action Compiler",
+      "Acceptance Verifier",
       "AIMO",
       "AWS",
       "Netlify",
@@ -25,7 +29,35 @@
       "runtime",
       "evidence"
     ],
+    "verified_action_tools": [
+      "dsg.action.registry",
+      "dsg.action.compile",
+      "dsg.action.verifyAcceptance"
+    ],
     "authentication": "Tool execution is authenticated and governed by the Control Plane. Public discovery does not imply execution permission."
+  },
+  "verified_action_runtime": {
+    "status": "PARTIAL",
+    "implemented": [
+      "typed Action Registry",
+      "Verified Solution to Action IR compiler",
+      "parameter-preservation proof",
+      "dependency binding",
+      "runtime-only approval bindings",
+      "Action Plan hash",
+      "independent-evidence acceptance verifier",
+      "acceptance hash",
+      "final receipt hash construction when upstream proof-chain hashes are supplied"
+    ],
+    "not_yet_complete": [
+      "Managed IR Runner that directly consumes the compiled DAG and invokes all executor tools",
+      "server-side revalidation of upstream Cinema/Z3 proof authenticity inside the compiler",
+      "general Action Z3 constraint-preservation model",
+      "automatic execution counterexample to re-solve loop",
+      "provider-independent live observation acquisition"
+    ],
+    "execution_rule": "Compilation PASS is never execution permission. Managed execution must resolve live preconditions, permission, risk, and exact-plan approval before calling a registered executor.",
+    "completion_rule": "Executor success is never COMPLETED. Independent postcondition evidence plus the complete proof chain are required."
   },
   "storefront": {
     "provider": "Jimdo",
@@ -51,13 +83,28 @@
     },
     {
       "step": 4,
-      "action": "verify_and_execute",
-      "instruction": "Run through DSG policy, approval, runtime, and evidence gates. A tool proposal or external service response alone is not a production PASS."
+      "action": "solve_and_verify",
+      "instruction": "Obtain a verified solution with its upstream proof hash. A solver result alone does not authorize external side effects."
     },
     {
       "step": 5,
+      "action": "compile",
+      "instruction": "Call dsg.action.compile. Do not translate the verified solution into free-form commands. If the result is BLOCK or UNSUPPORTED, stop."
+    },
+    {
+      "step": 6,
+      "action": "execute_registered_ir",
+      "instruction": "Execute only the registered executor tools and exact arguments represented by the compiled Action IR after live preconditions and approval are satisfied."
+    },
+    {
+      "step": 7,
+      "action": "verify_acceptance",
+      "instruction": "Use independent observations and dsg.action.verifyAcceptance. Never treat executor success as acceptance."
+    },
+    {
+      "step": 8,
       "action": "report",
-      "instruction": "Return the exact DSG result with evidence identifiers. Never convert BLOCK, REVIEW, UNSUPPORTED, or unverified output into PASS."
+      "instruction": "Return the exact DSG verdict and receipt/evidence identifiers. Never convert BLOCK, REVIEW, UNSUPPORTED, or unverified output into PASS or COMPLETED."
     }
   ],
   "commercial_discovery": {
@@ -73,6 +120,8 @@
     "plan_authorized_execution": true,
     "unsupported_claims": "deny",
     "actions_outside_user_approved_plan": "deny",
-    "evidence_required_for_pass": true
+    "free_form_agent_execution_from_verified_solution": "deny",
+    "evidence_required_for_pass": true,
+    "independent_postcondition_evidence_required_for_completed": true
   }
 }
