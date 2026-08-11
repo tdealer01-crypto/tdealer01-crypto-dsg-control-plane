@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0.0",
+  "product": {
+    "name": "DSG ONE",
+    "role": "Deterministic AI governance and autonomous-agent control plane",
+    "source_of_truth": "tdealer01-crypto/tdealer01-crypto-dsg-control-plane"
+  },
+  "agent_interface": {
+    "canonical_path": "/api/mcp",
+    "protocol": "MCP JSON-RPC",
+    "discovery": {
+      "method": "GET",
+      "description": "Returns the unified DSG MCP server metadata and tool catalogue."
+    },
+    "initialize_method": "initialize",
+    "tool_list_method": "tools/list",
+    "tool_call_method": "tools/call",
+    "capability_scope": [
+      "DSG Control Plane",
+      "AIMO",
+      "AWS",
+      "Netlify",
+      "Render",
+      "Supabase",
+      "runtime",
+      "evidence"
+    ],
+    "authentication": "Tool execution is authenticated and governed by the Control Plane. Public discovery does not imply execution permission."
+  },
+  "storefront": {
+    "provider": "Jimdo",
+    "website_id": "b97b5cc0-e993-44e5-ba79-1e69455e0e3b",
+    "role": "Human-facing storefront and lead entry point",
+    "public_url_status": "not_returned_by_jimdo_connector"
+  },
+  "customer_agent_flow": [
+    {
+      "step": 1,
+      "action": "discover",
+      "instruction": "Read this manifest, then GET /api/mcp to discover the currently available unified DSG tools."
+    },
+    {
+      "step": 2,
+      "action": "select_capability",
+      "instruction": "Choose only a capability returned by /api/mcp. Do not infer unsupported capabilities."
+    },
+    {
+      "step": 3,
+      "action": "authenticate",
+      "instruction": "Provide a valid DSG session or supported MCP credential before any governed tool call."
+    },
+    {
+      "step": 4,
+      "action": "verify_and_execute",
+      "instruction": "Run through DSG policy, approval, runtime, and evidence gates. A tool proposal or external service response alone is not a production PASS."
+    },
+    {
+      "step": 5,
+      "action": "report",
+      "instruction": "Return the exact DSG result with evidence identifiers. Never convert BLOCK, REVIEW, UNSUPPORTED, or unverified output into PASS."
+    }
+  ],
+  "commercial_discovery": {
+    "delivery_proof_pricing": "/api/delivery-proof/pricing",
+    "pricing_source_of_truth": "lib/billing/pricing-catalog.ts",
+    "checkout": {
+      "control_plane_route": "/api/billing/checkout",
+      "note": "Use Control Plane pricing and checkout. Do not use separately-created storefront prices as the product source of truth."
+    }
+  },
+  "truth_policy": {
+    "fail_closed": true,
+    "plan_authorized_execution": true,
+    "unsupported_claims": "deny",
+    "actions_outside_user_approved_plan": "deny",
+    "evidence_required_for_pass": true
+  }
+}
