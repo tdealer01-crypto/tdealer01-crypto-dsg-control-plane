@@ -208,7 +208,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const data = requestValidation.value;
     const runtimeShape = validateEncodingRuntimeShape(data.encoding, data.encodingType);
-    if (!runtimeShape.valid) {
+    if ('error' in runtimeShape) {
       return NextResponse.json(
         {
           ok: false,
