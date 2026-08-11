@@ -5,7 +5,9 @@
  *   I1: repeated fulfillment converges on the same org + gate entitlement state
  *   I2: revoked subscriptions always converge to the free plan/tier
  *   I3: a paid DSG plan never leaves the deterministic gate quota at free
- *   I4: neither function throws on Supabase errors; failures are returned
+ *   I4: persistence failures throw so the canonical Stripe webhook releases
+ *       its event claim and Stripe can retry instead of acknowledging partial
+ *       entitlement state
  */
 
 import { getSupabaseAdmin } from '../supabase-server';
@@ -33,7 +35,7 @@ export function gateTierForBillingPlan(plan: string): GateTier {
 async function syncGateEntitlement(
   orgId: string,
   effectiveBillingPlan: string,
-): Promise<FulfillResult> {
+): Promise<void> {
   const tier = gateTierForBillingPlan(effectiveBillingPlan);
   const tierSpec = DSG_GATE_TIERS[tier];
   const supabase = getSupabaseAdmin();
@@ -49,10 +51,8 @@ async function syncGateEntitlement(
     );
 
   if (error) {
-    return { ok: false, error: `gate_entitlement_sync_failed:${error.message}` };
+    throw new Error(`gate_entitlement_sync_failed:${error.message}`);
   }
-
-  return { ok: true };
 }
 
 /**
@@ -76,10 +76,11 @@ export async function fulfillSubscription(
     .eq('id', orgId);
 
   if (error) {
-    return { ok: false, error: error.message };
+    throw new Error(`organization_entitlement_sync_failed:${error.message}`);
   }
 
-  return syncGateEntitlement(orgId, plan);
+  await syncGateEntitlement(orgId, plan);
+  return { ok: true };
 }
 
 /**
@@ -98,8 +99,9 @@ export async function revokeSubscription(orgId: string): Promise<FulfillResult> 
     .eq('id', orgId);
 
   if (error) {
-    return { ok: false, error: error.message };
+    throw new Error(`organization_entitlement_revoke_failed:${error.message}`);
   }
 
-  return syncGateEntitlement(orgId, 'free');
+  await syncGateEntitlement(orgId, 'free');
+  return { ok: true };
 }
