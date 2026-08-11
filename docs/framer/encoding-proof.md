@@ -18,9 +18,13 @@ Validate QUBO/Ising encodings before optimization or execution.
 4. The service returns a proof ID, encoding hash, and PASS / REVIEW / BLOCK result.
 5. Usage is written to the existing DSG audit and metering pipeline.
 
-## Pro plan
+## Start using Encoding Proof
 
-$99/month with the existing DSG Pro subscription and trial terms configured by the billing system.
+**Pro — $99/month with the existing DSG Pro subscription and configured trial terms.**
+
+[Start Pro / Checkout →](https://tdealer01-crypto-dsg-control-plane.onrender.com/framer/encoding-proof/checkout)
+
+After checkout, the canonical Stripe webhook synchronizes the organization plan and DSG gate entitlement. Encoding Proof calls are then authenticated, rate-limited, metered, and written to the DSG audit/usage pipeline.
 
 ## Important proof boundary
 
