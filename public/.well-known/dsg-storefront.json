@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "product": {
     "name": "DSG ONE",
     "role": "Deterministic AI governance, verified action compilation, and managed autonomous-agent control plane",
@@ -7,7 +7,14 @@
     "latest_product_layer": "DSG Verified Action Runtime v1",
     "latest_product_spec": "docs/product/VERIFIED_ACTION_RUNTIME_V1.md"
   },
+  "deployment": {
+    "provider": "Render",
+    "base_url": "https://tdealer01-crypto-dsg-control-plane.onrender.com",
+    "branch": "main",
+    "vercel_active_release_target": false
+  },
   "agent_interface": {
+    "canonical_url": "https://tdealer01-crypto-dsg-control-plane.onrender.com/api/mcp",
     "canonical_path": "/api/mcp",
     "protocol": "MCP JSON-RPC",
     "discovery": {
@@ -63,13 +70,27 @@
     "provider": "Jimdo",
     "website_id": "b97b5cc0-e993-44e5-ba79-1e69455e0e3b",
     "role": "Human-facing storefront and lead entry point",
-    "public_url_status": "not_returned_by_jimdo_connector"
+    "public_url_status": "not_returned_by_jimdo_connector",
+    "transaction_backend": "https://tdealer01-crypto-dsg-control-plane.onrender.com",
+    "human_entrypoints": {
+      "pricing": "https://tdealer01-crypto-dsg-control-plane.onrender.com/pricing",
+      "try": "https://tdealer01-crypto-dsg-control-plane.onrender.com/try",
+      "request_access": "https://tdealer01-crypto-dsg-control-plane.onrender.com/request-access",
+      "proof_gate": "https://tdealer01-crypto-dsg-control-plane.onrender.com/proofgate",
+      "login": "https://tdealer01-crypto-dsg-control-plane.onrender.com/login"
+    },
+    "cta_contract": {
+      "primary": "pricing",
+      "demo": "try",
+      "lead": "request_access",
+      "proof": "proof_gate"
+    }
   },
   "customer_agent_flow": [
     {
       "step": 1,
       "action": "discover",
-      "instruction": "Read this manifest, then GET /api/mcp to discover the currently available unified DSG tools."
+      "instruction": "Read this manifest, then GET the canonical MCP URL to discover the currently available unified DSG tools."
     },
     {
       "step": 2,
@@ -108,10 +129,12 @@
     }
   ],
   "commercial_discovery": {
-    "delivery_proof_pricing": "/api/delivery-proof/pricing",
+    "pricing_url": "https://tdealer01-crypto-dsg-control-plane.onrender.com/pricing",
+    "delivery_proof_pricing": "https://tdealer01-crypto-dsg-control-plane.onrender.com/api/delivery-proof/pricing",
     "pricing_source_of_truth": "lib/billing/pricing-catalog.ts",
     "checkout": {
-      "control_plane_route": "/api/billing/checkout",
+      "control_plane_route": "https://tdealer01-crypto-dsg-control-plane.onrender.com/api/billing/checkout",
+      "requires_authenticated_customer": true,
       "note": "Use Control Plane pricing and checkout. Do not use separately-created storefront prices as the product source of truth."
     }
   },
