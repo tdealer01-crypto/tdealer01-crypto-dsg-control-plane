@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createEncodingProof } from '@/lib/dsg/deterministic/encoding-proof-engine';
+import { handleApiError } from '@/lib/security/api-error';
 import {
   ProblemEncoding,
   EncodingProveRequest,
@@ -174,15 +175,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: proof.status === 'BLOCK' ? 422 : 200 }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'internal_server_error',
-        status: 'BLOCK',
-        failureReasons: [message],
-      } satisfies EncodingProveErrorResponse,
-      { status: 500 }
-    );
+    return handleApiError('api/dsg/v1/encoding/prove', error);
   }
 }
