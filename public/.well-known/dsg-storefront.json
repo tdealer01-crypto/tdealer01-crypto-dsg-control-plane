@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.2.0",
+  "schema_version": "1.2.1",
   "product": {
     "name": "DSG ONE",
     "role": "Deterministic AI governance, verified action compilation, and managed autonomous-agent control plane",
@@ -69,10 +69,12 @@
   "storefront": {
     "provider": "Jimdo",
     "website_id": "b97b5cc0-e993-44e5-ba79-1e69455e0e3b",
-    "role": "Human-facing storefront and lead entry point",
-    "public_url_status": "not_returned_by_jimdo_connector",
+    "public_url": "https://dsg-one.jimdosite.com",
+    "public_url_status": "provided_by_owner",
+    "role": "Canonical human-facing storefront and lead entry point",
     "transaction_backend": "https://tdealer01-crypto-dsg-control-plane.onrender.com",
     "human_entrypoints": {
+      "storefront": "https://dsg-one.jimdosite.com",
       "pricing": "https://tdealer01-crypto-dsg-control-plane.onrender.com/pricing",
       "try": "https://tdealer01-crypto-dsg-control-plane.onrender.com/try",
       "request_access": "https://tdealer01-crypto-dsg-control-plane.onrender.com/request-access",
