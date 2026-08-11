@@ -65,9 +65,12 @@ export async function GET(request: Request) {
   try {
     publicOrigin = resolvePublicOrigin(request);
   } catch {
-    return NextResponse.json(
-      { error: 'public_app_origin_not_configured' },
-      { status: 503 },
+    return new Response(
+      JSON.stringify({ error: 'public_app_origin_not_configured' }),
+      {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      },
     );
   }
 
