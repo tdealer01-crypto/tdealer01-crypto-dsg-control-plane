@@ -1,37 +1,74 @@
 /**
- * Idempotent entitlement fulfillment.
+ * Idempotent subscription fulfillment.
  *
- * Invariants (Z3-style):
- *   I1: fulfillSubscription called N times = same DB state as called once
- *       (achieved via UPDATE … WHERE id = orgId — idempotent write)
- *   I2: revokeSubscription always sets plan = 'free', never null
- *   I3: Neither function throws on Supabase error — returns Result<void>
+ * Invariants:
+ *   I1: repeated fulfillment converges on the same org + gate entitlement state
+ *   I2: revoked subscriptions always converge to the free plan/tier
+ *   I3: a paid DSG plan never leaves the deterministic gate quota at free
+ *   I4: neither function throws on Supabase errors; failures are returned
  */
 
 import { getSupabaseAdmin } from '../supabase-server';
 import { effectivePlan } from './entitlements';
+import { DSG_GATE_TIERS } from '../dsg/gate-entitlement';
 
 export type FulfillResult = {
   ok: boolean;
   error?: string;
 };
 
+type GateTier = 'free' | 'pro' | 'enterprise';
+
 /**
- * Update organizations.plan to reflect an active/trialing subscription.
- * Called on checkout.session.completed, customer.subscription.created,
- * and customer.subscription.updated.
+ * Billing has a Business plan while the deterministic Gate currently exposes
+ * Free / Pro / Enterprise tiers. Business receives the verified Pro gate tier;
+ * Enterprise receives Enterprise. Unknown/non-gate products remain Free.
+ */
+export function gateTierForBillingPlan(plan: string): GateTier {
+  if (plan === 'enterprise') return 'enterprise';
+  if (plan === 'pro' || plan === 'business') return 'pro';
+  return 'free';
+}
+
+async function syncGateEntitlement(
+  orgId: string,
+  effectiveBillingPlan: string,
+): Promise<FulfillResult> {
+  const tier = gateTierForBillingPlan(effectiveBillingPlan);
+  const tierSpec = DSG_GATE_TIERS[tier];
+  const supabase = getSupabaseAdmin();
+  const { error } = await (supabase as any)
+    .from('dsg_gate_entitlements')
+    .upsert(
+      {
+        org_id: orgId,
+        tier,
+        evals_per_month: tierSpec.evalsPerMonth,
+      },
+      { onConflict: 'org_id' },
+    );
+
+  if (error) {
+    return { ok: false, error: `gate_entitlement_sync_failed:${error.message}` };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Update organizations.plan and the deterministic gate entitlement for an
+ * active/trialing subscription. Called by the canonical Stripe webhook.
  */
 export async function fulfillSubscription(
   orgId: string,
   planKey: string,
-  status: string
+  status: string,
 ): Promise<FulfillResult> {
   if (!orgId || !planKey) {
     return { ok: false, error: 'orgId and planKey are required' };
   }
 
   const plan = effectivePlan(status, planKey);
-
   const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from('organizations')
@@ -42,12 +79,12 @@ export async function fulfillSubscription(
     return { ok: false, error: error.message };
   }
 
-  return { ok: true };
+  return syncGateEntitlement(orgId, plan);
 }
 
 /**
- * Downgrade organizations.plan to 'free' when a subscription is canceled,
- * unpaid, or permanently failed.
+ * Downgrade both organizations.plan and the deterministic gate entitlement
+ * when a subscription is canceled, unpaid, or permanently failed.
  */
 export async function revokeSubscription(orgId: string): Promise<FulfillResult> {
   if (!orgId) {
@@ -64,5 +101,5 @@ export async function revokeSubscription(orgId: string): Promise<FulfillResult> 
     return { ok: false, error: error.message };
   }
 
-  return { ok: true };
+  return syncGateEntitlement(orgId, 'free');
 }
