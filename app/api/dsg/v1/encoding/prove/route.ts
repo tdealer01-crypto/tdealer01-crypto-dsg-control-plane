@@ -194,7 +194,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const requestValidation = validateRequest(parsedBody.value);
-    if (!requestValidation.valid) {
+    if ('error' in requestValidation) {
       return NextResponse.json(
         {
           ok: false,
