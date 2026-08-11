@@ -5,7 +5,6 @@ import {
 import type {
   ProblemEncoding,
   EncodingProof,
-  EncodingChecks,
   EncodingMetadata,
   EncodingProofSubject,
 } from './encoding-proof-types';
@@ -16,8 +15,9 @@ import {
   isStrictCoefficient,
 } from './encoding-proof-validator';
 
-const POLICY_VERSION = '1.1';
+const POLICY_VERSION = '1.0';
 const GENESIS_HASH = '0'.repeat(64);
+const DETERMINISTIC_TEST_TIMESTAMP = '1970-01-01T00:00:00.000Z';
 const CONSTRAINT_IDS = [
   'enc_policy_01',
   'enc_policy_02',
@@ -116,15 +116,17 @@ function proofPayload(proof: Omit<EncodingProof, 'proofHash'>): CanonicalInput {
 }
 
 /**
- * Creates a self-contained encoding proof. Production callers must supply a
- * request-bound subject and the current server-managed previous proof hash.
- * The optional defaults exist only for backward-compatible unit tests.
+ * Pure deterministic core by default. Legacy/unit callers that do not provide
+ * a request-bound subject receive a fixed timestamp, preserving same-input =>
+ * same-artifact semantics. Production route callers provide a request subject;
+ * when no explicit timestamp is passed the issuance time is captured and then
+ * bound into the proof hash and persistent idempotency ledger.
  */
 export function createEncodingProof(
   encoding: ProblemEncoding,
   previousProofHash: string = GENESIS_HASH,
   suppliedSubject?: Partial<EncodingProofSubject>,
-  timestamp: string = new Date().toISOString(),
+  timestamp?: string,
 ): EncodingProof {
   const checks = validateEncoding(encoding);
   const status = determineStatus(checks);
@@ -136,6 +138,7 @@ export function createEncodingProof(
     .map(([name]) => name);
   const failureReasons = getFailureReasons(encoding, checks);
   const metadata = collectMetadata(encoding);
+  const issuedAt = timestamp ?? (suppliedSubject ? new Date().toISOString() : DETERMINISTIC_TEST_TIMESTAMP);
 
   const proofId = `epf_${canonicalHash(
     asCanonical({ encodingHash, subject, constraintSetHash, previousProofHash }),
@@ -151,7 +154,7 @@ export function createEncodingProof(
     failureReasons: failureReasons.length > 0 ? failureReasons : undefined,
     constraintSetHash,
     previousProofHash,
-    timestamp,
+    timestamp: issuedAt,
     policyVersion: POLICY_VERSION,
     metadata,
     evidenceBoundary: {
@@ -168,7 +171,6 @@ export function createEncodingProof(
   };
 }
 
-/** Every integrity-relevant field is recomputed, not just status/check bits. */
 export function validateProofHash(proof: EncodingProof): boolean {
   const { proofHash, ...unsigned } = proof;
   return canonicalHash(proofPayload(unsigned)) === proofHash;
