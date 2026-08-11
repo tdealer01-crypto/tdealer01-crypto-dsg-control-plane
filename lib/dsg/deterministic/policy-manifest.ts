@@ -15,7 +15,7 @@ export const DETERMINISTIC_POLICY_REF = 'dsg.deterministic.default';
 export const DETERMINISTIC_POLICY_VERSION = '1.0';
 
 export const ENCODING_POLICY_REF = 'dsg.encoding.default';
-export const ENCODING_POLICY_VERSION = '1.1';
+export const ENCODING_POLICY_VERSION = '1.0';
 export const ENCODING_POLICY_CONSTRAINTS: EncodingPolicyConstraint[] = [
   { id: 'enc_policy_01', name: 'linear_terms_valid', description: 'Linear terms are valid finite coefficients with correct indices', checkName: 'linear_terms_valid', severity: 'critical' },
   { id: 'enc_policy_02', name: 'quadratic_terms_valid', description: 'Quadratic terms contain finite coefficients and valid variable indices', checkName: 'quadratic_terms_valid', severity: 'critical' },
