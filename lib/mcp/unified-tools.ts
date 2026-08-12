@@ -2,6 +2,8 @@ import { createHmac } from 'node:crypto';
 import { Octokit } from '@octokit/rest';
 import { callDsgTool } from './dsg-tools';
 import type { UnifiedAuthContext } from './unified-auth';
+import { runVerifiedRepair } from '@/lib/dsg/verified-repair';
+import type { VerifiedRepairRequest } from '@/lib/dsg/verified-repair';
 
 export const UNIFIED_TOOL_SCHEMAS = {
   'dsg.system.status': {
@@ -65,6 +67,34 @@ export const UNIFIED_TOOL_SCHEMAS = {
         },
       },
       required: ['environment', 'approved', 'idempotencyKey'],
+      additionalProperties: false,
+    },
+  },
+  'dsg.repair.simulate': {
+    description: 'Generate a binary repair plan and verify the selected candidate exactly with Z3. This tool is plan-only and never mutates a repository.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        jobId: { type: 'string', minLength: 1, maxLength: 128 },
+        finding: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            summary: { type: 'string' },
+            severity: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+            executionRisk: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+            affectedFiles: { type: 'array', items: { type: 'string' } },
+            evidence: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          },
+          required: ['id', 'summary', 'severity', 'executionRisk', 'affectedFiles', 'evidence'],
+          additionalProperties: true,
+        },
+        candidates: { type: 'array', minItems: 1, maxItems: 128, items: { type: 'object', additionalProperties: true } },
+        allowedFiles: { type: 'array', minItems: 1, items: { type: 'string' } },
+        approvals: { type: 'object', properties: { human: { type: 'boolean' }, security: { type: 'boolean' } }, additionalProperties: false },
+        solver: { type: 'object', properties: { mode: { type: 'string', enum: ['pinned', 'live'] }, seed: { type: 'integer' }, timeoutMs: { type: 'integer' } }, additionalProperties: false },
+      },
+      required: ['jobId', 'finding', 'candidates', 'allowedFiles'],
       additionalProperties: false,
     },
   },
@@ -506,6 +536,24 @@ async function handleAwsDeploy(
   };
 }
 
+async function handleRepairSimulation(
+  args: Record<string, unknown>,
+  auth: UnifiedAuthContext,
+): Promise<UnifiedToolResult> {
+  const input: VerifiedRepairRequest = {
+    jobId: args.jobId as string,
+    finding: args.finding as VerifiedRepairRequest['finding'],
+    candidates: args.candidates as VerifiedRepairRequest['candidates'],
+    allowedFiles: args.allowedFiles as string[],
+    approvals: args.approvals as VerifiedRepairRequest['approvals'],
+    solver: args.solver as VerifiedRepairRequest['solver'],
+    actorId: auth.actorId,
+    source: 'mcp',
+    execute: false,
+  };
+  return { ok: true, result: await runVerifiedRepair(input) };
+}
+
 export async function callUnifiedTool(
   name: UnifiedToolName,
   args: Record<string, unknown>,
@@ -523,6 +571,8 @@ export async function callUnifiedTool(
         return handleAwsContract();
       case 'dsg.aws.deploy':
         return await handleAwsDeploy(args, auth);
+      case 'dsg.repair.simulate':
+        return await handleRepairSimulation(args, auth);
       default:
         return { ok: false, code: -32601, message: `Unknown unified tool: ${String(name)}` };
     }
