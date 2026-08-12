@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { requireCronAuth } from '../../../../lib/security/cron-auth';
 import { verifyGitHubActionsOidcToken } from '../../../../lib/security/github-actions-oidc';
+import { handleApiError, logApiError } from '../../../../lib/security/api-error';
 import { getDueRevenueAutopilotJobs, type DueRevenueAutopilotJob } from '../../../../lib/revenue/autopilot-schedule';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,8 @@ export const maxDuration = 300;
 const MAX_ATTEMPTS = 3;
 const STALE_RUNNING_MS = 30 * 60 * 1000;
 const MAX_RESULT_CHARS = 4000;
+
+const ROUTE = 'api/cron/revenue-autopilot';
 
 type AuthKind = 'github-oidc' | 'cron-secret';
 type RunRow = {
@@ -24,7 +27,7 @@ type JobResult = {
   bucket: string;
   status: 'success' | 'failure' | 'skipped';
   httpStatus?: number;
-  detail?: unknown;
+  detail?: string;
 };
 
 function bearerToken(request: Request): string {
@@ -62,7 +65,7 @@ function compactResult(value: unknown): unknown {
   return { truncated: true, preview: serialized.slice(0, MAX_RESULT_CHARS) };
 }
 
-async function parseResponse(response: Response): Promise<unknown> {
+async function parseSuccessResponse(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') ?? '';
   try {
     if (contentType.includes('application/json')) return compactResult(await response.json());
@@ -179,77 +182,83 @@ async function executeJob(
       cache: 'no-store',
       signal: AbortSignal.timeout(120_000),
     });
-    const detail = await parseResponse(response);
 
     if (!response.ok) {
+      const safeCode = `job_http_${response.status}`;
       await finishRun(run.id, {
         status: 'failure',
         http_status: response.status,
-        result: detail,
-        error: `job_http_${response.status}`,
+        error: safeCode,
       });
-      return { job: job.name, bucket: job.bucket, status: 'failure', httpStatus: response.status, detail };
+      return { job: job.name, bucket: job.bucket, status: 'failure', httpStatus: response.status, detail: safeCode };
     }
 
+    const detail = await parseSuccessResponse(response);
     await finishRun(run.id, {
       status: 'success',
       http_status: response.status,
       result: detail,
       error: null,
     });
-    return { job: job.name, bucket: job.bucket, status: 'success', httpStatus: response.status, detail };
+    return { job: job.name, bucket: job.bucket, status: 'success', httpStatus: response.status };
   } catch (error) {
-    const message = error instanceof Error ? error.message.slice(0, 500) : 'job_request_failed';
+    const safeCode = 'job_request_failed';
+    logApiError(`${ROUTE}/job`, error, { job: job.name, bucket: job.bucket });
     await finishRun(run.id, {
       status: 'failure',
       http_status: 0,
-      error: message,
+      error: safeCode,
     });
-    return { job: job.name, bucket: job.bucket, status: 'failure', httpStatus: 0, detail: message };
+    return { job: job.name, bucket: job.bucket, status: 'failure', httpStatus: 0, detail: safeCode };
   }
 }
 
 export async function GET(request: Request) {
   const headers = { 'Cache-Control': 'no-store' };
-  const auth = await authorize(request);
-  if (auth.ok === false) return auth.response;
 
-  if (process.env.DSG_REVENUE_AUTOPILOT_ENABLED !== 'true') {
-    return NextResponse.json(
-      { ok: false, error: 'revenue_autopilot_disabled' },
-      { status: 503, headers },
-    );
+  try {
+    const auth = await authorize(request);
+    if (auth.ok === false) return auth.response;
+
+    if (process.env.DSG_REVENUE_AUTOPILOT_ENABLED !== 'true') {
+      return NextResponse.json(
+        { ok: false, error: 'revenue_autopilot_disabled' },
+        { status: 503, headers },
+      );
+    }
+
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    if (!cronSecret) {
+      return NextResponse.json(
+        { ok: false, error: 'cron_secret_required_for_internal_jobs' },
+        { status: 503, headers },
+      );
+    }
+
+    const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    const baseUrl = (configuredUrl || new URL(request.url).origin).replace(/\/$/, '');
+    const now = new Date();
+    const due = getDueRevenueAutopilotJobs(now);
+    const results: JobResult[] = [];
+
+    for (const job of due) {
+      results.push(await executeJob(job, baseUrl, cronSecret, auth.kind));
+    }
+
+    const failed = results.filter((result) => result.status === 'failure');
+    const executed = results.filter((result) => result.status === 'success');
+    const skipped = results.filter((result) => result.status === 'skipped');
+
+    return NextResponse.json({
+      ok: failed.length === 0,
+      auth: auth.kind,
+      run_at: now.toISOString(),
+      due: due.map((job) => job.name),
+      executed: executed.map((result) => result.job),
+      skipped: skipped.map((result) => ({ job: result.job, reason: result.detail })),
+      failed: failed.map((result) => ({ job: result.job, status: result.httpStatus, error: result.detail })),
+    }, { status: failed.length === 0 ? 200 : 207, headers });
+  } catch (error) {
+    return handleApiError(ROUTE, error, { headers });
   }
-
-  const cronSecret = process.env.CRON_SECRET?.trim();
-  if (!cronSecret) {
-    return NextResponse.json(
-      { ok: false, error: 'cron_secret_required_for_internal_jobs' },
-      { status: 503, headers },
-    );
-  }
-
-  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const baseUrl = (configuredUrl || new URL(request.url).origin).replace(/\/$/, '');
-  const now = new Date();
-  const due = getDueRevenueAutopilotJobs(now);
-  const results: JobResult[] = [];
-
-  for (const job of due) {
-    results.push(await executeJob(job, baseUrl, cronSecret, auth.kind));
-  }
-
-  const failed = results.filter((result) => result.status === 'failure');
-  const executed = results.filter((result) => result.status === 'success');
-  const skipped = results.filter((result) => result.status === 'skipped');
-
-  return NextResponse.json({
-    ok: failed.length === 0,
-    auth: auth.kind,
-    run_at: now.toISOString(),
-    due: due.map((job) => job.name),
-    executed: executed.map((result) => result.job),
-    skipped: skipped.map((result) => ({ job: result.job, reason: result.detail })),
-    failed: failed.map((result) => ({ job: result.job, status: result.httpStatus, detail: result.detail })),
-  }, { status: failed.length === 0 ? 200 : 207, headers });
 }
