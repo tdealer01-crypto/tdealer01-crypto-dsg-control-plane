@@ -47,11 +47,11 @@ async function authorize(request: Request): Promise<
       workflowPath: '.github/workflows/revenue-autopilot.yml',
       allowedEvents: ['schedule', 'workflow_dispatch'],
     });
-    if (verified.ok) return { ok: true, kind: 'github-oidc' };
+    if (verified.ok === true) return { ok: true, kind: 'github-oidc' };
   }
 
   const cron = requireCronAuth(request, 'revenue-autopilot');
-  if (cron.ok) return { ok: true, kind: 'cron-secret' };
+  if (cron.ok === true) return { ok: true, kind: 'cron-secret' };
   return { ok: false, response: cron.response };
 }
 
@@ -72,7 +72,7 @@ async function parseResponse(response: Response): Promise<unknown> {
   }
 }
 
-async function claimJob(job: DueRevenueAutopilotJob): Promise<
+async function claimJob(job: DueRevenueAutopilotJob, source: AuthKind): Promise<
   | { run: RunRow; execute: true }
   | { run: RunRow | null; execute: false; reason: string }
 > {
@@ -83,7 +83,7 @@ async function claimJob(job: DueRevenueAutopilotJob): Promise<
     .insert({
       job: job.name,
       bucket: job.bucket,
-      source: 'github-oidc',
+      source,
       status: 'running',
       attempts: 1,
       started_at: now.toISOString(),
@@ -122,6 +122,7 @@ async function claimJob(job: DueRevenueAutopilotJob): Promise<
   const retry = await admin
     .from('revenue_autopilot_runs')
     .update({
+      source,
       status: 'running',
       attempts: row.attempts + 1,
       started_at: now.toISOString(),
@@ -154,9 +155,14 @@ async function finishRun(
     .eq('id', id);
 }
 
-async function executeJob(job: DueRevenueAutopilotJob, baseUrl: string, cronSecret: string): Promise<JobResult> {
-  const claim = await claimJob(job);
-  if (!claim.execute) {
+async function executeJob(
+  job: DueRevenueAutopilotJob,
+  baseUrl: string,
+  cronSecret: string,
+  source: AuthKind,
+): Promise<JobResult> {
+  const claim = await claimJob(job, source);
+  if (claim.execute === false) {
     return { job: job.name, bucket: job.bucket, status: 'skipped', detail: claim.reason };
   }
 
@@ -206,7 +212,7 @@ async function executeJob(job: DueRevenueAutopilotJob, baseUrl: string, cronSecr
 export async function GET(request: Request) {
   const headers = { 'Cache-Control': 'no-store' };
   const auth = await authorize(request);
-  if (!auth.ok) return auth.response;
+  if (auth.ok === false) return auth.response;
 
   if (process.env.DSG_REVENUE_AUTOPILOT_ENABLED !== 'true') {
     return NextResponse.json(
@@ -230,7 +236,7 @@ export async function GET(request: Request) {
   const results: JobResult[] = [];
 
   for (const job of due) {
-    results.push(await executeJob(job, baseUrl, cronSecret));
+    results.push(await executeJob(job, baseUrl, cronSecret, auth.kind));
   }
 
   const failed = results.filter((result) => result.status === 'failure');
