@@ -1,33 +1,21 @@
-/**
- * Encoding Proof Gate API Route
- * POST /api/dsg/v1/encoding/prove
- *
- * Authenticated + org-rate-limited + entitlement-gated. Proof issuance is
- * persisted so nonce replay, idempotency and hash-chain continuity are enforced
- * by server-observed state rather than caller claims.
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  createEncodingProof,
-  validateProofHash,
-} from '@/lib/dsg/deterministic/encoding-proof-engine';
+import { createEncodingProof, validateProofHash } from '@/lib/dsg/deterministic/encoding-proof-engine';
 import {
   validateEncodingRuntimeShape,
 } from '@/lib/dsg/deterministic/encoding-proof-validator';
+import type {
+  EncodingProveRequest,
+  EncodingProveResponse,
+  EncodingProveErrorResponse,
+  EncodingProof,
+  EncodingType,
+  ProblemEncoding,
+} from '@/lib/dsg/deterministic/encoding-proof-types';
+import { canonicalHash, canonical } from '@/lib/runtime/canonical';
 import {
   inspectEncodingProofRequest,
   persistEncodingProof,
 } from '@/lib/dsg/deterministic/encoding-proof-store';
-import { canonicalHash, type CanonicalInput } from '@/lib/runtime/canonical';
-import { handleApiError } from '@/lib/security/api-error';
-import {
-  applyRateLimit,
-  buildRateLimitHeaders,
-  getRateLimitKey,
-} from '@/lib/security/rate-limit';
-import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
-import { readJsonBody } from '@/lib/security/request-json';
 import {
   requireDsgAuth,
   dsgAuthError,
@@ -37,164 +25,142 @@ import {
   checkGateEntitlement,
   recordGateEvaluation,
 } from '@/lib/dsg/gate-entitlement';
-import type {
-  EncodingType,
-  EncodingProveSuccessResponse,
-  EncodingProveErrorResponse,
-} from '@/lib/dsg/deterministic/encoding-proof-types';
+import {
+  applyRateLimit,
+  buildRateLimitHeaders,
+  getRateLimitKey,
+} from '@/lib/security/rate-limit';
+import { handleApiError } from '@/lib/security/api-error';
 
-export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-function canonical(value: unknown): CanonicalInput {
-  return value as CanonicalInput;
-}
+const ENCODING_TYPES = new Set<EncodingType>(['qubo-v1', 'ising-v1']);
 
-function addCors(req: Request, response: NextResponse): NextResponse {
-  const cors = buildCorsHeaders(req);
-  cors.forEach((value, key) => response.headers.set(key, value));
-  return response;
-}
-
-function responseHeaders(req: Request, base?: HeadersInit): Headers {
-  return buildCorsHeaders(req, base);
-}
-
-function validateRequest(data: unknown):
-  | {
-      valid: true;
-      value: {
-        problemId: string;
-        encodingType: EncodingType;
-        encoding: unknown;
-        nonce: string;
-        idempotencyKey: string;
-      };
-    }
-  | { valid: false; error: string } {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    return { valid: false, error: 'request body must be an object' };
-  }
-  const body = data as Record<string, unknown>;
-  const problemId = typeof body.problemId === 'string' ? body.problemId.trim() : '';
-  const nonce = typeof body.nonce === 'string' ? body.nonce : '';
-  const idempotencyKey = typeof body.idempotencyKey === 'string' ? body.idempotencyKey : '';
-  const encodingType = body.encodingType;
-
-  if (!problemId || problemId.length > 200) {
-    return { valid: false, error: 'problemId is required and must be at most 200 characters' };
-  }
-  if (encodingType !== 'qubo-v1' && encodingType !== 'ising-v1') {
-    return { valid: false, error: 'encodingType must be "qubo-v1" or "ising-v1"' };
-  }
-  if (!body.encoding || typeof body.encoding !== 'object' || Array.isArray(body.encoding)) {
-    return { valid: false, error: 'encoding is required and must be an object' };
-  }
-  if (nonce.length < 8 || nonce.length > 200) {
-    return { valid: false, error: 'nonce must contain 8 to 200 characters' };
-  }
-  if (idempotencyKey.length < 8 || idempotencyKey.length > 200) {
-    return { valid: false, error: 'idempotencyKey must contain 8 to 200 characters' };
-  }
-
+function responseHeaders(req: Request, rateLimitHeaders?: Record<string, string>): Record<string, string> {
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID();
   return {
-    valid: true,
-    value: { problemId, encodingType, encoding: body.encoding, nonce, idempotencyKey },
+    'x-request-id': requestId,
+    ...rateLimitHeaders,
   };
 }
 
 function proofResponse(
   req: Request,
-  proof: ReturnType<typeof createEncodingProof>,
-  baseHeaders: HeadersInit,
-  idempotentReplay = false,
-): NextResponse {
-  const statusCode = proof.status === 'BLOCK' ? 422 : 200;
-  const headers = responseHeaders(req, baseHeaders);
-  headers.set('X-Proof-ID', proof.proofId);
-  headers.set('X-Encoding-Hash', proof.encodingHash);
-  headers.set('X-Proof-Hash', proof.proofHash);
-  if (idempotentReplay) headers.set('X-Idempotent-Replay', 'true');
-
-  if (proof.status === 'PASS') {
-    return NextResponse.json(
-      {
-        ok: true,
-        proofId: proof.proofId,
-        status: proof.status,
-        proof,
-        ...(idempotentReplay ? { idempotentReplay: true } : {}),
-      } satisfies EncodingProveSuccessResponse,
-      { status: statusCode, headers },
-    );
-  }
-
+  proof: EncodingProof,
+  rateLimitHeaders: Record<string, string>,
+  replayed = false,
+): NextResponse<EncodingProveResponse> {
   return NextResponse.json(
     {
-      ok: false,
-      error: 'encoding_validation_failed',
+      ok: proof.status === 'PASS',
       status: proof.status,
-      failedChecks: proof.failedChecks,
-      failureReasons: proof.failureReasons,
-    } satisfies EncodingProveErrorResponse,
-    { status: statusCode, headers },
+      proofId: proof.proofId,
+      encodingHash: proof.encodingHash,
+      proofHash: proof.proofHash,
+      previousProofHash: proof.previousProofHash,
+      requestHash: proof.subject.requestHash,
+      replayed,
+      proof,
+    },
+    {
+      status: proof.status === 'BLOCK' ? 422 : 200,
+      headers: {
+        ...responseHeaders(req, rateLimitHeaders),
+        'X-Proof-ID': proof.proofId,
+        'X-Encoding-Hash': proof.encodingHash,
+        'X-Proof-Hash': proof.proofHash,
+        'X-Proof-Chain-Prev': proof.previousProofHash,
+        'X-Proof-Replayed': String(replayed),
+      },
+    },
   );
 }
 
-export async function OPTIONS(req: NextRequest): Promise<NextResponse> {
-  return buildPreflightResponse(req);
+function validateRequestBody(body: unknown):
+  | { ok: true; value: EncodingProveRequest }
+  | { ok: false; error: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, error: 'Request body must be a JSON object' };
+  }
+
+  const candidate = body as Record<string, unknown>;
+  if (typeof candidate.problemId !== 'string' || candidate.problemId.trim().length === 0) {
+    return { ok: false, error: 'problemId is required' };
+  }
+  if (typeof candidate.encodingType !== 'string' || !ENCODING_TYPES.has(candidate.encodingType as EncodingType)) {
+    return { ok: false, error: 'encodingType must be qubo-v1 or ising-v1' };
+  }
+  if (!candidate.encoding || typeof candidate.encoding !== 'object' || Array.isArray(candidate.encoding)) {
+    return { ok: false, error: 'encoding must be an object' };
+  }
+  if (typeof candidate.nonce !== 'string' || candidate.nonce.trim().length < 8) {
+    return { ok: false, error: 'nonce must be at least 8 characters' };
+  }
+  if (typeof candidate.idempotencyKey !== 'string' || candidate.idempotencyKey.trim().length < 8) {
+    return { ok: false, error: 'idempotencyKey must be at least 8 characters' };
+  }
+
+  return {
+    ok: true,
+    value: {
+      problemId: candidate.problemId.trim(),
+      encodingType: candidate.encodingType as EncodingType,
+      encoding: candidate.encoding as ProblemEncoding,
+      nonce: candidate.nonce.trim(),
+      idempotencyKey: candidate.idempotencyKey.trim(),
+    },
+  };
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  const caller = await requireDsgAuth(req);
-  if (!caller.ok) {
-    return addCors(req, dsgAuthError(caller as typeof caller & { ok: false }));
-  }
-
+export async function POST(req: NextRequest) {
   const startMs = Date.now();
-  const rateLimit = await applyRateLimit({
-    key: getRateLimitKey(req, `dsg-encoding-proof:${caller.orgId}`),
-    limit: 60,
-    windowMs: 60_000,
-  });
-  const rateLimitHeaders = buildRateLimitHeaders(rateLimit, 60);
-
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { ok: false, error: 'rate_limit_exceeded' },
-      { status: 429, headers: responseHeaders(req, rateLimitHeaders) },
-    );
-  }
-
-  const entitlement = await checkGateEntitlement(caller.orgId);
-  if (!entitlement.allowed) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: entitlement.message,
-        requiresUpgrade: true,
-        tier: entitlement.tier,
-        upgradeUrl: entitlement.upgradeUrl,
-      },
-      { status: 402, headers: responseHeaders(req, rateLimitHeaders) },
-    );
-  }
+  let rateLimitHeaders: Record<string, string> = {};
 
   try {
-    const parsedBody = await readJsonBody(req, { maxBytes: 32_000 });
-    if (!parsedBody.ok) {
+    const caller = await requireDsgAuth(req, ['gate:evaluate']);
+    if (!caller.ok) return dsgAuthError(caller);
+
+    const entitlement = await checkGateEntitlement(caller.orgId);
+    if (!entitlement.allowed) {
       return NextResponse.json(
         {
           ok: false,
-          error: parsedBody.error,
-          status: 'BLOCK',
-          failureReasons: [parsedBody.error],
-        } satisfies EncodingProveErrorResponse,
-        { status: parsedBody.status, headers: responseHeaders(req, rateLimitHeaders) },
+          error: entitlement.message,
+          requiresUpgrade: true,
+          tier: entitlement.tier,
+          upgradeUrl: entitlement.upgradeUrl,
+        },
+        { status: 402, headers: responseHeaders(req) },
       );
     }
 
-    const requestValidation = validateRequest(parsedBody.value);
-    if ('error' in requestValidation) {
+    const rateKey = getRateLimitKey(req, `encoding-proof:${caller.orgId}`);
+    const rateResult = await applyRateLimit(rateKey, 60, 60_000);
+    rateLimitHeaders = buildRateLimitHeaders(rateResult, 60);
+    if (!rateResult.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'rate_limit_exceeded', status: 'BLOCK' },
+        { status: 429, headers: responseHeaders(req, rateLimitHeaders) },
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'invalid_request_format',
+          status: 'BLOCK',
+          failureReasons: ['Request body must be valid JSON'],
+        } satisfies EncodingProveErrorResponse,
+        { status: 400, headers: responseHeaders(req, rateLimitHeaders) },
+      );
+    }
+
+    const requestValidation = validateRequestBody(body);
+    if (!requestValidation.ok) {
       return NextResponse.json(
         {
           ok: false,
@@ -304,7 +270,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return proofResponse(req, proof, rateLimitHeaders);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = String(error);
     if (message.includes('encoding_proof_store:chain_or_replay_conflict')) {
       return NextResponse.json(
         {
@@ -318,7 +284,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 409, headers: responseHeaders(req, rateLimitHeaders) },
       );
     }
-    if (message.startsWith('encoding_proof_store:')) {
+    if (message.includes('encoding_proof_store:')) {
       return NextResponse.json(
         { ok: false, error: 'proof_store_unavailable', status: 'BLOCK' },
         { status: 503, headers: responseHeaders(req, rateLimitHeaders) },
