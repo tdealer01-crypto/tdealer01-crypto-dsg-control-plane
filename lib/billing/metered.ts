@@ -5,9 +5,16 @@
  * A durable outbox row is always created before Stripe delivery so temporary
  * provider failures can be retried without losing revenue evidence.
  *
- * Required env vars:
- *   STRIPE_METER_EVENT_NAME  – e.g. "dsg_execution"
- *   STRIPE_SECRET_KEY
+ * Production overage is considered configured only when the complete billing
+ * contract exists:
+ *   STRIPE_SECRET_KEY         – live Stripe key
+ *   STRIPE_METER_EVENT_NAME   – e.g. "dsg_execution_overage"
+ *   STRIPE_METER_ID           – verified Stripe Billing Meter id
+ *   STRIPE_PRICE_PRO_OVERAGE  – verified recurring metered Price id
+ *
+ * Requiring the Meter and Price ids prevents a dangerous half-configured state
+ * where DSG can emit usage events but Stripe has no subscription billing item
+ * capable of turning those events into invoice revenue.
  */
 
 import Stripe from 'stripe';
@@ -30,6 +37,22 @@ export type MeterOutboxFlushResult = {
   errors: string[];
 };
 
+export type MeteredBillingConfiguration =
+  | {
+      configured: true;
+      eventName: string;
+      meterId: string;
+      priceId: string;
+      missing: string[];
+    }
+  | {
+      configured: false;
+      eventName: string | null;
+      meterId: string | null;
+      priceId: string | null;
+      missing: string[];
+    };
+
 type OutboxRow = {
   id: string;
   execution_id: string;
@@ -49,10 +72,6 @@ function getStripe(): Stripe | null {
   return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
-function getMeterEventName(): string | null {
-  return process.env.STRIPE_METER_EVENT_NAME ?? null;
-}
-
 function normalizeExecutionId(executionId: string): string | null {
   const normalized = executionId.trim();
   return normalized.length > 0 ? normalized : null;
@@ -64,6 +83,28 @@ function positiveQuantity(quantity: number): number {
 
 function idempotencyKeyForExecution(executionId: string): string {
   return `dsg-meter-${executionId}`;
+}
+
+/**
+ * Return the complete metered-billing contract without exposing secret values.
+ * The Stripe key is checked only for presence and is never returned.
+ */
+export function getMeteredBillingConfiguration(): MeteredBillingConfiguration {
+  const eventName = process.env.STRIPE_METER_EVENT_NAME?.trim() || null;
+  const meterId = process.env.STRIPE_METER_ID?.trim() || null;
+  const priceId = process.env.STRIPE_PRICE_PRO_OVERAGE?.trim() || null;
+  const missing: string[] = [];
+
+  if (!process.env.STRIPE_SECRET_KEY) missing.push('STRIPE_SECRET_KEY');
+  if (!eventName) missing.push('STRIPE_METER_EVENT_NAME');
+  if (!meterId) missing.push('STRIPE_METER_ID');
+  if (!priceId) missing.push('STRIPE_PRICE_PRO_OVERAGE');
+
+  if (missing.length === 0 && eventName && meterId && priceId) {
+    return { configured: true, eventName, meterId, priceId, missing: [] };
+  }
+
+  return { configured: false, eventName, meterId, priceId, missing };
 }
 
 async function getOutboxClient() {
@@ -192,8 +233,6 @@ export async function reportMeterEvent(
   quantity: number,
   executionId: string,
 ): Promise<MeterEventResult> {
-  const stripe = getStripe();
-  const eventName = getMeterEventName();
   const normalizedExecutionId = normalizeExecutionId(executionId);
   const meteredQuantity = positiveQuantity(quantity);
 
@@ -205,7 +244,18 @@ export async function reportMeterEvent(
     };
   }
 
-  if (!stripe || !eventName) {
+  const config = getMeteredBillingConfiguration();
+  if (!config.configured) {
+    return {
+      ok: false,
+      error: `Stripe metering not fully configured: ${config.missing.join(', ')}`,
+      skipped: true,
+      durable: false,
+    };
+  }
+
+  const stripe = getStripe();
+  if (!stripe) {
     return {
       ok: false,
       error: 'Stripe metering not configured',
@@ -218,7 +268,7 @@ export async function reportMeterEvent(
     executionId: normalizedExecutionId,
     orgId,
     stripeCustomerId,
-    eventName,
+    eventName: config.eventName,
     quantity: meteredQuantity,
   });
 
@@ -238,7 +288,7 @@ export async function reportMeterEvent(
     const result = await deliverMeterEvent({
       stripe,
       stripeCustomerId,
-      eventName,
+      eventName: config.eventName,
       quantity: meteredQuantity,
       executionId: normalizedExecutionId,
     });
@@ -356,7 +406,5 @@ export async function meterExecution(
 }
 
 export function isMeteredBillingConfigured(): boolean {
-  return !!(
-    process.env.STRIPE_SECRET_KEY && process.env.STRIPE_METER_EVENT_NAME
-  );
+  return getMeteredBillingConfiguration().configured;
 }
