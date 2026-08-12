@@ -1,2 +1,0 @@
-# vercel-cli-with-tokens
-

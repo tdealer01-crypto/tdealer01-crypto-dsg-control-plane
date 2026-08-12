@@ -26,7 +26,7 @@ try {
       ':(exclude)scripts/verify-agent-workspace-boundary.mjs',
       `:(exclude)${promotedWorkflowPath}`,
     ],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 },
   );
 } catch {
   console.error(`Unable to inspect changes against ${baseRef}`);
