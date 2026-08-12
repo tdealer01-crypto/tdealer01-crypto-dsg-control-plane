@@ -179,14 +179,18 @@ describe('Encoding Proof Engine', () => {
       expect(proof.metadata.maxCoefficientValue).toBeDefined();
     });
 
-    it('includes timestamp in proof', () => {
+    it('includes issuance timestamp for request-bound proof', () => {
       const encoding: QuboEncoding = {
         kind: 'qubo-v1',
         variableCount: 2,
       };
 
       const before = new Date();
-      const proof = createEncodingProof(encoding);
+      const proof = createEncodingProof(
+        encoding,
+        '0'.repeat(64),
+        { problemId: 'prob_timestamp_test', encodingType: 'qubo-v1' },
+      );
       const after = new Date();
 
       const proofTime = new Date(proof.timestamp);
