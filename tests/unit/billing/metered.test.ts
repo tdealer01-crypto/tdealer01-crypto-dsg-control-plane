@@ -327,6 +327,7 @@ describe('Stripe metered billing', () => {
       eventName: 'dsg_execution',
       meterId: 'mtr_test_123',
       priceId: 'price_overage_test',
+      missing: [],
     });
   });
 
