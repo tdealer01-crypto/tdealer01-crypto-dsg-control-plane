@@ -94,6 +94,35 @@ renamed or a custom domain is attached.
 
 ---
 
+## Blocker: production promotion is Vercel-shaped
+
+**Production cannot be cut over to Render yet, and `vercel.json` cannot be
+deleted.** `scripts/verify-agent-workspace-boundary.mjs` is a governance guard
+that enforces "production never deploys automatically". It asserts, and CI runs it:
+
+- `vercel.json` exists and sets `git.deploymentEnabled["*"] = false`;
+- `.github/workflows/promoted-production-deploy.yml` exists, is `workflow_dispatch`
+  only, and contains an explicit `vercel … --prod` command;
+- that workflow carries ten named controls, including the
+  `Production – dsg-qubo-api` GitHub environment, an exact-current-main-commit
+  check, `npm audit --audit-level=high`, `approve-agent-workspace-promotion.mjs`,
+  `finalize-agent-workspace-promotion.mjs`, and a rollback step;
+- no other workflow contains a production deploy command.
+
+The coupling runs deeper than YAML: `scripts/approve-agent-workspace-promotion.mjs`
+selects a **`vercel_project_id`** column from the agent-workspace row and passes it
+as `p_target` to a Supabase RPC. Retargeting promotion at Render therefore needs a
+schema migration plus an RPC change, which cannot be verified from a sandbox.
+
+Consequence for this blueprint: `render.yaml` sets **`autoDeployTrigger: "off"`**.
+An earlier revision used `commit`, which would have deployed production on every
+merge to `main` — silently violating the invariant the guard exists to protect.
+With auto-deploy off, `verify-render` is `workflow_dispatch` only; polling on push
+would wait out its 15-minute budget for a deploy that never starts.
+
+**Designing Render production promotion is a separate, gated change.** It must
+preserve every control above, not remove them to make the guard pass.
+
 ## CI
 
 `.github/workflows/deploy.yml` no longer deploys to Vercel.
@@ -101,13 +130,13 @@ renamed or a custom domain is attached.
 - **Pull requests:** `validate` + `build` only. `npm run build` is the meaningful
   compile gate for App Router changes, and no remote environment is created per
   PR, so there is no per-preview hosting cost.
-- **Push to `main`:** `verify-render` polls `GET /api/agent/status` on the Render
+- **Manual dispatch:** `verify-render` polls `GET /api/agent/status` on the Render
   origin until the deployed `commit` equals the pushed SHA (15 minute budget),
-  warns if `platform` is not `render`, then smoke-tests `GET /api/health`.
+  warns if `platform` is not `render`, then smoke-tests `GET /api/health`. Run it
+  after a promotion.
 
-CI deliberately does **not** trigger the deploy. `render.yaml` sets
-`autoDeployTrigger: commit` on `branch: main`, so Render deploys the commit
-itself; a CI-side deploy hook would deploy the same commit twice.
+CI deliberately does **not** trigger the deploy — it verifies. See the blocker
+section above for why production auto-deploy stays off.
 
 `verify-render` needs one secret, by name: **`RENDER_SERVICE_URL`**, set to the
 service origin (`https://<service>.onrender.com`). While that secret is unset the

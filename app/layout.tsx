@@ -2,8 +2,6 @@ import './globals.css';
 import './dsg-brand.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import GlobalNav from '../components/GlobalNav';
 import PublicChatWidget from '../components/PublicChatWidget';
 import { ToastProvider } from '../components/ToastProvider';
@@ -23,8 +21,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <GlobalNav />
             {children}
             <PublicChatWidget />
-            <Analytics />
-            <SpeedInsights />
           </ToastProvider>
         </LanguageProvider>
       </body>

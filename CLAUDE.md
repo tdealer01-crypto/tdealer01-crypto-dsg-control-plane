@@ -51,7 +51,7 @@ Acceptable evidence includes:
 - command output from a real run;
 - GitHub metadata, workflow logs, artifacts, PR state, or commit state;
 - Supabase schema/query/log/advisor output;
-- Vercel project/deployment/build-log/runtime metadata;
+- Render service/deploy/build-log/runtime metadata;
 - live endpoint responses from reachable public or explicitly authorized routes.
 
 If evidence is missing, use `pending`, `blocked`, or `not verified`.
@@ -95,7 +95,24 @@ Core framing:
 - Product: AI runtime governance/control plane.
 - Role: gate AI/agent actions before execution and record evidence/audit trails.
 - Package name: `dsg-platform`.
-- Primary production URL currently documented in repo: `https://tdealer01-crypto-dsg-control-plane.vercel.app`.
+- Intended production host: **Render**, declared in `render.yaml`. The service does
+  not exist yet, so the production origin is `pending`. Once it does, `APP_URL` is
+  the single source of truth and `/api/agent/status` reports `platform: "render"`.
+- **Vercel is only partially removed.** Cut so far: the `@vercel/*` telemetry
+  packages, the `deploy*` npm scripts, and `deploy-staging.yml`. Still present, and
+  deliberately so: `vercel.json` and `.github/workflows/promoted-production-deploy.yml`,
+  because `scripts/verify-agent-workspace-boundary.mjs` requires both to enforce
+  that production never deploys automatically. That governance path is Vercel-shaped
+  down to a `vercel_project_id` column read by
+  `scripts/approve-agent-workspace-promotion.mjs`, so retargeting it at Render needs
+  a Supabase migration. Do not delete either file to "finish the migration" without
+  redesigning the promotion path first — you would remove the only gated production
+  deploy route and break its guard at the same time.
+- Netlify (`dsgone`) also builds this repo. It has no config in the repo; it is
+  wired up entirely on Netlify's side, so it can only be disconnected there.
+- Historical note: many docs, scripts and evidence files still contain
+  `https://tdealer01-crypto-dsg-control-plane.vercel.app`. That URL is **stale**.
+  Do not treat it as the production origin and do not use it for health checks.
 
 Important: product marketing copy, README release notes, and past PR bodies are not enough for new production claims. Re-check the live system before claiming current production health.
 
@@ -116,7 +133,7 @@ Use this order:
 7. README release notes and PR bodies as useful context, not final proof.
 8. Older docs and memories as historical hints only.
 
-If a newer README says a claim is green but `PROJECT_TRUTH.md` or `docs/RUNBOOK_DEPLOY.md` is older, do not guess. Inspect current files, recent PRs, workflows, live endpoints, Supabase, and Vercel evidence as needed.
+If a newer README says a claim is green but `PROJECT_TRUTH.md` or `docs/RUNBOOK_DEPLOY.md` is older, do not guess. Inspect current files, recent PRs, workflows, live endpoints, Supabase, and Render evidence as needed.
 
 ---
 
@@ -133,7 +150,9 @@ Common root files:
 - `middleware.ts` — Supabase SSR session handling and protected-page redirects.
 - `vitest.config.ts` — test environment, coverage, and thresholds.
 - `playwright.config.ts` — browser/E2E config when present.
-- `vercel.json` — Vercel install command and cron schedules.
+- `render.yaml` — Render blueprint: Docker web service plus the cron jobs.
+  `autoDeployTrigger: "off"` — production must not deploy on merge.
+- `vercel.json` — retained only to satisfy the production-boundary guard; see §2.
 - `.env.example` — environment variable names only, never values.
 
 ### App Router surface
@@ -281,15 +300,10 @@ When installing dependencies, `npm ci` respects the workspace structure. If a ta
 npm --workspace=dsg-one-mcp-server run <script>
 ```
 
-### Vercel install command
+### Install command
 
-`vercel.json` currently uses:
-
-```json
-"installCommand": "npm ci"
-```
-
-GitHub Actions workflows also use `npm ci`. Inspect the exact workflow before describing its behavior.
+GitHub Actions workflows use `npm ci`, and the `Dockerfile` Render builds from
+uses `npm ci` as well. Inspect the exact workflow before describing its behavior.
 
 ---
 
@@ -564,7 +578,7 @@ This is a proof scan helper, not a substitute for full production readiness.
 Never commit or print:
 
 - Supabase service-role keys;
-- Vercel tokens;
+- Render API keys and deploy hook URLs;
 - Stripe keys or webhook secrets;
 - Anthropic/OpenAI/OpenRouter keys;
 - GitHub PATs;
@@ -704,7 +718,7 @@ Known design principles:
 - Usage analytics period parameters must be honored when provided.
 - Quota gates should block before governed execution when limits are exceeded.
 
-Do not claim Stripe, billing, or quota is live for a target environment without current Stripe/Vercel/Supabase/runtime evidence.
+Do not claim Stripe, billing, or quota is live for a target environment without current Stripe/Render/Supabase/runtime evidence.
 
 ---
 
@@ -865,19 +879,27 @@ After changing code:
 
 ## 23. Deployment and production control loop
 
-### Vercel project configuration (consolidated)
+### Render service configuration
 
-DSG ONE uses a **single consolidated Vercel project**: `tdealer01-crypto-dsg-control-plane`.
+DSG ONE deploys to **Render**, declared in `render.yaml`: one Docker web service
+built from `Dockerfile` (which honours `$PORT`), plus five cron jobs that replace
+the schedules Vercel used to run.
 
-This single project handles:
+- **Production** deploys from `main` via Render's own GitHub integration
+  (`autoDeployTrigger: commit`). CI must not trigger a deploy as well — that
+  deploys the same commit twice.
+- **No per-PR environments.** `previewsEnabled: false`, because each Render
+  preview is separately billed. PRs are gated by `npm run build` in CI.
+- CI verifies rather than deploys: on push to `main`, `verify-render` in
+  `.github/workflows/deploy.yml` polls `/api/agent/status` until the deployed
+  commit matches the pushed SHA, then smoke-tests `/api/health`. It reports
+  `SKIPPED — NOT CONFIGURED` until the `RENDER_SERVICE_URL` secret is set.
 
-- **Production deployments** from `main` branch
-- **Preview deployments** from all PRs (automatic)
-- **Development iteration** via Preview Deployments without needing separate staging projects
+See `docs/RUNBOOK_RENDER_MIGRATION.md` for the cutover procedure and its open gaps.
 
 **Environment configuration:**
 
-In Vercel Dashboard → **Settings** → **Environment Variables**, verify presence (by name only, never print values):
+In the Render dashboard → **Environment**, verify presence (by name only, never print values):
 
 - `SUPABASE_URL` (production database)
 - `SUPABASE_ANON_KEY` (public client key)
@@ -888,19 +910,21 @@ In Vercel Dashboard → **Settings** → **Environment Variables**, verify prese
 - Any Stripe/billing keys (production only)
 - Any webhook secrets (production only)
 
-**GitHub integration:**
-
-- Vercel auto-deploys `main` branch to production
-- Vercel auto-deploys PRs to preview URLs
-- Branch deployments must have required env vars defined
+**Build-time gotcha:** Next.js inlines `NEXT_PUBLIC_*` at build time, so those
+values must be present when the Docker image builds, not only when the container
+runs. A first deploy that comes up with an unconfigured Supabase client almost
+always means they were set runtime-only.
 
 ### Quick live identity check
 
 ```bash
-curl -fsSL "https://tdealer01-crypto-dsg-control-plane.vercel.app/api/agent/status"
+curl -fsSL "https://<service>.onrender.com/api/agent/status"
 ```
 
-Use this to confirm deployed commit, environment, and DB check. This is not enough by itself to claim full production readiness.
+Expect `platform: "render"`, `commit` equal to the deployed SHA, and `env:
+"production"`. `commit: "local"` or `platform: "local"` means the host env vars
+are not reaching the app. This check alone is not enough to claim full production
+readiness.
 
 ### Full production readiness check
 
@@ -909,15 +933,15 @@ Use `docs/RUNBOOK_DEPLOY.md` as the deployment source of truth.
 Typical sequence:
 
 1. Merge approved code to `main` only after PR gates pass.
-2. Confirm Vercel deployment is `Ready`.
-3. Confirm required env vars by name in Settings.
+2. Confirm the Render deployment reached live for the intended commit.
+3. Confirm required env vars by name in the Render dashboard.
 4. Confirm Supabase migrations are applied.
 5. Run public smoke checks.
 6. Run authenticated operator checks.
 7. Run `npm run go:no-go <url>` when applicable.
 8. Record evidence and known limits.
 
-If Vercel cancels a build due unverified commits, follow the documented verified-commit/CLI bypass recovery path. Do not disable security settings or mutate production env vars without explicit approval and audit trail.
+Do not disable security settings or mutate production env vars without explicit approval and audit trail.
 
 ---
 

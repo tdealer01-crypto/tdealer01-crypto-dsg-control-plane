@@ -28,10 +28,18 @@ services:
     plan: standard
     branch: main
     healthCheckPath: /api/health
-    # Render deploys main itself. CI must not also trigger a deploy hook, or the
-    # same commit deploys twice; .github/workflows/deploy.yml verifies the
-    # deployed commit instead of triggering it.
-    autoDeployTrigger: commit
+    # Production must NOT deploy automatically on merge.
+    # scripts/verify-agent-workspace-boundary.mjs enforces that production stays
+    # behind a gated manual promotion workflow, and `vercel.json` disables native
+    # Git deployments for the same reason. `autoDeployTrigger: commit` would have
+    # broken that invariant the moment this blueprint went live — every merge to
+    # main would deploy production with no approval step.
+    #
+    # Promotion for Render is not designed yet. See the Render section of
+    # docs/RUNBOOK_RENDER_MIGRATION.md: the existing promotion path is
+    # Vercel-shaped down to a `vercel_project_id` column in Supabase, so
+    # retargeting it needs a migration and is out of scope here.
+    autoDeployTrigger: "off"
     # Per-PR preview environments are deliberately left off: each one is a
     # separately billed service, and cost is what moved this app off Vercel.
     # PRs are gated by `npm run build` in CI instead. Set previewsEnabled: true
