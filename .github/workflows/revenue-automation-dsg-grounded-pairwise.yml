@@ -1,0 +1,63 @@
+name: DSG Grounded Pairwise Revenue Benchmark
+
+on:
+  push:
+    branches:
+      - test/verified-topk-real-logprobs
+    paths:
+      - 'tests/integration/revenue-automation-dsg-grounded-pairwise.test.ts'
+      - '.github/workflows/revenue-automation-dsg-grounded-pairwise.yml'
+      - 'lib/billing/pricing-catalog.ts'
+      - 'app/api/billing/checkout/route.ts'
+      - 'app/api/billing/webhook/route.ts'
+      - 'lib/billing/fulfillment.ts'
+      - 'lib/billing/metered.ts'
+      - 'lib/revenue/events.ts'
+      - 'app/api/billing/portal/route.ts'
+      - 'docs/REVENUE_SYSTEM_DESIGN.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUN_LIVE_OPENAI_LOGPROBS: "true"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_LOGPROB_MODEL: ${{ vars.OPENAI_LOGPROB_MODEL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify live credential exists
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY repository secret is missing."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DSG-grounded pairwise benchmark
+        run: npx vitest run tests/integration/revenue-automation-dsg-grounded-pairwise.test.ts --reporter=verbose
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: revenue-automation-dsg-grounded-pairwise
+          path: artifacts/revenue-automation-dsg-grounded-pairwise.json
+          if-no-files-found: ignore
+          retention-days: 7
