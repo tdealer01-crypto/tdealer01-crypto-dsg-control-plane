@@ -30,6 +30,11 @@ export type DueRevenueAutopilotJob = RevenueAutopilotJob & {
  * Cold outreach is included only because app/api/cron/lead-outreach obeys
  * MARKETING_OUTREACH_MODE. Production defaults to queue, so an agent may
  * discover and draft prospects while a human remains the send authority.
+ *
+ * smart-drip is intentionally not scheduled yet: one high-usage template in
+ * lib/email/sales.ts still contains historical Business pricing copy. Standard
+ * D0/D7/D13 lifecycle email remains enabled while that copy is reconciled with
+ * the pricing catalog.
  */
 export const REVENUE_AUTOPILOT_JOBS: readonly RevenueAutopilotJob[] = [
   { name: 'flush-meter-outbox', path: '/api/cron/flush-meter-outbox', cadence: 'ten-minute' },
@@ -45,7 +50,6 @@ export const REVENUE_AUTOPILOT_JOBS: readonly RevenueAutopilotJob[] = [
   { name: 'lead-followup', path: '/api/cron/lead-followup', cadence: 'weekday', hourUtc: 10, minuteUtc: 0 },
   { name: 'usage-alerts', path: '/api/cron/usage-alerts', cadence: 'daily', hourUtc: 13, minuteUtc: 0 },
   { name: 'drip-emails', path: '/api/cron/drip-emails', cadence: 'daily', hourUtc: 14, minuteUtc: 0 },
-  { name: 'smart-drip', path: '/api/cron/smart-drip', cadence: 'daily', hourUtc: 14, minuteUtc: 30 },
   { name: 'trial-invite', path: '/api/cron/trial-invite', cadence: 'daily', hourUtc: 15, minuteUtc: 0 },
 
   { name: 'content-gen', path: '/api/cron/content-gen', cadence: 'weekly', weekdayUtc: 1, hourUtc: 6, minuteUtc: 30 },
