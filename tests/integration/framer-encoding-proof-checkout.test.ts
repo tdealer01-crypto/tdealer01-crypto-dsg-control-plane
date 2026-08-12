@@ -4,6 +4,7 @@ import { GET } from '@/app/framer/encoding-proof/checkout/route';
 describe('Framer Encoding Proof checkout handoff', () => {
   beforeEach(() => {
     vi.stubEnv('APP_URL', '');
+    vi.stubEnv('RENDER_EXTERNAL_URL', '');
     vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
   });
 
@@ -27,7 +28,7 @@ describe('Framer Encoding Proof checkout handoff', () => {
     );
   });
 
-  it('uses canonical public origin and HTTP loopback behind the Render proxy', async () => {
+  it('uses canonical APP_URL and HTTP loopback behind the Render proxy', async () => {
     vi.stubEnv('APP_URL', 'https://control.example');
     const fetchMock = vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ error: 'Unauthorized' }),
@@ -37,7 +38,7 @@ describe('Framer Encoding Proof checkout handoff', () => {
 
     const request = new Request('https://localhost:10000/framer/encoding-proof/checkout', {
       headers: {
-        'x-forwarded-host': 'control.example',
+        'x-forwarded-host': 'attacker.example',
         'x-forwarded-proto': 'https',
       },
     });
@@ -53,7 +54,8 @@ describe('Framer Encoding Proof checkout handoff', () => {
     );
   });
 
-  it('falls back to trusted proxy headers when canonical APP_URL is absent', async () => {
+  it('uses RENDER_EXTERNAL_URL when APP_URL is absent and ignores forwarded host spoofing', async () => {
+    vi.stubEnv('RENDER_EXTERNAL_URL', 'https://dsg-control.example');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ error: 'Unauthorized' }),
       { status: 401, headers: { 'content-type': 'application/json' } },
@@ -61,20 +63,25 @@ describe('Framer Encoding Proof checkout handoff', () => {
 
     const request = new Request('https://localhost:10000/framer/encoding-proof/checkout', {
       headers: {
-        'x-forwarded-host': 'control.example',
-        'x-forwarded-proto': 'https',
+        'x-forwarded-host': 'attacker.example',
+        'x-forwarded-proto': 'http',
       },
     });
     const response = await GET(request);
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe(
-      'https://control.example/login?next=%2Fframer%2Fencoding-proof%2Fcheckout',
+      'https://dsg-control.example/login?next=%2Fframer%2Fencoding-proof%2Fcheckout',
     );
   });
 
-  it('fails closed when neither a canonical origin nor proxy host is available', async () => {
-    const request = new Request('https://localhost:10000/framer/encoding-proof/checkout');
+  it('fails closed for loopback when no canonical public origin is configured', async () => {
+    const request = new Request('https://localhost:10000/framer/encoding-proof/checkout', {
+      headers: {
+        'x-forwarded-host': 'attacker.example',
+        'x-forwarded-proto': 'https',
+      },
+    });
     const response = await GET(request);
 
     expect(response.status).toBe(503);
