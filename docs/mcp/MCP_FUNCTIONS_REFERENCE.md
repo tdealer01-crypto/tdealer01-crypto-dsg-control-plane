@@ -310,15 +310,16 @@ These 8 functions are the primary entry points across both dsg-one-v1 and tdeale
 
 ### 8. `solve_aimo`
 
-**Description:** Execute AIMO (Ising Model Optimization) solver through governed pipeline (dsg-one-v1 only)
+**Description:** Execute Ising Model Optimization (AIMO) solver with deterministic, replayable local path and independently re-verifiable Z3 feasibility evidence (dsg-one-v1 only)
 
 **Request:**
 ```json
 {
   "problem_type": "qubo",
   "matrix": [[1, 0.5], [0.5, 2]],
-  "solver": "deterministic_annealing",
-  "seed": 42
+  "solver": "local_deterministic",
+  "seed": 42,
+  "constraints": ["hard_constraints_list"]
 }
 ```
 
@@ -327,11 +328,23 @@ These 8 functions are the primary entry points across both dsg-one-v1 and tdeale
 {
   "solution": [1, 0],
   "energy": -1.5,
-  "is_optimal": true,
-  "proof_hash": "sha256_xyz",
+  "feasible": true,
+  "qubo_hash": "sha256_qubo_abc",
+  "solution_hash": "sha256_solution_def",
+  "proof_hash": "sha256_proof_ghi",
+  "z3_version": "4.12.1",
+  "seed": 42,
+  "solver_version": "ising-solver-core-v1.2.0",
   "execution_id": "exec_xyz"
 }
 ```
+
+**Guarantees:**
+- ✅ Deterministic: When (Q, linear, seed, algorithm version) identical, solution and energy are reproducible
+- ✅ Replayable: Given input, seed, and version, can reconstruct candidate and verify correctness
+- ✅ Re-verifiable: Energy recalculated from QUBO; Z3 independently verifies hard constraint feasibility
+- ❌ NOT guaranteed: Global optimality (Z3 verifies feasibility, not optimality)
+- ❌ NOT guaranteed: External live Ising solver determinism (normalization and hashing applied to received results only)
 
 **Auth:** Bearer token  
 **Approval:** ✅ Required
@@ -702,14 +715,16 @@ These 8 functions are the primary entry points across both dsg-one-v1 and tdeale
 
 ### 24. `verify_proof`
 
-**Description:** Verify a Z3 formal proof artifact
+**Description:** Verify Z3 hard constraint feasibility for a candidate binary assignment (pins solution and checks SAT/UNSAT)
 
 **Request:**
 ```json
 {
-  "proof": {...},
-  "constraints": [...],
-  "solver": "z3"
+  "qubo_hash": "sha256_qubo_abc",
+  "solution": [1, 0],
+  "solution_hash": "sha256_solution_def",
+  "constraints": ["hard_constraint_1", "hard_constraint_2"],
+  "timeout_ms": 5000
 }
 ```
 
@@ -717,11 +732,18 @@ These 8 functions are the primary entry points across both dsg-one-v1 and tdeale
 ```json
 {
   "status": "SAT",
-  "valid": true,
-  "unsat_core_count": 0,
+  "feasible": true,
+  "unsat_core": [],
+  "z3_version": "4.12.1",
+  "proof_hash": "sha256_proof_ghi",
   "execution_time_ms": 45
 }
 ```
+
+**Guarantees:**
+- ✅ Verifies: Candidate passes all hard constraints (SAT = feasible, UNSAT = infeasible)
+- ❌ NOT verified: Candidate is globally optimal or best solution
+- ✅ Re-verifiable: Z3 proof and version included for audit trail
 
 **Auth:** Bearer token  
 **Approval:** Not required
@@ -730,14 +752,16 @@ These 8 functions are the primary entry points across both dsg-one-v1 and tdeale
 
 ### 25. `generate_proof`
 
-**Description:** Generate a Z3 formal proof for a policy/decision
+**Description:** Generate and pin Z3 proof artifact for a policy decision / action candidate
 
 **Request:**
 ```json
 {
   "policy_id": "policy_xyz",
-  "input_state": {...},
-  "constraints": [...],
+  "candidate_action": {...},
+  "solution_hash": "sha256_solution_def",
+  "qubo_hash": "sha256_qubo_abc",
+  "constraints": ["hard_constraint_1"],
   "timeout_ms": 5000
 }
 ```
@@ -746,11 +770,19 @@ These 8 functions are the primary entry points across both dsg-one-v1 and tdeale
 ```json
 {
   "proof_id": "proof_abc",
-  "proof": {...},
+  "proof_hash": "sha256_proof_ghi",
   "status": "SAT",
+  "feasible": true,
+  "z3_version": "4.12.1",
+  "candidate_pinned": true,
   "execution_id": "exec_xyz"
 }
 ```
+
+**Guarantees:**
+- ✅ Proves: Candidate satisfies hard constraints at time of proof
+- ❌ NOT proven: Candidate is optimal or remains feasible if constraints change
+- ✅ Auditable: Proof hash + Z3 version recorded for replay
 
 **Auth:** Bearer token  
 **Approval:** ✅ Required
@@ -1164,6 +1196,33 @@ curl -X POST https://dsg-one-v1-aimo.onrender.com/api/mcp-server \
 | -32000 | Auth error | Bearer token invalid/expired |
 | -32001 | Approval required | Mutation needs governance approval |
 | -32002 | Rate limit exceeded | Too many requests |
+
+---
+
+## Formal Proof Boundaries
+
+### What is Proven ✅
+
+**Local Deterministic Optimization Path (ising-solver-core.ts):**
+- When `(Q, linear, seed, algorithm_version)` are identical, solution and energy are **bit-for-bit reproducible**
+- No randomness except seeded PRNG; sweeps calculated from problem size (not wall-clock time)
+- **Replayable**: Given input, seed, and version, can reconstruct the exact candidate
+
+**Z3 Feasibility Verification:**
+- Candidate binary assignment **satisfies all hard constraints** at time of proof (SAT/UNSAT decision)
+- Proof includes Z3 version and can be **independently re-verified** by running Z3 with same constraints
+- Energy is **recalculated from original QUBO** (does not trust external solver's energy value)
+
+### What is NOT Proven ❌
+
+- **Global Optimality**: Z3 verifies feasibility, NOT that the solution is optimal or best possible
+- **Constraint Durability**: If constraints change after proof, feasibility does not carry forward
+- **External Solver Determinism**: Live Ising solver backends are not guaranteed deterministic; results are normalized and hashed only
+- **Convergence Guarantees**: Solver may timeout; UNSUPPORTED decisions must map to REVIEW/BLOCK, never PASS
+
+### Intended Use
+
+This system is designed for **auditable, replayable governance decisions with independently re-verifiable feasibility evidence**, not for claiming global optimality or external solver contract guarantees.
 
 ---
 
