@@ -88,7 +88,7 @@ export async function verifyGitHubActionsOidcToken(
   if (header.alg !== 'RS256' || !header.kid) return { ok: false, error: 'oidc_unsupported_header' };
 
   const claimCheck = validateGitHubActionsOidcClaims(claims, options);
-  if (!claimCheck.ok) return claimCheck;
+  if (claimCheck.ok === false) return claimCheck;
 
   let jwks: JsonWebKeySet;
   try {
