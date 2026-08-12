@@ -5,7 +5,7 @@ on:
     branches:
       - test/verified-topk-real-logprobs
     paths:
-      - 'tests/integration/revenue-automation-dsg-grounded-pairwise-v2.test.ts'
+      - 'tests/integration/revenue-automation-dsg-grounded-pairwise-v3.test.ts'
       - '.github/workflows/revenue-automation-dsg-grounded-pairwise.yml'
       - 'lib/billing/pricing-catalog.ts'
       - 'app/api/billing/checkout/route.ts'
@@ -50,14 +50,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run DSG-grounded pairwise benchmark v2
-        run: npx vitest run tests/integration/revenue-automation-dsg-grounded-pairwise-v2.test.ts --reporter=verbose
+      - name: Run deterministic DSG-grounded benchmark v3
+        run: npx vitest run tests/integration/revenue-automation-dsg-grounded-pairwise-v3.test.ts --reporter=verbose
 
       - name: Upload benchmark evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: revenue-automation-dsg-grounded-pairwise-v2
-          path: artifacts/revenue-automation-dsg-grounded-pairwise-v2.json
+          name: revenue-automation-dsg-grounded-pairwise-v3
+          path: artifacts/revenue-automation-dsg-grounded-pairwise-v3.json
           if-no-files-found: ignore
           retention-days: 7
