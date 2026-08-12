@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getDeploymentIdentity } from '@/lib/deployment/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,11 @@ const execAsync = promisify(exec);
  */
 export async function GET() {
   try {
-    // Get git info (will work if .git is available in Vercel deployment)
-    let gitCommit = process.env.VERCEL_GIT_COMMIT_SHA || 'unknown';
-    let gitBranch = process.env.VERCEL_GIT_COMMIT_REF || 'main';
-    let deploymentId = process.env.VERCEL_DEPLOYMENT_ID || 'unknown';
+    // Host-injected git info (Vercel or Render); falls back to local git below.
+    const deployment = getDeploymentIdentity();
+    let gitCommit = deployment.commit === 'local' ? 'unknown' : deployment.commit;
+    const gitBranch = deployment.branch ?? 'main';
+    const deploymentId = deployment.deploymentId ?? 'unknown';
 
     // Fallback: try to read from git
     if (gitCommit === 'unknown') {

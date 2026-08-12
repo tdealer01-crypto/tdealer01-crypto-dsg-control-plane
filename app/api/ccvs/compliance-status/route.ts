@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import type { ComplianceMatrix } from '../../../../lib/ccvs/compliance-matrix';
 import { REQUIREMENT_CATALOG } from '../../../../lib/ccvs/compliance-matrix';
 import { readJsonBody } from '../../../../lib/security/request-json';
+import { getDeploymentIdentity } from '../../../../lib/deployment/platform';
 import { createClient } from '../../../../lib/supabase/server';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
 
@@ -116,8 +117,8 @@ export async function GET(request?: Request) {
     : undefined;
 
   const deployment = {
-    commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
-    env: process.env.VERCEL_ENV ?? 'local',
+    commit: getDeploymentIdentity().commit,
+    env: getDeploymentIdentity().env,
     policy_version: process.env.DSG_POLICY_VERSION ?? 'v1',
   };
 

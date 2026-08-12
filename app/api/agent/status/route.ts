@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
+import { getDeploymentIdentity } from '../../../../lib/deployment/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,8 +48,9 @@ async function checkDb(): Promise<boolean> {
 export async function GET() {
   const dbOk = await checkDb();
 
-  // Get commit hash with fallback
-  const commitHash = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'local';
+  // Deployment identity is resolved across Vercel/Render/CI/local.
+  const deployment = getDeploymentIdentity();
+  const commitHash = deployment.commit;
 
   return NextResponse.json(
     {
@@ -56,7 +58,9 @@ export async function GET() {
       repo: 'dsg-control-plane',
       version: commitHash,
       commit: commitHash,
-      env: process.env.VERCEL_ENV ?? 'local',
+      env: deployment.env,
+      platform: deployment.platform,
+      branch: deployment.branch,
       ts: new Date().toISOString(),
       checks: {
         db: dbOk,

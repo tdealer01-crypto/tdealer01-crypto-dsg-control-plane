@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { applyRateLimit, getRateLimitKey } from '@/lib/security/rate-limit';
+import { getPublicOrigin } from '@/lib/deployment/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
       },
       auditTrail: {
         created: timestamp,
-        shareableLink: `https://${process.env.VERCEL_URL || 'tdealer01-crypto-dsg-control-plane.vercel.app'}/public/test-result/${testId}`,
+        shareableLink: `${getPublicOrigin()}/public/test-result/${testId}`,
       },
     };
 

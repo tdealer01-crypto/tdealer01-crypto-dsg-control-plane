@@ -4,6 +4,7 @@ import { STRIPE_API_VERSION } from '@/lib/stripe-api-version';
 import { createClient } from '@/lib/supabase/server';
 import { logApiError, internalErrorMessage } from '@/lib/security/api-error';
 import { buildCorsHeaders, buildPreflightResponse } from '@/lib/security/cors';
+import { getPublicOrigin } from '@/lib/deployment/platform';
 import { readJsonBody } from '@/lib/security/request-json';
 
 export const dynamic = 'force-dynamic';
@@ -136,8 +137,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccount.id,
       type: 'account_onboarding',
-      return_url: `${process.env.VERCEL_URL || 'http://localhost:3000'}/marketplace/sellers/onboard/success`,
-      refresh_url: `${process.env.VERCEL_URL || 'http://localhost:3000'}/marketplace/sellers/onboard/refresh`,
+      // getPublicOrigin() always includes a scheme. VERCEL_URL did not, so the
+      // previous interpolation handed Stripe a scheme-less URL it rejects.
+      return_url: `${getPublicOrigin()}/marketplace/sellers/onboard/success`,
+      refresh_url: `${getPublicOrigin()}/marketplace/sellers/onboard/refresh`,
     });
 
     if (!accountLink.url) {

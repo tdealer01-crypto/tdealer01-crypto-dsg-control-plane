@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getDeploymentIdentity } from '../deployment/platform';
 
 const ALLOW_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
 const ALLOW_HEADERS =
@@ -42,11 +43,12 @@ export function getAllowedCorsOrigins(): string[] {
     process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL
   );
 
-  const vercelOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? parseOrigin(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
-    : null;
+  // Host-provided origin: VERCEL_PROJECT_PRODUCTION_URL on Vercel,
+  // RENDER_EXTERNAL_URL on Render. Without this the allow-list can end up empty
+  // after a host migration, and strict mode then blocks every cross-origin call.
+  const platformOrigin = parseOrigin(getDeploymentIdentity().externalUrl);
 
-  const origins = unique([...explicit, appOrigin, vercelOrigin]);
+  const origins = unique([...explicit, appOrigin, platformOrigin]);
 
   if (isStrictCors() && origins.length === 0) {
     console.warn('[CORS] No allowed origins configured in strict mode');

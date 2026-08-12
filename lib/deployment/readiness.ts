@@ -1,6 +1,7 @@
 import { getDSGCoreConfig, getDSGCoreHealth } from '../dsg-core';
 import { checkFinanceGovernanceReadiness } from '../finance-governance/readiness';
 import { getSupabaseAdmin, hasSupabaseServerCredential } from '../supabase-server';
+import { isManagedHost } from './platform';
 
 type CheckResult = {
   ok: boolean;
@@ -150,7 +151,10 @@ export async function getDeploymentReadiness(): Promise<ReadinessReport> {
   // environment, privileged DB probe, DSG core, and finance backend to pass.
   // Local developers can opt out only with READINESS_STRICT=false; production
   // and preview deploys default to strict checks.
-  const strictReadiness = parseBooleanFlag(process.env.READINESS_STRICT, process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL));
+  // isManagedHost() covers Render as well as Vercel; the previous
+  // Boolean(process.env.VERCEL) check read false on Render and silently
+  // downgraded a fail-closed gate to the relaxed check set.
+  const strictReadiness = parseBooleanFlag(process.env.READINESS_STRICT, process.env.NODE_ENV === 'production' || isManagedHost());
   const criticalChecks = strictReadiness
     ? checks
     : { env: envCheck, nextAuthSecret, dsgCoreConfig, financeGovernanceSurface };

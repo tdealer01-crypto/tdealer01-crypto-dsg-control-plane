@@ -1,0 +1,188 @@
+# Render Blueprint — DSG ONE / ProofGate control plane
+#
+# Why this file exists: Vercel billing is blocked, so the control plane moves to
+# Render. `vercel.json` declares five cron schedules that Render does not read,
+# so they are re-declared here as Render cron jobs. Losing them silently would
+# stop meter flushing, meter reconciliation, usage alerts, trial invites and the
+# weekly report.
+#
+# Secrets are never stored in this file. Every secret uses `sync: false`, which
+# means "this service needs the variable, set its value in the Render dashboard".
+# See docs/RUNBOOK_RENDER_MIGRATION.md for the cutover procedure.
+#
+# Validate before relying on it:
+#   render blueprint validate      (Render CLI)
+# The schema has not been exercised against a live Render account in this repo
+# yet — treat the first deploy as the validation step.
+
+services:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Web service — Next.js app, built from the existing Dockerfile.
+  # The Dockerfile already honours $PORT, which Render injects.
+  # ────────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: dsg-control-plane
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore
+    plan: standard
+    branch: main
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+      # APP_URL pins the public origin. The platform helper prefers it over
+      # RENDER_EXTERNAL_URL so redirect/callback URLs survive a host move.
+      # Set this to the custom domain once DNS is cut over.
+      - key: APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+
+      # Supabase. NEXT_PUBLIC_* values are inlined by `next build`, so they must
+      # be present at image build time, not only at runtime.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # AI provider
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      # Billing
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # Shared secret guarding /api/cron/*. The cron jobs below send it as a
+      # bearer token; the routes fail closed when it is absent.
+      - key: CRON_SECRET
+        sync: false
+
+      # CORS allow-list. The platform helper contributes RENDER_EXTERNAL_URL
+      # automatically; set this for any additional origins.
+      - key: DSG_ALLOWED_ORIGINS
+        sync: false
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Cron jobs — one per schedule previously declared in vercel.json.
+  #
+  # curl flags: -f makes a non-2xx response exit non-zero so Render records the
+  # run as failed; -sS stays quiet on success but still prints transport errors.
+  # ────────────────────────────────────────────────────────────────────────────
+  - type: cronjob
+    name: cron-flush-meter-outbox
+    runtime: image
+    image:
+      url: docker.io/curlimages/curl:8.11.1
+    region: singapore
+    plan: starter
+    schedule: "*/10 * * * *"
+    dockerCommand: >-
+      curl -fsS -X GET
+      -H "Authorization: Bearer $CRON_SECRET"
+      "https://$TARGET_HOST/api/cron/flush-meter-outbox"
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: TARGET_HOST
+        fromService:
+          name: dsg-control-plane
+          type: web
+          property: host
+
+  - type: cronjob
+    name: cron-reconcile-meter
+    runtime: image
+    image:
+      url: docker.io/curlimages/curl:8.11.1
+    region: singapore
+    plan: starter
+    schedule: "0 * * * *"
+    dockerCommand: >-
+      curl -fsS -X GET
+      -H "Authorization: Bearer $CRON_SECRET"
+      "https://$TARGET_HOST/api/cron/reconcile-meter"
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: TARGET_HOST
+        fromService:
+          name: dsg-control-plane
+          type: web
+          property: host
+
+  - type: cronjob
+    name: cron-usage-alerts
+    runtime: image
+    image:
+      url: docker.io/curlimages/curl:8.11.1
+    region: singapore
+    plan: starter
+    schedule: "0 8 * * *"
+    dockerCommand: >-
+      curl -fsS -X GET
+      -H "Authorization: Bearer $CRON_SECRET"
+      "https://$TARGET_HOST/api/cron/usage-alerts"
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: TARGET_HOST
+        fromService:
+          name: dsg-control-plane
+          type: web
+          property: host
+
+  - type: cronjob
+    name: cron-trial-invite
+    runtime: image
+    image:
+      url: docker.io/curlimages/curl:8.11.1
+    region: singapore
+    plan: starter
+    schedule: "0 9 * * *"
+    dockerCommand: >-
+      curl -fsS -X GET
+      -H "Authorization: Bearer $CRON_SECRET"
+      "https://$TARGET_HOST/api/cron/trial-invite"
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: TARGET_HOST
+        fromService:
+          name: dsg-control-plane
+          type: web
+          property: host
+
+  - type: cronjob
+    name: cron-weekly-report
+    runtime: image
+    image:
+      url: docker.io/curlimages/curl:8.11.1
+    region: singapore
+    plan: starter
+    schedule: "0 10 * * 1"
+    dockerCommand: >-
+      curl -fsS -X GET
+      -H "Authorization: Bearer $CRON_SECRET"
+      "https://$TARGET_HOST/api/cron/weekly-report"
+    envVars:
+      - key: CRON_SECRET
+        sync: false
+      - key: TARGET_HOST
+        fromService:
+          name: dsg-control-plane
+          type: web
+          property: host

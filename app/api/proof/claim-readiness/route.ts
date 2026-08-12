@@ -17,6 +17,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { internalErrorMessage, logApiError } from '../../../../lib/security/api-error';
+import { getDeploymentIdentity } from '../../../../lib/deployment/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -592,8 +593,9 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     // Deployment info
-    const deploymentCommit = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? 'local';
-    const deploymentEnv = process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'local';
+    const deploymentIdentity = getDeploymentIdentity();
+    const deploymentCommit = deploymentIdentity.commit;
+    const deploymentEnv = deploymentIdentity.env;
     const now = new Date().toISOString();
 
     // Get security evidence once if any claim requests it

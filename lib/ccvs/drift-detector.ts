@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { getDeploymentIdentity } from '../deployment/platform';
 
 export interface DriftSnapshot {
   policy_version: string;
@@ -21,11 +22,18 @@ function sha256Hex(data: string): string {
 }
 
 export function buildDriftSnapshot(overrides: Partial<DriftSnapshot> = {}): DriftSnapshot {
+  const deployment = getDeploymentIdentity();
+
+  // Records the resolved deployment identity rather than whichever host-specific
+  // env var happened to carry it, so the snapshot means the same thing on Vercel
+  // and on Render. Note: the key set changed here, so the first snapshot taken
+  // after this change reports drift once by design — a host migration is exactly
+  // the kind of deployment-config change this detector exists to surface.
   const deploymentConfigFields = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     DSG_CONTROL_PLANE_BASE_URL: process.env.DSG_CONTROL_PLANE_BASE_URL ?? '',
-    VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? '',
-    GITHUB_SHA: process.env.GITHUB_SHA ?? '',
+    DEPLOYMENT_COMMIT: deployment.commit,
+    DEPLOYMENT_PLATFORM: deployment.platform,
   };
 
   return {

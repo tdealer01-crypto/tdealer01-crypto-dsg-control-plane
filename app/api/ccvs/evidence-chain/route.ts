@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { EVIDENCE_SEVERITY } from '../../../../lib/ccvs/evidence-collector';
 import { REQUIREMENT_CATALOG } from '../../../../lib/ccvs/compliance-matrix';
 import { buildDriftSnapshot, detectDrift } from '../../../../lib/ccvs/drift-detector';
+import { getDeploymentIdentity } from '../../../../lib/deployment/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +40,8 @@ export async function GET() {
     schema_version: '1.0.0',
     generated_at: new Date().toISOString(),
     deployment: {
-      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown',
-      env: process.env.VERCEL_ENV ?? 'local',
+      commit: getDeploymentIdentity().commit,
+      env: getDeploymentIdentity().env,
       policy_version: currentSnapshot.policy_version,
     },
     drift: {
