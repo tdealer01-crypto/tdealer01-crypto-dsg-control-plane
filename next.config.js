@@ -54,11 +54,24 @@ function buildConnectSrc() {
   const coreOrigin = parseOrigin(process.env.DSG_CORE_URL);
   const remoteApiOrigin = resolveRemoteApiOrigin();
 
-  return unique(["'self'", 'https://*.supabase.co', 'https://api.stripe.com', coreOrigin, remoteApiOrigin]).join(' ');
+  return unique([
+    "'self'",
+    'https://*.supabase.co',
+    'https://api.stripe.com',
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    coreOrigin,
+    remoteApiOrigin,
+  ]).join(' ');
 }
 
 function buildScriptSrc() {
-  const base = ["'self'", "'unsafe-inline'", 'https://js.stripe.com'];
+  const base = [
+    "'self'",
+    "'unsafe-inline'",
+    'https://js.stripe.com',
+    'https://www.googletagmanager.com',
+  ];
   if (process.env.NODE_ENV !== 'production') {
     base.push("'unsafe-eval'");
   }
@@ -146,7 +159,7 @@ const nextConfig = {
               "default-src 'self'",
               `script-src ${buildScriptSrc()}`,
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data:",
+              "img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com",
               `connect-src ${buildConnectSrc()}`,
               'frame-src https://js.stripe.com',
               "frame-ancestors 'none'",
