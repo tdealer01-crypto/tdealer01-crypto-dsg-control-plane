@@ -1,0 +1,52 @@
+name: Verified Top-K Real Logprobs
+
+on:
+  push:
+    branches:
+      - test/verified-topk-real-logprobs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-logprob-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUN_LIVE_OPENAI_LOGPROBS: "true"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_LOGPROB_MODEL: ${{ vars.OPENAI_LOGPROB_MODEL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify live credential exists
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY repository secret is missing; real-logprob test cannot run."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run real top-logprobs -> QUBO/Ising -> Z3 test
+        run: npx vitest run tests/integration/openai-verified-topk-live.test.ts --reporter=verbose
+
+      - name: Upload sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-topk-real-logprobs-evidence
+          path: artifacts/verified-topk-real-logprobs.json
+          if-no-files-found: ignore
+          retention-days: 7
