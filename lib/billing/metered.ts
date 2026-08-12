@@ -43,6 +43,7 @@ export type MeteredBillingConfiguration =
       eventName: string;
       meterId: string;
       priceId: string;
+      missing: string[];
     }
   | {
       configured: false;
@@ -100,7 +101,7 @@ export function getMeteredBillingConfiguration(): MeteredBillingConfiguration {
   if (!priceId) missing.push('STRIPE_PRICE_PRO_OVERAGE');
 
   if (missing.length === 0 && eventName && meterId && priceId) {
-    return { configured: true, eventName, meterId, priceId };
+    return { configured: true, eventName, meterId, priceId, missing: [] };
   }
 
   return { configured: false, eventName, meterId, priceId, missing };
