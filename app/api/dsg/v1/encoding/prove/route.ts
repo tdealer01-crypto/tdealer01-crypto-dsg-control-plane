@@ -59,6 +59,28 @@ function responseHeaders(req: Request, base?: HeadersInit): Headers {
   return buildCorsHeaders(req, base);
 }
 
+function usageFailure(error?: string) {
+  const accessMode = error?.startsWith('delivery_blocked:')
+    ? error.slice('delivery_blocked:'.length)
+    : 'billing_unavailable';
+  const requiresUpgrade =
+    accessMode === 'quota_exceeded' || accessMode === 'subscription_inactive';
+
+  return {
+    status: requiresUpgrade ? 402 : 503,
+    body: {
+      ok: false,
+      error: 'usage_evidence_unavailable',
+      accessMode,
+      requiresUpgrade,
+      message: requiresUpgrade
+        ? 'Encoding proof withheld because the current subscription does not authorize this usage slot.'
+        : 'Encoding proof withheld because usage evidence could not be completed safely.',
+      upgradeUrl: '/pricing#dsg-gate',
+    },
+  };
+}
+
 function validateRequest(data: unknown):
   | {
       valid: true;
@@ -171,11 +193,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       {
         ok: false,
         error: entitlement.message,
-        requiresUpgrade: true,
+        requiresUpgrade: entitlement.requiresPayment,
         tier: entitlement.tier,
+        accessMode: entitlement.accessMode,
         upgradeUrl: entitlement.upgradeUrl,
       },
-      { status: 402, headers: responseHeaders(req, rateLimitHeaders) },
+      {
+        status: entitlement.requiresPayment ? 402 : 503,
+        headers: responseHeaders(req, rateLimitHeaders),
+      },
     );
   }
 
@@ -244,6 +270,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 500, headers: responseHeaders(req, rateLimitHeaders) },
         );
       }
+
+      const replayUsage = await recordGateEvaluation(
+        data.idempotencyKey,
+        caller.orgId,
+        'encoding/prove',
+        replay.proof.status,
+        Date.now() - startMs,
+      );
+      if (!replayUsage.recorded) {
+        const failure = usageFailure(replayUsage.error);
+        return NextResponse.json(failure.body, {
+          status: failure.status,
+          headers: responseHeaders(req, rateLimitHeaders),
+        });
+      }
+
       return proofResponse(req, replay.proof, rateLimitHeaders, true);
     }
 
@@ -281,6 +323,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       proof,
     });
 
+    const durationMs = Date.now() - startMs;
+    const usage = await recordGateEvaluation(
+      data.idempotencyKey,
+      caller.orgId,
+      'encoding/prove',
+      proof.status,
+      durationMs,
+    );
+    if (!usage.recorded) {
+      const failure = usageFailure(usage.error);
+      return NextResponse.json(failure.body, {
+        status: failure.status,
+        headers: responseHeaders(req, rateLimitHeaders),
+      });
+    }
+
     const statusCode = proof.status === 'BLOCK' ? 422 : 200;
     void logDsgApiCall({
       orgId: caller.orgId,
@@ -291,16 +349,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       statusCode,
       gateStatus: proof.status,
       proofId: proof.proofId,
-      durationMs: Date.now() - startMs,
+      durationMs,
     });
-
-    void recordGateEvaluation(
-      proof.proofId,
-      caller.orgId,
-      'encoding/prove',
-      proof.status,
-      Date.now() - startMs,
-    );
 
     return proofResponse(req, proof, rateLimitHeaders);
   } catch (error) {
