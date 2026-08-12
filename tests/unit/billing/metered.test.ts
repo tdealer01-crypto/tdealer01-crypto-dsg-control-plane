@@ -72,6 +72,7 @@ vi.mock('../../../lib/supabase-server', () => ({
 
 import {
   flushMeterOutbox,
+  getMeteredBillingConfiguration,
   isMeteredBillingConfigured,
   reportMeterEvent,
 } from '../../../lib/billing/metered';
@@ -81,6 +82,8 @@ describe('Stripe metered billing', () => {
     vi.clearAllMocks();
     process.env.STRIPE_SECRET_KEY = 'sk_test_xxx';
     process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution';
+    process.env.STRIPE_METER_ID = 'mtr_test_123';
+    process.env.STRIPE_PRICE_PRO_OVERAGE = 'price_overage_test';
     mockOutboxInsertMaybeSingle.mockResolvedValue({
       data: { id: 'outbox-001', status: 'pending', stripe_event_id: null },
       error: null,
@@ -179,7 +182,7 @@ describe('Stripe metered billing', () => {
     expect(mockMeterEventsCreate).not.toHaveBeenCalled();
   });
 
-  it('fails without durable evidence when meter configuration is missing', async () => {
+  it('fails without durable evidence when meter event name is missing', async () => {
     delete process.env.STRIPE_METER_EVENT_NAME;
 
     const result = await reportMeterEvent(
@@ -192,6 +195,7 @@ describe('Stripe metered billing', () => {
     if (result.ok === false) {
       expect(result.skipped).toBe(true);
       expect(result.durable).toBe(false);
+      expect(result.error).toContain('STRIPE_METER_EVENT_NAME');
     }
     expect(mockOutboxInsertCall).not.toHaveBeenCalled();
     expect(mockMeterEventsCreate).not.toHaveBeenCalled();
@@ -210,7 +214,34 @@ describe('Stripe metered billing', () => {
     if (result.ok === false) {
       expect(result.skipped).toBe(true);
       expect(result.durable).toBe(false);
+      expect(result.error).toContain('STRIPE_SECRET_KEY');
     }
+  });
+
+  it('fails closed when the verified Billing Meter id is missing', async () => {
+    delete process.env.STRIPE_METER_ID;
+
+    const result = await reportMeterEvent('cus_test', 'org-meter', 1, 'exec-meter');
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.durable).toBe(false);
+      expect(result.error).toContain('STRIPE_METER_ID');
+    }
+    expect(mockOutboxInsertCall).not.toHaveBeenCalled();
+    expect(mockMeterEventsCreate).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the Pro metered Price id is missing', async () => {
+    delete process.env.STRIPE_PRICE_PRO_OVERAGE;
+
+    const result = await reportMeterEvent('cus_test', 'org-price', 1, 'exec-price');
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.durable).toBe(false);
+      expect(result.error).toContain('STRIPE_PRICE_PRO_OVERAGE');
+    }
+    expect(mockOutboxInsertCall).not.toHaveBeenCalled();
+    expect(mockMeterEventsCreate).not.toHaveBeenCalled();
   });
 
   it('fails closed when the outbox row cannot be created or recovered', async () => {
@@ -290,12 +321,23 @@ describe('Stripe metered billing', () => {
     );
   });
 
-  it('isMeteredBillingConfigured returns true when both env vars are set', () => {
-    expect(isMeteredBillingConfigured()).toBe(true);
+  it('returns a complete non-secret configuration contract', () => {
+    expect(getMeteredBillingConfiguration()).toEqual({
+      configured: true,
+      eventName: 'dsg_execution',
+      meterId: 'mtr_test_123',
+      priceId: 'price_overage_test',
+    });
   });
 
-  it('isMeteredBillingConfigured returns false when meter name missing', () => {
-    delete process.env.STRIPE_METER_EVENT_NAME;
+  it('isMeteredBillingConfigured returns true only when all required env vars are set', () => {
+    expect(isMeteredBillingConfigured()).toBe(true);
+
+    delete process.env.STRIPE_METER_ID;
+    expect(isMeteredBillingConfigured()).toBe(false);
+
+    process.env.STRIPE_METER_ID = 'mtr_test_123';
+    delete process.env.STRIPE_PRICE_PRO_OVERAGE;
     expect(isMeteredBillingConfigured()).toBe(false);
   });
 });
