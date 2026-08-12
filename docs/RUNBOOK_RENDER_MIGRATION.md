@@ -94,6 +94,26 @@ renamed or a custom domain is attached.
 
 ---
 
+## CI
+
+`.github/workflows/deploy.yml` no longer deploys to Vercel.
+
+- **Pull requests:** `validate` + `build` only. `npm run build` is the meaningful
+  compile gate for App Router changes, and no remote environment is created per
+  PR, so there is no per-preview hosting cost.
+- **Push to `main`:** `verify-render` polls `GET /api/agent/status` on the Render
+  origin until the deployed `commit` equals the pushed SHA (15 minute budget),
+  warns if `platform` is not `render`, then smoke-tests `GET /api/health`.
+
+CI deliberately does **not** trigger the deploy. `render.yaml` sets
+`autoDeployTrigger: commit` on `branch: main`, so Render deploys the commit
+itself; a CI-side deploy hook would deploy the same commit twice.
+
+`verify-render` needs one secret, by name: **`RENDER_SERVICE_URL`**, set to the
+service origin (`https://<service>.onrender.com`). While that secret is unset the
+job reports `SKIPPED — NOT CONFIGURED` and passes, so pushes are not blocked
+before the service exists. Setting it turns the verification on.
+
 ## Cutover
 
 Run in order. Do not delete anything on Vercel until step 7 passes.
@@ -152,7 +172,9 @@ sets will fire. Keep exactly one host's crons enabled at a time.
   Docker build is heavy — if it OOMs or times out, raise the web plan first.
 - `@vercel/analytics` and `@vercel/speed-insights` remain as dependencies. They
   are inert off Vercel; removing them is a separate cleanup.
-- The `Deploy Preview` GitHub Actions job still deploys to Vercel and will keep
-  failing while billing is blocked. Switching preview deploys to Render is
-  follow-up work, not covered here.
+- Two `workflow_dispatch`-only workflows still call `vercel deploy` and will fail
+  if anyone triggers them while billing is blocked: `deploy-staging.yml` and
+  `promoted-production-deploy.yml`. Neither runs on push or pull_request, so
+  neither affects PR status. Migrating production promotion is deliberately out
+  of scope here — it needs its own gated change.
 - The websocket and HPC-verification Dockerfiles are not part of this migration.

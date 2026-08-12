@@ -1,4 +1,18 @@
-name: Build & Deploy Preview to Vercel
+name: Build & Verify Render Deployment
+
+# Vercel billing is blocked for this project: `vercel deploy` returns
+# BUILD_FAILED / "Resource provisioning failed" in under 3 seconds with an empty
+# build log, so the old per-PR Vercel preview job could never go green. It has
+# been removed rather than left red.
+#
+# Render deploys `main` itself (see render.yaml: autoDeployTrigger: commit,
+# branch: main), so CI must not trigger a deploy — that would double-deploy the
+# same commit. CI's job here is to *verify* the deploy landed, which is also the
+# deployed-commit evidence docs/RUNBOOK_DEPLOY.md requires before a GO.
+#
+# Pull requests get validate + build only. `npm run build` is the meaningful
+# compile gate for App Router changes; no remote environment is spun up per PR,
+# which also avoids per-preview hosting cost.
 
 on:
   push:
@@ -15,10 +29,6 @@ permissions:
   pull-requests: write
 
 env:
-  VERCEL_CLI_VERSION: 58.0.0
-  VERCEL_ORG_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
-  VERCEL_PROJECT_ID: prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW
-  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -70,60 +80,85 @@ jobs:
           path: .next
           retention-days: 1
 
-  deploy-preview:
-    name: Deploy Preview
+  verify-render:
+    name: Verify Render Deployment
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'pull_request'
-    timeout-minutes: 15
-    environment: preview
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Verify Vercel credentials
+      # Fails open while the Render service does not exist yet: reporting
+      # "not configured" is honest, whereas failing would make every push red
+      # for a reason nobody can fix from the repo. Once RENDER_SERVICE_URL is
+      # set, the checks below are enforced.
+      - name: Check Render service is configured
+        id: config
         shell: bash
+        env:
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
-          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
-          test "$VERCEL_ORG_ID" = "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Unexpected Vercel team"; exit 1; }
-          test "$VERCEL_PROJECT_ID" = "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Unexpected Vercel project"; exit 1; }
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-      - name: Pull preview configuration
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
-      - name: Deploy preview
-        id: preview
+          if [ -z "$RENDER_SERVICE_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Render deployment::SKIPPED — NOT CONFIGURED. Set the RENDER_SERVICE_URL secret to the service origin (https://<service>.onrender.com) to enable deployed-commit verification. See docs/RUNBOOK_RENDER_MIGRATION.md."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Render auto-deploys this commit from its own GitHub integration, so poll
+      # until the deployed commit matches rather than triggering a deploy.
+      - name: Wait for the pushed commit to be live
+        if: steps.config.outputs.configured == 'true'
         shell: bash
+        env:
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
-          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
-            --meta=branch="${{ github.head_ref }}" \
-            --meta=commit="${{ github.event.pull_request.head.sha }}")
-          test -n "$PREVIEW_URL"
-          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
-      - name: Smoke preview health
-        run: curl --fail --retry 5 --retry-delay 5 "${{ steps.preview.outputs.preview_url }}/api/health"
-      - name: Comment PR with preview URL
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `Preview verified: ${{ steps.preview.outputs.preview_url }}\n\nProduction was not deployed. Production requires the separate Promoted Production Deployment workflow.`
-            })
+          set -euo pipefail
+          expected="${GITHUB_SHA}"
+          deadline=$(( SECONDS + 900 ))
+          attempt=0
+
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            attempt=$(( attempt + 1 ))
+            body=$(curl -fsS --max-time 20 "${RENDER_SERVICE_URL%/}/api/agent/status" || true)
+
+            if [ -n "$body" ]; then
+              platform=$(printf '%s' "$body" | jq -r '.platform // "unknown"')
+              deployed=$(printf '%s' "$body" | jq -r '.commit // "unknown"')
+
+              if [ "$deployed" = "$expected" ]; then
+                echo "Deployed commit matches: $deployed (platform: $platform)"
+                if [ "$platform" != "render" ]; then
+                  echo "::warning title=Unexpected platform::/api/agent/status reports platform '$platform', expected 'render'. Host env vars may not be reaching the app."
+                fi
+                exit 0
+              fi
+
+              echo "attempt $attempt: deployed=$deployed expected=$expected platform=$platform"
+            else
+              echo "attempt $attempt: service not answering yet"
+            fi
+
+            sleep 20
+          done
+
+          echo "::error title=Render deployment not live::/api/agent/status never reported commit $expected within 15 minutes."
+          exit 1
+
+      - name: Smoke public health
+        if: steps.config.outputs.configured == 'true'
+        shell: bash
+        env:
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 5 "${RENDER_SERVICE_URL%/}/api/health"
 
   notify-failure:
-    name: Report Validation or Preview Failure
+    name: Report Validation or Deployment Failure
     runs-on: ubuntu-latest
-    needs: [validate, build, deploy-preview]
+    needs: [validate, build, verify-render]
     if: always() && contains(needs.*.result, 'failure')
     steps:
       - name: Record failure
         run: |
-          echo "Validation, build, or preview deployment failed."
-          echo "Production deployment is not part of this workflow."
+          echo "Validation, build, or Render deployment verification failed."
+          echo "Production promotion is not part of this workflow."
           exit 1

@@ -28,7 +28,15 @@ services:
     plan: standard
     branch: main
     healthCheckPath: /api/health
+    # Render deploys main itself. CI must not also trigger a deploy hook, or the
+    # same commit deploys twice; .github/workflows/deploy.yml verifies the
+    # deployed commit instead of triggering it.
     autoDeployTrigger: commit
+    # Per-PR preview environments are deliberately left off: each one is a
+    # separately billed service, and cost is what moved this app off Vercel.
+    # PRs are gated by `npm run build` in CI instead. Set previewsEnabled: true
+    # only if a live per-PR environment is worth the spend.
+    previewsEnabled: false
     envVars:
       - key: NODE_ENV
         value: production
