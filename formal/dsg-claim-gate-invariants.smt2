@@ -1,7 +1,11 @@
 ; DSG claim gate invariants
 ; This is a specification artifact. It is not a solver result until a Z3/SMT run is attached as evidence.
+;
+; Each violation block below is checked by refutation: `unsat` means the
+; bad state is impossible under the claim rules. The `; EXPECTED:` markers
+; make this machine-checkable via scripts/verify-smt2-expectations.mjs.
 
-(set-logic QF_Bool)
+(set-logic ALL)
 
 (declare-const evidence Bool)
 (declare-const auditExport Bool)
@@ -32,25 +36,25 @@
 ; Safety checks: these bad states must be unsatisfiable.
 (push)
 (assert (and claimCompleted (not evidence)))
-(check-sat)
+(check-sat) ; EXPECTED: unsat
 (pop)
 
 (push)
 (assert (and claimCompleted (not auditExport)))
-(check-sat)
+(check-sat) ; EXPECTED: unsat
 (pop)
 
 (push)
 (assert (and claimCompleted (not replayProof)))
-(check-sat)
+(check-sat) ; EXPECTED: unsat
 (pop)
 
 (push)
 (assert (and claimProduction mockState))
-(check-sat)
+(check-sat) ; EXPECTED: unsat
 (pop)
 
 (push)
 (assert (and claimProduction devOrSmokeOnly))
-(check-sat)
+(check-sat) ; EXPECTED: unsat
 (pop)

@@ -2,9 +2,10 @@
 ; Covers all 6 specialized agents. Every agent skill must satisfy these
 ; invariants before it can be locked via SkillGate.
 ; Run: z3 formal/agent-invariants.smt2
+; Or machine-check the EXPECTED markers: npm run verify:formal
 ; Expected: sat for base state, unsat for every pushed violation block.
 
-(set-logic QF_Bool)
+(set-logic ALL)
 
 ; ── Shared preconditions ──────────────────────────────────────────────────────
 (declare-const goal_locked Bool)
