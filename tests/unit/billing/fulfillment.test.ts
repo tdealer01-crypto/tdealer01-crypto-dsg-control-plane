@@ -49,12 +49,12 @@ describe('fulfillSubscription', () => {
     expect(mockRpc.mock.calls[0]).toEqual(mockRpc.mock.calls[1]);
   });
 
-  it('returns the database error and does not claim fulfillment', async () => {
+  it('throws on database failure so the Stripe webhook can release its event claim and retry', async () => {
     mockRpc.mockResolvedValue({ error: { message: 'transaction failed' } });
 
     await expect(
       fulfillSubscription('org-1', 'pro', 'active'),
-    ).resolves.toEqual({ ok: false, error: 'transaction failed' });
+    ).rejects.toThrow('paid_entitlement_sync_failed:transaction failed');
   });
 });
 
