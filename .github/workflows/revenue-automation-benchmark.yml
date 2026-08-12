@@ -1,0 +1,55 @@
+name: Revenue Automation Baseline vs Verified
+
+on:
+  push:
+    branches:
+      - test/verified-topk-real-logprobs
+    paths:
+      - 'tests/integration/revenue-automation-baseline-vs-verified.test.ts'
+      - '.github/workflows/revenue-automation-benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUN_LIVE_OPENAI_LOGPROBS: "true"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_LOGPROB_MODEL: ${{ vars.OPENAI_LOGPROB_MODEL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify live credential exists
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY repository secret is missing."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run baseline vs verified benchmark
+        run: npx vitest run tests/integration/revenue-automation-baseline-vs-verified.test.ts --reporter=verbose
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: revenue-automation-baseline-vs-verified
+          path: artifacts/revenue-automation-baseline-vs-verified.json
+          if-no-files-found: ignore
+          retention-days: 7
