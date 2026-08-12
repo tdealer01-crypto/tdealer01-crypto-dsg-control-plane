@@ -27,6 +27,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/scripts/bootstrap-pro-overage.mjs ./scripts/bootstrap-pro-overage.mjs
 
 EXPOSE 8080
-CMD ["sh", "-c", "npx next start -p ${PORT:-8080}"]
+CMD ["sh", "-c", "if [ \"${DSG_BOOTSTRAP_OVERAGE_ON_START:-false}\" = \"true\" ]; then node ./scripts/bootstrap-pro-overage.mjs; fi && npx next start -p ${PORT:-8080}"]
