@@ -18,6 +18,7 @@ function normalizeConfiguredOrigin(value: string | undefined): string | null {
 function resolvePublicOrigin(request: Request): string {
   const configured =
     normalizeConfiguredOrigin(process.env.APP_URL) ||
+    normalizeConfiguredOrigin(process.env.RENDER_EXTERNAL_URL) ||
     normalizeConfiguredOrigin(process.env.NEXT_PUBLIC_APP_URL);
   if (configured) return configured;
 
@@ -26,17 +27,10 @@ function resolvePublicOrigin(request: Request): string {
     return requestUrl.origin;
   }
 
-  // Reverse proxies such as Render can expose the internal listener as
-  // localhost in request.url while preserving the external host/protocol in
-  // forwarded headers. This fallback is only used when no canonical APP_URL is
-  // configured and the request URL is loopback.
-  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
-  if (forwardedHost) {
-    const protocol = forwardedProto === 'http' ? 'http' : 'https';
-    return new URL(`${protocol}://${forwardedHost}`).origin;
-  }
-
+  // Fail closed for reverse-proxy loopback URLs unless the public origin is
+  // explicitly bound by deployment configuration. Forwarded host/proto headers
+  // are intentionally not trusted as an origin source because callers can
+  // supply them unless a proxy-specific allowlist is enforced upstream.
   throw new Error('public_app_origin_not_configured');
 }
 
