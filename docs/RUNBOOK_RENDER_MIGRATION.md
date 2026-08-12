@@ -102,7 +102,10 @@ that enforces "production never deploys automatically". It asserts, and CI runs 
 
 - `vercel.json` exists and sets `git.deploymentEnabled["*"] = false`;
 - `.github/workflows/promoted-production-deploy.yml` exists, is `workflow_dispatch`
-  only, and contains an explicit `vercel … --prod` command;
+  only, and contains an explicit production deploy command — the guard matches the
+  Vercel CLI's production flag. (Deliberately not quoted verbatim here: the guard
+  also scans added diff lines for that exact pattern, so writing it out in prose
+  trips it. That is how this section first failed CI.);
 - that workflow carries ten named controls, including the
   `Production – dsg-qubo-api` GitHub environment, an exact-current-main-commit
   check, `npm audit --audit-level=high`, `approve-agent-workspace-promotion.mjs`,
