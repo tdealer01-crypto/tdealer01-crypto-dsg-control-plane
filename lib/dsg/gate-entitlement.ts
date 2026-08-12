@@ -1,28 +1,32 @@
 /**
- * DSG Gate API — Pricing & Entitlement Logic
- *
- * Controls access to DSG deterministic gate/proof APIs based on org tier.
- * Current metered routes:
- * - POST /api/dsg/v1/gates/evaluate
- * - POST /api/dsg/v1/proofs/prove
- * - POST /api/dsg/v1/encoding/prove
+ * DSG Gate API — persisted entitlement and usage-based revenue control.
  *
  * Revenue model:
- *   Free        — 50 evaluations / month
- *   Pro         — $99/month  — 5 000 evals / month + compliance bundle access
- *   Enterprise  — $499/month — high-limit evals + SLA + Hermes executor access
+ *   Free        — 50 gate evaluations / month
+ *   Pro         — $99/month, 5 000 included, metered overage when configured
+ *   Enterprise  — $499/month, active subscription treated as unlimited
  */
 
-import { reportMeterEvent } from '@/lib/billing/metered';
+import {
+  isMeteredBillingConfigured,
+  reportMeterEvent,
+} from '@/lib/billing/metered';
 import { insertRevenueEvent } from '@/lib/revenue/events';
 import { getSupabaseAdmin } from '@/lib/supabase-server';
+import {
+  decideGateRevenueAccess,
+  GATE_INCLUDED_EVALS,
+  type GateAccessMode,
+  type GateTier,
+} from './gate-revenue-policy';
 
-export type DsgMeteredGateRoute = 'gates/evaluate' | 'proofs/prove' | 'encoding/prove';
-
-// ─── Tier definitions ────────────────────────────────────────────────────────
+export type DsgMeteredGateRoute =
+  | 'gates/evaluate'
+  | 'proofs/prove'
+  | 'encoding/prove';
 
 export interface DsgGateTier {
-  tier: 'free' | 'pro' | 'enterprise';
+  tier: GateTier;
   evalsPerMonth: number;
   priceUsdCents: number;
   billingPeriod: 'monthly' | 'none';
@@ -30,10 +34,10 @@ export interface DsgGateTier {
   features: string[];
 }
 
-export const DSG_GATE_TIERS: Record<string, DsgGateTier> = {
+export const DSG_GATE_TIERS: Record<GateTier, DsgGateTier> = {
   free: {
     tier: 'free',
-    evalsPerMonth: 50,
+    evalsPerMonth: GATE_INCLUDED_EVALS.free,
     priceUsdCents: 0,
     billingPeriod: 'none',
     description: 'Free — 50 gate evaluations/month',
@@ -41,49 +45,39 @@ export const DSG_GATE_TIERS: Record<string, DsgGateTier> = {
       '50 gate evaluations / month',
       'Deterministic PASS / REVIEW / BLOCK decision',
       'proofHash + constraintSetHash + inputHash',
-      'Replay-protection (nonce + idempotency-key)',
-      'Public policy manifest access',
+      'Replay protection',
       'JSON audit log per evaluation',
     ],
   },
   pro: {
     tier: 'pro',
-    evalsPerMonth: 5_000,
+    evalsPerMonth: GATE_INCLUDED_EVALS.pro,
     priceUsdCents: 99_00,
     billingPeriod: 'monthly',
-    description: 'Pro — $99/month — 5 000 gate evaluations/month',
+    description: 'Pro — $99/month — 5 000 included evaluations',
     features: [
-      '5 000 gate evaluations / month',
-      'All Free features',
-      'proofHash chain (hash-linked audit trail)',
-      'Compliance bundle export (JSON + hashes)',
-      'SBOM + CodeQL evidence access via API',
+      '5 000 included evaluations / month',
+      'Metered overage when billing meter is configured',
+      'Compliance bundle export',
+      'Hash-linked audit trail',
       'Multi-policy versioning',
-      'Priority rate-limit (600 req/min)',
-      'Email alerts on BLOCK decisions',
     ],
   },
   enterprise: {
     tier: 'enterprise',
-    evalsPerMonth: 999_999,
+    evalsPerMonth: GATE_INCLUDED_EVALS.enterprise,
     priceUsdCents: 499_00,
     billingPeriod: 'monthly',
-    description: 'Enterprise — $499/month — Unlimited evaluations',
+    description: 'Enterprise — $499/month — unlimited evaluations',
     features: [
-      'Unlimited gate evaluations',
-      'All Pro features',
+      'Unlimited gate evaluations while subscription is active',
       'Hermes Controlled Executor access',
-      'Credential broker (Supabase-backed secret leases)',
-      'SLA — 99.9% uptime guarantee',
-      'Dedicated support + Slack connect',
-      'Custom policy set deployment',
-      'Org-level RBAC + audit export (CSV/JSON)',
-      'White-label report branding',
+      'Credential broker',
+      'Audit export and white-label reports',
+      'Enterprise support',
     ],
   },
 };
-
-// ─── Entitlement check ────────────────────────────────────────────────────────
 
 export interface GateEntitlementCheck {
   allowed: boolean;
@@ -92,13 +86,25 @@ export interface GateEntitlementCheck {
   message: string;
   requiresPayment: boolean;
   upgradeUrl: string;
+  accessMode: GateAccessMode;
 }
 
 type GateEntitlementRow = {
   org_id: string;
-  tier: 'free' | 'pro' | 'enterprise' | string;
+  tier: GateTier | string;
   evals_per_month: number | null;
-  stripe_customer_id?: string | null;
+  subscription_status: string | null;
+  overage_enabled: boolean | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+};
+
+type GateUsageRecord = {
+  id: string;
+  created: boolean;
+  billed: boolean;
+  meterEventId?: string;
+  usagePosition: number | null;
 };
 
 function monthBoundsUtc(now = new Date()) {
@@ -107,8 +113,8 @@ function monthBoundsUtc(now = new Date()) {
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
-function tierSpec(tier: string | null | undefined) {
-  const key = String(tier || 'free').toLowerCase();
+function tierSpec(tier: string | null | undefined): DsgGateTier {
+  const key = String(tier || 'free').toLowerCase() as GateTier;
   return DSG_GATE_TIERS[key] || DSG_GATE_TIERS.free;
 }
 
@@ -117,7 +123,9 @@ async function getOrCreateEntitlement(orgId: string): Promise<GateEntitlementRow
 
   const existing = await supabase
     .from('dsg_gate_entitlements')
-    .select('org_id,tier,evals_per_month,stripe_customer_id')
+    .select(
+      'org_id,tier,evals_per_month,subscription_status,overage_enabled,stripe_customer_id,stripe_subscription_id',
+    )
     .eq('org_id', orgId)
     .maybeSingle();
 
@@ -134,13 +142,19 @@ async function getOrCreateEntitlement(orgId: string): Promise<GateEntitlementRow
     .insert({
       org_id: orgId,
       tier: 'free',
-      evals_per_month: DSG_GATE_TIERS.free.evalsPerMonth,
+      evals_per_month: GATE_INCLUDED_EVALS.free,
+      subscription_status: 'free',
+      overage_enabled: false,
     })
-    .select('org_id,tier,evals_per_month,stripe_customer_id')
+    .select(
+      'org_id,tier,evals_per_month,subscription_status,overage_enabled,stripe_customer_id,stripe_subscription_id',
+    )
     .maybeSingle();
 
   if (created.error || !created.data) {
-    throw new Error(created.error?.message || 'failed_to_create_dsg_gate_entitlement');
+    throw new Error(
+      created.error?.message || 'failed_to_create_dsg_gate_entitlement',
+    );
   }
 
   return created.data as GateEntitlementRow;
@@ -148,8 +162,10 @@ async function getOrCreateEntitlement(orgId: string): Promise<GateEntitlementRow
 
 async function countEvalsThisPeriod(orgId: string): Promise<number> {
   const supabase = getSupabaseAdmin() as any;
+  const rpcResult = await supabase.rpc('dsg_gate_evals_this_period', {
+    p_org_id: orgId,
+  });
 
-  const rpcResult = await supabase.rpc('dsg_gate_evals_this_period', { p_org_id: orgId });
   if (!rpcResult.error && typeof rpcResult.data === 'number') {
     return rpcResult.data;
   }
@@ -169,7 +185,26 @@ async function countEvalsThisPeriod(orgId: string): Promise<number> {
   return countResult.count || 0;
 }
 
-/** Check whether an org is allowed to call a metered DSG gate/proof API. */
+function messageForAccessMode(
+  mode: GateAccessMode,
+  tier: string,
+  remaining: number,
+): string {
+  switch (mode) {
+    case 'included_quota':
+      return `${tier.toUpperCase()} tier — ${remaining} included evaluations remaining`;
+    case 'metered_overage':
+      return 'PRO tier — included quota used; metered overage billing is active';
+    case 'subscription_inactive':
+      return 'Paid subscription is not active';
+    case 'billing_unavailable':
+      return 'Included quota used; metered billing is not fully configured';
+    case 'quota_exceeded':
+    default:
+      return 'Quota exceeded — upgrade to DSG Gate Pro';
+  }
+}
+
 export async function checkGateEntitlement(
   orgId: string | null,
 ): Promise<GateEntitlementCheck> {
@@ -177,46 +212,97 @@ export async function checkGateEntitlement(
     return {
       allowed: true,
       tier: 'free',
-      evalsRemaining: 50,
-      message: 'Free tier — authenticate to unlock higher limits',
+      evalsRemaining: GATE_INCLUDED_EVALS.free,
+      message:
+        'Free tier — authenticate to persist usage and unlock paid plans',
       requiresPayment: false,
       upgradeUrl: '/pricing#dsg-gate',
+      accessMode: 'included_quota',
     };
   }
 
   try {
     const entitlement = await getOrCreateEntitlement(orgId);
     const plan = tierSpec(entitlement.tier);
-    const evalsPerMonth = Number(entitlement.evals_per_month || plan.evalsPerMonth);
+    const evalsPerMonth = Number(
+      entitlement.evals_per_month || plan.evalsPerMonth,
+    );
     const used = await countEvalsThisPeriod(orgId);
-    const remaining = Math.max(0, evalsPerMonth - used);
-    const allowed = remaining > 0;
+    const decision = decideGateRevenueAccess({
+      tier: plan.tier,
+      subscriptionStatus: entitlement.subscription_status,
+      includedLimit: evalsPerMonth,
+      used,
+      overageEnabled: entitlement.overage_enabled === true,
+      hasStripeCustomer: Boolean(entitlement.stripe_customer_id),
+      hasStripeSubscription: Boolean(entitlement.stripe_subscription_id),
+      meteringConfigured: isMeteredBillingConfigured(),
+    });
 
     return {
-      allowed,
+      allowed: decision.allowed,
       tier: plan.tier,
-      evalsRemaining: remaining,
-      message: allowed
-        ? `${plan.tier.toUpperCase()} tier — ${remaining} evaluations remaining this period`
-        : 'Quota exceeded — upgrade to DSG Gate Pro',
-      requiresPayment: !allowed,
+      evalsRemaining: decision.remaining,
+      message: messageForAccessMode(
+        decision.accessMode,
+        plan.tier,
+        decision.remaining,
+      ),
+      requiresPayment: decision.requiresPayment,
       upgradeUrl: '/pricing#dsg-gate',
+      accessMode: decision.accessMode,
     };
   } catch (error) {
-    console.error('[dsg-gate-entitlement] fallback to free tier:', error);
+    console.error('[dsg-gate-entitlement] entitlement check failed:', error);
+    return {
+      allowed: false,
+      tier: 'unknown',
+      evalsRemaining: 0,
+      message:
+        'Billing entitlement is temporarily unavailable; execution blocked to prevent unmetered usage',
+      requiresPayment: false,
+      upgradeUrl: '/pricing#dsg-gate',
+      accessMode: 'billing_unavailable',
+    };
+  }
+}
+
+async function recordUsageAtomically(
+  supabase: any,
+  orgId: string,
+  evalId: string,
+  route: DsgMeteredGateRoute,
+  gateStatus: string,
+  durationMs: number,
+): Promise<GateUsageRecord> {
+  const result = await supabase
+    .rpc('record_dsg_gate_usage', {
+      p_org_id: orgId,
+      p_eval_id: evalId,
+      p_route: route,
+      p_gate_status: gateStatus,
+      p_duration_ms: durationMs,
+    })
+    .maybeSingle();
+
+  if (result.error || !result.data?.usage_id) {
+    throw new Error(
+      result.error?.message || 'failed_to_record_dsg_gate_usage',
+    );
   }
 
   return {
-    allowed: true,
-    tier: 'free',
-    evalsRemaining: 50,
-    message: 'Free tier — 50 evaluations/month',
-    requiresPayment: false,
-    upgradeUrl: '/pricing#dsg-gate',
+    id: String(result.data.usage_id),
+    created: result.data.created === true,
+    billed: result.data.billed === true,
+    meterEventId: result.data.meter_event_id || undefined,
+    usagePosition:
+      typeof result.data.usage_position === 'number'
+        ? result.data.usage_position
+        : null,
   };
 }
 
-/** Record one metered deterministic evaluation/proof call. */
 export async function recordGateEvaluation(
   evalId: string,
   orgId: string | null,
@@ -225,30 +311,48 @@ export async function recordGateEvaluation(
   durationMs: number,
 ): Promise<{ recorded: boolean; meterEventId?: string; error?: string }> {
   try {
-    console.log(
-      `[dsg-gate-usage] evalId=${evalId} org=${orgId ?? 'anonymous'} route=${route} status=${gateStatus} ms=${durationMs}`,
-    );
-
     if (!orgId) {
       return { recorded: true };
     }
 
     const supabase = getSupabaseAdmin() as any;
-    const usageInsert = await supabase
-      .from('dsg_gate_usage')
-      .insert({
-        org_id: orgId,
-        eval_id: evalId,
-        route,
-        gate_status: gateStatus,
-        duration_ms: durationMs,
-        billed: false,
-      })
-      .select('id')
-      .maybeSingle();
+    const usage = await recordUsageAtomically(
+      supabase,
+      orgId,
+      evalId,
+      route,
+      gateStatus,
+      durationMs,
+    );
 
-    if (usageInsert.error || !usageInsert.data?.id) {
-      throw new Error(usageInsert.error?.message || 'failed_to_insert_dsg_gate_usage');
+    const entitlement = await getOrCreateEntitlement(orgId);
+    const plan = tierSpec(entitlement.tier);
+    const limit = Number(
+      entitlement.evals_per_month || plan.evalsPerMonth,
+    );
+    const usagePosition =
+      usage.usagePosition ?? (await countEvalsThisPeriod(orgId));
+
+    const deliveryDecision = decideGateRevenueAccess({
+      tier: plan.tier,
+      subscriptionStatus: entitlement.subscription_status,
+      includedLimit: limit,
+      used: Math.max(0, usagePosition - 1),
+      overageEnabled: entitlement.overage_enabled === true,
+      hasStripeCustomer: Boolean(entitlement.stripe_customer_id),
+      hasStripeSubscription: Boolean(entitlement.stripe_subscription_id),
+      meteringConfigured: isMeteredBillingConfigured(),
+    });
+
+    if (!deliveryDecision.allowed) {
+      return {
+        recorded: false,
+        error: `delivery_blocked:${deliveryDecision.accessMode}`,
+      };
+    }
+
+    if (!usage.created && usage.billed) {
+      return { recorded: true, meterEventId: usage.meterEventId };
     }
 
     await insertRevenueEvent({
@@ -258,34 +362,51 @@ export async function recordGateEvaluation(
       currency: 'USD',
       source: `dsg_gate:${route}`,
       metadata: {
+        idempotency_key: `dsg-gate-usage-${orgId}-${evalId}`,
         evalId,
         gateStatus,
         durationMs,
+        usagePosition,
+        accessMode: deliveryDecision.accessMode,
       },
     });
 
-    const entitlement = await getOrCreateEntitlement(orgId);
-    const limit = Number(entitlement.evals_per_month || tierSpec(entitlement.tier).evalsPerMonth);
-    const used = await countEvalsThisPeriod(orgId);
-    const overage = used > limit;
+    if (
+      deliveryDecision.accessMode === 'metered_overage' &&
+      entitlement.stripe_customer_id
+    ) {
+      const meter = await reportMeterEvent(
+        entitlement.stripe_customer_id,
+        orgId,
+        1,
+        `dsg-gate-${evalId}`,
+      );
 
-    if (overage && entitlement.stripe_customer_id) {
-      const meter = await reportMeterEvent(entitlement.stripe_customer_id, orgId, 1, `dsg-gate-${evalId}`);
-      if (meter.ok) {
+      if (meter.ok === true) {
         await supabase
           .from('dsg_gate_usage')
           .update({ billed: true, meter_event_id: meter.eventId })
-          .eq('id', usageInsert.data.id);
+          .eq('id', usage.id);
         return { recorded: true, meterEventId: meter.eventId };
       }
+
+      const meterError = meter.error;
+      if (meter.durable === false) {
+        return {
+          recorded: false,
+          error: `meter_outbox_unavailable:${meterError}`,
+        };
+      }
+
+      return { recorded: true, error: meterError };
     }
 
     return { recorded: true };
-  } catch (err) {
-    console.error('[dsg-gate-record] Error recording evaluation:', err);
+  } catch (error) {
+    console.error('[dsg-gate-record] usage recording failed:', error);
     return {
       recorded: false,
-      error: `Failed to record evaluation: ${String(err).slice(0, 120)}`,
+      error: `Failed to record evaluation: ${String(error).slice(0, 160)}`,
     };
   }
 }
@@ -294,5 +415,8 @@ export async function resetMonthlyGateCounters(): Promise<{
   reset: number;
   error?: string;
 }> {
-  return { reset: 0, error: 'Not yet implemented in Phase 1' };
+  return {
+    reset: 0,
+    error: 'No reset required: usage is counted by Stripe subscription period',
+  };
 }

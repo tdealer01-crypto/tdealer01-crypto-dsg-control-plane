@@ -2,11 +2,13 @@
  * GET /api/billing/meter-health
  *
  * Returns real-time billing meter health for admin dashboard.
- * Returns per-org stats and dead-letter events.
+ * Returns per-org stats and dead-letter events without exposing Stripe ids or
+ * secrets. A false `configured` value includes only the missing env names so
+ * operators can distinguish safe fail-closed mode from a provider outage.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { reconcileMeterOutbox, getOrgBillingStats } from '../../../../lib/billing/reconciliation';
-import { isMeteredBillingConfigured } from '../../../../lib/billing/metered';
+import { getMeteredBillingConfiguration } from '../../../../lib/billing/metered';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +31,8 @@ export async function GET(request: NextRequest) {
   const windowHours = Math.min(Number(searchParams.get('hours') ?? '24'), 168);
 
   try {
+    const metering = getMeteredBillingConfiguration();
+
     // Overall health
     const report = await reconcileMeterOutbox(windowHours, 500);
 
@@ -38,7 +42,13 @@ export async function GET(request: NextRequest) {
       : null;
 
     return NextResponse.json({
-      configured: isMeteredBillingConfigured(),
+      configured: metering.configured,
+      missingConfiguration: metering.configured ? [] : metering.missing,
+      meterContract: {
+        eventNameConfigured: Boolean(metering.eventName),
+        meterIdConfigured: Boolean(metering.meterId),
+        proOveragePriceConfigured: Boolean(metering.priceId),
+      },
       health: {
         windowStart: report.windowStart,
         windowEnd: report.windowEnd,
