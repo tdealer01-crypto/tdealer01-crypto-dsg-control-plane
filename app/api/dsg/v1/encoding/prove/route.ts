@@ -304,7 +304,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return proofResponse(req, proof, rateLimitHeaders);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = String(error);
     if (message.includes('encoding_proof_store:chain_or_replay_conflict')) {
       return NextResponse.json(
         {
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: 409, headers: responseHeaders(req, rateLimitHeaders) },
       );
     }
-    if (message.startsWith('encoding_proof_store:')) {
+    if (message.includes('encoding_proof_store:')) {
       return NextResponse.json(
         { ok: false, error: 'proof_store_unavailable', status: 'BLOCK' },
         { status: 503, headers: responseHeaders(req, rateLimitHeaders) },

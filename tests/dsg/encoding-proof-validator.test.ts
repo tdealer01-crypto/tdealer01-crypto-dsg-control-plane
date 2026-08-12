@@ -44,8 +44,8 @@ describe('Encoding Proof Validator - Unit Tests', () => {
         kind: 'qubo-v1',
         variableCount: 2,
         linear: [
-          { i: 0, weight: '1.0' },
-          { i: 3, weight: '2.0' }, // out of bounds
+          { index: 0, weight: '1.0' },
+          { index: 3, weight: '2.0' }, // out of bounds
         ],
       };
       const result = validateLinearTerms(encoding);
@@ -59,7 +59,7 @@ describe('Encoding Proof Validator - Unit Tests', () => {
         kind: 'qubo-v1',
         variableCount: 2,
         linear: [
-          { i: 0, weight: 'invalid' }, // not a valid number
+          { index: 0, weight: 'invalid' }, // not a valid number
         ] as any,
       };
       const result = validateLinearTerms(encoding);

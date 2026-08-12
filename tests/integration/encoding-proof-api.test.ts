@@ -14,6 +14,11 @@ const accessMocks = vi.hoisted(() => ({
   applyRateLimit: vi.fn(),
 }));
 
+const proofStoreMocks = vi.hoisted(() => ({
+  inspectEncodingProofRequest: vi.fn(),
+  persistEncodingProof: vi.fn(),
+}));
+
 vi.mock('@/lib/dsg/auth/require-dsg-auth', () => ({
   requireDsgAuth: accessMocks.requireDsgAuth,
   dsgAuthError: (caller: { status: number; error: string }) =>
@@ -36,6 +41,11 @@ vi.mock('@/lib/security/rate-limit', () => ({
     'x-ratelimit-remaining': '59',
   }),
   getRateLimitKey: () => 'encoding-proof-test',
+}));
+
+vi.mock('@/lib/dsg/deterministic/encoding-proof-store', () => ({
+  inspectEncodingProofRequest: proofStoreMocks.inspectEncodingProofRequest,
+  persistEncodingProof: proofStoreMocks.persistEncodingProof,
 }));
 
 import { POST } from '@/app/api/dsg/v1/encoding/prove/route';
@@ -81,6 +91,11 @@ describe('Encoding Proof API Route', () => {
     });
     accessMocks.recordGateEvaluation.mockReset().mockResolvedValue(undefined);
     accessMocks.applyRateLimit.mockReset().mockResolvedValue({ allowed: true });
+    proofStoreMocks.inspectEncodingProofRequest.mockReset().mockResolvedValue({
+      kind: 'new',
+      previousProofHash: '0'.repeat(64),
+    });
+    proofStoreMocks.persistEncodingProof.mockReset().mockResolvedValue(undefined);
   });
 
   describe('access control', () => {
@@ -129,6 +144,8 @@ describe('Encoding Proof API Route', () => {
       expect(data.proof).toBeDefined();
       expect(data.proof.checks.linear_terms_valid).toBe(true);
       expect(data.proof.checks.quadratic_terms_valid).toBe(true);
+      expect(proofStoreMocks.inspectEncodingProofRequest).toHaveBeenCalled();
+      expect(proofStoreMocks.persistEncodingProof).toHaveBeenCalled();
       expect(accessMocks.recordGateEvaluation).toHaveBeenCalled();
       expect(accessMocks.logDsgApiCall).toHaveBeenCalled();
     });
@@ -156,7 +173,7 @@ describe('Encoding Proof API Route', () => {
       expect(data.status).toBe('PASS');
     });
 
-    it('should return BLOCK for oversized problem with CRITICAL failure', async () => {
+    it('should reject malformed NaN coefficient before proof evaluation', async () => {
       const body = {
         problemId: 'prob_oversized',
         encodingType: 'qubo-v1',
@@ -171,13 +188,12 @@ describe('Encoding Proof API Route', () => {
 
       const res = await POST(createRequest(body));
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.ok).toBe(false);
       expect(data.status).toBe('BLOCK');
-      expect(data.error).toBe('encoding_validation_failed');
-      expect(data.failedChecks).toBeDefined();
-      expect(data.failureReasons).toBeDefined();
+      expect(data.error).toBe('invalid_encoding_structure');
+      expect(proofStoreMocks.persistEncodingProof).not.toHaveBeenCalled();
     });
 
     it('should return REVIEW for oversized problem alone', async () => {
@@ -200,7 +216,7 @@ describe('Encoding Proof API Route', () => {
       expect(data.status).toBe('REVIEW');
     });
 
-    it('should return BLOCK for NaN coefficients', async () => {
+    it('should reject NaN coefficients as invalid runtime structure', async () => {
       const body = {
         problemId: 'prob_nan',
         encodingType: 'qubo-v1',
@@ -215,10 +231,11 @@ describe('Encoding Proof API Route', () => {
 
       const res = await POST(createRequest(body));
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.ok).toBe(false);
       expect(data.status).toBe('BLOCK');
+      expect(data.error).toBe('invalid_encoding_structure');
     });
 
     it('should return REVIEW for minor validation issue', async () => {
@@ -349,7 +366,7 @@ describe('Encoding Proof API Route', () => {
       expect(data.status).toBe('PASS');
     });
 
-    it('should generate deterministic proofId for same encoding', async () => {
+    it('binds proofId to the canonical request while preserving encodingHash', async () => {
       const encoding = {
         kind: 'qubo-v1',
         variableCount: 5,
@@ -360,16 +377,16 @@ describe('Encoding Proof API Route', () => {
         problemId: 'prob_det_1',
         encodingType: 'qubo-v1',
         encoding,
-        nonce: 'nonce_1',
-        idempotencyKey: 'idem_1',
+        nonce: 'nonce_det_1',
+        idempotencyKey: 'idem_key_det_1',
       };
 
       const body2 = {
         problemId: 'prob_det_2',
         encodingType: 'qubo-v1',
         encoding,
-        nonce: 'nonce_2',
-        idempotencyKey: 'idem_2',
+        nonce: 'nonce_det_2',
+        idempotencyKey: 'idem_key_det_2',
       };
 
       const res1 = await POST(createRequest(body1));
@@ -378,8 +395,11 @@ describe('Encoding Proof API Route', () => {
       const res2 = await POST(createRequest(body2));
       const data2 = await res2.json();
 
-      expect(data1.proofId).toBe(data2.proofId);
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
       expect(data1.proof.encodingHash).toBe(data2.proof.encodingHash);
+      expect(data1.proofId).not.toBe(data2.proofId);
+      expect(data1.proof.subject.requestHash).not.toBe(data2.proof.subject.requestHash);
     });
   });
 });
