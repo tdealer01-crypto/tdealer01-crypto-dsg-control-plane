@@ -2,8 +2,10 @@
  * Idempotent, atomic entitlement fulfillment.
  *
  * The database RPC updates organizations.plan and dsg_gate_entitlements in
- * one transaction. A webhook retry therefore produces the same final state,
- * while a database failure produces no partial entitlement grant.
+ * one transaction. A webhook retry therefore produces the same final state.
+ * Persistence failures throw so the canonical Stripe webhook can release its
+ * event claim and return a non-2xx response, allowing Stripe to retry instead
+ * of acknowledging a paid event whose entitlement was not persisted.
  */
 
 import { getSupabaseAdmin } from '../supabase-server';
@@ -26,7 +28,7 @@ async function syncPaidEntitlement(
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    throw new Error(`paid_entitlement_sync_failed:${error.message}`);
   }
 
   return { ok: true };
