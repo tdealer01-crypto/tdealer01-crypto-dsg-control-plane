@@ -1,17 +1,9 @@
 /**
  * GET /api/dsg/v1/pricing
  *
- * Public endpoint — no authentication required.
- * Returns DSG Gate API pricing tiers for use on /pricing page,
- * upgrade modals, and SDK documentation.
- *
- * Response (200 OK):
- * {
- *   ok: true,
- *   product: "DSG Gate API",
- *   tiers: [{ id, name, description, price, billingPeriod, features, cta, checkoutLink }],
- *   description: string
- * }
+ * Public, single-purpose pricing contract for web and client applications.
+ * Paid calls enter the authenticated direct-checkout handoff, which delegates
+ * price resolution and Stripe session creation to /api/billing/checkout.
  */
 
 import { NextResponse } from 'next/server';
@@ -50,8 +42,8 @@ const GATE_PRICING_TIERS: PricingTier[] = [
     price: `$${GATE_PLANS.pro.displayMonthlyUsd}`,
     billingPeriod: 'monthly',
     features: DSG_GATE_TIERS.pro.features,
-    cta: 'Upgrade to Pro',
-    checkoutLink: '/dashboard/billing?plan=pro',
+    cta: 'Start Pro Checkout',
+    checkoutLink: '/checkout/pro',
     highlight: true,
   },
   {
@@ -61,17 +53,17 @@ const GATE_PRICING_TIERS: PricingTier[] = [
     price: `$${GATE_PLANS.enterprise.displayMonthlyUsd}`,
     billingPeriod: 'monthly',
     features: DSG_GATE_TIERS.enterprise.features,
-    cta: 'Contact Sales',
-    checkoutLink: '/dashboard/billing?plan=enterprise',
+    cta: 'Start Enterprise Checkout',
+    checkoutLink: '/checkout/enterprise',
   },
 ];
 
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    product: 'DSG Gate API',
+    product: 'DSG Compliance Verification & Gate API',
     tiers: GATE_PRICING_TIERS,
     description:
-      'DSG Gate API — Deterministic AI governance with cryptographic proof. Same input → same decision, always.',
+      'Automated compliance and AI-governance verification with persisted entitlement, idempotent usage evidence, and Stripe-backed billing.',
   });
 }

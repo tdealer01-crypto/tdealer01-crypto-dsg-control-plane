@@ -11,7 +11,13 @@ vi.mock('../../../lib/revenue/events', () => ({
 }));
 
 vi.mock('../../../lib/billing/metered', () => ({
-  reportMeterEvent: vi.fn(async () => ({ ok: false, error: 'not_configured', skipped: true })),
+  isMeteredBillingConfigured: vi.fn(() => false),
+  reportMeterEvent: vi.fn(async () => ({
+    ok: false,
+    error: 'not_configured',
+    skipped: true,
+    durable: false,
+  })),
 }));
 
 describe('dsg gate entitlement', () => {
@@ -30,7 +36,15 @@ describe('dsg gate entitlement', () => {
 
   it('uses db-backed entitlement + usage when available', async () => {
     const maybeSingle = vi.fn().mockResolvedValue({
-      data: { org_id: 'org_1', tier: 'pro', evals_per_month: 5000, stripe_customer_id: null },
+      data: {
+        org_id: 'org_1',
+        tier: 'pro',
+        evals_per_month: 5000,
+        subscription_status: 'active',
+        overage_enabled: false,
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+      },
       error: null,
     });
 

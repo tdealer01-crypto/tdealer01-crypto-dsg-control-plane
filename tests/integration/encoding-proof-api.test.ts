@@ -86,10 +86,15 @@ describe('Encoding Proof API Route', () => {
     accessMocks.checkGateEntitlement.mockReset().mockResolvedValue({
       allowed: true,
       tier: 'pro',
+      evalsRemaining: 4999,
       message: 'Allowed',
+      requiresPayment: false,
       upgradeUrl: '/pricing',
+      accessMode: 'included_quota',
     });
-    accessMocks.recordGateEvaluation.mockReset().mockResolvedValue(undefined);
+    accessMocks.recordGateEvaluation.mockReset().mockResolvedValue({
+      recorded: true,
+    });
     accessMocks.applyRateLimit.mockReset().mockResolvedValue({ allowed: true });
     proofStoreMocks.inspectEncodingProofRequest.mockReset().mockResolvedValue({
       kind: 'new',
@@ -114,14 +119,36 @@ describe('Encoding Proof API Route', () => {
       accessMocks.checkGateEntitlement.mockResolvedValueOnce({
         allowed: false,
         tier: 'free',
+        evalsRemaining: 0,
         message: 'Monthly quota exceeded',
+        requiresPayment: true,
         upgradeUrl: '/pricing',
+        accessMode: 'quota_exceeded',
       });
 
       const res = await POST(createRequest(validQuboBody()));
       expect(res.status).toBe(402);
       const data = await res.json();
       expect(data.requiresUpgrade).toBe(true);
+      expect(data.accessMode).toBe('quota_exceeded');
+    });
+
+    it('fails closed with 503 when entitlement evidence is unavailable', async () => {
+      accessMocks.checkGateEntitlement.mockResolvedValueOnce({
+        allowed: false,
+        tier: 'unknown',
+        evalsRemaining: 0,
+        message: 'Billing entitlement is unavailable',
+        requiresPayment: false,
+        upgradeUrl: '/pricing',
+        accessMode: 'billing_unavailable',
+      });
+
+      const res = await POST(createRequest(validQuboBody()));
+      expect(res.status).toBe(503);
+      const data = await res.json();
+      expect(data.requiresUpgrade).toBe(false);
+      expect(data.accessMode).toBe('billing_unavailable');
     });
 
     it('enforces the per-org rate limit', async () => {
@@ -146,8 +173,27 @@ describe('Encoding Proof API Route', () => {
       expect(data.proof.checks.quadratic_terms_valid).toBe(true);
       expect(proofStoreMocks.inspectEncodingProofRequest).toHaveBeenCalled();
       expect(proofStoreMocks.persistEncodingProof).toHaveBeenCalled();
-      expect(accessMocks.recordGateEvaluation).toHaveBeenCalled();
+      expect(accessMocks.recordGateEvaluation).toHaveBeenCalledWith(
+        'idem_key_123',
+        'org_test',
+        'encoding/prove',
+        'PASS',
+        expect.any(Number),
+      );
       expect(accessMocks.logDsgApiCall).toHaveBeenCalled();
+    });
+
+    it('withholds a new proof when durable usage evidence cannot be recorded', async () => {
+      accessMocks.recordGateEvaluation.mockResolvedValueOnce({
+        recorded: false,
+        error: 'meter_outbox_unavailable:db unavailable',
+      });
+
+      const res = await POST(createRequest(validQuboBody()));
+      expect(res.status).toBe(503);
+      const data = await res.json();
+      expect(data.error).toBe('usage_evidence_unavailable');
+      expect(proofStoreMocks.persistEncodingProof).toHaveBeenCalled();
     });
 
     it('should accept valid Ising encoding and return PASS', async () => {
@@ -364,6 +410,48 @@ describe('Encoding Proof API Route', () => {
       const data = await res.json();
       expect(data.ok).toBe(true);
       expect(data.status).toBe('PASS');
+    });
+
+    it('re-establishes idempotent usage evidence before returning a replayed proof', async () => {
+      const first = await POST(createRequest(validQuboBody()));
+      expect(first.status).toBe(200);
+      const firstData = await first.json();
+
+      accessMocks.recordGateEvaluation.mockClear();
+      proofStoreMocks.inspectEncodingProofRequest.mockResolvedValueOnce({
+        kind: 'replay',
+        proof: firstData.proof,
+      });
+
+      const replay = await POST(createRequest(validQuboBody()));
+      expect(replay.status).toBe(200);
+      expect(replay.headers.get('X-Idempotent-Replay')).toBe('true');
+      expect(accessMocks.recordGateEvaluation).toHaveBeenCalledWith(
+        'idem_key_123',
+        'org_test',
+        'encoding/prove',
+        'PASS',
+        expect.any(Number),
+      );
+    });
+
+    it('withholds a replayed proof when usage evidence is unavailable', async () => {
+      const first = await POST(createRequest(validQuboBody()));
+      const firstData = await first.json();
+
+      proofStoreMocks.inspectEncodingProofRequest.mockResolvedValueOnce({
+        kind: 'replay',
+        proof: firstData.proof,
+      });
+      accessMocks.recordGateEvaluation.mockResolvedValueOnce({
+        recorded: false,
+        error: 'meter_outbox_unavailable:db unavailable',
+      });
+
+      const replay = await POST(createRequest(validQuboBody()));
+      expect(replay.status).toBe(503);
+      const data = await replay.json();
+      expect(data.error).toBe('usage_evidence_unavailable');
     });
 
     it('binds proofId to the canonical request while preserving encodingHash', async () => {
