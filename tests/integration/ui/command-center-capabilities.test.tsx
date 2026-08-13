@@ -6,16 +6,21 @@ function read(relativePath: string) {
 }
 
 describe('command center capabilities surface', () => {
-  it('exposes clickable chat submit action and monitor panel in dashboard command center', () => {
+  it('exposes a typed governed agent, live truth sources, and Stripe checkout', () => {
     const source = read('app/dashboard/command-center/page.tsx');
 
-    expect(source).toContain('Chat / Agent Console');
-    expect(source).toContain('Monitor / Control Panel');
-    expect(source).toContain('onClick={submitCommand}');
-    expect(source).toContain('disabled={chatBusy}');
+    expect(source).toContain('Typed browser agent');
+    expect(source).toContain('Current truth');
+    expect(source).toContain('onClick={() => void submitGoal()}');
+    expect(source).toContain('disabled={!goal.trim() || agentBusy}');
     expect(source).toContain("fetch('/api/agent-chat'");
-    expect(source).toContain("fetch('/api/health'");
-    expect(source).toContain("fetch('/api/audit?limit=8'");
+    expect(source).toContain("'/api/revenue-readiness'");
+    expect(source).toContain("'/api/github/revenue-autopilot-status'");
+    expect(source).toContain("'/api/billing/activation-proof'");
+    expect(source).toContain("fetch('/api/billing/checkout'");
+    expect(source).toContain(
+      'Live browser click/type/submit executor is not enabled',
+    );
   });
 
   it('shows live monitor + chat workflow in app shell', () => {
