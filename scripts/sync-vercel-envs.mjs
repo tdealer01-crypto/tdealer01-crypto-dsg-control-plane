@@ -52,7 +52,8 @@ function writeSummary(result) {
     `- Source entries discovered: **${result.sourceCount}**`,
     `- Application entries eligible: **${result.copyCount}**`,
     `- System entries excluded: **${result.excluded.system.length}**`,
-    `- Integration-managed entries excluded: **${result.excluded.integrationManaged.length}**`,
+    `- Integration-managed entries excluded from copying: **${result.excluded.integrationManaged.length}**`,
+    `- Integration-managed entries verified after reconnect: **${result.integrationVerifiedCount}**`,
     `- Custom-environment entries excluded: **${result.excluded.customEnvironment.length}**`,
     `- Sensitive entries verified as manually rotated: **${result.excluded.protectedRotated.length}**`,
     `- Destination project: **${project?.name ?? 'not created during dry-run'}**`,
@@ -89,6 +90,7 @@ async function main() {
   writeOutput('verification_status', result.status);
   writeOutput('source_count', result.sourceCount);
   writeOutput('copy_count', result.copyCount);
+  writeOutput('integration_verified_count', result.integrationVerifiedCount);
   writeOutput('excluded_count', countExcluded(result.excluded));
   writeOutput('new_project_id', result.destinationProject?.id ?? '');
   writeOutput('new_team_id', result.destinationProject?.accountId ?? '');

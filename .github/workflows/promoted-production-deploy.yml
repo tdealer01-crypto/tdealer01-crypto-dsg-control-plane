@@ -1,6 +1,35 @@
 name: Promoted Production Deployment
 
 on:
+  workflow_call:
+    inputs:
+      operation:
+        description: Protected production operation selected by the trusted caller
+        required: true
+        type: string
+      commit_sha:
+        description: Exact current main commit to verify and deploy
+        required: true
+        type: string
+      migration_request_id:
+        description: Audited Vercel account migration request ID
+        required: false
+        default: ''
+        type: string
+      destination_team_id:
+        description: Verified destination Vercel team ID
+        required: false
+        default: ''
+        type: string
+      destination_project_id:
+        description: Verified destination Vercel project ID
+        required: false
+        default: ''
+        type: string
+    outputs:
+      bootstrap_url:
+        description: Verified READY destination production bootstrap URL
+        value: ${{ jobs.bootstrap_vercel_account.outputs.bootstrap_url }}
   workflow_dispatch:
     inputs:
       promotion_id:
@@ -26,10 +55,6 @@ permissions:
 
 env:
   VERCEL_CLI_VERSION: 58.0.0
-  VERCEL_USE_NEW_ACCOUNT: ${{ vars.VERCEL_USE_NEW_ACCOUNT || 'false' }}
-  VERCEL_TOKEN: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
-  VERCEL_ORG_ID: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && vars.VERCEL_ORG_ID || 'team_n189mlAdVHR6cGGiaAwsKzQ0' }}
-  VERCEL_PROJECT_ID: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && vars.VERCEL_PROJECT_ID || 'prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW' }}
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -45,6 +70,7 @@ env:
 jobs:
   verify-approve-deploy:
     name: Verify Evidence, Approve Once, Deploy Exact Commit
+    if: inputs.operation != 'vercel-account-bootstrap'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: "Production – dsg-qubo-api"
@@ -74,6 +100,12 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+
+      - name: Resolve audited Vercel routing
+        env:
+          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: node scripts/resolve-vercel-routing.mjs
 
       - name: Verify required release configuration
         shell: bash
@@ -210,3 +242,108 @@ jobs:
           PROMOTION_OUTCOME: rejected
           FAILURE_REASON: Promoted production workflow failed before successful health verification
         run: node scripts/finalize-agent-workspace-promotion.mjs
+
+  bootstrap_vercel_account:
+    name: Verify and Create Destination Production Bootstrap
+    if: inputs.operation == 'vercel-account-bootstrap'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: "Production – dsg-qubo-api"
+    outputs:
+      bootstrap_url: ${{ steps.bootstrap.outputs.bootstrap_url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+      VERCEL_ORG_ID: ${{ inputs.destination_team_id }}
+      VERCEL_PROJECT_ID: ${{ inputs.destination_project_id }}
+      MIGRATION_REQUEST_ID: ${{ inputs.migration_request_id }}
+    steps:
+      - name: Validate protected bootstrap inputs
+        shell: bash
+        run: |
+          [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "Invalid exact commit SHA"; exit 1; }
+          [[ "$MIGRATION_REQUEST_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$ ]] || { echo "Invalid migration request ID"; exit 1; }
+          [[ "$VERCEL_ORG_ID" =~ ^[A-Za-z0-9_-]{3,128}$ ]] || { echo "Invalid destination Vercel team ID"; exit 1; }
+          [[ "$VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9]+$ ]] || { echo "Invalid destination Vercel project ID"; exit 1; }
+          test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Destination is the legacy Vercel account"; exit 1; }
+          test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Destination is the legacy Vercel project"; exit 1; }
+          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN_NEW"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Require exact current main commit for bootstrap
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          CHECKED_OUT=$(git rev-parse HEAD)
+          MAIN_HEAD=$(git rev-parse origin/main)
+          test "${CHECKED_OUT,,}" = "${COMMIT_SHA,,}" || { echo "Checked-out commit mismatch"; exit 1; }
+          test "$CHECKED_OUT" = "$MAIN_HEAD" || { echo "Commit is not current main head"; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Re-run migration and release safety gates
+        run: |
+          node --check scripts/lib/vercel-env-sync.mjs
+          node --check scripts/sync-vercel-envs.mjs
+          node --check scripts/resolve-vercel-routing.mjs
+          npx vitest run \
+            tests/unit/scripts/vercel-env-sync.test.ts \
+            tests/unit/scripts/vercel-routing.test.ts \
+            tests/unit/scripts/vercel-env-migration-request.test.ts
+          npm audit --audit-level=high --omit=dev
+
+      - name: Pull destination production configuration
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build exact destination production artifact
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
+
+      - name: Create destination READY production rollback target
+        id: bootstrap
+        shell: bash
+        run: |
+          BOOTSTRAP_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
+            --meta=migration_request="$MIGRATION_REQUEST_ID" \
+            --meta=migration_run="${{ github.run_id }}" \
+            --meta=commit="$COMMIT_SHA" \
+            --meta=release_stage=account-migration-bootstrap)
+          test -n "$BOOTSTRAP_URL"
+          echo "bootstrap_url=$BOOTSTRAP_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify destination production rollback target
+        env:
+          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
+        shell: bash
+        run: |
+          curl --fail --retry 10 --retry-delay 6 "$BOOTSTRAP_URL/api/health"
+          BOOTSTRAP_HOST=${BOOTSTRAP_URL#https://}
+          RESPONSE=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
+          MATCH=$(echo "$RESPONSE" | jq -r --arg host "$BOOTSTRAP_HOST" \
+            '.deployments[] | select(.target == "production" and .state == "READY" and .url == $host) | .url' | head -n 1)
+          test "$MATCH" = "$BOOTSTRAP_HOST" || { echo "Bootstrap deployment is not a READY production rollback target"; exit 1; }
+
+      - name: Record protected bootstrap evidence
+        env:
+          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
+        run: |
+          {
+            echo "## Vercel destination production bootstrap"
+            echo ""
+            echo "- Migration request: $MIGRATION_REQUEST_ID"
+            echo "- Exact main commit: $COMMIT_SHA"
+            echo "- Destination team ID: $VERCEL_ORG_ID"
+            echo "- Destination project ID: $VERCEL_PROJECT_ID"
+            echo "- READY and healthy URL: $BOOTSTRAP_URL"
+            echo "- Existing user traffic: **not switched**"
+          } >> "$GITHUB_STEP_SUMMARY"

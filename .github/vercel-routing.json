@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "activeAccount": "legacy",
+  "accounts": {
+    "legacy": {
+      "teamId": "team_n189mlAdVHR6cGGiaAwsKzQ0",
+      "projectId": "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW",
+      "projectName": "tdealer01-crypto-dsg-control-plane"
+    },
+    "new": {
+      "teamId": "",
+      "projectId": "",
+      "projectName": "tdealer01-crypto-dsg-control-plane"
+    }
+  }
+}
