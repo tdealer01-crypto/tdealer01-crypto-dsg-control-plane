@@ -104,7 +104,7 @@ jobs:
       - name: Resolve audited Vercel routing
         env:
           LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
         run: node scripts/resolve-vercel-routing.mjs
 
       - name: Verify required release configuration
@@ -252,7 +252,7 @@ jobs:
     outputs:
       bootstrap_url: ${{ steps.bootstrap.outputs.bootstrap_url }}
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ inputs.destination_team_id }}
       VERCEL_PROJECT_ID: ${{ inputs.destination_project_id }}
       MIGRATION_REQUEST_ID: ${{ inputs.migration_request_id }}
@@ -296,6 +296,7 @@ jobs:
           node --check scripts/sync-vercel-envs.mjs
           node --check scripts/resolve-vercel-routing.mjs
           npx vitest run \
+            tests/unit/scripts/vercel-destination-auth.test.ts \
             tests/unit/scripts/vercel-env-sync.test.ts \
             tests/unit/scripts/vercel-routing.test.ts \
             tests/unit/scripts/vercel-env-migration-request.test.ts
