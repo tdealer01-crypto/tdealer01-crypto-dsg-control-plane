@@ -6,7 +6,7 @@
     "dsg-one-mcp-server"
   ],
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "node scripts/next-dev-compatible.mjs",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint app/ lib/ components/ --ext .ts,.tsx,.js,.jsx",
