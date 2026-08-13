@@ -1,0 +1,95 @@
+services:
+  - type: web
+    name: dsg-control-plane
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  # Mirrors the schedules currently defined in vercel.json. Each job hits the
+  # same protected /api/cron/* route the Vercel cron previously called, using
+  # the same CRON_SECRET bearer-token contract the routes already enforce.
+  - type: cron
+    name: dsg-cron-flush-meter-outbox
+    runtime: node
+    plan: starter
+    schedule: "*/10 * * * *"
+    buildCommand: "true"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/flush-meter-outbox"'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: dsg-cron-reconcile-meter
+    runtime: node
+    plan: starter
+    schedule: "0 * * * *"
+    buildCommand: "true"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reconcile-meter"'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: dsg-cron-usage-alerts
+    runtime: node
+    plan: starter
+    schedule: "0 8 * * *"
+    buildCommand: "true"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/usage-alerts"'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: dsg-cron-trial-invite
+    runtime: node
+    plan: starter
+    schedule: "0 9 * * *"
+    buildCommand: "true"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/trial-invite"'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: dsg-cron-weekly-report
+    runtime: node
+    plan: starter
+    schedule: "0 10 * * 1"
+    buildCommand: "true"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/weekly-report"'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false

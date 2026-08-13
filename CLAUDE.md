@@ -865,6 +865,23 @@ After changing code:
 
 ## 23. Deployment and production control loop
 
+### Migration in progress: Vercel → Render (pending)
+
+As of 2026-08-13, the Vercel project below has an unresolved provisioning
+failure (see PR #1096) and a blocked follow-on account-migration attempt (PRs
+#1097–#1099, blocked on a missing authorized token — not a code issue). The
+decision is to move production to Render instead, mirroring the pattern
+already live in `dsg-one-v1` (`docs/FRAMER_RENDER_MIGRATION.md`). See
+`docs/RENDER_MIGRATION.md` for the full contract, `render.yaml` for the draft
+Blueprint, and the checklist there for what is done vs. still pending.
+
+Until that checklist's live-evidence items are checked off, the sections
+below remain the accurate description of what is actually live: Vercel git
+auto-deploy is already disabled (`vercel.json` → `git.deploymentEnabled`), and
+the production URL below is serving a stale commit, not current `main`. Do
+not treat this subsection as proof that Render is live — verify with the
+commands in `docs/RENDER_MIGRATION.md` before making that claim.
+
 ### Vercel project configuration (consolidated)
 
 DSG ONE uses a **single consolidated Vercel project**: `tdealer01-crypto-dsg-control-plane`.
