@@ -18,7 +18,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="border-b border-slate-800 bg-slate-950/80">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+        <div
+          className="mx-auto flex items-center justify-between gap-4 px-6 py-3"
+          style={{ maxWidth: 1480 }}
+        >
           <Link href="/dashboard" className="flex shrink-0 flex-col">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">DSG ONE</p>
             <p className="text-base font-semibold leading-tight">Command Center</p>
