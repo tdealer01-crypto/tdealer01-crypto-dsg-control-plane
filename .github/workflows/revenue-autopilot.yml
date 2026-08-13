@@ -1,0 +1,60 @@
+name: DSG Revenue Autopilot
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: revenue-autopilot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      AUTOPILOT_URL: https://tdealer01-crypto-dsg-control-plane.onrender.com/api/cron/revenue-autopilot
+      OIDC_AUDIENCE: dsg-revenue-autopilot
+    steps:
+      - name: Request GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          encoded_audience="$(node -p 'encodeURIComponent(process.env.OIDC_AUDIENCE)')"
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${encoded_audience}")"
+          token="$(printf '%s' "$response" | node -e 'let s=""; process.stdin.on("data", c => s += c); process.stdin.on("end", () => { const v = JSON.parse(s).value; if (!v) process.exit(2); process.stdout.write(v); });')"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Run revenue autopilot on Render
+        shell: bash
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp)"
+          status="$(curl --silent --show-error \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            --connect-timeout 30 --max-time 330 \
+            -o "$tmp" -w '%{http_code}' \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H 'Accept: application/json' \
+            -H 'User-Agent: DSG-Revenue-Autopilot-GitHub/1.0' \
+            "$AUTOPILOT_URL")"
+          cat "$tmp"
+          echo
+          if [[ "$status" != "200" && "$status" != "207" ]]; then
+            echo "::error::Revenue autopilot returned HTTP $status"
+            exit 1
+          fi
+          if [[ "$status" == "207" ]]; then
+            echo "::warning::Revenue autopilot completed with one or more failed jobs"
+            exit 1
+          fi
