@@ -16,9 +16,10 @@ permissions:
 
 env:
   VERCEL_CLI_VERSION: 58.0.0
-  VERCEL_ORG_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
-  VERCEL_PROJECT_ID: prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW
-  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL_USE_NEW_ACCOUNT: ${{ vars.VERCEL_USE_NEW_ACCOUNT || 'false' }}
+  VERCEL_ORG_ID: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && vars.VERCEL_ORG_ID || 'team_n189mlAdVHR6cGGiaAwsKzQ0' }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && vars.VERCEL_PROJECT_ID || 'prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW' }}
+  VERCEL_TOKEN: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -87,8 +88,12 @@ jobs:
         shell: bash
         run: |
           test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
-          test "$VERCEL_ORG_ID" = "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "Unexpected Vercel team"; exit 1; }
-          test "$VERCEL_PROJECT_ID" = "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "Unexpected Vercel project"; exit 1; }
+          [[ "$VERCEL_ORG_ID" =~ ^[A-Za-z0-9_-]{3,128}$ ]] || { echo "Invalid Vercel account ID"; exit 1; }
+          [[ "$VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9]+$ ]] || { echo "Invalid Vercel project ID"; exit 1; }
+          if test "$VERCEL_USE_NEW_ACCOUNT" = "true"; then
+            test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "New-account routing has the legacy account ID"; exit 1; }
+            test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "New-account routing has the legacy project ID"; exit 1; }
+          fi
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Pull preview configuration

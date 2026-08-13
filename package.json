@@ -41,6 +41,7 @@
     "deploy": "npx vercel deploy --target=preview --yes",
     "deploy:preview": "npx vercel deploy --target=preview --yes",
     "deploy:prod": "npx vercel deploy --prod --yes",
+    "vercel:env:sync": "node scripts/sync-vercel-envs.mjs",
     "go:no-go": "./scripts/go-no-go-gate.sh",
     "benchmark": "node scripts/benchmark-dsg.mjs",
     "benchmark:gateway": "node scripts/benchmark-gateway-production.mjs",
