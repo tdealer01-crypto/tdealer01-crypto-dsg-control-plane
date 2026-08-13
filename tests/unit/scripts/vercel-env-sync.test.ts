@@ -134,7 +134,7 @@ describe('Vercel ENV migration', () => {
     expect(destinationClient.upsertEnvironmentVariables).not.toHaveBeenCalled();
   });
 
-  it('blocks when Vercel reports hidden production values', async () => {
+  it('blocks with a reachable source-token remedy when production metadata is hidden', async () => {
     const destinationClient = { getProject: vi.fn(), upsertEnvironmentVariables: vi.fn() };
     await expect(
       runVercelEnvMigration({
@@ -149,9 +149,96 @@ describe('Vercel ENV migration', () => {
         destinationProjectName: 'dsg-control-plane',
         dryRun: false,
       }),
-    ).rejects.toThrow('withheld 2 protected production value(s)');
+    ).rejects.toThrow('source token cannot enumerate 2 protected production ENV metadata record(s)');
     expect(destinationClient.getProject).not.toHaveBeenCalled();
     expect(destinationClient.upsertEnvironmentVariables).not.toHaveBeenCalled();
+  });
+
+  it('blocks activation until every excluded integration is reconnected in the destination', async () => {
+    const sourceClient = {
+      listEnvironmentVariables: vi.fn().mockResolvedValue({
+        envs: [
+          {
+            id: 'env_stripe',
+            key: 'STRIPE_SECRET_KEY',
+            type: 'encrypted',
+            target: ['production', 'preview'],
+            contentHint: { integrationConfigurationId: 'icfg_source' },
+          },
+        ],
+        hiddenProductionEnvCount: 0,
+      }),
+      getEnvironmentVariable: vi.fn(),
+    };
+    const destinationClient = {
+      getProject: vi.fn().mockResolvedValue({
+        id: 'prj_destination',
+        accountId: 'team_destination',
+        name: 'dsg-control-plane',
+      }),
+      listEnvironmentVariables: vi.fn().mockResolvedValue({ envs: [] }),
+      upsertEnvironmentVariables: vi.fn(),
+    };
+
+    await expect(
+      runVercelEnvMigration({
+        sourceClient,
+        sourceProjectId: 'prj_source',
+        destinationClient,
+        destinationProjectName: 'dsg-control-plane',
+        dryRun: false,
+      }),
+    ).rejects.toThrow('Reconnected integration ENV verification failed');
+
+    expect(destinationClient.upsertEnvironmentVariables).not.toHaveBeenCalled();
+  });
+
+  it('verifies reconnected integration key, scope, type, and managed metadata', async () => {
+    const sourceClient = {
+      listEnvironmentVariables: vi.fn().mockResolvedValue({
+        envs: [
+          {
+            id: 'env_stripe',
+            key: 'STRIPE_SECRET_KEY',
+            type: 'encrypted',
+            target: ['preview', 'production'],
+            contentHint: { integrationConfigurationId: 'icfg_source' },
+          },
+        ],
+        hiddenProductionEnvCount: 0,
+      }),
+      getEnvironmentVariable: vi.fn(),
+    };
+    const destinationClient = {
+      getProject: vi.fn().mockResolvedValue({
+        id: 'prj_destination',
+        accountId: 'team_destination',
+        name: 'dsg-control-plane',
+      }),
+      listEnvironmentVariables: vi.fn().mockResolvedValue({
+        envs: [
+          {
+            id: 'env_stripe_destination',
+            key: 'STRIPE_SECRET_KEY',
+            type: 'encrypted',
+            target: ['production', 'preview'],
+            contentHint: { integrationConfigurationId: 'icfg_destination' },
+          },
+        ],
+      }),
+    };
+
+    const result = await runVercelEnvMigration({
+      sourceClient,
+      sourceProjectId: 'prj_source',
+      destinationClient,
+      destinationProjectName: 'dsg-control-plane',
+      dryRun: true,
+    });
+
+    expect(result.status).toBe('dry_run');
+    expect(result.copyCount).toBe(0);
+    expect(result.integrationVerifiedCount).toBe(1);
   });
 
   it('accepts protected values only after sensitive destination metadata is verified', async () => {

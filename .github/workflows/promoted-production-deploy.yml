@@ -26,10 +26,6 @@ permissions:
 
 env:
   VERCEL_CLI_VERSION: 58.0.0
-  VERCEL_USE_NEW_ACCOUNT: ${{ vars.VERCEL_USE_NEW_ACCOUNT || 'false' }}
-  VERCEL_TOKEN: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
-  VERCEL_ORG_ID: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && vars.VERCEL_ORG_ID || 'team_n189mlAdVHR6cGGiaAwsKzQ0' }}
-  VERCEL_PROJECT_ID: ${{ vars.VERCEL_USE_NEW_ACCOUNT == 'true' && vars.VERCEL_PROJECT_ID || 'prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW' }}
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -74,6 +70,12 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+
+      - name: Resolve audited Vercel routing
+        env:
+          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: node scripts/resolve-vercel-routing.mjs
 
       - name: Verify required release configuration
         shell: bash

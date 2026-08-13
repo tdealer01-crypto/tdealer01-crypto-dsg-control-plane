@@ -225,6 +225,7 @@ export function classifyEnvironmentVariables(
   { includeIntegrationManaged = false } = {},
 ) {
   const candidates = [];
+  const integrationRequirements = [];
   const excluded = {
     system: [],
     integrationManaged: [],
@@ -239,6 +240,7 @@ export function classifyEnvironmentVariables(
       !includeIntegrationManaged
     ) {
       excluded.integrationManaged.push(safeKey(record));
+      integrationRequirements.push(record);
     } else if (Array.isArray(record?.customEnvironmentIds) && record.customEnvironmentIds.length > 0) {
       excluded.customEnvironment.push(safeKey(record));
     } else {
@@ -250,7 +252,7 @@ export function classifyEnvironmentVariables(
     keys.sort();
   }
 
-  return { candidates, excluded };
+  return { candidates, integrationRequirements, excluded };
 }
 
 function normalizeScope(record) {
@@ -341,13 +343,34 @@ export async function prepareMigrationPlan({
   includeIntegrationManaged = false,
   acknowledgeRotatedProtected = false,
 }) {
-  const { candidates, excluded } = classifyEnvironmentVariables(records, {
-    includeIntegrationManaged,
-  });
+  const {
+    candidates,
+    integrationRequirements: rawIntegrationRequirements,
+    excluded,
+  } = classifyEnvironmentVariables(records, { includeIntegrationManaged });
   const entries = [];
   const protectedEntries = [];
+  const integrationRequirements = [];
   const protectedOrUnsupported = [];
+  const invalidIntegrationRequirements = [];
   const unreadable = [];
+
+  for (const record of rawIntegrationRequirements) {
+    try {
+      const sourceType = typeof record?.type === 'string'
+        ? record.type.toLowerCase()
+        : '';
+      if (!sourceType) {
+        throw new VercelEnvMigrationError('Integration-managed ENV type is missing');
+      }
+      integrationRequirements.push({
+        ...normalizeScope(record),
+        type: sourceType === 'secret' ? 'sensitive' : sourceType,
+      });
+    } catch {
+      invalidIntegrationRequirements.push(safeKey(record));
+    }
+  }
 
   for (const candidate of candidates) {
     const sourceType = typeof candidate?.type === 'string'
@@ -402,14 +425,30 @@ export async function prepareMigrationPlan({
 
   entries.sort(stableEnvironmentSort);
   protectedEntries.sort(stableEnvironmentSort);
+  integrationRequirements.sort(stableEnvironmentSort);
   protectedOrUnsupported.sort();
+  invalidIntegrationRequirements.sort();
   unreadable.sort();
-  const duplicates = duplicateIdentities([...entries, ...protectedEntries]);
+  const duplicates = duplicateIdentities([
+    ...entries,
+    ...protectedEntries,
+    ...integrationRequirements,
+  ]);
 
-  if (protectedOrUnsupported.length > 0 || unreadable.length > 0 || duplicates.length > 0) {
+  if (
+    protectedOrUnsupported.length > 0 ||
+    invalidIntegrationRequirements.length > 0 ||
+    unreadable.length > 0 ||
+    duplicates.length > 0
+  ) {
     const reasons = [];
     if (protectedOrUnsupported.length > 0) {
       reasons.push(`protected/unsupported: ${formatKeys(protectedOrUnsupported)}`);
+    }
+    if (invalidIntegrationRequirements.length > 0) {
+      reasons.push(
+        `invalid integration metadata: ${formatKeys(invalidIntegrationRequirements)}`,
+      );
     }
     if (unreadable.length > 0) {
       reasons.push(`unreadable: ${formatKeys(unreadable)}`);
@@ -419,13 +458,20 @@ export async function prepareMigrationPlan({
     }
     throw new VercelEnvMigrationError(
       `ENV migration preflight failed; no destination values were changed. ${reasons.join('; ')}`,
-      { protectedOrUnsupported, unreadable, duplicates, excluded },
+      {
+        protectedOrUnsupported,
+        invalidIntegrationRequirements,
+        unreadable,
+        duplicates,
+        excluded,
+      },
     );
   }
 
   return {
     entries,
     protectedEntries,
+    integrationRequirements,
     excluded: {
       ...excluded,
       protectedRotated: protectedEntries.map((entry) => entry.key).sort(),
@@ -571,6 +617,46 @@ function verifyRotatedProtectedMetadata(protectedEntries, destinationRecords) {
   };
 }
 
+export function verifyReconnectedIntegrationMetadata(
+  integrationRequirements,
+  destinationRecords,
+) {
+  const destinationByIdentity = new Map();
+  for (const record of destinationRecords) {
+    try {
+      destinationByIdentity.set(environmentIdentity(record), record);
+    } catch {
+      // Ignore destination records unrelated to the authorized source scopes.
+    }
+  }
+
+  const missing = [];
+  const detached = [];
+  const incompatible = [];
+  for (const source of integrationRequirements) {
+    const destination = destinationByIdentity.get(environmentIdentity(source));
+    if (!destination) {
+      missing.push(source.key);
+    } else if (!isIntegrationManagedEnvironmentVariable(destination)) {
+      detached.push(source.key);
+    } else if (
+      typeof destination.type !== 'string' ||
+      (destination.type.toLowerCase() === 'secret'
+        ? 'sensitive'
+        : destination.type.toLowerCase()) !== source.type
+    ) {
+      incompatible.push(source.key);
+    }
+  }
+
+  return {
+    ok: missing.length === 0 && detached.length === 0 && incompatible.length === 0,
+    missing: [...new Set(missing)].sort(),
+    detached: [...new Set(detached)].sort(),
+    incompatible: [...new Set(incompatible)].sort(),
+  };
+}
+
 export async function runVercelEnvMigration({
   sourceClient,
   sourceProjectId,
@@ -600,7 +686,7 @@ export async function runVercelEnvMigration({
   const hiddenProductionEnvCount = Number(sourceResponse?.hiddenProductionEnvCount ?? 0);
   if (hiddenProductionEnvCount > 0) {
     throw new VercelEnvMigrationError(
-      `ENV migration preflight failed; Vercel withheld ${hiddenProductionEnvCount} protected production value(s). Rotate those values into the destination before retrying. No destination values were changed.`,
+      `ENV migration preflight failed; the source token cannot enumerate ${hiddenProductionEnvCount} protected production ENV metadata record(s). Replace or reauthorize VERCEL_TOKEN with an owner/team token that can list every source ENV, then rerun. Destination-only rotation cannot satisfy this gate. No destination values were changed.`,
       { hiddenProductionEnvCount },
     );
   }
@@ -618,7 +704,8 @@ export async function runVercelEnvMigration({
     destinationProjectName,
     gitRepository,
     dryRun,
-    requireExisting: plan.protectedEntries.length > 0,
+    requireExisting:
+      plan.protectedEntries.length > 0 || plan.integrationRequirements.length > 0,
   });
 
   if (resolved.project?.id === sourceProjectId) {
@@ -633,7 +720,14 @@ export async function runVercelEnvMigration({
   }
 
   let destinationBefore = [];
-  if (resolved.project?.id && (plan.protectedEntries.length > 0 || !dryRun)) {
+  if (
+    resolved.project?.id &&
+    (
+      plan.protectedEntries.length > 0 ||
+      plan.integrationRequirements.length > 0 ||
+      !dryRun
+    )
+  ) {
     const before = await destinationClient.listEnvironmentVariables(resolved.project.id);
     destinationBefore = Array.isArray(before?.envs) ? before.envs : [];
   }
@@ -651,11 +745,25 @@ export async function runVercelEnvMigration({
     }
   }
 
+  if (plan.integrationRequirements.length > 0) {
+    const integrationVerification = verifyReconnectedIntegrationMetadata(
+      plan.integrationRequirements,
+      destinationBefore,
+    );
+    if (!integrationVerification.ok) {
+      throw new VercelEnvMigrationError(
+        `Reconnected integration ENV verification failed; no destination values were changed. Missing: ${formatKeys(integrationVerification.missing)}; detached: ${formatKeys(integrationVerification.detached)}; incompatible type: ${formatKeys(integrationVerification.incompatible)}`,
+        integrationVerification,
+      );
+    }
+  }
+
   if (dryRun) {
     return {
       status: 'dry_run',
       sourceCount: sourceRecords.length,
       copyCount: plan.entries.length,
+      integrationVerifiedCount: plan.integrationRequirements.length,
       excluded: plan.excluded,
       destinationProject: resolved.project,
       destinationCreated: false,
@@ -702,6 +810,7 @@ export async function runVercelEnvMigration({
     status: 'verified',
     sourceCount: sourceRecords.length,
     copyCount: plan.entries.length,
+    integrationVerifiedCount: plan.integrationRequirements.length,
     excluded: plan.excluded,
     destinationProject: project,
     destinationCreated: resolved.created,

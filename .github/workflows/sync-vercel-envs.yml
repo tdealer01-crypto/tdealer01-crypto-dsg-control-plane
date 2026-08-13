@@ -38,37 +38,57 @@ on:
         default: false
         type: boolean
       deploy_preview:
-        description: Verify a preview before activating new GitHub routing
+        description: Verify a preview before creating the destination rollback bootstrap
         required: true
         default: true
         type: boolean
+  push:
+    branches: [main]
+    paths:
+      - .github/vercel-env-migration-request.json
 
 concurrency:
   group: vercel-account-env-migration
   cancel-in-progress: false
 
 permissions:
-  actions: write
   contents: read
 
 env:
   VERCEL_CLI_VERSION: 58.0.0
 
 jobs:
-  migrate-verify-activate:
-    name: Preflight, Sync, Verify, and Activate
+  migrate-verify-bootstrap:
+    name: Preflight, Sync, Verify, and Bootstrap
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     environment: "Production – dsg-qubo-api"
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.expected_main_sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_main_sha || github.sha }}
           fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve authorized migration request
+        id: request
+        env:
+          INPUT_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          INPUT_NEW_TEAM_ID: ${{ inputs.new_team_id }}
+          INPUT_NEW_PROJECT_ID: ${{ inputs.new_project_id }}
+          INPUT_NEW_PROJECT_NAME: ${{ inputs.new_project_name }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_INCLUDE_INTEGRATION_MANAGED: ${{ inputs.include_integration_managed }}
+          INPUT_ACKNOWLEDGE_ROTATED_PROTECTED: ${{ inputs.acknowledge_rotated_protected }}
+          INPUT_DEPLOY_PREVIEW: ${{ inputs.deploy_preview }}
+        run: node scripts/resolve-vercel-env-migration-request.mjs
 
       - name: Require exact current main commit
         env:
-          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_MAIN_SHA: ${{ steps.request.outputs.expected_main_sha }}
         shell: bash
         run: |
           [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "expected_main_sha must be a full commit SHA"; exit 1; }
@@ -78,17 +98,13 @@ jobs:
           test "${CHECKED_OUT,,}" = "${EXPECTED_MAIN_SHA,,}" || { echo "Checked-out commit mismatch"; exit 1; }
           test "$CHECKED_OUT" = "$MAIN_HEAD" || { echo "Commit is not current main head"; exit 1; }
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
       - name: Validate migration configuration
         env:
           OLD_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          NEW_VERCEL_TEAM_ID: ${{ inputs.new_team_id }}
-          NEW_VERCEL_PROJECT_ID: ${{ inputs.new_project_id }}
-          NEW_VERCEL_PROJECT_NAME: ${{ inputs.new_project_name }}
+          NEW_VERCEL_TEAM_ID: ${{ steps.request.outputs.new_team_id }}
+          NEW_VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
+          NEW_VERCEL_PROJECT_NAME: ${{ steps.request.outputs.new_project_name }}
         shell: bash
         run: |
           test -n "$OLD_VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
@@ -106,14 +122,24 @@ jobs:
         run: |
           node --check scripts/lib/vercel-env-sync.mjs
           node --check scripts/sync-vercel-envs.mjs
+          node --check scripts/resolve-vercel-env-migration-request.mjs
+          node --check scripts/resolve-vercel-routing.mjs
 
       - name: Reconfirm main immediately before migration
+        if: github.event_name == 'workflow_dispatch'
         env:
-          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_MAIN_SHA: ${{ steps.request.outputs.expected_main_sha }}
         shell: bash
         run: |
           git fetch origin main --depth=1
           test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN_SHA" || { echo "Main advanced after authorization; dispatch again"; exit 1; }
+
+      - name: Verify push request is still current main history
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "Migration request commit is no longer in current main history"; exit 1; }
 
       - name: Preflight and sync environment variables
         id: sync
@@ -122,17 +148,17 @@ jobs:
           OLD_VERCEL_TEAM_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
           OLD_VERCEL_PROJECT_ID: prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW
           NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          NEW_VERCEL_TEAM_ID: ${{ inputs.new_team_id }}
-          NEW_VERCEL_PROJECT_ID: ${{ inputs.new_project_id }}
-          NEW_VERCEL_PROJECT_NAME: ${{ inputs.new_project_name }}
+          NEW_VERCEL_TEAM_ID: ${{ steps.request.outputs.new_team_id }}
+          NEW_VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
+          NEW_VERCEL_PROJECT_NAME: ${{ steps.request.outputs.new_project_name }}
           NEW_VERCEL_GIT_REPOSITORY: ${{ github.repository }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          INCLUDE_INTEGRATION_MANAGED: ${{ inputs.include_integration_managed }}
-          ACKNOWLEDGE_ROTATED_PROTECTED: ${{ inputs.acknowledge_rotated_protected }}
+          DRY_RUN: ${{ steps.request.outputs.dry_run }}
+          INCLUDE_INTEGRATION_MANAGED: ${{ steps.request.outputs.include_integration_managed }}
+          ACKNOWLEDGE_ROTATED_PROTECTED: ${{ steps.request.outputs.acknowledge_rotated_protected }}
         run: node scripts/sync-vercel-envs.mjs
 
       - name: Pull verified destination preview configuration
-        if: inputs.dry_run == false && inputs.deploy_preview && steps.sync.outputs.verification_status == 'verified'
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
           VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
@@ -141,7 +167,7 @@ jobs:
 
       - name: Deploy destination preview
         id: preview
-        if: inputs.dry_run == false && inputs.deploy_preview && steps.sync.outputs.verification_status == 'verified'
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
           VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
@@ -149,41 +175,96 @@ jobs:
         shell: bash
         run: |
           PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
+            --meta=migration_request="${{ steps.request.outputs.request_id }}" \
             --meta=migration_run="${{ github.run_id }}" \
             --meta=commit="${{ github.sha }}")
           test -n "$PREVIEW_URL"
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
       - name: Verify destination preview health
-        if: inputs.dry_run == false && inputs.deploy_preview && steps.sync.outputs.verification_status == 'verified'
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         run: curl --fail --retry 8 --retry-delay 5 "${{ steps.preview.outputs.preview_url }}/api/health"
 
-      - name: Activate new Vercel routing for GitHub Actions
-        if: inputs.dry_run == false && inputs.deploy_preview && steps.sync.outputs.verification_status == 'verified'
+      - name: Install dependencies for rollback bootstrap
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
+        run: npm ci --ignore-scripts
+
+      - name: Re-run migration safety tests before rollback bootstrap
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
+        run: >-
+          npx vitest run
+          tests/unit/scripts/vercel-env-sync.test.ts
+          tests/unit/scripts/vercel-routing.test.ts
+          tests/unit/scripts/vercel-env-migration-request.test.ts
+
+      - name: Pull destination production configuration
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         env:
-          GH_TOKEN: ${{ github.token }}
-          NEW_VERCEL_TEAM_ID: ${{ steps.sync.outputs.new_team_id }}
-          NEW_VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
-          NEW_VERCEL_PROJECT_NAME: ${{ steps.sync.outputs.new_project_name }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
+          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build destination production bootstrap
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
+          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
+
+      - name: Create destination READY production rollback target
+        id: bootstrap
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
+          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
         shell: bash
         run: |
-          test -n "$NEW_VERCEL_TEAM_ID" && test -n "$NEW_VERCEL_PROJECT_ID"
-          gh variable set VERCEL_USE_NEW_ACCOUNT --body "false"
-          gh variable set VERCEL_ORG_ID --body "$NEW_VERCEL_TEAM_ID"
-          gh variable set VERCEL_PROJECT_ID --body "$NEW_VERCEL_PROJECT_ID"
-          gh variable set VERCEL_PROJECT_NAME --body "$NEW_VERCEL_PROJECT_NAME"
-          gh variable set VERCEL_USE_NEW_ACCOUNT --body "true"
+          BOOTSTRAP_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
+            --meta=migration_request="${{ steps.request.outputs.request_id }}" \
+            --meta=migration_run="${{ github.run_id }}" \
+            --meta=commit="${{ github.sha }}" \
+            --meta=release_stage=account-migration-bootstrap)
+          test -n "$BOOTSTRAP_URL"
+          echo "bootstrap_url=$BOOTSTRAP_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Record preview activation evidence
-        if: inputs.dry_run == false && inputs.deploy_preview && steps.sync.outputs.verification_status == 'verified'
+      - name: Verify destination production rollback target
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
+          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
+          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
+        shell: bash
+        run: |
+          curl --fail --retry 10 --retry-delay 6 "$BOOTSTRAP_URL/api/health"
+          BOOTSTRAP_HOST=${BOOTSTRAP_URL#https://}
+          RESPONSE=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
+          MATCH=$(echo "$RESPONSE" | jq -r --arg host "$BOOTSTRAP_HOST" \
+            '.deployments[] | select(.target == "production" and .state == "READY" and .url == $host) | .url' | head -n 1)
+          test "$MATCH" = "$BOOTSTRAP_HOST" || { echo "Bootstrap deployment is not a READY production rollback target"; exit 1; }
+
+      - name: Record routing readiness evidence
+        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
+          NEW_VERCEL_TEAM_ID: ${{ steps.sync.outputs.new_team_id }}
+          NEW_VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
         run: |
           {
-            echo "## Destination activation"
+            echo "## Destination ready for audited routing activation"
             echo ""
             echo "- Preview health: **verified**"
             echo "- Preview URL: $PREVIEW_URL"
-            echo "- GitHub deployment variables: **activated**"
-            echo "- Production deployment: **not performed**"
+            echo "- Bootstrap production health: **verified**"
+            echo "- Bootstrap production URL: $BOOTSTRAP_URL"
+            echo "- Destination team ID: $NEW_VERCEL_TEAM_ID"
+            echo "- Destination project ID: $NEW_VERCEL_PROJECT_ID"
+            echo "- Versioned routing config: **pending audited config commit**"
+            echo "- Existing user traffic: **not switched by this workflow**"
           } >> "$GITHUB_STEP_SUMMARY"

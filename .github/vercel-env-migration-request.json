@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "requestId": "dry-run-20260813-p1-repair",
+  "newTeamId": "",
+  "newProjectId": "",
+  "newProjectName": "tdealer01-crypto-dsg-control-plane",
+  "dryRun": true,
+  "includeIntegrationManaged": false,
+  "acknowledgeRotatedProtected": false,
+  "deployPreview": true
+}

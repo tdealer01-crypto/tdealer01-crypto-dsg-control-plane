@@ -1,8 +1,7 @@
 name: Production Readiness Check
 # Required repository secrets for full offline verification:
 # - VERCEL_TOKEN
-# - VERCEL_ORG_ID
-# - VERCEL_PROJECT_ID
+# - VERCEL_TOKEN_NEW (only when .github/vercel-routing.json selects new)
 # - SUPABASE_DB_PASSWORD
 # - SUPABASE_PROJECT_REF
 #
@@ -24,10 +23,24 @@ jobs:
       has_vercel: ${{ steps.check.outputs.has_vercel }}
       has_supabase: ${{ steps.check.outputs.has_supabase }}
     steps:
+      - name: Checkout routing configuration
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve audited Vercel routing
+        env:
+          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: node scripts/resolve-vercel-routing.mjs
+
       - name: Check available secrets
         id: check
         run: |
-          if [ -n "${{ secrets.VERCEL_TOKEN }}" ] && [ -n "${{ secrets.VERCEL_ORG_ID }}" ] && [ -n "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
             echo "has_vercel=true" >> $GITHUB_OUTPUT
             echo "✓ Vercel management secrets available"
           else
@@ -56,15 +69,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve audited Vercel routing
+        env:
+          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+        run: node scripts/resolve-vercel-routing.mjs
+
       - name: Install Vercel CLI
         run: npm install -g vercel
 
       - name: Pull environment variables from Vercel
         run: |
-          vercel env pull .env.check --environment production --token ${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel env pull .env.check --environment production --token "$VERCEL_TOKEN"
 
       - name: Check CRITICAL variables
         id: check_critical
