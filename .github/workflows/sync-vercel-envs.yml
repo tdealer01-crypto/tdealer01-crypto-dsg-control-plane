@@ -58,11 +58,18 @@ env:
   VERCEL_CLI_VERSION: 58.0.0
 
 jobs:
-  migrate-verify-bootstrap:
-    name: Preflight, Sync, Verify, and Bootstrap
+  migrate_and_verify:
+    name: Preflight, Sync, and Verify Preview
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: "Production – dsg-qubo-api"
+    outputs:
+      bootstrap_required: ${{ steps.result.outputs.bootstrap_required }}
+      expected_main_sha: ${{ steps.request.outputs.expected_main_sha }}
+      migration_request_id: ${{ steps.request.outputs.request_id }}
+      new_team_id: ${{ steps.sync.outputs.new_team_id }}
+      new_project_id: ${{ steps.sync.outputs.new_project_id }}
+      preview_url: ${{ steps.preview.outputs.preview_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -185,76 +192,47 @@ jobs:
         if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         run: curl --fail --retry 8 --retry-delay 5 "${{ steps.preview.outputs.preview_url }}/api/health"
 
-      - name: Install dependencies for rollback bootstrap
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
-        run: npm ci --ignore-scripts
-
-      - name: Re-run migration safety tests before rollback bootstrap
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
-        run: >-
-          npx vitest run
-          tests/unit/scripts/vercel-env-sync.test.ts
-          tests/unit/scripts/vercel-routing.test.ts
-          tests/unit/scripts/vercel-env-migration-request.test.ts
-
-      - name: Pull destination production configuration
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
+      - name: Authorize protected bootstrap handoff
+        id: result
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
-          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build destination production bootstrap
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
-          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" build --prod --token="$VERCEL_TOKEN"
-
-      - name: Create destination READY production rollback target
-        id: bootstrap
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
-          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
-        shell: bash
-        run: |
-          BOOTSTRAP_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
-            --meta=migration_request="${{ steps.request.outputs.request_id }}" \
-            --meta=migration_run="${{ github.run_id }}" \
-            --meta=commit="${{ github.sha }}" \
-            --meta=release_stage=account-migration-bootstrap)
-          test -n "$BOOTSTRAP_URL"
-          echo "bootstrap_url=$BOOTSTRAP_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Verify destination production rollback target
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
-          VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
-          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
-        shell: bash
-        run: |
-          curl --fail --retry 10 --retry-delay 6 "$BOOTSTRAP_URL/api/health"
-          BOOTSTRAP_HOST=${BOOTSTRAP_URL#https://}
-          RESPONSE=$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=20&teamId=$VERCEL_ORG_ID")
-          MATCH=$(echo "$RESPONSE" | jq -r --arg host "$BOOTSTRAP_HOST" \
-            '.deployments[] | select(.target == "production" and .state == "READY" and .url == $host) | .url' | head -n 1)
-          test "$MATCH" = "$BOOTSTRAP_HOST" || { echo "Bootstrap deployment is not a READY production rollback target"; exit 1; }
-
-      - name: Record routing readiness evidence
-        if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
-        env:
+          DRY_RUN: ${{ steps.request.outputs.dry_run }}
+          DEPLOY_PREVIEW: ${{ steps.request.outputs.deploy_preview }}
+          VERIFICATION_STATUS: ${{ steps.sync.outputs.verification_status }}
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
-          BOOTSTRAP_URL: ${{ steps.bootstrap.outputs.bootstrap_url }}
-          NEW_VERCEL_TEAM_ID: ${{ steps.sync.outputs.new_team_id }}
-          NEW_VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
+        shell: bash
+        run: |
+          REQUIRED=false
+          if test "$DRY_RUN" = "false" && test "$DEPLOY_PREVIEW" = "true" && \
+             test "$VERIFICATION_STATUS" = "verified" && test -n "$PREVIEW_URL"; then
+            REQUIRED=true
+          fi
+          echo "bootstrap_required=$REQUIRED" >> "$GITHUB_OUTPUT"
+
+  bootstrap_production_rollback:
+    name: Create Protected Destination Rollback Target
+    needs: migrate_and_verify
+    if: needs.migrate_and_verify.outputs.bootstrap_required == 'true'
+    uses: ./.github/workflows/promoted-production-deploy.yml
+    with:
+      operation: vercel-account-bootstrap
+      commit_sha: ${{ needs.migrate_and_verify.outputs.expected_main_sha }}
+      migration_request_id: ${{ needs.migrate_and_verify.outputs.migration_request_id }}
+      destination_team_id: ${{ needs.migrate_and_verify.outputs.new_team_id }}
+      destination_project_id: ${{ needs.migrate_and_verify.outputs.new_project_id }}
+    secrets: inherit
+
+  record_routing_readiness:
+    name: Record Routing Readiness Evidence
+    needs: [migrate_and_verify, bootstrap_production_rollback]
+    if: needs.migrate_and_verify.outputs.bootstrap_required == 'true' && needs.bootstrap_production_rollback.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record verified destination evidence
+        env:
+          PREVIEW_URL: ${{ needs.migrate_and_verify.outputs.preview_url }}
+          BOOTSTRAP_URL: ${{ needs.bootstrap_production_rollback.outputs.bootstrap_url }}
+          NEW_VERCEL_TEAM_ID: ${{ needs.migrate_and_verify.outputs.new_team_id }}
+          NEW_VERCEL_PROJECT_ID: ${{ needs.migrate_and_verify.outputs.new_project_id }}
         run: |
           {
             echo "## Destination ready for audited routing activation"

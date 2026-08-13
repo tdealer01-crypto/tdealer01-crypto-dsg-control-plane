@@ -1,8 +1,8 @@
 # Vercel account and ENV migration
 
-This runbook moves decryptable application environment variables from the legacy DSG ONE Vercel project to a project in the new account. It verifies exact values in memory, verifies reconnected integration metadata, deploys a preview, and creates a healthy destination production deployment that can serve as the first rollback target.
+This runbook moves decryptable application environment variables from the legacy DSG ONE Vercel project to a project in the new account. It verifies exact values in memory, verifies reconnected integration metadata, deploys a preview, and then hands the verified destination to the protected `Promoted Production Deployment` workflow to create a healthy first rollback target.
 
-The migration does not switch existing user traffic. Account routing changes only through the reviewed `.github/vercel-routing.json` file after preview and bootstrap-production evidence is green. Later production releases remain behind the `Promoted Production Deployment` evidence, approval, health, and rollback workflow.
+The migration does not switch existing user traffic. Account routing changes only through the reviewed `.github/vercel-routing.json` file after preview and bootstrap-production evidence is green. Every production command—including the account bootstrap—remains isolated inside the `Promoted Production Deployment` workflow and its protected production environment.
 
 ## Safety contract
 
@@ -61,7 +61,7 @@ The live run performs this sequence:
 5. Upsert decryptable values while preserving type, target, and preview branch.
 6. Read the destination back and compare exact values in memory.
 7. Deploy and health-check a destination preview.
-8. Build and deploy the exact commit as a destination production bootstrap, verify `/api/health`, and verify that Vercel lists it as a READY production deployment.
+8. Pass the exact commit and verified destination IDs to the reusable, protected `Promoted Production Deployment` workflow. That workflow re-runs the migration tests and production dependency audit, builds and deploys the destination production bootstrap, verifies `/api/health`, and verifies that Vercel lists it as READY.
 9. Record the destination team/project IDs in the workflow summary. Existing traffic and deployment routing remain on the legacy project.
 10. After inspecting that evidence, update `.github/vercel-routing.json`: fill the `new` IDs and change `activeAccount` from `legacy` to `new` in a reviewed PR. No GitHub PAT or repository-variable mutation is required.
 
