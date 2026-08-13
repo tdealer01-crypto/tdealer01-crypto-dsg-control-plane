@@ -105,11 +105,18 @@ jobs:
           test "${CHECKED_OUT,,}" = "${EXPECTED_MAIN_SHA,,}" || { echo "Checked-out commit mismatch"; exit 1; }
           test "$CHECKED_OUT" = "$MAIN_HEAD" || { echo "Commit is not current main head"; exit 1; }
 
+      - name: Resolve destination Vercel authorization
+        id: destination_auth
+        env:
+          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CONFIGURED_NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          REQUESTED_NEW_VERCEL_TEAM_ID: ${{ steps.request.outputs.new_team_id }}
+          LEGACY_VERCEL_TEAM_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
+        run: node scripts/resolve-vercel-destination-auth.mjs
+
       - name: Validate migration configuration
         env:
           OLD_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          NEW_VERCEL_TEAM_ID: ${{ steps.request.outputs.new_team_id }}
           NEW_VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
           NEW_VERCEL_PROJECT_NAME: ${{ steps.request.outputs.new_project_name }}
         shell: bash
@@ -128,7 +135,9 @@ jobs:
       - name: Check migration scripts
         run: |
           node --check scripts/lib/vercel-env-sync.mjs
+          node --check scripts/lib/vercel-destination-auth.mjs
           node --check scripts/sync-vercel-envs.mjs
+          node --check scripts/resolve-vercel-destination-auth.mjs
           node --check scripts/resolve-vercel-env-migration-request.mjs
           node --check scripts/resolve-vercel-routing.mjs
 
@@ -154,8 +163,6 @@ jobs:
           OLD_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           OLD_VERCEL_TEAM_ID: team_n189mlAdVHR6cGGiaAwsKzQ0
           OLD_VERCEL_PROJECT_ID: prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW
-          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
-          NEW_VERCEL_TEAM_ID: ${{ steps.request.outputs.new_team_id }}
           NEW_VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
           NEW_VERCEL_PROJECT_NAME: ${{ steps.request.outputs.new_project_name }}
           NEW_VERCEL_GIT_REPOSITORY: ${{ github.repository }}
@@ -167,21 +174,19 @@ jobs:
       - name: Pull verified destination preview configuration
         if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
           VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
           VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
-        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$NEW_VERCEL_TOKEN"
 
       - name: Deploy destination preview
         id: preview
         if: steps.request.outputs.dry_run == 'false' && steps.request.outputs.deploy_preview == 'true' && steps.sync.outputs.verification_status == 'verified'
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
           VERCEL_ORG_ID: ${{ steps.sync.outputs.new_team_id }}
           VERCEL_PROJECT_ID: ${{ steps.sync.outputs.new_project_id }}
         shell: bash
         run: |
-          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$NEW_VERCEL_TOKEN" \
             --meta=migration_request="${{ steps.request.outputs.request_id }}" \
             --meta=migration_run="${{ github.run_id }}" \
             --meta=commit="${{ github.sha }}")

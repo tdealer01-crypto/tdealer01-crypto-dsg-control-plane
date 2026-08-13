@@ -83,7 +83,7 @@ jobs:
       - name: Resolve audited Vercel routing
         env:
           LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
         run: node scripts/resolve-vercel-routing.mjs
       - name: Verify Vercel credentials
         shell: bash

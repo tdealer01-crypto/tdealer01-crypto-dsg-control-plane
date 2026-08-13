@@ -19,9 +19,9 @@ The migration does not switch existing user traffic. Account routing changes onl
 ## One-time configuration
 
 1. Ensure the Vercel GitHub App for the new account can access `tdealer01-crypto/tdealer01-crypto-dsg-control-plane`.
-2. Create a Vercel access token in the new account with access to the destination scope.
-3. Add that token as the GitHub Actions secret `VERCEL_TOKEN_NEW`. Prefer a repository secret so both the `preview` and `Production – dsg-qubo-api` environments can use it. If environment-scoped secrets are required, add the same secret name to both environments.
-4. Keep the existing `VERCEL_TOKEN` secret during migration; it is used only to read the legacy project.
+2. If the existing `VERCEL_TOKEN` already has access to exactly one non-legacy Vercel team, the workflow proves that scope through the Vercel Teams API and safely reuses the token with the distinct destination team ID.
+3. Otherwise, create a Vercel access token in the new account and add it as the GitHub Actions secret `VERCEL_TOKEN_NEW`. Prefer a repository secret so both the `preview` and `Production – dsg-qubo-api` environments can use it. If environment-scoped secrets are required, add the same secret name to both environments.
+4. Keep the existing `VERCEL_TOKEN` secret during migration; it remains the source credential and is reused for the destination only after the distinct-team authorization probe passes.
 5. Never paste either token into a PR, issue, workflow input, log, or chat.
 
 ## Run the migration without clicking Actions
