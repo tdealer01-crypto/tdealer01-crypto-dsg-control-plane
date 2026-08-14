@@ -5,7 +5,7 @@ const requiredPaths = [
   'package.json',
   'tsconfig.json',
   'next.config.js',
-  'middleware.ts',
+  'proxy.ts',
   'vitest.config.mts',
   'playwright.config.ts',
   'tailwind.config.js',

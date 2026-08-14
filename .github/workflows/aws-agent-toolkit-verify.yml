@@ -1,0 +1,25 @@
+name: Verify AWS Agent Toolkit Integration
+
+on:
+  pull_request:
+    paths:
+      - '.mcp.json'
+      - '.github/workflows/cdk-deploy.yml'
+      - '.github/workflows/aws-agent-toolkit-verify.yml'
+      - 'scripts/verify-aws-agent-toolkit.mjs'
+      - 'skills/dsg-aws-agent-toolkit/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify repository AWS Agent Toolkit contract
+        run: node scripts/verify-aws-agent-toolkit.mjs

@@ -15,19 +15,35 @@ function withTimeoutFetch(input: RequestInfo | URL, init?: RequestInit): Promise
   }).finally(() => clearTimeout(timeout));
 }
 
+/**
+ * Prefer Supabase's modern backend-only secret API key and retain the legacy
+ * service_role key as a compatibility fallback during migration.
+ */
+export function getSupabaseServerCredential(): string | null {
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
+  if (secretKey) return secretKey;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return serviceRoleKey || null;
+}
+
+export function hasSupabaseServerCredential(): boolean {
+  return Boolean(getSupabaseServerCredential());
+}
+
 export function getSupabaseAdmin() {
   if (adminClient) {
     return adminClient;
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serverCredential = getSupabaseServerCredential();
 
-  if (!url || !serviceRoleKey) {
+  if (!url || !serverCredential) {
     throw new Error('Missing Supabase server environment variables');
   }
 
-  adminClient = createClient<Database>(url, serviceRoleKey, {
+  adminClient = createClient<Database>(url, serverCredential, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

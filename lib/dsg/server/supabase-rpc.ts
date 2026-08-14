@@ -31,9 +31,13 @@ export function getDsgSupabaseRpcConfig(userAccessToken?: string): DsgSupabaseRp
     'SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_URL',
   ]);
+  // Prefer the control-plane server credential. The DSG ONE alias is a
+  // compatibility fallback for older deployments and must not shadow a valid
+  // control-plane secret.
   const key = firstEnv([
-    'DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_SECRET_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
+    'DSG_ONE_V1_SUPABASE_SERVICE_ROLE_KEY',
     'SUPABASE_ANON_KEY',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
@@ -43,6 +47,25 @@ export function getDsgSupabaseRpcConfig(userAccessToken?: string): DsgSupabaseRp
   if (!key.value) throw new Error(`DSG_SUPABASE_KEY_REQUIRED:${key.names.join('|')}`);
 
   return { url: url.value.replace(/\/$/, ''), key: key.value, userAccessToken };
+}
+
+
+function isLegacySupabaseApiKey(key: string): boolean {
+  // Legacy anon/service_role keys are JWTs and must also be sent as Bearer.
+  // Modern sb_publishable_ and sb_secret_ keys authenticate via apikey only.
+  return !key.startsWith('sb_publishable_') && !key.startsWith('sb_secret_');
+}
+
+function buildSupabaseHeaders(
+  config: DsgSupabaseRpcConfig,
+): Record<string, string> {
+  const bearer = config.userAccessToken
+    ?? (isLegacySupabaseApiKey(config.key) ? config.key : undefined);
+
+  return {
+    apikey: config.key,
+    ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+  };
 }
 
 function parseJsonBody<T>(text: string): T | DsgRpcError | null {
@@ -57,8 +80,7 @@ export async function callDsgRpc<T>(
   const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
     method: 'POST',
     headers: {
-      apikey: config.key,
-      Authorization: `Bearer ${config.userAccessToken ?? config.key}`,
+      ...buildSupabaseHeaders(config),
       'Content-Type': 'application/json',
       'Content-Profile': 'public',
       Prefer: 'return=representation',
@@ -89,8 +111,7 @@ export async function readDsgRest<T>(
 
   const response = await fetch(url, {
     headers: {
-      apikey: config.key,
-      Authorization: `Bearer ${config.key}`,
+      ...buildSupabaseHeaders(config),
       Accept: 'application/json',
       'Accept-Profile': 'public',
     },

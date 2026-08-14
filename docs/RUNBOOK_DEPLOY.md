@@ -42,16 +42,102 @@ Set required production values in Vercel project settings using `.env.example` a
   - `DSG_CORE_MODE`
   - `DSG_CORE_URL` (only when using remote mode)
   - `DSG_CORE_API_KEY` (only when using remote mode)
-- Stripe:
+- Stripe (verified by grepping `process.env.STRIPE_*` and reading
+  `lib/billing/pricing-catalog.ts` / `lib/billing/metered.ts` /
+  `lib/billing/reconciliation.ts` / `lib/billing/revenue-readiness.ts`
+  directly on 2026-08-04 — see "Billing-critical env vars" below for the
+  full verified list and file citations):
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
-  - `STRIPE_PRICE_PRO`
-  - `STRIPE_PRICE_BUSINESS`
+  - `STRIPE_METER_ID`
+  - `STRIPE_METER_EVENT_NAME`
+  - `STRIPE_PRICE_PRO_MONTHLY` / `STRIPE_PRICE_PRO_YEARLY`
+  - `STRIPE_PRICE_BUSINESS_MONTHLY` / `STRIPE_PRICE_BUSINESS_YEARLY`
+  - `STRIPE_PRICE_ENTERPRISE_MONTHLY` / `STRIPE_PRICE_ENTERPRISE_YEARLY`
+  - `STRIPE_PRICE_PRO` / `STRIPE_PRICE_BUSINESS` (legacy monthly-only
+    fallback, still read)
 - Billing:
   - `OVERAGE_RATE_USD`
+- Cron auth (required for every `/api/cron/**` route, including all billing
+  crons — routes fail closed with HTTP 503 when this is absent, verified in
+  `app/api/cron/flush-meter-outbox/route.ts` and
+  `app/api/cron/reconcile-meter/route.ts`):
+  - `CRON_SECRET`
 - Access control:
   - `ACCESS_MODE`
   - `ACCESS_POLICY`
+
+### Billing-critical env vars (verified 2026-08-04)
+
+Verified by grepping `process.env.STRIPE_` and `process.env.CRON_SECRET`
+across the repository and reading each consuming file directly. Names only
+— never values.
+
+Core billing/metering pipeline (required for the Checkout → webhook →
+entitlement → quota-gate → metered-billing → Stripe-charge flow described
+in `PROJECT_TRUTH.md`):
+
+- `STRIPE_SECRET_KEY` — read in `lib/billing/metered.ts`,
+  `lib/billing/reconciliation.ts`, `app/api/billing/checkout/route.ts`,
+  `app/api/billing/webhook/route.ts`, and others.
+- `STRIPE_WEBHOOK_SECRET` — verifies inbound webhook signatures in
+  `app/api/billing/webhook/route.ts`.
+- `STRIPE_METER_EVENT_NAME` — the Billing Meter event name reported by
+  `lib/billing/metered.ts`'s `reportMeterEvent()`; also required (alongside
+  `STRIPE_SECRET_KEY`) for `isMeteredBillingConfigured()` to return true.
+- `STRIPE_METER_ID` — read in `lib/billing/reconciliation.ts` (meter
+  reconciliation) and `lib/stripe-products.ts` (setup tooling). Listed as
+  optional in `lib/billing/revenue-readiness.ts`'s `OPTIONAL_ENV`, since it
+  unlocks reconciliation/setup rather than blocking the core charge loop.
+- `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_YEARLY`,
+  `STRIPE_PRICE_BUSINESS_MONTHLY`, `STRIPE_PRICE_BUSINESS_YEARLY`,
+  `STRIPE_PRICE_ENTERPRISE_MONTHLY`, `STRIPE_PRICE_ENTERPRISE_YEARLY` — the
+  env-first price IDs read via `GATE_PLANS[plan].priceEnv[interval]` in
+  `lib/billing/pricing-catalog.ts`, and consumed by
+  `app/api/billing/checkout/route.ts` and inbound-webhook plan derivation
+  in `lib/billing/metered.ts`'s `getPriceMap()`.
+- `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS` — legacy monthly-only
+  fallback price envs, still read by `getLegacyMonthlyPriceId()` in
+  `lib/billing/pricing-catalog.ts` and by `lib/billing/metered.ts`'s
+  `getPriceMap()`.
+- `STRIPE_PRICE_MCP_MONTHLY` — the MCP API subscription price env,
+  referenced via `MCP_SUBSCRIPTION.mcp_api.priceEnv` in
+  `lib/billing/pricing-catalog.ts`. Not present in `.env.example` as of
+  this writing (verified by grep) — add it explicitly if MCP subscription
+  checkout is in scope for the target environment.
+- `CRON_SECRET` — required for `/api/cron/flush-meter-outbox` and
+  `/api/cron/reconcile-meter` (the two crons that drive the outbox
+  pattern below) to authorize, and for every other `/api/cron/**` route in
+  the repo. Already present in `.env.example`; add it to Vercel project env
+  vars if not already set.
+
+Additional Stripe env vars found by the same grep exist in the repo but
+back a separate feature (the Stripe App/Connect marketplace-install flow,
+not the core billing/metering loop): `STRIPE_CLIENT_ID`,
+`STRIPE_CLIENT_SECRET`, `STRIPE_SANDBOX_SECRET_KEY`,
+`STRIPE_CONNECT_CLIENT_ID`, `STRIPE_SANDBOX_CONNECT_CLIENT_ID`,
+`STRIPE_CONNECT_STATE_SECRET`, `STRIPE_CONNECT_CALLBACK_PATH`,
+`STRIPE_APP_WEBHOOK_SECRET`, `STRIPE_APP_ORIGIN`,
+`STRIPE_LIVE_INSTALL_URL`, `STRIPE_SANDBOX_INSTALL_URL`,
+`STRIPE_OAUTH_REDIRECT_URIS`, `STRIPE_SECRET_STORE_MASTER_KEY`,
+`STRIPE_MCP_PRICE_ID`, `STRIPE_PRICE_TRIAL`, `STRIPE_PRICE_AGENCY`,
+`STRIPE_PRICE_ENTERPRISE`. Do not conflate these with the billing-critical
+list above without re-checking their consuming routes.
+
+### Outbox pattern — canonical metering flow
+
+`lib/billing/metered.ts` writes a `billing_meter_outbox` row *before*
+calling Stripe's Billing Meter Events API for a governed execution. If the
+live call fails, the row stays `pending`/`failed` instead of the usage
+event being silently dropped. `/api/cron/flush-meter-outbox` (schedule
+`*/10 * * * *` in `vercel.json`) retries those rows via
+`flushMeterOutbox()`, and `/api/cron/reconcile-meter` (schedule `0 * * * *`
+in `vercel.json`) cross-checks the outbox against Stripe's own records via
+`lib/billing/reconciliation.ts` and can requeue stuck rows. Both crons
+require `CRON_SECRET` and fail closed (HTTP 503) when it is absent —
+verified directly in each route file. Treat the outbox plus these two
+crons, not the inline Stripe call alone, as the source of truth for
+whether a governed execution's metered charge actually reached Stripe.
 
 ### Notes on required env vars
 - `APP_URL` or `NEXT_PUBLIC_APP_URL` is required for signup and auth confirmation flows.

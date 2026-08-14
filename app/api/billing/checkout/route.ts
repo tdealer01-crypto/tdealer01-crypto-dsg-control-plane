@@ -7,6 +7,7 @@ import { ensureUserWorkspace, isWorkspaceFailure } from '../../../../lib/auth/en
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
+import { getMeteredBillingConfiguration } from '../../../../lib/billing/metered';
 // Pricing/plan definitions live in the shared catalog — the single source
 // of truth for every price shown or charged (lib/billing/pricing-catalog.ts).
 import {
@@ -252,7 +253,18 @@ export async function POST(request: Request) {
         return handleApiError('api/billing/checkout', new Error('Missing Stripe price configuration'), { details: { plan, interval, stage: 'price-config' } });
       }
       metadata.plan_key = plan;
-      lineItems = [{ price: priceId, quantity: 1 }];
+
+      const planLineItems: NonNullable<Stripe.Checkout.SessionCreateParams['line_items']> = [
+        { price: priceId, quantity: 1 },
+      ];
+      const metering = getMeteredBillingConfiguration();
+      if (plan === 'pro' && metering.configured) {
+        // Metered Stripe Prices must not receive a fixed quantity. Stripe bills
+        // usage reported to the linked Billing Meter during the invoice period.
+        planLineItems.push({ price: metering.priceId });
+      }
+      lineItems = planLineItems;
+
       trialDays = PLAN_CONFIG[plan].trialDays;
       successUrl = `${appUrl}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
       cancelUrl = `${appUrl}/pricing?checkout=cancelled&plan=${plan}&interval=${interval}`;

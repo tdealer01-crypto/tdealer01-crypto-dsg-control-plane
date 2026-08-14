@@ -1,12 +1,11 @@
 #!/bin/bash
-# Phase 1 Verification Script: Check Stripe Setup
-# Run this to verify Stripe account is configured correctly before launch
+# Production verification script: Stripe + DSG ONE billing setup
 # Usage: bash scripts/verify-stripe-setup.sh
 
 set -e
 
 echo "=========================================="
-echo "DSG ONE Phase 1: Stripe Setup Verification"
+echo "DSG ONE: Stripe Production Verification"
 echo "=========================================="
 echo ""
 
@@ -18,12 +17,16 @@ if [ -z "$STRIPE_SECRET_KEY" ]; then
   MISSING_VARS+=("STRIPE_SECRET_KEY")
 fi
 
-if [ -z "$STRIPE_PUBLISHABLE_KEY" ]; then
-  MISSING_VARS+=("STRIPE_PUBLISHABLE_KEY")
-fi
-
 if [ -z "$STRIPE_WEBHOOK_SECRET" ]; then
   MISSING_VARS+=("STRIPE_WEBHOOK_SECRET")
+fi
+
+if [ -z "$STRIPE_PRICE_PRO_MONTHLY" ]; then
+  MISSING_VARS+=("STRIPE_PRICE_PRO_MONTHLY")
+fi
+
+if [ -z "$STRIPE_PRICE_ENTERPRISE_MONTHLY" ]; then
+  MISSING_VARS+=("STRIPE_PRICE_ENTERPRISE_MONTHLY")
 fi
 
 if [ -z "$STRIPE_METER_ID" ]; then
@@ -34,85 +37,90 @@ if [ -z "$STRIPE_METER_EVENT_NAME" ]; then
   MISSING_VARS+=("STRIPE_METER_EVENT_NAME")
 fi
 
+if [ -z "$STRIPE_PRICE_PRO_OVERAGE" ]; then
+  MISSING_VARS+=("STRIPE_PRICE_PRO_OVERAGE")
+fi
+
 if [ -z "$CRON_SECRET" ]; then
   MISSING_VARS+=("CRON_SECRET")
 fi
 
 if [ ${#MISSING_VARS[@]} -gt 0 ]; then
-  echo "❌ Missing environment variables:"
+  echo "❌ Full automatic billing is not configured. Missing:"
   for var in "${MISSING_VARS[@]}"; do
     echo "   - $var"
   done
   echo ""
-  echo "Set these variables in Vercel or .env.production before proceeding."
+  echo "Fixed subscription checkout may still be live, but Pro overage must remain fail-closed."
+  echo "Set verified values in Render before declaring overage active."
   exit 1
 fi
 
-echo "✅ All required environment variables present"
+echo "✅ All required fixed + usage billing variables present"
 echo ""
+
+if [ "$STRIPE_METER_EVENT_NAME" != "dsg_execution_overage" ]; then
+  echo "❌ STRIPE_METER_EVENT_NAME must match repository billing contract: dsg_execution_overage"
+  exit 1
+fi
 
 # Check if Stripe CLI is installed
 if ! command -v stripe &> /dev/null; then
-  echo "⚠️  Stripe CLI not found. Install from https://stripe.com/docs/stripe-cli"
-  echo "   Skipping Stripe API verification (can be done manually)"
+  echo "⚠️  Stripe CLI not found."
+  echo "   Skipping provider-object verification; environment checks above still apply."
   echo ""
 else
   echo "✓ Stripe CLI found"
   echo ""
 
-  # Verify Stripe API access
   echo "Testing Stripe API connectivity..."
   if stripe products list --limit 1 > /dev/null 2>&1; then
     echo "✅ Stripe API connectivity OK"
   else
     echo "❌ Stripe API connectivity failed"
-    echo "   Check STRIPE_SECRET_KEY is correct and Stripe CLI is authenticated"
     exit 1
   fi
   echo ""
 
-  # Check products exist
-  echo "Checking Stripe products..."
-  PRODUCTS=$(stripe products list --limit 100 --format=json 2>/dev/null | grep -c '"name"' || true)
-  if [ "$PRODUCTS" -ge 3 ]; then
-    echo "✅ Found $PRODUCTS products (expected: Pro, Business, Enterprise, + skills bundles)"
-  else
-    echo "⚠️  Only found $PRODUCTS products (expected: 8+)"
-    echo "   Make sure Pro, Business, Enterprise, and Skills bundles are created in Stripe"
-  fi
+  echo "Checking configured fixed prices..."
+  stripe prices retrieve "$STRIPE_PRICE_PRO_MONTHLY" > /dev/null
+  stripe prices retrieve "$STRIPE_PRICE_ENTERPRISE_MONTHLY" > /dev/null
+  echo "✅ Pro and Enterprise fixed prices resolve"
   echo ""
 
-  # Check prices exist
-  echo "Checking Stripe prices..."
-  PRICES=$(stripe prices list --limit 100 --format=json 2>/dev/null | grep -c '"object": "price"' || true)
-  if [ "$PRICES" -ge 6 ]; then
-    echo "✅ Found $PRICES prices (expected: Pro month/year, Business month/year, Enterprise month/year, + bundles)"
-  else
-    echo "⚠️  Only found $PRICES prices (expected: 12+)"
-    echo "   Make sure monthly + yearly prices are created for each plan"
-  fi
-  echo ""
-
-  # Check meters
-  echo "Checking Stripe billing meters..."
-  METERS=$(stripe billing meters list --limit 10 --format=json 2>/dev/null | grep -c '"event_name"' || true)
-  if [ "$METERS" -ge 1 ]; then
-    echo "✅ Found $METERS meter(s)"
-  else
-    echo "❌ No billing meters found!"
-    echo "   Create a meter named 'dsg_execution' in Stripe Dashboard → Billing → Meters"
+  echo "Checking configured Billing Meter..."
+  METER_JSON=$(stripe billing meters retrieve "$STRIPE_METER_ID" --format=json 2>/dev/null || true)
+  if [ -z "$METER_JSON" ]; then
+    echo "❌ STRIPE_METER_ID does not resolve"
     exit 1
   fi
+  if ! printf '%s' "$METER_JSON" | grep -q 'dsg_execution_overage'; then
+    echo "❌ Billing Meter event name does not match dsg_execution_overage"
+    exit 1
+  fi
+  echo "✅ Billing Meter resolves with expected event name"
   echo ""
 
-  # Check webhook endpoints
-  echo "Checking Stripe webhook endpoints..."
-  WEBHOOKS=$(stripe webhook_endpoints list --format=json 2>/dev/null | grep -c '"url"' || true)
-  if [ "$WEBHOOKS" -ge 1 ]; then
-    echo "✅ Found $WEBHOOKS webhook endpoint(s)"
+  echo "Checking configured Pro overage price..."
+  OVERAGE_JSON=$(stripe prices retrieve "$STRIPE_PRICE_PRO_OVERAGE" --format=json 2>/dev/null || true)
+  if [ -z "$OVERAGE_JSON" ]; then
+    echo "❌ STRIPE_PRICE_PRO_OVERAGE does not resolve"
+    exit 1
+  fi
+  if ! printf '%s' "$OVERAGE_JSON" | grep -q "$STRIPE_METER_ID"; then
+    echo "❌ Pro overage price is not linked to the configured Billing Meter"
+    exit 1
+  fi
+  echo "✅ Pro overage price resolves and references the configured meter"
+  echo ""
+
+  echo "Checking canonical Render billing webhook..."
+  WEBHOOKS_JSON=$(stripe webhook_endpoints list --limit 100 --format=json 2>/dev/null || true)
+  if printf '%s' "$WEBHOOKS_JSON" | grep -q 'tdealer01-crypto-dsg-control-plane.onrender.com/api/billing/webhook'; then
+    echo "✅ Canonical Render billing webhook found"
   else
-    echo "⚠️  No webhook endpoints configured"
-    echo "   Configure: https://your-production-url/api/billing/webhook"
+    echo "❌ Canonical Render billing webhook not found"
+    exit 1
   fi
   echo ""
 fi
@@ -121,35 +129,22 @@ fi
 echo "Checking API routes..."
 ROUTES_OK=true
 
-if [ ! -f "app/api/billing/checkout/route.ts" ]; then
-  echo "❌ /api/billing/checkout not found"
-  ROUTES_OK=false
-fi
-
-if [ ! -f "app/api/billing/webhook/route.ts" ]; then
-  echo "❌ /api/billing/webhook not found"
-  ROUTES_OK=false
-fi
-
-if [ ! -f "app/api/revenue/events/route.ts" ]; then
-  echo "❌ /api/revenue/events not found"
-  ROUTES_OK=false
-fi
-
-if [ ! -f "app/api/cron/billing-sync/route.ts" ]; then
-  echo "❌ /api/cron/billing-sync not found"
-  ROUTES_OK=false
-fi
-
-if [ ! -f "app/api/cron/flush-meter-outbox/route.ts" ]; then
-  echo "❌ /api/cron/flush-meter-outbox not found"
-  ROUTES_OK=false
-fi
+for route in \
+  "app/api/billing/checkout/route.ts" \
+  "app/api/billing/webhook/route.ts" \
+  "app/api/billing/meter-health/route.ts" \
+  "app/api/revenue/events/route.ts" \
+  "app/api/cron/flush-meter-outbox/route.ts"
+do
+  if [ ! -f "$route" ]; then
+    echo "❌ Missing $route"
+    ROUTES_OK=false
+  fi
+done
 
 if [ "$ROUTES_OK" = true ]; then
   echo "✅ All required API routes present"
 else
-  echo "❌ Some API routes missing"
   exit 1
 fi
 echo ""
@@ -157,82 +152,41 @@ echo ""
 # Check database migrations
 echo "Checking database migrations..."
 MIGRATIONS_OK=true
-
-if ! grep -q "billing_customers" supabase/migrations/*.sql; then
-  echo "❌ billing_customers migration not found"
-  MIGRATIONS_OK=false
-fi
-
-if ! grep -q "billing_subscriptions" supabase/migrations/*.sql; then
-  echo "❌ billing_subscriptions migration not found"
-  MIGRATIONS_OK=false
-fi
-
-if ! grep -q "billing_meter_outbox" supabase/migrations/*.sql; then
-  echo "❌ billing_meter_outbox migration not found"
-  MIGRATIONS_OK=false
-fi
-
-if ! grep -q "revenue_events" supabase/migrations/*.sql; then
-  echo "❌ revenue_events migration not found"
-  MIGRATIONS_OK=false
-fi
+for marker in billing_customers billing_subscriptions billing_meter_outbox revenue_events dsg_gate_usage
+do
+  if ! grep -q "$marker" supabase/migrations/*.sql; then
+    echo "❌ Migration marker not found: $marker"
+    MIGRATIONS_OK=false
+  fi
+done
 
 if [ "$MIGRATIONS_OK" = true ]; then
-  echo "✅ All required database migrations present"
+  echo "✅ Required database migrations present"
 else
-  echo "❌ Some migrations missing"
   exit 1
 fi
 echo ""
 
 # Check libraries
 echo "Checking billing libraries..."
-LIBS_OK=true
-
-if [ ! -f "lib/billing/metered.ts" ]; then
-  echo "❌ lib/billing/metered.ts not found"
-  LIBS_OK=false
-fi
-
-if [ ! -f "lib/billing/pricing-catalog.ts" ]; then
-  echo "❌ lib/billing/pricing-catalog.ts not found"
-  LIBS_OK=false
-fi
-
-if [ ! -f "lib/revenue/events.ts" ]; then
-  echo "❌ lib/revenue/events.ts not found"
-  LIBS_OK=false
-fi
-
-if [ "$LIBS_OK" = true ]; then
-  echo "✅ All required billing libraries present"
-else
-  echo "❌ Some libraries missing"
-  exit 1
-fi
+for lib in lib/billing/metered.ts lib/billing/pricing-catalog.ts lib/billing/fulfillment.ts lib/revenue/events.ts
+do
+  if [ ! -f "$lib" ]; then
+    echo "❌ Missing $lib"
+    exit 1
+  fi
+done
+echo "✅ Required billing libraries present"
 echo ""
 
-# Summary
 echo "=========================================="
-echo "✅ Phase 1 Verification Complete!"
+echo "✅ Stripe billing configuration is evidence-ready"
 echo "=========================================="
 echo ""
-echo "Next steps:"
-echo "1. Set environment variables in Vercel:"
-echo "   - STRIPE_SECRET_KEY"
-echo "   - STRIPE_PUBLISHABLE_KEY"
-echo "   - STRIPE_WEBHOOK_SECRET"
-echo "   - STRIPE_METER_ID"
-echo "   - STRIPE_METER_EVENT_NAME"
-echo "   - CRON_SECRET"
+echo "Final production proof still requires a controlled real customer flow:"
+echo "1. authenticated Pro Checkout on Render"
+echo "2. Stripe checkout/subscription webhook received by Render"
+echo "3. atomic entitlement + Activation Proof persisted"
+echo "4. usage beyond included quota appears on the linked Stripe meter/invoice"
 echo ""
-echo "2. Deploy to production:"
-echo "   git push origin main"
-echo ""
-echo "3. Verify deployment:"
-echo "   curl https://your-production-url/api/billing/meter-health"
-echo ""
-echo "4. Test first checkout:"
-echo "   bash scripts/test-checkout.sh"
-echo ""
+echo "Do not create fake production billing events merely to make this check pass."

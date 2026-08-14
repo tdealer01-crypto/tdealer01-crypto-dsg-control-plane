@@ -3,7 +3,7 @@ name: Set Stripe Price Env Vars
 on:
   # Sync Stripe price ID env vars into Vercel production.
   # Price IDs are public identifiers (exposed in Checkout URLs), not secrets.
-  # Requires repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
+  # Requires VERCEL_TOKEN and, when routing selects the new account, VERCEL_TOKEN_NEW.
   # After this succeeds, redeploy production (push to main or dispatch
   # vercel-prod-cli-bypass.yml) so the new env vars take effect.
   #
@@ -58,15 +58,23 @@ jobs:
     name: Sync Stripe price IDs to Vercel production env
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # VERCEL_* secrets are scoped to the "production" GitHub environment
-    # (same as vercel-prod-cli-bypass.yml), not repo-level secrets.
     environment: production
     steps:
-      - name: Validate required secrets
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Resolve audited Vercel routing
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
+        run: node scripts/resolve-vercel-routing.mjs
+
+      - name: Validate required secrets
         run: |
           missing=0
           for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
@@ -79,22 +87,11 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
       - name: Set Stripe price env vars
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           STRIPE_PRODUCT_ID: ${{ github.event.inputs.stripe_product_id }}
           STRIPE_PRICE_PRO_MONTHLY: ${{ github.event.inputs.price_pro_monthly }}
           STRIPE_PRICE_PRO_YEARLY: ${{ github.event.inputs.price_pro_yearly }}

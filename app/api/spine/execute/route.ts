@@ -7,9 +7,10 @@ import { buildCorsHeaders, buildPreflightResponse } from '../../../../lib/securi
 import { applyRateLimit, buildRateLimitHeaders, getRateLimitKey } from '../../../../lib/security/rate-limit';
 import { handleApiError } from '../../../../lib/security/api-error';
 import { logQuotaConsumption } from '../../../../lib/database/quotas';
-import { checkQuota, incrementQuota } from '../../../../lib/usage/quota';
+import { checkQuota } from '../../../../lib/usage/quota';
 import { fireWebhook } from '../../../../lib/webhooks/deliver';
 import { meterExecution } from '../../../../lib/billing/metered';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
 import { StopReason } from '../../../../lib/types/task';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
@@ -160,9 +161,13 @@ export async function POST(request: Request) {
     // Check if this is first execution for agent (before quota check)
     const { count: agentExecutions } = await (async () => {
       try {
-        // Try to get execution count, but don't fail if unavailable
-        const result = await (global as any).__supabaseExecutionCount?.(agentId);
-        return { count: result?.count || 0 };
+        const supabase = getSupabaseAdmin();
+        const { count, error } = await supabase
+          .from('executions')
+          .select('id', { count: 'exact', head: true })
+          .eq('agent_id', agentId);
+        if (error) throw error;
+        return { count: count ?? 0 };
       } catch {
         return { count: 0 };
       }
@@ -335,9 +340,11 @@ export async function POST(request: Request) {
       // Fire-and-forget side effects must not become unhandled rejections —
       // a rejected floating promise can take down the worker after the
       // response has already been returned.
-      void incrementQuota(orgId, agentId).catch((error) => {
-        console.error('[api/spine/execute] incrementQuota failed:', error);
-      });
+      //
+      // NOTE: usage_counters.executions is already incremented atomically
+      // inside the runtime_commit_execution RPC (invoked by
+      // executeSpineIntent() above), so no app-layer incrementQuota() call
+      // is made here — doing so would double-count every execution.
       void fireWebhook(orgId, 'execution.completed', {
         agent_id: agentId,
         decision: decision ?? null,

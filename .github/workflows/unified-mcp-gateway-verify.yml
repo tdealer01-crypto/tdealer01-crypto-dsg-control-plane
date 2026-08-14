@@ -1,0 +1,26 @@
+name: Verify Unified DSG MCP Gateway
+
+on:
+  pull_request:
+    paths:
+      - 'app/api/mcp/route.ts'
+      - 'lib/mcp/unified-auth.ts'
+      - 'lib/mcp/unified-tools.ts'
+      - 'scripts/verify-unified-mcp-gateway.mjs'
+      - '.github/workflows/unified-mcp-gateway-verify.yml'
+      - '.github/workflows/cdk-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify unified gateway contract
+        run: node scripts/verify-unified-mcp-gateway.mjs

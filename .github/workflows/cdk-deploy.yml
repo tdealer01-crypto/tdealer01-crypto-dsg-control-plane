@@ -1,4 +1,5 @@
 name: CDK Deploy Infrastructure
+run-name: DSG CDK ${{ inputs.environment }} ${{ inputs.idempotency_key }}
 
 on:
   workflow_dispatch:
@@ -13,13 +14,25 @@ on:
           - staging
           - prod
       approval_required:
-        description: 'Require approval before deploy'
+        description: 'Require protected GitHub Environment approval contract'
         required: false
         default: 'true'
         type: choice
         options:
           - 'true'
           - 'false'
+      idempotency_key:
+        description: 'Stable request identifier; reuse on retries of the same intended deployment'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: dsg-cdk-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -30,30 +43,35 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: dsg-cdk-validate
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Install CDK dependencies
-        run: |
-          cd infra/cdk
-          npm ci
+        run: npm ci
+        working-directory: infra/cdk
 
       - name: Build CDK
-        run: |
-          cd infra/cdk
-          npm run build
+        run: npm run build
+        working-directory: infra/cdk
 
       - name: Synthesize CDK
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          cd infra/cdk
-          npx cdk synth
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: npx cdk synth "DSGOneStack-${ENVIRONMENT}" -c environment="${ENVIRONMENT}"
+        working-directory: infra/cdk
 
       - name: Upload CloudFormation template
         uses: actions/upload-artifact@v4
         with:
-          name: cdk-templates
+          name: cdk-templates-${{ inputs.environment }}
           path: infra/cdk/cdk.out/
 
   plan:
@@ -65,26 +83,41 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: dsg-cdk-plan
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Install dependencies
+        run: npm ci
+        working-directory: infra/cdk
+
+      - name: Enforce production approval contract
+        shell: bash
         run: |
-          cd infra/cdk
-          npm ci
+          if [[ "${{ inputs.environment }}" == "prod" && "${{ inputs.approval_required }}" != "true" ]]; then
+            echo "Production deployment requires approval_required=true."
+            exit 1
+          fi
 
       - name: Generate deployment plan
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          cd infra/cdk
-          npx cdk diff > deployment-plan.txt 2>&1 || true
+          npx cdk diff "DSGOneStack-${ENVIRONMENT}" -c environment="${ENVIRONMENT}" > deployment-plan.txt 2>&1
           cat deployment-plan.txt
+        working-directory: infra/cdk
 
       - name: Upload deployment plan
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-plan
+          name: deployment-plan-${{ inputs.environment }}
           path: infra/cdk/deployment-plan.txt
 
   deploy:
@@ -98,75 +131,42 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials with GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: cdk-deploy
+          role-session-name: dsg-cdk-deploy
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install CDK
-        run: |
-          npm install -g aws-cdk
-
       - name: Install dependencies
-        run: |
-          cd infra/cdk
-          npm ci
+        run: npm ci
+        working-directory: infra/cdk
 
       - name: Build CDK
-        run: |
-          cd infra/cdk
-          npm run build
+        run: npm run build
+        working-directory: infra/cdk
 
-      - name: Deploy CDK Stack
+      - name: Deploy approved CDK stack
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          cd infra/cdk
-          APPROVE_FLAG=""
-          if [ "${{ inputs.approval_required }}" = "false" ]; then
-            APPROVE_FLAG="--require-approval never"
-          fi
-          npx cdk deploy dsg-one-$ENVIRONMENT $APPROVE_FLAG --outputs-file deployment-outputs.json
-
-      - name: Capture deployment outputs
-        if: success()
-        run: |
-          cd infra/cdk
-          if [ -f deployment-outputs.json ]; then
-            cat deployment-outputs.json
-            echo "deployment_outputs=$(cat deployment-outputs.json | jq -c .)" >> $GITHUB_ENV
-          fi
-
-      - name: Post deployment status
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const status = '${{ job.status }}';
-            const environment = '${{ inputs.environment }}';
-            const message = `CDK Deployment to ${environment}: ${status.toUpperCase()}`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
-            }).catch(() => {
-              console.log('No issue context, skipping comment');
-            });
+          # Human approval belongs to the protected GitHub Environment.
+          # CDK's interactive approval prompt cannot safely run in CI.
+          npx cdk deploy "DSGOneStack-$ENVIRONMENT" \
+            -c environment="$ENVIRONMENT" \
+            --require-approval never \
+            --outputs-file deployment-outputs.json
+        working-directory: infra/cdk
 
       - name: Upload deployment outputs
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-outputs
+          name: deployment-outputs-${{ inputs.environment }}
           path: infra/cdk/deployment-outputs.json
 
   verify:
@@ -177,83 +177,90 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials with GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: cdk-verify
+          role-session-name: dsg-cdk-verify
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Verify stack creation
+      - name: Capture CloudFormation evidence
         env:
           ENVIRONMENT: ${{ inputs.environment }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          STACK_NAME="dsg-one-${ENVIRONMENT}"
-          REGION="${{ secrets.AWS_REGION }}"
-
-          echo "Checking CloudFormation stack: $STACK_NAME"
+          mkdir -p evidence/aws
           aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --region "$REGION" \
-            --query 'Stacks[0].StackStatus'
+            --stack-name "DSGOneStack-${ENVIRONMENT}" \
+            --region "$AWS_REGION" \
+            --output json > evidence/aws/cloudformation-stack.json
 
-      - name: Get stack outputs
+          STACK_STATUS=$(jq -r '.Stacks[0].StackStatus' evidence/aws/cloudformation-stack.json)
+          case "$STACK_STATUS" in
+            CREATE_COMPLETE|UPDATE_COMPLETE|IMPORT_COMPLETE)
+              echo "CloudFormation stack status: $STACK_STATUS"
+              ;;
+            *)
+              echo "Unexpected CloudFormation stack status: $STACK_STATUS"
+              exit 1
+              ;;
+          esac
+
+      - name: Capture ECS cluster evidence
         env:
           ENVIRONMENT: ${{ inputs.environment }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          STACK_NAME="dsg-one-${ENVIRONMENT}"
-          REGION="${{ secrets.AWS_REGION }}"
+          aws ecs describe-clusters \
+            --clusters "dsg-one-${ENVIRONMENT}" \
+            --region "$AWS_REGION" \
+            --output json > evidence/aws/ecs-cluster.json
 
-          echo "::group::Stack Outputs"
-          aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --region "$REGION" \
-            --query 'Stacks[0].Outputs' \
-            --output table
-          echo "::endgroup::"
+          CLUSTER_STATUS=$(jq -r '.clusters[0].status // "MISSING"' evidence/aws/ecs-cluster.json)
+          if [[ "$CLUSTER_STATUS" != "ACTIVE" ]]; then
+            echo "ECS cluster is not ACTIVE: $CLUSTER_STATUS"
+            exit 1
+          fi
+          echo "ECS cluster status: $CLUSTER_STATUS"
 
-      - name: Verify ECS service
+      - name: Write verification manifest
         env:
           ENVIRONMENT: ${{ inputs.environment }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          IDEMPOTENCY_KEY: ${{ inputs.idempotency_key }}
         run: |
-          CLUSTER_NAME="dsg-one-${ENVIRONMENT}"
-          SERVICE_NAME="dsg-service"
-          REGION="${{ secrets.AWS_REGION }}"
+          jq -n \
+            --arg environment "$ENVIRONMENT" \
+            --arg region "$AWS_REGION" \
+            --arg idempotency_key "$IDEMPOTENCY_KEY" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg commit_sha "${{ github.sha }}" \
+            '{
+              status: "PASS",
+              environment: $environment,
+              region: $region,
+              idempotency_key: $idempotency_key,
+              github_run_id: $run_id,
+              commit_sha: $commit_sha,
+              evidence: [
+                "cloudformation-stack.json",
+                "ecs-cluster.json"
+              ]
+            }' > evidence/aws/verification-manifest.json
 
-          echo "Checking ECS service: $SERVICE_NAME"
-          aws ecs describe-services \
-            --cluster "$CLUSTER_NAME" \
-            --services "$SERVICE_NAME" \
-            --region "$REGION" \
-            --query 'services[0].[serviceName,status,runningCount,desiredCount]' \
-            --output table
+      - name: Upload verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-verification-evidence-${{ inputs.environment }}
+          path: evidence/aws/
 
-      - name: Verify RDS database
-        env:
-          ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          DB_INSTANCE_ID="dsg-one-${ENVIRONMENT}-db"
-          REGION="${{ secrets.AWS_REGION }}"
-
-          echo "Checking RDS instance: $DB_INSTANCE_ID"
-          aws rds describe-db-instances \
-            --db-instance-identifier "$DB_INSTANCE_ID" \
-            --region "$REGION" \
-            --query 'DBInstances[0].[DBInstanceIdentifier,DBInstanceStatus,Engine]' \
-            --output table || echo "RDS instance not yet available"
-
-  rollback:
-    name: Rollback
+  rollback-guidance:
+    name: Rollback Guidance
     runs-on: ubuntu-latest
     needs: deploy
     if: failure()
     steps:
-      - name: Notify rollback
+      - name: Report safe recovery path
         run: |
-          echo "Deployment failed. Rollback can be performed by:"
-          echo "1. Running: npx cdk destroy --force"
-          echo "2. Or manually via AWS Console CloudFormation stack deletion"
+          echo "Deployment failed. No automatic destructive rollback is executed."
+          echo "Inspect CloudFormation events and the deployment-plan artifact before any delete/destroy action."

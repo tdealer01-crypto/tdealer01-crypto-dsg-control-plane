@@ -15,6 +15,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const enableVercelTelemetry = process.env.VERCEL === '1';
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
@@ -23,8 +25,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <GlobalNav />
             {children}
             <PublicChatWidget />
-            <Analytics />
-            <SpeedInsights />
+            {enableVercelTelemetry ? (
+              <>
+                <Analytics />
+                <SpeedInsights />
+              </>
+            ) : null}
           </ToastProvider>
         </LanguageProvider>
       </body>

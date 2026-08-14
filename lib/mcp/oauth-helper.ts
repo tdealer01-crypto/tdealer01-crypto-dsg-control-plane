@@ -10,6 +10,24 @@ function getStateSecret(): string {
   return process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '';
 }
 
+
+/**
+ * Resolve the public OAuth issuer when the app runs behind a reverse proxy.
+ * Render may expose an internal request URL, so prefer explicit configuration
+ * and otherwise honor the proxy's forwarded origin headers.
+ */
+export function getOAuthIssuer(request: Request): string {
+  const configured = process.env.MCP_OAUTH_ISSUER?.trim();
+  if (configured) return configured.replace(/\/+$/, '');
+
+  const url = new URL(request.url);
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const protocol = forwardedProto || url.protocol.replace(':', '');
+  const host = forwardedHost || url.host;
+  return protocol + '://' + host;
+}
+
 type StatePayload = {
   codeChallenge: string;
   nonce: string;
@@ -148,7 +166,7 @@ export function generateRefreshToken(): string {
  * not password hashing. SHA-256 is appropriate for this use case.
  */
 export function hashRefreshToken(token: string): string {
-  // codeql [js/weak-cryptographic-algorithm] opaque token hashing, not password hashing
+  // codeql [js/weak-cryptographic-algorithm]
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -188,17 +206,28 @@ export function getOAuthClientConfig() {
 }
 
 /**
- * Validate client credentials (server-to-server)
+ * Validate client credentials. PKCE clients are public when no server-side
+ * client secret is configured; confidential clients must present the secret.
  */
-export function validateClientCredentials(clientId: string, clientSecret: string): boolean {
+export function validateClientCredentials(
+  clientId: string,
+  clientSecret?: string,
+): boolean {
   const config = getOAuthClientConfig();
-  return clientId === config.clientId && clientSecret === config.clientSecret;
+  if (clientId !== config.clientId) return false;
+  if (!config.clientSecret) return !clientSecret;
+
+  if (!clientSecret) return false;
+  const expected = Buffer.from(config.clientSecret);
+  const provided = Buffer.from(clientSecret);
+  return expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
 }
 
 /**
  * Create OAuth authorization server metadata (RFC 8414)
  */
 export function getAuthorizationServerMetadata(issuer: string) {
+  const config = getOAuthClientConfig();
   return {
     issuer,
     authorization_endpoint: `${issuer}/api/mcp/oauth/authorize`,
@@ -209,10 +238,14 @@ export function getAuthorizationServerMetadata(issuer: string) {
     response_types_supported: ['code'],
     response_modes_supported: ['query'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
-    token_endpoint_auth_methods_supported: ['client_secret_basic'],
+    token_endpoint_auth_methods_supported: config.clientSecret
+      ? ['client_secret_post']
+      : ['none'],
     code_challenge_methods_supported: ['S256'],
-    revocation_endpoint_auth_methods_supported: ['client_secret_basic'],
-    service_documentation: 'https://tdealer01-crypto-dsg-control-plane.vercel.app/docs/mcp',
+    revocation_endpoint_auth_methods_supported: config.clientSecret
+      ? ['client_secret_post']
+      : ['none'],
+    service_documentation: `${issuer}/docs/mcp`,
   };
 }
 
@@ -221,7 +254,7 @@ export function getAuthorizationServerMetadata(issuer: string) {
  */
 export function getProtectedResourceMetadata(issuer: string) {
   return {
-    resource: `${issuer}/api/mcp-server`,
+    resource: `${issuer}/api/mcp`,
     authorization_server: issuer,
     access_token_format: 'opaque',
     access_token_type: 'Bearer',

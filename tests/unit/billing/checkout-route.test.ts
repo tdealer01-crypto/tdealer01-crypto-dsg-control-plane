@@ -68,6 +68,9 @@ beforeEach(() => {
   process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_pro_monthly';
   process.env.STRIPE_PRICE_BUSINESS_MONTHLY = 'price_biz_monthly';
   process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY = 'price_ent_monthly';
+  delete process.env.STRIPE_METER_EVENT_NAME;
+  delete process.env.STRIPE_METER_ID;
+  delete process.env.STRIPE_PRICE_PRO_OVERAGE;
   mockApplyRateLimit.mockResolvedValue(ALLOWED_RATE as any);
 });
 
@@ -109,7 +112,7 @@ describe('POST /api/billing/checkout', () => {
     expect(res.status).toBe(403);
   });
 
-  it('creates Stripe session for pro plan with correct price ID', async () => {
+  it('creates Stripe session for pro plan with correct fixed price ID', async () => {
     mockCreateClient.mockResolvedValue(
       makeSupabaseClient(
         { id: 'user-1' },
@@ -124,9 +127,49 @@ describe('POST /api/billing/checkout', () => {
     expect(body.plan).toBe('pro');
 
     const createCall = mockStripeInstance.checkout.sessions.create.mock.calls[0][0];
-    expect(createCall.line_items[0].price).toBe('price_pro_monthly');
+    expect(createCall.line_items).toEqual([
+      { price: 'price_pro_monthly', quantity: 1 },
+    ]);
     expect(createCall.subscription_data.trial_period_days).toBe(14);
     expect(createCall.payment_method_types).toBeUndefined();
+  });
+
+  it('attaches the metered overage price to Pro only when the complete meter contract is configured', async () => {
+    process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution_overage';
+    process.env.STRIPE_METER_ID = 'mtr_live_verified';
+    process.env.STRIPE_PRICE_PRO_OVERAGE = 'price_pro_overage';
+    mockCreateClient.mockResolvedValue(
+      makeSupabaseClient(
+        { id: 'user-1' },
+        { org_id: 'org-1', is_active: true, email: 'test@example.com' }
+      ) as any
+    );
+
+    const res = await POST(makeRequest({ plan: 'pro', interval: 'monthly' }));
+    expect(res.status).toBe(200);
+
+    const createCall = mockStripeInstance.checkout.sessions.create.mock.calls[0][0];
+    expect(createCall.line_items).toEqual([
+      { price: 'price_pro_monthly', quantity: 1 },
+      { price: 'price_pro_overage' },
+    ]);
+  });
+
+  it('does not attach an overage price when only part of the meter contract exists', async () => {
+    process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution_overage';
+    process.env.STRIPE_METER_ID = 'mtr_live_verified';
+    mockCreateClient.mockResolvedValue(
+      makeSupabaseClient(
+        { id: 'user-1' },
+        { org_id: 'org-1', is_active: true, email: 'test@example.com' }
+      ) as any
+    );
+
+    await POST(makeRequest({ plan: 'pro', interval: 'monthly' }));
+    const createCall = mockStripeInstance.checkout.sessions.create.mock.calls[0][0];
+    expect(createCall.line_items).toEqual([
+      { price: 'price_pro_monthly', quantity: 1 },
+    ]);
   });
 
   it('normalizes unknown plan to pro', async () => {
@@ -144,7 +187,10 @@ describe('POST /api/billing/checkout', () => {
     expect(createCall.line_items[0].price).toBe('price_pro_monthly');
   });
 
-  it('uses enterprise trial of 30 days', async () => {
+  it('uses enterprise trial of 30 days and never attaches Pro overage', async () => {
+    process.env.STRIPE_METER_EVENT_NAME = 'dsg_execution_overage';
+    process.env.STRIPE_METER_ID = 'mtr_live_verified';
+    process.env.STRIPE_PRICE_PRO_OVERAGE = 'price_pro_overage';
     mockCreateClient.mockResolvedValue(
       makeSupabaseClient(
         { id: 'user-1' },
@@ -154,6 +200,9 @@ describe('POST /api/billing/checkout', () => {
     await POST(makeRequest({ plan: 'enterprise', interval: 'monthly' }));
     const createCall = mockStripeInstance.checkout.sessions.create.mock.calls[0][0];
     expect(createCall.subscription_data.trial_period_days).toBe(30);
+    expect(createCall.line_items).toEqual([
+      { price: 'price_ent_monthly', quantity: 1 },
+    ]);
   });
 
   it('uses inline price_data for skills bundle', async () => {

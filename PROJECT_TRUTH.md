@@ -118,6 +118,97 @@ Do not upgrade beyond scaffold truth without new evidence:
 - no third-party certification claim
 - `certificationClaim = false` · `independentAuditClaim = false` per compliance-evidence-pack route footer
 
+## Billing / revenue architecture (verified 2026-08-04)
+
+This section supplements `docs/REPO_TRUTH.md`'s billing inventory and
+`docs/RUNBOOK_DEPLOY.md`'s env-var list. It reflects the current billing
+code as read directly in this worktree; it does not assert live-production
+behavior beyond what is stated.
+
+### The real Stripe pipeline
+
+A full Checkout → webhook → entitlement → quota-gate → metered-billing →
+Stripe-charge pipeline exists in code:
+
+- `app/api/billing/checkout/route.ts` creates the Stripe Checkout session
+  (plan/interval normalization, price resolution via
+  `lib/billing/pricing-catalog.ts`).
+- `app/api/billing/webhook/route.ts` is the canonical, signature-verified,
+  idempotent (`billing_events` table, unique `stripe_event_id`) webhook. On
+  `checkout.session.completed` / `customer.subscription.*` it upserts
+  `billing_subscriptions` and calls `fulfillSubscription()` /
+  `revokeSubscription()` (`lib/billing/fulfillment.ts`) to keep
+  `organizations.plan` in sync.
+- `lib/usage/quota.ts`'s `checkQuota()` reads `organizations.plan` +
+  `usage_counters` to gate execution before the governed run.
+- `lib/billing/metered.ts`'s `meterExecution()` / `reportMeterEvent()`
+  reports a Stripe Billing Meter event per governed execution, which is
+  what ultimately produces a Stripe charge for metered overage.
+
+There is a second, separate, deprecated webhook at
+`app/api/stripe/webhook/route.ts` — see "Known unfixed items" below; do not
+confuse it with the canonical one above.
+
+### Outbox pattern is the canonical metering mechanism
+
+`lib/billing/metered.ts` writes a durable `billing_meter_outbox` row
+*before* calling Stripe. If the live Stripe call fails, the row stays
+`pending`/`failed` and is retried by cron rather than being silently lost.
+Two crons operate on this table (both present in `vercel.json`'s cron
+list):
+
+- `/api/cron/flush-meter-outbox` (`app/api/cron/flush-meter-outbox/route.ts`)
+  retries `pending`/`failed` outbox rows via `flushMeterOutbox()`.
+- `/api/cron/reconcile-meter` (`app/api/cron/reconcile-meter/route.ts`)
+  cross-checks the outbox against Stripe's own meter-event records via
+  `lib/billing/reconciliation.ts` and can requeue stuck rows.
+
+Treat the outbox + these two crons as the canonical metering flow, not the
+inline Stripe call alone — the inline call is best-effort and the outbox is
+what guarantees eventual delivery.
+
+### Known unfixed items (target/expected end state — verify merge state before relying on this)
+
+The following three items are being addressed by other, separately-tracked
+work as of 2026-08-04. Each is phrased so it reads correctly whether the fix
+has merged yet or not — re-inspect the cited file directly rather than
+trusting this summary once time has passed.
+
+1. **`usage_counters` double-counting.** The `runtime_commit_execution` RPC
+   (see `supabase/migrations/20260402_billing_quota_in_rpc.sql` and
+   `supabase/migrations/20260404_runtime_spine_rpc_hardening.sql`, both of
+   which `insert into usage_counters ... on conflict ... set executions =
+   usage_counters.executions + 1`) already increments `usage_counters` as
+   part of committing a governed execution. `app/api/spine/execute/route.ts`
+   additionally calls the app-layer `incrementQuota()` (from
+   `lib/usage/quota.ts`, which itself calls the `increment_quota_atomic` RPC
+   defined in `supabase/migrations/20260616000001_atomic_quota_increment.sql`)
+   as a fire-and-forget side effect. This double-increments the counter per
+   execution. The fix in progress is to remove the redundant app-layer
+   `incrementQuota()` call from `app/api/spine/execute/route.ts` and rely on
+   `runtime_commit_execution` alone.
+2. **Hardcoded plan on the deprecated webhook.** The deprecated
+   `app/api/stripe/webhook/route.ts` (its own file header already marks it
+   `@deprecated` and says the canonical webhook is
+   `app/api/billing/webhook/route.ts`) hardcodes `plan: 'pro'` when
+   upserting `release_gate_entitlements`, regardless of the subscription's
+   actual plan. This is being fixed to derive the real plan instead of
+   hardcoding it.
+3. **Dead cron route.** `app/api/cron/billing-sync/route.ts` reads/writes a
+   `billing_usage` table and calls a buggy `stripe.billing.meterEvents.create`
+   shape, but the route is not reachable in production: it is not listed in
+   `vercel.json`'s `crons` array (verified — only
+   `/api/cron/flush-meter-outbox`, `/api/cron/reconcile-meter`,
+   `/api/cron/usage-alerts`, `/api/cron/trial-invite`, and
+   `/api/cron/weekly-report` appear there), and the `billing_usage` table it
+   queries has no corresponding migration in `supabase/migrations/`. This
+   dead route is being deleted; if `app/api/cron/billing-sync/route.ts` is
+   still present when you read this, treat it as unreachable dead code, not
+   as part of the metering pipeline.
+
+Also tracked, **not fixed in this pass** — a second, independent quota
+check: see `docs/REPO_TRUTH.md`'s "Known unresolved billing gap" section.
+
 ## Working rule for future sessions
 
 Before patching, deploying, or updating docs:

@@ -38,14 +38,35 @@ function validationErrorCode(details: { field: string; message: string }[]) {
   return "validation_failed";
 }
 
+function usageFailure(error?: string) {
+  const accessMode = error?.startsWith("delivery_blocked:")
+    ? error.slice("delivery_blocked:".length)
+    : "billing_unavailable";
+  const requiresUpgrade =
+    accessMode === "quota_exceeded" || accessMode === "subscription_inactive";
+
+  return {
+    status: requiresUpgrade ? 402 : 503,
+    body: {
+      ok: false,
+      error: "usage_evidence_unavailable",
+      accessMode,
+      requiresUpgrade,
+      message:
+        requiresUpgrade
+          ? "Execution result withheld because the current subscription does not authorize this usage slot."
+          : "Execution result withheld because usage evidence could not be completed safely.",
+      upgradeUrl: "/pricing#dsg-gate",
+    },
+  };
+}
+
 export async function POST(request: Request) {
-  // ── Auth ─────────────────────────────────────────────────────────────────
   const caller = await requireDsgAuth(request);
   if (!caller.ok) return dsgAuthError(caller as typeof caller & { ok: false });
 
   const startMs = Date.now();
 
-  // ── Rate limit (keyed to org) ─────────────────────────────────────────────
   const rateLimitResult = await applyRateLimit({
     key: getRateLimitKey(request, `dsg-gate:${caller.orgId}`),
     limit: 60,
@@ -59,18 +80,21 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Entitlement check (metered billing gate) ─────────────────────────────
   const entitlement = await checkGateEntitlement(caller.orgId);
   if (!entitlement.allowed) {
     return NextResponse.json(
       {
         ok: false,
         error: entitlement.message,
-        requiresUpgrade: true,
+        requiresUpgrade: entitlement.requiresPayment,
         tier: entitlement.tier,
+        accessMode: entitlement.accessMode,
         upgradeUrl: entitlement.upgradeUrl,
       },
-      { status: 402, headers: rateLimitHeaders },
+      {
+        status: entitlement.requiresPayment ? 402 : 503,
+        headers: rateLimitHeaders,
+      },
     );
   }
 
@@ -99,6 +123,23 @@ export async function POST(request: Request) {
     verifyFresh: false,
     recordResult: true,
   });
+  const durationMs = Date.now() - startMs;
+
+  const usage = await recordGateEvaluation(
+    validated.value.idempotencyKey,
+    caller.orgId,
+    "gates/evaluate",
+    result.gateStatus,
+    durationMs,
+  );
+
+  if (!usage.recorded) {
+    const failure = usageFailure(usage.error);
+    return NextResponse.json(failure.body, {
+      status: failure.status,
+      headers: rateLimitHeaders,
+    });
+  }
 
   const response = NextResponse.json(
     {
@@ -109,6 +150,11 @@ export async function POST(request: Request) {
       riskLevel: result.riskLevel,
       reason: result.reason ?? null,
       proof: result.proof,
+      entitlement: {
+        tier: entitlement.tier,
+        evalsRemaining: entitlement.evalsRemaining,
+        accessMode: entitlement.accessMode,
+      },
       caller: { orgId: caller.orgId, actorType: caller.actorType },
       boundary: {
         statement:
@@ -122,28 +168,18 @@ export async function POST(request: Request) {
     { headers: rateLimitHeaders },
   );
 
-  // Audit log (fire-and-forget — never delays response)
   void logDsgApiCall({
-    orgId:      caller.orgId,
-    actorType:  caller.actorType,
-    apiKeyId:   caller.actorType === 'api_key' ? caller.apiKeyId : undefined,
-    userId:     caller.actorType === 'user'    ? caller.userId    : undefined,
-    route:      'gates/evaluate',
+    orgId: caller.orgId,
+    actorType: caller.actorType,
+    apiKeyId: caller.actorType === "api_key" ? caller.apiKeyId : undefined,
+    userId: caller.actorType === "user" ? caller.userId : undefined,
+    route: "gates/evaluate",
     statusCode: 200,
     gateStatus: result.gateStatus,
-    proofId:    result.proof.proofId,
+    proofId: result.proof.proofId,
     proofSource: result.source,
-    durationMs: Date.now() - startMs,
+    durationMs,
   });
-
-  // Usage recording for metered billing (fire-and-forget)
-  void recordGateEvaluation(
-    result.proof.proofId,
-    caller.orgId,
-    'gates/evaluate',
-    result.gateStatus,
-    Date.now() - startMs,
-  );
 
   return response;
 }
