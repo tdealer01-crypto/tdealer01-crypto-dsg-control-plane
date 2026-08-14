@@ -43,17 +43,25 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || secrets.SUPABASE_PROJECT_REF || 'zeyguilldygozufpgxms' }}
 
-      - name: Commit generated types if changed
+      - name: Publish generated types review branch
+        id: publish_types
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add lib/database.types.ts
           if git diff --cached --quiet; then
             echo "Supabase types unchanged"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit -m "chore: regenerate Supabase types after migrations"
-          git push
+
+          branch="automation/supabase-types-${GITHUB_SHA::12}"
+          git checkout -b "$branch"
+          git commit -m "chore: regenerate Supabase types"
+          git push origin "$branch"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "Generated types published to $branch for PR review"
 
   migrate:
     name: Push migrations to Supabase
