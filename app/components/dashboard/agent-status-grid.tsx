@@ -4,7 +4,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 interface AgentHealth {
@@ -144,16 +143,15 @@ export function AgentStatusGrid() {
 }
 
 function AgentCard({ agent }: { agent: AgentHealth }) {
+  const borderStyles = {
+    active: "border-green-200 dark:border-green-800",
+    degraded: "border-yellow-200 dark:border-yellow-800",
+    offline: "border-red-200 dark:border-red-800",
+  };
+
   return (
     <div
-      className={cn(
-        "relative p-4 bg-white dark:bg-gray-800 rounded-xl border transition-all hover:shadow-md",
-        agent.status === "active" &&
-          "border-green-200 dark:border-green-800",
-        agent.status === "degraded" &&
-          "border-yellow-200 dark:border-yellow-800",
-        agent.status === "offline" && "border-red-200 dark:border-red-800"
-      )}
+      className={`relative p-4 bg-white dark:bg-gray-800 rounded-xl border transition-all hover:shadow-md ${borderStyles[agent.status]}`}
     >
       {/* Status Indicator */}
       <div className="absolute top-3 right-3">
@@ -200,10 +198,7 @@ function AgentCard({ agent }: { agent: AgentHealth }) {
           >
             <span className="text-gray-400">{indicator.label}</span>
             <span
-              className={cn(
-                "font-medium",
-                indicator.ok ? "text-green-600" : "text-red-600"
-              )}
+              className={`font-medium ${indicator.ok ? "text-green-600" : "text-red-600"}`}
             >
               {indicator.value} {indicator.ok ? "✓" : "✗"}
             </span>

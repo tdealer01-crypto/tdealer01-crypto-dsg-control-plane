@@ -4,7 +4,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 interface ActivityEntry {
@@ -195,16 +194,17 @@ function ResultBadge({
 }: {
   result: "ALLOW" | "BLOCK" | "SUCCESS" | "FAIL" | "RETRY";
 }) {
+  const badgeStyles = {
+    ALLOW: "bg-green-100 text-green-700",
+    BLOCK: "bg-red-100 text-red-700",
+    SUCCESS: "bg-blue-100 text-blue-700",
+    FAIL: "bg-red-100 text-red-700",
+    RETRY: "bg-yellow-100 text-yellow-700",
+  };
+
   return (
     <span
-      className={cn(
-        "text-xs font-semibold px-2 py-0.5 rounded-full min-w-[56px] text-center",
-        result === "ALLOW" && "bg-green-100 text-green-700",
-        result === "BLOCK" && "bg-red-100 text-red-700",
-        result === "SUCCESS" && "bg-blue-100 text-blue-700",
-        result === "FAIL" && "bg-red-100 text-red-700",
-        result === "RETRY" && "bg-yellow-100 text-yellow-700"
-      )}
+      className={`text-xs font-semibold px-2 py-0.5 rounded-full min-w-[56px] text-center ${badgeStyles[result]}`}
     >
       {result}
     </span>

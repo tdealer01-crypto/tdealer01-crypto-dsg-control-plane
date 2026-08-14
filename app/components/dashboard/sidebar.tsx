@@ -6,7 +6,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Shield,
@@ -69,10 +68,9 @@ export function Sidebar() {
   return (
     <nav
       aria-label="Primary pillar navigation"
-      className={cn(
-        "flex flex-col border-r border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 transition-all duration-300",
+      className={`flex flex-col border-r border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 transition-all duration-300 ${
         collapsed ? "w-[68px]" : "w-[260px]"
-      )}
+      }`}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
@@ -173,12 +171,11 @@ function NavLink({
     <li>
       <Link
         href={item.route}
-        className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[40px]",
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[40px] ${
           active
             ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
             : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700"
-        )}
+        }`}
         aria-current={active ? "page" : undefined}
       >
         <Icon size={20} className="shrink-0" />
@@ -202,14 +199,15 @@ function Badge({
   children: string;
   variant?: "live" | "count" | "default";
 }) {
+  const variantStyles = {
+    live: "bg-green-100 text-green-700 animate-pulse",
+    count: "bg-red-100 text-red-700",
+    default: "bg-gray-100 text-gray-600",
+  };
+
   return (
     <span
-      className={cn(
-        "text-xs px-1.5 py-0.5 rounded-full font-medium",
-        variant === "live" && "bg-green-100 text-green-700 animate-pulse",
-        variant === "count" && "bg-red-100 text-red-700",
-        variant === "default" && "bg-gray-100 text-gray-600"
-      )}
+      className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${variantStyles[variant || "default"]}`}
     >
       {children}
     </span>

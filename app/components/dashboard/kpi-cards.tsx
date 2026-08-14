@@ -4,7 +4,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
 import {
   DollarSign,
   Bot,
@@ -125,19 +124,18 @@ function KPICard({
     >
       <div className="flex items-start justify-between mb-3">
         <div
-          className={cn("p-2 rounded-lg", bgColor)}
+          className={`p-2 rounded-lg ${bgColor}`}
           aria-hidden="true"
         >
           <Icon size={20} className={iconColor} />
         </div>
         {change && (
           <div
-            className={cn(
-              "flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded",
-              trend === "up" && "text-green-700 bg-green-50",
-              trend === "down" && "text-red-700 bg-red-50",
-              trend === "neutral" && "text-gray-600 bg-gray-50"
-            )}
+            className={`flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded ${
+              trend === "up" ? "text-green-700 bg-green-50" :
+              trend === "down" ? "text-red-700 bg-red-50" :
+              "text-gray-600 bg-gray-50"
+            }`}
           >
             {trend === "up" && <TrendingUp size={12} />}
             {trend === "down" && <TrendingDown size={12} />}
