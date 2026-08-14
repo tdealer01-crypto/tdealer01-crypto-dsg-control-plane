@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSG ONE — Trinity Dashboard Architecture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f1419;
+            color: #e4e6eb;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { margin-bottom: 1rem; color: #60a5fa; font-size: 2.5rem; }
+        .subtitle { color: #9ca3af; margin-bottom: 2rem; font-size: 1.1rem; }
+
+        /* Layer sections */
+        .layer { margin-bottom: 3rem; }
+        .layer-title {
+            font-size: 1.5rem;
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Grid layouts */
+        .pillars-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .agents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+
+        /* Cards */
+        .card {
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+        .card:hover { border-color: #60a5fa; background: #273550; }
+
+        .pillar-card {
+            border-left: 4px solid #60a5fa;
+        }
+        .pillar-card.monitor { border-left-color: #3b82f6; }
+        .pillar-card.verify { border-left-color: #8b5cf6; }
+        .pillar-card.audit { border-left-color: #ec4899; }
+        .pillar-card.optimize { border-left-color: #f59e0b; }
+        .pillar-card.agents { border-left-color: #10b981; }
+        .pillar-card.identity { border-left-color: #ef4444; }
+
+        .card-emoji { font-size: 1.8rem; margin-bottom: 0.5rem; display: block; }
+        .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #e4e6eb; }
+        .card-subtitle { font-size: 0.9rem; color: #d1d5db; margin-bottom: 1rem; font-style: italic; }
+        .card-description { font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; }
+
+        /* Sub-routes/items */
+        .sub-items {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #374151;
+            font-size: 0.85rem;
+        }
+        .sub-item {
+            color: #d1d5db;
+            margin-bottom: 0.5rem;
+            padding-left: 1rem;
+        }
+        .sub-item:before { content: "→ "; color: #60a5fa; }
+
+        /* Revenue model */
+        .revenue-badge {
+            display: inline-block;
+            background: #065f46;
+            color: #86efac;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        /* API endpoints section */
+        .api-endpoints {
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        .api-title {
+            color: #60a5fa;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        .endpoint {
+            background: #1f2937;
+            border-left: 3px solid #10b981;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+        .endpoint-method {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        .endpoint-path {
+            color: #d1d5db;
+        }
+        .endpoint-desc {
+            color: #9ca3af;
+            font-style: italic;
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+        }
+
+        /* Flow diagram */
+        .flow-section {
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        .flow-title {
+            color: #60a5fa;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        .flow-box {
+            display: inline-block;
+            background: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            padding: 1rem 1.5rem;
+            margin: 0.5rem;
+            color: #e4e6eb;
+            font-size: 0.9rem;
+        }
+        .flow-arrow {
+            display: inline-block;
+            margin: 0 0.5rem;
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .stat-box {
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+        .stat-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        @media (prefers-color-scheme: light) {
+            body { background: #f9fafb; color: #111827; }
+            .card { background: #fff; border-color: #e5e7eb; }
+            .card:hover { border-color: #3b82f6; background: #f3f4f6; }
+            .layer-title { color: #2563eb; border-color: #2563eb; }
+            .card-title { color: #111827; }
+            .card-subtitle { color: #4b5563; }
+            .card-description { color: #6b7280; }
+            .sub-item { color: #4b5563; }
+            .sub-item:before { color: #3b82f6; }
+            .api-endpoints { background: #f3f4f6; border-color: #e5e7eb; }
+            .endpoint { background: #fff; border-left-color: #10b981; }
+            .flow-section { background: #fff; border-color: #e5e7eb; }
+            .flow-box { background: #f3f4f6; border-color: #e5e7eb; }
+            .stat-box { background: #fff; border-color: #e5e7eb; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ DSG ONE — Trinity Dashboard Architecture</h1>
+        <p class="subtitle">Complete integration of Pillars, Agents, and API layer</p>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number">7</div>
+                <div class="stat-label">Control Pillars</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">7</div>
+                <div class="stat-label">DSG Agents</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">4</div>
+                <div class="stat-label">Core layers</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">12+</div>
+                <div class="stat-label">API Endpoints</div>
+            </div>
+        </div>
+
+        <!-- LAYER 1: PILLARS -->
+        <div class="layer">
+            <div class="layer-title">📊 Layer 1: Control Pillars</div>
+            <div class="pillars-grid">
+                <!-- Monitor -->
+                <div class="card pillar-card monitor">
+                    <span class="card-emoji">📊</span>
+                    <div class="card-title">Monitor</div>
+                    <div class="card-subtitle">Real-time visibility</div>
+                    <div class="card-description">Watch live metrics, usage, provider health</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Real-time metrics dashboard</div>
+                        <div class="sub-item">Usage tracking by agent</div>
+                        <div class="sub-item">Provider health status</div>
+                        <div class="sub-item">Performance analytics</div>
+                    </div>
+                </div>
+
+                <!-- Verify -->
+                <div class="card pillar-card verify">
+                    <span class="card-emoji">🛡️</span>
+                    <div class="card-title">Verify</div>
+                    <div class="card-subtitle">Policy & proof layer</div>
+                    <div class="card-description">Manage policies, review decisions, Z3 proofs</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Policy management UI</div>
+                        <div class="sub-item">Decision visualization</div>
+                        <div class="sub-item">Z3 proof verification</div>
+                        <div class="sub-item">Constraint validation</div>
+                    </div>
+                </div>
+
+                <!-- Audit -->
+                <div class="card pillar-card audit">
+                    <span class="card-emoji">📋</span>
+                    <div class="card-title">Audit</div>
+                    <div class="card-subtitle">Compliance & evidence</div>
+                    <div class="card-description">Audit trail, compliance status, Delivery Proof</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Immutable audit logs</div>
+                        <div class="sub-item">Compliance dashboard</div>
+                        <div class="sub-item">Delivery proof reports</div>
+                        <div class="sub-item">Evidence chain validation</div>
+                    </div>
+                </div>
+
+                <!-- Optimize -->
+                <div class="card pillar-card optimize">
+                    <span class="card-emoji">⚡</span>
+                    <div class="card-title">Optimize</div>
+                    <div class="card-subtitle">Revenue & efficiency</div>
+                    <div class="card-description">Analytics, billing, cost control, marketplace</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Revenue analytics</div>
+                        <div class="sub-item">Billing management</div>
+                        <div class="sub-item">Cost optimization</div>
+                        <div class="sub-item">Marketplace integration</div>
+                    </div>
+                </div>
+
+                <!-- Agents -->
+                <div class="card pillar-card agents">
+                    <span class="card-emoji">🤖</span>
+                    <div class="card-title">Agents</div>
+                    <div class="card-subtitle">Fleet management</div>
+                    <div class="card-description">Fleet management, config, orchestration</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Agent fleet dashboard</div>
+                        <div class="sub-item">Configuration UI</div>
+                        <div class="sub-item">Orchestration view</div>
+                    </div>
+                </div>
+
+                <!-- Identity -->
+                <div class="card pillar-card identity">
+                    <span class="card-emoji">🔑</span>
+                    <div class="card-title">Identity</div>
+                    <div class="card-subtitle">Access control</div>
+                    <div class="card-description">SSO, SCIM, RBAC (Phase 2)</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Single sign-on (SSO)</div>
+                        <div class="sub-item">SCIM provisioning</div>
+                        <div class="sub-item">Role-based access (RBAC)</div>
+                        <div class="sub-item">Team management</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAYER 2: AGENTS -->
+        <div class="layer">
+            <div class="layer-title">🤖 Layer 2: DSG Agents & Revenue Model</div>
+            <div class="agents-grid">
+                <!-- Orchestrator -->
+                <div class="card">
+                    <span class="card-emoji">🎯</span>
+                    <div class="card-title">Orchestrator</div>
+                    <div class="card-subtitle">Master coordinator</div>
+                    <div class="card-description">Controls all agents, reduces ops cost to zero</div>
+                    <div class="revenue-badge">Cost savings: -100% ops</div>
+                </div>
+
+                <!-- Policy Engine -->
+                <div class="card">
+                    <span class="card-emoji">⚙️</span>
+                    <div class="card-title">Policy Engine</div>
+                    <div class="card-subtitle">Governance layer</div>
+                    <div class="card-description">Designs + enforces AI policy</div>
+                    <div class="revenue-badge">Revenue: Governance-as-a-Service</div>
+                </div>
+
+                <!-- Revenue Agent -->
+                <div class="card">
+                    <span class="card-emoji">💰</span>
+                    <div class="card-title">Revenue Agent</div>
+                    <div class="card-subtitle">Billing engine</div>
+                    <div class="card-description">Billing, retry logic, upgrades</div>
+                    <div class="revenue-badge">Revenue: Auto MRR generation</div>
+                </div>
+
+                <!-- Security Agent -->
+                <div class="card">
+                    <span class="card-emoji">🔒</span>
+                    <div class="card-title">Security Agent</div>
+                    <div class="card-subtitle">Compliance guardian</div>
+                    <div class="card-description">Audit, compliance, proof verification</div>
+                    <div class="revenue-badge">Revenue: Delivery Proof @ $99</div>
+                </div>
+
+                <!-- MCP Gateway -->
+                <div class="card">
+                    <span class="card-emoji">🔌</span>
+                    <div class="card-title">MCP Gateway</div>
+                    <div class="card-subtitle">Request router</div>
+                    <div class="card-description">Routes AI requests, metered API access</div>
+                    <div class="revenue-badge">Revenue: $14 per 10K calls</div>
+                </div>
+
+                <!-- Customer Success -->
+                <div class="card">
+                    <span class="card-emoji">📈</span>
+                    <div class="card-title">Customer Success</div>
+                    <div class="card-subtitle">Growth engine</div>
+                    <div class="card-description">Onboard, upsell, retain customers</div>
+                    <div class="revenue-badge">Goal: NRR ≥ 110%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAYER 3: API ENDPOINTS -->
+        <div class="layer">
+            <div class="layer-title">🔗 Layer 3: API Endpoints & Integration</div>
+            <div class="api-endpoints">
+                <div class="api-title">Trinity Dashboard API Contract</div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/health</div>
+                    <div class="endpoint-desc">System health check (status, uptime, version)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/agents/status</div>
+                    <div class="endpoint-desc">Agent fleet status (running, idle, error states)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">POST</div>
+                    <div class="endpoint-path">/api/agents/mode</div>
+                    <div class="endpoint-desc">Switch agent mode (sandbox ↔ live)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">POST</div>
+                    <div class="endpoint-path">/api/agents/execute</div>
+                    <div class="endpoint-desc">Execute task on agent (success, result, duration)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">POST</div>
+                    <div class="endpoint-path">/api/agents/chat</div>
+                    <div class="endpoint-desc">Chat interface with agent (response, timestamp)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/cost/tracker</div>
+                    <div class="endpoint-desc">Cost tracking (total, budget, per-agent breakdown)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/security/audit</div>
+                    <div class="endpoint-desc">Audit log entries (PASS/WARN/FAIL, risk scores)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/state/continuity</div>
+                    <div class="endpoint-desc">State health (agent running, context sharing, costs)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/usage</div>
+                    <div class="endpoint-desc">Usage analytics by agent, period, resource type</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/audit</div>
+                    <div class="endpoint-desc">Compliance audit trail with chain validation</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET/POST</div>
+                    <div class="endpoint-path">/api/policies</div>
+                    <div class="endpoint-desc">Policy management (read, create, update)</div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-path">/api/capacity</div>
+                    <div class="endpoint-desc">Capacity limits and quota status</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAYER 4: DATA FLOW -->
+        <div class="layer">
+            <div class="flow-section">
+                <div class="flow-title">🔄 Layer 4: Request Flow & Data Pipeline</div>
+                <div style="background: #111827; padding: 1.5rem; border-radius: 8px; overflow-x: auto;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.9rem; line-height: 2;">
+                        <div class="flow-box">Client Request</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">Trinity Dashboard</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">API Gateway</div>
+                        <div class="flow-arrow">→</div>
+                        <br/>
+                        <div class="flow-box">Auth/RBAC</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">Orchestrator</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">DSG Agents</div>
+                        <div class="flow-arrow">→</div>
+                        <br/>
+                        <div class="flow-box">Execution Pipeline</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">Audit Log</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">Supabase</div>
+                        <div class="flow-arrow">→</div>
+                        <br/>
+                        <div class="flow-box">Response</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">Dashboard UI</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-box">User Display</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; padding: 1rem; background: #111827; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+                    <div style="color: #c4b5fd; font-weight: 600; margin-bottom: 0.5rem;">🔐 Security Boundaries</div>
+                    <ul style="list-style: none; color: #d1d5db; font-size: 0.9rem;">
+                        <li>✓ JWT token validation on all protected routes</li>
+                        <li>✓ RBAC enforcement via Policy Engine</li>
+                        <li>✓ Cost/quota checks before execution</li>
+                        <li>✓ Audit trail for all actions</li>
+                        <li>✓ Deterministic gate verification</li>
+                        <li>✓ Z3 formal proof validation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="layer">
+            <div class="layer-title">⚙️ Deployment & Configuration</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="card">
+                    <div class="card-title">Environment Variables</div>
+                    <div class="sub-items">
+                        <div class="sub-item"><code>NEXT_PUBLIC_TRINITY_API_URL</code></div>
+                        <div class="sub-item"><code>NEXT_PUBLIC_SUPABASE_URL</code></div>
+                        <div class="sub-item"><code>NEXT_PUBLIC_SUPABASE_KEY</code></div>
+                        <div class="sub-item"><code>ANTHROPIC_API_KEY</code></div>
+                        <div class="sub-item"><code>SUPABASE_SERVICE_ROLE_KEY</code></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Deployment Options</div>
+                    <div class="sub-items">
+                        <div class="sub-item">Vercel (recommended)</div>
+                        <div class="sub-item">Docker containerization</div>
+                        <div class="sub-item">Render service integration</div>
+                        <div class="sub-item">Custom K8s cluster</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #374151; color: #6b7280; text-align: center; font-size: 0.9rem;">
+            <p>📚 DSG ONE / ProofGate Control Plane — Trinity Dashboard Architecture</p>
+            <p>Generated: 2026-08-14 | Last Updated: Trinity Dashboard Export v1</p>
+        </div>
+    </div>
+</body>
+</html>
