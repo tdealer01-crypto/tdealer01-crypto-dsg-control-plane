@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireOrgPermission } from '../../../../../lib/auth/require-org-permission';
-import { handleApiError } from '../../../../../lib/security/api-error';
-import { getSupabaseAdmin } from '../../../../../lib/supabase-server';
+import { requireOrgPermission } from '../../../../lib/auth/require-org-permission';
+import { handleApiError } from '../../../../lib/security/api-error';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
