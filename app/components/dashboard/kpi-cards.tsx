@@ -83,7 +83,7 @@ export function KPICards() {
           setKpis((prev) =>
             prev.map((kpi) =>
               kpi.title === "Executions Today"
-                ? { ...kpi, value: formatNumber(payload.new.count_today || 0) }
+                ? { ...kpi, value: formatNumber((payload.new as any).count_today || 0) }
                 : kpi
             )
           );
