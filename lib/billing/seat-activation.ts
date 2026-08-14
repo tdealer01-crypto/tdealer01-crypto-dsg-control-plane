@@ -68,7 +68,8 @@ export async function activateBillableSeat(input: {
   const idempotencyKey = uuidv4();
 
   // Call atomic RPC function (handles all constraints, audit, and proof in one transaction)
-  const { data, error } = await admin.rpc('activate_billable_seat_strict', {
+  // Note: RPC function name will be available after database types are regenerated from schema
+  const { data, error } = await admin.rpc('activate_billable_seat_strict' as any, {
     p_org_id: input.orgId,
     p_email: input.email,
     p_user_id: input.userId ?? null,
@@ -82,11 +83,13 @@ export async function activateBillableSeat(input: {
     throw error;
   }
 
-  if (!data || data.length === 0) {
+  // RPC returns an array of results (even if single row)
+  const results = Array.isArray(data) ? data : [data];
+  if (!results || results.length === 0) {
     throw new Error('activate_billable_seat_strict returned empty result');
   }
 
-  const result = data[0];
+  const result = results[0];
   return {
     activated: result.activated === true,
     reason: result.reason || 'UNKNOWN',
