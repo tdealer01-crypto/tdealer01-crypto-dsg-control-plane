@@ -13,6 +13,7 @@ import { meterExecution } from '../../../../lib/billing/metered';
 import { verifySafeDomIntentOrPass } from '../../../../lib/spine/verify-safe-dom-intent';
 import { StopReason } from '../../../../lib/types/task';
 import { captureEvent } from '../../../../lib/telemetry/capture-event';
+import { getSupabaseAdmin } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,17 +159,20 @@ export async function POST(request: Request) {
     const agentId = String(agent.id);
 
     // Check if this is first execution for agent (before quota check)
-    const { count: agentExecutions } = await (async () => {
+    const agentExecutions = await (async () => {
       try {
-        // Try to get execution count, but don't fail if unavailable
-        const result = await (global as any).__supabaseExecutionCount?.(agentId);
-        return { count: result?.count || 0 };
+        const supabase = getSupabaseAdmin();
+        const { count } = await supabase
+          .from('executions')
+          .select('id', { count: 'exact', head: true })
+          .eq('agent_id', agentId);
+        return count || 0;
       } catch {
-        return { count: 0 };
+        return 0;
       }
     })();
 
-    const isFirstExecution = (agentExecutions || 0) === 0;
+    const isFirstExecution = agentExecutions === 0;
 
     // Extract policyId and requestType from payload context/input
     const policyId = (payload.context.policy_id || payload.input.policy_id) as string | undefined;
