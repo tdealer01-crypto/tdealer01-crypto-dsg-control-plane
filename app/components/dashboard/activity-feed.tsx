@@ -130,12 +130,11 @@ export function ActivityFeed() {
           </span>
           <button
             onClick={() => setAutoScroll(!autoScroll)}
-            className={cn(
-              "text-xs px-2 py-1 rounded",
+            className={`text-xs px-2 py-1 rounded ${
               autoScroll
                 ? "bg-blue-50 text-blue-600"
                 : "bg-gray-50 text-gray-500"
-            )}
+            }`}
           >
             {autoScroll ? "Auto-scroll ON" : "Auto-scroll OFF"}
           </button>
