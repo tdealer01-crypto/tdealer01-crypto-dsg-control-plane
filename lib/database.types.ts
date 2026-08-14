@@ -296,6 +296,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "agent_permissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
             foreignKeyName: "agent_permissions_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -477,6 +484,480 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      agent_workspace_audit_events: {
+        Row: {
+          action: string
+          agent_id: string
+          authorized: boolean
+          created_at: string
+          environment: string
+          evidence: Json
+          id: string
+          input_hash: string | null
+          lease_id: string | null
+          org_id: string | null
+          plan_hash: string | null
+          promotion_id: string | null
+          reason: string
+          requested_scope: string
+          target: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          authorized: boolean
+          created_at?: string
+          environment: string
+          evidence?: Json
+          id?: string
+          input_hash?: string | null
+          lease_id?: string | null
+          org_id?: string | null
+          plan_hash?: string | null
+          promotion_id?: string | null
+          reason: string
+          requested_scope: string
+          target?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          authorized?: boolean
+          created_at?: string
+          environment?: string
+          evidence?: Json
+          id?: string
+          input_hash?: string | null
+          lease_id?: string | null
+          org_id?: string | null
+          plan_hash?: string | null
+          promotion_id?: string | null
+          reason?: string
+          requested_scope?: string
+          target?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_audit_events_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspace_leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_workspace_audit_events_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspace_promotions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_workspace_audit_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspace_capabilities: {
+        Row: {
+          access_level: string
+          capability: string
+          created_at: string
+          enabled: boolean
+          id: string
+          requires_runtime_approval: boolean
+          scope: string
+          workspace_id: string
+        }
+        Insert: {
+          access_level: string
+          capability: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          requires_runtime_approval?: boolean
+          scope: string
+          workspace_id: string
+        }
+        Update: {
+          access_level?: string
+          capability?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          requires_runtime_approval?: boolean
+          scope?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_capabilities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspace_leases: {
+        Row: {
+          agent_id: string
+          auto_renew: boolean
+          auto_renew_until: string
+          created_at: string
+          environments: string[]
+          expires_at: string
+          id: string
+          issued_by: string
+          metadata: Json
+          org_id: string | null
+          scopes: string[]
+          starts_at: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          agent_id: string
+          auto_renew?: boolean
+          auto_renew_until?: string
+          created_at?: string
+          environments?: string[]
+          expires_at?: string
+          id?: string
+          issued_by?: string
+          metadata?: Json
+          org_id?: string | null
+          scopes?: string[]
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          agent_id?: string
+          auto_renew?: boolean
+          auto_renew_until?: string
+          created_at?: string
+          environments?: string[]
+          expires_at?: string
+          id?: string
+          issued_by?: string
+          metadata?: Json
+          org_id?: string | null
+          scopes?: string[]
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_leases_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspace_promotions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          checks: Json
+          commit_sha: string | null
+          created_at: string
+          evidence_hash: string | null
+          executed_at: string | null
+          expires_at: string | null
+          id: string
+          org_id: string | null
+          rejection_reason: string | null
+          requested_by: string
+          requested_scopes: string[]
+          run_id: string | null
+          status: string
+          target_environment: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          checks?: Json
+          commit_sha?: string | null
+          created_at?: string
+          evidence_hash?: string | null
+          executed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          org_id?: string | null
+          rejection_reason?: string | null
+          requested_by: string
+          requested_scopes?: string[]
+          run_id?: string | null
+          status?: string
+          target_environment: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          checks?: Json
+          commit_sha?: string | null
+          created_at?: string
+          evidence_hash?: string | null
+          executed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          org_id?: string | null
+          rejection_reason?: string | null
+          requested_by?: string
+          requested_scopes?: string[]
+          run_id?: string | null
+          status?: string
+          target_environment?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_promotions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspace_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_workspace_promotions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspace_runs: {
+        Row: {
+          agent_id: string
+          commit_sha: string | null
+          completed_at: string | null
+          created_at: string
+          evidence: Json
+          git_branch: string | null
+          goal: string
+          id: string
+          org_id: string | null
+          plan: Json
+          plan_hash: string | null
+          preview_url: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          agent_id: string
+          commit_sha?: string | null
+          completed_at?: string | null
+          created_at?: string
+          evidence?: Json
+          git_branch?: string | null
+          goal: string
+          id?: string
+          org_id?: string | null
+          plan?: Json
+          plan_hash?: string | null
+          preview_url?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          agent_id?: string
+          commit_sha?: string | null
+          completed_at?: string | null
+          created_at?: string
+          evidence?: Json
+          git_branch?: string | null
+          goal?: string
+          id?: string
+          org_id?: string | null
+          plan?: Json
+          plan_hash?: string | null
+          preview_url?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspace_tool_registry: {
+        Row: {
+          command_template: string | null
+          configuration: Json
+          created_at: string
+          created_by_agent: string
+          endpoint_url: string | null
+          id: string
+          kind: string
+          name: string
+          org_id: string | null
+          production_enabled: boolean
+          risk: string
+          scope: string
+          secret_refs: string[]
+          source_path: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          command_template?: string | null
+          configuration?: Json
+          created_at?: string
+          created_by_agent: string
+          endpoint_url?: string | null
+          id?: string
+          kind: string
+          name: string
+          org_id?: string | null
+          production_enabled?: boolean
+          risk?: string
+          scope: string
+          secret_refs?: string[]
+          source_path?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          command_template?: string | null
+          configuration?: Json
+          created_at?: string
+          created_by_agent?: string
+          endpoint_url?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          org_id?: string | null
+          production_enabled?: boolean
+          risk?: string
+          scope?: string
+          secret_refs?: string[]
+          source_path?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_tool_registry_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "agent_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspaces: {
+        Row: {
+          allow_tool_creation: boolean
+          allowed_environments: string[]
+          approved_plan: Json
+          auto_authorize_plan_actions: boolean
+          created_at: string
+          created_by: string
+          environment: string
+          git_branch_pattern: string
+          id: string
+          name: string
+          org_id: string | null
+          plan_hash: string | null
+          production_access: boolean
+          production_locked: boolean
+          repo_full_name: string
+          status: string
+          stripe_account_id: string | null
+          stripe_mode: string
+          supabase_project_ref: string | null
+          updated_at: string
+          vercel_project_id: string | null
+          vercel_project_slug: string | null
+          vercel_team_slug: string | null
+          workspace_key: string
+        }
+        Insert: {
+          allow_tool_creation?: boolean
+          allowed_environments?: string[]
+          approved_plan?: Json
+          auto_authorize_plan_actions?: boolean
+          created_at?: string
+          created_by?: string
+          environment: string
+          git_branch_pattern?: string
+          id?: string
+          name: string
+          org_id?: string | null
+          plan_hash?: string | null
+          production_access?: boolean
+          production_locked?: boolean
+          repo_full_name: string
+          status?: string
+          stripe_account_id?: string | null
+          stripe_mode?: string
+          supabase_project_ref?: string | null
+          updated_at?: string
+          vercel_project_id?: string | null
+          vercel_project_slug?: string | null
+          vercel_team_slug?: string | null
+          workspace_key: string
+        }
+        Update: {
+          allow_tool_creation?: boolean
+          allowed_environments?: string[]
+          approved_plan?: Json
+          auto_authorize_plan_actions?: boolean
+          created_at?: string
+          created_by?: string
+          environment?: string
+          git_branch_pattern?: string
+          id?: string
+          name?: string
+          org_id?: string | null
+          plan_hash?: string | null
+          production_access?: boolean
+          production_locked?: boolean
+          repo_full_name?: string
+          status?: string
+          stripe_account_id?: string | null
+          stripe_mode?: string
+          supabase_project_ref?: string | null
+          updated_at?: string
+          vercel_project_id?: string | null
+          vercel_project_slug?: string | null
+          vercel_team_slug?: string | null
+          workspace_key?: string
+        }
+        Relationships: []
       }
       agents: {
         Row: {
@@ -1098,6 +1579,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "audit_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "audit_logs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_policy_decisions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "audit_logs_execution_id_fkey"
             columns: ["execution_id"]
             isOneToOne: false
@@ -1112,6 +1607,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      billing_activation_proofs: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          evidence: Json
+          id: string
+          org_id: string
+          proof_hash: string
+          proof_version: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          subscription_status: string
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          evidence: Json
+          id?: string
+          org_id: string
+          proof_hash: string
+          proof_version?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          subscription_status: string
+          tier: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          evidence?: Json
+          id?: string
+          org_id?: string
+          proof_hash?: string
+          proof_version?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          subscription_status?: string
+          tier?: string
+        }
+        Relationships: []
       }
       billing_customers: {
         Row: {
@@ -3390,6 +3930,93 @@ export type Database = {
           },
         ]
       }
+      dsg_gate_entitlements: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          evals_per_month: number
+          id: string
+          org_id: string
+          overage_enabled: boolean
+          stripe_customer_id: string | null
+          stripe_meter_event_name: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          evals_per_month?: number
+          id?: string
+          org_id: string
+          overage_enabled?: boolean
+          stripe_customer_id?: string | null
+          stripe_meter_event_name?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string
+          tier?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          evals_per_month?: number
+          id?: string
+          org_id?: string
+          overage_enabled?: boolean
+          stripe_customer_id?: string | null
+          stripe_meter_event_name?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dsg_gate_usage: {
+        Row: {
+          billed: boolean
+          created_at: string
+          duration_ms: number | null
+          eval_id: string
+          gate_status: string
+          id: string
+          meter_event_id: string | null
+          org_id: string
+          route: string
+          usage_position: number | null
+        }
+        Insert: {
+          billed?: boolean
+          created_at?: string
+          duration_ms?: number | null
+          eval_id: string
+          gate_status: string
+          id?: string
+          meter_event_id?: string | null
+          org_id: string
+          route: string
+          usage_position?: number | null
+        }
+        Update: {
+          billed?: boolean
+          created_at?: string
+          duration_ms?: number | null
+          eval_id?: string
+          gate_status?: string
+          id?: string
+          meter_event_id?: string | null
+          org_id?: string
+          route?: string
+          usage_position?: number | null
+        }
+        Relationships: []
+      }
       dsg_governance_decision_events: {
         Row: {
           action: string
@@ -3555,6 +4182,39 @@ export type Database = {
           snapshot_data?: Json | null
           snapshot_hash?: string | null
           snapshot_type?: string
+        }
+        Relationships: []
+      }
+      dsg_launchpad_launches: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          sections: Json
+          source: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          sections?: Json
+          source?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          sections?: Json
+          source?: string
+          updated_at?: string
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -4944,6 +5604,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "executions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
             foreignKeyName: "executions_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -6144,6 +6811,84 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          company: string | null
+          converted: boolean
+          created_at: string
+          email: string
+          engagement_score: number | null
+          framework: string | null
+          github_repo: string | null
+          github_stars: number | null
+          icp_score: number | null
+          id: string
+          intent: string | null
+          intent_score: number | null
+          job_title: string | null
+          last_seen_at: string
+          messages: Json | null
+          org_id: string | null
+          outreach_sent: boolean
+          outreach_sent_at: string | null
+          source: string
+          source_platform: string | null
+          trial_converted: boolean
+          trial_converted_at: string | null
+          trial_started_at: string | null
+        }
+        Insert: {
+          company?: string | null
+          converted?: boolean
+          created_at?: string
+          email: string
+          engagement_score?: number | null
+          framework?: string | null
+          github_repo?: string | null
+          github_stars?: number | null
+          icp_score?: number | null
+          id?: string
+          intent?: string | null
+          intent_score?: number | null
+          job_title?: string | null
+          last_seen_at?: string
+          messages?: Json | null
+          org_id?: string | null
+          outreach_sent?: boolean
+          outreach_sent_at?: string | null
+          source?: string
+          source_platform?: string | null
+          trial_converted?: boolean
+          trial_converted_at?: string | null
+          trial_started_at?: string | null
+        }
+        Update: {
+          company?: string | null
+          converted?: boolean
+          created_at?: string
+          email?: string
+          engagement_score?: number | null
+          framework?: string | null
+          github_repo?: string | null
+          github_stars?: number | null
+          icp_score?: number | null
+          id?: string
+          intent?: string | null
+          intent_score?: number | null
+          job_title?: string | null
+          last_seen_at?: string
+          messages?: Json | null
+          org_id?: string | null
+          outreach_sent?: boolean
+          outreach_sent_at?: string | null
+          source?: string
+          source_platform?: string | null
+          trial_converted?: boolean
+          trial_converted_at?: string | null
+          trial_started_at?: string | null
+        }
+        Relationships: []
+      }
       marketing_agent_runs: {
         Row: {
           actions_taken: string[]
@@ -6429,6 +7174,128 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      mcp_oauth_codes: {
+        Row: {
+          actor_id: string
+          client_id: string
+          code_challenge: string
+          code_challenge_method: string
+          code_hash: string
+          code_id: string
+          created_at: string
+          exchanged_at: string | null
+          exchanged_token_id: string | null
+          expires_at: string
+          nonce: string
+          redirect_uri: string
+          scope: string
+          state_hash: string
+        }
+        Insert: {
+          actor_id: string
+          client_id?: string
+          code_challenge: string
+          code_challenge_method?: string
+          code_hash: string
+          code_id?: string
+          created_at?: string
+          exchanged_at?: string | null
+          exchanged_token_id?: string | null
+          expires_at: string
+          nonce: string
+          redirect_uri: string
+          scope?: string
+          state_hash: string
+        }
+        Update: {
+          actor_id?: string
+          client_id?: string
+          code_challenge?: string
+          code_challenge_method?: string
+          code_hash?: string
+          code_id?: string
+          created_at?: string
+          exchanged_at?: string | null
+          exchanged_token_id?: string | null
+          expires_at?: string
+          nonce?: string
+          redirect_uri?: string
+          scope?: string
+          state_hash?: string
+        }
+        Relationships: []
+      }
+      mcp_oauth_tokens: {
+        Row: {
+          actor_id: string
+          client_id: string
+          code_challenge: string | null
+          code_challenge_method: string | null
+          created_at: string
+          expires_at: string
+          ip_address: string | null
+          key_id: string
+          last_used_at: string | null
+          refresh_expires_at: string | null
+          refresh_token: string | null
+          refresh_token_hash: string | null
+          revoked_at: string | null
+          scope: string
+          token_hash: string
+          token_id: string
+          token_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          actor_id: string
+          client_id?: string
+          code_challenge?: string | null
+          code_challenge_method?: string | null
+          created_at?: string
+          expires_at: string
+          ip_address?: string | null
+          key_id: string
+          last_used_at?: string | null
+          refresh_expires_at?: string | null
+          refresh_token?: string | null
+          refresh_token_hash?: string | null
+          revoked_at?: string | null
+          scope?: string
+          token_hash: string
+          token_id?: string
+          token_type?: string
+          user_agent?: string | null
+        }
+        Update: {
+          actor_id?: string
+          client_id?: string
+          code_challenge?: string | null
+          code_challenge_method?: string | null
+          created_at?: string
+          expires_at?: string
+          ip_address?: string | null
+          key_id?: string
+          last_used_at?: string | null
+          refresh_expires_at?: string | null
+          refresh_token?: string | null
+          refresh_token_hash?: string | null
+          revoked_at?: string | null
+          scope?: string
+          token_hash?: string
+          token_id?: string
+          token_type?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_oauth_tokens_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "dsg_mcp_api_keys"
+            referencedColumns: ["key_id"]
+          },
+        ]
       }
       monitoring_alerts: {
         Row: {
@@ -7189,6 +8056,42 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_approvals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          framework: string | null
+          github_repo: string | null
+          github_stars: number | null
+          id: string
+          lead_email: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          framework?: string | null
+          github_repo?: string | null
+          github_stars?: number | null
+          id?: string
+          lead_email: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          framework?: string | null
+          github_repo?: string | null
+          github_stars?: number | null
+          id?: string
+          lead_email?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       payment_ledger: {
         Row: {
           agent_id: string
@@ -7750,6 +8653,48 @@ export type Database = {
         }
         Relationships: []
       }
+      revenue_autopilot_runs: {
+        Row: {
+          attempts: number
+          bucket: string
+          error: string | null
+          finished_at: string | null
+          http_status: number | null
+          id: string
+          job: string
+          result: Json | null
+          source: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          bucket: string
+          error?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          job: string
+          result?: Json | null
+          source?: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          bucket?: string
+          error?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: string
+          job?: string
+          result?: Json | null
+          source?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       revenue_events: {
         Row: {
           amount: number | null
@@ -7757,6 +8702,7 @@ export type Database = {
           currency: string
           event_type: string
           id: string
+          idempotency_key: string | null
           metadata: Json | null
           org_id: string
           plan_id: string | null
@@ -7769,6 +8715,7 @@ export type Database = {
           currency?: string
           event_type: string
           id?: string
+          idempotency_key?: string | null
           metadata?: Json | null
           org_id: string
           plan_id?: string | null
@@ -7781,6 +8728,7 @@ export type Database = {
           currency?: string
           event_type?: string
           id?: string
+          idempotency_key?: string | null
           metadata?: Json | null
           org_id?: string
           plan_id?: string | null
@@ -7915,6 +8863,13 @@ export type Database = {
             foreignKeyName: "runtime_effects_execution_id_fkey"
             columns: ["execution_id"]
             isOneToOne: false
+            referencedRelation: "dashboard_policy_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_effects_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
             referencedRelation: "executions"
             referencedColumns: ["id"]
           },
@@ -7967,6 +8922,13 @@ export type Database = {
           truth_state_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "runtime_ledger_entries_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_policy_decisions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "runtime_ledger_entries_execution_id_fkey"
             columns: ["execution_id"]
@@ -9126,6 +10088,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "usage_counters_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
             foreignKeyName: "usage_counters_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -9177,6 +10146,20 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "usage_events_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_policy_decisions"
             referencedColumns: ["id"]
           },
           {
@@ -9396,6 +10379,128 @@ export type Database = {
           },
         ]
       }
+      dashboard_activity_feed: {
+        Row: {
+          action: string | null
+          agent: string | null
+          agent_id: string | null
+          created_at: string | null
+          detail: string | null
+          duration_ms: string | null
+          evidence_hash: string | null
+          id: string | null
+          metadata: Json | null
+          org_id: string | null
+          policy_version: string | null
+          result: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "audit_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_agent_status: {
+        Row: {
+          actions_this_month: number | null
+          actions_today: number | null
+          agent_id: string | null
+          avg_latency_ms_24h: number | null
+          configured_status: string | null
+          last_execution_at: string | null
+          last_used_at: string | null
+          metadata: Json | null
+          monthly_limit: number | null
+          name: string | null
+          org_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_overview_kpis: {
+        Row: {
+          allow_today: number | null
+          avg_latency_ms_today: number | null
+          block_today: number | null
+          configured_active_agents: number | null
+          configured_monthly_limit: number | null
+          executions_this_month: number | null
+          executions_today: number | null
+          latest_billing_period: string | null
+          metered_amount_usd: number | null
+          metered_executions: number | null
+          monthly_revenue_usd: number | null
+          monthly_revenue_verification_note: string | null
+          monthly_revenue_verified: boolean | null
+          org_id: string | null
+          total_agents: number | null
+        }
+        Relationships: []
+      }
+      dashboard_policy_decisions: {
+        Row: {
+          agent_id: string | null
+          decision: string | null
+          decision_at: string | null
+          id: string | null
+          latency_ms: number | null
+          metadata: Json | null
+          org_id: string | null
+          policy: string | null
+          proof_id: string | null
+          provider: string | null
+          reason: string | null
+          source: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "executions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "executions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_agent_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "executions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monitoring_monthly_metrics: {
         Row: {
           agent_id: string | null
@@ -9481,6 +10586,42 @@ export type Database = {
         }
         Returns: undefined
       }
+      agent_workspace_production_scope_allowed: {
+        Args: { p_scope: string }
+        Returns: boolean
+      }
+      agent_workspace_promotion_checks_pass: {
+        Args: { p_checks: Json }
+        Returns: boolean
+      }
+      agent_workspace_scope_matches: {
+        Args: { p_granted: string[]; p_requested: string }
+        Returns: boolean
+      }
+      authorize_agent_workspace_action: {
+        Args: {
+          p_action?: string
+          p_agent_id: string
+          p_commit_sha?: string
+          p_environment: string
+          p_evidence?: Json
+          p_input_hash?: string
+          p_org_id: string
+          p_plan_hash: string
+          p_promotion_id?: string
+          p_scope: string
+          p_target?: string
+          p_workspace_key: string
+        }
+        Returns: {
+          allowed: boolean
+          effective_plan_hash: string
+          lease_id: string
+          production_locked: boolean
+          reason: string
+          workspace_id: string
+        }[]
+      }
       can_use_template: {
         Args: { p_actor_id: string; p_template_id: string }
         Returns: {
@@ -9505,6 +10646,28 @@ export type Database = {
           p_key_hash: string
           p_key_prefix: string
           p_label: string
+        }
+        Returns: string
+      }
+      create_mcp_oauth_code: {
+        Args: {
+          p_actor_id: string
+          p_code_challenge: string
+          p_code_challenge_method: string
+          p_code_hash: string
+          p_nonce: string
+          p_redirect_uri: string
+          p_state_hash: string
+        }
+        Returns: string
+      }
+      create_mcp_oauth_token: {
+        Args: {
+          p_actor_id: string
+          p_expires_in_seconds: number
+          p_key_id: string
+          p_scope: string
+          p_token_hash: string
         }
         Returns: string
       }
@@ -9585,6 +10748,10 @@ export type Database = {
         Returns: string
       }
       dsg_current_actor_id: { Args: never; Returns: string }
+      dsg_gate_evals_this_period: {
+        Args: { p_org_id: string }
+        Returns: number
+      }
       dsg_has_permission: {
         Args: { permission: string; target_workspace_id: string }
         Returns: boolean
@@ -9645,6 +10812,22 @@ export type Database = {
         Returns: string
       }
       erase_actor_identity: { Args: { target_uuid: string }; Returns: boolean }
+      exchange_mcp_oauth_code: {
+        Args: {
+          p_code_hash: string
+          p_code_verifier: string
+          p_expires_in_seconds: number
+          p_key_id: string
+          p_token_hash: string
+        }
+        Returns: {
+          expires_in: number
+          scope: string
+          token_hash: string
+          token_id: string
+          token_type: string
+        }[]
+      }
       expire_api_keys: { Args: never; Returns: number }
       get_agent_permissions: {
         Args: { p_agent_id: string; p_org_id: string }
@@ -9657,6 +10840,7 @@ export type Database = {
           org_id: string
         }[]
       }
+      hash_agent_workspace_plan: { Args: { p_plan: Json }; Returns: string }
       increment_quota_atomic: {
         Args: { p_agent_id: string; p_billing_period: string; p_org_id: string }
         Returns: undefined
@@ -9665,6 +10849,26 @@ export type Database = {
       is_org_member: { Args: { target_org_id: string }; Returns: boolean }
       next_dsg_sequence: { Args: { org_id: string }; Returns: number }
       normalize_slug: { Args: { input_text: string }; Returns: string }
+      record_dsg_gate_usage: {
+        Args: {
+          p_duration_ms: number
+          p_eval_id: string
+          p_gate_status: string
+          p_org_id: string
+          p_route: string
+        }
+        Returns: {
+          billed: boolean
+          created: boolean
+          meter_event_id: string
+          usage_id: string
+          usage_position: number
+        }[]
+      }
+      record_mcp_oauth_token_usage: {
+        Args: { p_token_id: string }
+        Returns: undefined
+      }
       record_mcp_usage: {
         Args: { p_actor_id: string; p_key_id: string; p_tool_name: string }
         Returns: undefined
@@ -9714,6 +10918,10 @@ export type Database = {
       }
       revoke_mcp_api_key: {
         Args: { p_actor_id: string; p_key_id: string }
+        Returns: undefined
+      }
+      revoke_mcp_oauth_token: {
+        Args: { p_actor_id: string; p_token_hash: string }
         Returns: undefined
       }
       runtime_commit:
@@ -9788,6 +10996,10 @@ export type Database = {
         Returns: string
       }
       sync_auth_user: { Args: { p_auth_user_id: string }; Returns: undefined }
+      sync_dsg_paid_entitlement: {
+        Args: { p_org_id: string; p_plan_key: string; p_status: string }
+        Returns: undefined
+      }
       touch_api_key_last_used: {
         Args: { p_key_hash: string }
         Returns: undefined
@@ -9813,6 +11025,48 @@ export type Database = {
           calls_used: number
           key_id: string
           plan_id: string
+        }[]
+      }
+      validate_mcp_api_key_context: {
+        Args: { p_key_hash: string }
+        Returns: {
+          actor_id: string
+          calls_limit: number
+          calls_used: number
+          key_actor_id: string
+          key_id: string
+          org_id: string
+          plan_id: string
+          roles: string[]
+        }[]
+      }
+      validate_mcp_oauth_token: {
+        Args: { p_token_hash: string }
+        Returns: {
+          actor_id: string
+          calls_limit: number
+          calls_used: number
+          expires_at: string
+          key_id: string
+          scope: string
+          subscription_active: boolean
+          token_id: string
+          token_type: string
+        }[]
+      }
+      validate_mcp_oauth_token_context: {
+        Args: { p_token_hash: string }
+        Returns: {
+          actor_id: string
+          calls_limit: number
+          calls_used: number
+          key_actor_id: string
+          key_id: string
+          org_id: string
+          plan_id: string
+          roles: string[]
+          scope: string
+          token_id: string
         }[]
       }
     }
