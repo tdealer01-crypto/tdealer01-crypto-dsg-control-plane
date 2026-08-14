@@ -318,6 +318,69 @@ describe('/api/spine/execute', () => {
     expect(incrementQuota).not.toHaveBeenCalled();
   });
 
+  it('reports is_first_execution based on the real executions count, not a stub', async () => {
+    mockCors();
+    mockRateLimit();
+    mockApiError();
+    mockQuota();
+
+    const resolveAgentFromApiKey = vi.fn(async () => ({
+      id: 'agt_1',
+      org_id: 'org_1',
+      status: 'active',
+    }));
+    const executeSpineIntent = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      body: { request_id: 'req_1', decision: 'ALLOW', stop_reason: 'NONE' },
+    }));
+    const captureEvent = vi.fn(async () => undefined);
+
+    // Simulate an agent that already has 3 prior rows in `executions`.
+    const select = vi.fn(() => ({
+      eq: vi.fn(() => Promise.resolve({ count: 3, error: null })),
+    }));
+    const from = vi.fn(() => ({ select }));
+
+    vi.doMock('../../../lib/agent-auth', () => ({ resolveAgentFromApiKey }));
+    vi.doMock('../../../lib/spine/engine', () => ({ executeSpineIntent, issueSpineIntent: vi.fn() }));
+    vi.doMock('../../../lib/spine/request', () => ({
+      normalizeSpinePayload: vi.fn(() => ({
+        agentId: 'agt_1',
+        action: 'scan',
+        input: {},
+        context: {},
+        canonicalRequest: { action: 'scan', input: {}, context: {} },
+      })),
+    }));
+    vi.doMock('../../../lib/telemetry/capture-event', () => ({ captureEvent }));
+    vi.doMock('../../../lib/supabase-server', () => ({
+      getSupabaseAdmin: vi.fn(() => ({ from })),
+    }));
+
+    const { POST } = await import('../../../app/api/spine/execute/route');
+
+    const req = new Request('http://localhost/api/spine/execute', {
+      method: 'POST',
+      headers: {
+        origin: 'https://app.example.com',
+        authorization: 'Bearer dsg_live_good',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ agent_id: 'agt_1' }),
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    expect(from).toHaveBeenCalledWith('executions');
+    expect(captureEvent).toHaveBeenCalledWith(
+      'execution_submitted',
+      expect.objectContaining({ agentId: 'agt_1' }),
+      expect.objectContaining({ is_first_execution: false })
+    );
+  });
+
   it('issues intent and retries execute when no pending runtime intent exists', async () => {
     mockCors();
     mockRateLimit();
