@@ -3,11 +3,16 @@ name: Supabase Migrations
 on:
   push:
     branches: [main]
-    paths: ['supabase/migrations/**']
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-migrations.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
 
 jobs:
   migrate:
@@ -25,23 +30,42 @@ jobs:
       - name: Install Supabase CLI
         run: npm install -g supabase
 
-      - name: Run database migrations
-        run: supabase db push --linked
+      - name: Validate Supabase secrets
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "::error::Missing SUPABASE_ACCESS_TOKEN repository secret"; exit 1; }
+          test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::Missing SUPABASE_DB_PASSWORD repository secret"; exit 1; }
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Run database migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --linked
 
       - name: Generate TypeScript types
         run: npm run db:types
         env:
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || secrets.SUPABASE_PROJECT_REF || 'zeyguilldygozufpgxms' }}
 
       - name: Commit generated types if changed
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add lib/database.types.ts
-          git commit -m "chore: regenerate Supabase types after migrations" || true
+          if git diff --cached --quiet; then
+            echo "Supabase types unchanged"
+            exit 0
+          fi
+          git commit -m "chore: regenerate Supabase types after migrations"
           git push
 
       - name: Notify on migration failure
