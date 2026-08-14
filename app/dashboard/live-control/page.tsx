@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createClient as createSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { EmptyState, EvidenceRow, MetricTile, RuntimeWorkflowPage, WorkflowPanel } from '../_components/runtime-workflow';
 
 type HealthPayload = {
@@ -20,26 +21,6 @@ type HealthPayload = {
   };
 };
 
-type UsagePayload = {
-  plan?: string;
-  subscription_status?: string;
-  billing_period?: string;
-  executions?: number;
-  included_executions?: number;
-  overage_executions?: number;
-  projected_amount_usd?: number;
-};
-
-type Execution = {
-  id: string;
-  agent_id: string;
-  decision: string;
-  latency_ms: number;
-  policy_version: string | null;
-  reason: string | null;
-  created_at: string;
-};
-
 type IntegrationPayload = {
   ok?: boolean;
   service?: string;
@@ -49,36 +30,89 @@ type IntegrationPayload = {
   };
 };
 
-type AuditItem = {
-  id?: number;
-  gate_result?: string;
-  entropy?: number;
-  created_at?: string;
-  state_hash?: string;
-  sequence?: number;
-  region_id?: string;
+type DashboardKpis = {
+  org_id: string;
+  total_agents: number;
+  configured_active_agents: number;
+  executions_today: number;
+  executions_this_month: number;
+  allow_today: number;
+  block_today: number;
+  avg_latency_ms_today: number | null;
+  configured_monthly_limit: number;
+  latest_billing_period: string | null;
+  metered_executions: number;
+  metered_amount_usd: number;
+  monthly_revenue_usd: number | null;
+  monthly_revenue_verified: boolean;
+  monthly_revenue_verification_note: string | null;
 };
 
-type AuditPayload = {
+type AgentStatus = {
+  org_id: string;
+  agent_id: string;
+  name: string;
+  configured_status: string;
+  last_used_at: string | null;
+  last_execution_at: string | null;
+  actions_today: number;
+  actions_this_month: number;
+  monthly_limit: number;
+  avg_latency_ms_24h: number | null;
+};
+
+type PolicyDecision = {
+  org_id: string;
+  id: string;
+  decision_at: string;
+  agent_id: string | null;
+  source: string | null;
+  provider: string | null;
+  policy: string | null;
+  decision: string;
+  latency_ms: number | null;
+  proof_id: string | null;
+  reason: string | null;
+};
+
+type ActivityFeedItem = {
+  org_id: string;
+  id: string;
+  created_at: string;
+  agent_id: string | null;
+  agent: string | null;
+  action: string | null;
+  result: string | null;
+  duration_ms: string | null;
+  detail: string | null;
+  evidence_hash: string | null;
+  policy_version: string | null;
+};
+
+type LiveDataPayload = {
   ok?: boolean;
-  error?: string | null;
-  items?: AuditItem[];
+  org_id?: string;
+  generated_at?: string;
+  kpis?: DashboardKpis | null;
+  agents?: AgentStatus[];
+  decisions?: PolicyDecision[];
+  activities?: ActivityFeedItem[];
 };
 
 type DashboardState = {
   health: HealthPayload | null;
-  usage: UsagePayload | null;
-  executions: Execution[];
   integration: IntegrationPayload | null;
-  audit: AuditPayload | null;
+  live: LiveDataPayload | null;
 };
 
 const steps = [
-  { label: '1', title: 'Watch runtime', body: 'Load health, usage, executions, and audit from real endpoints simultaneously' },
+  { label: '1', title: 'Watch runtime', body: 'Load health and org-scoped dashboard evidence from verified Supabase views' },
   { label: '2', title: 'Choose mode', body: 'Determine whether the agent should be in Audit Only or Enforce Gate based on the current risk level' },
   { label: '3', title: 'Act safely', body: 'When BLOCK or FREEZE is encountered, go to audit/executions before deciding to change policy' },
   { label: '4', title: 'Prove result', body: 'Record runtime status to use as smoke evidence and buyer proof' },
 ];
+
+const REALTIME_TABLES = ['agents', 'executions', 'audit_logs', 'usage_counters'] as const;
 
 function formatDate(value?: string | null) {
   if (!value) return '-';
@@ -86,30 +120,32 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-function formatMoney(value?: number) {
-  return `$${Number(value || 0).toFixed(2)}`;
+function formatMoney(value?: number | null) {
+  if (value === null || value === undefined) return 'Not verified';
+  return `$${Number(value).toFixed(2)}`;
 }
 
 function decisionTone(decision?: string): 'green' | 'blue' | 'red' | 'slate' {
   const normalized = String(decision || '').toUpperCase();
-  if (normalized === 'ALLOW') return 'green';
-  if (normalized === 'STABILIZE') return 'blue';
+  if (normalized === 'ALLOW' || normalized === 'PASS') return 'green';
+  if (normalized === 'STABILIZE' || normalized === 'REVIEW') return 'blue';
   if (normalized === 'BLOCK' || normalized === 'FREEZE') return 'red';
   return 'slate';
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', credentials: 'include' });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((json as { error?: string }).error || `Request failed: ${url}`);
   return json as T;
 }
 
 export default function LiveControlPage() {
-  const [data, setData] = useState<DashboardState>({ health: null, usage: null, executions: [], integration: null, audit: null });
+  const [data, setData] = useState<DashboardState>({ health: null, integration: null, live: null });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'initial') setLoading(true);
@@ -119,28 +155,22 @@ export default function LiveControlPage() {
     try {
       const results = await Promise.allSettled([
         fetchJson<HealthPayload>('/api/health'),
-        fetchJson<UsagePayload>('/api/usage'),
-        fetchJson<{ executions?: Execution[] }>('/api/executions?limit=8'),
         fetchJson<IntegrationPayload>('/api/integration'),
-        fetchJson<AuditPayload>('/api/audit?limit=8'),
+        fetchJson<LiveDataPayload>('/api/dashboard/live-data?limit=8'),
       ]);
 
-      const [healthRes, usageRes, executionsRes, integrationRes, auditRes] = results;
+      const [healthRes, integrationRes, liveRes] = results;
       const warnings: string[] = [];
 
       setData({
         health: healthRes.status === 'fulfilled' ? healthRes.value : null,
-        usage: usageRes.status === 'fulfilled' ? usageRes.value : null,
-        executions: executionsRes.status === 'fulfilled' ? executionsRes.value.executions || [] : [],
         integration: integrationRes.status === 'fulfilled' ? integrationRes.value : null,
-        audit: auditRes.status === 'fulfilled' ? auditRes.value : null,
+        live: liveRes.status === 'fulfilled' ? liveRes.value : null,
       });
 
       if (healthRes.status === 'rejected') warnings.push(healthRes.reason?.message || 'health failed');
-      if (usageRes.status === 'rejected') warnings.push(usageRes.reason?.message || 'usage failed');
-      if (executionsRes.status === 'rejected') warnings.push(executionsRes.reason?.message || 'executions failed');
       if (integrationRes.status === 'rejected') warnings.push(integrationRes.reason?.message || 'integration failed');
-      if (auditRes.status === 'rejected') warnings.push(auditRes.reason?.message || 'audit failed');
+      if (liveRes.status === 'rejected') warnings.push(liveRes.reason?.message || 'Supabase dashboard contract failed');
       if (warnings.length > 0) setError(warnings.join(' | '));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load live control page');
@@ -154,33 +184,79 @@ export default function LiveControlPage() {
     void load('initial');
   }, [load]);
 
+  useEffect(() => {
+    const orgId = data.live?.org_id;
+    if (!orgId) return;
+
+    const scheduleReload = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = setTimeout(() => void load('refresh'), 250);
+    };
+
+    const polling = setInterval(scheduleReload, 30_000);
+    let supabase: ReturnType<typeof createSupabaseBrowserClient> | null = null;
+    let channel: ReturnType<ReturnType<typeof createSupabaseBrowserClient>['channel']> | null = null;
+
+    try {
+      supabase = createSupabaseBrowserClient();
+      channel = supabase.channel(`dashboard-live-${orgId}`);
+
+      for (const table of REALTIME_TABLES) {
+        channel.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}` },
+          scheduleReload,
+        );
+      }
+
+      channel.subscribe();
+    } catch {
+      // Realtime is an acceleration path only; authenticated API polling remains authoritative.
+    }
+
+    return () => {
+      clearInterval(polling);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      if (supabase && channel) void supabase.removeChannel(channel);
+    };
+  }, [data.live?.org_id, load]);
+
+  const decisions = data.live?.decisions ?? [];
+  const activities = data.live?.activities ?? [];
+  const agents = data.live?.agents ?? [];
+  const kpis = data.live?.kpis ?? null;
+
   const runtimeStatus = useMemo(() => {
     if (loading) return 'Checking';
-    if (data.health?.ok && data.health.core_ok && data.health.db_ok) return 'Live';
-    if (data.health?.core_ok || data.health?.db_ok) return 'Degraded';
+    if (data.health?.ok && data.health.core_ok && data.health.db_ok && data.live?.ok) return 'Live';
+    if (data.health?.core_ok || data.health?.db_ok || data.live?.ok) return 'Degraded';
     return 'Needs review';
-  }, [loading, data.health]);
+  }, [loading, data.health, data.live?.ok]);
 
   const integrityScore = useMemo(() => {
     let score = 0;
-    if (data.health?.core_ok) score += 35;
+    if (data.health?.core_ok) score += 30;
     if (data.health?.db_ok) score += 25;
     if (data.integration?.integration_status?.control_plane_ready) score += 20;
-    if ((data.usage?.overage_executions ?? 0) === 0) score += 10;
-    if ((data.audit?.items?.length ?? 0) > 0) score += 10;
+    if (data.live?.ok) score += 15;
+    if (activities.length > 0 || decisions.length > 0) score += 10;
     return Math.min(score, 100);
-  }, [data]);
+  }, [data, activities.length, decisions.length]);
 
   const alertCount = useMemo(() => {
-    return (data.audit?.items || []).filter((item) => ['BLOCK', 'FREEZE'].includes(String(item.gate_result || '').toUpperCase())).length;
-  }, [data.audit]);
+    return decisions.filter((item) => ['BLOCK', 'FREEZE'].includes(String(item.decision || '').toUpperCase())).length;
+  }, [decisions]);
+
+  const revenueLabel = kpis?.monthly_revenue_verified
+    ? formatMoney(kpis.monthly_revenue_usd)
+    : 'Not verified';
 
   return (
     <RuntimeWorkflowPage
       active="/dashboard/live-control"
       eyebrow="DSG Live Runtime Control"
       title="Live Control Flow"
-      description="Live runtime control for real users: see the system live, see the latest decisions, know whether to audit or enforce, and navigate directly to evidence review"
+      description="Org-scoped runtime control backed by Supabase evidence views. No sample dashboard rows are used for the live metrics below."
       status={runtimeStatus}
       statusTone={runtimeStatus === 'Live' ? 'green' : runtimeStatus === 'Degraded' ? 'gold' : 'red'}
       actions={[{ href: '/dashboard/executions', label: 'Open executions', tone: 'gold' }, { href: '/dashboard/audit', label: 'Open audit', tone: 'slate' }]}
@@ -192,14 +268,28 @@ export default function LiveControlPage() {
         <div className="space-y-6">
           <div className="grid gap-3 sm:grid-cols-2">
             <MetricTile label="Core" value={loading ? '…' : data.health?.core_ok ? 'ONLINE' : 'OFFLINE'} helper={data.health?.core?.status || 'runtime core'} tone={data.health?.core_ok ? 'green' : 'red'} />
-            <MetricTile label="Database" value={loading ? '…' : data.health?.db_ok ? 'OK' : 'DOWN'} helper={data.health?.service || 'service'} tone={data.health?.db_ok ? 'green' : 'red'} />
-            <MetricTile label="Executions" value={String(data.usage?.executions ?? data.executions.length ?? 0)} helper={data.usage?.billing_period || 'billing period'} tone="blue" />
-            <MetricTile label="Projected billing" value={formatMoney(data.usage?.projected_amount_usd)} helper={data.usage?.plan || 'plan'} tone="gold" />
+            <MetricTile label="Database" value={loading ? '…' : data.health?.db_ok ? 'OK' : 'DOWN'} helper={data.live?.ok ? 'Supabase live contract ready' : data.health?.service || 'service'} tone={data.health?.db_ok && data.live?.ok ? 'green' : 'red'} />
+            <MetricTile label="Executions this month" value={loading ? '…' : String(kpis?.executions_this_month ?? 0)} helper={kpis?.latest_billing_period || 'current billing period'} tone="blue" />
+            <MetricTile label="Monthly revenue" value={loading ? '…' : revenueLabel} helper={kpis?.monthly_revenue_verified ? 'verified authoritative source' : kpis?.monthly_revenue_verification_note || 'authoritative revenue source not wired'} tone={kpis?.monthly_revenue_verified ? 'green' : 'gold'} />
           </div>
 
-          <WorkflowPanel eyebrow="Control score" title={`${integrityScore}% runtime integrity`} body="This score gives users an immediate overview of how ready core/db/control-plane/audit are before deciding to enable enforce gate" tone={integrityScore >= 80 ? 'green' : 'gold'}>
+          <WorkflowPanel eyebrow="Control score" title={`${integrityScore}% runtime integrity`} body="This score summarizes core, database, control-plane readiness, live dashboard evidence, and recent evidence presence." tone={integrityScore >= 80 ? 'green' : 'gold'}>
             <div className="h-2 w-full bg-black/30">
               <div className="h-full bg-amber-300" style={{ width: `${integrityScore}%` }} />
+            </div>
+          </WorkflowPanel>
+
+          <WorkflowPanel eyebrow="Agent state" title={`${agents.length} agents in live contract`}>
+            <div className="space-y-2">
+              {agents.slice(0, 4).map((agent) => (
+                <EvidenceRow
+                  key={agent.agent_id}
+                  label={agent.name}
+                  value={`${agent.configured_status} · ${agent.actions_this_month} actions`}
+                  tone={agent.configured_status === 'active' ? 'green' : 'slate'}
+                />
+              ))}
+              {!loading && agents.length === 0 ? <EmptyState title="No agents found" body="The current organization has no agent rows exposed by dashboard_agent_status." href="/dashboard/agents" action="Open agents" /> : null}
             </div>
           </WorkflowPanel>
         </div>
@@ -209,23 +299,47 @@ export default function LiveControlPage() {
             <div className="space-y-3">
               <EvidenceRow label="Control plane" value={data.integration?.integration_status?.control_plane_ready ? 'READY' : loading ? '…' : 'NOT READY'} tone={data.integration?.integration_status?.control_plane_ready ? 'green' : 'red'} />
               <EvidenceRow label="Core health" value={data.integration?.integration_status?.core_health_ok ? 'PASS' : loading ? '…' : 'CHECK'} tone={data.integration?.integration_status?.core_health_ok ? 'green' : 'gold'} />
-              <EvidenceRow label="Open alerts" value={String(alertCount)} tone={alertCount === 0 ? 'green' : 'red'} />
+              <EvidenceRow label="Open decision alerts" value={String(alertCount)} tone={alertCount === 0 ? 'green' : 'red'} />
+              <EvidenceRow label="ALLOW today" value={String(kpis?.allow_today ?? 0)} tone="green" />
+              <EvidenceRow label="BLOCK today" value={String(kpis?.block_today ?? 0)} tone={(kpis?.block_today ?? 0) === 0 ? 'green' : 'red'} />
             </div>
             <button type="button" onClick={() => void load('refresh')} disabled={refreshing} className="mt-4 rounded-xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60">
               {refreshing ? 'Refreshing…' : 'Refresh runtime'}
             </button>
           </WorkflowPanel>
 
-          <WorkflowPanel eyebrow="Recent execution loop" title="Latest decisions">
+          <WorkflowPanel eyebrow="Recent execution loop" title="Latest policy decisions">
             <div className="space-y-2">
-              {loading ? <EmptyState title="Loading runtime" body="Loading execution and audit feed from backend" /> : null}
-              {!loading && data.executions.length === 0 ? <EmptyState title="No executions found" body="No executions to review yet. Run Auto-Setup or connect an agent to create the first evidence." href="/dashboard/skills" action="Run setup" /> : null}
-              {data.executions.slice(0, 5).map((execution) => (
-                <EvidenceRow key={execution.id} label={execution.decision} value={`${execution.latency_ms}ms · ${formatDate(execution.created_at)}`} tone={decisionTone(execution.decision)} />
+              {loading ? <EmptyState title="Loading runtime" body="Loading policy decisions from dashboard_policy_decisions" /> : null}
+              {!loading && decisions.length === 0 ? <EmptyState title="No decisions found" body="No org-scoped policy decisions are available yet." href="/dashboard/agents" action="Open agents" /> : null}
+              {decisions.slice(0, 5).map((decision) => (
+                <EvidenceRow
+                  key={decision.id}
+                  label={decision.decision}
+                  value={`${decision.latency_ms ?? 0}ms · ${formatDate(decision.decision_at)}${decision.policy ? ` · ${decision.policy}` : ''}`}
+                  tone={decisionTone(decision.decision)}
+                />
               ))}
             </div>
             <Link href="/dashboard/executions" className="mt-4 inline-flex rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
               Review execution evidence
+            </Link>
+          </WorkflowPanel>
+
+          <WorkflowPanel eyebrow="Audit feed" title="Latest evidence-backed activity">
+            <div className="space-y-2">
+              {!loading && activities.length === 0 ? <EmptyState title="No audit activity" body="No org-scoped audit_logs rows are available in dashboard_activity_feed." href="/dashboard/audit" action="Open audit" /> : null}
+              {activities.slice(0, 4).map((item) => (
+                <EvidenceRow
+                  key={item.id}
+                  label={item.result || 'EVENT'}
+                  value={`${item.agent || 'system'} · ${item.action || item.detail || 'audit event'} · ${formatDate(item.created_at)}`}
+                  tone={decisionTone(item.result || '')}
+                />
+              ))}
+            </div>
+            <Link href="/dashboard/audit" className="mt-4 inline-flex rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
+              Open audit evidence
             </Link>
           </WorkflowPanel>
         </div>
