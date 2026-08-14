@@ -4,10 +4,18 @@ Production AI governance control plane for Claude Code. Makes every Agent decisi
 
 ## 🚀 Installation
 
-### Claude Code CLI
+### One-line install (ClaudePluginHub)
 ```bash
-claude plugin add https://github.com/tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane && claude plugin install dsg-governance@dsg-plugins
 ```
+
+### Claude Code CLI — step by step
+```bash
+claude plugin marketplace add tdealer01-crypto/tdealer01-crypto-dsg-control-plane
+claude plugin install dsg-governance@dsg-plugins
+```
+
+The repository is the `dsg-plugins` marketplace. The `dsg-governance` plugin is distributed from `plugins/dsg-governance` through `.claude-plugin/marketplace.json`.
 
 ### Claude.ai
 Visit the Claude Code plugin marketplace and search for "DSG Governance Control Plane"
@@ -217,5 +225,5 @@ MIT — See LICENSE file in repository
 ---
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-07-01  
+**Last Updated:** 2026-08-14  
 **Status:** Production-Connected
