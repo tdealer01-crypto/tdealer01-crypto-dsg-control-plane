@@ -1,0 +1,86 @@
+name: Reconcile Supabase Migration History
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID || 'zeyguilldygozufpgxms' }}
+
+jobs:
+  reconcile:
+    name: Fetch canonical remote migration history
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Validate required Supabase secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "::error::Missing SUPABASE_ACCESS_TOKEN repository secret"; exit 1; }
+          test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::Missing SUPABASE_DB_PASSWORD repository secret"; exit 1; }
+
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Fetch canonical remote migration files
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_YES: 'true'
+        run: supabase migration fetch --linked
+
+      - name: Verify migration parity
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase migration list --linked | tee /tmp/migration-list.txt
+          if grep -Eq '^\s*\|\s*[0-9]{14}\s*\|' /tmp/migration-list.txt; then
+            echo "::error::Remote-only migration versions remain after fetch"
+            exit 1
+          fi
+
+      - name: Publish reconciliation pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add supabase/migrations
+          if git diff --cached --quiet; then
+            echo "Migration history already matches the remote project"
+            exit 0
+          fi
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          branch="automation/supabase-history-${GITHUB_RUN_ID}"
+          git checkout -b "$branch"
+          git commit -m "chore(supabase): reconcile remote migration history"
+          git push origin "$branch"
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore: reconcile Supabase migration history" \
+            --body "Fetched canonical migration files from the linked Supabase project's migration history and verified that no remote-only migration versions remain."
