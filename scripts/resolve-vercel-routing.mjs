@@ -122,12 +122,17 @@ export function loadRoutingConfig(path = '.github/vercel-routing.json') {
 }
 
 async function main() {
+  // A CI bootstrap may create/link the new Vercel project before routing is resolved.
+  // Prefer those IDs when present; otherwise use the repository secrets.
+  const newTeamId = process.env.BOOTSTRAP_VERCEL_ORG_ID || process.env.NEW_VERCEL_ORG_ID;
+  const newProjectId = process.env.BOOTSTRAP_VERCEL_PROJECT_ID || process.env.NEW_VERCEL_PROJECT_ID;
+
   const routing = resolveVercelRouting({
     config: loadRoutingConfig(process.env.VERCEL_ROUTING_CONFIG),
     legacyToken: process.env.LEGACY_VERCEL_TOKEN,
     newToken: process.env.NEW_VERCEL_TOKEN,
-    newTeamId: process.env.NEW_VERCEL_ORG_ID,
-    newProjectId: process.env.NEW_VERCEL_PROJECT_ID,
+    newTeamId,
+    newProjectId,
   });
 
   writeGitHubEnvironment('VERCEL_ACCOUNT_MODE', routing.accountMode);
