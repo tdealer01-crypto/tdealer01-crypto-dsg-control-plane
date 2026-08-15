@@ -7,8 +7,11 @@ on:
       - 'lib/runtime/makk8-z3-verifier.ts'
       - 'app/api/dsg/makk8-z3/verify/**'
       - 'lib/unify/**'
+      - 'lib/dsg-one/**'
+      - 'lib/mcp/canonical-action-adapter.ts'
       - 'tests/unit/runtime/makk8-z3-verifier.test.ts'
       - 'tests/unit/unify/**'
+      - 'tests/unit/dsg-one/**'
       - 'trinity-mcp-server/**'
       - '.github/workflows/unify-dsg-governed-chain.yml'
   workflow_dispatch:
@@ -39,14 +42,24 @@ jobs:
       - name: Typecheck control-plane integration
         run: npm run typecheck
 
-      - name: Run real Z3 and Unify bridge tests
+      - name: Run canonical DSG ONE + real Z3 + Unify bridge tests
         run: >-
           npx vitest run
           tests/unit/runtime/makk8-z3-verifier.test.ts
           tests/unit/unify/desktop-dsg-bridge.test.ts
+          tests/unit/dsg-one/canonical-e2e-pipeline.test.ts
+          tests/unit/dsg-one/canonical-action-e2e.test.ts
 
       - name: Install Trinity MCP dependencies
-        run: npm --prefix trinity-mcp-server ci --ignore-scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f trinity-mcp-server/package-lock.json ] || [ -f trinity-mcp-server/npm-shrinkwrap.json ]; then
+            npm --prefix trinity-mcp-server ci --ignore-scripts
+          else
+            echo 'Trinity MCP has no lockfile; using npm install for this package only.'
+            npm --prefix trinity-mcp-server install --ignore-scripts --no-audit --no-fund
+          fi
 
       - name: Build Trinity MCP including Unify entrypoint
         run: npm --prefix trinity-mcp-server run build
@@ -62,11 +75,11 @@ jobs:
           {
             echo '## Unify Desktop DSG Governed Chain'
             echo ''
-            echo '- Makk-8 invariant snapshot: verified by actual z3-solver runtime'
-            echo '- Z3 result: SAT is required before command authorization'
+            echo '- Canonical optimization: deterministic Simulation → QUBO → Ising → Z3 → exact proof'
+            echo '- Global optimum: only emitted when explicit business objective is bound and exact proof completes'
             echo '- DSG ONE agent command gate: PASS/actionEnvelope required before local execution'
             echo '- Desktop/Browser/Shell execution: local Unify executor only; CI does not fake OS execution'
             echo '- Evidence: canonical SHA-256 local bundle + DSG result receipt callback'
-            echo '- Replay: local evidence integrity + repeat Makk-8/Z3 proof hash'
-            echo '- Trinity MCP: compiled unify-dsg entrypoint with verify/result/replay tools'
+            echo '- Replay: canonical chain/action/receipt hashes are preserved for verification'
+            echo '- Trinity MCP/Unify: transport adapters only; no second ALLOW/BLOCK engine'
           } >> "$GITHUB_STEP_SUMMARY"
