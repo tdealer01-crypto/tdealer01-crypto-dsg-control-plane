@@ -124,7 +124,7 @@ export async function runCanonicalActionE2E(req: CanonicalActionE2ERequest) {
       proofHash: optimization.proof.proofHash,
     },
   });
-  if (!compiled.ok) {
+  if (compiled.ok === false) {
     return {
       verdict: 'BLOCK' as const,
       stage: 'compile' as const,
