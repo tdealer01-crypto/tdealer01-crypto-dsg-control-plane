@@ -108,7 +108,7 @@ function sha256(value: unknown): string {
 function vectorToSolution(qubo: QUBOMatrix, mask: bigint): Record<string, number> {
   const solution: Record<string, number> = {};
   for (let i = 0; i < qubo.numVariables; i++) {
-    solution[qubo.variables[i].id] = Number((mask >> BigInt(i)) & 1n);
+    solution[qubo.variables[i].id] = Number((mask >> BigInt(i)) & BigInt(1));
   }
   return solution;
 }
@@ -138,10 +138,10 @@ function exactGlobalQuboProof(
     };
   }
 
-  const totalStates = 1n << BigInt(qubo.numVariables);
+  const totalStates = BigInt(1) << BigInt(qubo.numVariables);
   let bestEnergy = Number.POSITIVE_INFINITY;
   let statesChecked = 0;
-  for (let mask = 0n; mask < totalStates; mask += 1n) {
+  for (let mask = BigInt(0); mask < totalStates; mask += BigInt(1)) {
     const energy = calculateQUBOEnergy(qubo, vectorToSolution(qubo, mask));
     if (energy < bestEnergy) bestEnergy = energy;
     statesChecked += 1;
