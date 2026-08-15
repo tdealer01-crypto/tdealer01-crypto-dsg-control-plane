@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "requestId": "runtime-env-bootstrap-20260816-new-vercel-account",
+  "enabled": true,
+  "source": {
+    "teamId": "team_n189mlAdVHR6cGGiaAwsKzQ0",
+    "projectId": "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW"
+  },
+  "newTeamId": "team_6pEhvA6GmVXYajBuJ2PUPFcs",
+  "newProjectId": "prj_EsrB0dLrqbDKPDTMiKFGadZMny5M",
+  "policy": {
+    "copyMode": "critical-allowlist-only",
+    "rotateNextAuthSecretWhenMissing": true,
+    "requireDistributedRedis": true,
+    "requireStrictHealth": true,
+    "productionDeploy": false
+  }
+}
