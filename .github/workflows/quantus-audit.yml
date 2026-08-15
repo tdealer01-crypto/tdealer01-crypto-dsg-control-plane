@@ -1,0 +1,207 @@
+name: Quantus Audit Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Quantus audit target
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - dilithium
+          - hdwallet
+          - zk-circuits
+          - poseidon
+          - chain
+      run_clippy:
+        description: Run clippy in addition to build/test
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: quantus-audit-${{ github.ref }}-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Build frozen target matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ inputs.target }}" in
+            all)
+              matrix='{"include":[{"target":"dilithium","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","package":"qp-rusty-crystals-dilithium"},{"target":"hdwallet","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","package":"qp-rusty-crystals-hdwallet"},{"target":"zk-circuits","repository":"immunefi-team/audit-comp-quantus-qp-zk-circuits","sha":"2a6914ed0184fbc0aaf621801ac8b8b7e3b01f6e","package":""},{"target":"poseidon","repository":"immunefi-team/audit-comp-quantus-qp-poseidon","sha":"f885ad5dce133557cb3f7cce3f2ab29539008e7f","package":""},{"target":"chain","repository":"immunefi-team/audit-comp-quantus-chain","sha":"3b243b870a5442a6e5f443056f67bbba87d472f5","package":""}]}'
+              ;;
+            dilithium)
+              matrix='{"include":[{"target":"dilithium","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","package":"qp-rusty-crystals-dilithium"}]}'
+              ;;
+            hdwallet)
+              matrix='{"include":[{"target":"hdwallet","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","package":"qp-rusty-crystals-hdwallet"}]}'
+              ;;
+            zk-circuits)
+              matrix='{"include":[{"target":"zk-circuits","repository":"immunefi-team/audit-comp-quantus-qp-zk-circuits","sha":"2a6914ed0184fbc0aaf621801ac8b8b7e3b01f6e","package":""}]}'
+              ;;
+            poseidon)
+              matrix='{"include":[{"target":"poseidon","repository":"immunefi-team/audit-comp-quantus-qp-poseidon","sha":"f885ad5dce133557cb3f7cce3f2ab29539008e7f","package":""}]}'
+              ;;
+            chain)
+              matrix='{"include":[{"target":"chain","repository":"immunefi-team/audit-comp-quantus-chain","sha":"3b243b870a5442a6e5f443056f67bbba87d472f5","package":""}]}'
+              ;;
+            *)
+              echo "Unsupported target" >&2
+              exit 2
+              ;;
+          esac
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  audit:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout frozen competition source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.sha }}
+          path: target
+          persist-credentials: false
+
+      - name: Enforce local-only guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "LOCAL-ONLY AUDIT"
+          echo "No mainnet/public-testnet interaction. No deployment. No project secrets."
+          echo "Source is pinned to the competition SHA and checkout credentials are not persisted."
+
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal --component clippy
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Install chain native dependencies
+        if: ${{ matrix.target == 'chain' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang cmake libssl-dev pkg-config protobuf-compiler
+
+      - name: Record frozen-source evidence
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../audit-output/${{ matrix.target }}
+          {
+            echo "target=${{ matrix.target }}"
+            echo "repository=${{ matrix.repository }}"
+            echo "expected_sha=${{ matrix.sha }}"
+            echo "actual_sha=$(git rev-parse HEAD)"
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "rustc=$(rustc --version)"
+            echo "cargo=$(cargo --version)"
+          } | tee ../audit-output/${{ matrix.target }}/metadata.txt
+          test "$(git rev-parse HEAD)" = "${{ matrix.sha }}"
+
+      - name: Build release
+        id: build
+        working-directory: target
+        shell: bash
+        continue-on-error: true
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -o pipefail
+          if [ -n "$PACKAGE" ]; then
+            cargo build --release --locked -p "$PACKAGE" 2>&1 | tee ../audit-output/${{ matrix.target }}/build.log
+          else
+            cargo build --release --locked 2>&1 | tee ../audit-output/${{ matrix.target }}/build.log
+          fi
+
+      - name: Run release tests
+        id: tests
+        working-directory: target
+        shell: bash
+        continue-on-error: true
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -o pipefail
+          if [ -n "$PACKAGE" ]; then
+            cargo test --release --locked -p "$PACKAGE" 2>&1 | tee ../audit-output/${{ matrix.target }}/test.log
+          else
+            cargo test --release --locked 2>&1 | tee ../audit-output/${{ matrix.target }}/test.log
+          fi
+
+      - name: Run clippy
+        id: clippy
+        if: ${{ inputs.run_clippy }}
+        working-directory: target
+        shell: bash
+        continue-on-error: true
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -o pipefail
+          if [ -n "$PACKAGE" ]; then
+            cargo clippy --locked -p "$PACKAGE" --all-targets 2>&1 | tee ../audit-output/${{ matrix.target }}/clippy.log
+          else
+            cargo clippy --locked --all-targets 2>&1 | tee ../audit-output/${{ matrix.target }}/clippy.log
+          fi
+
+      - name: Create audit summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p audit-output/${{ matrix.target }}
+          {
+            echo "# Quantus audit result — ${{ matrix.target }}"
+            echo
+            echo "- Frozen source: ${{ matrix.repository }}@${{ matrix.sha }}"
+            echo "- Build: ${{ steps.build.outcome }}"
+            echo "- Tests: ${{ steps.tests.outcome }}"
+            echo "- Clippy: ${{ steps.clippy.outcome || 'skipped' }}"
+            echo
+            echo "This artifact is evidence only. A human must confirm scope, impact, and a runnable PoC before any Immunefi submission."
+          } | tee audit-output/${{ matrix.target }}/SUMMARY.md
+
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantus-audit-${{ matrix.target }}-${{ github.run_id }}
+          path: audit-output/${{ matrix.target }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail closed on build/test failure
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.build.outcome }}" != "success" ] || [ "${{ steps.tests.outcome }}" != "success" ]; then
+            echo "Build or tests failed; marking this target failed." >&2
+            exit 1
+          fi

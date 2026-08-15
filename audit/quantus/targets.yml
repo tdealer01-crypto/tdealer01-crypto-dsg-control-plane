@@ -1,0 +1,63 @@
+competition: "Immunefi Audit Comp | Quantus"
+status: live
+source_policy: frozen-competition-forks
+execution_policy: local-only
+secrets_policy: none
+human_review_required: true
+
+targets:
+  - id: dilithium
+    repository: immunefi-team/audit-comp-quantus-qp-rusty-crystals
+    ref: audit-comp-ready
+    sha: 94dfe6e671b29689c66148991630406e983e2457
+    in_scope_path: dilithium
+    cargo_package: qp-rusty-crystals-dilithium
+    notes:
+      - ML-DSA/Dilithium implementation is in scope.
+      - threshold module is explicitly out of scope.
+
+  - id: hdwallet
+    repository: immunefi-team/audit-comp-quantus-qp-rusty-crystals
+    ref: audit-comp-ready
+    sha: 94dfe6e671b29689c66148991630406e983e2457
+    in_scope_path: hdwallet
+    cargo_package: qp-rusty-crystals-hdwallet
+    notes:
+      - HD-wallet module is in scope.
+      - threshold module is explicitly out of scope.
+
+  - id: zk-circuits
+    repository: immunefi-team/audit-comp-quantus-qp-zk-circuits
+    ref: audit-comp-ready
+    sha: 2a6914ed0184fbc0aaf621801ac8b8b7e3b01f6e
+    in_scope_path: .
+    notes:
+      - Quantus ZK-circuit code/modifications are in scope.
+      - voting module is explicitly out of scope.
+      - unmodified upstream plonky2 is out of scope.
+
+  - id: poseidon
+    repository: immunefi-team/audit-comp-quantus-qp-poseidon
+    ref: audit-comp-ready
+    sha: f885ad5dce133557cb3f7cce3f2ab29539008e7f
+    in_scope_path: .
+    notes:
+      - Quantus Poseidon2 hash implementation is in scope.
+
+  - id: chain
+    repository: immunefi-team/audit-comp-quantus-chain
+    ref: audit-comp-ready
+    sha: 3b243b870a5442a6e5f443056f67bbba87d472f5
+    in_scope_path: .
+    notes:
+      - Only Quantus-owned code and modifications are in scope.
+      - Unmodified upstream Substrate and package dependencies are out of scope.
+      - Malicious genesis and privileged actions within assigned privileges are out of scope.
+
+guardrails:
+  - Do not test against mainnet or a public testnet.
+  - Do not perform denial-of-service against project assets.
+  - Do not use project, DSG, Vercel, AWS, Supabase, or other deployment secrets.
+  - Do not deploy or mutate Quantus infrastructure from this workflow.
+  - Do not submit scanner-only output as a finding.
+  - A candidate finding requires human scope review, demonstrated impact, and a runnable local PoC before submission.
