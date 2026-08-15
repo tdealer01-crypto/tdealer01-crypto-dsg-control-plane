@@ -14,6 +14,17 @@ export type OptimizationVerdict =
   | 'BLOCKED_INFEASIBLE'
   | 'BLOCKED_NOT_GLOBAL_OPTIMUM';
 
+export interface OptimizationObjective {
+  /** Stable semantic version for the business objective. */
+  version: string;
+  /**
+   * Sparse additive cost per canonical QUBO assignment variable.
+   * Keys are the builder variable ids, e.g. task_<taskId>_agent_<agentId>.
+   * Lower total cost is better. Missing variables have cost 0.
+   */
+  assignmentCosts: Record<string, number>;
+}
+
 export interface VerifiedOptimizationRequest {
   problemId: string;
   tasks: Task[];
@@ -22,6 +33,13 @@ export interface VerifiedOptimizationRequest {
   useMock?: boolean;
   timeout?: number;
   exactProofMaxVariables?: number;
+  /**
+   * Optional explicit business objective. Without one, DSG may prove feasibility
+   * and even the minimum penalty state of the feasibility QUBO, but MUST NOT
+   * market or emit VERIFIED_GLOBAL_OPTIMUM for a business objective.
+   */
+  objective?: OptimizationObjective;
+  constraintVersion?: string;
 }
 
 export interface ExactQuboProof {
@@ -40,6 +58,14 @@ export interface VerifiedOptimizationResult {
   executionAllowed: false;
   problemId: string;
   quboHash: string;
+  canonicalProblem: {
+    baseFeasibilityHash: string;
+    objectiveVersion: string;
+    objectiveHash: string;
+    constraintVersion: string;
+    constraintHash: string;
+    businessObjectiveBound: boolean;
+  };
   candidate: {
     solution: Record<string, number | boolean>;
     solutionHash: string;
@@ -138,8 +164,82 @@ function exactGlobalQuboProof(
     candidateIsGlobal,
     proofHash: sha256(material),
     reason: candidateIsGlobal
-      ? 'Exhaustive deterministic enumeration proved no QUBO assignment has lower energy.'
-      : 'Exact enumeration found a QUBO assignment with lower energy than the Ising candidate.',
+      ? 'Exhaustive deterministic enumeration proved no assignment has lower energy for this exact canonical QUBO.'
+      : 'Exact enumeration found an assignment with lower energy than the Ising candidate.',
+  };
+}
+
+function bindCanonicalProblem(
+  baseQubo: QUBOMatrix,
+  req: VerifiedOptimizationRequest,
+): {
+  qubo: QUBOMatrix;
+  objectiveVersion: string;
+  objectiveHash: string;
+  constraintVersion: string;
+  constraintHash: string;
+  businessObjectiveBound: boolean;
+} {
+  const constraintVersion = req.constraintVersion?.trim() || 'assignment-capacity-v1';
+  const constraintMaterial = {
+    version: constraintVersion,
+    tasks: [...req.tasks]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((task) => ({ id: task.id })),
+    agents: [...req.agentCapacities]
+      .sort((a, b) => a.agentId - b.agentId)
+      .map((agent) => ({
+        agentId: agent.agentId,
+        maxTotalTasks: agent.maxTotalTasks,
+      })),
+  };
+  const constraintHash = sha256(constraintMaterial);
+
+  const businessObjectiveBound = Boolean(req.objective);
+  const objectiveVersion = req.objective?.version?.trim() || 'feasibility-only-v1';
+  if (!objectiveVersion) throw new Error('objective.version must be non-empty');
+
+  const knownVariables = new Set(baseQubo.variables.map((variable) => variable.id));
+  const assignmentCosts = req.objective?.assignmentCosts ?? {};
+  for (const [variableId, cost] of Object.entries(assignmentCosts)) {
+    if (!knownVariables.has(variableId)) {
+      throw new Error(`objective references unknown QUBO variable: ${variableId}`);
+    }
+    if (!Number.isFinite(cost)) {
+      throw new Error(`objective cost must be finite for variable: ${variableId}`);
+    }
+  }
+
+  const objectiveMaterial = {
+    version: objectiveVersion,
+    assignmentCosts,
+  };
+  const objectiveHash = sha256(objectiveMaterial);
+
+  const linear = [...baseQubo.linear];
+  for (const [variableId, cost] of Object.entries(assignmentCosts)) {
+    const index = baseQubo.variableMap.get(variableId);
+    if (index !== undefined) linear[index] += cost;
+  }
+
+  const canonicalProblemHash = sha256({
+    schemaVersion: 'dsg-canonical-optimization-problem/1.0',
+    baseFeasibilityHash: baseQubo.problemHash,
+    objectiveHash,
+    constraintHash,
+  });
+
+  return {
+    qubo: {
+      ...baseQubo,
+      linear,
+      problemHash: canonicalProblemHash,
+    },
+    objectiveVersion,
+    objectiveHash,
+    constraintVersion,
+    constraintHash,
+    businessObjectiveBound,
   };
 }
 
@@ -154,10 +254,11 @@ export async function runVerifiedOptimizationPipeline(
     tasks: req.tasks,
     agentCapacities: req.agentCapacities,
   });
+  const canonical = bindCanonicalProblem(built.qubo, req);
 
   const candidate = await optimizeWithIsing({
     problemId: req.problemId,
-    quboMatrix: built.qubo,
+    quboMatrix: canonical.qubo,
     seed: req.seed ?? 0,
     useMock: req.useMock,
     timeout: req.timeout,
@@ -165,29 +266,43 @@ export async function runVerifiedOptimizationPipeline(
 
   const z3 = await verifyIsingWithZ3({
     isingAssignment: candidate.solution,
-    quboMatrix: built.qubo,
+    quboMatrix: canonical.qubo,
     tasks: req.tasks,
     agentCapacities: req.agentCapacities,
     timeout: req.timeout,
   });
 
   const exact = exactGlobalQuboProof(
-    built.qubo,
+    canonical.qubo,
     candidate.energy,
     Math.max(1, Math.min(req.exactProofMaxVariables ?? 18, 22)),
   );
 
   let verdict: OptimizationVerdict;
   if (!z3.isValid) verdict = 'BLOCKED_INFEASIBLE';
-  else if (exact.complete && exact.candidateIsGlobal === true) verdict = 'VERIFIED_GLOBAL_OPTIMUM';
-  else if (exact.complete && exact.candidateIsGlobal === false) verdict = 'BLOCKED_NOT_GLOBAL_OPTIMUM';
+  else if (
+    canonical.businessObjectiveBound &&
+    exact.complete &&
+    exact.candidateIsGlobal === true
+  ) verdict = 'VERIFIED_GLOBAL_OPTIMUM';
+  else if (
+    canonical.businessObjectiveBound &&
+    exact.complete &&
+    exact.candidateIsGlobal === false
+  ) verdict = 'BLOCKED_NOT_GLOBAL_OPTIMUM';
   else verdict = 'VERIFIED_FEASIBLE';
 
   const solutionHash = sha256(Object.entries(candidate.solution).sort());
   const proofMaterial = {
-    schemaVersion: 'dsg-verified-optimization/1.0',
+    schemaVersion: 'dsg-verified-optimization/1.1',
     problemId: req.problemId,
-    quboHash: built.qubo.problemHash,
+    quboHash: canonical.qubo.problemHash,
+    baseFeasibilityHash: built.qubo.problemHash,
+    objectiveVersion: canonical.objectiveVersion,
+    objectiveHash: canonical.objectiveHash,
+    constraintVersion: canonical.constraintVersion,
+    constraintHash: canonical.constraintHash,
+    businessObjectiveBound: canonical.businessObjectiveBound,
     solutionHash,
     candidateEnergy: candidate.energy,
     z3ProofHash: z3.proofHash,
@@ -201,7 +316,15 @@ export async function runVerifiedOptimizationPipeline(
     verdict,
     executionAllowed: false,
     problemId: req.problemId,
-    quboHash: built.qubo.problemHash,
+    quboHash: canonical.qubo.problemHash,
+    canonicalProblem: {
+      baseFeasibilityHash: built.qubo.problemHash,
+      objectiveVersion: canonical.objectiveVersion,
+      objectiveHash: canonical.objectiveHash,
+      constraintVersion: canonical.constraintVersion,
+      constraintHash: canonical.constraintHash,
+      businessObjectiveBound: canonical.businessObjectiveBound,
+    },
     candidate: {
       solution: candidate.solution,
       solutionHash,
@@ -224,6 +347,8 @@ export async function runVerifiedOptimizationPipeline(
     nextGate:
       verdict === 'VERIFIED_GLOBAL_OPTIMUM'
         ? 'Bind this proofHash to the Verified Action Compiler, then require DSG plan/scope ALLOW before execution.'
-        : 'Execution remains blocked. VERIFIED_FEASIBLE is not a global-optimum claim and is not execution permission.',
+        : canonical.businessObjectiveBound
+          ? 'Execution remains blocked. The business objective was bound, but global optimality was not proven.'
+          : 'Execution remains blocked. No explicit business objective was bound, so DSG reports VERIFIED_FEASIBLE rather than a false global-optimum claim.',
   };
 }
