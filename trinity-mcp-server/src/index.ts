@@ -191,10 +191,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: `## Trinity Agents Status\n\nTotal Agents: ${result.total}\nHealthy (Running): ${result.healthy}\n\n### Agents:\n${result.agents
-                .map(
-                  (agent) =>
-                    `- **${agent.name}** (${agent.role})\n  - Status: ${agent.status}\n  - Reliability: ${(agent.reliability * 100).toFixed(1)}%\n  - Jobs: ${agent.jobsProcessed}\n  - CPU: ${agent.cpuUsage.toFixed(1)}%\n  - Mode: ${agent.mode}\n  - Uptime: ${agent.uptime}`
-                )
+                .map((agent) => {
+                  const reliability =
+                    typeof agent.reliability === 'number'
+                      ? `${(agent.reliability * 100).toFixed(1)}%`
+                      : 'Unknown';
+                  const cpuUsage =
+                    typeof agent.cpuUsage === 'number'
+                      ? `${agent.cpuUsage.toFixed(1)}%`
+                      : 'Unknown';
+                  return `- **${agent.name}** (${agent.role})\n  - Status: ${agent.status}\n  - Reliability: ${reliability}\n  - Jobs: ${agent.jobsProcessed}\n  - CPU: ${cpuUsage}\n  - Mode: ${agent.mode}\n  - Uptime: ${agent.uptime}`;
+                })
                 .join('\n\n')}`,
             },
             {
