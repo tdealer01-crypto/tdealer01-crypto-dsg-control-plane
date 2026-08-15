@@ -1,0 +1,189 @@
+name: Quantus Formal Bug Scan — Ising Z3 SMT DSG
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Quantus audit target
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - dilithium
+          - hdwallet
+          - zk-circuits
+          - poseidon
+          - chain
+      budget:
+        description: Maximum review candidates selected per target
+        required: true
+        default: '24'
+        type: string
+      seed:
+        description: Deterministic Ising simulation seed
+        required: true
+        default: '1337'
+        type: string
+  workflow_run:
+    workflows: ["Quantus Audit Orchestrator"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: quantus-formal-scan-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      budget: ${{ steps.inputs.outputs.budget }}
+      seed: ${{ steps.inputs.outputs.seed }}
+    steps:
+      - name: Resolve inputs
+        id: inputs
+        shell: bash
+        env:
+          REQUESTED_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'all' }}
+          REQUESTED_BUDGET: ${{ github.event_name == 'workflow_dispatch' && inputs.budget || '24' }}
+          REQUESTED_SEED: ${{ github.event_name == 'workflow_dispatch' && inputs.seed || '1337' }}
+        run: |
+          set -euo pipefail
+          case "$REQUESTED_BUDGET" in
+            ''|*[!0-9]*) echo "budget must be an integer" >&2; exit 2 ;;
+          esac
+          case "$REQUESTED_SEED" in
+            ''|*[!0-9]*) echo "seed must be an integer" >&2; exit 2 ;;
+          esac
+          if [ "$REQUESTED_BUDGET" -lt 1 ] || [ "$REQUESTED_BUDGET" -gt 100 ]; then
+            echo "budget must be between 1 and 100" >&2
+            exit 2
+          fi
+          echo "target=$REQUESTED_TARGET" >> "$GITHUB_OUTPUT"
+          echo "budget=$REQUESTED_BUDGET" >> "$GITHUB_OUTPUT"
+          echo "seed=$REQUESTED_SEED" >> "$GITHUB_OUTPUT"
+
+      - name: Build frozen target matrix
+        id: matrix
+        shell: bash
+        env:
+          TARGET: ${{ steps.inputs.outputs.target }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            all)
+              matrix='{"include":[{"target":"dilithium","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","include_prefix":"dilithium"},{"target":"hdwallet","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","include_prefix":"hdwallet"},{"target":"zk-circuits","repository":"immunefi-team/audit-comp-quantus-qp-zk-circuits","sha":"2a6914ed0184fbc0aaf621801ac8b8b7e3b01f6e","include_prefix":"."},{"target":"poseidon","repository":"immunefi-team/audit-comp-quantus-qp-poseidon","sha":"f885ad5dce133557cb3f7cce3f2ab29539008e7f","include_prefix":"."},{"target":"chain","repository":"immunefi-team/audit-comp-quantus-chain","sha":"3b243b870a5442a6e5f443056f67bbba87d472f5","include_prefix":"."}]}'
+              ;;
+            dilithium)
+              matrix='{"include":[{"target":"dilithium","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","include_prefix":"dilithium"}]}'
+              ;;
+            hdwallet)
+              matrix='{"include":[{"target":"hdwallet","repository":"immunefi-team/audit-comp-quantus-qp-rusty-crystals","sha":"94dfe6e671b29689c66148991630406e983e2457","include_prefix":"hdwallet"}]}'
+              ;;
+            zk-circuits)
+              matrix='{"include":[{"target":"zk-circuits","repository":"immunefi-team/audit-comp-quantus-qp-zk-circuits","sha":"2a6914ed0184fbc0aaf621801ac8b8b7e3b01f6e","include_prefix":"."}]}'
+              ;;
+            poseidon)
+              matrix='{"include":[{"target":"poseidon","repository":"immunefi-team/audit-comp-quantus-qp-poseidon","sha":"f885ad5dce133557cb3f7cce3f2ab29539008e7f","include_prefix":"."}]}'
+              ;;
+            chain)
+              matrix='{"include":[{"target":"chain","repository":"immunefi-team/audit-comp-quantus-chain","sha":"3b243b870a5442a6e5f443056f67bbba87d472f5","include_prefix":"."}]}'
+              ;;
+            *)
+              echo "Unsupported target: $TARGET" >&2
+              exit 2
+              ;;
+          esac
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  formal-scan:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout DSG scanner
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          path: dsg
+          persist-credentials: false
+
+      - name: Checkout frozen Quantus competition source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.sha }}
+          path: quantus
+          persist-credentials: false
+
+      - name: Verify frozen source
+        working-directory: quantus
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "expected=${{ matrix.sha }}"
+          echo "actual=$actual"
+          test "$actual" = "${{ matrix.sha }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: dsg/package-lock.json
+
+      - name: Install DSG scanner dependencies
+        working-directory: dsg
+        shell: bash
+        run: npm ci
+
+      - name: Run deterministic Ising + Z3/SMT + DSG gate scan
+        working-directory: dsg
+        shell: bash
+        env:
+          TARGET_NAME: ${{ matrix.target }}
+          INCLUDE_PREFIX: ${{ matrix.include_prefix }}
+          BUDGET: ${{ needs.prepare.outputs.budget }}
+          SEED: ${{ needs.prepare.outputs.seed }}
+        run: |
+          set -euo pipefail
+          node scripts/quantus-formal-bug-scan.mjs \
+            --target-root ../quantus \
+            --target-name "$TARGET_NAME" \
+            --include-prefix "$INCLUDE_PREFIX" \
+            --budget "$BUDGET" \
+            --seed "$SEED" \
+            --out "../formal-output/$TARGET_NAME"
+
+      - name: Add job summary
+        if: always()
+        shell: bash
+        env:
+          TARGET_NAME: ${{ matrix.target }}
+        run: |
+          if [ -f "formal-output/$TARGET_NAME/formal-scan.md" ]; then
+            cat "formal-output/$TARGET_NAME/formal-scan.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Formal scanner did not produce a report for $TARGET_NAME." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload formal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantus-formal-${{ matrix.target }}-${{ github.run_id }}
+          path: formal-output/${{ matrix.target }}
+          if-no-files-found: error
+          retention-days: 14
