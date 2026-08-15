@@ -2,6 +2,9 @@ name: Reconcile Supabase Migration History
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/supabase-history-reconcile.yml'
 
 permissions:
   contents: write
