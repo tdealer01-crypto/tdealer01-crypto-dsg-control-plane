@@ -10,5 +10,6 @@
     "autoAlias": false,
     "silent": false,
     "autoJobCancelation": true
-  }
+  },
+  "crons": []
 }
