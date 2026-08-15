@@ -1,0 +1,244 @@
+name: Bootstrap New Vercel Runtime ENV
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/vercel-runtime-bootstrap-request.json
+
+concurrency:
+  group: bootstrap-new-vercel-runtime-env
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_CLI_VERSION: 58.0.0
+
+jobs:
+  bootstrap:
+    name: Bootstrap Critical ENV and Verify Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: "Production – dsg-qubo-api"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Validate audited destination request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const p = '.github/vercel-runtime-bootstrap-request.json';
+          const request = JSON.parse(fs.readFileSync(p, 'utf8'));
+          if (request.enabled !== true) throw new Error('bootstrap request is not enabled');
+          if (request.newTeamId !== 'team_6pEhvA6GmVXYajBuJ2PUPFcs') throw new Error('unexpected destination team');
+          if (request.newProjectId !== 'prj_EsrB0dLrqbDKPDTMiKFGadZMny5M') throw new Error('unexpected destination project');
+          if (request.newTeamId === 'team_n189mlAdVHR6cGGiaAwsKzQ0') throw new Error('destination cannot be legacy team');
+          if (request.newProjectId === 'prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW') throw new Error('destination cannot be legacy project');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `request_id=${request.requestId}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `new_team_id=${request.newTeamId}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `new_project_id=${request.newProjectId}\n`);
+          NODE
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Resolve and write critical runtime ENV
+        shell: bash
+        env:
+          OLD_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          NEW_VERCEL_TEAM_ID: ${{ steps.request.outputs.new_team_id }}
+          NEW_VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
+          GH_NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          GH_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          GH_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          GH_DSG_CORE_MODE: ${{ secrets.DSG_CORE_MODE }}
+          GH_DSG_CORE_URL: ${{ secrets.DSG_CORE_URL }}
+          GH_DSG_CORE_API_KEY: ${{ secrets.DSG_CORE_API_KEY }}
+          GH_UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          GH_UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          GH_REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$OLD_VERCEL_TOKEN" || { echo "Missing legacy VERCEL_TOKEN required for controlled allowlist migration"; exit 1; }
+          test -n "$NEW_VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN_NEW"; exit 1; }
+
+          LEGACY_ENV="$RUNNER_TEMP/vercel-legacy-production.env"
+          cleanup() { rm -f "$LEGACY_ENV"; }
+          trap cleanup EXIT
+
+          echo "Pulling legacy production ENV into ephemeral runner storage for allowlisted migration."
+          VERCEL_ORG_ID=team_n189mlAdVHR6cGGiaAwsKzQ0 \
+          VERCEL_PROJECT_ID=prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW \
+            npx --yes "vercel@$VERCEL_CLI_VERSION" env pull "$LEGACY_ENV" \
+              --environment=production --token="$OLD_VERCEL_TOKEN" >/dev/null
+
+          get_val() {
+            local key="$1"
+            awk -v k="$key" '
+              $0 ~ "^[[:space:]]*(export[[:space:]]+)?" k "=" {
+                line=$0
+                sub(/^[[:space:]]*(export[[:space:]]+)?[^=]+= */, "", line)
+                if ((line ~ /^\".*\"$/) || (line ~ /^\047.*\047$/)) {
+                  line = substr(line, 2, length(line)-2)
+                }
+                print line
+                exit
+              }
+            ' "$LEGACY_ENV"
+          }
+
+          first_legacy() {
+            local value=''
+            for key in "$@"; do
+              value="$(get_val "$key")"
+              if test -n "$value"; then
+                printf '%s' "$value"
+                return 0
+              fi
+            done
+            return 0
+          }
+
+          choose() {
+            local preferred="$1"
+            shift
+            if test -n "$preferred"; then
+              printf '%s' "$preferred"
+            else
+              first_legacy "$@"
+            fi
+          }
+
+          mask() {
+            test -n "$1" && echo "::add-mask::$1" || true
+          }
+
+          SUPABASE_URL_VALUE="$(choose "$GH_NEXT_PUBLIC_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_URL SUPABASE_URL dsgone_SUPABASE_URL)"
+          SUPABASE_ANON_VALUE="$(choose "$GH_NEXT_PUBLIC_SUPABASE_ANON_KEY" NEXT_PUBLIC_SUPABASE_ANON_KEY dsgone_SUPABASE_ANON_KEY)"
+          SUPABASE_SERVICE_VALUE="$(choose "$GH_SUPABASE_SERVICE_ROLE_KEY" SUPABASE_SERVICE_ROLE_KEY SUPABASE_SECRET_KEY dsgone_SUPABASE_SECRET_KEY)"
+          CORE_MODE_VALUE="$(choose "$GH_DSG_CORE_MODE" DSG_CORE_MODE)"
+          CORE_URL_VALUE="$(choose "$GH_DSG_CORE_URL" DSG_CORE_URL)"
+          CORE_API_KEY_VALUE="$(choose "$GH_DSG_CORE_API_KEY" DSG_CORE_API_KEY DSG_API_KEY)"
+          UPSTASH_URL_VALUE="$(choose "$GH_UPSTASH_REDIS_REST_URL" UPSTASH_REDIS_REST_URL)"
+          UPSTASH_TOKEN_VALUE="$(choose "$GH_UPSTASH_REDIS_REST_TOKEN" UPSTASH_REDIS_REST_TOKEN)"
+          REDIS_URL_VALUE="$(choose "$GH_REDIS_URL" REDIS_URL UPSTASH_REDIS_URL)"
+          NEXTAUTH_SECRET_VALUE="$GH_NEXTAUTH_SECRET"
+          if test -z "$NEXTAUTH_SECRET_VALUE"; then
+            NEXTAUTH_SECRET_VALUE="$(openssl rand -hex 48)"
+            echo "Generated a new NEXTAUTH_SECRET for the destination account."
+          fi
+
+          for value in "$SUPABASE_URL_VALUE" "$SUPABASE_ANON_VALUE" "$SUPABASE_SERVICE_VALUE" "$CORE_API_KEY_VALUE" "$UPSTASH_TOKEN_VALUE" "$REDIS_URL_VALUE" "$NEXTAUTH_SECRET_VALUE"; do
+            mask "$value"
+          done
+
+          test -n "$SUPABASE_URL_VALUE" || { echo "Missing NEXT_PUBLIC_SUPABASE_URL in GitHub and legacy Vercel"; exit 1; }
+          test -n "$SUPABASE_ANON_VALUE" || { echo "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY in GitHub and legacy Vercel"; exit 1; }
+          test -n "$SUPABASE_SERVICE_VALUE" || { echo "Missing Supabase server credential in GitHub and legacy Vercel"; exit 1; }
+          [[ "$CORE_MODE_VALUE" == "internal" || "$CORE_MODE_VALUE" == "remote" ]] || { echo "DSG_CORE_MODE must resolve to internal or remote"; exit 1; }
+          if test "$CORE_MODE_VALUE" = "remote"; then
+            test -n "$CORE_URL_VALUE" || { echo "DSG_CORE_URL required for remote core mode"; exit 1; }
+          fi
+          if test -n "$UPSTASH_URL_VALUE" || test -n "$UPSTASH_TOKEN_VALUE"; then
+            test -n "$UPSTASH_URL_VALUE" && test -n "$UPSTASH_TOKEN_VALUE" || { echo "Upstash REST URL/token must be configured as a pair"; exit 1; }
+          elif test -z "$REDIS_URL_VALUE"; then
+            echo "No distributed Redis configuration found in GitHub or legacy Vercel"
+            exit 1
+          fi
+
+          export VERCEL_ORG_ID="$NEW_VERCEL_TEAM_ID"
+          export VERCEL_PROJECT_ID="$NEW_VERCEL_PROJECT_ID"
+
+          set_env() {
+            local key="$1"
+            local value="$2"
+            local target="$3"
+            test -n "$value" || return 0
+            printf '%s' "$value" | npx --yes "vercel@$VERCEL_CLI_VERSION" env add "$key" "$target" \
+              --force --token="$NEW_VERCEL_TOKEN" >/dev/null
+            echo "Set $key for $target"
+          }
+
+          for target in preview production; do
+            set_env NEXT_PUBLIC_SUPABASE_URL "$SUPABASE_URL_VALUE" "$target"
+            set_env SUPABASE_URL "$SUPABASE_URL_VALUE" "$target"
+            set_env NEXT_PUBLIC_SUPABASE_ANON_KEY "$SUPABASE_ANON_VALUE" "$target"
+            set_env SUPABASE_SERVICE_ROLE_KEY "$SUPABASE_SERVICE_VALUE" "$target"
+            set_env NEXTAUTH_SECRET "$NEXTAUTH_SECRET_VALUE" "$target"
+            set_env DSG_CORE_MODE "$CORE_MODE_VALUE" "$target"
+            set_env READINESS_STRICT true "$target"
+            set_env DSG_FINANCE_GOVERNANCE_ENABLED true "$target"
+            if test "$CORE_MODE_VALUE" = "remote"; then
+              set_env DSG_CORE_URL "$CORE_URL_VALUE" "$target"
+              set_env DSG_CORE_API_KEY "$CORE_API_KEY_VALUE" "$target"
+            fi
+            if test -n "$UPSTASH_URL_VALUE"; then
+              set_env UPSTASH_REDIS_REST_URL "$UPSTASH_URL_VALUE" "$target"
+              set_env UPSTASH_REDIS_REST_TOKEN "$UPSTASH_TOKEN_VALUE" "$target"
+            else
+              set_env REDIS_URL "$REDIS_URL_VALUE" "$target"
+            fi
+          done
+
+          echo "Critical destination ENV bootstrap completed without logging secret values."
+
+      - name: Pull verified destination preview configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_ORG_ID: ${{ steps.request.outputs.new_team_id }}
+          VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
+        run: npx --yes "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Deploy destination preview
+        id: preview
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          VERCEL_ORG_ID: ${{ steps.request.outputs.new_team_id }}
+          VERCEL_PROJECT_ID: ${{ steps.request.outputs.new_project_id }}
+        run: |
+          set -euo pipefail
+          cp vercel.json "$RUNNER_TEMP/vercel.production.json"
+          trap 'cp "$RUNNER_TEMP/vercel.production.json" vercel.json' EXIT
+          cp vercel.preview.json vercel.json
+          PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
+            --meta=runtime_env_bootstrap="${{ steps.request.outputs.request_id }}" \
+            --meta=commit="${{ github.sha }}")
+          test -n "$PREVIEW_URL"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify destination preview health strictly
+        env:
+          HEALTH_VERIFY_ATTEMPTS: '10'
+          HEALTH_VERIFY_DELAY_MS: '6000'
+        run: node scripts/verify-health-url.mjs "${{ steps.preview.outputs.preview_url }}/api/health"
+
+      - name: Record verified bootstrap evidence
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+        run: |
+          {
+            echo "## New Vercel runtime ENV bootstrap"
+            echo ""
+            echo "- Request: $REQUEST_ID"
+            echo "- Destination team: ${{ steps.request.outputs.new_team_id }}"
+            echo "- Destination project: ${{ steps.request.outputs.new_project_id }}"
+            echo "- Critical ENV allowlist: written"
+            echo "- Preview health: HTTP 200 + JSON ok=true"
+            echo "- Preview URL: $PREVIEW_URL"
+            echo "- Production deployment: not performed by this bootstrap workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
