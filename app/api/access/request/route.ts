@@ -13,6 +13,10 @@ function extractDomain(email: string) {
   return email.split('@')[1] || '';
 }
 
+function normalizeIntegration(value: unknown) {
+  const integration = String(value || '').trim().toLowerCase();
+  return integration === 'github' || integration === 'vercel' ? integration : null;
+}
 
 async function resolveRequesterOrgId() {
   try {
@@ -66,6 +70,7 @@ async function parseBody(request: NextRequest) {
     workspace_name: form.get('workspace_name'),
     full_name: form.get('full_name'),
     reason: form.get('reason'),
+    integration: form.get('integration'),
   } as Record<string, unknown>;
 }
 
@@ -89,7 +94,11 @@ export async function POST(request: NextRequest) {
     const workspaceName = String(body.workspace_name || '').trim() || null;
     const fullName = String(body.full_name || '').trim() || null;
     const reason = String(body.reason || '').trim() || null;
+    const integration = normalizeIntegration(body.integration);
     const explicitOrgId = String(body.org_id || '').trim() || null;
+    const reviewNote = [integration ? `integration:${integration}` : null, reason]
+      .filter(Boolean)
+      .join(' | ') || null;
 
     if (!email || !domain) {
       return NextResponse.json(
@@ -122,7 +131,7 @@ export async function POST(request: NextRequest) {
         full_name: fullName,
         requested_org_hint: workspaceName,
         status: 'pending',
-        review_note: reason,
+        review_note: reviewNote,
         ref_code: refCode,
       });
 
@@ -134,9 +143,9 @@ export async function POST(request: NextRequest) {
     await logSignInEvent({
       email,
       eventType: 'request_access_submitted',
-      source: 'request-access',
+      source: integration ? `request-access:${integration}` : 'request-access',
       success: true,
-      metadata: { workspace_name: workspaceName },
+      metadata: { workspace_name: workspaceName, integration },
     });
 
     const acceptsHtml = (request.headers.get('accept') || '').includes('text/html');
@@ -144,6 +153,7 @@ export async function POST(request: NextRequest) {
       const redirectTo = new URL('/request-access', request.url);
       redirectTo.searchParams.set('email', email);
       if (workspaceName) redirectTo.searchParams.set('workspace_name', workspaceName);
+      if (integration) redirectTo.searchParams.set('integration', integration);
       redirectTo.searchParams.set('success', '1');
       return NextResponse.redirect(redirectTo, {
         status: 302,
@@ -151,7 +161,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ ok: true }, { headers: buildRateLimitHeaders(rateLimit, 10) });
+    return NextResponse.json({ ok: true, integration }, { headers: buildRateLimitHeaders(rateLimit, 10) });
   } catch (error) {
     return handleApiError('api/access/request', error);
   }

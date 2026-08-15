@@ -99,19 +99,22 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Page Header */}
         <div className="text-center mb-16">
           <p className="text-xs uppercase tracking-[0.25em] text-emerald-300 mb-3">Pricing</p>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             AI Governance, Designed to Scale
           </h1>
           <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-            Two powerful products — Delivery Proof Scanning and the DSG Gate API —
-            so every AI action is governed, proven, and auditable.
+            Two products — Delivery Proof Scanning and the DSG Gate API — so teams can inspect evidence before expanding production usage.
           </p>
+          <Link
+            href="/start"
+            className="mt-6 inline-flex rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-5 py-3 text-sm font-bold text-emerald-100 hover:border-emerald-300/60"
+          >
+            See connection and install paths →
+          </Link>
         </div>
 
-        {/* ── Section 1: DSG Gate API ──────────────────────────────────────── */}
         <section id="dsg-gate" className="mb-20">
           <div className="mb-8">
             <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30 mb-3">
@@ -121,8 +124,7 @@ export default function PricingPage() {
               Deterministic AI Governance API
             </h2>
             <p className="text-slate-400 max-w-xl">
-              Same input → same decision, always. Cryptographic proof per evaluation.
-              Hash-chained audit trail. Replay-protected intent flow.
+              Same input and policy context produce a replayable decision path with evidence hashes for later verification.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
@@ -132,7 +134,6 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* ── Section 2: Delivery Proof ────────────────────────────────────── */}
         <section id="delivery-proof" className="mb-20">
           <div className="mb-8">
             <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-widest rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-3">
@@ -142,8 +143,7 @@ export default function PricingPage() {
               AI Delivery Proof Scanning
             </h2>
             <p className="text-slate-400 max-w-xl">
-              Instantly prove your deployment is production-ready with a shareable
-              compliance report — homepage, auth, health, and CCVS evidence chain.
+              Generate a shareable readiness report for the checks the scanner actually runs, including homepage, auth, health, and available evidence-chain checks.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
@@ -153,21 +153,18 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* FAQ */}
         <div className="max-w-2xl mx-auto border border-white/10 rounded-2xl bg-white/[0.02] p-8 mb-12">
           <h2 className="text-2xl font-bold text-white mb-6">Frequently Asked Questions</h2>
           <div className="space-y-4">
             <details className="group cursor-pointer">
               <summary className="flex items-center justify-between font-semibold text-white hover:text-emerald-300">
-                <span>What makes the DSG Gate API unique?</span>
+                <span>What evidence does the DSG Gate API return?</span>
                 <span className="transition group-open:rotate-180">▼</span>
               </summary>
               <p className="mt-3 text-sm text-slate-400 pl-4">
-                Every evaluation returns a <code className="text-emerald-300">proofHash</code>,{' '}
+                Gate responses can include a <code className="text-emerald-300">proofHash</code>,{' '}
                 <code className="text-emerald-300">constraintSetHash</code>, and{' '}
-                <code className="text-emerald-300">inputHash</code> — forming a cryptographic
-                chain that cannot be altered retroactively. No other AI governance product
-                provides deterministic replay with formal proof evidence.
+                <code className="text-emerald-300">inputHash</code> so the recorded decision can be checked against its input and constraint context.
               </p>
             </details>
 
@@ -177,9 +174,7 @@ export default function PricingPage() {
                 <span className="transition group-open:rotate-180">▼</span>
               </summary>
               <p className="mt-3 text-sm text-slate-400 pl-4">
-                Yes. The Free tier includes all core proof and gate features — PASS/REVIEW/BLOCK
-                decisions, replay protection, and JSON audit logs. The 50 eval/month limit
-                is a lead magnet; upgrade to Pro for high-volume production use.
+                Use the Free tier to validate fit and the evidence flow within its published quota. Production suitability still depends on your own availability, security, compliance, and support requirements.
               </p>
             </details>
 
@@ -189,34 +184,30 @@ export default function PricingPage() {
                 <span className="transition group-open:rotate-180">▼</span>
               </summary>
               <p className="mt-3 text-sm text-slate-400 pl-4">
-                Absolutely. Monthly plans can be changed or cancelled at any time.
-                Pro Scan ($49 one-time) purchases are non-refundable but add to your monthly quota.
+                Monthly plan changes and cancellation follow the checkout and billing terms presented for the active plan. One-time purchases follow the terms shown at checkout.
               </p>
             </details>
 
             <details className="group cursor-pointer">
               <summary className="flex items-center justify-between font-semibold text-white hover:text-emerald-300">
-                <span>Do you offer enterprise pricing?</span>
+                <span>Do you offer enterprise integration?</span>
                 <span className="transition group-open:rotate-180">▼</span>
               </summary>
               <p className="mt-3 text-sm text-slate-400 pl-4">
-                Yes. The Enterprise plan includes unlimited gate evaluations, Hermes Controlled
-                Executor access, credential brokering, 99.9% SLA, and dedicated Slack support.
-                Contact sales for custom connector integrations and white-label options.
+                Yes. Use the start page to see which connection paths are ready now and which managed GitHub or Vercel integration paths require access setup before they are advertised as one-click installs.
               </p>
             </details>
           </div>
         </div>
 
-        {/* Footer CTA */}
         <div className="text-center mt-4">
-          <p className="text-slate-400 mb-4">Ready to prove your AI governance?</p>
+          <p className="text-slate-400 mb-4">Ready to connect DSG ONE?</p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Link
-              href="/dashboard/api-keys"
+              href="/start"
               className="px-6 py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-400 transition"
             >
-              Get DSG Gate API Key →
+              Start and connect →
             </Link>
             <Link
               href="/delivery-proof"

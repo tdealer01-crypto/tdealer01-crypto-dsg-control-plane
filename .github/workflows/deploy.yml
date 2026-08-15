@@ -80,11 +80,53 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+
+      - name: Bootstrap new Vercel project when project ID is unavailable
+        shell: bash
+        env:
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          NEW_VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_NEW }}
+          NEW_VERCEL_SCOPE: thanawats-projects-336871dc
+          NEW_VERCEL_PROJECT_NAME: tdealer01-crypto-dsg-control-plane
+        run: |
+          set -euo pipefail
+          test -n "$NEW_VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN_NEW"; exit 1; }
+
+          if [[ "$NEW_VERCEL_PROJECT_ID" =~ ^prj_[A-Za-z0-9]+$ ]]; then
+            echo "Existing VERCEL_PROJECT_ID_NEW is syntactically valid; bootstrap not required."
+            exit 0
+          fi
+
+          echo "VERCEL_PROJECT_ID_NEW is unavailable/invalid; linking project through the new Vercel scope."
+          rm -rf .vercel
+          npx --yes "vercel@$VERCEL_CLI_VERSION" link --yes \
+            --project "$NEW_VERCEL_PROJECT_NAME" \
+            --scope "$NEW_VERCEL_SCOPE" \
+            --token "$NEW_VERCEL_TOKEN"
+
+          test -f .vercel/project.json || { echo "Vercel link did not create .vercel/project.json"; exit 1; }
+          node <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('.vercel/project.json', 'utf8'));
+          if (!/^prj_[A-Za-z0-9]+$/.test(String(p.projectId || ''))) {
+            throw new Error('Bootstrapped Vercel projectId is missing or invalid');
+          }
+          if (!/^[A-Za-z0-9_-]{3,128}$/.test(String(p.orgId || ''))) {
+            throw new Error('Bootstrapped Vercel orgId is missing or invalid');
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, `BOOTSTRAP_VERCEL_ORG_ID=${p.orgId}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `BOOTSTRAP_VERCEL_PROJECT_ID=${p.projectId}\n`);
+          console.log('Bootstrapped Vercel project identity from .vercel/project.json');
+          NODE
+
       - name: Resolve audited Vercel routing
         env:
           LEGACY_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW || secrets.VERCEL_TOKEN }}
+          NEW_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN_NEW }}
+          NEW_VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID_NEW }}
+          NEW_VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_NEW }}
         run: node scripts/resolve-vercel-routing.mjs
+
       - name: Verify Vercel credentials
         shell: bash
         run: |
@@ -95,6 +137,7 @@ jobs:
             test "$VERCEL_ORG_ID" != "team_n189mlAdVHR6cGGiaAwsKzQ0" || { echo "New-account routing has the legacy account ID"; exit 1; }
             test "$VERCEL_PROJECT_ID" != "prj_k02PTNzCJRBN5CcRtg6hFdd0HjuW" || { echo "New-account routing has the legacy project ID"; exit 1; }
           fi
+
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Pull preview configuration
@@ -103,6 +146,24 @@ jobs:
         id: preview
         shell: bash
         run: |
+          set -euo pipefail
+
+          # Vercel's remote build reads the root vercel.json from uploaded source.
+          # For Hobby previews, replace it only inside this ephemeral CI checkout
+          # so production cron schedules never enter the preview build input.
+          cp vercel.json "$RUNNER_TEMP/vercel.production.json"
+          trap 'cp "$RUNNER_TEMP/vercel.production.json" vercel.json' EXIT
+          cp vercel.preview.json vercel.json
+
+          node <<'NODE'
+          const fs = require('fs');
+          const cfg = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+          if (Array.isArray(cfg.crons) && cfg.crons.length !== 0) {
+            throw new Error('Preview vercel.json still contains cron schedules');
+          }
+          console.log('Preview deployment input verified: no cron schedules in root vercel.json');
+          NODE
+
           PREVIEW_URL=$(npx --yes "vercel@$VERCEL_CLI_VERSION" deploy --yes --token="$VERCEL_TOKEN" \
             --meta=branch="${{ github.head_ref }}" \
             --meta=commit="${{ github.event.pull_request.head.sha }}")
@@ -119,7 +180,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Preview verified: ${{ steps.preview.outputs.preview_url }}\n\nProduction was not deployed. Production requires the separate Promoted Production Deployment workflow.`
+              body: `Preview verified: ${{ steps.preview.outputs.preview_url }}\n\nPreview deployment swaps the root vercel.json only inside the ephemeral CI checkout so production cron schedules are excluded from the Hobby preview build input. The repository production vercel.json is not changed by this deploy step. Production requires the separate Promoted Production Deployment workflow.`
             })
 
   notify-failure:

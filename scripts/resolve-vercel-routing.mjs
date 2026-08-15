@@ -39,7 +39,20 @@ function requireAccount(config, name, { allowEmpty = false } = {}) {
   return { teamId, projectId, projectName };
 }
 
-export function resolveVercelRouting({ config, legacyToken, newToken }) {
+function requireNewSecretId(value, label, pattern) {
+  if (typeof value !== 'string' || !pattern.test(value)) {
+    throw new VercelRoutingError(`${label} is missing or invalid`);
+  }
+  return value;
+}
+
+export function resolveVercelRouting({
+  config,
+  legacyToken,
+  newToken,
+  newTeamId = '',
+  newProjectId = '',
+}) {
   if (config?.schemaVersion !== 1) {
     throw new VercelRoutingError('Unsupported Vercel routing schema version');
   }
@@ -48,12 +61,20 @@ export function resolveVercelRouting({ config, legacyToken, newToken }) {
   }
 
   const legacy = requireAccount(config, 'legacy');
-  const next = requireAccount(config, 'new', {
-    allowEmpty: config.activeAccount === 'legacy',
+  const configuredNext = requireAccount(config, 'new', {
+    allowEmpty: true,
   });
   if (legacy.teamId !== LEGACY_TEAM_ID || legacy.projectId !== LEGACY_PROJECT_ID) {
     throw new VercelRoutingError('Legacy Vercel rollback identity was changed');
   }
+
+  const next = config.activeAccount === 'new'
+    ? {
+        teamId: requireNewSecretId(newTeamId, 'VERCEL_ORG_ID_NEW', TEAM_ID_PATTERN),
+        projectId: requireNewSecretId(newProjectId, 'VERCEL_PROJECT_ID_NEW', PROJECT_ID_PATTERN),
+        projectName: configuredNext.projectName,
+      }
+    : configuredNext;
 
   const account = config.activeAccount === 'new' ? next : legacy;
   const token = config.activeAccount === 'new' ? newToken : legacyToken;
@@ -101,10 +122,17 @@ export function loadRoutingConfig(path = '.github/vercel-routing.json') {
 }
 
 async function main() {
+  // A CI bootstrap may create/link the new Vercel project before routing is resolved.
+  // Prefer those IDs when present; otherwise use the repository secrets.
+  const newTeamId = process.env.BOOTSTRAP_VERCEL_ORG_ID || process.env.NEW_VERCEL_ORG_ID;
+  const newProjectId = process.env.BOOTSTRAP_VERCEL_PROJECT_ID || process.env.NEW_VERCEL_PROJECT_ID;
+
   const routing = resolveVercelRouting({
     config: loadRoutingConfig(process.env.VERCEL_ROUTING_CONFIG),
     legacyToken: process.env.LEGACY_VERCEL_TOKEN,
     newToken: process.env.NEW_VERCEL_TOKEN,
+    newTeamId,
+    newProjectId,
   });
 
   writeGitHubEnvironment('VERCEL_ACCOUNT_MODE', routing.accountMode);
