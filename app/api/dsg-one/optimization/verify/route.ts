@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireOrgPermission } from '@/lib/auth/require-org-permission';
+import { handleApiError } from '@/lib/security/api-error';
 import { runVerifiedOptimizationPipeline } from '@/lib/dsg-one/verified-optimization-pipeline';
 import type { Task, AgentCapacity } from '@/lib/dsg/multi-agent/types';
 
@@ -55,13 +56,13 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'DSG_VERIFIED_OPTIMIZATION_FAILED',
-        message: error instanceof Error ? error.message : 'Unknown optimization error',
-      },
-      { status: 400 },
-    );
+    // The raw message was echoed to the client here, which
+    // scripts/check-error-handlers.sh fails as error-message leakage: this
+    // catch also receives internal failures, not just the pipeline's input
+    // validation. 400 is kept because the throws that reach it are dominated
+    // by bad request payloads, so the status is unchanged and only the
+    // message stops crossing the boundary. handleApiError still logs the real
+    // error server-side with redaction.
+    return handleApiError('api/dsg-one/optimization/verify', error, { status: 400 });
   }
 }
