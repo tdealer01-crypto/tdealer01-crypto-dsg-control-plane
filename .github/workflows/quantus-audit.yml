@@ -90,7 +90,7 @@ jobs:
           set -euo pipefail
           echo "LOCAL-ONLY AUDIT"
           echo "No mainnet/public-testnet interaction. No deployment. No project secrets."
-          test -z "${{ secrets.GITHUB_TOKEN == '' && '' || '' }}" || true
+          echo "Source is pinned to the competition SHA and checkout credentials are not persisted."
 
       - name: Install Rust toolchain
         shell: bash
@@ -100,6 +100,14 @@ jobs:
           rustup default stable
           rustc --version
           cargo --version
+
+      - name: Install chain native dependencies
+        if: ${{ matrix.target == 'chain' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang cmake libssl-dev pkg-config protobuf-compiler
 
       - name: Record frozen-source evidence
         working-directory: target
@@ -128,9 +136,9 @@ jobs:
         run: |
           set -o pipefail
           if [ -n "$PACKAGE" ]; then
-            cargo build --release -p "$PACKAGE" 2>&1 | tee ../audit-output/${{ matrix.target }}/build.log
+            cargo build --release --locked -p "$PACKAGE" 2>&1 | tee ../audit-output/${{ matrix.target }}/build.log
           else
-            cargo build --release 2>&1 | tee ../audit-output/${{ matrix.target }}/build.log
+            cargo build --release --locked 2>&1 | tee ../audit-output/${{ matrix.target }}/build.log
           fi
 
       - name: Run release tests
@@ -143,9 +151,9 @@ jobs:
         run: |
           set -o pipefail
           if [ -n "$PACKAGE" ]; then
-            cargo test --release -p "$PACKAGE" 2>&1 | tee ../audit-output/${{ matrix.target }}/test.log
+            cargo test --release --locked -p "$PACKAGE" 2>&1 | tee ../audit-output/${{ matrix.target }}/test.log
           else
-            cargo test --release 2>&1 | tee ../audit-output/${{ matrix.target }}/test.log
+            cargo test --release --locked 2>&1 | tee ../audit-output/${{ matrix.target }}/test.log
           fi
 
       - name: Run clippy
@@ -159,9 +167,9 @@ jobs:
         run: |
           set -o pipefail
           if [ -n "$PACKAGE" ]; then
-            cargo clippy -p "$PACKAGE" --all-targets 2>&1 | tee ../audit-output/${{ matrix.target }}/clippy.log
+            cargo clippy --locked -p "$PACKAGE" --all-targets 2>&1 | tee ../audit-output/${{ matrix.target }}/clippy.log
           else
-            cargo clippy --all-targets 2>&1 | tee ../audit-output/${{ matrix.target }}/clippy.log
+            cargo clippy --locked --all-targets 2>&1 | tee ../audit-output/${{ matrix.target }}/clippy.log
           fi
 
       - name: Create audit summary
